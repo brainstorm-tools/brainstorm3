@@ -5,7 +5,7 @@ function varargout = process_import_data_event( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_import_data_event( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -64,6 +64,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sep2.Type    = 'separator';
     sProcess.options.sep2.Comment = ' ';
     % Event name
+    sProcess.options.labelevt.Comment = '<HTML><I><FONT color="#777777">To import multiple events: separate them with commas,<BR>or use regular expressions (eg. <B>evt.*</B> selects evt1, evtA, evtTest...) </FONT></I>';
+    sProcess.options.labelevt.Type    = 'label';
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
     sProcess.options.eventname.Value   = '';
@@ -79,7 +81,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
     % Create conditions
-    sProcess.options.createcond.Comment = 'Create one condition for each event type';
+    sProcess.options.createcond.Comment = 'Create a separate folder for each event type';
     sProcess.options.createcond.Type    = 'checkbox';
     sProcess.options.createcond.Value   = 1;
     % Ignore shorter epochs
@@ -132,6 +134,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         FileNames  = sProcess.options.datafile.Value{1};
         FileFormat = sProcess.options.datafile.Value{2};
     elseif ~isempty(sInput)
+        % Error if nothing in input
+        if strcmpi(sInput(1).FileType, 'import')
+            bst_report('Error', sProcess, sInput, 'No file selected.');
+            return
+        end
+        % Get file info
         isRaw = strcmpi(sInput(1).FileType, 'raw');
         FileNames = {sInput.FileName};
         if isRaw
@@ -273,16 +281,34 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             bst_report('Error', sProcess, [], ['No events in file: ' 10 FileNames{iFile}]);
             continue;
         end
-        % Initialize events structure
-        events = repmat(sFile.events, 0);
+
         % Get selected events
+        iSelEvents = [];
         for iSelEvt = 1:length(EvtNames)
             % Find input event in file
             iEvt = find(strcmpi(EvtNames{iSelEvt}, {sFile.events.label}));
+            % If not found with exact names, try searching interpreting strings as regular expressions
             if isempty(iEvt)
+                iEvt = find(~cellfun(@isempty, regexp({sFile.events.label}, EvtNames{iSelEvt})));
+            end
+            % Event found / not found
+            if ~isempty(iEvt)
+                iSelEvents = [iSelEvents, iEvt];
+            else
                 bst_report('Warning', sProcess, [], ['Event "' EvtNames{iSelEvt} '" does not exist in file: ' 10 FileNames{iFile}]);
                 continue;
             end
+        end
+        if isempty(iSelEvents)
+            bst_report('Error', sProcess, [], ['No events with matching names found in file: ' 10 FileNames{iFile}]);
+            continue;
+        end
+        % Exclude duplicates
+        iSelEvents = unique(iSelEvents);
+        % Initialize events structure
+        events = repmat(sFile.events, 0);
+        % Select all the the occurrences of all the events in the selected time window
+        for iEvt = iSelEvents
             newEvt = sFile.events(iEvt);
             % Find events that are in time window
             if ~isempty(ImportOptions.TimeRange)
@@ -296,9 +322,10 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 continue;
             end
             % Get the selected occurrences
-            newEvt.epochs  = newEvt.epochs(iOcc);
-            newEvt.samples = newEvt.samples(:, iOcc);
-            newEvt.times   = newEvt.times(:, iOcc);
+            newEvt.times    = newEvt.times(:, iOcc);
+            newEvt.epochs   = newEvt.epochs(iOcc);
+            newEvt.channels = newEvt.channels(iOcc);
+            newEvt.notes    = newEvt.notes(iOcc);
             % Add to the list of events to import
             events(end+1) = newEvt;
         end
@@ -310,7 +337,19 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % Copy into events options
         ImportOptions.events = events;
         % Import file
-        OutputFiles = cat(2, OutputFiles, import_data(sFile, ChannelMat, FileFormat, iStudy, iSubject, ImportOptions));
+        NewFiles = import_data(sFile, ChannelMat, FileFormat, iStudy, iSubject, ImportOptions);
+        OutputFiles = cat(2, OutputFiles, NewFiles);
+        
+        % === COPY VIDEO LINK ===
+        % If only one file imported: Copy linked videos in destination folder
+        if ~isDirectImport && (length(NewFiles) == 1)
+            % Find file in database
+            sStudyIn = bst_get('DataFile', FileNames{iFile});
+            % If there are video links to copy, copy them
+            if ~isempty(sStudyIn) && ~isempty(sStudyIn.Image)
+                CopyVideoLinks(NewFiles{1}, sStudyIn);
+            end
+        end
     end
     % Report number of files generated
     if ~isempty(OutputFiles)
@@ -321,5 +360,58 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
 end
 
 
+%% ===== COPY VIDEO LINKS =====
+% Copy linked videos in destination folder
+function sStudyOut = CopyVideoLinks(NewDataFile, sStudyIn)
+    % No images, nothing to do
+    if isempty(sStudyIn.Image)
+        return;
+    end
+    % Get destination file info
+    [sStudyOut, iStudyOut, iData] = bst_get('DataFile', NewDataFile);
+    % Get new and old time start
+    NewMat = in_bst_data(NewDataFile, {'Time', 'History'});
+    oldStart = NewMat.Time(1);
+    offsetStart = 0;
+    iEntry = find(strcmpi(NewMat.History(:,2), 'import_time'), 1, 'last');
+    if ~isempty(iEntry)
+        newTime = str2num(NewMat.History{iEntry,3});
+        if ~isempty(newTime)
+            offsetStart = oldStart - newTime(1);
+        end
+    end
+    % Copy all the links
+    for iFile = 1:length(sStudyIn.Image)
+        if strcmpi(file_gettype(sStudyIn.Image(iFile).FileName), 'videolink')
+            % Read link
+            VideoLinkMat = load(file_fullpath(sStudyIn.Image(iFile).FileName));
+            % Modify comment
+            VideoLinkMat.Comment = [VideoLinkMat.Comment, ' | ', sStudyOut.Data(iData).Comment];
+            % Set start time
+            if ~isfield(VideoLinkMat, 'VideoStart') || isempty(VideoLinkMat.VideoStart)
+                VideoLinkMat.VideoStart = 0;
+            end
+            VideoLinkMat.VideoStart = VideoLinkMat.VideoStart + offsetStart;
+            % Create output filename
+            [fPath, fBase] = bst_fileparts(sStudyIn.Image(iFile).FileName);
+            OutputFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [file_standardize(fBase), '.mat']);
+            OutputFile = file_unique(OutputFile);
+            % Save new file in Brainstorm format
+            bst_save(OutputFile, VideoLinkMat, 'v7');
 
+            % === UPDATE DATABASE ===
+            % Create structure
+            sImage = db_template('image');
+            sImage.FileName = file_short(OutputFile);
+            sImage.Comment  = VideoLinkMat.Comment;
+            % Add to study
+            iImage = length(sStudyOut.Image) + 1;
+            sStudyOut.Image(iImage) = sImage;
+        end
+    end
+    % Save study
+    bst_set('Study', iStudyOut, sStudyOut);
+    % Update tree
+    panel_protocols('UpdateNode', 'Study', iStudyOut);
+end
 

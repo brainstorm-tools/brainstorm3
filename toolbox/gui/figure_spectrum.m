@@ -7,7 +7,7 @@ function varargout = figure_spectrum( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = figure_spectrum( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2012-2019; Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -52,6 +52,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'Color',         [.8 .8 .8], ...
+                  'Pointer',       'arrow', ...
                   'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
                   'KeyPressFcn',             @FigureKeyPressedCallback, ...
                   'WindowButtonDownFcn',     @FigureMouseDownCallback, ...
@@ -70,7 +71,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
-    setappdata(hFig, 'AllChannelsDisplayed', 0);
+    setappdata(hFig, 'isSensorsOnly', 0);
     setappdata(hFig, 'GraphSelection', []);
     setappdata(hFig, 'isStatic', 0);
     setappdata(hFig, 'isStaticFreq', 1);
@@ -198,7 +199,15 @@ function FigureMouseDownCallback(hFig, ev)
                 LineClickedCallback(hObj);
                 return;
             end
-        case {'SelectionPatch', 'Cursor', 'TextCursor'}
+        case 'SelectionPatch'
+            % Shift+click: zoom into selection (otherwise, regular click)
+            if strcmpi(MouseStatus, 'extend')
+                ZoomSelection(hFig);
+                return;
+            else
+                hAxes = get(hObj, 'Parent');
+            end
+        case {'Cursor', 'TextCursor'}
             hAxes = get(hObj, 'Parent');
         case 'legend'
             legendButtonDownFcn = get(hObj, 'ButtonDownFcn');
@@ -509,6 +518,22 @@ function SetFreqSelection(hFig, Xsel)
     Xsel = Xvector(bst_closest(Xsel, Xvector));
     % Draw new time selection
     setappdata(hFig, 'GraphSelection', Xsel);
+    DrawSelection(hFig);
+end
+
+
+%% ===== ZOOM INTO SELECTION =====
+function ZoomSelection(hFig)
+    % Get time selection
+	GraphSelection = getappdata(hFig, 'GraphSelection');
+    if isempty(GraphSelection) || isinf(GraphSelection(2))
+        return;
+    end
+    % Set axes bounds to selection
+    hAxesList = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
+    set(hAxesList, 'XLim', [GraphSelection(1), GraphSelection(2)]);
+    % Draw new time selection
+    setappdata(hFig, 'GraphSelection', []);
     DrawSelection(hFig);
 end
 
@@ -898,6 +923,7 @@ function DisplayFigurePopup(hFig, menuTitle)
         GraphSelection = getappdata(hFig, 'GraphSelection');
         isSelection = ~isempty(GraphSelection) && ~any(isinf(GraphSelection(:)));
         if isSelection
+            gui_component('MenuItem', jMenuSelection, [], 'Zoom into selection (Shift+click)', IconLoader.ICON_ZOOM_PLUS, [], @(h,ev)ZoomSelection(hFig));
             jMenuSelection.addSeparator();
             % === EXPORT TO DATABASE ===
             if ~strcmpi(TfInfo.DisplayMode, 'TimeSeries')

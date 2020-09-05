@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_curry(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -63,29 +63,29 @@ if (fid == -1)
    error(['Unable to open file: ' HdrFile']);
 end
 try
-    cell = textscan(fid,'%s','whitespace','','endofline','§');
+    Cell = textscan(fid,'%s','whitespace','','endofline','§');
 catch
     % In case of earlier versions of Matlab or Older Computers
     fclose(fid); 
     fid = fopen(HdrFile,'rt');
     f = dir(HdrFile);
     try
-        cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
     catch
         fclose(fid);
         fid = fopen(HdrFile,'rt');
-        cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
     end
 end
 fclose(fid);            
-cont = cell2mat(cell{1});
+cont = cell2mat(Cell{1});
 
 % read parameters from file
 % tokens (second line is for Curry 6 notation)
 tok = { 'NumSamples'; 'NumChannels'; 'NumTrials'; 'SampleFreqHz';  'TriggerOffsetUsec';  'DataFormat'; 'DataSampOrder';   'SampleTimeUsec'; 
         'NUM_SAMPLES';'NUM_CHANNELS';'NUM_TRIALS';'SAMPLE_FREQ_HZ';'TRIGGER_OFFSET_USEC';'DATA_FORMAT';'DATA_SAMP_ORDER'; 'SAMPLE_TIME_USEC' };
 
-% scan in cell 1 for keywords - all keywords must exist!
+% scan in Cell 1 for keywords - all keywords must exist!
 nt = size(tok,1);
 a = zeros(nt,1);
 for i = 1:nt
@@ -118,7 +118,7 @@ if (hdr.fFrequency == 0 && hdr.fSampleTime ~= 0)
 end
 
 % Epoched files not supported yet
-if (hdr.nTrials > 1)
+if (hdr.nMultiplex ~= 0)
     error('Multiplexed data not supported yet: post a message on the Brainstorm user forum to request this feature.');
 end
 
@@ -137,12 +137,24 @@ if (~isempty(tixstar)) && (~isempty(tixstop))
            hdr.impedancelist(end+1) = tcell{tcC};
        end
     end
-
     % Curry records last 10 impedances
     hdr.impedancematrix = reshape(hdr.impedancelist,[(size(hdr.impedancelist,2)/10),10])';
     hdr.impedancematrix(hdr.impedancematrix == -1) = NaN; % screen for missing
 end
 
+% === READ EPOCH LABELS ===
+hdr.epochlabels = {};
+if (hdr.nTrials > 1)
+    epocstar = strfind(cont,'EPOCH_LABELS START_LIST');
+    epocstop = strfind(cont,'EPOCH_LABELS END_LIST');
+    if (~isempty(epocstar)) && (~isempty(epocstop))
+        text = strrep(cont(epocstar:epocstop-1), char(13), ''); 
+        tcell = str_split(text, char(10));
+        if (length(tcell) == hdr.nTrials + 1)
+            hdr.epochlabels = tcell(2:end);
+        end
+    end
+end
 
 
 %% ===== READ CHANNEL INFO =====            
@@ -151,21 +163,21 @@ if (fid == -1)
    error(['Unable to open file: ' ChanFile]);
 end
 try
-    cell = textscan(fid,'%s','whitespace','','endofline','§');
+    Cell = textscan(fid,'%s','whitespace','','endofline','§');
 catch
     fclose(fid);
     fid = fopen(ChanFile,'rt');
     f = dir(ChanFile);
     try
-        cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
     catch
         fclose(fid);
         fid = fopen(ChanFile,'rt');
-        cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
     end
 end
 fclose(fid);
-cont = cell2mat(cell{1});
+cont = cell2mat(Cell{1});
 
 % read labels from rs3 file
 % initialize labels
@@ -175,7 +187,7 @@ for i = 1:hdr.nChannels
     hdr.labels(i) = cellstr(text);
 end
 
-% scan in cell 1 for LABELS (occurs four times per channel group)
+% scan in Cell 1 for LABELS (occurs four times per channel group)
 ix = strfind(cont,[char(10),'LABELS']);
 nt = size(ix,2);
 nc = 0;
@@ -195,7 +207,7 @@ end
 
 % Read sensor locations from rs3 file
 hdr.sensorpos = zeros(3,0);
-% Scan in cell 1 for SENSORS (occurs four times per channel group)
+% Scan in Cell 1 for SENSORS (occurs four times per channel group)
 ix = strfind(cont,[char(10),'SENSORS']);
 nt = size(ix,2);
 nc = 0;
@@ -233,7 +245,7 @@ end
 
 if (fid >= 0)              
     try
-        cell = textscan(fid,'%s','whitespace','','endofline','§');
+        Cell = textscan(fid,'%s','whitespace','','endofline','§');
     catch
         fclose(fid);
         fid = fopen(EvtFile,'rt');
@@ -244,7 +256,7 @@ if (fid >= 0)
             f = dir(EvtFile);
         end
         try
-            cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
+            Cell = textscan(fid,'%s','whitespace','','endofline','§','BufSize',round(f.bytes+(f.bytes*0.2)));
         catch
             fclose(fid);
             fid = fopen(EvtFile,'rt');
@@ -254,13 +266,13 @@ if (fid >= 0)
             else
                 f = dir(EvtFile);
             end
-            cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
+            Cell = textscan(fid,'%s','whitespace','','BufSize',round(f.bytes+(f.bytes*0.2)));
         end
     end
     fclose(fid);
-    cont = cell2mat(cell{1});
+    cont = cell2mat(Cell{1});
 
-    % scan in cell 1 for NUMBER_LIST (occurs five times)
+    % scan in Cell 1 for NUMBER_LIST (occurs five times)
     ix = strfind(cont,'NUMBER_LIST');
 
     newlines = ix(4) - 1 + strfind(cont(ix(4):ix(5)),char(10));     % newline
@@ -276,7 +288,7 @@ if (fid >= 0)
         hdr.events = cat ( 2, hdr.events, [ sample; type; startsample; endsample ] );
     end
 
-    % scan in cell 1 for REMARK_LIST (occurs five times)
+    % scan in Cell 1 for REMARK_LIST (occurs five times)
     ix = strfind(cont,'REMARK_LIST');
     na = 0;
 
@@ -300,14 +312,14 @@ if (hdr.nASCII == 1)
     try
         fclose(fid);
         fid = fopen(DataFile,'rt');
-        cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials);
+        Cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials);
     catch
         fclose(fid);
         fid = fopen(DataFile,'rt');
-        cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials, 'BufSize',round(f.bytes+(f.bytes*0.2)));
+        Cell = textscan(fid,'%f',hdr.nChannels*hdr.nSamples*hdr.nTrials, 'BufSize',round(f.bytes+(f.bytes*0.2)));
     end
     fclose(fid);
-    hdr.data = reshape([cell{1}],hdr.nChannels,hdr.nSamples*hdr.nTrials);
+    hdr.data = reshape([Cell{1}],hdr.nChannels,hdr.nSamples*hdr.nTrials);
 else
     hdr.data = [];
 end
@@ -325,10 +337,9 @@ sFile.header = hdr;
 % Comment: short filename
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.fFrequency;
-sFile.prop.samples = round(hdr.fOffsetUsec .* 1e-6 * hdr.fFrequency + [0, hdr.nSamples - 1]);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.fFrequency;
+sFile.prop.times = round(hdr.fOffsetUsec .* 1e-6 * hdr.fFrequency + [0, hdr.nSamples - 1]) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.nChannels,1);
 % Acquisition date
@@ -337,9 +348,12 @@ sFile.acq_date = [];
 
 %% ===== EPOCHS =====
 if (hdr.nTrials >= 2)
-    for iEpoch = 1:length(hdr.nTrials)
-        sFile.epochs(iEpoch).label   = sprintf('Epoch #%d', iEpoch);
-        sFile.epochs(iEpoch).samples = sFile.prop.samples;
+    for iEpoch = 1:hdr.nTrials
+        if ~isempty(hdr.epochlabels)
+            sFile.epochs(iEpoch).label = hdr.epochlabels{iEpoch};
+        else
+            sFile.epochs(iEpoch).label = sprintf('Epoch #%d', iEpoch);
+        end
         sFile.epochs(iEpoch).times   = sFile.prop.times;
         sFile.epochs(iEpoch).nAvg    = 1;
         sFile.epochs(iEpoch).select  = 1;
@@ -401,11 +415,12 @@ if ~isempty(hdr.events)
             smp = evtList(3:4,iOcc);
         end
         % Set event
-        sFile.events(iEvt).label   = num2str(uniqueEvt(iEvt));
-        sFile.events(iEvt).samples = smp;
-        sFile.events(iEvt).times   = smp ./ sFile.prop.sfreq;
-        sFile.events(iEvt).epochs  = 1 + 0*smp(1,:);
-        sFile.events(iEvt).select  = 1;
+        sFile.events(iEvt).label    = num2str(uniqueEvt(iEvt));
+        sFile.events(iEvt).times    = smp ./ sFile.prop.sfreq;
+        sFile.events(iEvt).epochs   = 1 + 0*smp(1,:);
+        sFile.events(iEvt).select   = 1;
+        sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+        sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
     end
     
     % Handle Epoched Datasets

@@ -5,7 +5,7 @@ function varargout = process_diff_norm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_diff_norm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2019
 
 eval(macro_method);
 end
@@ -71,6 +71,9 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     if strcmpi(sInputsA(1).FileType, 'timefreq')
         sOutput.Measure = 'other';
     end
+    % Can't keep track of number of averages
+    sOutput.nAvg = [];
+    sOutput.Leff = [];
 end
 
 

@@ -11,7 +11,7 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -100,6 +100,8 @@ if isempty(newEvents)
             newEvents = in_events_brainamp(sFile, EventFile);
         case 'BST'
             FileMat = load(EventFile);
+            % Add missing fields if required
+            FileMat.events = struct_fix_events(FileMat.events);
             % Convert structure to local structure
             newEvents = repmat(db_template('event'), 1, length(FileMat.events));
             for iEvt = 1:length(FileMat.events)
@@ -135,8 +137,12 @@ if isempty(newEvents)
             newEvents = in_events_array(sFile, EventFile, 'times', EventName);
         case 'ARRAY-SAMPLES'
             newEvents = in_events_array(sFile, EventFile, 'samples', EventName);
+        case 'CSV-TIME'
+            newEvents = in_events_csv(sFile, EventFile);
         case 'CTFVIDEO'
             newEvents = in_events_video(sFile, ChannelMat, EventFile);
+        case 'ANYWAVE'
+            newEvents = in_events_anywave(sFile, EventFile);
         otherwise
             error('Unsupported file format.');
     end
@@ -147,6 +153,13 @@ if isempty(newEvents)
         bst_error('No events found in this file.', 'Import events', 0);
         return
     end
+end
+% Fix events structure
+if ~isempty(newEvents)
+    newEvents = struct_fix_events(newEvents);
+end
+if ~isempty(sFile.events)
+    sFile.events = struct_fix_events(sFile.events);
 end
 
 
@@ -160,8 +173,7 @@ for iNew = 1:length(newEvents)
         iEvt = [];
     end
     % Make sure that the sample indices are round values
-    newEvents(iNew).samples = round(newEvents(iNew).samples);
-    newEvents(iNew).times   = newEvents(iNew).samples ./ sFile.prop.sfreq;
+    newEvents(iNew).times = round(newEvents(iNew).times * sFile.prop.sfreq) ./ sFile.prop.sfreq;
     % If event does not exist yet: add it at the end of the list
     if isempty(iEvt)
         if isempty(sFile.events)
@@ -173,20 +185,40 @@ for iNew = 1:length(newEvents)
         end
     % Event exists: merge occurrences
     else
+        % Convert new event type if required
+        sizeTimeWindow = size(sFile.events(iEvt).times, 1);
+        sizeNewTimeWindow = size(newEvents(iNew).times, 1);
+        if sizeTimeWindow ~= sizeNewTimeWindow
+            if sizeTimeWindow == 1
+                % Convert to single event
+                disp(['BST> Warning: Event type of "', ...
+                     sFile.events(iEvt).label, ...
+                     '" inconsistent, converting to single event using start time.']);
+                newEvents(iNew).times = newEvents(iNew).times(1,:);
+            else
+                % Convert to extended event
+                disp(['BST> Warning: Event type of "', ...
+                     sFile.events(iEvt).label, ...
+                     '" inconsistent, converting to extended event.']);
+                newEvents(iNew).times = [newEvents(iNew).times; newEvents(iNew).times + 0.001];
+            end
+        end
         % Merge events occurrences
         sFile.events(iEvt).times      = [sFile.events(iEvt).times, newEvents(iNew).times];
-        sFile.events(iEvt).samples    = [sFile.events(iEvt).samples, newEvents(iNew).samples];
         sFile.events(iEvt).epochs     = [sFile.events(iEvt).epochs, newEvents(iNew).epochs];
         sFile.events(iEvt).reactTimes = [sFile.events(iEvt).reactTimes, newEvents(iNew).reactTimes];
-        % Sort by sample indices
-        if (size(sFile.events(iEvt).samples, 2) > 1)
-            [tmp__, iSort] = unique(sFile.events(iEvt).samples(1,:));
-            sFile.events(iEvt).samples = sFile.events(iEvt).samples(:,iSort);
+        sFile.events(iEvt).channels   = [sFile.events(iEvt).channels, newEvents(iNew).channels];
+        sFile.events(iEvt).notes      = [sFile.events(iEvt).notes, newEvents(iNew).notes];
+        % Sort by time
+        if (size(sFile.events(iEvt).times, 2) > 1)
+            [tmp__, iSort] = unique(bst_round(sFile.events(iEvt).times(1,:), 9));
             sFile.events(iEvt).times   = sFile.events(iEvt).times(:,iSort);
             sFile.events(iEvt).epochs  = sFile.events(iEvt).epochs(iSort);
             if ~isempty(sFile.events(iEvt).reactTimes)
                 sFile.events(iEvt).reactTimes = sFile.events(iEvt).reactTimes(iSort);
             end
+            sFile.events(iEvt).channels = sFile.events(iEvt).channels(iSort);
+            sFile.events(iEvt).notes = sFile.events(iEvt).notes(iSort);
         end
     end
     % Add color if does not exist yet

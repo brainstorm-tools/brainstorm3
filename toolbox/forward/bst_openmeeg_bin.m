@@ -25,7 +25,7 @@ function [Gain, errMsg] = bst_openmeeg_bin(OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -165,7 +165,7 @@ end
 %% ===== OPENMEEG LIBRARY PATH =====
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'logo_splash_openmeeg.gif');
+bst_progress('setimage', 'logo_openmeeg.gif');
 bst_progress('setlink', 'http://openmeeg.github.io');
 % Library path
 if ~ispc

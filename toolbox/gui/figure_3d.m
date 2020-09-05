@@ -15,13 +15,17 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
 %                 figure_3d('ViewAxis',              hFig, isVisible)
+%                 figure_3d('PlotFibers',            hFig, FibPoints, Colors)
+%                 figure_3d('ColorFibers',           fibLines, Color)
+%                 figure_3d('SelectFiberScouts',     hFigConn, iScouts, Color, ColorOnly)
 %     [hFig,hs] = figure_3d('PlotSurface',           hFig, faces, verts, cdata, dataCMap, transparency)
-
+%                 figure_3d('PlotCoils',             hFig, Modality, isDetails)
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -35,7 +39,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -62,6 +66,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'DockControls',  'on', ...
                   'Units',         'pixels', ...
                   'Color',         [0 0 0], ...
+                  'Pointer',       'arrow', ...
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
@@ -119,7 +124,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'isSelectingCoordinates',  0);
     setappdata(hFig, 'hasMoved',    0);
     setappdata(hFig, 'isPlotEditToolbar',   0);
-    setappdata(hFig, 'AllChannelsDisplayed', 0);
+    setappdata(hFig, 'isSensorsOnly', 0);
     setappdata(hFig, 'ChannelsToSelect', []);
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'isStatic', 0);
@@ -175,10 +180,12 @@ function ResizeCallback(hFig, ev)
     hAxes = hAxes(1);
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginHeight  = 25;
-    marginWidth   = 45;
+    colorbarWidth = 15 .* Scaling;
+    marginHeight  = 25 .* Scaling;
+    marginWidth   = 45 .* Scaling;
     
     % If there is a colorbar 
     if ~isempty(hColorbar)
@@ -187,13 +194,13 @@ function ResizeCallback(hFig, ev)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3))]);
+                                    max(1, min(90 .* Scaling, figPos(4) - marginHeight - 3 .* Scaling))]);
         % Reposition the axes
         marginAxes = 10;
         set(hAxes, 'Units',    'pixels', ...
                    'Position', [marginAxes, ...
                                 marginAxes, ...
-                                figPos(3) - colorbarWidth - marginWidth - 2, ... % figPos(3) - colorbarWidth - marginWidth - marginAxes, ...
+                                max(1, figPos(3) - colorbarWidth - marginWidth - 2 .* Scaling), ... % figPos(3) - colorbarWidth - marginWidth - marginAxes, ...
                                 max(1, figPos(4) - 2*marginAxes)]);
     % No colorbar : data axes can take all the figure space
     else
@@ -212,7 +219,7 @@ function ResizeCallback(hFig, ev)
         hButtonZoomTimePlus  = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimePlus');
         hButtonZoomTimeMinus = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomTimeMinus');
         % Reposition buttons
-        butSize = 22;
+        butSize = 22 .* Scaling;
         if ~isempty(hButtonZoomTimePlus)
             set(hButtonZoomTimePlus,   'Position', [figPos(3) - 3*(butSize+3) + 1, 3, butSize, butSize]);
             set(hButtonZoomTimeMinus,  'Position', [figPos(3) - 2*(butSize+3) + 1, 3, butSize, butSize]);
@@ -402,7 +409,8 @@ function FigureMouseMoveCallback(hFig, varargin)
             end
             zoom(hFig, Factor);
             
-        case {'moveSlices', 'popup'}
+        % Popup or move slices
+        case 'popup'
             FigureId = getappdata(hFig, 'FigureId');
             % TOPO: Select channels
             if strcmpi(FigureId.Type, 'Topography') && ismember(FigureId.SubType, {'2DLayout', '2DDisc', '2DSensorCap', '2DElectrodes'})
@@ -658,8 +666,11 @@ function FigureMouseUpCallback(hFig, varargin)
             hSensorsMarkers = findobj(hAxes, '-depth', 1, 'Tag', 'SensorsMarkers');
             hElectrodeGrid  = findobj(hAxes, '-depth', 1, 'Tag', 'ElectrodeGrid');
             hNirsCapPatch   = findobj(hAxes, '-depth', 1, 'Tag', 'NirsCapPatch');
+            % Selecting from sensor text
+            if strcmpi(get(clickObject,'Tag'), 'SensorsLabels')
+                vi = get(clickObject, 'UserData');
             % Selecting from 3DElectrodes patch
-            if ~isempty(hElectrodeGrid)
+            elseif ~isempty(hElectrodeGrid)
                 % Select the nearest sensor from the mouse
                 [p, v, vi] = select3d(hElectrodeGrid(1));
                 % Get the correspondance electrodes/vertex
@@ -692,9 +703,6 @@ function FigureMouseUpCallback(hFig, varargin)
                 elseif (sphName(1) == 'D')
                     vi = find(D == sphInd);
                 end
-            % Selecting from sensor text
-            elseif strcmpi(get(clickObject,'Tag'), 'SensorsLabels')
-                vi = get(clickObject, 'UserData');
             % Selecting from sensors patch
             elseif (length(hSensorsPatch) == 1)
                 % Select the nearest sensor from the mouse
@@ -720,18 +728,18 @@ function FigureMouseUpCallback(hFig, varargin)
             
             % Convert to real channel indices
             if ~isempty(vi)
-                % Is figure used only to display channels
-                AllChannelsDisplayed = getappdata(hFig, 'AllChannelsDisplayed');
-                % If not all the channels are displayed: need to convert the selected sensor indice
-                if ~AllChannelsDisplayed
+%                 % Is figure used only to display channels
+%                 isSensorsOnly = getappdata(hFig, 'isSensorsOnly');
+%                 % If not all the channels are displayed: need to convert the selected sensor indice
+%                 if ~isSensorsOnly
                     % Get channel indice (in Channel array)
                     if (vi <= length(Figure.SelectedChannels))
                         iSelChan = Figure.SelectedChannels(vi);
                     end
-                else
-                    AllModalityChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Figure.Id.Modality);
-                    iSelChan = AllModalityChannels(vi);
-                end
+%                 else
+%                     AllModalityChannels = good_channel(GlobalData.DataSet(iDS).Channel, [], Figure.Id.Modality);
+%                     iSelChan = AllModalityChannels(vi);
+%                 end
             end
             
             % Check if sensors where marked to be selected somewhere else in the code
@@ -901,7 +909,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     % Get selected channels
     [SelChan, iSelChan] = GetFigSelectedRows(hFig);
     % Get if figure should contain all the modality sensors (display channel net)
-    AllChannelsDisplayed = getappdata(hFig, 'AllChannelsDisplayed');
+    isSensorsOnly = getappdata(hFig, 'isSensorsOnly');
     % Check if it is a realignment figure
     isAlignFig = ~isempty(findobj(hFig, '-depth', 1, 'Tag', 'AlignToolbar'));
     % If figure is 2D
@@ -986,7 +994,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case {'uparrow', 'downarrow'}
                     panel_freq('FreqKeyCallback', keyEvent);
                 % === DATABASE NAVIGATOR ===
-                case {'f1', 'f2', 'f3', 'f4'}
+                case {'f1', 'f2', 'f3', 'f4', 'f6'}
                     if ~isAlignFig 
                         if isRaw
                             panel_time('TimeKeyCallback', keyEvent);
@@ -1104,7 +1112,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % === CHANNELS ===
                 % RETURN: VIEW SELECTED CHANNELS
                 case 'return'
-                    if ~isAlignFig && ~isempty(SelChan) && ~AllChannelsDisplayed
+                    if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly
                         TfInfo = getappdata(hFig, 'Timefreq');
                         % Show time series for selected sensors
                         if isempty(TfInfo)
@@ -1117,7 +1125,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 % DELETE: SET CHANNELS AS BAD
                 case {'delete', 'backspace'}
                     isMulti2dLayout = (isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'hLines') && (length(GlobalData.DataSet(iDS).Figure(iFig).Handles.hLines) >= 2));
-                    if ~isAlignFig && ~isempty(SelChan) && ~AllChannelsDisplayed && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
+                    if ~isAlignFig && ~isempty(SelChan) && ~isSensorsOnly && ~isempty(GlobalData.DataSet(iDS).DataFile) && ...
                             (length(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) ~= length(iSelChan)) && ~isMulti2dLayout
                         % Shift+Delete: Mark non-selected as bad
                         newChannelFlag = GlobalData.DataSet(iDS).Measures.ChannelFlag;
@@ -1491,7 +1499,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
         end
         % === View SOURCES ===
-        if isempty(TfFile) && isempty(ResultsFile) && ~isempty(sStudy.Result)
+        if isempty(TfFile) && isempty(ResultsFile) && isfield(sStudy, 'Result') && ~isempty(sStudy.Result)
             jItem = gui_component('MenuItem', jPopup, [], 'View sources', IconLoader.ICON_RESULTS, [], @(h,ev)bst_figures('ViewResults',hFig));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
         end
@@ -2258,6 +2266,7 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
         'FaceAlpha',        1 - transparency, ...
         'AlphaDataMapping', 'none', ...
         'EdgeColor',        EdgeColor, ...
+        'EdgeAlpha',        1, ...
         'BackfaceLighting', 'lit', ...
         'AmbientStrength',  0.5, ...
         'DiffuseStrength',  0.5, ...
@@ -2269,12 +2278,93 @@ function varargout = PlotSurface( hFig, faces, verts, surfaceColor, transparency
         'Tag',              'AnatSurface');
     
     % Set output variables
-    if(nargout>0),
+    if(nargout>0)
         varargout{1} = hFig;
         varargout{2} = hs;
     end
 end
 
+%% ===== PLOT FIBERS =====
+function varargout = PlotFibers(hFig, FibPoints, Colors)
+    dims = size(Colors);
+    if length(dims) < 3
+        Colors = permute(repmat(Colors, 1, 1, size(FibPoints, 2)), [1,3,2]);
+    end
+
+    % Set figure as current
+    set(0, 'CurrentFigure', hFig);
+    
+    % If we are displaying too many fibers, warn user...
+    numMaxFibers = 5000;
+    numFibers = size(FibPoints,1);
+    if numFibers > numMaxFibers
+        questionOptions = {'Display a subset for now', 'Display all anyway'};
+        [res, isCancel] = java_dialog('question', ...
+            ['You are trying to display ', num2str(numFibers), ...
+            ' fibers. Displaying this' 10 'amount of fibers at the same time ', ...
+            'can be challenging for the' 10 'average computer. We recommend ', ...
+            'you downsample them first.'], 'Display fibers', [], questionOptions);
+        if isCancel || strcmp(res, questionOptions{1})
+            iFibers = sort(randperm(numFibers, numMaxFibers));
+        else
+            iFibers = 1:numFibers;
+        end
+    else
+        iFibers = 1:numFibers;
+    end
+    
+    numFibers = length(iFibers);
+    
+    % Plot fibers
+    for iFib = 1:numFibers
+        lines(iFib) = surface([FibPoints(iFibers(iFib),:,1); FibPoints(iFibers(iFib),:,1)], ...
+            [FibPoints(iFibers(iFib),:,2); FibPoints(iFibers(iFib),:,2)], ...
+            [FibPoints(iFibers(iFib),:,3); FibPoints(iFibers(iFib),:,3)], ...
+            [Colors(iFibers(iFib),:,1:3); Colors(iFibers(iFib),:,1:3)], ...
+            'FaceColor','none',...
+            'EdgeColor','flat');
+    end
+    if numFibers == 0
+        lines = [];
+    end
+    
+    % Set output variables
+    if nargout > 0
+        varargout{1} = hFig;
+        varargout{2} = lines;
+    end
+end
+
+function lines = ColorFibers(lines, Color)
+    if isempty(Color) || isempty(lines)
+        return;
+    end
+    
+    bst_progress('start', 'Fiber viewer', 'Coloring fibers...');
+    
+    dims = size(Color);
+    nFibers = length(lines);
+    
+    % Create a full Color matrix if required
+    if length(dims) < 3
+        nPoints = size(lines(1).XData, 2);
+        if dims(1) == 1
+            % One color value for all fibers and points
+            Color = permute(repmat(Color, nFibers, 1, nPoints), [1,3,2]);
+        else
+            % One color value per fiber
+            Color = permute(repmat(Color, 1, 1, nPoints), [1,3,2]);
+        end
+    end
+    
+    % Set color
+    for iFib = 1:length(lines)
+        lines(iFib).CData = [Color(iFib,:,:); Color(iFib,:,:)];
+    end
+    
+    drawnow;
+    bst_progress('stop');
+end
 
 %% ===== PLOT SQUARE/CUT =====
 % USAGE:  PlotSquareCut(hFig, TessInfo, dim, pos)
@@ -2399,6 +2489,13 @@ function UpdateSurfaceColor(hFig, iTess)
         % Update display
         UpdateMriDisplay(hFig, [], TessInfo, iTess);
         
+    % === FIBERS ===
+    elseif strcmpi(TessInfo(iTess).Name, 'Fibers')
+        % Set line color if applicable
+        if any(TessInfo(iTess).AnatomyColor(:) ~= 0)
+            TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, TessInfo(iTess).AnatomyColor(1,1:3));
+        end
+        
     % === SURFACE ===
     else
         % === BUILD VALUES ===
@@ -2516,7 +2613,7 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
         % Get color values
         if ~isempty(GridValues) && (length(DataLimit) == 2) && (DataLimit(2) ~= DataLimit(1)) && ~any(isnan(DataLimit)) && ~any(isinf(DataLimit))
             iDataCmap = round( ((size(sColormap.CMap,1)-1)/(DataLimit(2)-DataLimit(1))) * (GridValues - DataLimit(1))) + 1;
-            iDataCmap(iDataCmap <= 0) = 1;
+            iDataCmap((iDataCmap <= 0) | isnan(iDataCmap)) = 1;
             iDataCmap(iDataCmap > size(sColormap.CMap,1)) = size(sColormap.CMap,1);
             dataRGB = sColormap.CMap(iDataCmap, :);
         else
@@ -2562,6 +2659,7 @@ function hGrid = PlotGrid(hFig, GridLoc, GridValues, GridInd, DataAlpha, DataLim
             'FaceVertexAlphaData', FaceAlpha, ...
             'AlphaDataMapping',    'none', ...
             'EdgeColor',           'none', ...
+            'FaceAlpha',           1, ...
             'LineWidth',           1, ...
             'BackfaceLighting',    'unlit', ...
             'AmbientStrength',     1, ...
@@ -2585,6 +2683,8 @@ end
 %% ===== PLOT 3D ELECTRODES =====
 function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, TopoType) %#ok<DEFNU>
     global GlobalData;
+    % Initialize returned variable
+    hElectrodeGrid = [];
     % Get current electrodes positions
     if (nargin < 4) || isempty(TopoType)
         TopoType = '3DElectrodes';
@@ -2607,17 +2707,24 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
     delete(findobj(hFig, 'Tag', 'ElectrodeLabel'));
     % Get electrodes definitions
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
-    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
-    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
-    % Remove all SEEG if no SEEG channels are available (same for ECOG)
-    if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
-        sElectrodes(iSeeg) = [];
+    % Get SEEG and ECOG devices
+    iSeeg = [];
+    iEcog = [];
+    if ~isempty(sElectrodes)
+        iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+        iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+        % Remove all SEEG if no SEEG channels are available (same for ECOG)
+        if ~isempty(iSeeg) && ~any(strcmpi({Channel.Type}, 'SEEG'))
+            sElectrodes(iSeeg) = [];
+        end
+        if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
+            sElectrodes(iEcog) = [];
+        end
+        if ~isempty(sElectrodes)
+            iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
+            iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
+        end
     end
-    if ~isempty(iEcog) && ~any(strcmpi({Channel.Type}, 'ECOG') | strcmpi({Channel.Type}, 'ECOG-mid'))
-        sElectrodes(iEcog) = [];
-    end
-    iSeeg = find(strcmpi({sElectrodes.Type}, 'SEEG'));
-    iEcog = find(strcmpi({sElectrodes.Type}, 'ECOG') | strcmpi({sElectrodes.Type}, 'ECOG-mid'));
     
     
     % === 2D ELECTRODES ===
@@ -2627,49 +2734,62 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
         maxContactNumberSeeg = max([sElectrodes(iSeeg).ContactNumber]);
         maxLengthSeeg = max([sElectrodes(iSeeg).ElecLength]);
         % Extract ECOG global properties
-        maxContactsEcog = max(cellfun(@(c)c(1), {sElectrodes.ContactNumber}));
-        nRows = 0;
+        maxContactsEcog = max(cellfun(@(c)c(1), {sElectrodes(iEcog).ContactNumber}));
+        X = 0;
         % Display electrodes in successive rows
         for iElec = length(sElectrodes):-1:1
             % Define default electrode properties just for display
             switch (sElectrodes(iElec).Type)
                 case 'SEEG'
+                    if isempty(sElectrodes(iElec).ElecLength)
+                        sElectrodes(iElec).ElecLength = 0.070;
+                    end
+                    if isempty(maxLengthSeeg)
+                        maxLengthSeeg = sElectrodes(iElec).ElecLength;
+                    end
                     if isempty(sElectrodes(iElec).ContactSpacing) || (sElectrodes(iElec).ContactSpacing == 0) || (sElectrodes(iElec).ContactSpacing * sElectrodes(iElec).ContactNumber > sElectrodes(iElec).ElecLength)
                         sElectrodes(iElec).ContactSpacing = sElectrodes(iElec).ElecLength / maxContactNumberSeeg;
                     end
-                    X = 2 * nRows * sElectrodes(iElec).ContactLength * [1 1] + 0.0001;
+                    if isempty(sElectrodes(iElec).ElecDiameter)
+                        sElectrodes(iElec).ElecDiameter = 0.0008;
+                    end
+                    X = X + 6 * sElectrodes(iElec).ElecDiameter + 0.0001;
                     Y = [maxLengthSeeg - sElectrodes(iElec).ElecLength, maxLengthSeeg];
-                    sElectrodes(iElec).Loc = [X; Y; 0, 0];
-                    nRows = nRows + 1;
+                    sElectrodes(iElec).Loc = [X, X; Y; 0, 0];
                 case {'ECOG', 'ECOG-mid'}
                     % Force to be ECOG-mid to prevent any projection on the cortex
                     maxDiameterEcog = 0.004;
-                    sElectrodes(iElec).Type = 'ECOG-mid';
+                    sElectrodes(iElec).Type = 'ECOG';
                     sElectrodes(iElec).ElecDiameter = 0.004;
                     sElectrodes(iElec).ContactDiameter = maxDiameterEcog;
                     % ECOG strip
                     if (length(sElectrodes(iElec).ContactNumber) == 1)
-                        X = 1.5 * nRows * maxDiameterEcog * [1 1] + 0.0001;
-                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
-                        sElectrodes(iElec).Loc = [X; Y; 0, 0];
-                        nRows = nRows + 1;
+                        X = X + 1.5 * maxDiameterEcog + 0.0001;
+                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber(1) + 1];
+                        sElectrodes(iElec).Loc = [X, X; Y; 0, 0];
                     % ECOG grid
                     else
                         nRowsElec = sElectrodes(iElec).ContactNumber(2);
-                        X = 1.5 * maxDiameterEcog * (nRows + [0, nRowsElec - 1]);
-                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber + 1];
-                        sElectrodes(iElec).Loc = [X(2), X(2), X(1), X(1); Y(1), Y(2), Y(2), Y(1); 0, 0, 0, 0];
-                        nRows = nRows + nRowsElec;
+                        Xgrid = X + 1.5 * maxDiameterEcog * [1, nRowsElec];
+                        X = X + 1.5 * maxDiameterEcog * nRowsElec;
+                        Y = 1.5 * maxDiameterEcog * [maxContactsEcog, maxContactsEcog - sElectrodes(iElec).ContactNumber(1) + 1];
+                        sElectrodes(iElec).Loc = [Xgrid(2), Xgrid(2), Xgrid(1), Xgrid(1); Y(1), Y(2), Y(2), Y(1); 0, 0, 0, 0];
                     end
             end
         end
         % Set corresponding contact positions
-        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel);
+        Channel = panel_ieeg('AlignContacts', iDS, iFig, 'default', sElectrodes, Channel, 0, 0);
+        if isempty(Channel)
+            return;
+        end
         ChanLoc = [Channel.Loc]';
+        isProjectEcog = 0;
+    else
+        isProjectEcog = 1;
     end
     
     % Create objects geometry
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes, isProjectEcog);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Topography')
@@ -2685,13 +2805,21 @@ function [hElectrodeGrid, ChanLoc] = PlotSensors3D(iDS, iFig, Channel, ChanLoc, 
             'Parent',    hAxes, ...
             ElectrodeDepth(iElec).Options{:});
     end
-    % 2DElectrodes: Add ECOG labels
-    if strcmpi(TopoType, '2DElectrodes') && ~isempty(iEcog) && isempty(ElectrodeLabel)
+    % 2DElectrodes: Add ECOG labels (or recompute them)
+    if strcmpi(TopoType, '2DElectrodes') && ~isempty(iEcog)
         for i = 1:length(iEcog)
-            ElectrodeLabel(i).Loc   = sElectrodes(iEcog(i)).Loc(:,1) + [0; 2*sElectrodes(iEcog(i)).ContactDiameter; 0];
-            ElectrodeLabel(i).Name  = sElectrodes(iEcog(i)).Name;
-            ElectrodeLabel(i).Color = sElectrodes(iEcog(i)).Color;
-            ElectrodeLabel(i).Options = {...
+            % Find existing label
+            if ~isempty(ElectrodeLabel)
+                iLabel = find(strcmpi({ElectrodeLabel.Name}, sElectrodes(iEcog(i)).Name));
+            end
+            % Otherwise add new label
+            if isempty(iLabel)
+                iLabel = length(ElectrodeLabel) + 1;
+            end
+            ElectrodeLabel(iLabel).Loc   = sElectrodes(iEcog(i)).Loc(:,1) + [0; 2*sElectrodes(iEcog(i)).ContactDiameter; 0];
+            ElectrodeLabel(iLabel).Name  = sElectrodes(iEcog(i)).Name;
+            ElectrodeLabel(iLabel).Color = sElectrodes(iEcog(i)).Color;
+            ElectrodeLabel(iLabel).Options = {...
                 'FontUnits',   'points', ...
                 'Tag',         'ElectrodeLabel', ...
                 'Interpreter', 'none', ...
@@ -3007,8 +3135,20 @@ function UpdateSurfaceAlpha(hFig, iTess)
     Surface = TessInfo(iTess);
        
     % Ignore empty surfaces and MRI slices
-    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || ~ishandle(Surface.hPatch)
+    if strcmpi(Surface.Name, 'Anatomy') || isempty(Surface.hPatch) || all(~ishandle(Surface.hPatch))
         return 
+    end
+    % Fibers
+    if strcmpi(Surface.Name, 'Fibers')
+        lineAlpha = 1 - Surface.SurfAlpha;
+        lineWidth = 0.5 + 2.5 * Surface.SurfSmoothValue;
+        for iFib = 1:length(Surface.hPatch)
+            % Transparency
+            Surface.hPatch(iFib).EdgeAlpha = lineAlpha;
+            % Smoothing
+            Surface.hPatch(iFib).LineWidth = lineWidth;
+        end
+        return;
     end
     % Apply current smoothing
     SmoothSurface(hFig, iTess, Surface.SurfSmoothValue);
@@ -3029,7 +3169,7 @@ function UpdateSurfaceAlpha(hFig, iTess)
     FaceVertexAlphaData = ones(length(sSurf.Faces),1) * (1-Surface.SurfAlpha);
     
     % ===== HEMISPHERE SELECTION (CHAR) =====
-    if ischar(Surface.Resect)
+    if ischar(Surface.Resect) && ~strcmpi(Surface.Resect, 'none')
         % Detect hemispheres
         [rH, lH, isConnected] = tess_hemisplit(sSurf);
         % If there is no separation between  left and right: use the numeric split
@@ -3055,77 +3195,87 @@ function UpdateSurfaceAlpha(hFig, iTess)
     end
         
     % ===== RESECT (DOUBLE) =====
-    if isnumeric(Surface.Resect) && (length(Surface.Resect) == 3) && ~all(Surface.Resect == 0)
-        iNoModif = [];
-        % Compute mean and max of the coordinates
-        meanVertx = mean(Vertices, 1);
-        maxVertx  = max(abs(Vertices), [], 1);
-        % Limit values
-        resectVal = Surface.Resect .* maxVertx + meanVertx;
-        % Get vertices that are kept in all the cuts
-        for iCoord = 1:3
-            if Surface.Resect(iCoord) > 0
-                iNoModif = union(iNoModif, find(Vertices(:,iCoord) < resectVal(iCoord)));
-            elseif Surface.Resect(iCoord) < 0
-                iNoModif = union(iNoModif, find(Vertices(:,iCoord) > resectVal(iCoord)));
+    if isnumeric(Surface.Resect) && (length(Surface.Resect) == 3) && (~all(Surface.Resect == 0) || strcmpi(Surface.Name, 'FEM'))
+        % Regular triangular surface
+        if ~strcmpi(Surface.Name, 'FEM')
+            iNoModif = [];
+            % Compute mean and max of the coordinates
+            meanVertx = mean(Vertices, 1);
+            maxVertx  = max(abs(Vertices), [], 1);
+            % Limit values
+            resectVal = Surface.Resect .* maxVertx + meanVertx;
+            % Get vertices that are kept in all the cuts
+            for iCoord = 1:3
+                if Surface.Resect(iCoord) > 0
+                    iNoModif = union(iNoModif, find(Vertices(:,iCoord) < resectVal(iCoord)));
+                elseif Surface.Resect(iCoord) < 0
+                    iNoModif = union(iNoModif, find(Vertices(:,iCoord) > resectVal(iCoord)));
+                end
             end
-        end
-        % Get all the faces that are partially visible
-        ShowVert = zeros(nbVertices,1);
-        ShowVert(iNoModif) = 1;
-        facesStatus = sum(ShowVert(sSurf.Faces), 2);
-        isFacesVisible = (facesStatus > 0);
-
-        % Get the vertices of the faces that are partially visible
-        iVerticesVisible = sSurf.Faces(isFacesVisible,:);
-        iVerticesVisible = unique(iVerticesVisible(:))';
-        % Hide some vertices
-        FaceVertexAlphaData(~isFacesVisible) = 0;
-        
-        % Get vertices to project
-        iVerticesToProject = [iVerticesVisible, tess_scout_swell(iVerticesVisible, VertConn)];
-        iVerticesToProject = setdiff(iVerticesToProject, iNoModif);
-        % If there are some vertices to project
-        if ~isempty(iVerticesToProject)
-            % === FIRST PROJECTION ===
-            % For the projected vertices: get the distance from each cut
-            distToCut = abs(Vertices(iVerticesToProject, :) - repmat(resectVal, [length(iVerticesToProject), 1]));
-            % Set the distance to the cuts that are not required to infinite
-            distToCut(:,(Surface.Resect == 0)) = Inf;
-            % Get the closest cut
-            [minDist, closestCut] = min(distToCut, [], 2);
-
-            % Project each vertex       
-            Vertices(sub2ind(size(Vertices), iVerticesToProject, closestCut')) = resectVal(closestCut);
-
-            % === SECOND PROJECTION ===            
-            % In the faces that have visible and invisible vertices: project the invisible vertices on the visible vertices
-            % Get the mixed faces (partially visible)
+            % Get all the faces that are partially visible
             ShowVert = zeros(nbVertices,1);
-            ShowVert(iVerticesVisible) = 1;
+            ShowVert(iNoModif) = 1;
             facesStatus = sum(ShowVert(sSurf.Faces), 2);
-            iFacesMixed = find((facesStatus > 0) & (facesStatus < 3));
-            % Project vertices
-            projectList = logical(ShowVert(sSurf.Faces(iFacesMixed,:)));
-            for iFace = 1:length(iFacesMixed)
-                iVertVis = sSurf.Faces(iFacesMixed(iFace), projectList(iFace,:));
-                iVertHid = sSurf.Faces(iFacesMixed(iFace), ~projectList(iFace,:));
-                % Project hidden vertices on first visible vertex
-                Vertices(iVertHid, :) = repmat(Vertices(iVertVis(1), :), length(iVertHid), 1);
+            isFacesVisible = (facesStatus > 0);
+
+            % Get the vertices of the faces that are partially visible
+            iVerticesVisible = sSurf.Faces(isFacesVisible,:);
+            iVerticesVisible = unique(iVerticesVisible(:))';
+            % Hide some vertices
+            FaceVertexAlphaData(~isFacesVisible) = 0;
+
+            % Get vertices to project
+            iVerticesToProject = [iVerticesVisible, tess_scout_swell(iVerticesVisible, VertConn)];
+            iVerticesToProject = setdiff(iVerticesToProject, iNoModif);
+            % If there are some vertices to project
+            if ~isempty(iVerticesToProject)
+                % === FIRST PROJECTION ===
+                % For the projected vertices: get the distance from each cut
+                distToCut = abs(Vertices(iVerticesToProject, :) - repmat(resectVal, [length(iVerticesToProject), 1]));
+                % Set the distance to the cuts that are not required to infinite
+                distToCut(:,(Surface.Resect == 0)) = Inf;
+                % Get the closest cut
+                [minDist, closestCut] = min(distToCut, [], 2);
+
+                % Project each vertex       
+                Vertices(sub2ind(size(Vertices), iVerticesToProject, closestCut')) = resectVal(closestCut);
+
+                % === SECOND PROJECTION ===            
+                % In the faces that have visible and invisible vertices: project the invisible vertices on the visible vertices
+                % Get the mixed faces (partially visible)
+                ShowVert = zeros(nbVertices,1);
+                ShowVert(iVerticesVisible) = 1;
+                facesStatus = sum(ShowVert(sSurf.Faces), 2);
+                iFacesMixed = find((facesStatus > 0) & (facesStatus < 3));
+                % Project vertices
+                projectList = logical(ShowVert(sSurf.Faces(iFacesMixed,:)));
+                for iFace = 1:length(iFacesMixed)
+                    iVertVis = sSurf.Faces(iFacesMixed(iFace), projectList(iFace,:));
+                    iVertHid = sSurf.Faces(iFacesMixed(iFace), ~projectList(iFace,:));
+                    % Project hidden vertices on first visible vertex
+                    Vertices(iVertHid, :) = repmat(Vertices(iVertVis(1), :), length(iVertHid), 1);
+                end
+                % Update patch
+                set(Surface.hPatch, 'Vertices', Vertices);
             end
+        % FEM tetrahedral meshes: Remove the entire tetrahedrons
+        else
+            % Create a surface for the outside surface of this tissue
+            Elements = get(Surface.hPatch, 'UserData');
+            Faces = tess_voledge(Vertices, Elements, Surface.Resect);
             % Update patch
-            set(Surface.hPatch, 'Vertices', Vertices);
+            set(Surface.hPatch, 'Faces', Faces);
         end
     end
     
     % ===== HIDE NON-SELECTED STRUCTURES =====
     % Hide non-selected Structures scouts
     if ~isempty(sSurf.Atlas) && ismember(sSurf.Atlas(sSurf.iAtlas).Name, {'Structures', 'Source model'})
-        % Get scouts display options
-        ScoutsOptions = panel_scout('GetScoutsOptions');
-        % Get selected scouts
-        sScouts = panel_scout('GetSelectedScouts');
-        % Get all the selected vertices
+%         % Get scouts display options
+%         ScoutsOptions = panel_scout('GetScoutsOptions');
+%         % Get selected scouts
+%         sScouts = panel_scout('GetSelectedScouts');
+%         % Get all the selected vertices
 %         if ~isempty(sScouts) && strcmpi(ScoutsOptions.showSelection, 'select')
 %             % Get the list of hidden vertices
 %             iSelVert = unique([sScouts.Vertices]);
@@ -3141,10 +3291,12 @@ function UpdateSurfaceAlpha(hFig, iTess)
    
     % Update surface
     if all(FaceVertexAlphaData)
-        set(Surface.hPatch, 'FaceAlpha', 1-Surface.SurfAlpha);
+        set(Surface.hPatch, 'FaceAlpha', 1-Surface.SurfAlpha, ...
+                            'EdgeAlpha', 1);
     else
         set(Surface.hPatch, 'FaceVertexAlphaData', FaceVertexAlphaData, ...
-                            'FaceAlpha',           'flat');
+                            'FaceAlpha',           'flat', ...
+                            'EdgeAlpha',           'flat');
     end
 end
 
@@ -3277,7 +3429,7 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
     end
     Figure = GlobalData.DataSet(iDS).Figure(iFig);
     PlotHandles = Figure.Handles;
-    isTopography = strcmpi(Figure.Id.Type, 'Topography') && ~ismember(Figure.Id.SubType, {'3DElectrodes', '3DOptodes', '2DElectrodes'});
+    isTopography = strcmpi(Figure.Id.Type, 'Topography') && ~ismember(Figure.Id.SubType, {'3DElectrodes', '3DOptodes'});
     is2D = 0;
     
     % ===== MARKERS LOCATIONS =====
@@ -3298,6 +3450,10 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
     % === 3DVIZ ===
     else
         Channel = GlobalData.DataSet(iDS).Channel;
+        % If not modality information, pick the default one
+        if isempty(Modality) && isempty(Figure.SelectedChannels)
+            [AllMod,DispMod,Modality] = bst_get('ChannelModalities',  GlobalData.DataSet(iDS).ChannelFile);
+        end
         % Find sensors of the target modality, select and display them
         if isempty(Modality)
             selChan = Figure.SelectedChannels;
@@ -3378,9 +3534,18 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
             else
                 displayNames = sensorNames;
             end
+            % Add a small offset to the marker location to display the label
+            if strcmpi(Figure.Id.Type, 'Topography') && strcmpi(Figure.Id.SubType, '2DElectrodes')
+                X = markersLocs(:,1) + 0.0025;
+                Y = markersLocs(:,2);
+                Z = markersLocs(:,3) + 0.010;
+            else
+                X = 1.05*markersLocs(:,1);
+                Y = 1.05*markersLocs(:,2);
+                Z = 1.03*markersLocs(:,3);
+            end
             % Plot the sensors
-            PlotHandles.hSensorLabels = text(...
-                1.05*markersLocs(:,1), 1.05*markersLocs(:,2), 1.03*markersLocs(:,3), ...
+            PlotHandles.hSensorLabels = text(X, Y, Z, ...
                 displayNames, ...
                 'Parent',              hAxes, ...
                 'HorizontalAlignment', 'center', ...
@@ -3561,12 +3726,20 @@ function ViewAxis(hFig, isVisible)
         isVisible = isempty(findobj(hAxes, 'Tag', 'AxisXYZ'));
     end
     if isVisible
-        line([0 0.15], [0 0], [0 0], 'Color', [1 0 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        line([0 0], [0 0.15], [0 0], 'Color', [0 1 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        line([0 0], [0 0], [0 0.15], 'Color', [0 0 1], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0.151, 0, 0, 'X', 'Color', [1 0 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0, 0.151, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
-        text(0, 0, 0.151, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        % Get dimensions of current axes
+        XLim = get(hAxes, 'XLim');
+        YLim = get(hAxes, 'XLim');
+        ZLim = get(hAxes, 'XLim');
+        d = max(abs([XLim(:); YLim(:); ZLim(:)]));
+        % Draw axis lines
+        line([0 d], [0 0], [0 0], 'Color', [1 0 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        line([0 0], [0 d], [0 0], 'Color', [0 1 0], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        line([0 0], [0 0], [0 d], 'Color', [0 0 1], 'Marker', '>', 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(d+0.002, 0, 0, 'X', 'Color', [1 0 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(0, d+0.002, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        text(0, 0, d+0.002, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
+        % Enforce camera target at (0,0,0)
+        camtarget(hAxes, [0,0,0]);
     else
         hAxisXYZ = findobj(hAxes, 'Tag', 'AxisXYZ');
         if ~isempty(hAxisXYZ)
@@ -3849,6 +4022,12 @@ function PlotCoils(hFig, Modality, isDetails)
                 if strcmpi(Channels(i).Type, 'MEG MAG') && (nPoints == 4)
                     oriLength = 0.015;
                     chLoc = Channels(i).Loc(:,[1 2 4 3])' .* 1.00;
+                    % Square of integration points is 2x smaller than the actual sensor: simply scale it
+                    coilScaleF=0.5;
+                    chLoc = [(1+2*coilScaleF)*chLoc(1,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(2,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:);
+                             (1+2*coilScaleF)*chLoc(3,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(4,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:)];
                     % Coil patch
                     patch('Vertices', chLoc, 'FaceColor', [1 1 0], patchOpt{:});
                     % Additional details
@@ -3874,6 +4053,12 @@ function PlotCoils(hFig, Modality, isDetails)
                         chLoc = Channels(i).Loc(:,[1 2 4 3])' .* 1.02;
                         Color = [.2 1 .2];
                     end
+                    % Square of integration points is 2x smaller than the actual sensor: simply scale it
+                    coilScaleF=0.278;
+                    chLoc = [(1+2*coilScaleF)*chLoc(1,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(2,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:);
+                             (1+2*coilScaleF)*chLoc(3,:) - coilScaleF*chLoc(2,:) - coilScaleF*chLoc(4,:);
+                             (1+2*coilScaleF)*chLoc(4,:) - coilScaleF*chLoc(1,:) - coilScaleF*chLoc(3,:)];
                     % Split in two coils
                     Vertices1 = [chLoc([1,2],:); .6 .* chLoc([2,1],:) + .4 .* chLoc([3,4],:)];
                     Vertices2 = [.4 .* chLoc([1,2],:) + .6 .* chLoc([4,3],:); chLoc([3,4],:)];
@@ -4020,13 +4205,14 @@ function hPairs = PlotNirsCap(hFig, isDetails)
         % Pair locations: detectors
         locPairDet = cellfun(@(c)c(:,2)', {Channels(iChanPairs).Loc}, 'UniformOutput', 0);
         locPairDet = cat(1, locPairDet{:});
-
-        % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
-        normSrc = sqrt(sum(locPairSrc .^ 2, 2));
-        normDet = sqrt(sum(locPairDet .^ 2, 2));
-        locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
-        locPairDet = bst_bsxfun(@times, locPairDet, (normDet + 0.0035) ./ normDet);
         
+        % Make the position of the links more superficial, so they can be outside of the head and selected with the mouse
+        if length(unique(locPairDet(:,3))) > 1 || length(unique(locPairSrc(:,3))) > 1
+            normSrc = sqrt(sum(locPairSrc .^ 2, 2));
+            normDet = sqrt(sum(locPairDet .^ 2, 2));
+            locPairSrc = bst_bsxfun(@times, locPairSrc, (normSrc + 0.0035) ./ normSrc);
+            locPairDet = bst_bsxfun(@times, locPairDet, (normDet + 0.0035) ./ normDet);
+        end
         % Display connections as lines
         hPairs = line(...
             [locPairSrc(:,1)'; locPairDet(:,1)'], ...
@@ -4042,30 +4228,31 @@ function hPairs = PlotNirsCap(hFig, isDetails)
             %set(hPairs(i), 'UserData', iChannels(iChanPairs(i)));
             set(hPairs(i), 'UserData', uniquePairs(i,:));
         end
-
-        % ===== DISPLAY TEXT =====
-        % Text display properties
-        textOpt = {...
-            'Parent',              hAxes, ...
-            'HorizontalAlignment', 'center', ...
-            'FontSize',            bst_get('FigFont') + 2, ...
-            'FontUnits',           'points', ...
-            'FontWeight',          'normal', ...
-            'Tag',                 'NirsCapText', ...
-            'Interpreter',         'none'};
-        % Display text for sources
-        for i = 1:size(locSrc,1)
-            txtLoc = locSrc(i,:) .* 1.08;
-            text(txtLoc(1), txtLoc(2), txtLoc(3), Snames{i}, 'Color', [1,.8,0], textOpt{:});
-        end
-        % Display text for detectors
-        for i = 1:size(locDet,1)
-            txtLoc = locDet(i,:) .* 1.08;
-            text(txtLoc(1), txtLoc(2), txtLoc(3), Dnames{i}, 'Color', [.8,1,0], textOpt{:});
-        end
     else
         hPairs = [];
     end
+    
+    
+    % ===== DISPLAY TEXT =====
+    % Text display properties
+    textOpt = {...
+        'Parent',              hAxes, ...
+        'HorizontalAlignment', 'center', ...
+        'FontSize',            bst_get('FigFont') + 2, ...
+        'FontUnits',           'points', ...
+        'FontWeight',          'normal', ...
+        'Tag',                 'NirsCapText', ...
+        'Interpreter',         'none'};
+    % Display text for sources
+    for i = 1:size(locSrc,1)
+        txtLoc = locSrc(i,:) .* 1.08;
+        text(txtLoc(1), txtLoc(2), txtLoc(3), Snames{i}, 'Color', [1,.8,0], textOpt{:});
+    end
+    % Display text for detectors
+    for i = 1:size(locDet,1)
+        txtLoc = locDet(i,:) .* 1.08;
+        text(txtLoc(1), txtLoc(2), txtLoc(3), Dnames{i}, 'Color', [.8,1,0], textOpt{:});
+    end    
 end
 
 
@@ -4248,5 +4435,64 @@ function JumpMaximum(hFig)
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
 end
 
+%% ===== SELECT FIBER SCOUTS =====
+function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
+    global GlobalData;
+    % Parse arguments
+    if nargin < 4
+        ColorOnly = 0;
+    end
+    %% Get fibers information
+    hFigFib = bst_figures('GetFigureHandleField', hFigConn, 'hFigFib');
+    % If the fiber figure is closed, propagate to connectivity figure
+    if ~ishandle(hFigFib)
+        setappdata(hFigConn, 'plotFibers', 0);
+        return;
+    end
+    TfInfo = getappdata(hFigConn, 'Timefreq');
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        ScoutNames     = bst_figures('GetFigureHandleField', hFigConn, 'RowNames');
+        ScoutCentroids = bst_figures('GetFigureHandleField', hFigConn, 'RowLocs');
+        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate fibers...');
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    
+    %% Find pair of scouts in list fiber assignments
+    % Reshape iScouts to use bsxfun
+    iScoutsBsx = reshape(iScouts', [1 size(iScouts')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, assign, iScoutsBsx), 2) | all( bsxfun(@eq, assign, flip(iScoutsBsx,2)), 2);
+    % Find the indices of the rows with a match
+    iFibers = find(any(indices,3));
+    [iFoundFibers,iFoundScouts] = find(indices(iFibers,:,:));
+    [tmp, iFoundFibers] = sort(iFoundFibers);
+    iFoundScouts = iFoundScouts(iFoundFibers);
+    
+    %% Plot selected fibers
+    % If we have different scouts, force plotting all fibers again
+    if ~ColorOnly || length(TessInfo(iTess).hPatch) ~= length(iFoundScouts)
+        % Remove old fibers
+        delete(TessInfo(iTess).hPatch);
+        % Plot fibers
+        [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
+    else
+        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+    end
 
-
+    % Update figure's surfaces list and current surface pointer
+    setappdata(hFigFib, 'Surface',  TessInfo);
+    bst_progress('stop');
+end

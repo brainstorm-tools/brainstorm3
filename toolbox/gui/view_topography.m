@@ -26,7 +26,7 @@ function [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, Us
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -299,8 +299,10 @@ if UseMontage
         % For NIRS (: Force the selection of a montage
         if strcmpi(Modality, 'NIRS') && isempty(MontageName)
             % 3DOptodes and 3DSensorCap: Only one value can be displayed at a time
-            if ismember(TopoType, {'3DSensorCap', '3DOptodes'}) 
+            if ismember(TopoType, {'3DSensorCap', '3DOptodes'}) && length(sFigMontages) > 1
                 MontageName = sFigMontages(2).Name;
+            elseif ismember(TopoType, {'3DSensorCap', '3DOptodes'}) 
+                MontageName = sFigMontages(1).Name;
             elseif strcmpi(TopoType, '2DLayout')
                 MontageName = sFigMontages(1).Name;
             end

@@ -17,7 +17,7 @@ function [Results, ResultsFile] = in_bst_results(ResultsFile, LoadFull, varargin
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function [Results, ResultsFile] = in_bst_results(ResultsFile, LoadFull, varargin
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2019
 
 
 %% ===== PARSE INPUTS =====
@@ -45,6 +45,9 @@ ProtocolInfo = bst_get('ProtocolInfo');
 if ~file_exist(ResultsFile)
     error(['Source file was not found: ' 10 file_short(ResultsFile) 10 'Please reload this protocol (right-click > reload).']);
 end
+% Is it a kernel file
+isKernel = ~isempty(strfind(ResultsFile, '_KERNEL_'));
+DataMat = [];
 
 % Specific fields
 if (nargin < 3)
@@ -57,6 +60,7 @@ if (nargin < 3)
     FieldsToRead{end + 1} = 'nComponents';
     FieldsToRead{end + 1} = 'ZScore';
     FieldsToRead{end + 1} = 'nAvg';
+    FieldsToRead{end + 1} = 'Leff';
     FieldsToRead{end + 1} = 'Function';
     FieldsToRead{end + 1} = 'DataFile';
 else
@@ -74,18 +78,14 @@ else
         FieldsToRead{end + 1} = 'Function';
         FieldsToRead{end + 1} = 'DataFile';
     end
+    % When reading Leff, make sure nAvg is read as well
+    if ismember('Leff', FieldsToRead) && ~ismember('nAvg', FieldsToRead)
+        FieldsToRead{end+1} = 'nAvg';
+    end
     % If full results are required, add also "DataFile"
-    if LoadFull
+    if isKernel && any(ismember({'ImagingKernel','Time','nAvg','Leff'}, FieldsToRead))
         FieldsToRead{end + 1} = 'DataFile';
     end
-    % If accessing time: add old field ImageGridTime
-    if ismember('Time', FieldsToRead)
-        FieldsToRead{end + 1} = 'ImageGridTime';
-    end
-%     % If user want "SurfaceFile", also read "SourceLoc"
-%     if ismember('SurfaceFile', FieldsToRead)
-%         FieldsToRead{end + 1} = 'SourceLoc';
-%     end
     % Read each field only once
     FieldsToRead = unique(FieldsToRead);
     % Read specified files only
@@ -201,18 +201,76 @@ if ismember('GoodChannel', FieldsToRead)
     end
 end
 
-%% ===== TIME =====
-if isfield(Results, 'ImageGridTime')
-    Results.Time = Results.ImageGridTime;
-    Results = rmfield(Results, 'ImageGridTime');
+
+%% ===== DATA FILE =====
+DataFileFull = '';
+if isfield(Results, 'DataFile')
+    % Get DataFile reference from file
+    if ~isempty(DataFile)
+        Results.DataFile = file_short(DataFile);
+    end
+    % Get full data file path
+    if ~isempty(Results.DataFile)
+        DataFileFull = file_fullpath(Results.DataFile);
+    end
 end
+
+
+%% ===== GRID LOC =====
+if isfield(Results, 'GridLoc') && ~isempty(Results.GridLoc)
+    % Check matrix orientation
+    if (size(Results.GridLoc,2) ~= 3)
+        Results.GridLoc = Results.GridLoc';
+    end
+end
+
+%% ===== COMPUTE FULL RESULTS =====
+% If the results are already full results: ignore this section
+if isKernel
+    % Data file not found
+    if LoadFull && (isempty(DataFileFull) || ~file_exist(DataFileFull))
+        error('Data file not found for this sources kernel.');
+    elseif LoadFull && isfield(Results, 'ImageGridAmp') && isempty(Results.ImageGridAmp) && ~isempty(Results.ImagingKernel)
+        % Load data
+        DataMat = in_bst_data(DataFileFull, 'F', 'Time', 'nAvg', 'Leff');
+        % Reading continuous recordings
+        if isstruct(DataMat.F)
+            error('Cannot use this operation on source files attached to continuous RAW files.');
+        end
+        % Multiply kernel with recordings
+        Results.ImageGridAmp = Results.ImagingKernel * DataMat.F(Results.GoodChannel, :);
+        % Remove kernel
+        Results.ImagingKernel = [];
+    % Read other file metadata
+    elseif ~isempty(DataFileFull) && file_exist(DataFileFull)
+        DataMat = in_bst_data(DataFileFull, 'Time', 'nAvg', 'Leff');
+    else
+        DataMat = [];
+    end
+
+    % Replace some fields with the parent data information
+    if ~isempty(DataMat)
+        if ismember('Time', FieldsToRead) && (~isfield(Results, 'nAvg') || isempty(Results.Time))
+            Results.Time = DataMat.Time;
+        end
+        if ismember('nAvg', FieldsToRead) && (~isfield(Results, 'nAvg') || isempty(Results.nAvg) || (Results.nAvg <= 1))
+            Results.nAvg = DataMat.nAvg;
+        end
+        if ismember('Leff', FieldsToRead) && (~isfield(Results, 'Leff') || isempty(Results.Leff) || (Results.Leff <= 1))
+            Results.Leff = DataMat.Leff;
+        end
+    end
+end
+
 
 %% ===== FILL OTHER MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(Results, FieldsToRead{i})
+    if ~isfield(Results, FieldsToRead{i}) || isempty(Results.(FieldsToRead{i}))
         switch(FieldsToRead{i}) 
             case 'Time'
-                Results.Time = [1 2];
+                if ~isfield(Results, FieldsToRead{i})   % Only if time is not defined - we want to keep it empty for kernels
+                    Results.Time = [1 2];
+                end
             case 'nComponents'
                 if ~isempty(strfind(ResultsFile, '_unconstr'))
                     Results.nComponents = 3;
@@ -220,11 +278,15 @@ for i = 1:length(FieldsToRead)
                     Results.nComponents = 1;
                 end
             case 'nAvg'
-                Results.nAvg = [];
+                Results.nAvg = 1;
+            case 'Leff'
+                if isfield(Results, 'nAvg') && ~isempty(Results.nAvg)
+                    Results.Leff = Results.nAvg;
+                else
+                    Results.Leff = 1;
+                end
             case 'HeadModelType'
                 Results.HeadModelType = 'surface';
-            case 'ImageGridTime'
-                % Just ignore
             case 'Function'
                 Results.Function = 'wmne';
             otherwise
@@ -234,75 +296,7 @@ for i = 1:length(FieldsToRead)
 end
 
 
-%% ===== DATA FILE =====
-DataFileFull = '';
-if isfield(Results, 'DataFile')
-    % Get DataFile reference from file
-    if ~isempty(DataFile)
-        Results.DataFile = file_short(DataFile);
-    end
-%     % If file doesn't exist: maybe it is relative
-%     if ~isempty(Results.DataFile) && ~file_exist(Results.DataFile)
-%         Results.DataFile = bst_fullfile(ProtocolInfo.STUDIES, Results.DataFile);
-%     end
-    % Get full data file path
-    if ~isempty(Results.DataFile)
-        DataFileFull = file_fullpath(Results.DataFile);
-    end
-end
-
-    
-
-%% ===== GRID LOC =====
-if isfield(Results, 'GridLoc') && ~isempty(Results.GridLoc)
-    % Check matrix orientation
-    if (size(Results.GridLoc,2) ~= 3)
-        Results.GridLoc = Results.GridLoc';
-    end
-end
-    
-%% ===== COMPUTE FULL RESULTS =====
-DataMat = [];
-if LoadFull && isfield(Results, 'ImageGridAmp') && isempty(Results.ImageGridAmp) && ~isempty(Results.ImagingKernel)
-    if ~isempty(DataFileFull) && file_exist(DataFileFull)
-        % Load data
-        DataMat = load(DataFileFull, 'F', 'Time', 'nAvg');
-        % Reading continuous recordings
-        if isstruct(DataMat.F)
-            error('Cannot use this operation on source files attached to continuous RAW files.');
-        end
-        % Multiply kernel with recordings
-        Results.ImageGridAmp = Results.ImagingKernel * DataMat.F(Results.GoodChannel, :);
-        % Remove kernel
-        Results.ImagingKernel = [];
-        % If time is required
-        if ismember('Time', FieldsToRead)
-            Results.Time = DataMat.Time;
-        end
-    else
-        error('Data file not found for this sources kernel.');
-    end
-% Get data Time vector
-elseif LoadFull && ismember('Time', FieldsToRead) && isempty(Results.Time) && ~isempty(DataFileFull) && file_exist(DataFileFull)
-    % Load data
-    DataMat = in_bst_data(Results.DataFile, 'Time', 'nAvg');
-    Results.Time = DataMat.Time;
-% Get the number of averages for dSPM, GLS, and LCMV
-elseif isfield(Results, 'Function') && ismember(Results.Function, {'dspm', 'glsp', 'lcmvp'}) && ~isempty(DataFileFull) && file_exist(DataFileFull)
-    DataMat = in_bst_data(Results.DataFile, 'nAvg');
-end
-
-
 %% ===== SCALE VALUES WITH SNR CHANGES =====
-% OLD VERSIONS: If nAvg is not saved in the results file, then read it from the data file
-% (now nAvg is always saved in the source files)
-if isfield(Results, 'nAvg') && isempty(Results.nAvg)
-    if ~isempty(DataMat) && isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)
-        Results.nAvg = DataMat.nAvg;
-    else
-        Results.nAvg = 1;
-    end
-end
 % Apply a scaling to the dSPM/GLSp/lcmvp functions, to compensate for the
 % fact that the scaling applied to the NoiseCov was not correct The
 % situation often arises when the noise covariance was based on "raw"
@@ -324,6 +318,7 @@ end
 
 
 %% ===== APPLY Z-SCORE =====
+% DEPRECATED
 % Check for structure integrity
 if ismember('ZScore', FieldsToRead) && ~isempty(Results.ZScore) && (~isfield(Results.ZScore, 'mean') || ~isfield(Results.ZScore, 'std') || ~isfield(Results.ZScore, 'abs') || ~isfield(Results.ZScore, 'baseline') || isempty(Results.ZScore.abs))
     Results.ZScore = [];

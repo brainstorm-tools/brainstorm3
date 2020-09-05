@@ -11,7 +11,7 @@ function [sFile, ChannelMat, errMsg] = in_fopen_ricoh(RawFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -439,27 +439,23 @@ sFile.prop.sfreq = double(header.acq.sample_rate);
 % Switch depending on the file type
 switch (header.acq.acq_type)
     case 1   % AcqTypeContinuousRaw
-        sFile.prop.samples = [0, header.acq.sample_count - 1];
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.prop.nAvg    = 1;
+        sFile.prop.times = [0, header.acq.sample_count - 1] ./ sFile.prop.sfreq;
+        sFile.prop.nAvg  = 1;
         
     case 2   % AcqTypeEvokedAve
-        sFile.prop.samples = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length);
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.prop.nAvg    = header.acq.average_count;
+        sFile.prop.times = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length) ./ sFile.prop.sfreq;
+        sFile.prop.nAvg  = header.acq.average_count;
         % TODO: Use "multi_trigger" field
         
     case 3   % AcqTypeEvokedRaw
-        sFile.prop.samples = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length);
-        sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-        sFile.prop.nAvg    = 1;
+        sFile.prop.times = ([0, header.acq.frame_length - 1] - header.acq.pretrigger_length) ./ sFile.prop.sfreq;
+        sFile.prop.nAvg  = 1;
         % Get number of epochs
         nEpochs = header.acq.average_count;
         if (nEpochs > 1)
             % Build epochs structure
             for i = 1:nEpochs
                 sFile.epochs(i).label = sprintf('Trial (#%d)', i);
-                sFile.epochs(i).samples     = sFile.prop.samples;
                 sFile.epochs(i).times       = sFile.prop.times;
                 sFile.epochs(i).nAvg        = 1;
                 sFile.epochs(i).select      = 1;

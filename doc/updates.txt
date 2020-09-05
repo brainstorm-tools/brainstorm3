@@ -1,4 +1,100 @@
 ---------------------------------------------------------------
+May 2020
+- FEM: Import and management of tissue segmentations
+- IO: Support for fNIRS format .snirf
+- Anatomy: Updated CAT12 to version 12.7
+- Anatomy: Added CAT12 extra maps (gyrification, sulcal depth)
+- Doc: Updated decoding tutorial with new processes
+---------------------------------------------------------------
+April 2020
+- FEM: Integration of bst-duneuro into Brainstorm
+- FEM: Computation of DTI tensors
+- Anatomy: Improve volume import and display (types other than uint8, negative values)
+- Anatomy: Support for time-varying volumes
+- IO: Anonymize FIF files
+- Doc: New FEM tutorials
+---------------------------------------------------------------
+March 2020
+- Anatomy: Many imporvements in FEM mesh generation and manipulations
+- Anatomy: BEM generation with FieldTrip
+- Anatomy: Fixes in coordinate system conversions for FieldTrip anatomy files
+- Anatomy: Added independent SimNIBS anatomy folder import
+- GUI: View leadfield vectors
+---------------------------------------------------------------
+February 2020
+- IO: Added support for Localite digitizer (.csv)
+- Anatomy: Update FSAverage template (new import functions + braintomme atlas)
+- Anatomy: Full integration with iso2mesh for mesh generation
+- GUI: Upgraded to 2020a (deprecated JavaFrame and javacomponent)
+- GUI: Scaling all figure elements with InterfaceScaling
+---------------------------------------------------------------
+January 2020
+- Database: New search interface
+- Anatomy: 3D mesh generation with iso2mesh, SimNIBS, ROAST and FieldTrip
+- Anatomy: Optimized 3D tetrahedral mesh display
+- Anatomy: Added vox2ras matrix to ICBM152 template (world coordinates)
+- Anatomy: Updated USCBrain and BCI-DNI templates (skull, vox2ras, electrodes)
+- IO: Added support for SimNIBS meshes
+- IO: Added support for EmotivPRO EDF recordings
+---------------------------------------------------------------
+December 2019
+- IO: Added support for Wearable Sensing CSV files
+- IO: Added support for split FIF files (> 2Gb)
+---------------------------------------------------------------
+October 2019
+- IO: Conversion functions from/to MNE-python objects (Raw, Epoched, Evoked)
+- IO: Added support for Curry epoched .dat files
+- Stat: Renamed "p-value threshold" in "significance level alpha"
+- GUI: Montage editor: New option to filter the signals in a frequency band
+- GUI: Automatically unload when loading new file with incompatible time
+- GUI: Zoom on selected windows with shift+click (time series and spectrum)
+- GUI: Display and apply SSP/ICA projectors as montages
+- Database: Support for regular expressions when importing events
+---------------------------------------------------------------
+September 2019
+- Anatomy: Added storage and display for FEM meshes
+- Anatomy: Computation of FEM meshes with ROAST and iso2mesh
+---------------------------------------------------------------
+August 2019
+- GUI: Added support for clusters with STDs
+- GUI: New colormap: Turbo, Google's JET alternative
+- IO: Import volume atlases as scouts without overlap between ROIs
+---------------------------------------------------------------
+July 2019
+- Anatomy: Import MRI segmentation output from SPM12/CAT12
+- Anatomy: Run MRI segmentation output with SPM12/CAT12
+- Anatomy: Improved algorithm for projecting multiple scouts across surfaces
+- API: Major modification in averaging: Using Leff instead of nAvg
+- Inverse: Major modification in dSPM computation: Now saving unscaled values
+- IO: Added support for MNE-FIF epoched files
+- IO: Added support for ANT EEProbe .avr files
+- IO: Neuroscan AVG: Added support for channel names and locations
+---------------------------------------------------------------
+June 2019
+- Anatomy: Added support for MarsAtlas parcellation in BrainVISA
+- IO: Support for Intan RHS+RHD files
+---------------------------------------------------------------
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
+- Database: Improved database updates between versions
+- Database: Add new type of object "fibers"
+- IO: Improved support for discontinuous EDF files (EDF+D)
+- GUI: Time series viewer: New menu to group all the display options
+- GUI: Events: New options for displaying event markers (lines, dots, hide)
+- GUI: New keyboard shortcuts for recordings viewer (F6, Shift+F6, Ctrl+L, Ctrl+H)
+- GUI: New options for custom events shortcuts (full page, extended events)
+---------------------------------------------------------------
+April 2019
+- GUI: New color picker to replace Matlab's buggy uisetcolor
+- GUI: New bipolar and avg ref montages for ECOG+SEEG
+- GUI: New default colormaps: Viridis, Magma, Dory, Royal Gramma, Mandrill
+- GUI: New EEG montage: Scalp Current Density (L->R)
+- Anatomy: Support for new fibers objects
+- Connectivity: View of functionnal connectivity along anatomical fibers
+- Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
+---------------------------------------------------------------
 March 2019
 - Anatomy: Deface MRI with FreeSurfer or SPM
 - Anatomy: World coordinates made available in MRI viewer

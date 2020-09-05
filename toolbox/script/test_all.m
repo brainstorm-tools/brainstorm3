@@ -3,7 +3,7 @@ function test_all(test_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -66,7 +66,7 @@ SubjectName = 'Subject01';
 [sSubject, iSubject] = db_add_subject(SubjectName);
 % Set anatomy
 sTemplates = bst_get('AnatomyDefaults');
-iTemplate = find(strcmpi('ICBM152_2016c', {sTemplates.Name}));
+iTemplate = find(strcmpi('ICBM152_2019', {sTemplates.Name}));
 db_set_template(iSubject, sTemplates(iTemplate), 0);
 % Re-compute the MNI transformation
 bst_process('CallProcess', 'process_mni_affine', [], [], ...
@@ -150,9 +150,10 @@ sSimData = bst_process('CallProcess', 'process_simulate_recordings', sSimScout, 
 DataMat.Events = db_template('event');
 DataMat.Events.label   = 'sin+';
 DataMat.Events.color   = [0 1 0];
-DataMat.Events.samples = round((.5:1:nfiles) * sfreq);
-DataMat.Events.times   = DataMat.Events.samples ./ sfreq;
-DataMat.Events.epochs  = ones(size(DataMat.Events.samples));
+DataMat.Events.times   = round((.5:1:nfiles) * sfreq) ./ sfreq;
+DataMat.Events.epochs  = ones(size(DataMat.Events.times));
+DataMat.Events.channels = cell(1, size(DataMat.Events.times, 2));
+DataMat.Events.notes    = cell(1, size(DataMat.Events.times, 2));
 bst_save(file_fullpath(sSimData.FileName), DataMat, 'v6', 1);
 % Save as an EGI raw file
 RawFile = bst_fullfile(test_dir, 'run01.raw');
@@ -191,7 +192,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 4, ...  % EEG
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 %% ===== PRE-PROCESSING =====
@@ -247,7 +248,7 @@ sFilesPsdAfter = bst_process('CallProcess', 'process_psd', sFilesClean, [], ...
 % Process: Snapshot: Frequency spectrum
 bst_process('CallProcess', 'process_snapshot', [sFilesPsdBefore, sFilesPsdAfter], [], ...
     'target',   10, ...  % Frequency spectrum
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 
 %% ===== ARTIFACT CLEANING =====
@@ -373,7 +374,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrc, [], ...
     'orient',    3, ...  % top
     'time',      0.230, ...
     'threshold', 60, ...
-    'comment',   'Average sources');
+    'Comment',   'Average sources');
 
 
 %% ===== SCOUTS =====
@@ -433,7 +434,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrcVol, [], ...
     'orient',    3, ...  % top
     'time',      0, ...
     'threshold', 0, ...
-    'comment',   'Dipole modeling');
+    'Comment',   'Dipole modeling');
 % Process: Dipole scanning
 sDipScan = bst_process('CallProcess', 'process_dipole_scanning', sAvgSrcVol, [], ...
     'timewindow', [-0.040, 0.100], ...

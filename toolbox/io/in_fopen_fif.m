@@ -12,7 +12,7 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -88,7 +88,9 @@ end
 sFile.header.tree = tree;
 sFile.header.info = info;
 sFile.header.meas = meas;
-
+sFile.header.fif_list = {DataFile};
+sFile.header.fif_times = [];
+sFile.header.fif_headers = [];
     
 %% ===== READ CHANNEL FILE =====
 % Read channel file from FIF and default coils file
@@ -126,12 +128,14 @@ sFile.device      = Device;
 sFile.channelflag = ChannelFlag;
 sFile.byteorder = 'b';
 % Acquisition date (saved in POSIX format in FIF file)
-sFile.acq_date = str_date(info.meas_date(1), 'posix');
+if isfield(info, 'meas_date') && ~isempty(info.meas_date)
+    sFile.acq_date = str_date(info.meas_date(1), 'posix');
+end
 
 
 %% ===== READ DATA DESCRIPTION =====
 % Get number of epochs
-epochs = fif_get_epochs(sFile, fid);
+[epochs, sFile.header.epochData] = fif_get_epochs(sFile, fid);
 nEpochs = length(epochs);
 
 % === CHANNELS ONLY ===
@@ -143,12 +147,13 @@ elseif (nEpochs == 0)
     % Read RAW file information
     raw = fif_setup_raw(sFile, fid, 1);
     % Fill sFile structure   
-    sFile.prop.samples = double([raw.first_samp, raw.last_samp]);
-    sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-    sFile.header.raw   = raw;
+    sFile.prop.times = double([raw.first_samp, raw.last_samp]) ./ sFile.prop.sfreq;
+    sFile.header.raw = raw;
+    sFile.header.fif_times = sFile.prop.times;
+    sFile.header.fif_headers = {sFile.header};
     % Read events information
     if iscell(ImportOptions.EventsMode) || ~strcmpi(ImportOptions.EventsMode, 'ignore')
-        sFile.events = fif_read_events(sFile, ChannelMat, ImportOptions);
+        [sFile.events, ImportOptions] = fif_read_events(sFile, ChannelMat, ImportOptions);
         % Operation cancelled by user
         if isequal(sFile.events, -1)
             sFile = [];
@@ -156,12 +161,11 @@ elseif (nEpochs == 0)
             return;
         end
     end
-% === EVOKED FILE ===
+% === EVOKED/EPOCHED FILE ===
 else
     % Build epochs structure
     for i = 1:length(epochs)
         sFile.epochs(i).label   = epochs(i).label;
-        sFile.epochs(i).samples = epochs(i).samples;
         sFile.epochs(i).times   = epochs(i).times;
         sFile.epochs(i).nAvg    = epochs(i).nAvg;
         sFile.epochs(i).select  = isempty(strfind(epochs(i).label, 'std err'));
@@ -169,13 +173,140 @@ else
         sFile.epochs(i).channelflag = [];
     end
     % Extract global min/max for time and samples indices
-    sFile.prop.samples = [min([sFile.epochs.samples]), max([sFile.epochs.samples])];
-    sFile.prop.times   = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
+    sFile.prop.times = [min([sFile.epochs.times]),   max([sFile.epochs.times])];
+%     % Read events
+%     [fifEvt, mappings] = fiff_read_events(fid,tree);
+%     if ~isempty(fifEvt) && ~isempty(mappings)
+%         % Initialize returned structure
+%         uniqueEvt = unique(fifEvt(:,3)');
+%         events = repmat(db_template('event'), [1, length(uniqueEvt)]);
+%         % Parse event names
+%         mappings = str_split(mappings, ';');
+%         mappings = cellfun(@(c)str_split(c,':'), mappings, 'UniformOutput', 0);
+%         if (length(mappings) >= 2)
+%             mappings = reshape([mappings{:}], 2, [])';
+%         else
+%             mappings = [];
+%         end
+%         % Create events list
+%         for iEvt = 1:length(uniqueEvt)
+%             % Find all the occurrences of event #iEvt
+%             iMrk = find(fifEvt(:,3) == uniqueEvt(iEvt));
+%             % Event label
+%             if ~isempty(mappings) && ismember(num2str(uniqueEvt(iEvt)), mappings(:,2))
+%                 iMap = find(strcmpi(mappings(:,2), num2str(uniqueEvt(iEvt))));
+%                 events(iEvt).label = mappings{iMap, 1};
+%             else
+%                 events(iEvt).label = num2str(uniqueEvt{iEvt});
+%             end
+%             % 
+%             epochSmp = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq);
+%             samples = double(fifEvt(iMrk,1))';
+%             events(iEvt).epochs     = floor(samples ./ epochSmp) + 1;
+%             events(iEvt).times      = mod(samples, epochSmp) ./ sFile.prop.sfreq + sFile.prop.times(1);
+%             events(iEvt).reactTimes = [];
+%             events(iEvt).select     = 1;
+%             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+%             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+%         end
+%         sFile.events = events;
+%     end
 end
+
+
+%% ===== GET LINKED FILES =====
+% Recordings bigger than 2Gb can't be stored in FIF format, and need to be split in multiple files.
+% We expect to call in_fopen_fif.m on the first .fif file in the list, and then the files should be
+% chained using the fields FIFF_REF_FILE_NAME.
+% If linked files are found, in_fopen_fif is called recursively and appended to the definition of the first file.
+
+% Only RAW files can be linked
+if ~isempty(meas) && (nEpochs == 0) && (~isempty(raw.next_fname) || ~isempty(raw.next_num))
+    NextFile = [];
+    % 1) If there is already a file name, try to use it
+    if ~isempty(raw.next_fname)
+        NextFile = bst_fullfile(fPath, raw.next_fname);
+        % File doesn't exist...
+        if ~file_exist(NextFile)
+            NextFile = [];
+        end
+    end
+    % 2) Try to find the format of the files using the file number
+    %    (major problem: sometimes the first file is not numbered)
+    if isempty(NextFile) && ~isempty(raw.next_num)
+        % Trying with -0
+        numTag = sprintf('-%d', raw.next_num - 1);
+        iNum = strfind(sFile.filename, numTag);
+        if ~isempty(iNum)
+            % Keep only the last occurrence (the same string may appear before in the filename)
+            iNum = iNum(end);
+            NextFile = [sFile.filename(1:iNum-1), sprintf('-%d', raw.next_num), sFile.filename(iNum+length(numTag):end)];
+        else
+            % Trying with -00 (for BIDS-compatible split naming: https://github.com/mne-tools/mne-python/blob/cd0eff12535880cd7a6551ad4ceeff771ea8b3a9/mne/io/utils.py#L323)
+            numTag = sprintf('-%02d', raw.next_num - 1);
+            iNum = strfind(sFile.filename, numTag);
+            if ~isempty(iNum)
+                iNum = iNum(end);
+                NextFile = [sFile.filename(1:iNum-1), sprintf('-%02d', raw.next_num), sFile.filename(iNum+length(numTag):end)];
+            end
+        end
+        % File doesn't exist...
+        if ~file_exist(NextFile)
+            NextFile = [];
+        end
+    end
+    % Get the other FIF files in the folder, to look for file #1 (in case number #0 is not numbered)
+    if isempty(NextFile) && (raw.next_num == 1)
+        dirFif = dir(bst_fullfile(fPath, ['*', fExt]));
+        curFile = [fBase, fExt];
+        listFif = setdiff({dirFif.name}, curFile);
+        numTag = sprintf('-%d', raw.next_num);
+        % Remove the num tag in all the filenames, and see if we find the current file
+        for iFile = 1:length(listFif)
+            iNum = strfind(listFif{iFile}, numTag);
+            if ~isempty(iNum)
+                iNum = iNum(end);
+                if strcmp(curFile, [listFif{iFile}(1:iNum-1), listFif{iFile}(iNum+length(numTag):end)])
+                    NextFile = bst_fullfile(fPath, listFif{iFile});
+                    break;
+                end
+            end
+        end
+    end
+    
+    % Read linked file
+    if ~isempty(NextFile)
+        % Display linked file
+        disp([10 'FIF> Linking next file: ' NextFile]);
+        % Load the header of the linked file recursively
+        sFileNext = in_fopen_fif(NextFile, ImportOptions);
+        % Concatenate files (check time compatibility)
+        if isempty(sFileNext)
+            % File could not be read...
+            warning(['FIF> Missing link: Could not read file: ' NextFile]);
+        elseif (sFile.prop.sfreq ~= sFileNext.prop.sfreq) || (sFileNext.prop.times(1) - sFile.prop.times(2) - 1/sFile.prop.sfreq > 0.001)
+            warning(['FIF> Missing link: Recordings in the following files are not contiguous:' 10 ...
+                    DataFile ': ' sprintf('%1.3fs - %1.3fs', sFile.prop.times) 10 ...
+                    NextFile ': ' sprintf('%1.3fs - %1.3fs', sFileNext.prop.times)]);
+        else
+            sFile.prop.times = [sFile.prop.times(1), sFileNext.prop.times(2)];
+            % Add to list of files
+            sFile.header.fif_list    = [sFile.header.fif_list, sFileNext.header.fif_list];
+            sFile.header.fif_times   = cat(1, sFile.header.fif_times, sFileNext.header.fif_times);
+            sFile.header.fif_headers = [sFile.header.fif_headers, sFileNext.header.fif_headers];
+            % Import events from the next file
+            if ~isempty(sFileNext.events)
+                sFile = import_events(sFile, [], sFileNext.events);
+            end
+        end
+    else
+        warning(['FIF> Missing link: Could not find the file following "' DataFile '".']);
+    end
+end
+
 
 % Close file
 if ~isempty(fopen(fid))
     fclose(fid);
 end
-
 

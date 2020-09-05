@@ -5,7 +5,7 @@ function [isOk, onlineRel] = bst_check_internet()
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function [isOk, onlineRel] = bst_check_internet()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
 % Initialize returned values
 isOk = 0;
@@ -41,6 +41,9 @@ if (length(str) < 20)
 end
 % Find release date in text file
 iParent = strfind(str, '(');
+if (length(iParent) ~= 1)
+    return;
+end
 dateStr = str(iParent - 7:iParent - 2);
 % Interpetation of date string
 onlineRel.year  = str2num(dateStr(1:2));

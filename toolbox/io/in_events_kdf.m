@@ -7,7 +7,7 @@ function events = in_events_kdf(sFile, EventFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,12 +40,13 @@ for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
     iMrk = find(AllEvt(:,2) == uniqueEvt(iEvt));
     % Add event structure
-    events(iEvt).label   = num2str(uniqueEvt(iEvt));
-    events(iEvt).epochs  = ones(1, length(iMrk));
-    events(iEvt).samples = AllEvt(iMrk,1)';
-    events(iEvt).times   = events(iEvt).samples ./ sFile.prop.sfreq;
-    events(iEvt).reactTimes  = [];
-    events(iEvt).select      = 1;
+    events(iEvt).label      = num2str(uniqueEvt(iEvt));
+    events(iEvt).epochs     = ones(1, length(iMrk));
+    events(iEvt).times      = AllEvt(iMrk,1)' ./ sFile.prop.sfreq;
+    events(iEvt).reactTimes = [];
+    events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

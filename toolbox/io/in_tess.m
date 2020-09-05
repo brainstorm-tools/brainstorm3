@@ -19,7 +19,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2020
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -83,6 +83,10 @@ elseif strcmpi(FileFormat, 'ALL')
             FileFormat = 'TRI';
         case '.mat'
             FileFormat = 'BST';
+        case '.msh'
+            FileFormat = 'SIMNIBS';
+        case '.nwb'
+            FileFormat = 'NWB';
         case {'.pial', '.white', '.inflated', '.nofix', '.orig', '.smoothwm', '.sphere', '.reg', '.surf'}
             FileFormat = 'FS';
     end
@@ -112,14 +116,14 @@ switch (FileFormat)
         TessMat = in_tess_mesh(TessFile);
         % Convert into local MRI coordinates
         if ~isempty(sMri)
-            mriSize = size(sMri.Cube) .* sMri.Voxsize(:)' ./ 1000;
+            mriSize = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize(:)' ./ 1000;
             TessMat.Vertices = bst_bsxfun(@minus, mriSize, TessMat.Vertices);
         end
     case 'GII'
         TessMat = in_tess_gii(TessFile);
         % Convert into local MRI coordinates
         if ~isempty(sMri)
-            mriSize = size(sMri.Cube) .* (sMri.Voxsize(:))' ./ 1000;
+            mriSize = size(sMri.Cube(:,:,:,1)) .* (sMri.Voxsize(:))' ./ 1000;
             for iTess = 1:length(TessMat)
                 TessMat(iTess).Vertices = bst_bsxfun(@minus, mriSize, TessMat(iTess).Vertices);
             end
@@ -143,12 +147,26 @@ switch (FileFormat)
             % Swap faces
             TessMat(iTess).Faces = TessMat(iTess).Faces(:,[2 1 3]);
         end
+    case 'GII-WORLD'
+        TessMat = in_tess_gii(TessFile);
+        % Process all the surfaces
+        for iTess = 1:length(TessMat)
+            % Convert from MNI to MRI coordinates
+            if ~isempty(sMri)
+                TessMat(iTess).Vertices = cs_convert(sMri, 'world', 'mri', TessMat(iTess).Vertices);
+                if isempty(TessMat(iTess).Vertices)
+                    error('There is no world transformation available for this MRI.');
+                end
+            end
+            % Swap faces
+            TessMat(iTess).Faces = TessMat(iTess).Faces(:,[2 1 3]);
+        end
     case 'FS'
         % Read file with MNE function
         [TessMat.Vertices, TessMat.Faces] = mne_read_surface(TessFile);
         % FreeSurfer RAS coord => MRI  (NEW VERSION: 12-Jan-2016 / relative size: 28-Aug-2017)
         if ~isempty(sMri)
-            TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, (size(sMri.Cube)/2 + [0 1 0]) .* sMri.Voxsize / 1000);
+            TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, (size(sMri.Cube(:,:,:,1))/2 + [0 1 0]) .* sMri.Voxsize / 1000);
         else
             TessMat.Vertices = bst_bsxfun(@plus, TessMat.Vertices, [128 129 128] / 1000);
         end
@@ -169,6 +187,16 @@ switch (FileFormat)
         TessMat = in_tess_curry(TessFile);
         TessMat.Vertices = TessMat.Vertices / 1000;
 
+    case 'SIMNIBS'
+        TessMat = in_tess_simnibs(TessFile);
+        % World/voxel => SCS coordinates
+        if ~isempty(sMri)
+            TessMat.Vertices=TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
+            TessMat.Vertices = cs_convert(sMri, 'voxel', 'mri', TessMat.Vertices);
+            TessMat.Vertices = cs_convert(sMri, 'world', 'scs', TessMat.Vertices);
+        end
+        isConvertScs = 0;
+        
     case 'MNIOBJ'
         TessMat = in_tess_mniobj(TessFile);
         % MNI MRI coord => MRI
@@ -194,29 +222,33 @@ switch (FileFormat)
             end
         end
         isConvertScs = 0;
+        
+    case 'NWB'
+        TessMat = in_tess_nwb(TessFile);
 end
 % If an error occurred: return
 if isempty(TessMat)
     return;
 end
-% Fix the tesselations
-for iTess = 1:length(TessMat)
-    % Make sure all the values are double
-    TessMat(iTess).Vertices = double(TessMat(iTess).Vertices);
-    TessMat(iTess).Faces = double(TessMat(iTess).Faces);
-    % Fix the matrix orientations
-    if (size(TessMat(iTess).Vertices,1) == 3) && (size(TessMat(iTess).Vertices,2) ~= 3) 
-        TessMat(iTess).Vertices = TessMat(iTess).Vertices';
-    end
-    if (size(TessMat(iTess).Faces,1) == 3) && (size(TessMat(iTess).Faces,2) ~= 3) 
-        TessMat(iTess).Faces = TessMat(iTess).Faces';
-    end
-    % Add coordinates offset
-    if ~isempty(OffsetMri) && ~isempty(sMri)
-        TessMat(iTess).Vertices = bst_bsxfun(@plus, TessMat(iTess).Vertices, OffsetMri .* sMri.Voxsize ./ 1000 );
+% Fix the tesselations (not for volume meshes, without Faces field)
+if isfield(TessMat, 'Faces')
+    for iTess = 1:length(TessMat)
+        % Make sure all the values are double
+        TessMat(iTess).Vertices = double(TessMat(iTess).Vertices);
+        TessMat(iTess).Faces = double(TessMat(iTess).Faces);
+        % Fix the matrix orientations
+        if (size(TessMat(iTess).Vertices,1) == 3) && (size(TessMat(iTess).Vertices,2) ~= 3) 
+            TessMat(iTess).Vertices = TessMat(iTess).Vertices';
+        end
+        if (size(TessMat(iTess).Faces,1) == 3) && (size(TessMat(iTess).Faces,2) ~= 3) 
+            TessMat(iTess).Faces = TessMat(iTess).Faces';
+        end
+        % Add coordinates offset
+        if ~isempty(OffsetMri) && ~isempty(sMri)
+            TessMat(iTess).Vertices = bst_bsxfun(@plus, TessMat(iTess).Vertices, OffsetMri .* sMri.Voxsize ./ 1000 );
+        end
     end
 end
-
         
 %% ===== CONVERSION MRI TO SCS =====
 if isConvertScs

@@ -29,7 +29,7 @@ function varargout = figure_mri(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2019
+%          Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -64,6 +64,10 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     else
         rendererName = 'opengl';
     end
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
     
     % ===== FIGURE =====
     hFig = figure(...
@@ -75,6 +79,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         'DockControls',  'off', ...
         'Units',         'pixels', ...
         'Color',         [0 0 0], ...
+        'Pointer',       'arrow', ...
         'Tag',           FigureId.Type, ...
         'Renderer',      rendererName, ...
         'BusyAction',    'cancel', ...
@@ -303,7 +308,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridx = 3;  c.gridy = 4;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 4;  c.gridy = 4;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');    
     c.gridx = 2;  c.gridy = 4;  c.gridwidth = 3;  
-    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#505050"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
+    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#E00000"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
     
     % ===== VALIDATION BAR =====
     % Default constrains
@@ -409,19 +414,21 @@ function ResizeCallback(hFig, varargin)
     figPos = get(hFig, 'Position');
     % Get figure Handles
     Handles = bst_figures('GetFigureHandles', hFig);
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Configuration
     if ~Handles.jCheckViewSliders.isSelected()
         sliderH = 0;
         titleH  = 0;
     else
-        sliderH = 20;
-        titleH  = 25;
+        sliderH = 20 .* Scaling;
+        titleH  = 25 .* Scaling;
     end
     % Get colorbar
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     % Reserve space for the colorbar
     if ~isempty(hColorbar)
-        colorbarMargin = 45;
+        colorbarMargin = 45 .* Scaling;
     else
         colorbarMargin = 0;
     end
@@ -448,12 +455,12 @@ function ResizeCallback(hFig, varargin)
     
     % Resize colorbar
     if ~isempty(hColorbar)
-        colorbarWidth = 15;
+        colorbarWidth = 15 .* Scaling;
         posColor = [...
             figPos(3) - colorbarMargin, ...
-            posS(2) + sliderH + 15, ...
+            posS(2) + sliderH + 15 .* Scaling, ...
             colorbarWidth, ...
-            posS(4) - sliderH - titleH - 15];
+            posS(4) - sliderH - titleH - 15 .* Scaling];
         % Reposition the colorbar
         set(hColorbar, 'Units', 'pixels', 'Position', max([1 1 1 1], posColor));
     end
@@ -462,7 +469,7 @@ function ResizeCallback(hFig, varargin)
     % Get MRI display size
     sMri = panel_surface('GetSurfaceMri', hFig);
     if ~isempty(sMri)
-        FOV = size(sMri.Cube) .* sMri.Voxsize;
+        FOV = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize;
         % Update views
         SetupView(Handles.axs, [FOV(2),FOV(3)], [], []);
         SetupView(Handles.axc, [FOV(1),FOV(3)], [], []);
@@ -572,7 +579,7 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 case 'downarrow'
                     MouseWheel_Callback(hFig, [], [], -1);
                 % === DATABASE NAVIGATOR ===
-                case {'f1', 'f2', 'f3', 'f4'}
+                case {'f1', 'f2', 'f3', 'f4', 'f6'}
                     bst_figures('NavigatorKeyPress', hFig, keyEvent);
                 % CTRL+D : Dock figure
                 case 'd'
@@ -603,6 +610,10 @@ function FigureKeyPress_Callback(hFig, keyEvent)
                 % M : Jump to maximum
                 case 'm'
                     JumpMaximum(hFig);
+                
+                % C : Toggle crosshairs visibility 
+                case 'c'
+                   checkCrosshair_Callback(hFig);
                     
                 % === SCROLL MRI CUTS ===
                 case {'x','y','z','1','2','3','4','5','6'}
@@ -665,12 +676,16 @@ function checkCrosshair_Callback(hFig, varargin)
     % Get figure Handles
     Handles = bst_figures('GetFigureHandles', hFig);
     % Get all the crosshairs in the figure
-    hCrosshairs = [Handles.crosshairCoronalH, Handles.crosshairCoronalV, Handles.crosshairSagittalH, Handles.crosshairSagittalV, Handles.crosshairAxialH, Handles.crosshairAxialV];
+    hCrosshairs = [Handles.crosshairCoronalH, Handles.crosshairCoronalV, ...
+                   Handles.crosshairSagittalH, Handles.crosshairSagittalV, ...
+                   Handles.crosshairAxialH, Handles.crosshairAxialV];
     % Update crosshairs visibility
-    if Handles.jCheckViewCrosshair.isSelected()
+    if all(arrayfun(@(c) strcmp(c,'off'),get(hCrosshairs,'Visible')))
         set(hCrosshairs, 'Visible', 'on');
+        Handles.jCheckViewCrosshair.setSelected(1);
     else
         set(hCrosshairs, 'Visible', 'off');
+        Handles.jCheckViewCrosshair.setSelected(0);
     end
 end
 
@@ -991,7 +1006,7 @@ function [sMri, Handles] = SetupMri(hFig)
     Handles = bst_figures('GetFigureHandles', hFig);
     
     % ===== PREPARE DISPLAY =====
-    cubeSize = size(sMri.Cube);
+    cubeSize = size(sMri.Cube(:,:,:,1));
     FOV      = cubeSize .* sMri.Voxsize;
     % Empty axes
     cla(Handles.axs);
@@ -1053,8 +1068,8 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     % MRI image
     hImgMri = findobj(hAxes, '-depth', 1, 'Tag', 'ImageMriSlice');
     if isempty(hImgMri) && ~isempty(imgSize)
-        hImgMri = image('XData',        [1, xySize(1)], ...
-                        'YData',        [1, xySize(2)], ...
+        hImgMri = image('XData',        [xySize(1)./imgSize(2), xySize(1)], ...
+                        'YData',        [xySize(2)./imgSize(1), xySize(2)], ...
                         'CData',        zeros(imgSize(1), imgSize(2)), ...
                         'CDataMapping', 'scaled', ...
                         'Parent',       hAxes, ...
@@ -1063,9 +1078,13 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     
     % Get axes dimensions
     AxesPos = get(hAxes, 'Position');
-    % Get default axis limits
-    XLim = [0 xySize(1)] + 0.5;
-    YLim = [0 xySize(2)] + 0.5;
+    % Get default axis limits (first voxel = .5,.5,.5)
+    XLim = [0 xySize(1)];
+    YLim = [0 xySize(2)];
+    if ~isempty(imgSize)
+    	XLim = XLim + 0.5 * xySize(1)./imgSize(2);
+        XLim = XLim + 0.5 * xySize(2)./imgSize(1);
+    end
     % Adapt display to the limiting axis (for full width display when zooming in)
     Xr = xySize(1) / AxesPos(3);
     Yr = xySize(2) / AxesPos(4);
@@ -1091,12 +1110,14 @@ function [hImgMri, hCrossH, hCrossV] = SetupView(hAxes, xySize, imgSize, orientL
     if ~isempty(orientLabels)
         hLabelOrientL = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientL');
         hLabelOrientR = findobj(hAxes, '-depth', 1, 'Tag', 'LabelOrientR');
-        posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
-        posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        % posL = [XLim(1) + .05*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        % posR = [XLim(1) + .95*(XLim(2)-XLim(1)), YLim(1) + .05*(YLim(2)-YLim(1)), 0];
+        posL = [0, 0];
+        posR = [xySize(1), 0];
         if isempty(hLabelOrientL) || isempty(hLabelOrientR)
             fontSize = bst_get('FigFont');
-            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
-            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'top', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
+            text(posL(1), posL(2), orientLabels{1}, 'verticalalignment', 'bottom', 'HorizontalAlignment', 'right', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientL');
+            text(posR(1), posR(2), orientLabels{2}, 'verticalalignment', 'bottom', 'HorizontalAlignment', 'left', 'FontSize', fontSize, 'FontUnits', 'points', 'color','w', 'Parent', hAxes, 'Tag', 'LabelOrientR');
         else
             set(hLabelOrientL, 'Position', posL);
             set(hLabelOrientR, 'Position', posR);
@@ -1191,7 +1212,7 @@ function MriTransform(hButton, Transf, iDim)
             switch iDim
                 case 1
                     % Permutation of dimensions Y/Z
-                    sMri.Cube = permute(sMri.Cube, [1 3 2]);
+                    sMri.Cube = permute(sMri.Cube, [1 3 2 4]);
                     sMri.InitTransf(end+1,[1 2]) = {'permute', [1 3 2]};
                     % Flip / Z
                     sMri.Cube = bst_flip(sMri.Cube, 3);
@@ -1200,7 +1221,7 @@ function MriTransform(hButton, Transf, iDim)
                     sMri.Voxsize = sMri.Voxsize([1 3 2]);
                 case 2
                     % Permutation of dimensions X/Z
-                    sMri.Cube = permute(sMri.Cube, [3 2 1]);
+                    sMri.Cube = permute(sMri.Cube, [3 2 1 4]);
                     sMri.InitTransf(end+1,[1 2]) = {'permute', [3 2 1]};
                     % Flip / Z
                     sMri.Cube = bst_flip(sMri.Cube, 3);
@@ -1209,7 +1230,7 @@ function MriTransform(hButton, Transf, iDim)
                     sMri.Voxsize = sMri.Voxsize([3 2 1]);
                 case 3
                     % Permutation of dimensions X/Y
-                    sMri.Cube = permute(sMri.Cube, [2 1 3]);
+                    sMri.Cube = permute(sMri.Cube, [2 1 3 4]);
                     sMri.InitTransf(end+1,[1 2]) = {'permute', [2 1 3]};
                     % Flip / Y
                     sMri.Cube = bst_flip(sMri.Cube, 2);
@@ -1223,7 +1244,7 @@ function MriTransform(hButton, Transf, iDim)
             sMri.InitTransf(end+1,[1 2]) = {'flipdim', [iDim size(sMri.Cube,iDim)]};
         case 'Permute'
             % Permute MRI dimensions
-            sMri.Cube = permute(sMri.Cube, [3 1 2]);
+            sMri.Cube = permute(sMri.Cube, [3 1 2 4]);
             sMri.InitTransf(end+1,[1 2]) = {'permute', [3 1 2]};
             % Update voxel size
             sMri.Voxsize = sMri.Voxsize([3 1 2]);
@@ -1318,13 +1339,14 @@ function UpdateCoordinates(sMri, Handles)
     Handles.jLabelTitleA.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Axial</B>:&nbsp;&nbsp;&nbsp;z=%d', voxXYZ(3)));
     Handles.jLabelTitleC.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Coronal</B>:&nbsp;&nbsp;&nbsp;y=%d', voxXYZ(2)));
     % Display value of the selected voxel
-    if (all(voxXYZ >= 1) && all(voxXYZ <= size(sMri.Cube)))
+    mriSize = size(sMri.Cube(:,:,:,1));
+    if (all(voxXYZ >= 1) && all(voxXYZ <= mriSize))
         % Try to get the values from the overlay mask
         TessInfo = getappdata(Handles.hFig, 'Surface');
-        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && all(size(TessInfo.OverlayCube) == size(sMri.Cube))
+        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && all(size(TessInfo.OverlayCube) == mriSize)
             value = TessInfo.OverlayCube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
         else
-            value = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
+            value = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3), 1);
         end
         strValue = sprintf('value=%g', value);
     else
@@ -1332,26 +1354,26 @@ function UpdateCoordinates(sMri, Handles)
     end
     Handles.jLabelValue.setText(strValue);
     % === MRI (millimeters) ===
-    Handles.jTextCoordMriX.setText(sprintf('x: %3.1f', mriXYZ(1) * 1000));
-    Handles.jTextCoordMriY.setText(sprintf('y: %3.1f', mriXYZ(2) * 1000));
-    Handles.jTextCoordMriZ.setText(sprintf('z: %3.1f', mriXYZ(3) * 1000));
+    Handles.jTextCoordMriX.setText(sprintf('x: %3.2f', mriXYZ(1) * 1000));
+    Handles.jTextCoordMriY.setText(sprintf('y: %3.2f', mriXYZ(2) * 1000));
+    Handles.jTextCoordMriZ.setText(sprintf('z: %3.2f', mriXYZ(3) * 1000));
     % === SCS/CTF (millimeters) ===
     if ~isempty(scsXYZ)
-        Handles.jTextCoordScsX.setText(sprintf('x: %3.1f', scsXYZ(1) * 1000));
-        Handles.jTextCoordScsY.setText(sprintf('y: %3.1f', scsXYZ(2) * 1000));
-        Handles.jTextCoordScsZ.setText(sprintf('z: %3.1f', scsXYZ(3) * 1000));
+        Handles.jTextCoordScsX.setText(sprintf('x: %3.2f', scsXYZ(1) * 1000));
+        Handles.jTextCoordScsY.setText(sprintf('y: %3.2f', scsXYZ(2) * 1000));
+        Handles.jTextCoordScsZ.setText(sprintf('z: %3.2f', scsXYZ(3) * 1000));
     end
     % === RAS (millimeters) ===
     if ~isempty(wrlXYZ)
-        Handles.jTextCoordWrlX.setText(sprintf('x: %3.1f', wrlXYZ(1) * 1000));
-        Handles.jTextCoordWrlY.setText(sprintf('y: %3.1f', wrlXYZ(2) * 1000));
-        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.1f', wrlXYZ(3) * 1000));
+        Handles.jTextCoordWrlX.setText(sprintf('x: %3.2f', wrlXYZ(1) * 1000));
+        Handles.jTextCoordWrlY.setText(sprintf('y: %3.2f', wrlXYZ(2) * 1000));
+        Handles.jTextCoordWrlZ.setText(sprintf('z: %3.2f', wrlXYZ(3) * 1000));
     end
     % === MNI coordinates system ===
     if ~isempty(mniXYZ)
-        Handles.jTextCoordMniX.setText(sprintf('x: %3.1f', mniXYZ(1) * 1000));
-        Handles.jTextCoordMniY.setText(sprintf('y: %3.1f', mniXYZ(2) * 1000));
-        Handles.jTextCoordMniZ.setText(sprintf('z: %3.1f', mniXYZ(3) * 1000));
+        Handles.jTextCoordMniX.setText(sprintf('x: %3.2f', mniXYZ(1) * 1000));
+        Handles.jTextCoordMniY.setText(sprintf('y: %3.2f', mniXYZ(2) * 1000));
+        Handles.jTextCoordMniZ.setText(sprintf('z: %3.2f', mniXYZ(3) * 1000));
         isMni = 1;
     else
         isMni = 0;
@@ -1523,6 +1545,9 @@ function MouseButtonUp_Callback(hFig, varargin)
                     Handles = bst_figures('GetFigureHandles', hFig);
                     sMri = panel_surface('GetSurfaceMri', hFig);
                     MouseMoveCrosshair(hAxes, sMri, Handles);
+                    % Select channel
+                    ChannelName = get(clickSource, 'UserData');
+                    bst_figures('ToggleSelectedRow', ChannelName);
             end
         % Mouse was moved
         else
@@ -1641,7 +1666,7 @@ function MouseMoveCrosshair(hAxes, sMri, Handles)
     % Convert to voxels
     voxPos = cs_convert(sMri, 'mri', 'voxel', mouse3DPos);
     % Limit values to MRI cube
-    mriSize = size(sMri.Cube);
+    mriSize = size(sMri.Cube(:,:,:,1));
     voxPos(1) = min(max(voxPos(1), 1), mriSize(1));
     voxPos(2) = min(max(voxPos(2), 1), mriSize(2));
     voxPos(3) = min(max(voxPos(3), 1), mriSize(3));
@@ -1691,7 +1716,7 @@ function mouse3DPos = GetMouseLocation(hAxes, sMri, Handles)
             mouse3DPos(2) = mouse2DPos(2);
     end
     % Limit values to MRI cube
-    mriSize = size(sMri.Cube) .* sMri.Voxsize;
+    mriSize = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize;
     mouse3DPos(1) = min(max(mouse3DPos(1), sMri.Voxsize(1)), mriSize(1));
     mouse3DPos(2) = min(max(mouse3DPos(2), sMri.Voxsize(2)), mriSize(2));
     mouse3DPos(3) = min(max(mouse3DPos(3), sMri.Voxsize(3)), mriSize(3));
@@ -1821,7 +1846,7 @@ function PlotSensors3D(iDS, iFig, Channel, ChanLoc)
     % === DEPTH ELECTRODES ===
     % Create objects geometry
     sElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
-    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes);
+    [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = panel_ieeg('CreateGeometry3DElectrode', iDS, iFig, Channel, ChanLoc, sElectrodes, 1);
     % Plot depth electrodes
     for iElec = 1:length(ElectrodeDepth)
         % Get coordinates
@@ -2224,7 +2249,9 @@ function UpdateVisibleSensors3D(hFig, slicesToUpdate)
                 % Convert positions to MRI coordinates
                 ChanMri = cs_convert(sMri, 'scs', 'mri', ChanLoc) .* 1000;
                 % Is there any point close to the current slices
-                if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
+                % if any(abs(ChanMri(:,iDim) - slicesLoc(iDim)) <= nTol)
+                % Is the slice between the first and the last contact of this electrode
+                if (slicesLoc(iDim) >= min(ChanMri(:,iDim)) - nTol) && (slicesLoc(iDim) <= max(ChanMri(:,iDim)) + nTol)
                     Visible = 'on';
                 else
                     Visible = 'off';
@@ -2801,6 +2828,8 @@ function SetElectrodePosition(hFig, ChannelName, scsXYZ)
     GlobalData.DataSet(iDS).Channel(iChannels(iChan)).Loc = scsXYZ(:);
     % Plot electrodes again
     Handles = PlotElectrodes(iDS, iFig, Handles);
+    % Save modified handles
+    bst_figures('SetFigureHandles', hFig, Handles);
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
     UpdateVisibleSensors3D(hFig);
@@ -2847,12 +2876,6 @@ function ExportOverlay(hFig)
     sMriOverlay = bst_memory('LoadMri', MriFile);
     % Replace the values with the current overlay
     sMriOverlay.Cube = double(TessInfo.OverlayCube);
-%     % Normalize the values to fit in int16
-%     sMriOverlay.Cube = (sMriOverlay.Cube - min(sMriOverlay.Cube(:))) / max(sMriOverlay.Cube(:)) * double(intmax('int16'));
-%     % Convert volume to int16
-%     sMriOverlay.Cube = int16(sMriOverlay.Cube);
-%     % Enforce the original zero values
-%     sMriOverlay.Cube(sMriOverlay.Cube == 0) = 0;
     % Save volume
     export_mri(sMriOverlay);
 end

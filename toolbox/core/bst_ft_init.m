@@ -5,7 +5,7 @@ function isOk = bst_ft_init(isInteractive)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -48,7 +48,8 @@ if ~exist('ft_defaults', 'file')
         % Warning message
         if ~java_dialog('confirm', [...
             'This process requires the FieldTrip toolbox to be installed on your computer.', 10, ...
-            'Download the toolbox at: http://www.fieldtriptoolbox.org/download' 10 10 ...
+            'Download the toolbox at: http://www.fieldtriptoolbox.org/download' 10 ...
+            'Then add the installation path in Brainstorm (File > Edit preferences).' 10 10 ...
             'Is FieldTrip already installed on your computer?'])
             bst_error('FieldTrip was not set up properly.', 'FieldTrip setup', 0);
             return;
@@ -94,10 +95,16 @@ end
 isOk = 1;
 
 % Add some subfolders
-addpath(fullfile(FieldTripDir, 'specest'));
-addpath(fullfile(FieldTripDir, 'preproc'));
-addpath(fullfile(FieldTripDir, 'forward'));
-addpath(fullfile(FieldTripDir, 'src'));
-addpath(fullfile(FieldTripDir, 'utilities'));
+for subfolder = {'specest', 'preproc', 'forward', 'src', 'utilities'}
+    if isdir(fullfile(FieldTripDir, subfolder{1}))
+        addpath(fullfile(FieldTripDir, subfolder{1}));
+    end
+end
 
-    
+% Remove the ROAST toolbox from the path in order to avoid the error related to spm...
+roastExe = which('roast','-all');
+if ~isempty(roastExe)
+    roastDir = fileparts(roastExe{1});
+    disp(['BST> Removing ROAST from path: ' roastDir]);
+    rmpath(roastDir);
+end

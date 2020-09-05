@@ -9,7 +9,7 @@ function varargout = process_timefreq( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -277,6 +277,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if ~isempty(Messages)
         if isError
             bst_report('Error', sProcess, sInputs, Messages);
+        elseif isempty(OutputFiles)
+            bst_report('Warning', sProcess, sInputs, Messages);
         else
             bst_report('Info', sProcess, sInputs, Messages);
             disp(['BST> process_timefreq: ' Messages]);

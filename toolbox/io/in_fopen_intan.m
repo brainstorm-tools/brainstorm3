@@ -1,27 +1,23 @@
 function [sFile, ChannelMat] = in_fopen_intan(DataFile)
-%% IN_FOPEN_INTAN Open Intan recordings.
-%% Intan has 3 different ways of saving the raw file (Indicated by the AcqType variable throughout the code)
-% 1. One .rhd file for saving everything
-% 2. A separate file for each channel (.dat), a .rhd header, a separate
-% file for each pin of the parallel port (.dat)
-% 3. A separate file for each type of channel (one file for all data-files, one file for aux etc.)
-% This code supports 1 and 2
-
-% The events are read from a parallel port, and all Digital outputs are
-% saved in seperate files as well.
-% Information for the datatypes can be found at:
-% http://intantech.com/files/Intan_RHD2000_data_file_formats.pdf
-
+% IN_FOPEN_INTAN Open Intan RHS/RHD recordings
 % 
 % DESCRIPTION:
-%     Reads all the following files available in the same folder.
-
+%    Intan has 3 different ways of saving the raw file (Indicated by the AcqType variable throughout the code)
+%       1. One .rhd/.rhs file for saving everything
+%       2. A separate file for each channel (.dat), a .rhd/.rhs header, a separate file for each pin of the parallel port (.dat)
+%       3. A separate file for each type of channel (one file for all data-files, one file for aux etc.)
+%    This code supports 1 and 2.
+%
+%    The events are read from a parallel port, and all Digital outputs are saved in seperate files as well.
+%    Information for the datatypes can be found at:
+%        http://intantech.com/files/Intan_RHD2000_data_file_formats.pdf
+%        http://intantech.com/files/Intan_RHS2000_data_file_formats.pdf
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,42 +32,35 @@ function [sFile, ChannelMat] = in_fopen_intan(DataFile)
 % =============================================================================@
 %
 % Authors: Konstantinos Nasiotis 2018
+%          Francois Tadel, 2019
 
 
 %% ===== GET FILES =====
 % Get base dataset folder
-[hdr.BaseFolder, isItInfo] = bst_fileparts(DataFile);
+[hdr.BaseFolder, isItInfo, hdr.FileExt] = bst_fileparts(DataFile);
+[filePath, fileComment] = bst_fileparts(hdr.BaseFolder);
 
+% Check the type of file
 if strcmp(isItInfo,'info')
     AcqType = 2; % One separate file per channel
 else
     AcqType = 1; % One file to rule them all
 end
 
-
-if AcqType==2
+% Get extra files 
+if (AcqType == 2)
     % Event files (.dat) % They are collected from a parallel port and saved as board-DIN-*.dat files
     EventFiles = dir(bst_fullfile(hdr.BaseFolder, '*DIN*.dat'));
     if isempty(EventFiles)
         disp(['BST> Warning: board-DIN-*.dat files not found in folder: ' 10 hdr.BaseFolder]);
         EventFiles = [];
     end
-    % Recordings (*.ncs; *.nse)
+    % Recordings (amp*.dat)
     ampFiles = dir(bst_fullfile(hdr.BaseFolder, 'amp*.dat'));
-    auxFiles = dir(bst_fullfile(hdr.BaseFolder, 'aux*.dat'));
-
     if isempty(ampFiles)
-        error(['Could not find any .ncs recordings in folder: ' 10 hdr.BaseFolder]);
+        error(['Could not find any amp*.dat recordings in folder: ' 10 hdr.BaseFolder]);
     end
-    ChanFiles = sort({ampFiles.name, auxFiles.name});
 end
-
-
-%% ===== FILE COMMENT =====
-% Get base folder name
-[base_, dirComment, tmp] = bst_fileparts(hdr.BaseFolder);
-% Comment: BaseFolder + number or files
-Comment = dirComment;
 
 
 %% ===== READ DATA HEADERS =====
@@ -79,11 +68,16 @@ hdr.chan_headers = {};
 hdr.chan_files = {};
 
 % Read the header
-newHeader = read_Intan_RHD2000_file(DataFile,1,1,1,100);
+switch (hdr.FileExt)
+    case '.rhd'
+        newHeader = read_Intan_RHD2000_file(DataFile,1,1,1,100);
+    case '.rhs'
+        newHeader = read_Intan_RHS2000_file(DataFile,1,1,1,100);
+end
 newHeader.AcqType = AcqType; % This will be used later in in_fread_intan.m
 
 % Check for the magic Number
-if newHeader.magic_number ~= hex2dec('c6912702')
+if newHeader.magic_number ~= hex2dec('d69127ac') && newHeader.magic_number ~= hex2dec('c6912702')
     error('Magic Number Incorrect. The Intan header was not loaded properly');
 end
 
@@ -100,7 +94,7 @@ if AcqType==2
     % Check if there are missing timestamps in the file
     % Check from the time.dat file how many samples exist, and compare with
     % every amp file that was collected
-    fileinfo = dir(fullfile(base_,dirComment,'time.dat'));
+    fileinfo = dir(bst_fullfile(hdr.BaseFolder, 'time.dat'));
     num_samples_time = fileinfo.bytes/4; % int32 = 4 bytes
     for iChannel = 1:newHeader.num_amplifier_channels
         num_samples_channel = ampFiles(iChannel).bytes/2; % int32 = 4 bytes
@@ -109,7 +103,7 @@ if AcqType==2
         end
     end
     % Read the time.dat file to extract first and last timestamp
-    fid = fopen(fullfile(base_,dirComment,'time.dat'), 'r');
+    fid = fopen(bst_fullfile(hdr.BaseFolder, 'time.dat'), 'r');
     Time = fread(fid, num_samples_time, 'int32');
     fclose(fid);
     Time = Time / newHeader.frequency_parameters.amplifier_sample_rate; % sample rate from header file
@@ -125,19 +119,14 @@ else
     hdr.NumSamples   = newHeader.nSamples;
 end
 
-
-
 % Extract information needed for opening the file
 hdr.FirstTimeStamp        = Time(1);
 hdr.LastTimeStamp         = Time(end);
 hdr.SamplingFrequency     = newHeader.sample_rate;
-
-
 % Save all file names
 hdr.chan_headers = newHeader;
 hdr.DataFile     = DataFile;
 
-[tmp, folderName] = bst_fileparts(hdr.BaseFolder);
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
@@ -148,13 +137,12 @@ sFile.filename  = hdr.BaseFolder;
 sFile.format    = 'EEG-INTAN';
 sFile.device    = 'Intan';
 sFile.header    = hdr;
-sFile.comment   = Comment;
-sFile.condition = folderName;
+sFile.comment   = fileComment;
+sFile.condition = fileComment;
 % Consider that the sampling rate of the file is the sampling rate of the first signal
-sFile.prop.sfreq   = hdr.SamplingFrequency;
-sFile.prop.samples = [0, hdr.NumSamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
-sFile.prop.nAvg    = 1;
+sFile.prop.sfreq = hdr.SamplingFrequency;
+sFile.prop.times = [0, hdr.NumSamples - 1] ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
 
@@ -188,7 +176,7 @@ if AcqType==2
         parallel_input = false(num_samples_time, length(EventFiles));
 
         for iDIN = 1:length(EventFiles)
-            fid = fopen(fullfile(base_,dirComment,EventFiles(iDIN).name), 'r');        
+            fid = fopen(bst_fullfile(hdr.BaseFolder, EventFiles(iDIN).name), 'r');        
             temp = fread(fid, num_samples_time, 'uint16');
             parallel_input(:,iDIN) = logical(temp);
             fclose(fid);
@@ -227,13 +215,10 @@ if areThereEvents
             events(iEvt).color      = rand(1,3);
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            
-            % Set time
-            events(iEvt).samples = event_samples(event_labels == event_labels_unique(iEvt))';
-            % Convert to time
-            events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
-            % Epoch: set as 1 for all the occurrences
-            events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+            events(iEvt).times      = event_samples(event_labels == event_labels_unique(iEvt))' ./ sFile.prop.sfreq;
+            events(iEvt).epochs     = ones(1, length(events(iEvt).times));    % Epoch: set as 1 for all the occurrences
+            events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+            events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
         end
         % Import this list
         sFile = import_events(sFile, [], events);
@@ -245,12 +230,6 @@ end
 function de = bst_bi2de(bi, flg)
     if nargin < 2 || isempty(flg)
         flg = 'right-msb';
-    end
-
-    % Call toolbox function if available
-    if exist('bi2de', 'file') == 2
-        de = bi2de(bi, flg);
-        return;
     end
 
     % Initialize array of powers of two

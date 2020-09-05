@@ -18,7 +18,7 @@ function varargout = process_baseline_norm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -76,11 +76,13 @@ function sProcess = DefineOptions(sProcess)
     sProcess.options.baseline.Value   = [];
     sProcess.options.baseline.Group   = 'input';
     % === Sensor types
-    sProcess.options.sensortypes.Comment    = 'Sensor types or names (empty=all): ';
-    sProcess.options.sensortypes.Type       = 'text';
-    sProcess.options.sensortypes.Value      = 'MEG, EEG';
-    sProcess.options.sensortypes.InputTypes = {'data'};
-    sProcess.options.sensortypes.Group      = 'input';
+    if ~strcmpi(sProcess.Category, 'Filter2')
+        sProcess.options.sensortypes.Comment    = 'Sensor types or names (empty=all): ';
+        sProcess.options.sensortypes.Type       = 'text';
+        sProcess.options.sensortypes.Value      = 'MEG, EEG';
+        sProcess.options.sensortypes.InputTypes = {'data'};
+        sProcess.options.sensortypes.Group      = 'input';
+    end
     % === Source absolute value
     sProcess.options.source_abs.Comment    = ['Normalize absolute values (or norm for unconstrained sources)<BR>' ...
                                               '<FONT color=#7F7F7F>Not recommended (see online tutorials for help)</FONT>'];

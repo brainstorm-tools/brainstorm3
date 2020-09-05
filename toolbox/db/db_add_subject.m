@@ -21,7 +21,7 @@ function [sSubject, iSubject] = db_add_subject( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,14 +92,10 @@ end
 
 
 %% ===== SAVE SUBJECT FILE =====
-SubjectMat = struct('Comments',    sSubject.Comments, ...
-                    'Anatomy',     '', ...
-                    'Cortex',      '', ...
-                    'Scalp',       '', ...
-                    'InnerSkull',  '', ...
-                    'OuterSkull',  '', ...
-                    'UseDefaultAnat',    sSubject.UseDefaultAnat, ...
-                    'UseDefaultChannel', sSubject.UseDefaultChannel);
+SubjectMat = db_template('subjectmat');
+SubjectMat.Comments          = sSubject.Comments;
+SubjectMat.UseDefaultAnat    = sSubject.UseDefaultAnat;
+SubjectMat.UseDefaultChannel = sSubject.UseDefaultChannel;
 try
     fullFileName = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.FileName);
     % Create target directory

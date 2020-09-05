@@ -5,7 +5,7 @@ function events = in_events_xltek(sFile, EventFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -68,11 +68,12 @@ for iEvt = 1:length(uniqueEvt)
     iMrk = find(strcmpi(evtLabel, uniqueEvt{iEvt}));
     % Add event structure
     events(iEvt).label      = uniqueEvt{iEvt};
-    events(iEvt).samples    = unique(round(evtTime(iMrk) .* sFile.prop.sfreq));
-    events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
-    events(iEvt).epochs     = ones(1, length(events(iEvt).samples));   
+    events(iEvt).times      = unique(round(evtTime(iMrk) .* sFile.prop.sfreq)) ./ sFile.prop.sfreq;
+    events(iEvt).epochs     = ones(1, length(events(iEvt).times));   
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

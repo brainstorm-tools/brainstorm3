@@ -12,7 +12,7 @@ function FileMat = bst_history(action, FileMat, eventType, eventDesc)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,10 +26,12 @@ function FileMat = bst_history(action, FileMat, eventType, eventDesc)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010
+% Authors: Francois Tadel, 2010-2020
 
 if (nargin < 4)
     eventDesc = [];
+elseif isstruct(eventDesc)
+    eventDesc = PrintOptStruct(eventDesc);
 end
 
 %% ===== PARSE INPUTS =====
@@ -70,6 +72,11 @@ elseif ischar(FileMat)
 else
     error('Invalid structure type.');
 end
+% Reset History field if not properly set
+if isfield(FileMat, 'History') && (~iscell(FileMat.History) || (size(FileMat.History,2) ~= 3))
+    FileMat = rmfield(FileMat, 'History');
+end
+    
 
 %% ===== ACTION =====
 switch lower(action)
@@ -131,6 +138,29 @@ if isModified && ~isempty(FileName)
     save(FileName, '-struct', 'FileMat', '-append');
 end
 
+end
+
+
+
+%% =================================================================================
+%  === HELPER FUNCTIONS ============================================================
+%  =================================================================================
+
+%% ===== PRINT OPTIONS STRUCT =====
+function str = PrintOptStruct(s)
+    str = '';
+    for f = fieldnames(s)'
+        str = [str, f{1}, '='];
+        if isnumeric(s.(f{1}))
+            str = [str, num2str(s.(f{1}))];
+        elseif ischar(s.(f{1}))
+            str = [str, '''', s.(f{1}), ''''];
+        elseif iscell(s.(f{1})) && ~isempty(s.(f{1}))
+            str = [str, sprintf('''%s'',', s.(f{1}){:})];
+        end
+        str = [str, ' '];
+    end
+end
 
 
 

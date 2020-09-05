@@ -4,12 +4,12 @@ function varargout = process_swap_headcoils(varargin)
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-%
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% 
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-%
+% 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -29,7 +29,7 @@ end
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description of the process
     sProcess.Comment     = 'Swap head coils (CTF)';
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Fixing_swapped_head_coils';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Channel file'};
     sProcess.Index       = 52;
@@ -160,19 +160,22 @@ function OutputFiles = Run(sProcess, sInputs)
         % gets the channel info from file.
         bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
 
-        % Attempt to adjust the initial/reference head position.
-        [ChannelMat, Failed] = process_adjust_coordinates('AdjustHeadPosition', ...
-            ChannelMat, sInputs(iFile), sProcess);
-        if ~Failed
-            % Save channel file.
-            bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
-            % Show new alignment.
-            channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
-        % else Already noted in report.
-        end
+        %         % Attempt to adjust the initial/reference head position.
+        %         [ChannelMat, Failed] = process_adjust_coordinates('AdjustHeadPosition', ...
+        %             ChannelMat, sInputs(iFile), sProcess);
+        %         if ~Failed
+        %             % Save channel file.
+        %             bst_save(file_fullpath(sInputs(iFile).ChannelFile), ChannelMat, 'v7');
+        %             % Show new alignment.
+        %             channel_align_manual(sInputs(iFile).ChannelFile, 'MEG', 0);
+        %         % else Already noted in report.
+        %         end
                     
     end % file loop
     bst_progress('stop');
+
+    OutputFiles = bst_process('CallProcess', 'process_adjust_coordinates', OutputFiles, [], ...
+        'reset', 0, 'head', 1, 'bad', 1, 'points', 0, 'remove', 0, 'display', 1);
     
 end
 

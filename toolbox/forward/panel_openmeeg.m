@@ -9,7 +9,7 @@ function varargout = panel_openmeeg(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function varargout = panel_openmeeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2017
+% Authors: Francois Tadel, 2011-2019
 
 eval(macro_method);
 end
@@ -179,16 +179,25 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
 
         % === COUNT MEMORY NEEDED ===
-        P = length(OPTIONS.GridLoc);
-        estRam = 0;
         estHd = 0;
-        % Number of dipoles * orientations
+        % Get number of dipoles
         if isSplit
             ntmp = str2num(char(ctrl.jTextSplit.getText()));
             if (length(ntmp) == 1)
                 P = ntmp;
             end
+        elseif ~isempty(OPTIONS.GridLoc)
+            P = length(OPTIONS.GridLoc);
+        elseif strcmpi(OPTIONS.HeadModelType, 'surface')
+            VarInfo = whos('-file', file_fullpath(OPTIONS.CortexFile), 'Vertices');
+            P = VarInfo.size(1);
+        else
+            % We don't know yet the number of dipoles: impossible to estimate
+            jLabelRam.setText('?');
+            jLabelHd.setText('?');
+            return;
         end
+        % Number of dipoles * Number of orientations
         P = 3 * P;
         % Number of faces+vertices
         if isempty(nv)

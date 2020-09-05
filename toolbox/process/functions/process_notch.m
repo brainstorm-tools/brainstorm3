@@ -9,7 +9,7 @@ function varargout = process_notch( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -122,11 +122,12 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
             sInput.TimeVector(1) + FiltSpec.transient, sInput.TimeVector(end)];
         % Create a new event type
         sInput.Events = db_template('event');
-        sInput.Events.label   = 'transient_notch';
-        sInput.Events.color   = [.8 0 0];
-        sInput.Events.epochs  = [1 1];
-        sInput.Events.samples = round(trans .* sfreq);
-        sInput.Events.times   = sInput.Events.samples ./ sfreq;
+        sInput.Events.label    = 'transient_notch';
+        sInput.Events.color    = [.8 0 0];
+        sInput.Events.epochs   = [1 1];
+        sInput.Events.times    = round(trans .* sfreq) ./ sfreq;
+        sInput.Events.channels = cell(1, size(sInput.Events.times, 2));
+        sInput.Events.notes    = cell(1, size(sInput.Events.times, 2));
     end
     % Comment
     strValue = sprintf('%1.0fHz ', FreqList);
@@ -212,8 +213,12 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     tmpn = (size(Num1,1)-1)*size(Num1,2)+1;
     FiltSpec.NumT  = ifft(prod(fft(Num1,tmpn),2),'symmetric');
     FiltSpec.DenT  = ifft(prod(fft(Den1,tmpn),2),'symmetric');
-    FiltSpec.order = length(FiltSpec.DenT)-1 ;
-    [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+    FiltSpec.order = length(FiltSpec.DenT)-1;
+    if bst_get('UseSigProcToolbox')
+        [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+    else
+        [h,t] = oc_impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+    end
     % Compute the cumulative energy of the impulse response
     E = h(1:end) .^ 2 ;
     E = cumsum(E) ;

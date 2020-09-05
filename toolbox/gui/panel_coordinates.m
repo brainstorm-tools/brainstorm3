@@ -7,7 +7,7 @@ function varargout = panel_coordinates(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -56,11 +56,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
             % Coordinates
-            jPanelCoordinates.add(JLabel('  '));
-            gui_component('label', jPanelCoordinates, 'tab', '  ');
-            gui_component('label', jPanelCoordinates, 'tab', '       X');
-            gui_component('label', jPanelCoordinates, 'tab', '       Y');
-            gui_component('label', jPanelCoordinates, 'tab', '       Z');
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', ' '));
+            jLabelX = gui_component('label', jPanelCoordinates, 'tab', '   X');
+            jLabelY = gui_component('label', jPanelCoordinates, 'tab', '   Y');
+            jLabelZ = gui_component('label', jPanelCoordinates, 'tab', '   Z');
+            jLabelX.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelY.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelZ.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelX.setFont(jFontText);
+            jLabelY.setFont(jFontText);
+            jLabelZ.setFont(jFontText);
             % === MRI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MRI: '));
             jLabelCoordMriX = JLabel('-');

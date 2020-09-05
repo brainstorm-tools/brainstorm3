@@ -8,7 +8,7 @@ function varargout = process_extract_cluster( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_extract_cluster( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -172,6 +172,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Load recordings
                 sMat = in_bst_data(sInputs(iInput).FileName);
                 matValues = sMat.F;
+                stdValues = sMat.Std;
                 % Input filename
                 condComment = sInputs(iInput).FileName;
                 % Check for channel file
@@ -209,12 +210,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
                     sResults = sMat;
                     matValues = sMat.ImageGridAmp;
+                    stdValues = sMat.Std;
                 % KERNEL ONLY
                 elseif isfield(sMat, 'ImagingKernel') && ~isempty(sMat.ImagingKernel)
                     sResults = sMat;
                     %sMat = in_bst_data(sResults.DataFile);
                     sMat = in_bst(sResults.DataFile, TimeWindow);
                     matValues = [];
+                    stdValues = [];
                 end
                 % Get ZScore parameter
                 if isfield(sResults, 'ZScore') && ~isempty(sResults.ZScore)
@@ -254,6 +257,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     continue;
                 end
                 matValues = sMat.TF;
+                stdValues = sMat.Std;
                 % Error: cannot process atlas-based files
                 if isfield(sMat, 'Atlas') && ~isempty(sMat.Atlas)
                     bst_report('Error', sProcess, sInputs(iInput), 'File is already based on an atlas.');
@@ -289,12 +293,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Replicate if no time
         if (size(matValues,2) == 1)
             matValues = cat(2, matValues, matValues);
+            if ~isempty(stdValues)
+                stdValues = cat(2, stdValues, stdValues);
+            end
         end
         if (length(sMat.Time) == 1)
             sMat.Time = [0,1];
         end
         if ~isempty(matValues) && (size(matValues,2) == 1)
             matValues = [matValues, matValues];
+            if ~isempty(stdValues)
+                stdValues = [stdValues, stdValues];
+            end
         elseif isfield(sMat, 'F') && (size(sMat.F,2) == 1)
             sMat.F = [sMat.F, sMat.F];
         end
@@ -355,6 +365,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Keep only the requested time window
             if ~isempty(matValues)
                 matValues = matValues(:,iTime,:);
+                if ~isempty(stdValues)
+                    stdValues = stdValues(:,iTime,:,:);
+                end
             else
                 sMat.F = sMat.F(:,iTime);
             end
@@ -371,7 +384,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % === ATLAS-BASED FILES ===
             if ~isempty(iFileScouts)
                 scoutValues = cat(1, scoutValues, matValues(iFileScouts(iClust),:,:));
-                scoutStds   = cat(1, scoutStds, zeros(size(matValues(iFileScouts(iClust),:,:))));
+                if ~isempty(stdValues)
+                    scoutStds = cat(1, scoutStds, stdValues(iFileScouts(iClust),:,:,:));
+                else
+                    scoutStds = cat(1, scoutStds, zeros(size(matValues(iFileScouts(iClust),:,:))));
+                end
                 Description = cat(1, Description, sClusters(iClust).Label);
                 nComponents = 1;
                 continue;
@@ -479,13 +496,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             
             % === GET SOURCES ===
             % Get all the sources values
+            sourceStd = [];
             if ~isempty(matValues)
                 sourceValues = matValues(iRows,:,:);
+                if ~isempty(stdValues)
+                    sourceStd = stdValues(iRows,:,:,:);
+                end
             else
                 sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
             end
             
             % === APPLY DYNAMIC ZSCORE ===
+            
             if ~isempty(ZScore)
                 ZScoreScout = ZScore;
                 % Keep only the selected vertices
@@ -500,6 +522,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 else
                     sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout);
                 end
+                sourceStd = [];
             end
             
             % Split cluster function if applicable
@@ -527,6 +550,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 tmpScout = bst_scout_value(sourceValues(:,:,iFreq), ClusterFunction, ScoutOrient, nComponents, XyzFunction, isFlipSign);
                 if ~isempty(StdFunction)
                     tmpStd = bst_scout_value(sourceValues(:,:,iFreq), StdFunction, ScoutOrient, nComponents, XyzFunction, isFlipSign);
+                elseif ~isempty(sourceStd) && (size(sourceValues,1) == 1)
+                    tmpStd = sourceStd(:,:,iFreq,:);
                 else
                     tmpStd = zeros(size(tmpScout));
                 end
@@ -577,22 +602,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             newMat = db_template('matrixmat');
             newMat.Value       = [];
             newMat.ChannelFlag = ones(size(sMat.ChannelFlag));
+            newMat.Time = sMat.Time;
+            newMat.nAvg = sMat.nAvg;
+            newMat.Leff = sMat.Leff;
         end
-        newMat.Time = sMat.Time;
-        newMat.nAvg = 1;
         % Concatenate new values to existing ones
         if isConcatenate
             newMat.Value       = cat(1, newMat.Value,       scoutValues);
             newMat.Description = cat(1, newMat.Description, Description);
             newMat.ChannelFlag(sMat.ChannelFlag == -1) = -1;
-            if hasStds
-                newMat.Std     = cat(1, newMat.Std,         scoutStds);
+            if hasStds || isequal(size(scoutStds), size(scoutValues))
+                newMat.Std = cat(1, newMat.Std, scoutValues);
             end
         else
             newMat.Value       = scoutValues;
             newMat.Description = Description;
             newMat.ChannelFlag = sMat.ChannelFlag;
-            if hasStds
+            if hasStds || isequal(size(scoutStds), size(scoutValues))
                 newMat.Std     = scoutStds;
             end
         end

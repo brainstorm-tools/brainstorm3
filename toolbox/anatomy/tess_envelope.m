@@ -23,7 +23,7 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -184,6 +184,11 @@ if isRemesh
 else
     bst_progress('text', 'Envelope: Downsampling surface...');
     [sph_faces, sph_vert] = reducepatch(env_faces, env_vert, nvert / size(env_vert,1));
+end
+
+if isempty(sph_vert)
+    bst_error('The number of vertices chosen produces an empty envelope.', 'Surface envelope', 0);
+    return;
 end
 
 %% ===== CREATE OUTPUT STRUCTURE =====

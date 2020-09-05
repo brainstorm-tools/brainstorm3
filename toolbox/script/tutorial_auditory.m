@@ -11,7 +11,7 @@ function tutorial_auditory(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -37,6 +37,8 @@ AnatDir    = fullfile(tutorial_dir, 'sample_auditory', 'anatomy');
 Run1File   = fullfile(tutorial_dir, 'sample_auditory', 'data', 'S01_AEF_20131218_01.ds');
 Run2File   = fullfile(tutorial_dir, 'sample_auditory', 'data', 'S01_AEF_20131218_02.ds');
 NoiseFile  = fullfile(tutorial_dir, 'sample_auditory', 'data', 'S01_Noise_20131218_01.ds');
+Event1File = fullfile(Run1File, 'events_bad_01.mat');
+Event2File = fullfile(Run2File, 'events_bad_02.mat');
 % Check if the folder contains the required files
 if ~file_exist(Run1File)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_auditory.zip.']);
@@ -94,7 +96,7 @@ bst_process('CallProcess', 'process_snapshot', [sFilesRun1, sFilesRun2], [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 % ===== STIMULATION TRIGGERS =====
 % Process: Detect: standard_fix
@@ -176,7 +178,7 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', [sFilesRaw, sFilesNotch], 
 bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
     'target',   10, ...  % Frequency spectrum
     'modality', 1, ...   % MEG (All)
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 % Separate the three outputs
 sFilesRun1  = sFilesNotch(1);
@@ -246,7 +248,7 @@ tree_set_channelflag(sFilesRun2.FileName, 'AddBad', 'MRT51, MLO52, MLO42, MLO43'
 % Process: Snapshot: SSP projectors
 bst_process('CallProcess', 'process_snapshot', [sFilesRun1, sFilesRun2], [], ...
     'target',  2, ...  % SSP projectors
-    'comment', 'SSP projectors');
+    'Comment', 'SSP projectors');
 
 
 % ===== IMPORT EVENTS =====
@@ -313,7 +315,7 @@ sFilesDiff = bst_process('CallProcess', 'process_diff_ab', sFilesAvg(1), sFilesA
 bst_process('CallProcess', 'process_snapshot', [sFilesAvg, sFilesDiff], [], ...
     'target',   5, ...  % Recordings time series
     'modality', 1, ...  % MEG (All)
-    'comment',  'Evoked response');
+    'Comment',  'Evoked response');
 
 % Process: Snapshot: Recordings topography (contact sheet)
 bst_process('CallProcess', 'process_snapshot', [sFilesAvg, sFilesDiff], [], ...
@@ -321,7 +323,7 @@ bst_process('CallProcess', 'process_snapshot', [sFilesAvg, sFilesDiff], [], ...
     'modality', 1, ...  % MEG
     'contact_time',   [0, 0.350], ...
     'contact_nimage', 15, ...
-    'comment',  'Evoked response');
+    'Comment',  'Evoked response');
 
 
 % ===== SOURCE MODELING =====
@@ -342,7 +344,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesNoise, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFilesNoise, [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 % Minimum norm options
 MneOptions = struct(...
@@ -419,7 +421,7 @@ sFilesDiff = bst_process('CallProcess', 'process_diff_ab', sFilesSrcAvg(1), sFil
 %     'orient',   3, ...  % top
 %     'contact_time',   [0, 0.350], ...
 %     'contact_nimage', 15, ...
-%     'comment',  'Evoked response');
+%     'Comment',  'Evoked response');
 
      
 % Process: Delete conditions

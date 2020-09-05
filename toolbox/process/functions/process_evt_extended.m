@@ -7,7 +7,7 @@ function varargout = process_evt_extended( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -96,9 +96,9 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         iEvt = find(strcmpi(EvtNames{i}, {sEvents.label}));
         if isempty(iEvt)
             bst_report('Warning', sProcess, sInput, 'This file does not contain any event.');
-        elseif isempty(sEvents(iEvt).samples)
+        elseif isempty(sEvents(iEvt).times)
             bst_report('Warning', sProcess, sInput, ['Event category "' sEvents(iEvt).label '" is empty.']);
-        elseif (size(sEvents(iEvt).samples,1) > 1)
+        elseif (size(sEvents(iEvt).times,1) > 1)
             bst_report('Warning', sProcess, sInput, ['Event category "' sEvents(iEvt).label '" already contains extended events.']);
         else
             iEvtList(end+1) = iEvt;            
@@ -109,13 +109,12 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, sInput, 'No events to process.');
         return;
     end
-    % Snap time offset to the closest sample
-    OffsetSample = round(TimeWindow * sFreq);
         
     % ===== PROCESS EVENTS =====
     for i = 1:length(iEvtList)
-        sEvents(iEvtList(i)).samples = max(0, [sEvents(iEvtList(i)).samples + OffsetSample(1); sEvents(iEvtList(i)).samples + OffsetSample(2)]);
-        sEvents(iEvtList(i)).times   = sEvents(iEvtList(i)).samples / sFreq;
+        sEvents(iEvtList(i)).times = round([...
+            sEvents(iEvtList(i)).times + TimeWindow(1);
+            sEvents(iEvtList(i)).times + TimeWindow(2)] .* sFreq) ./ sFreq;
     end
         
     % ===== SAVE RESULT =====

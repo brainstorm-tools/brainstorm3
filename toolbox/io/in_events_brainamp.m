@@ -12,7 +12,7 @@ function events = in_events_brainamp(sFile, EventFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -86,13 +86,15 @@ for iEvt = 1:length(uniqueEvt)
     % Add event structure
     events(iEvt).label   = uniqueEvt{iEvt};
     events(iEvt).epochs  = ones(1, length(iMrk));   
-    events(iEvt).samples = [Markers{iMrk,3}];
+    samples = [Markers{iMrk,3}];
     if any([Markers{iMrk,4}] > 1)
-        events(iEvt).samples(2,:) = [Markers{iMrk,3}] + [Markers{iMrk,4}];
+        samples(2,:) = [Markers{iMrk,3}] + [Markers{iMrk,4}];
     end
-    events(iEvt).times      = events(iEvt).samples ./ sFile.prop.sfreq;
+    events(iEvt).times      = samples ./ sFile.prop.sfreq;
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
+    events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
 end
 
 

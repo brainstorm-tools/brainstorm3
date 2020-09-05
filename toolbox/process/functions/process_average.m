@@ -10,7 +10,7 @@ function varargout = process_average( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,9 +65,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.avg_func.Type    = 'radio';
     sProcess.options.avg_func.Value   = 1;
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === KEEP EVENTS
     sProcess.options.keepevents.Comment    = 'Keep all the event markers from the individual epochs';
     sProcess.options.keepevents.Type       = 'checkbox';
@@ -259,7 +261,7 @@ function [iGroups, GroupComments, GroupNames] = SortFiles(sInputs, avgtype)
                                 if ~isempty(sStudyAssoc2)
                                     trialComment{iInput} = sStudyAssoc2.Data(iFileAssoc2).Comment;
                                 else
-                                    bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sStudyAssoc.Result(iFileAssoc).DataFiles]);
+                                    bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sStudyAssoc.Result(iFileAssoc).DataFile]);
                                 end
                             else
                                 bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sInputs(iInput).DataFile]);
@@ -306,6 +308,7 @@ end
 
 %% ===== AVERAGE FILES =====
 function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, isWeighted, isMatchRows, isZeroBad)
+    OutputFile = [];
     % Parse inputs
     if (nargin < 7) || isempty(isZeroBad)
         isZeroBad = 1;
@@ -352,8 +355,9 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     end
     % Add messages to report
     if ~isempty(Messages)
-        if ~isempty(strfind(Messages, 'Error')) 
-            bst_report('Error', sProcess, sInputs, Messages); % make sure errors are recognized
+        if isempty(Stat)
+            bst_report('Error', sProcess, sInputs, Messages);
+            return;
         else
             bst_report('Warning', sProcess, sInputs, Messages);
         end
@@ -384,17 +388,7 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     
     % === CREATE OUTPUT STRUCTURE ===
     % Get output study
-    [sStudy, iStudy, Comment, uniqueDataFile] = bst_process('GetOutputStudy', sProcess, sInputs(iAvgFile));
-    
-    % Double check the averaged channels were the same by comparing to the
-    % channel file that was just created and which contains all averaged
-    % input channels.  This will catch channel differences with the same
-    % channel count.
-    if strcmpi(sInputs(1).FileType, 'data') && ...
-            size(Stat.mean, 1) ~= sStudy.Channel.nbChannels
-        bst_report('Error', sProcess, sInputs, 'Input files had different channels and were incorrectly averaged.');
-    end
-    
+    [sStudy, iStudy, Comment, uniqueDataFile] = bst_process('GetOutputStudy', sProcess, sInputs);
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         Comment = [strComment ': ' sProcess.options.Comment.Value, ' (' num2str(length(sInputs)) ' files)'];
@@ -423,6 +417,7 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     sMat.ChannelFlag = Stat.ChannelFlag;
     sMat.Time        = Stat.Time;
     sMat.nAvg        = Stat.nAvg;
+    sMat.Leff        = Stat.Leff;
     sMat.Comment     = Comment;
     
     % History: Average

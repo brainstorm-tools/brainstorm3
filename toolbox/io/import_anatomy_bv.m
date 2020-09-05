@@ -17,7 +17,7 @@ function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2019
 
 %% ===== PARSE INPUTS =====
 % Fiducials
@@ -116,8 +116,8 @@ end
 HeadFile   = {file_find(BvDir, '*head*.mesh'), file_find(BvDir, '*head*.gii')};
 TessLhFile = {file_find(BvDir, '*Lhemi*.mesh'), file_find(BvDir, '*Lhemi*.gii')};
 TessRhFile = {file_find(BvDir, '*Rhemi*.mesh'), file_find(BvDir, '*Rhemi*.gii')};
-TessLwFile = {file_find(BvDir, '*Lwhite*.mesh'), file_find(BvDir, '*Lwhite*.gii')};
-TessRwFile = {file_find(BvDir, '*Rwhite*.mesh'), file_find(BvDir, '*Rwhite*.gii')};
+TessLwFile = {file_find(BvDir, '*Lwhite*.mesh'), file_find(BvDir, '*Lwhite.gii')};
+TessRwFile = {file_find(BvDir, '*Rwhite*.mesh'), file_find(BvDir, '*Rwhite.gii')};
 % Find non-empty search results
 HeadFile(cellfun(@isempty, HeadFile)) = [];
 TessLhFile(cellfun(@isempty, TessLhFile)) = [];
@@ -127,6 +127,19 @@ TessRwFile(cellfun(@isempty, TessRwFile)) = [];
 if isempty(TessLhFile) || isempty(TessRhFile)
     errorMsg = [errorMsg 'Surface file was not found: Lhemi or Rhemi' 10];
 end
+% Find labels
+AnnotLwFiles = {file_find(BvDir, '*_Lwhite_parcels_marsAtlas.gii'), ...
+                file_find(BvDir, '*_Lwhite_parcels_model.gii'), ...
+                file_find(BvDir, '*_Lwhite_pole_cingular.gii'), ...
+                file_find(BvDir, '*_Lwhite_pole_insula.gii'), ...
+                file_find(BvDir, '*_Lwhite_sulcalines.gii')};
+AnnotRwFiles = {file_find(BvDir, '*_Rwhite_parcels_marsAtlas.gii'), ...
+                file_find(BvDir, '*_Rwhite_parcels_model.gii'), ...
+                file_find(BvDir, '*_Rwhite_pole_cingular.gii'), ...
+                file_find(BvDir, '*_Rwhite_pole_insula.gii'), ...
+                file_find(BvDir, '*_Rwhite_sulcalines.gii')};
+AnnotLwFiles(cellfun(@isempty, AnnotLwFiles)) = [];
+AnnotRwFiles(cellfun(@isempty, AnnotRwFiles)) = [];
 % Find fiducials definitions
 FidFile = file_find(BvDir, 'fiducials.m');
 % Find AC-PC file
@@ -319,6 +332,12 @@ if ~isempty(TessLwFile)
     % Import file
     [iLw, BstTessLwFile] = import_surfaces(iSubject, TessLwFile, 'ALL', 0);
     BstTessLwFile = BstTessLwFile{1};
+    % Load atlases
+    if ~isempty(AnnotLwFiles)
+        bst_progress('start', 'Import BrainVISA folder', 'Loading atlases: left...');
+        [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLwFiles, 1);
+        errorMsg = [errorMsg err];
+    end
     % Downsample
     [BstTessLwLowFile, iLwLow] = tess_downsize(BstTessLwFile, nVertHemi, 'reducepatch');
 end
@@ -327,6 +346,12 @@ if ~isempty(TessRwFile)
     % Import file
     [iRw, BstTessRwFile] = import_surfaces(iSubject, TessRwFile, 'ALL', 0);
     BstTessRwFile = BstTessRwFile{1};
+    % Load atlases
+    if ~isempty(AnnotRwFiles)
+        bst_progress('start', 'Import BrainVISA folder', 'Loading atlases: right...');
+        [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRwFiles, 1);
+        errorMsg = [errorMsg err];
+    end
     % Downsample
     [BstTessRwLowFile, iRwLow] = tess_downsize(BstTessRwFile, nVertHemi, 'reducepatch');
 end

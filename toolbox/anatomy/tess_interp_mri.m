@@ -13,7 +13,7 @@ function tess2mri_interp = tess_interp_mri(SurfaceFile, MRI)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,7 +38,7 @@ if ~isfield(MRI,'SCS') || ~isfield(MRI.SCS,'R') || ~isfield(MRI.SCS,'T') || isem
     error(['MRI SCS (Subject Coordinate System) was not defined or subjectimage file is from another version of Brainstorm.' 10 10,...
            'Please define the SCS fiducials on this MRI.']);
 end
-cubeSize = size(MRI.Cube);
+cubeSize = size(MRI.Cube(:,:,:,1));
 % Progres bar
 isProgress = bst_progress('isVisible');
 if ~isProgress

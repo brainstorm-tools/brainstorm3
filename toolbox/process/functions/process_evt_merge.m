@@ -5,7 +5,7 @@ function varargout = process_evt_merge( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -143,8 +143,9 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
     newEvent = events(iEvents(1));
     newEvent.label      = NewName;
     newEvent.times      = [events(iEvents).times];
-    newEvent.samples    = [events(iEvents).samples];
     newEvent.epochs     = [events(iEvents).epochs];
+    newEvent.channels   = [events(iEvents).channels];
+    newEvent.notes      = [events(iEvents).notes];
     % Reaction time: only if all the events have reaction time set
     if all(~cellfun(@isempty, {events(iEvents).reactTimes}))
         newEvent.reactTimes = [events(iEvents).reactTimes];
@@ -152,10 +153,11 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
         newEvent.reactTimes = [];
     end
     % Sort by samples indices, and remove redundant values
-    [tmp__, iSort] = unique(newEvent.samples(1,:));
-    newEvent.samples = newEvent.samples(:,iSort);
-    newEvent.times   = newEvent.times(:,iSort);
-    newEvent.epochs  = newEvent.epochs(iSort);
+    [tmp__, iSort] = unique(bst_round(newEvent.times(1,:), 9));
+    newEvent.times    = newEvent.times(:,iSort);
+    newEvent.epochs   = newEvent.epochs(iSort);
+    newEvent.channels = newEvent.channels(iSort);
+    newEvent.notes    = newEvent.notes(iSort);
     if ~isempty(newEvent.reactTimes)
         newEvent.reactTimes = newEvent.reactTimes(iSort);
     end

@@ -14,7 +14,7 @@ function sMat = in_bst_matrix(MatFile, varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function sMat = in_bst_matrix(MatFile, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2019
 
 %% ===== PARSE INPUTS =====
 % Get protocol folders
@@ -55,6 +55,10 @@ else
     if ismember('Value', FieldsToRead)
         FieldsToRead{end+1} = 'ZScore';
     end
+    % When reading Leff, make sure nAvg is read as well
+    if ismember('Leff', FieldsToRead) && ~ismember('nAvg', FieldsToRead)
+        FieldsToRead{end+1} = 'nAvg';
+    end
     % Read each field only once
     FieldsToRead = unique(FieldsToRead);
     % Read specified files only
@@ -66,10 +70,16 @@ end
 
 %% ===== FILL OTHER MISSING FIELDS =====
 for i = 1:length(FieldsToRead)
-    if ~isfield(sMat, FieldsToRead{i})
+    if ~isfield(sMat, FieldsToRead{i}) || isempty(sMat.(FieldsToRead{i}))
         switch(FieldsToRead{i}) 
             case 'nAvg'
                 sMat.(FieldsToRead{i}) = 1;
+            case 'Leff'
+                if isfield(sMat, 'nAvg') && ~isempty(sMat.nAvg)
+                    sMat.Leff = sMat.nAvg;
+                else
+                    sMat.Leff = 1;
+                end
             otherwise
                 sMat.(FieldsToRead{i}) = [];
         end
@@ -77,6 +87,7 @@ for i = 1:length(FieldsToRead)
 end
 
 %% ===== APPLY DYNAMIC ZSCORE =====
+% DEPRECATED
 % Check for structure integrity
 if ismember('ZScore', FieldsToRead) && ~isempty(sMat.ZScore) && (~isfield(sMat.ZScore, 'mean') || ~isfield(sMat.ZScore, 'std') || ~isfield(sMat.ZScore, 'abs') || ~isfield(sMat.ZScore, 'baseline') || isempty(sMat.ZScore.abs))
     sMat.ZScore = [];

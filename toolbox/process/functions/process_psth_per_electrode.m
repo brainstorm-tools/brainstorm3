@@ -1,19 +1,19 @@
-function varargout = process_rasterplot_per_electrode( varargin )
-% PROCESS_RASTERPLOT_PER_ELECTRODE: Computes a rasterplot per electrode.
+function varargout = process_psth_per_electrode( varargin )
+% PROCESS_PSTH_PER_ELECTRODE: Computes the PSTH per electrode.
 
 % It displays the binned firing rate on each electrode (of only the first 
 % neuron on each electrode if multiple have been detected). This can be nicely
 % visualized on the cortical surface if the positions of the electrodes
 % have been set, and show real time firing rate.
 % 
-% USAGE:    sProcess = process_rasterplot_per_electrode('GetDescription')
-%        OutputFiles = process_rasterplot_per_electrode('Run', sProcess, sInput)
+% USAGE:    sProcess = process_PSTH_per_electrode('GetDescription')
+%        OutputFiles = process_PSTH_per_electrode('Run', sProcess, sInput)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,7 +27,7 @@ function varargout = process_rasterplot_per_electrode( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis, 2018;
+% Author: Konstantinos Nasiotis, 2018-2019;
 
 eval(macro_method);
 end
@@ -36,7 +36,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Raster Plot Per Electrode';
+    sProcess.Comment     = 'PSTH Per Electrode';
     sProcess.FileTag     = 'raster';
     sProcess.Category    = 'custom';
     sProcess.SubGroup    = 'Electrophysiology';
@@ -153,8 +153,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         for iEvent = 1:length(trial.Events)
             [tmp, bin_it_belongs_to] = histc(trial.Events(iEvent).times, bins);
-            convertedEvents(iEvent).samples = bin_it_belongs_to;
-            
+
             bin_it_belongs_to(bin_it_belongs_to==0) = 1;
             convertedEvents(iEvent).times   = bins(bin_it_belongs_to);
             
@@ -172,7 +171,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
 
         FileMat.Std = [];
-        FileMat.Comment = ['Raster Plot: ' trial.Comment];
+        FileMat.Comment = ['PSTH: ' trial.Comment];
         FileMat.DataType = 'recordings';
         
         FileMat.ChannelFlag = temp.ChannelFlag;
@@ -186,12 +185,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...
-            ['Raster Plot per electrode: ' num2str(bin_size) ' ms']);
+            ['PSTH per electrode: ' num2str(bin_size) ' ms']);
 
         % Get output study
         sTargetStudy = bst_get('Study', iStudy);
         % Output filename
-        FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'data_rasterplot');
+        FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'data_psth');
         OutputFiles = {FileName};
         % Save output file and add to database
         bst_save(FileName, FileMat, 'v6');
@@ -199,6 +198,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     end
 
+    
     
     
     % Display report to user

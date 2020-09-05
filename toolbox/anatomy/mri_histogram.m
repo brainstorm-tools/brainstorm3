@@ -11,7 +11,7 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 %     - volume type  : Indication about what is representing this volume
 %                       - 'head'  : full head volume MRI
 %                       - 'brain' : only the brain
-%                       - 'mask'  : a binary mask (grey matter, white matter, etc.)
+%                       - 'mask'  : a binary mask (gray matter, white matter, etc.)
 %                       - '' or not specified : unknown
 % OUTPUT:
 %     - Histogram : structure
@@ -36,7 +36,7 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -128,6 +128,11 @@ Histogram.smoothFncY = histoY;
 
 % Local minima calculation
 minIndex = find((histoY(2:N-1)<histoY(1:N-2)) & (histoY(2:N-1)<histoY(3:N))) + 1;
+% If there are too few: compute differently
+if (length(maxIndex) - length(minIndex) > 1)
+    minIndex = find((histoY(2:N-1)<=histoY(1:N-2)) & (histoY(2:N-1)<=histoY(3:N))) + 1;
+    minIndex(diff(minIndex) == 1) = [];
+end
     
 % Detect and deleting all "wrong" extrema (that are too close to each other)
 epsilon = max(histoX)*.02;
@@ -207,7 +212,7 @@ end
 [unikCumulFncY, unikCumulFncYm, unikCumulFncYn] = unique(Histogram.cumulFncY);
 unikFncX = Histogram.fncX(unikCumulFncYm);
 
-% Definition of the grey matter and white matter intensity levels
+% Definition of the gray matter and white matter intensity levels
 switch(volumeType)
     % Head MRI
     case {'', 'head'}
@@ -246,8 +251,8 @@ switch(volumeType)
         end
         
     case 'brain'
-        % Determine an intensity value for the background/grey matter limit
-        % and the grey matter/white matter level
+        % Determine an intensity value for the background/gray matter limit
+        % and the gray matter/white matter level
         % 
         defaultBg = round(interp1(unikCumulFncY, unikFncX, .08));
         defaultWhite = round(interp1(unikCumulFncY, unikFncX, .7));

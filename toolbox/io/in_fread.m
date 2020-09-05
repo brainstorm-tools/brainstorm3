@@ -20,7 +20,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -62,13 +62,10 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF'}) 
+if ismember(sFile.format, {'FIF', 'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF', 'MNE-PYTHON'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
-%     if (sfid == -1)
-%         error(['The following file has been removed or is used by another program:' 10 sFile.filename]);
-%     end
 end
 
 % Check whether optional field precision is available
@@ -81,7 +78,7 @@ end
 %% ===== READ RECORDINGS BLOCK =====
 switch (sFile.format)
     case 'FIF'
-        [F,TimeVector] = in_fread_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels);
+        [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds, iChannels);
     case {'CTF', 'CTF-CONTINUOUS'}
         isContinuous = strcmpi(sFile.format, 'CTF-CONTINUOUS');
         F = in_fread_ctf(sFile, iEpoch, SamplesBounds, ChannelRange, isContinuous);
@@ -195,7 +192,8 @@ switch (sFile.format)
         F = in_fread_bst(sFile, sfid, SamplesBounds, ChannelRange);
     case 'BST-DATA'
         if ~isempty(SamplesBounds)
-            iTimes = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+            fileSamples = round(sFile.prop.times * sFile.prop.sfreq);
+            iTimes = (SamplesBounds(1):SamplesBounds(2)) - fileSamples(1) + 1;
         else
             iTimes = 1:size(sFile.header.F,2);
         end
@@ -212,7 +210,8 @@ switch (sFile.format)
     case {'NWB', 'NWB-CONTINUOUS'}
         isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
         F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
-        
+    case 'MNE-PYTHON'
+        [F, TimeVector] = in_fread_mne(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels);
     otherwise
         error('Cannot read data from this file');
 end
@@ -241,9 +240,11 @@ if isempty(TimeVector)
     if ~isempty(SamplesBounds)
         TimeVector = (SamplesBounds(1) : SamplesBounds(2)) ./ sFile.prop.sfreq;
     elseif ~isempty(iEpoch) && ~isempty(ImportOptions) && strcmpi(ImportOptions.ImportMode, 'Epoch') && ~isempty(sFile.epochs)
-        TimeVector = (sFile.epochs(iEpoch).samples(1) : sFile.epochs(iEpoch).samples(2)) / sFile.prop.sfreq;
+        epochSamples = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+        TimeVector = (epochSamples(1) : epochSamples(2)) / sFile.prop.sfreq;
     else
-        TimeVector = (sFile.prop.samples(1) : sFile.prop.samples(2)) / sFile.prop.sfreq;
+        fileSamples = round(sFile.prop.times * sFile.prop.sfreq);
+        TimeVector = (fileSamples(1) : fileSamples(2)) / sFile.prop.sfreq;
     end
 end
 % If epoching the recordings (ie. reading by events): Use imported time window
@@ -256,13 +257,16 @@ end
 
 %% ===== GRADIENT CORRECTION =====
 % 3rd-order gradient correction
-if ~isempty(ImportOptions) && ImportOptions.UseCtfComp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.MegRefCoef) && (sFile.prop.currCtfComp ~= sFile.prop.destCtfComp)
-    iMeg = good_channel(ChannelMat.Channel,[],'MEG');
-    iRef = good_channel(ChannelMat.Channel,[],'MEG REF');
-    if ~isempty(iChannels) && (length(iChannels) ~= length(ChannelMat.Channel))
-        error('CTF compensators require that you read all the channels at the same time.');
-    else
-        F(iMeg,:) = F(iMeg,:) - ChannelMat.MegRefCoef * F(iRef,:);
+if ~isempty(ImportOptions) && ImportOptions.UseCtfComp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.MegRefCoef) && ~isempty(sFile.prop.currCtfComp) && ~isequal(sFile.prop.currCtfComp, sFile.prop.destCtfComp)
+    AllSensorTypes = unique({ChannelMat.Channel(iChannels).Type});
+    if isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'}))
+        iMeg = good_channel(ChannelMat.Channel,[],'MEG');
+        iRef = good_channel(ChannelMat.Channel,[],'MEG REF');
+        if ~isempty(iChannels) && (length(iChannels) ~= length(ChannelMat.Channel))
+            error('CTF compensators require that you read all the channels at the same time.');
+        else
+            F(iMeg,:) = F(iMeg,:) - ChannelMat.MegRefCoef * F(iRef,:);
+        end
     end
 end
 
@@ -270,10 +274,10 @@ end
 if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BST-DATA') && ~isempty(ChannelMat) && ~isempty(ChannelMat.Projector)
     % Build projector matrix
     Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
-    % Get bad channels
-    iBadChan = find(sFile.channelflag == -1);
     % Apply projector
     if ~isempty(Projector)
+        % Get bad channels
+        iBadChan = find(sFile.channelflag == -1);
         % Remove bad channels from the projector (similar as in process_megreg)
         if ~isempty(iBadChan)
             Projector(iBadChan,:) = 0;
@@ -282,13 +286,17 @@ if ~isempty(ImportOptions) && ImportOptions.UseSsp && ~strcmpi(sFile.format, 'BS
         end
         % Apply projector
         if ~isempty(iChannels)
-            % If there are projectors involved and only subselection of channels: 
-            % We must have all data needed to apply the projector, otherwise it doesn't make sense
-            missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
-            if ~isempty(missingChannels)
-                bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']); 
-            else
-                F = Projector(iChannels, iChannels) * F;
+            % Channels that are modified by projector.
+            isProjected = sum(Projector ~= 0, 2) > 1;
+            if any(isProjected(iChannels))
+                % If there are projectors involved and only subselection of channels:
+                % We must have all data needed to apply the projector, otherwise it doesn't make sense
+                missingChannels = setdiff(find(any(Projector(iChannels,:), 1)), iChannels);
+                if ~isempty(missingChannels)
+                    bst_report('Warning', 'process_import_data_raw', [], ['Missing channels in order to apply existing SSP/ICA projectors. To read the corrected values for channel "' ChannelMat.Channel(iChannels(1)).Name '", first apply the existing projectors with the process Artifacts > Apply SSP and CTF compensation']);
+                else
+                    F = Projector(iChannels, iChannels) * F;
+                end
             end
         else
             F = Projector * F;
@@ -311,7 +319,11 @@ if ~isempty(ImportOptions) && ~isempty(ImportOptions.RemoveBaseline)
     % Remove baseline
     if ~isempty(iTimesBl)
         % Exclude system channels from the baseline correction
-        iChanBl = find(~ismember(lower({ChannelMat.Channel.Type}), {'stim','video','sysclock'}));
+        if ~isempty(ChannelMat) && ~isempty(ChannelMat.Channel)
+            iChanBl = find(~ismember(lower({ChannelMat.Channel.Type}), {'stim','video','sysclock'}));
+        else
+            iChanBl = 1:size(F,1);
+        end
         % Compute baseline
         blValue = mean(F(iChanBl,iTimesBl), 2);
         % Remove from recordings

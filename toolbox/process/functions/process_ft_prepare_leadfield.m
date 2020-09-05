@@ -5,7 +5,7 @@ function varargout = process_ft_prepare_leadfield( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_ft_prepare_leadfield( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2020
 
 eval(macro_method);
 end
@@ -179,54 +179,38 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % FieldTrip: Compute surfaces using ft_volumesegment and ft_prepare_headmodel
             case 'fieldtrip'
                 % Get previously computed mri mask from the database
-                iMaskBrain = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_innerskull'));
-                iMaskSkull = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_outerskull'));
-                iMaskScalp = find(strcmpi({sSubject.Anatomy.Comment}, 'mask_scalp'));
-                % Mask exists: load it and convert it to FieldTrip
-                if ~isempty(iMaskBrain) && (~isBEM || (~isempty(iMaskSkull) && ~isempty(iMaskScalp)))
-                    bst_progress('text', 'Loading brain mask...');
-                    % Load saved brain mask
-                    sMaskBrain = in_mri_bst(sSubject.Anatomy(iMaskBrain).FileName);
-                    % Convert to FieldTrip structure
-                    ftGeometry = out_fieldtrip_mri(sMaskBrain, 'brain');
-                    % For BEM models, load more compartments
-                    if isBEM
-                        % Skull
-                        sMaskSkull = in_mri_bst(sSubject.Anatomy(iMaskSkull).FileName);
-                        ftMaskSkull = out_fieldtrip_mri(sMaskSkull, 'skull');
-                        ftGeometry.skull = ftMaskSkull.skull;
-                        % Scalp
-                        sMaskScalp = in_mri_bst(sSubject.Anatomy(iMaskScalp).FileName);
-                        ftMaskScalp = out_fieldtrip_mri(sMaskScalp, 'scalp');
-                        ftGeometry.scalp = ftMaskScalp.scalp;
-                    end
-                % Compute segmentation with ft_volumesegment
-                else
-                    % Messages
-                    bst_progress('text', 'Calling FieldTrip function: ft_volumesegment...');
-                    bst_report('Info', sProcess, [], 'To avoid the segmentation of the MRI volume every time you compute a head model with ft_prepare_leadfield, you can run the process "Import anatomy > FieldTrip: ft_volumesegment", it would save the intermediate results in the database.');
-                    % Load Brainstorm MRI
-                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                    sMri = in_mri_bst(MriFile);
-                    % Convert to FieldTrip structure
-                    ftMri = out_fieldtrip_mri(sMri);
-                    % Prepare FieldTrip cfg structure
-                    cfg = [];
-                    if isBEM
-                        cfg.output = {'brain', 'skull', 'scalp'};
-                    else
-                        cfg.output = {'brain'};
-                    end
-                    % Run ft_volumesegment
-                    ftGeometry = ft_volumesegment(cfg, ftMri);
-                    % Check if something was returned
-                    if isempty(ftGeometry)
-                        bst_report('Error', sProcess, sInputs, 'Something went wrong during the execution of ft_volumesegment. Check the command window...');
+                iTissue = find(strcmpi({sSubject.Anatomy.Comment}, 'tissues'), 1);
+                if isempty(iTissue)
+                    iTissue = find(~cellfun(@(c)isempty(strfind(lower(c), 'tissue')), {sSubject.Anatomy.Comment}), 1);
+                end
+                % If tissue mask doesn't exist yet: compute it
+                if isempty(iTissue)
+                    % Segmentation process
+                    OPTIONS.layers     = {'brain', 'skull', 'scalp'};
+                    OPTIONS.isSaveTess = 0;
+                    [isOk, errMsg, TissueFile] = process_ft_volumesegment('Compute', iSubject, [], OPTIONS);
+                    if ~isOk
+                        bst_report('Error', sProcess, sInputs, errMsg);
                         return;
                     end
+                    % Get index of tissue file
+                    [sSubject, iSubject, iTissue] = bst_get('MriFile', TissueFile);
                 end
-                % Convert to meters (same as the sensors)
-                ftGeometry = ft_convert_units(ftGeometry, 'm');
+                % Load saved brain mask
+                bst_progress('text', 'Loading tissue mask...');
+                sMriTissues = in_mri_bst(sSubject.Anatomy(iTissue).FileName);
+                % Convert to FieldTrip structure
+                ftGeometry = out_fieldtrip_mri(sMriTissues, 'tissues');
+                % Brain mask
+                ftGeometry.brain = (ftGeometry.tissues >= 1) & (ftGeometry.tissues <= 3);
+                % For BEM models: skull and scalp masks
+                if isBEM
+                    % Skull mask
+                    ftGeometry.skull = (ftGeometry.tissues == 4);
+                    % Scalp
+                    ftGeometry.scalp = (ftGeometry.tissues == 5);
+                end
+                ftGeometry = rmfield(ftGeometry, 'tissues');
                 
             % Brainstorm: Use the surfaces available in the database
             case 'brainstorm'
@@ -301,8 +285,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg.grad   = ftGrad;    % Sensor positions
             % Call FieldTrip function: ft_prepare_headmodel
             ftHeadmodelMeg = ft_prepare_headmodel(cfg, ftGeometry);
-            % Convert to meters (same units as the sensors)
-            ftHeadmodelMeg = ft_convert_units(ftHeadmodelMeg, 'm');
+%             % Convert to meters (same units as the sensors)
+%             ftHeadmodelMeg = ft_convert_units(ftHeadmodelMeg, 'm');
             % Display sensors/headmodel alignment
             if isVerbose
                 figure; hold on;
@@ -346,8 +330,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cfg.elec   = ftElec;    % Sensor positions
             % Call FieldTrip function: ft_prepare_headmodel
             ftHeadmodelEeg = ft_prepare_headmodel(cfg, ftGeometry);
-            % Convert to meters (same units as the sensors)
-            ftHeadmodelEeg = ft_convert_units(ftHeadmodelEeg, 'm');
+%             % Convert to meters (same units as the sensors)
+%             ftHeadmodelEeg = ft_convert_units(ftHeadmodelEeg, 'm');
             % Display sensors/headmodel alignment
             if isVerbose
                 figure; hold on;

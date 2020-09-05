@@ -19,7 +19,7 @@ function varargout = panel_nodelist( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -76,7 +76,7 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             jScroll = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jTree);
             jPanel.add(jScroll, BorderLayout.CENTER);
             % Callbacks
-            java_setcb(jTree, 'MouseClickedCallback', @TreeClicked_Callback, ...
+            java_setcb(jTree, 'MouseClickedCallback', @(h,ev)TreeClicked_Callback(nodelistName, ev), ...
                        'KeyPressedCallback',   @TreeKeyboard_Callback, ...
                        'FocusLostCallback',    @(h,ev)jTree.getSelectionModel().setSelectionPath([]));
             java_setcb(jTree.getModel(), 'TreeStructureChangedCallback', @(h,ev)TreeStructureChanged_Callback(nodelistName));
@@ -87,7 +87,7 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
             % Initialize other undefined variables
             jBorder = [];
             % Callbacks
-            java_setcb(jTree, 'MouseClickedCallback', @TreeClicked_Callback, ...
+            java_setcb(jTree, 'MouseClickedCallback', @(h,ev)TreeClicked_Callback(nodelistName, ev), ...
                        'KeyPressedCallback',   @TreeKeyboard_Callback, ...
                        'FocusLostCallback',    @(h,ev)jTree.getSelectionModel().setSelectionInterval(-1,-1));
             java_setcb(jTree.getModel(), 'TableChangedCallback', @(h,ev)UpdatePanel(nodelistName));
@@ -118,16 +118,16 @@ function nodelist = CreatePanel(nodelistName, nodelistComment, listType) %#ok<DE
 %  ===== LOCAL CALLBACKS ===================================================
 %  =========================================================================
     %% ===== TREE: CLICKED CALLBACK =====
-    function TreeClicked_Callback(h,ev)
+    function TreeClicked_Callback(nodelistName, ev)
         import org.brainstorm.icon.*;
         % Process right click
         if (ev.getButton() == ev.BUTTON3) && ev.getSource().isEnabled()
             % Create popup menu
             jPopup = java_create('javax.swing.JPopupMenu');
             % Menu "Copy file list"
-            gui_component('MenuItem', jPopup, [], 'Copy list to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopyPathList());
+            gui_component('MenuItem', jPopup, [], 'Copy list to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopyPathList(nodelistName));
             % Menu "Paste file list"
-            gui_component('MenuItem', jPopup, [], 'Paste list from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PastePathList());
+            gui_component('MenuItem', jPopup, [], 'Paste list from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PastePathList(nodelistName));
             jPopup.addSeparator();
             % Menu "Remove from list"
             gui_component('MenuItem', jPopup, [], 'Clear list', IconLoader.ICON_DELETE, [], @(h,ev)ResetAllLists());
@@ -254,23 +254,26 @@ function ResetAllLists()
         GlobalData.Program.GUI.nodelists(i).jTree.removeAllNodes();
     end
 end
+% Reset a specific list
+function ResetList(nodelistName)
+    global GlobalData;
+    iNodelist = find(strcmpi({GlobalData.Program.GUI.nodelists.name}, nodelistName));
+    GlobalData.Program.GUI.nodelists(iNodelist).jTree.removeAllNodes();
+end
 
 
 %% ===== COPY PATH LIST TO CLIPBOARD  =====
-function CopyPathList()
-     % Get selected process panel
-    jTabProcess = bst_get('PanelContainer', 'process');
-    selPanel = char(jTabProcess.getTitleAt(jTabProcess.getSelectedIndex()));
-    if strcmpi(selPanel, 'Process1')
+function CopyPathList(nodelistName)
+    if strcmpi(nodelistName, 'Process1')
         % Get files
-        sFiles = panel_nodelist('GetFiles', selPanel);
+        sFiles = panel_nodelist('GetFiles', 'Process1');
         % Concatenate file paths in one multiline string
         str = panel_process_select('WriteFileNames', sFiles, 'sFiles', 1);
     else
         % Get files
-        sFilesA = panel_nodelist('GetFiles', [selPanel 'A']);
-        sFilesB = panel_nodelist('GetFiles', [selPanel 'B']);
-        strA = panel_process_select('WriteFileNames', sFilesA, 'sFiles', 1);
+        sFilesA = panel_nodelist('GetFiles', 'Process2A');
+        sFilesB = panel_nodelist('GetFiles', 'Process2B');
+        strA = panel_process_select('WriteFileNames', sFilesA, 'sFiles1', 1);
         strB = panel_process_select('WriteFileNames', sFilesB, 'sFiles2', 1);
         str = [strA 10 strB];
     end
@@ -279,38 +282,75 @@ function CopyPathList()
 end
 
 %% ===== PASTE PATH LIST FROM CLIPBOARD  =====
-function PastePathList()
+function PastePathList(nodelistName)
     % Get clipboard data
     str = strtrim(clipboard('paste'));
     if isempty(str)
         return;
     end
     
-    % Get selected process panel
-    jTabProcess = bst_get('PanelContainer', 'process');
-    selPanel = char(jTabProcess.getTitleAt(jTabProcess.getSelectedIndex()));
-    isProcess1 = strcmpi(selPanel, 'Process1');
-    
     % Parse clipboard data
     try
-        eval(str);
-        numEmptyVars = 0;
-        if exist('sFiles', 'var') ~= 1
-            if exist('sFiles1', 'var') ~= 1
-                if isProcess1
-                    error('No files.');
+        % If there is an equal sign, this is a Matlab-formatted list
+        if length(strfind(str, '=')) >= 1
+            sFiles = [];
+            sFiles1 = [];
+            sFiles2 = [];
+            eval(str);
+        
+        % Otherwise, treat this as an unknown list with either commas (,;)
+        % or white spaces/tabs/line breaks as delimiters
+        else
+            sFiles1 = [];
+            sFiles2 = []; % Only a single list is supported here
+            
+            nChars = length(str);
+            sFiles = {};
+            nFiles = 0;
+            isReading = 0;
+            foundDelimiter = 0;
+            current = [];
+
+            for iChar = 1:nChars
+                c = str(iChar);
+                saveCurrent = 0;
+
+                % Quotes signal beginning or end of a single file path
+                if ismember(c, {'''', '"'})
+                    if isReading
+                        saveCurrent = 1;
+                        isReading = 0;
+                    else
+                        current = [];
+                        isReading = 1;
+                    end
+                % Delimiter signal next file
+                elseif ismember(c, {',', ';'}) && ~isReading
+                    foundDelimiter = 1;
+                    saveCurrent = 1;
+                % White spaces are either skipped or delimiters
+                elseif ismember(c, {' ', char(9), char(10)}) && ~isReading
+                    if foundDelimiter
+                        % skip
+                    else
+                        saveCurrent = 1;
+                    end
+                % Read character
+                else
+                    current = [current c];
                 end
-                sFiles = [];
-                numEmptyVars = numEmptyVars + 1;
-            else
-                sFiles = sFiles1;
+
+                if saveCurrent && ~isempty(current)
+                    sFiles{end + 1} = current;
+                    nFiles = nFiles + 1;
+                    current = [];
+                end
+            end
+
+            if ~isempty(current) && length(current) > 2
+                sFiles{end + 1} = current;
             end
         end
-        if exist('sFiles2', 'var') ~= 1
-            sFiles2 = [];
-            numEmptyVars = numEmptyVars + 1;
-        end
-        assert(numEmptyVars < 2);
     catch
         java_dialog('error', ['Could not properly parse your list of files.' 10 ...
             'Try to copy some files to see the proper format.']);
@@ -318,13 +358,55 @@ function PastePathList()
     end
     
     % Check whether we're overwriting files
+    isProcess1 = strcmpi(nodelistName, 'Process1');
     if isProcess1
-        sPrevFiles = panel_nodelist('GetFiles', selPanel);
+        sPrevFiles = panel_nodelist('GetFiles', 'Process1');
         overwrite = ~isempty(sPrevFiles);
+        % Get new files, with priority: sFiles > sFiles1 > sFiles2
+        if ~isempty(sFiles)
+            sNewFiles = sFiles;
+        elseif ~isempty(sFiles1)
+            sNewFiles = sFiles1;
+        elseif ~isempty(sFiles2)
+            sNewFiles = sFiles2;
+        else
+            % Stop if we have no files
+            return;
+        end
     else
-        sPrevFilesA = panel_nodelist('GetFiles', [selPanel 'A']);
-        sPrevFilesB = panel_nodelist('GetFiles', [selPanel 'B']);
+        sPrevFilesA = panel_nodelist('GetFiles', 'Process2A');
+        sPrevFilesB = panel_nodelist('GetFiles', 'Process2B');
         overwrite = ~isempty(sPrevFilesA) || ~isempty(sPrevFilesB);
+        
+        % Associate list of files with process box (0/1 -> A, 2 -> B)
+        if ~isempty(sFiles1)
+            sNewFilesA = sFiles1;
+        elseif ~isempty(sFiles) && ~isempty(sFiles2)
+            sNewFilesA = sFiles;
+            sFiles = [];
+        else
+            sNewFilesA = [];
+        end
+        if ~isempty(sFiles2)
+            sNewFilesB = sFiles2;
+        else
+            sNewFilesB = [];
+        end
+        
+        % Associate non-numbered list of file with selected list (A or B)
+        if ~isempty(sFiles)
+            isProcess2A = strcmpi(nodelistName, 'Process2A');
+            if isProcess2A && isempty(sNewFilesA)
+                sNewFilesA = sFiles;
+            elseif ~isProcess2A && isempty(sNewFilesB)
+                sNewFilesB = sFiles;
+            end
+        end
+        
+        % Stop if we have no new files
+        if isempty(sNewFilesA) && isempty(sNewFilesB)
+            return;
+        end
     end
     
     % Warn user if we're overwriting files
@@ -337,15 +419,19 @@ function PastePathList()
         end
     end
     
-    % Clear process box
-    ResetAllLists();
-    
     % Add new files
     if isProcess1
-        AddFiles('Process1', sFiles);
+        ResetList('Process1');
+        AddFiles('Process1', sNewFiles);
     else
-        AddFiles('Process2A', sFiles);
-        AddFiles('Process2B', sFiles2);
+        if ~isempty(sNewFilesA)
+            ResetList('Process2A');
+            AddFiles('Process2A', sNewFilesA);
+        end
+        if ~isempty(sNewFilesB)
+            ResetList('Process2B');
+            AddFiles('Process2B', sNewFilesB);
+        end
     end
 end
 

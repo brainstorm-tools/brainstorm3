@@ -13,7 +13,7 @@ function [sFile, ChannelMat] = in_fopen_4d(DataFile, ImportOptions)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -95,8 +95,7 @@ sFile.header     = header;
 nSamplesPre = double(round(header.header_data.FirstLatency * header.header_data.SampleFrequency));
 nSamples    = double(header.epoch_data(1).pts_in_epoch);
 sFile.prop.sfreq   = header.header_data.SampleFrequency;
-sFile.prop.samples = double([-nSamplesPre, nSamples - nSamplesPre - 1]);
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = double([-nSamplesPre, nSamples - nSamplesPre - 1]) ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = header.header_data.TotalEpochs;
 
 %% ===== CHANNELS =====
@@ -335,7 +334,6 @@ if (nEpochs > 1)
     % Build epochs structure
     for i = 1:nEpochs
         sFile.epochs(i).label = sprintf('Epoch (#%d)', i);
-        sFile.epochs(i).samples = sFile.prop.samples;
         sFile.epochs(i).times   = sFile.prop.times;
         sFile.epochs(i).nAvg    = 1;
         sFile.epochs(i).select  = 1;
@@ -401,13 +399,19 @@ if isfield(header, 'process') && isfield(header.process, 'type')
                         iEvent = length(sFile.events) + 1;
                         sFile.events(iEvent) = db_template('event');
                     end
-                    sFile.events(iEvent).label      = evtLabel;
+                    sFile.events(iEvent).label = evtLabel;
                 end
                 % Add occurrence of this event
-                iOcc = length(sFile.events(iEvent).samples) + 1;
-                sFile.events(iEvent).epochs(iOcc)  = 1;
-                sFile.events(iEvent).times(iOcc)   = evtTime;
-                sFile.events(iEvent).samples(iOcc) = round(evtTime .* sFile.prop.sfreq);
+                iOcc = length(sFile.events(iEvent).times) + 1;
+                sFile.events(iEvent).epochs(iOcc)   = 1;
+                sFile.events(iEvent).times(iOcc)    = round(evtTime .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+                if (iOcc == 1)
+                    sFile.events(iEvent).channels = {{}};
+                    sFile.events(iEvent).notes    = {[]};
+                else
+                    sFile.events(iEvent).channels{iOcc} = {};
+                    sFile.events(iEvent).notes{iOcc}    = [];
+                end
             end
         end
     end

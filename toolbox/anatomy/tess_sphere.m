@@ -10,7 +10,7 @@ function [vert, faces] = tess_sphere(nvert, DEBUG)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ if (nargin < 1) || isempty(nvert)
     nvert = 1922;
 else
     % Get the closest possible number of points
-    values = [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962];
+    values = [12 32 42 92 122 162 273 362 482 642 812 1082 1442 1922 2432 2562 3242 4322 5762 7682 7292 9722 10242 12962 40962];
     nvert = values(bst_closest(nvert, values));
 end
 % Create icosahedron (fieldtrip function)
@@ -66,6 +66,7 @@ switch(nvert)
     case 7292,   n1 = 6;  n2 = 0;
     case 9722,   n1 = 5;  n2 = 1;
     case 12962,  n1 = 4;  n2 = 2;
+    case 40962,  n1 = 0;  n2 = 6;
 end
 
 % Refine sphere

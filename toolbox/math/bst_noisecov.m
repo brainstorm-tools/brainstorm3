@@ -20,7 +20,7 @@ function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Opti
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Opti
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2016
+% Authors: Francois Tadel, 2009-2019
 
 %% ===== RETURN DEFAULT OPTIONS =====
 % Options structure
@@ -135,7 +135,7 @@ else
     [badSeg, badEpochs] = panel_record('GetBadSegments', sFile);
     
     % Initialize DataMats structure
-    DataMats = repmat(struct('Time', [], 'nAvg', [], 'iEpoch', [], 'iBadTime', []), 0);
+    DataMats = repmat(struct('Time', [], 'nAvg', [], 'Leff', [], 'iEpoch', [], 'iBadTime', []), 0);
     % Define size of blocks to read
     MAX_BLOCK_SIZE = 10000;
     % Loop on epochs
@@ -153,10 +153,10 @@ else
         end
         % Get total number of samples
         if ~isempty(sFile.epochs)
-            samples = double(sFile.epochs(iEpoch).samples);
+            samples = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
             nAvg = double(sFile.epochs(iEpoch).nAvg);
         else
-            samples = double(sFile.prop.samples);
+            samples = round(sFile.prop.times .* sFile.prop.sfreq);
             nAvg = 1;
         end
         totalSmpLength = double(samples(2) - samples(1)) + 1;
@@ -172,6 +172,7 @@ else
             DataMats(iNew).iEpoch = iEpoch;
             DataMats(iNew).Time   = smpList ./ sFile.prop.sfreq;
             DataMats(iNew).nAvg   = nAvg;
+            DataMats(iNew).Leff   = nAvg;
             % Remove the portions that have bad segments in them
             iBadTime = [];
             for ix = 1:size(badSegEpoc, 2)
@@ -247,8 +248,10 @@ if strcmpi(Options.RemoveDcOffset, 'all')
         iGoodChan = intersect(find(DataMat.ChannelFlag == 1), iChan);
         
         % === Compute average ===
-        Favg(iGoodChan)   = Favg(iGoodChan)   + double(DataMat.nAvg) .* sum(DataMat.F(iGoodChan,iTimeBaseline),2);
-        Ntotal(iGoodChan) = Ntotal(iGoodChan) + double(DataMat.nAvg) .* length(iTimeBaseline);
+        % Favg(iGoodChan)   = Favg(iGoodChan)   + double(DataMat.nAvg) .* sum(DataMat.F(iGoodChan,iTimeBaseline),2);
+        % Ntotal(iGoodChan) = Ntotal(iGoodChan) + double(DataMat.nAvg) .* length(iTimeBaseline);
+        Favg(iGoodChan)   = Favg(iGoodChan)   + double(DataMat.Leff) .* sum(DataMat.F(iGoodChan,iTimeBaseline),2);
+        Ntotal(iGoodChan) = Ntotal(iGoodChan) + double(DataMat.Leff) .* length(iTimeBaseline);
     end
     % Remove zero-values in Ntotal
     Ntotal(Ntotal == 0) = 1;
@@ -286,8 +289,10 @@ for iFile = 1:nBlocks
     % Remove average
     DataMat.F(iGoodChan,iTimeBaseline) = bst_bsxfun(@minus, DataMat.F(iGoodChan,iTimeBaseline), Favg(iGoodChan,1));
     % Compute covariance for this file
-    fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
-    fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
+    % fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
+    % fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
+    fileCov  = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
+    fileCov2 = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
     % Add file covariance to accumulator
     NoiseCov(iGoodChan,iGoodChan)     = NoiseCov(iGoodChan,iGoodChan)     + fileCov;
     FourthMoment(iGoodChan,iGoodChan) = FourthMoment(iGoodChan,iGoodChan) + fileCov2;
@@ -326,13 +331,21 @@ for i = 1:length(allTypes)
     end
 end
 % Add history entry
-if isDataCov,
-    NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d samples): DataWindow [%1.2f, %1.2f]ms, %s', ...
-        nBlocks, nSamplesTotal, Options.DataTimeWindow * 1000, Options.RemoveDcOffset));
+if isDataCov
+    if (max(abs(Options.DataTimeWindow)) > 2)
+        strTime = sprintf('Data=[%1.3f, %1.3f]s, Baseline=[%1.3f, %1.3f]s', Options.DataTimeWindow, Options.Baseline);
+    else
+        strTime = sprintf('Data=[%d, %d]ms, Baseline=[%d, %d]ms', round(Options.DataTimeWindow * 1000), round(Options.Baseline * 1000));
+    end
 else
-    NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d samples): Baseline [%1.2f, %1.2f]ms, %s', ...
-        nBlocks, nSamplesTotal, Options.Baseline * 1000, Options.RemoveDcOffset));
+    if (max(abs(Options.Baseline)) > 2)
+        strTime = sprintf('[%1.3f, %1.3f]s', Options.Baseline);
+    else
+        strTime = sprintf('[%d, %d]ms', round(Options.Baseline * 1000));
+    end
 end
+NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d blocks, %d samples): %s, %s', ...
+    nFiles, nBlocks, nSamplesTotal, strTime, Options.RemoveDcOffset));
 % Save in database
 NoiseCovFiles = import_noisecov(iTargetStudies, NoiseCovMat, Options.ReplaceFile, isDataCov);
 % Close progress bar
@@ -351,7 +364,7 @@ bst_progress('stop');
         iTimeCov = [];
         if ~isRaw
             bst_progress('text', ['File: ' DataFiles{iFile}]);
-            DataMat = in_bst_data(DataFiles{iFile}, 'F', 'ChannelFlag', 'Time', 'nAvg');
+            DataMat = in_bst_data(DataFiles{iFile}, 'F', 'ChannelFlag', 'Time', 'nAvg', 'Leff');
         else
             DataMat = DataMats(iFile);
             % If file is block does not contain any baseline segment: skip it

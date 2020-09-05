@@ -5,7 +5,7 @@ function varargout = process_evt_read( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_evt_read( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -128,7 +128,7 @@ end
 
 
 %% ===== COMPUTE =====
-function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
     % Parse inputs
     if (nargin < 5)
         isAcceptZero = 0;
@@ -141,7 +141,7 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
     end
     % Get some information
     ch_names = {ChannelMat.Channel.Name};
-    samplesBounds = sFile.prop.samples;
+    samplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     events = [];
 
     % ===== GET STIM CHANNEL =====
@@ -188,17 +188,22 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
 
     % ===== ASK READ MODE =====
     if strcmpi(EventsTrackMode, 'ask')
-        res = java_dialog('question', ['Please select the interpretation mode at each time sample:' 10 10 ...
-                                       '- Value: detect the changes of value on the trigger channel' 10 ...
-                                       '- Bit: detect the changes for each bit of the channel independently' 10 ...
-                                       '- TTL: detect peaks of 5V/12V on an analog channel (baseline=0V)' 10 ...
-                                       '- RTTL: detect peaks of 0V on an analog channel (baseline!=0V)'], ...
-                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Cancel'}, 'value');
+        res = java_dialog('question', ['<HTML>Please select the interpretation mode at each time sample: <BR><BR>' ...
+                                       '- <B>Value</B>: detect the changes of value on the trigger channel<BR>' ...
+                                       '- <B>Bit</B>: detect the changes for each bit of the channel independently<BR>' ...
+                                       '- <B>TTL</B>: detect peaks of 5V/12V on an analog channel (baseline=0V)<BR>' ...
+                                       '- <B>RTTL</B>: detect peaks of 0V on an analog channel (baseline!=0V)<BR>' ...
+                                       '- <B>Ignore</B>: do not read trigger channel<BR><BR>'], ...
+                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Ignore','Cancel'}, 'value');
         if isempty(res) || strcmpi(res, 'Cancel')
             events = -1;
             return
         end
         EventsTrackMode = lower(res);
+    end
+    % Ignore trigger channel
+    if strcmpi(EventsTrackMode, 'ignore')
+        return;
     end
 
     % ===== READ STIM CHANNELS =====
@@ -222,17 +227,14 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
     nbBlocks = ceil(totalLength / blockLength);
     % Progress bar
     isProgressBar = bst_progress('isVisible');
-    if isProgressBar
-        bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
-    end
+    bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
 
     trackPrev = [];
     % For each block
     for iBlock = 1:nbBlocks
         % Increment progress bar
-        if isProgressBar
-            bst_progress('inc', 1);
-        end
+        bst_progress('inc', 1);
+
         % === READ BLOCK ===
         % Get samples indices for this block
         samplesBlock = samplesBounds(1) + [(iBlock - 1) * blockLength, iBlock * blockLength - 1];
@@ -325,22 +327,24 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
                     iEvent = length(events) + 1;
                     events(iEvent).label      = label;
                     events(iEvent).epochs     = [];
-                    events(iEvent).samples    = [];
                     events(iEvent).times      = [];
                     events(iEvent).reactTimes = [];
                     events(iEvent).select     = 1;
+                    events(iEvent).channels   = {};
+                    events(iEvent).notes      = {};
                 end
                 % Add occurrence of this event
-                iOcc = length(events(iEvent).samples) + 1;
-                events(iEvent).epochs(iOcc)  = 1;
-                events(iEvent).samples(iOcc) = iSmp(i) + samplesBlock(1) - 1;
-                events(iEvent).times(iOcc)   = events(iEvent).samples(iOcc) ./ sFile.prop.sfreq;
+                iOcc = length(events(iEvent).times) + 1;
+                events(iEvent).epochs(iOcc)   = 1;
+                events(iEvent).times(iOcc)    = (iSmp(i) + samplesBlock(1) - 1) ./ sFile.prop.sfreq;
+                events(iEvent).channels{iOcc} = {};
+                events(iEvent).notes{iOcc}    = [];
             end
         end
     end
 
     % Close progress bar
-    if isProgressBar
+    if ~isProgressBar
         bst_progress('stop');
     end
 end

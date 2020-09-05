@@ -11,7 +11,7 @@ function varargout = panel_ieeg(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -541,11 +541,11 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {1,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,10}, 'optional', 1, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
-    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,10},  'optional', 1, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
-    gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,10},  'optional', 1, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
-    gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,10},  'optional', 1, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
-    gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,10}, 'optional', 1, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
+    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
+    gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
+    gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,100},  'optional', 2, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
+    gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,100}, 'optional', 2, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
     % Update button list
     if (length(sSelElec) == 1)
         colorOn  = java.awt.Color(0, 0.8, 0);
@@ -818,7 +818,8 @@ function EditElectrodeColor(newColor)
     % If color is not specified in argument : ask it to user
     if (nargin < 1)
         % Use previous electrode color
-        newColor = uisetcolor(sSelElec(1).Color, 'Select electrode color');
+        % newColor = uisetcolor(sSelElec(1).Color, 'Select electrode color');
+        newColor = java_dialog('color');
         % If no color was selected: exit
         if (length(newColor) ~= 3) || all(sSelElec(1).Color == newColor)
             return
@@ -1626,9 +1627,10 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
-            % Detect average spacing between contacts
+            % Detect average spacing between contacts (round at 1 decimal)
             newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-
+            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 1);
+            
             % Center of the electrodes
             M = mean(ElecLoc);
             % Get the principal orientation between all the vertices
@@ -1678,7 +1680,7 @@ end
 %  =================================================================================
 
 %% ===== CREATE 3D ELECTRODE GEOMETRY =====
-function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes) %#ok<DEFNU>
+function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenChannels] = CreateGeometry3DElectrode(iDS, iFig, Channel, ChanLoc, sElectrodes, isProjectEcog) %#ok<DEFNU>
     global GlobalData;
     % Initialize returned values
     ElectrodeDepth = [];
@@ -1718,7 +1720,11 @@ function [ElectrodeDepth, ElectrodeLabel, ElectrodeWire, ElectrodeGrid, HiddenCh
     end
     % Compute contact normals: ECOG and EEG
     if isSurface && (ismember(Modality, {'ECOG','EEG'}) || (~isempty(sElectrodes) && any(strcmpi({sElectrodes.Type}, 'ECOG'))))
-        ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+        if isProjectEcog
+            ChanNormal = GetChannelNormal(sSubject, ChanLoc, Modality, 0);
+        else
+            ChanNormal = repmat([0 0 1], size(ChanLoc,1), 1); 
+        end
     else
         ChanNormal = [];
     end
@@ -2101,8 +2107,15 @@ end
 
 
 %% ===== ALIGN CONTACTS =====
-function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
+function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels, isUpdate, isProjectEcog)
     global GlobalData;
+    % Default values
+    if (nargin < 7) || isempty(isProjectEcog)
+        isProjectEcog = 1;
+    end
+    if (nargin < 6) || isempty(isUpdate)
+        isUpdate = 1;
+    end
     % If using electrodes in input
     if (nargin >= 5) && ~isempty(sElectrodes) && ~isempty(Channels)
         isImplantation = 0;
@@ -2112,6 +2125,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
         sElectrodes = GetSelectedElectrodes();
         if isempty(sElectrodes)
             java_dialog('warning', 'No electrode selected.', 'Align contacts');
+            Channels = [];
             return
         end
         % Check if this is an new implantation folder
@@ -2212,7 +2226,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG') && isProjectEcog
                 % Project all points on the surface
                 [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
                 % Do not go further if it's impossible to project the electrodes on a surface
@@ -2301,7 +2315,7 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 
             % === PROJECT FOLLOWING THE SHAPE OF THE CORTEX ===
             % ECOG only (no ECOG-mid)
-            if strcmpi(sElectrodes(iElec).Type, 'ECOG')
+            if strcmpi(sElectrodes(iElec).Type, 'ECOG') && isProjectEcog
                 % Project all points on the surface
                 [ProjOrient, ProjLoc] = GetChannelNormal(sSubject, NewLoc, 'ECOG', 1);
                 % Do not go further if it's impossible to project the electrodes on a surface
@@ -2353,12 +2367,12 @@ function Channels = AlignContacts(iDS, iFig, Method, sElectrodes, Channels)
 %             disp('Warning: No inner skull surface available for this subject, cannot project the contacts on the skull.');
 %         end
         % Mark channel file as modified
-        if isUpdateDS
+        if isUpdate && isUpdateDS
             GlobalData.DataSet(iDS(1)).isChannelModified = 1;
         end
     end
     % If loaded datasets should be updated
-    if isUpdateDS
+    if isUpdate && isUpdateDS
         % Update electrode position
         for i = 1:length(iDS)
             GlobalData.DataSet(iDS(i)).Channel = Channels;
@@ -2457,8 +2471,8 @@ function SetElectrodeLoc(iLoc, jButton)
     end
     % Make sure the points of the electrode are more than 1cm apart
     iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
-    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.01))
-        bst_error('The two points you selected are less than 1cm away.', 'Set electrode position', 0);
+    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
+        bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
         return;
     end
     % Set electrode position

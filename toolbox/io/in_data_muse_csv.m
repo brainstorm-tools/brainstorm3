@@ -10,7 +10,7 @@ function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -193,11 +193,12 @@ if ~isempty(iTimeEvt)
         % Find all the occurrences of this event
         iOcc = find(strcmpi(uniqueEvt{iEvt}, evtLabels));
         % Set event
-        DataMat.Events(iEvt).label   = strtrim(uniqueEvt{iEvt});
-        DataMat.Events(iEvt).samples = unique(round(evtTime(iOcc) .* sfreq));
-        DataMat.Events(iEvt).times   = DataMat.Events(iEvt).samples ./ sfreq;
-        DataMat.Events(iEvt).epochs  = 1 + 0*DataMat.Events(iEvt).samples;
-        DataMat.Events(iEvt).select  = 1;
+        DataMat.Events(iEvt).label    = strtrim(uniqueEvt{iEvt});
+        DataMat.Events(iEvt).times    = unique(round(evtTime(iOcc) .* sfreq)) ./ sfreq;
+        DataMat.Events(iEvt).epochs   = 1 + 0*DataMat.Events(iEvt).times;
+        DataMat.Events(iEvt).select   = 1;
+        DataMat.Events(iEvt).channels = cell(1, size(DataMat.Events(iEvt).times, 2));
+        DataMat.Events(iEvt).notes    = cell(1, size(DataMat.Events(iEvt).times, 2));
     end
 end
 

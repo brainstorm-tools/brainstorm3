@@ -21,7 +21,7 @@ function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubje
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -35,7 +35,7 @@ function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubje
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2020
 
 %% ===== PARSE INPUTS =====
 % Check command line
@@ -152,10 +152,18 @@ for iFile = 1:length(SurfaceFiles)
     importedBaseName = strrep(importedBaseName, '_tess', '');
     % Only one surface
     if (length(Tess) == 1)
-        NewTess = db_template('surfacemat');
-        NewTess.Comment  = Tess(1).Comment;
-        NewTess.Vertices = Tess(1).Vertices;
-        NewTess.Faces    = Tess(1).Faces;
+        % Surface mesh
+        if isfield(Tess, 'Faces')
+            NewTess = db_template('surfacemat');
+            NewTess.Comment  = Tess(1).Comment;
+            NewTess.Vertices = Tess(1).Vertices;
+            if isfield(Tess, 'Faces')   % Volume meshes do not have Faces field
+                NewTess.Faces = Tess(1).Faces;
+            end
+        % Volume FEM mesh
+        else
+            NewTess = Tess;
+        end
     % Multiple surfaces
     else
         [Tess(:).Atlas] = deal(db_template('Atlas'));
@@ -176,14 +184,18 @@ for iFile = 1:length(SurfaceFiles)
         % History: Apply MRI transformation
         NewTess = bst_history('add', NewTess, 'import', 'Apply transformation that was applied to the MRI volume');
         % Apply MRI transformation
-        NewTess = applyMriTransf(sMri.InitTransf, NewTess);
+        NewTess = fibers_helper('ApplyMriTransfToSurf', sMri.InitTransf, NewTess);
     end
 
     % ===== SAVE BST FILE =====
     % History: File name
     NewTess = bst_history('add', NewTess, 'import', ['Import from: ' TessFile]);
-    % Produce a default surface filename
-    BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+    % Produce a default surface filename (surface of volume mesh)
+    if isfield(NewTess, 'Faces')
+        BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_' importedBaseName '.mat']);
+    else
+        BstTessFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_fem_' importedBaseName '.mat']);
+    end
     % Make this filename unique
     BstTessFile = file_unique(BstTessFile);
     % Save new surface in Brainstorm format
@@ -206,45 +218,3 @@ db_save();
 bst_progress('stop');
 end   
 
-
-%% ======================================================================================
-%  ===== HELPER FUNCTIONS ===============================================================
-%  ======================================================================================
-%% ===== APPLY MRI ORIENTATION =====
-function sSurf = applyMriTransf(MriTransf, sSurf)
-    pts = sSurf.Vertices;
-    % Apply step by step all the transformations that have been applied to the MRI
-    for i = 1:size(MriTransf,1)
-        ttype = MriTransf{i,1};
-        val   = MriTransf{i,2};
-        switch (ttype)
-            case 'flipdim'
-                % Detect the dimensions that have constantly negative coordinates
-                iDimNeg = find(sum(sign(pts) == -1) == size(pts,1));
-                if ~isempty(iDimNeg)
-                    pts(:,iDimNeg) = -pts(:,iDimNeg);
-                end
-                % Flip dimension
-                pts(:,val(1)) = val(2)/1000 - pts(:,val(1));
-                % Restore initial negative values
-                if ~isempty(iDimNeg)
-                    pts(:,iDimNeg) = -pts(:,iDimNeg);
-                end
-            case 'permute'
-                pts = pts(:,val);
-            case 'vox2ras'
-                
-        end
-    end
-    % Report changes in structure
-    sSurf.Vertices = pts;
-    % Update faces order: If the surfaces were flipped an odd number of times, invert faces orientation
-    if (mod(nnz(strcmpi(MriTransf(:,1), 'flipdim')), 2) == 1)
-        sSurf.Faces = sSurf.Faces(:,[1 3 2]);
-    end
-end
-
-
-
-
-    

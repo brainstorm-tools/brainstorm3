@@ -17,7 +17,7 @@ function [events, epochs, epochs_tim0] = egi_read_events(sFile, sfid, isUseEpoc)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -96,7 +96,6 @@ if isUseEpoc
                 end
                 % Create epoch structure
                 epochs(iEpoch).label   = sprintf('Epoch #%d', iEpoch);
-                epochs(iEpoch).samples = smpBounds;
                 epochs(iEpoch).times   = smpBounds / sFile.prop.sfreq;
                 epochs(iEpoch).nAvg    = 1;
                 epochs(iEpoch).select  = 1;
@@ -119,7 +118,6 @@ for iEvt = 1:sFile.header.numEvents
     % Creating the event group structure   
     iEpochs = EpochChannel(smpList+1);
     events(iEvt).label      = sFile.header.eventCodes{iEvt};
-    events(iEvt).samples    = [];
     events(iEvt).times      = [];
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
@@ -129,12 +127,13 @@ for iEvt = 1:sFile.header.numEvents
         continue;
     end
     
-    % EVENT OCCURRENCIES
+    % EVENT OCCURRENCES
     % Detecting if it is a "simple event" or an "extended event" (ie. event spans over more than one sample)
     diffList = diff(smpList);
     % Simple events: add each non-null value in the trigger channel as an event occurrence
+    samples = [];
     if all(diffList ~= 1)
-        events(iEvt).samples = smpList - epochs_tim0(iEpochs);
+        samples = smpList - epochs_tim0(iEpochs);
         events(iEvt).epochs  = iEpochs;
     % Extended events: processing sequentially the trigger channel 
     else
@@ -142,17 +141,19 @@ for iEvt = 1:sFile.header.numEvents
         for i = 1:length(diffList)           
             % If trigger is not in the same event as the previous one: create new occurrence
             if (diffList(i) ~= 1)
-                iOcc = size(events(iEvt).samples, 2) + 1;
-                events(iEvt).samples(:,iOcc) = ones(2,1) .* (smpList(i) - epochs_tim0(iEpochs(i)));
+                iOcc = size(samples, 2) + 1;
+                samples(:,iOcc) = ones(2,1) .* (smpList(i) - epochs_tim0(iEpochs(i)));
                 events(iEvt).epochs(1,iOcc)  = iEpochs(i);
             % If not: Extend event in time
             else
-                events(iEvt).samples(2,iOcc) = smpList(i) - epochs_tim0(iEpochs(i));
+                samples(2,iOcc) = smpList(i) - epochs_tim0(iEpochs(i));
             end
         end
     end
     % Set the times
-    events(iEvt).times = events(iEvt).samples ./ sFile.prop.sfreq;
+    events(iEvt).times    = samples ./ sFile.prop.sfreq;
+    events(iEvt).channels = cell(1, size(events(iEvt).times, 2));
+    events(iEvt).notes    = cell(1, size(events(iEvt).times, 2));
 end
 
 % %% ===== DELETE EMPTY EVENTS =====

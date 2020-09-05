@@ -7,7 +7,7 @@ function out_events_brainamp( sFile, VmrkFile )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function out_events_brainamp( sFile, VmrkFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018
+% Authors: Francois Tadel, 2018-2019
 
 % Open file
 fid = fopen(VmrkFile, 'w');
@@ -49,12 +49,13 @@ mrkNames = {};
 mrkSamples = [];
 mrkDuration = [];
 for i = 1:length(sFile.events)
-    mrkNames = cat(2, mrkNames, repmat({sFile.events(i).label}, 1, size(sFile.events(i).samples, 2)));
-    mrkSamples = cat(2, mrkSamples, sFile.events(i).samples(1,:));
-    if (size(sFile.events(i).samples, 1) == 2)
-        mrkDuration = cat(2, mrkDuration, sFile.events(i).samples(2,:) - sFile.events(i).samples(1,:) + 1);
+    evtSamples = round((sFile.events(i).times - sFile.prop.times(1)) .* sFile.prop.sfreq);
+    mrkNames = cat(2, mrkNames, repmat({sFile.events(i).label}, 1, size(sFile.events(i).times, 2)));
+    mrkSamples = cat(2, mrkSamples, evtSamples(1,:));
+    if (size(sFile.events(i).times, 1) == 2)
+        mrkDuration = cat(2, mrkDuration, evtSamples(2,:) - evtSamples(1,:) + 1);
     else
-        mrkDuration = cat(2, mrkDuration, ones(1, size(sFile.events(i).samples, 2)));
+        mrkDuration = cat(2, mrkDuration, ones(1, size(sFile.events(i).times, 2)));
     end
 end
 [mrkSamples, I] = sort(mrkSamples);

@@ -1,4 +1,4 @@
-function outStruct = bst_jsondecode(inString)
+function outStruct = bst_jsondecode(inString, forceBstVersion)
 % BST_JSONDECODE: Decodes a JSON string as a Matlab structure
 %
 % USAGE: outStruct = bst_jsondecode(inString)
@@ -8,7 +8,7 @@ function outStruct = bst_jsondecode(inString)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,14 +22,19 @@ function outStruct = bst_jsondecode(inString)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, Francois Tadel, 2018
+% Authors: Martin Cousineau, 2018-2019; Francois Tadel, 2018
+
+if nargin < 2 || isempty(forceBstVersion)
+    forceBstVersion = 0;
+end
 
 % If the input is an existing filename: read it
 if exist(inString, 'file')
+    jsonFile = inString;
     % Open file
-    fid = fopen(inString, 'r');
+    fid = fopen(jsonFile, 'r');
     if (fid < 0)
-        error(['Cannot open JSON file: ' inString]);
+        error(['Cannot open JSON file: ' jsonFile]);
     end
     % Read file
     inString = fread(fid, [1, Inf], '*char');
@@ -37,12 +42,14 @@ if exist(inString, 'file')
     fclose(fid);
     % Check that something was read
     if isempty(inString)
-        error(['File is empty: ' inString]);
+        error(['File is empty: ' jsonFile]);
     end
+else
+    jsonFile = [];
 end
 
 % If possible, call built-in function
-if exist('jsondecode', 'builtin') == 5
+if ~forceBstVersion && exist('jsondecode', 'builtin') == 5
     outStruct = jsondecode(inString);
     return;
 end
@@ -74,9 +81,12 @@ value = [];
 path  = {};
 valType = [];
 escape = 0;
+lineNum  = 1;
+lineChar = 0;
 
 for iChar = 1:length(inString)
     c = inString(iChar);
+    lineChar = lineChar + 1;
     err = 0;
     
     % Go through state machine depending on character
@@ -151,20 +161,21 @@ for iChar = 1:length(inString)
     elseif c == ','
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
-        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
-            if valType == VAL.LIST
-                if ~isempty(token) && ~isempty(num2str(token))
-                    value(end + 1) = str2num(token);
-                    token = [];
-                else
-                    err = 1;
-                end
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST
+            if ~isempty(token) && ~isempty(num2str(token))
+                value(end + 1) = str2num(token);
+                token = [];
             else
-                outStruct = saveField(outStruct, path, field, value, valType);
-                field = [];
-                value = [];
-                state = STATE.START_FIELD;
+                err = 1;
             end
+        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
+            % Save if not done already
+            if ~isempty(field)
+                outStruct = saveField(outStruct, path, field, value, valType);
+            end
+            field = [];
+            value = [];
+            state = STATE.START_FIELD;
         else
             err = 1;
         end
@@ -184,6 +195,7 @@ for iChar = 1:length(inString)
         elseif state == STATE.READ_VALUE && valType == VAL.LIST
             if ~isempty(token)
                 n = str2num(token);
+                token = [];
                 if ~isempty(n)
                     value(end + 1) = n;
                 else
@@ -221,11 +233,22 @@ for iChar = 1:length(inString)
     elseif isspace(c) && ~isempty(valType) && valType == VAL.CHAR && (state == STATE.READ_NEXT_VALUE || state == STATE.READ_VALUE)
         % Only read spaces for character values
         value = [value c];
+    elseif c == char(10)
+        % Increment line number if we have a line break
+        lineNum = lineNum + 1;
+        lineChar = 0;
     end
     
     % Error management
     if err
-        error(['JSON syntax error. Unexpected character: ' c]);
+        errorMsg = sprintf(...
+            ['JSON syntax error. Unexpected character ''%c'' ' ...
+            'at line %d, column %d (character %d)'], ...
+            c, lineNum, lineChar, iChar);
+        if ~isempty(jsonFile)
+            errorMsg = [errorMsg ' of file ' jsonFile];
+        end
+        error(errorMsg);
     end
 end
 

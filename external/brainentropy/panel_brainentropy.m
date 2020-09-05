@@ -26,7 +26,9 @@ function varargout = panel_brainentropy(varargin)
 %    along with BEst. If not, see <http://www.gnu.org/licenses/>.
 % -------------------------------------------------------------------------   
 
+
 eval(macro_method);
+
 end
 
 
@@ -313,6 +315,9 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
             jTextBSLStart = jfakebutton;
             jTextBSLStop = jfakebutton;
             jBSLflnm    =   jfakebutton;
+											
+										   
+			
             
             % Add 'Method' panel to main panel (jPanelNew)
             jPanelNewL.add('br hfill', JPanelparam);
@@ -940,7 +945,7 @@ function UpdatePanel(hObject, event)
     ctrl.jTextMspWindow.setEnabled(1);
     ctrl.jTextMspThresh.setEnabled(1);
     ctrl.jRadioSCRarb.setEnabled(1);
-    ctrl.jRadioSCRarb.setEnabled(1);
+									
     ctrl.jCLSd.setEnabled(1);
     ctrl.jCLSs.setEnabled(1);
     ctrl.jBoxERD.setEnabled(0);
@@ -961,24 +966,24 @@ function UpdatePanel(hObject, event)
     if ctrl.jMEMw.isSelected()
         ctrl.jCLSd.setEnabled(0);
         ctrl.jCLSf.setSelected(1);
-        ctrl.jRadioSCRarb.setEnabled(0);
+        %ctrl.jRadioSCRarb.setEnabled(0);
     end 
 
     if ~ctrl.jCLSd.isSelected() 
         ctrl.jTextMspWindow.setEnabled(0);
     end
 
-    if ctrl.jCLSs.isSelected()
-        ctrl.jRadioSCRarb.setEnabled(1);
+    %if ctrl.jCLSs.isSelected()
+        %ctrl.jRadioSCRarb.setEnabled(1);
         %ctrl.jRadioSCRarb.setSelected(0);
-        ctrl.jTextMspThresh.setText('0');
-    end
+        %ctrl.jTextMspThresh.setText('0');
+    %end
 
     if ~ctrl.jRadioSCRarb.isSelected()
-        ctrl.jTextMspThresh.setEnabled(0);
-        if strcmp( ctrl.jTextMspThresh.getText(), 'fdr' ) & ~ctrl.jMEMw.isSelected()
-            ctrl.jTextMspThresh.setText('0')
-        end
+        ctrl.jTextMspThresh.setEnabled(0);								  
+        ctrl.jTextMspThresh.setText('fdr')
+	else
+		ctrl.jTextMspThresh.setText('0')
     end
 
     if feature('NumCores')<2
@@ -1087,14 +1092,17 @@ function s = GetPanelContents(varargin) %#ok<DEFNU>
     if ctrl.jRadioSCRarb.isSelected()
         MEMpaneloptions.clustering.MSP_scores_threshold = str2double(char(ctrl.jTextMspThresh.getText()));
         if isnan(MEMpaneloptions.clustering.MSP_scores_threshold)
-            sprintf('In BEst panel:\tWrong value for MSP scores threshold.')
-            ctrl.jRadioSCRarb.setSelected(0)
-            ctrl.jRadioSCRfdr.setSelected(1)
+            %fprintf('panel_brainentropy:\tWrong value for MSP scores threshold. Set to 0\n')
+            ctrl.jTextMspThresh.setText('0');
+            %ctrl.jRadioSCRarb.setSelected(0)
+            %ctrl.jRadioSCRfdr.setSelected(1)
         end
     end
     
     % Get baseline
     global MEMglobal
+								   
+																				
     if ctrl.jradwit.isSelected()
         MEMpaneloptions.optional.Baseline = [];
         MEMpaneloptions.optional.BaselineHistory{1} = 'within';
@@ -1395,7 +1403,7 @@ iP  = bst_get('ProtocolInfo');
          {'.fif'},               'MEG/EEG: Elekta-Neuromag (*.fif)',     'FIF'; ...
          {'*'},                  'EEG: ASCII text (*.*)',                'EEG-ASCII'; ...
          {'.avr','.mux','.mul'}, 'EEG: BESA exports (*.avr;*.mul;*.mux)','EEG-BESA'; ...
-         {'.eeg'},               'EEG: BrainAmp (*.eeg)',                'EEG-BRAINAMP'; ...
+         {'.eeg','.dat'},        'EEG: BrainAmp (*.eeg;*.dat)',          'EEG-BRAINAMP'; ...
          {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
          {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
          {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
@@ -1502,9 +1510,9 @@ iP  =   bst_get('ProtocolInfo');
 if ~isfield(MEMglobal, 'EmptyRoomData') || isempty(MEMglobal.EmptyRoomData)
     %load emptyroom noise
     if numel(MEMglobal.ERDinfo.file)>1
-        fprintf('\nMEMpanel:\tfound more than 1 emptyroom data\n\tselection is arbitrary\n');
+        fprintf('panel_brainentropy:\tfound more than 1 emptyroom data\n\tselection is arbitrary\n');
     else
-        fprintf('\nMEMpanel:\tloading emptyroom noise\n')       
+        fprintf('panel_brainentropy:\tloading emptyroom noise\n')       
     end
     L           =   load( fullfile(iP.STUDIES, MEMglobal.ERDinfo.file{1}) );
     [dum, iS]   =   bst_get('Study', fullfile( bst_fileparts(MEMglobal.ERDinfo.file{1}), 'brainstormstudy.mat' ) );

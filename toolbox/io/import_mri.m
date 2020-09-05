@@ -1,7 +1,7 @@
-function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust)
+function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment)
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
-% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1)
+% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
 %
 % INPUT:
@@ -12,6 +12,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 %    - FileFormat : String, one on the file formats in in_mri
 %    - isInteractive : If 1, importation will be interactive (MRI is displayed after loading)
 %    - isAutoAdjust  : If isInteractive=0 and isAutoAdjust=1, relice/resample automatically without user confirmation
+%    - Comment       : Comment of the output file
 % OUTPUT:
 %    - BstMriFile : Full path to the new file if success, [] if error
 
@@ -19,7 +20,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +34,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2020
 
 % ===== Parse inputs =====
 if (nargin < 3) || isempty(FileFormat)
@@ -44,6 +45,9 @@ if (nargin < 4) || isempty(isInteractive)
 end
 if (nargin < 5) || isempty(isAutoAdjust)
     isAutoAdjust = 1;
+end
+if (nargin < 6) || isempty(Comment)
+    Comment = [];
 end
 % Initialize returned variables
 BstMriFile = [];
@@ -131,7 +135,8 @@ end
 %% ===== LOAD MRI FILE =====
 bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
 % Load MRI
-sMri = in_mri(MriFile, FileFormat, isInteractive);
+isNormalize = 0;
+sMri = in_mri(MriFile, FileFormat, isInteractive, isNormalize);
 if isempty(sMri)
     bst_progress('stop');
     return
@@ -158,7 +163,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 val   = sMriRef.InitTransf{it,2};
                 switch (ttype)
                     case 'permute'
-                        sMri.Cube = permute(sMri.Cube, val);
+                        sMri.Cube = permute(sMri.Cube, [val, 4]);
                         sMri.Voxsize = sMri.Voxsize(val);
                     case 'flipdim'
                         sMri.Cube = bst_flip(sMri.Cube, val(1));
@@ -175,9 +180,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     
     % === ASK REGISTRATION METHOD ===
     % Get volumes dimensions
-    refSize = size(sMriRef.Cube);
-    newSize = size(sMri.Cube);
-    isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize == sMriRef.Voxsize);
+    refSize = size(sMriRef.Cube(:,:,:,1));
+    newSize = size(sMri.Cube(:,:,:,1));
+    isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize(1:3) == sMri.Voxsize(1:3));
     % Initialize list of options to register this new MRI with the existing one
     strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
     cellOptions = {};
@@ -264,34 +269,43 @@ end
 
 %% ===== SAVE MRI IN BRAINSTORM FORMAT =====
 % Add a Comment field in MRI structure, if it does not exist yet
-if ~isfield(sMri, 'Comment')
-    sMri.Comment = 'MRI';
-end
-% Use filename as comment
-if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
-    [fPath, fBase, fExt] = bst_fileparts(MriFile);
-    sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+if ~isempty(Comment)
+    sMri.Comment = Comment;
+    importedBaseName = file_standardize(Comment);
+else
+    if ~isfield(sMri, 'Comment') || isempty(sMri.Comment)
+        sMri.Comment = 'MRI';
+    end
+    % Use filename as comment
+    if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
+        [fPath, fBase, fExt] = bst_fileparts(MriFile);
+        fBase = strrep(fBase, '.nii', '');
+        sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+    end
+    % Add MNI tag
+    if strcmpi(FileFormat, 'ALL-MNI')
+        sMri.Comment = [sMri.Comment ' (MNI)'];
+    end
+    % Get imported base name
+    [tmp__, importedBaseName] = bst_fileparts(MriFile);
+    importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
+    importedBaseName = strrep(importedBaseName, '_subjectimage', '');
+    importedBaseName = strrep(importedBaseName, '.nii', '');
 end
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
-% Get imported base name
-[tmp__, importedBaseName] = bst_fileparts(MriFile);
-importedBaseName = strrep(importedBaseName, 'subjectimage_', '');
-importedBaseName = strrep(importedBaseName, '_subjectimage', '');
 % Produce a default anatomy filename
 BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag '.mat']);
 % Make this filename unique
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format
 sMri = out_mri_bst(sMri, BstMriFile);
-% Clear memory
-MriComment = sMri.Comment;
 
 %% ===== STORE NEW MRI IN DATABASE ======
 % New anatomy structure
 sSubject.Anatomy(iAnatomy) = db_template('Anatomy');
 sSubject.Anatomy(iAnatomy).FileName = file_short(BstMriFile);
-sSubject.Anatomy(iAnatomy).Comment  = MriComment;
+sSubject.Anatomy(iAnatomy).Comment  = sMri.Comment;
 % Default anatomy: do not change
 if isempty(sSubject.iAnatomy)
     sSubject.iAnatomy = iAnatomy;

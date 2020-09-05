@@ -5,7 +5,7 @@ function varargout = process_evt_detect_chpi( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -144,10 +144,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % ===== CREATE EVENTS =====
         % Create new event structure
         sEvent = db_template('event');
-        sEvent.label   = evtName;
-        sEvent.samples = [startEve; endEve] + sFile.prop.samples(1) - 1;
-        sEvent.times   = sEvent.samples ./ sFile.prop.sfreq;
-        sEvent.epochs  = ones(1, size(sEvent.times,2));
+        sEvent.label    = evtName;
+        sEvent.times    = ([startEve; endEve] - 1) ./ sFile.prop.sfreq + sFile.prop.times(1);
+        sEvent.epochs   = ones(1, size(sEvent.times,2));
+        sEvent.channels = cell(1, size(sEvent.times, 2));
+        sEvent.notes    = cell(1, size(sEvent.times, 2));
         % Import new events in file structure
         sFile = import_events(sFile, [], sEvent);
         % Report changes in .mat structure

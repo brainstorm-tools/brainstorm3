@@ -26,7 +26,7 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,7 +40,7 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel & Alexandre Gramfort, 2011-2013
+% Authors: Francois Tadel & Alexandre Gramfort, 2011-2019
 
 
 %% ===== PARSE INPUTS =====
@@ -108,7 +108,9 @@ if strcmpi(osType, 'mac64') && ~isdir(bst_fullfile(OpenmeegDir, 'lib'))
 end
 
 % If binary file doesnt exist: download
-if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) || ~strcmpi(prevUrl, url) || isUpdate
+if isUpdate || ...
+   ((bst_get('AutoUpdates') || isempty(prevUrl)) && ...
+    (~isdir(OpenmeegDir) || (~strcmpi(osType, 'mac64') && isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*')))) || ~strcmpi(prevUrl, url)))
     % If folder exists: delete
     if isdir(OpenmeegDir)
         file_delete(OpenmeegDir, 1, 3);
@@ -195,7 +197,7 @@ end
 %% ===== OPENMEEG LIBRARY PATH =====
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'logo_splash_openmeeg.gif');
+bst_progress('setimage', 'logo_openmeeg.gif');
 bst_progress('setlink', 'http://openmeeg.github.io');
 % Library path
 if ~ispc
@@ -273,7 +275,21 @@ for i = 1:length(OPTIONS.BemFiles)
     % Output MESH file
     trifiles{i} = bst_fullfile(TmpDir, sprintf('openmeeg_%d.tri', i));
     % Write MESH in tmp folder
-    [nVert(i),nFaces(i)] = out_tess_tri(OPTIONS.BemFiles{i}, trifiles{i}, 1);
+    [nVert(i), nFaces(i), TessMat] = out_tess_tri(OPTIONS.BemFiles{i}, trifiles{i}, 1);
+    % Center all the points on the center of the envelope
+    bfs_center = bst_bfs(TessMat.Vertices);
+    vDipoles = bst_bsxfun(@minus, OPTIONS.GridLoc, bfs_center(:)');
+    vInner = bst_bsxfun(@minus, TessMat.Vertices, bfs_center(:)');
+    % Check if any dipole is outside of the innermost layer
+    iDipInside = find(~inpolyhd(vDipoles, vInner, TessMat.Faces));
+    if ~isempty(iDipInside)
+        errMsg = sprintf(['Some dipoles are outside the BEM layers (%d dipoles).\n' ...
+                          'The leadfield for these dipoles is probably incorrect.\n\n'], length(iDipInside));
+        if strcmpi(OPTIONS.HeadModelType, 'surface')
+            errMsg = [errMsg, 'To fix the cortex surface:', 10, 'Right-click on the surface file > Force inside skull.'];
+        end
+        disp([10 'WARNING: ' errMsg 10]);
+    end
 end
 % Write geometry file
 om_write_geom(geomfile, trifiles, OPTIONS.BemNames);

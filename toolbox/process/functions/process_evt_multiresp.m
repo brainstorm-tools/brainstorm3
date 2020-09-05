@@ -7,7 +7,7 @@ function varargout = process_evt_multiresp( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -110,7 +110,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Convert the distance in time to distance in samples
         ds = round(dt .* sFile.prop.sfreq);
         % Call the detection function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, respEvts, ds, Method, isDelete);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, respEvts, ds, Method, isDelete, sFile.prop.sfreq);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -131,27 +131,30 @@ end
 
 
 %% ===== RENAME SIMULTANEOUS EVENTS =====
-function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method, isDelete)
+function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method, isDelete, sfreq)
     % Initialize returned variables
     isModified = 0;
     eventsNew = events;
     
     % Get events names and samples
     iEvts = [];
-    AllSamples = [];
-    AllTimes   = [];
-    AllEvt     = [];
-    AllOcc     = [];
-    AllEpochs  = [];
+    AllTimes  = [];
+    AllEvt    = [];
+    AllOcc    = [];
+    AllEpochs = [];
+    AllChannels = {};
+    AllNotes    = {};
+    
     for i = 1:length(respEvts)
         iTmp = find(strcmpi({events.label}, respEvts{i}));
         if ~isempty(iTmp)
             iEvts(end+1) = iTmp;
-            AllSamples = [AllSamples, mean(events(iTmp).samples, 1)];    % Average to take the middle of extended events
-            AllTimes   = [AllTimes,   mean(events(iTmp).times, 1)];
+            AllTimes   = [AllTimes,   mean(events(iTmp).times, 1)];   % Average to take the middle of extended events
             AllEpochs  = [AllEpochs,  events(iTmp).epochs];
-            AllEvt     = [AllEvt, repmat(iTmp, [1, size(events(iTmp).samples,2)])];
-            AllOcc     = [AllOcc, 1:size(events(iTmp).samples,2)];
+            AllChannels= [AllChannels, events(iTmp).channels];
+            AllNotes   = [AllNotes, events(iTmp).notes];
+            AllEvt     = [AllEvt, repmat(iTmp, [1, size(events(iTmp).times,2)])];
+            AllOcc     = [AllOcc, 1:size(events(iTmp).times,2)];
         else
             bst_report('Warning', 'process_evt_multiresp', sInput, ['Event "' respEvts{i} '" does not exist.']);
         end
@@ -159,7 +162,7 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
     if isempty(iEvts)
         bst_report('Error', 'process_evt_multiresp', sInput, 'No valid response events could be found.');
         return;
-    elseif isempty(AllSamples)
+    elseif isempty(AllTimes)
         bst_report('Info', 'process_evt_multiresp', sInput, 'No multiple responses were found.');
         return;
     elseif any(AllEpochs ~= 1)
@@ -168,16 +171,17 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
     end
     
     % Sort samples
-    [AllSamples, iSort] = sort(AllSamples);
+    [AllTimes, iSort] = sort(AllTimes);
     AllEvt    = AllEvt(iSort);
-    AllTimes  = AllTimes(iSort);
     AllOcc    = AllOcc(iSort);
     AllEpochs = AllEpochs(iSort);
+    AllChannels = AllChannels(iSort);
+    AllNotes    = AllNotes(iSort);
     % Compute distance matrix
-    dist = ones(length(AllSamples), 1) * AllSamples;
+    dist = ones(length(AllTimes), 1) * round(AllTimes .* sfreq);
     dist = dist - dist';
     % Find the events that are too close to each other
-    dist = (abs(dist) < ds) - eye(length(AllSamples));
+    dist = (abs(dist) < ds) - eye(length(AllTimes));
     % Find the events to process
     iMulti = find(any(dist, 1));
     % No events are process
@@ -218,11 +222,12 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
         % Create new event
         iEvtRm = length(eventsNew) + 1;
         eventsNew(iEvtRm) = db_template('event');
-        eventsNew(iEvtRm).label   = newLabel;
-        eventsNew(iEvtRm).color   = [1 0 0];
-        eventsNew(iEvtRm).times   = AllTimes(iRemove);
-        eventsNew(iEvtRm).samples = AllSamples(iRemove);
-        eventsNew(iEvtRm).epochs  = AllEpochs(iRemove);
+        eventsNew(iEvtRm).label  = newLabel;
+        eventsNew(iEvtRm).color  = [1 0 0];
+        eventsNew(iEvtRm).times  = AllTimes(iRemove);
+        eventsNew(iEvtRm).epochs = AllEpochs(iRemove);
+        eventsNew(iEvtRm).channels = AllChannels(iRemove);
+        eventsNew(iEvtRm).notes    = AllNotes(iRemove);
     end
     % Get all the events in which cuts are necessary
     iEvts = unique(AllEvt(iRemove));
@@ -230,9 +235,10 @@ function [eventsNew, isModified] = Compute(sInput, events, respEvts, ds, Method,
     for i = 1:length(iEvts)
         iRmEvt = find(AllEvt(iRemove) == iEvts(i));
         iOcc = AllOcc(iRemove(iRmEvt));
-        eventsNew(iEvts(i)).times(:,iOcc)   = [];
-        eventsNew(iEvts(i)).samples(:,iOcc) = [];
-        eventsNew(iEvts(i)).epochs(iOcc)    = [];
+        eventsNew(iEvts(i)).times(:,iOcc) = [];
+        eventsNew(iEvts(i)).epochs(iOcc)  = [];
+        eventsNew(iEvts(i)).channels(iOcc)= [];
+        eventsNew(iEvts(i)).notes(iOcc)   = [];
     end
     isModified = 1;
 end

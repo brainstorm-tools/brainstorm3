@@ -11,7 +11,7 @@ function track = bst_events2track( sFile, evtDuration )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -57,18 +57,18 @@ end
 
 % ===== BUILD DATA TRACK =====
 % Initialize track with empty values
-nSamples = sFile.prop.samples(2) - sFile.prop.samples(1) + 1;
+nSamples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq) + 1;
 track = zeros(1, nSamples);
 % Add events one by one to the track
 for i = 1:nEvt
     % If no occurrences: skip
-    if isempty(sFile.events(i).samples)
+    if isempty(sFile.events(i).times)
         continue;
     end
     % Get list of samples to set to this event
     samples = [];
-    for iOccur = 1:size(sFile.events(i).samples, 2)
-        occ = sFile.events(i).samples(:,iOccur);
+    for iOccur = 1:size(sFile.events(i).times, 2)
+        occ = round(sFile.events(i).times(:,iOccur) .* sFile.prop.sfreq);
         % Single events
         if (size(occ, 1) == 1)
             samples = [samples, occ + (1:evtDuration)];
@@ -85,7 +85,7 @@ for i = 1:nEvt
     if strcmpi(sFile.format, 'FIF')
         samples = samples - double(sFile.header.raw.first_samp);
     else
-        samples = samples - sFile.prop.samples(1) + 1;
+        samples = samples - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
     end
     
     % Check if any of those samples was already attributed to another event

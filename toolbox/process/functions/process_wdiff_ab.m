@@ -5,7 +5,7 @@ function varargout = process_wdiff_ab( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_wdiff_ab( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2015
+% Authors: Francois Tadel, 2011-2019
 
 eval(macro_method);
 end
@@ -43,7 +43,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
      % Definition of the options
     sProcess.options.ttest_label.Comment    = ['Corrects the difference of signal amplitude between two averages<BR>' ...
                                                'that were computed with different numbers of trials:<BR><BR>' ...
-                                               '<B>A – sqrt(nAvg_B) / sqrt(nAvg_A) * B</B><BR><BR>'];
+                                               '<B>A – sqrt(Leff_B) / sqrt(Leff_A) * B</B><BR><BR>'...
+                                               'Leff = Effective number of averages<BR><BR>'];
     sProcess.options.ttest_label.Type       = 'label';
 end
 
@@ -62,7 +63,7 @@ end
 function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Difference
     sOutput = sInputsA;
-    sOutput.A = sInputsA.A - sqrt(sInputsB.nAvg) ./ sqrt(sInputsA.nAvg) .* sInputsB.A;
+    sOutput.A = sInputsA.A - sqrt(sInputsB.Leff) ./ sqrt(sInputsA.Leff) .* sInputsB.A;
     % Output condition name
     sOutput.Condition = [sInputsA.Condition, '-', sInputsB.Condition];
     sOutput.Comment   = [sInputsA.Comment ' - ' sInputsB.Comment];
@@ -71,6 +72,11 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     if ~strcmpi(sInputsA(1).FileType, 'data')
         sOutput.ColormapType = 'stat2';
     end
+    sOutput.nAvg = sInputsA.nAvg + sInputsB.nAvg;
+    % Effective number of averages
+    % Leff = 1 / sum_i(w_i^2 / Leff_i),  with w1=1 and w2=-sqrt(Leff_A)/sqrt(Leff_B)
+    %      = 1 / (1/Leff_A + Leff_B/Leff_A/Leff_B)) = 2*LeffA
+    sOutput.Leff = 2 * sInputsA.Leff;
 end
 
 

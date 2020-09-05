@@ -10,7 +10,7 @@ function gui_hide( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -97,6 +97,10 @@ switch (panelName)
         bst_mutex('release', 'InverseOptionsMEM');
     case 'OpenmeegOptions'
         bst_mutex('release', 'OpenmeegOptions');
+    case 'DuneuroOptions'
+        bst_mutex('release', 'DuneuroOptions');
+    case 'FemCondOptions'
+        bst_mutex('release', 'FemCondOptions');
     case 'BemOptions'
         bst_mutex('release', 'BemOptions');
     case 'SourceGrid'
@@ -109,6 +113,8 @@ switch (panelName)
         bst_mutex('release', 'SpikesortingOptions');
     case 'ExportBidsOptions'
         bst_mutex('release', 'ExportBidsOptions');
+    case 'SearchDatabase'
+        bst_mutex('release', 'SearchDatabase');
     case 'Coordinates'
         if gui_brainstorm('isTabVisible', 'Coordinates')
             panel_coordinates('RemoveSelection');

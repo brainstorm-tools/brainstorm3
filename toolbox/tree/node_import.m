@@ -5,7 +5,7 @@ function node_import( bstnode )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -35,7 +35,7 @@ end
 
 % Check if structure matches the file type
 if (strcmpi(FileType, 'anatomy') && ~isfield(value, 'Cube')) || ...
-   (ismember(lower(FileType), {'scalp', 'outerskull', 'innerskull', 'cortex', 'other'}) && ~isfield(value, 'Vertices')) || ...
+   (ismember(lower(FileType), {'scalp', 'outerskull', 'innerskull', 'cortex', 'fem', 'other'}) && ~isfield(value, 'Vertices')) || ...
    (strcmpi(FileType, 'channel') && ~isfield(value, 'Channel')) || ...
    (strcmpi(FileType, 'headmodel') && ~isfield(value, 'Gain')) || ...
    (ismember(lower(FileType), {'data', 'rawdata'})   && ~isfield(value, 'F')) || ...
@@ -50,7 +50,7 @@ if (strcmpi(FileType, 'anatomy') && ~isfield(value, 'Cube')) || ...
 end
 
 % History: File imported from Matlab variable
-if ismember(lower(FileType), {'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'ptimefreq', 'spectrum', 'pspectrum', 'matrix', 'pmatrix'})
+if ismember(lower(FileType), {'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'fem', 'other', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'ptimefreq', 'spectrum', 'pspectrum', 'matrix', 'pmatrix'})
     value = bst_history('add', value, 'import', ['Imported from Matlab variable: ' varname]);
 end
 % MAT-file format

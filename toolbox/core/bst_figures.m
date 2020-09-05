@@ -40,7 +40,7 @@ function varargout = bst_figures( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -264,7 +264,7 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
         if ~isempty(iChanZero)
             % Display warning
             delNames = {GlobalData.DataSet(iDS).Channel(selChan(iChanZero)).Name};
-            disp(['BST> Warning: The position of the following sensors is not set: ' sprintf('%s ', delNames{:})]);
+            disp(['BST> Warning: The positions of the following sensors are not set: ' sprintf('%s ', delNames{:})]);
             % Remove them from the list
             selChan(iChanZero) = [];
         end
@@ -423,7 +423,11 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality strMontage ': ' figureName];
         case 'ResultsTimeSeries'
             if ~isempty(figureNameModality)
-                figureName = [figureNameModality(1:end-2) ': ' figureName];
+                if ismember(figureNameModality, {'results/', 'sloreta/'})
+                    figureName = ['Scout: ' figureName];
+                else
+                    figureName = [figureNameModality(1:end-2) ': ' figureName];
+                end
             end
             % Matrix file: display the file name
             TsInfo = getappdata(hFig, 'TsInfo');
@@ -750,6 +754,31 @@ function [Handles,iFig,iDS] = SetFigureHandles(hFig, Handles) %#ok<DEFNU>
     end
     % Return handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = Handles;
+end
+
+%% ===== GET SPECIFIC FIELD OF FIGURE HANDLE =====
+function Value = GetFigureHandleField(hFig, Field) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    % Return value if figure and field exists
+    if ~isempty(iDS) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, Field)
+        Value = GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field);
+    else
+        Value = [];
+    end
+end
+
+%% ===== SET SPECIFIC FIELD OF FIGURE HANDLE =====
+function SetFigureHandleField(hFig, Field, Value) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    if isempty(iDS)
+        error('Figure is not registered in Brainstorm');
+    end
+    % Set field
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field) = Value;
 end
 
 
@@ -1484,14 +1513,23 @@ function ViewTopography(hFig, UseSmoothing)
             % Get displayable sensor types
             [AllMod, DispMod, DefaultMod] = bst_get('ChannelModalities', DataFile);
             % If current modality is not MEG or EEG, cannot display topography: get default modality
-            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS'}) && ~isempty(DataFile)
+            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS','ECOG+SEEG'}) && ~isempty(DataFile)
                 Modalities = {DefaultMod};
             % If displaying Stat on Neuromag recordings: Display all sensors separately
             elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && (strcmpi(file_gettype(DataFile), 'pdata') || ~ismember(RecType, {'recordings','raw'}))
                 Modalities = {'MEG MAG', 'MEG GRAD2', 'MEG GRAD3'};
             else
                 Modalities = {FigMod};
-            end           
+            end
+            % Keep only the modalities that have valid data
+            iGoodMod = [];
+            for iMod = 1:length(Modalities)
+                iChan = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, Modalities{iMod});
+                if ~isempty(iChan)
+                    iGoodMod = [iGoodMod, iMod];
+                end
+            end
+            Modalities = Modalities(iGoodMod);
                 
         case {'Timefreq', 'Spectrum', 'Pac'}
             % Get time freq information
@@ -1525,13 +1563,15 @@ function ViewTopography(hFig, UseSmoothing)
     % Call view data function
     if ~isempty(DataFile) && ~isempty(Modalities)
         for i = 1:length(Modalities)
-            if ismember(Modalities{i}, {'ECOG', 'SEEG'})
+            if ismember(Modalities{i}, {'ECOG', 'SEEG', 'ECOG+SEEG'})
                 % 3D figure: plot topography in the same figure
                 if isequal(FigureType, '3DViz')
                     view_topography(DataFile, Modalities{i}, '3DElectrodes', [], [], hFig);
                 % Other types of figures: Create new figure
-                else
+                elseif ~isempty(DispMod) && ismember(Modalities{i}, DispMod)
                     view_topography(DataFile, Modalities{i}, '3DElectrodes');
+                else
+                    view_topography(DataFile, Modalities{i}, '2DElectrodes');
                 end
             elseif isequal(Modalities{i}, 'NIRS')
                 % Get montage used in figure
@@ -1687,11 +1727,15 @@ end
 %         ReloadFigures(hFigs)       : Reload a specific list of figures
 %         ReloadFigures()            : Reload all the figures
 %         ReloadFigures(..., isFastUpdate=1):  If 0, clear all the figures and plot them completely
-function ReloadFigures(FigureTypes, isFastUpdate)
+%         ReloadFigures(..., isResetAxes=0):   If 1, reset axes zoom configuration
+function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
     global GlobalData;
     % By default: fast update
     if (nargin < 2) || isempty(isFastUpdate)
         isFastUpdate = 1;
+    end
+    if (nargin < 3) || isempty(isResetAxes)
+        isResetAxes = 0;
     end
     % If figure type not sepcified
     isStatOnly = 0;
@@ -1745,16 +1789,35 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                             view_clusters(DataFiles, iClusters, Figure.hFigure);
                         end
                     else
+                        % Get original XLim/YLim
+                        if (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimOrig = get(Figure.Handles.hAxes, 'XLim');
+                        end
                         TsInfo = getappdata(Figure.hFigure, 'TsInfo');
+                        % Reset amplitudes
                         if TsInfo.AutoScaleY
                             GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax = [];
                         end
                         GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = [];
+                        % Update figure
                         isOk = figure_timeseries('PlotFigure', iDS, iFig, [], [], isFastUpdate);
                         % The figure could not be refreshed: close it
                         if ~isOk
                             close(Figure.hFigure);
                             continue;
+                        end
+                        % Restore XLim/YLim
+                        if ~isResetAxes && ~isempty(XLimOrig) && (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimNew = get(Figure.Handles.hAxes, 'XLim');
+                            YLimNew = get(Figure.Handles.hAxes, 'YLim');
+                            if ~isequal(XLimNew, XLimOrig) && (XLimOrig(1) >= XLimNew(1)) && (XLimOrig(2) <= XLimNew(2))
+                                set(Figure.Handles.hAxes, 'XLim', XLimOrig);
+                                % Copy the XLim from the main axes to the events bar
+                                hEventsBar = findobj(Figure.hFigure, '-depth', 1, 'Tag', 'AxesEventsBar');
+                                if ~isempty(hEventsBar)
+                                    set(hEventsBar, 'XLim', get(Figure.Handles.hAxes, 'XLim'));
+                                end
+                            end
                         end
                     end
                     UpdateFigureName(Figure.hFigure);
@@ -1862,7 +1925,9 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);
                 case 'Connect'
-                    warning('todo: reload figure');
+                    bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
+                    figure_connect('UpdateFigurePlot', Figure.hFigure);
+                    bst_progress('stop');
                 case 'Image'
                     % ReloadCall only
                 case 'Video'
@@ -1997,7 +2062,8 @@ end
 function SetBackgroundColor(hFig, newColor) %#ok<*DEFNU>
     % Use previous scout color
     if (nargin < 2) || isempty(newColor)
-        newColor = uisetcolor([0 0 0], 'Select scout color');
+        % newColor = uisetcolor([0 0 0], 'Select scout color');
+        newColor = java_dialog('color');
     end
     % If no color was selected: exit
     if (length(newColor) ~= 3)

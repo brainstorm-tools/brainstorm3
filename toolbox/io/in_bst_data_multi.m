@@ -6,7 +6,7 @@ function DataMats = in_bst_data_multi(DataFiles)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,7 +20,7 @@ function DataMats = in_bst_data_multi(DataFiles)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010
+% Authors: Francois Tadel, 2010-2019
 
 
 %% ===== DETECT TRIAL FILES =====
@@ -49,14 +49,14 @@ nTrials(nTrials == 0) = 1;
 
 
 %% ===== READ DATA TIME VECTORS =====
-DataMats = repmat(struct('Time',[], 'nAvg', 1, 'SamplingRate', 0), 0);
+DataMats = repmat(struct('Time',[], 'nAvg', 1, 'Leff', 1, 'SamplingRate', 0), 0);
 % Progress bar
 bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, length(timeDataFiles));
 % Loop on all the files
 for iFile = 1:length(timeDataFiles)
     bst_progress('inc',1);
     % Load time vector
-    DataMat = in_bst_data(timeDataFiles{iFile}, 'Time', 'nAvg');
+    DataMat = in_bst_data(timeDataFiles{iFile}, 'Time', 'nAvg', 'Leff');
     % Compute duration of each sample
     if (length(DataMat.Time) > 2)
         DataMat.SamplingRate = DataMat.Time(2) - DataMat.Time(1);

@@ -17,7 +17,7 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -411,7 +411,7 @@ if ~isempty(HeadFile)
     BstHeadFile = tess_downsize( BstHeadHiFile, 1082, 'reducepatch' );
     % Load MRI
     bst_progress('start', 'Import BrainSuite folder', 'Filling holes in the head surface...');
-    sMri = bst_memory('LoadMri', BstMriFile);
+    sMri = in_mri_bst(BstMriFile);
     % Load head surface
     sHead = in_tess_bst(BstHeadFile);
     % Remove holes

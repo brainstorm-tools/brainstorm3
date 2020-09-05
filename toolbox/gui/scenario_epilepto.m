@@ -5,7 +5,7 @@ function varargout = scenario_epilepto( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -374,7 +374,7 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             % Get the .nii transformation in both volumes
             iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
             iTransfPost = find(strcmpi(sMriPostReg.InitTransf(:,1), 'vox2ras'));
-            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
+            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube(:,:,:,1)), size(sMriPost.Cube(:,:,:,1))) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
                 errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
                 return;
             end
@@ -836,7 +836,6 @@ function RawContinuousEvt(OutputFiles)
             events(iEvtNew) = events(iEvtStart(i));
             events(iEvtNew).label   = newLabel;
             events(iEvtNew).times   = [events(iEvtStart(i)).times;   events(iEvtStop).times];
-            events(iEvtNew).samples = [events(iEvtStart(i)).samples; events(iEvtStop).samples];
             % Save modifications
             iEvtDel = [iEvtDel, iEvtStart(i), iEvtStop];
         end
@@ -1101,9 +1100,10 @@ function RawInputEvents()
             sFile.events(iEvtOnset).reactTimes = [];
             sFile.events(iEvtOnset).select     = 1;
         end
-        sFile.events(iEvtOnset).samples = round(newOnset * sFile.prop.sfreq);
-        sFile.events(iEvtOnset).times   = sFile.events(iEvtOnset).samples ./ sFile.prop.sfreq;
-        sFile.events(iEvtOnset).epochs  = ones(1, size(sFile.events(iEvtOnset).samples, 2));
+        sFile.events(iEvtOnset).times    = round(newOnset * sFile.prop.sfreq) ./ sFile.prop.sfreq;
+        sFile.events(iEvtOnset).epochs   = ones(1, size(sFile.events(iEvtOnset).times, 2));
+        sFile.events(iEvtOnset).channels = {{}};
+        sFile.events(iEvtOnset).notes    = {''};
     end
     % Add Baseline event
     if (length(newBaseline) == 2)
@@ -1114,9 +1114,10 @@ function RawInputEvents()
             sFile.events(iEvtBaseline).reactTimes = [];
             sFile.events(iEvtBaseline).select     = 1;
         end
-        sFile.events(iEvtBaseline).samples = round(newBaseline * sFile.prop.sfreq);
-        sFile.events(iEvtBaseline).times   = sFile.events(iEvtBaseline).samples ./ sFile.prop.sfreq;
-        sFile.events(iEvtBaseline).epochs  = ones(1, size(sFile.events(iEvtBaseline).samples, 2));
+        sFile.events(iEvtBaseline).times   = round(newBaseline * sFile.prop.sfreq) ./ sFile.prop.sfreq;
+        sFile.events(iEvtBaseline).epochs  = ones(1, size(sFile.events(iEvtBaseline).times, 2));
+        sFile.events(iEvtBaseline).channels = {{}};
+        sFile.events(iEvtBaseline).notes    = {''};
     end
     % Save modification
     LinkMat.F = sFile;

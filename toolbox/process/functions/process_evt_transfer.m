@@ -5,7 +5,7 @@ function varargout = process_evt_transfer(varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -102,7 +102,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             % Save info
             nEvents.(set)(iTrial) = numel(sEvents.(set){iTrial});            
             iSyncEvent.(set)(iTrial) = find(strcmp({sEvents.(set){iTrial}.label}, SyncEventName.(set)));
-            nSyncEvent.(set)(iTrial) = numel(sEvents.(set){iTrial}(iSyncEvent.(set)(iTrial)).samples);
+            nSyncEvent.(set)(iTrial) = numel(sEvents.(set){iTrial}(iSyncEvent.(set)(iTrial)).times);
         end
     end    
     
@@ -167,18 +167,19 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     
                     sEvents.B{iTrialB}(iEventB) = sEvents.A{iTrialA}(iEventA);
                     nTimes = numel(sEvents.B{iTrialB}(iEventB).times);
-                    sEvents.B{iTrialB}(iEventB).times = nan(1,nTimes);
-                    sEvents.B{iTrialB}(iEventB).samples = nan(1,nTimes);
-                    sEvents.B{iTrialB}(iEventB).epochs = ones(1,nTimes)*currentEpoch;                    
-
+                    sEvents.B{iTrialB}(iEventB).times    = nan(1,nTimes);
+                    sEvents.B{iTrialB}(iEventB).epochs   = ones(1,nTimes)*currentEpoch;
+                    sEvents.B{iTrialB}(iEventB).channels = cell(1,nTimes);
+                    sEvents.B{iTrialB}(iEventB).notes    = cell(1,nTimes);
                 else % label found, use existing event                    
                     iEventB = find(strcmp(sEvents.A{iTrialA}(iEventA).label, {sEvents.B{iTrialB}(:).label}));
                     nEvtExst = numel(sEvents.B{iTrialB}(iEventB).times);
                     
                     nTimes = numel(sEvents.A{iTrialA}(iEventA).times);
-                    sEvents.B{iTrialB}(iEventB).times = [sEvents.B{iTrialB}(iEventB).times nan(1,nTimes)];
-                    sEvents.B{iTrialB}(iEventB).samples = [sEvents.B{iTrialB}(iEventB).samples, nan(1,nTimes)];
-                    sEvents.B{iTrialB}(iEventB).epochs = [sEvents.B{iTrialB}(iEventB).epochs, ones(1,nTimes)*currentEpoch]; 
+                    sEvents.B{iTrialB}(iEventB).times    = [sEvents.B{iTrialB}(iEventB).times,    nan(1,nTimes)];
+                    sEvents.B{iTrialB}(iEventB).epochs   = [sEvents.B{iTrialB}(iEventB).epochs,   ones(1,nTimes)*currentEpoch];
+                    sEvents.B{iTrialB}(iEventB).channels = [sEvents.B{iTrialB}(iEventB).channels, cell(1,nTimes)]; 
+                    sEvents.B{iTrialB}(iEventB).notes    = [sEvents.B{iTrialB}(iEventB).notes,    cell(1,nTimes)]; 
                 end
                 
                 for iTime = 1:numel(sEvents.A{iTrialA}(iEventA).times)
@@ -188,17 +189,17 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                     end
 
                     if syncWindow(1) <= sEvents.A{iTrialA}(iEventA).times(iTime)
-                        % Calculation of samples and timepoints in dataset B.
-                        sEvents.B{iTrialB}(iEventB).samples(iTime+nEvtExst) = round((sEvents.A{iTrialA}(iEventA).times(iTime)-tOffsetA) *sFreq.B(iTrialB));                    
-                        sEvents.B{iTrialB}(iEventB).times(iTime+nEvtExst) = sEvents.B{iTrialB}(iEventB).samples(iTime+nEvtExst) / sFreq.B(iTrialB);
+                        % Calculation of samples and timepoints in dataset B.               
+                        sEvents.B{iTrialB}(iEventB).times(iTime+nEvtExst) = round((sEvents.A{iTrialA}(iEventA).times(iTime)-tOffsetA) *sFreq.B(iTrialB)) ./ sFreq.B(iTrialB);
                     end                
                 end  
                 % delete out-of-window times, samples & epochs
                 if ~isempty(find(isnan(sEvents.B{iTrialB}(iEventB).times), 1))
                     invalidEvts = find(isnan(sEvents.B{iTrialB}(iEventB).times)); % out of time window
                     sEvents.B{iTrialB}(iEventB).times(invalidEvts) = [];
-                    sEvents.B{iTrialB}(iEventB).samples(invalidEvts) = [];
                     sEvents.B{iTrialB}(iEventB).epochs(invalidEvts) = [];
+                    sEvents.B{iTrialB}(iEventB).channels(invalidEvts) = [];
+                    sEvents.B{iTrialB}(iEventB).notes(invalidEvts) = [];
                 end
            end 
 

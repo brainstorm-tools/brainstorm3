@@ -11,7 +11,7 @@ function F = in_fread_ctf(sFile, iEpoch, SamplesBounds, ChannelsRange, isContinu
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,14 +40,14 @@ if (nargin < 4) || isempty(ChannelsRange)
 end
 if (nargin < 3) || isempty(SamplesBounds)
     if isContinuous
-        SamplesBounds = sFile.prop.samples + 1;
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq) + 1;
         iTimes = SamplesBounds(1):SamplesBounds(2);
     else
         iTimes = 1:nTimes;
         SamplesBounds = [iTimes(1), iTimes(end)];
     end
 else
-    SamplesBounds = double(SamplesBounds - sFile.prop.samples(1) + 1);
+    SamplesBounds = double(SamplesBounds - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1);
     iTimes = SamplesBounds(1):SamplesBounds(2);
 end
 if (nargin < 2) || isempty(iEpoch)

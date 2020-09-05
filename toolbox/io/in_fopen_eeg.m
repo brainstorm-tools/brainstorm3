@@ -1,13 +1,13 @@
-function sFile = in_fopen_eeg(DataFile)
+function [sFile, ChannelMat] = in_fopen_eeg(DataFile)
 % IN_FOPEN_EEG: Open a Neuroscan .eeg file (list of epochs).
 %
-% USAGE:  sFile = in_fopen_eeg(DataFile)
+% USAGE:  [sFile, ChannelMat] = in_fopen_eeg(DataFile)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function sFile = in_fopen_eeg(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2011
+% Authors: Francois Tadel, 2009-2019
         
 %% ===== READ HEADER =====
 % Read the header
@@ -42,7 +42,6 @@ sFile.comment = fBase;
 % Time and samples indices
 sFile.prop.times   = linspace(hdr.data.xmin, hdr.data.xmax, hdr.data.pnts + 1);
 sFile.prop.times   = [sFile.prop.times(1), sFile.prop.times(end-1)];
-sFile.prop.samples = round(sFile.prop.times .* sFile.prop.sfreq);
 sFile.prop.nAvg = 1;
 % Get bad channels
 sFile.channelflag = ones(length(hdr.electloc),1);
@@ -53,7 +52,6 @@ sFile.channelflag([hdr.electloc.bad] == 1) = -1;
 % Build epochs structure
 for i = 1:length(hdr.epochs)
     sFile.epochs(i).label   = hdr.epochs(i).comment;
-    sFile.epochs(i).samples = sFile.prop.samples;
     sFile.epochs(i).times   = sFile.prop.times;
     sFile.epochs(i).nAvg    = 1;
     sFile.epochs(i).select  = 1;
@@ -61,5 +59,23 @@ for i = 1:length(hdr.epochs)
     sFile.epochs(i).channelflag = [];
 end
 
-     
+
+%% ===== CHANNEL FILE =====
+% Create channel file structure
+ChannelMat = db_template('channelmat');
+ChannelMat.Comment = 'CNT 2D channels';
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, length(hdr.electloc)]);
+% Center of electrodes loc
+x_center = (max([hdr.electloc.x_coord]) + min([hdr.electloc.x_coord])) / 2;
+y_center = (max([hdr.electloc.y_coord]) + min([hdr.electloc.y_coord])) / 2;
+for i = 1:length(hdr.electloc)
+    ChannelMat.Channel(i).Name    = hdr.electloc(i).lab;
+    ChannelMat.Channel(i).Type    = 'EEG';
+    ChannelMat.Channel(i).Loc     = [-hdr.electloc(i).y_coord + y_center; -hdr.electloc(i).x_coord/2 + x_center/2; 0] ./ 500;
+    ChannelMat.Channel(i).Orient  = [];
+    ChannelMat.Channel(i).Weight  = 1;
+    ChannelMat.Channel(i).Comment = [];    
+end
+
+
 

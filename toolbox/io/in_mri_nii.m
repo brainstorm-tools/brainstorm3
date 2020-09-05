@@ -21,7 +21,7 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -360,43 +360,55 @@ end
 
 %% ===== READ IMG =====
 function data = nifti_read_img(fid, hdr)
-    % Data type to read
-    switch (hdr.dim.datatype)
-        % Analyze-compatible codes
-        case {1,2},   datatype = 'uint8';
-        case 4,       datatype = 'int16';
-        case 8,       datatype = 'int32';
-        case 16,      datatype = 'single';
-        case {32,64}, datatype = 'double';
-        % NIfTI-specific codes
-        case 256,     datatype = 'int8';
-        case 512,     datatype = 'uint16';
-        case 768,     datatype = 'uint32';
-        case 1024,    datatype = 'int64';
-        case 1280,    datatype = 'uint64';
-        otherwise,    error('Unsupported data type');
-    end
+    % Brainsuite BDP .eig file
+    if (hdr.dim.datatype == 0)
+        % Read all volumes
+        d = hdr.dim.dim(2:5);
+        data = fread(fid, d(1)*d(2)*d(3)*d(4), sprintf('*float32'));
+        % Reshape & permute to reflect correct image matrix for .eig
+        data = (reshape(data, [d(4), d(1), d(2), d(3)]));
+        data = permute(data, [2 3 4 1]);
 
-    % Dimensions of the MRI
-    Nx = hdr.dim.dim(2);    % Number of pixels in X
-    Ny = hdr.dim.dim(3);    % Number of pixels in Y
-    Nz = hdr.dim.dim(4);    % Number of Z slices
-    Nt = hdr.dim.dim(5);    % Number of time frames
-    if (Nt == 0)
-        Nt = 1;
-    end
-    % Read data
-    data = repmat(cast(1, datatype),[Nx,Ny,Nz,Nt]);
-    Nxy = Nx*Ny;
-    for t = 1:Nt,
-       for z = 1:Nz,
-          [temp, cont] = fread(fid, [Nx,Ny], datatype);
-          if (cont ~= Nxy) % ERROR
-              data = [];
-              return;
-          end
-          data(:,:,z,t) = temp;
-       end
+    % Regular .nii file
+    else
+        % Data type to read
+        switch (hdr.dim.datatype)
+            % Analyze-compatible codes
+            case {1,2},   datatype = 'uint8';
+            case 4,       datatype = 'int16';
+            case 8,       datatype = 'int32';
+            case 16,      datatype = 'single';
+            case {32,64}, datatype = 'double';
+            % NIfTI-specific codes
+            case 256,     datatype = 'int8';
+            case 512,     datatype = 'uint16';
+            case 768,     datatype = 'uint32';
+            case 1024,    datatype = 'int64';
+            case 1280,    datatype = 'uint64';
+            otherwise,    error('Unsupported data type');
+        end
+
+        % Dimensions of the MRI
+        Nx = hdr.dim.dim(2);    % Number of pixels in X
+        Ny = hdr.dim.dim(3);    % Number of pixels in Y
+        Nz = hdr.dim.dim(4);    % Number of Z slices
+        Nt = hdr.dim.dim(5);    % Number of time frames
+        if (Nt == 0)
+            Nt = 1;
+        end
+        % Read data
+        data = repmat(cast(1, datatype),[Nx,Ny,Nz,Nt]);
+        Nxy = Nx*Ny;
+        for t = 1:Nt
+           for z = 1:Nz
+              [temp, cont] = fread(fid, [Nx,Ny], datatype);
+              if (cont ~= Nxy) % ERROR
+                  data = [];
+                  return;
+              end
+              data(:,:,z,t) = temp;
+           end
+        end
     end
 end
 

@@ -9,17 +9,28 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 %    - Fs      : Sampling frequency of X and Y (in Hz)
 %    - nFFT    : Length of the window used to estimate the coherence (must be a power of 2 for the efficiency of the FFT)
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
-%    - CohMeasure    : {'mscohere', 'icohere'}
+%    - CohMeasure    : {'mscohere', 'icohere' , 'icohere2019', 'lcohere2019'}
 %    - isSymmetric   : If 1, use an optimized method for symmetrical matrices
 %    - ImagingKernel : If not empty, calculate the coherence at the source level
 %    - waitMax       : Increase of the progress bar during the execution of this function
 %
-% Definitions:
+% CohMeasure (Definitions):
+%     In Late 2019, the fft-based coherence functions were updated. The
+%     lagged and Imaginary coherence have different definitions among two
+%     versions. The recent changes are set as default. Please consider this
+%     if you want to reproduce your former analyses. 
+%     
 %     Gxy:  cross-spectral density between x and y
 %     Gxx:  autospectral density of x
 %     Gyy:  autospectral density of y
 %     Coherence function (C)            : Gxy/sqrt(Gxx*Gyy)
 %     Magnitude-squared Coherence (MSC) : |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
+%   
+%     ============ 'icohere2019', 'lcohere2019' =============
+%     Imaginary Coherence (IC)          : abs(imag(C))               
+%     Lagged Coherence (LC)             : abs(imag(C))/sqrt(1-real(C)^2)
+%
+%     ========= 'icohere' (before 2019) =========
 %     Imaginary Coherence (IC)          : imag(C)^2 / (1-real(C)^2)
 %
 % Parametric significance estimation:  
@@ -50,7 +61,7 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,7 +75,8 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
+% Authors: Hossein Shahabi, 2019
+% Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
 
 
 %% ===== INITIALIZATIONS =====
@@ -217,9 +229,10 @@ if ~isSymmetric
     
     % Divide by the corresponding autospectra for each frequency
     % C = Gxy/sqrt(Gxx*Gxy)
-    switch (CohMeasure)
+    switch CohMeasure
+        % Magnitude-squared Coherence 
         case 'mscohere'
-            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
+            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy)
             % Gxy = Gxy .* conj(Gxy);    % SLOWER
             Gxy = abs(Gxy) .^ 2;
             Gxy = bst_bsxfun(@rdivide, Gxy, Gxx);
@@ -230,7 +243,19 @@ if ~isSymmetric
             else
                 pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);    % Max makes sure numerical error is taken care of that may result in -e-15 errors
             end
-        case 'icohere'
+        
+        % Imaginary/Lagged Coherence (2019)
+        case {'icohere2019','lcohere2019'} % (No pValues for the new version)
+            Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
+            Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
+            if strcmpi(CohMeasure,'icohere2019') % Imaginary Coherence
+                Gxy = abs(imag(Gxy)) ;
+            else % Lagged Coherence
+                Gxy = abs(imag(Gxy))./sqrt(1-real(Gxy).^2) ;
+            end
+        
+        % Imaginary Coherence ( before 2019)
+        case 'icohere' % (We only have Imaginary coherence)
             % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
             Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gxx));
             Gxy = bst_bsxfun(@rdivide, Gxy, sqrt(Gyy));
@@ -242,6 +267,7 @@ if ~isSymmetric
             end
             % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
             Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+            
     end
     % In the symmetric case
     if ~isCalcAuto
@@ -305,11 +331,12 @@ else
     % Find auto-spectrum in the list
     indDiag = (iX(indSym) == iY(indSym));
     Gxx = Gxy(indDiag,:);
-    
     % Divide by the corresponding autospectra for each frequency
-    switch (CohMeasure)
+    
+    switch CohMeasure
+        % Magnitude-squared Coherence
         case 'mscohere'
-            % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
+             % Coherence = |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy)
             % Gxy = Gxy .* conj(Gxy);   % SLOWER
             Gxy = abs(Gxy) .^ 2;
             Gxy = Gxy ./ (Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
@@ -319,7 +346,19 @@ else
             else
                 pValues = max(0, 1 - Gxy) .^ floor(nSamples / nFFT);   % Max makes sure numerical error is taken care of that may result in -e-15 errors
             end
-        case 'icohere'
+            
+        % Imaginary/Lagged Coherence (2019)
+        case {'icohere2019','lcohere2019'} % (No pValues for the new version)
+            Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
+            if strcmpi(CohMeasure,'icohere2019') % Imaginary Coherence
+                Gxy = abs(imag(Gxy)) ;
+            else % Lagged Coherence
+                Gxy = abs(imag(Gxy))./sqrt(1-real(Gxy).^2) ;
+            end
+            pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+            
+        % Imaginary Coherence ( before 2019)
+        case 'icohere'  % (We only have Imaginary coherence)
             % Coherence function: C = Gxy/sqrt(Gxx*Gyy)
             Gxy = Gxy ./ sqrt(Gxx(iX(indSym),:) .* Gxx(iY(indSym),:));
             % Parametric estimation of the significance level
@@ -330,6 +369,7 @@ else
             end
             % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
             Gxy = imag(Gxy).^2 ./ (1-real(Gxy).^2);
+            
     end
     
 %     % Save the auto-Gxy as the diagonal

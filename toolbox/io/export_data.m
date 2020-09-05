@@ -15,7 +15,7 @@ function [ExportFile, sFileOut] = export_data(DataFile, ChannelMat, ExportFile, 
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -124,6 +124,7 @@ if isempty(ExportFile)
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'EEG-EDF',         DefaultExt = '.edf';
+        case 'NIRS-SNIRF',      DefaultExt = '.snirf';
         case 'ASCII-CSV',       DefaultExt = '.csv';
         case 'ASCII-CSV-HDR',   DefaultExt = '.csv';
         case 'ASCII-SPC',       DefaultExt = '.txt';  
@@ -177,6 +178,7 @@ elseif isempty(FileFormat)
         case '.eph',   FileFormat = 'EEG-CARTOOL-EPH';
         case '.raw',   FileFormat = 'EEG-EGI-RAW';
         case '.edf',   FileFormat = 'EEG-EDF';
+        case '.snirf', FileFormat = 'NIRS-SNIRF';
         case '.txt',   FileFormat = 'ASCII-CSV';
         case '.csv',   FileFormat = 'ASCII-SPC';
         case '.xlsx',  FileFormat = 'EXCEL';
@@ -256,7 +258,7 @@ if isRawIn && isRawOut
     % Get default epoch size
     EpochSize = bst_process('GetDefaultEpochSize', sFileOut);
     % Process by sample blocks
-    nSamples = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
+    nSamples = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) * sFileOut.prop.sfreq) + 1;
     nBlocks = ceil(nSamples / EpochSize);
     % Show progress bar
     if ~isProgress
@@ -265,7 +267,7 @@ if isRawIn && isRawOut
     % Copy files by block
     for iBlock = 1:nBlocks
         % Get sample indices
-        SamplesBounds = sFileOut.prop.samples(1) + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
+        SamplesBounds = sFileOut.prop.times(1) * sFileOut.prop.sfreq + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
         % Read from input file
         F = in_fread(sFileIn, ChannelMatIn, 1, SamplesBounds, iChannelsIn, ImportOptions);
         % Save to output file
@@ -301,6 +303,7 @@ else
                 DataMat.F = F;
                 bst_save(ExportFile, DataMat, 'v6');
             case 'FT-TIMELOCK'
+                DataMat.F = F;
                 ftData = out_fieldtrip_data(DataMat, ChannelMatOut, [], 1);
                 bst_save(ExportFile, ftData, 'v6');
             case 'EEG-CARTOOL-EPH'
@@ -310,6 +313,12 @@ else
                 dlmwrite(ExportFile, [size(F,1), size(F,2), samplingFreq], 'newline', 'unix', 'precision', '%d', 'delimiter', ' ');
                 % Write data
                 dlmwrite(ExportFile, F' * 1000, 'newline', 'unix', 'precision', '%0.7f', 'delimiter', '\t', '-append');
+            case 'NIRS-SNIRF'
+                if isRawIn
+                    DataMat.Events = DataMat.F.events;
+                end
+                DataMat.F = F;
+                out_data_snirf(ExportFile, DataMat, ChannelMatOut);
             case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
                 out_matrix_ascii(ExportFile, F, FileFormat, {ChannelMatOut.Channel.Name}, DataMat.Time, []);
             otherwise

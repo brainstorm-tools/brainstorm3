@@ -24,7 +24,7 @@ function [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -82,7 +82,7 @@ DateOfStudy = [];
 tmpDir = bst_get('BrainstormTmpDir');
 [filePath, fileBase, fileExt] = bst_fileparts(DataFile);
 % Reading as raw continuous?
-isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', 'MEGSCAN-HDF5', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS'});
+isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', 'MEGSCAN-HDF5', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS', 'EEG-CURRY'});
 
 %% ===== READ RAW FILE =====
 if isRaw
@@ -212,28 +212,33 @@ if isRaw
             isExtended = false;
             % For each event
             for iEvent = 1:length(ImportOptions.events)
-                nbOccur = size(ImportOptions.events(iEvent).samples, 2);
+                nbOccur = size(ImportOptions.events(iEvent).times, 2);
                 % Detect event type: simple or extended
-                isExtended = (size(ImportOptions.events(iEvent).samples, 1) == 2);
+                isExtended = (size(ImportOptions.events(iEvent).times, 1) == 2);
                 % For each occurrence of this event
                 for iOccur = 1:nbOccur
                     % Samples range to read
                     if isExtended
-                        samplesBounds = [0, diff(ImportOptions.events(iEvent).samples(:,iOccur))];
+                        samplesBounds = [0, diff(round(ImportOptions.events(iEvent).times(:,iOccur) * sFile.prop.sfreq))];
+                        % Disable option "Ignore shorter epochs"
+                        if ImportOptions.IgnoreShortEpochs
+                            ImportOptions.IgnoreShortEpochs = 0;
+                            bst_report('Warning', 'process_import_data_event', [], 'Importing extended epochs: disabling option "Ignore shorter epochs".');
+                        end
                     else
                         samplesBounds = round(ImportOptions.EventsTimeRange * sFile.prop.sfreq);
                     end
                     % Get epoch indices
-                    samplesEpoch = round(double(ImportOptions.events(iEvent).samples(1,iOccur)) + samplesBounds);
-                    if (samplesEpoch(1) < sFile.prop.samples(1))
+                    samplesEpoch = round(round(ImportOptions.events(iEvent).times(1,iOccur) * sFile.prop.sfreq) + samplesBounds);
+                    if (samplesEpoch(1) < round(sFile.prop.times(1) * sFile.prop.sfreq))
                         % If required time before event is not accessible: 
-                        TimeOffset = (sFile.prop.samples(1) - samplesEpoch(1)) / sFile.prop.sfreq;
-                        samplesEpoch(1) = sFile.prop.samples(1);
+                        TimeOffset = (round(sFile.prop.times(1) * sFile.prop.sfreq) - samplesEpoch(1)) / sFile.prop.sfreq;
+                        samplesEpoch(1) = round(sFile.prop.times(1) * sFile.prop.sfreq);
                     else
                         TimeOffset = 0;
                     end
                     % Make sure all indices are valids
-                    samplesEpoch = bst_saturate(samplesEpoch, sFile.prop.samples);
+                    samplesEpoch = bst_saturate(samplesEpoch, round(sFile.prop.times * sFile.prop.sfreq));
                     % Import structure
                     BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
                     BlocksToRead(end).iTimes     = samplesEpoch;
@@ -272,7 +277,7 @@ if isRaw
 
     % ===== READING AND SAVING =====
     % Get list of bad segments in file
-    [badSeg, badEpochs] = panel_record('GetBadSegments', sFile);
+    [badSeg, badEpochs, badTimes, badChan] = panel_record('GetBadSegments', sFile);
     % Initialize returned variables
     ImportedData = repmat(db_template('Data'), 0);
 
@@ -316,30 +321,39 @@ if isRaw
         end
 
         % ===== GOOD / BAD TRIAL =====
+        % By default: segment of data is good
+        isBad = 0;
         % If data block has already been marked as bad at an earlier stage, keep it bad 
         if ~isempty(BlocksToRead(iFile).isBad) && BlocksToRead(iFile).isBad
-            isBad = BlocksToRead(iFile).isBad;
-        % Else: Check if not reading in a bad segment
+            isBad = 1;
+        end
+        % Get the block bounds (in samples #)
+        iTimes = BlocksToRead(iFile).iTimes;
+        % But if there are some bad segments in the file, check that the data we are reading is not overlapping with one of these segments
+        if ~isempty(iTimes) && ~isempty(badSeg)
+            % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
+            iBadSeg = find((iTimes(2) >= badSeg(1,:)) & (iTimes(1) <= badSeg(2,:)));
+        % For files read by epochs: check for bad epochs
+        elseif isempty(iTimes) && ~isempty(badEpochs)
+            iBadSeg = find(BlocksToRead(iFile).iEpoch == badEpochs);
         else
-            % By default: segment of data is good
-            isBad = 0;
-            % Get the block bounds (in samples #)
-            iTimes = BlocksToRead(iFile).iTimes;
-            % But if there are some bad segments in the file, check that the data we are
-            % reading is not overlapping with one of these segments
-            if ~isempty(iTimes) && ~isempty(badSeg)
-                % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
-                if ~all((iTimes(2) < badSeg(1,:)) | (iTimes(1) > badSeg(2,:)))
-                    isBad = 1;
-                end
-            % For files read by epochs: check for bad epochs
-            elseif isempty(iTimes) && ~isempty(badEpochs)
-                if ismember(BlocksToRead(iFile).iEpoch, badEpochs)
-                    isBad = 1;
+            iBadSeg = [];
+        end
+        % If there are bad segments
+        if ~isempty(iBadSeg)
+            % Mark trial as bad (if not already set)
+            if (isempty(badChan) || any(cellfun(@isempty, badChan(iBadSeg))))
+                isBad = 1;
+            end
+            % Add bad channels defined by events
+            if ~isempty(badChan) && ~all(cellfun(@isempty, badChan(iBadSeg))) && ~isempty(ChannelMat)
+                iBadChan = find(ismember({ChannelMat.Channel.Name}, unique(cat(2, {}, badChan{iBadSeg}))));
+                if ~isempty(iBadChan)
+                    DataMat.ChannelFlag(iBadChan) = -1;
                 end
             end
         end
-
+        
         % ===== ADD HISTORY FIELD =====
         % This records all the processes applied in in_fread (reset field)
         DataMat = bst_history('reset', DataMat);
@@ -373,7 +387,7 @@ if isRaw
         NewFreq = 1 ./ (TimeVector(2) - TimeVector(1));
         % Loop on all the events types
         for iEvt = 1:length(sFile.events)
-            evtSamples  = round(sFile.events(iEvt).samples);
+            evtSamples  = round(sFile.events(iEvt).times * sFile.prop.sfreq);
             readSamples = BlocksToRead(iFile).iTimes;
             % If there are no occurrences, or if it the event of interest: skip to next event type
             if isempty(evtSamples) || (strcmpi(ImportOptions.ImportMode, 'event') && any(strcmpi({ImportOptions.events.label}, sFile.events(iEvt).label)))
@@ -382,9 +396,9 @@ if isRaw
             % Set the number of read samples for epochs
             if isempty(readSamples) && strcmpi(ImportOptions.ImportMode, 'epoch')
                 if isempty(sFile.epochs)
-                    readSamples = sFile.prop.samples;
+                    readSamples = round(sFile.prop.times * sFile.prop.sfreq);
                 else
-                    readSamples = sFile.epochs(BlocksToRead(iFile).iEpoch).samples;
+                    readSamples = round(sFile.epochs(BlocksToRead(iFile).iEpoch).times * sFile.prop.sfreq);
                 end
             end
             % Apply resampling factor if necessary
@@ -406,7 +420,7 @@ if isRaw
                 end
                 % Calculate the sample indices of the events in the new file
                 iTimeEvt = bst_saturate(evtSamples(:,iOccur) - readSamples(1) + 1, [1, length(TimeVector)]);
-                newEvtSamples = round(TimeVector(iTimeEvt) .* NewFreq);
+                newEvtTimes = round(TimeVector(iTimeEvt) .* NewFreq) ./ NewFreq;
                     
             % Extended events: Get all the events that are not either completely before or after the time window
             else
@@ -421,16 +435,17 @@ if isRaw
                 % Calculate the sample indices of the events in the new file
                 iTimeEvt1 = bst_saturate(evtSamples(1,iOccur) - readSamples(1) + 1, [1, length(TimeVector)]);
                 iTimeEvt2 = bst_saturate(evtSamples(2,iOccur) - readSamples(1) + 1, [1, length(TimeVector)]);
-                newEvtSamples = [round(TimeVector(iTimeEvt1) .* NewFreq); ...
-                                 round(TimeVector(iTimeEvt2) .* NewFreq)];
+                newEvtTimes = [round(TimeVector(iTimeEvt1) .* NewFreq); ...
+                               round(TimeVector(iTimeEvt2) .* NewFreq)] ./ NewFreq;
             end
             % Add new event category in the output file
             iEvtData = length(DataMat.Events) + 1;
-            DataMat.Events(iEvtData).label   = sFile.events(iEvt).label;
-            DataMat.Events(iEvtData).color   = sFile.events(iEvt).color;
-            DataMat.Events(iEvtData).samples = newEvtSamples;
-            DataMat.Events(iEvtData).times   = newEvtSamples ./ NewFreq;
-            DataMat.Events(iEvtData).epochs  = sFile.events(iEvt).epochs(iOccur);
+            DataMat.Events(iEvtData).label    = sFile.events(iEvt).label;
+            DataMat.Events(iEvtData).color    = sFile.events(iEvt).color;
+            DataMat.Events(iEvtData).times    = newEvtTimes;
+            DataMat.Events(iEvtData).epochs   = sFile.events(iEvt).epochs(iOccur);
+            DataMat.Events(iEvtData).channels = sFile.events(iEvt).channels(iOccur);
+            DataMat.Events(iEvtData).notes    = sFile.events(iEvt).notes(iOccur);
             if ~isempty(sFile.events(iEvt).reactTimes)
                 DataMat.Events(iEvtData).reactTimes = sFile.events(iEvt).reactTimes(iOccur);
             end

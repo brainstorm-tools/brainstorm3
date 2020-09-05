@@ -12,7 +12,7 @@ function db_set_template( iSubject, sTemplate, isInteractive )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -127,7 +127,7 @@ for i = 1:length(dirFiles)
         targetSubjFile = file_fullpath(sSubject.FileName);
         targetSubjMat = load(targetSubjFile);
         % Copy default filenames
-        for f = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull'}
+        for f = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'FEM'}
             if isfield(tempSubjMat, f{1}) && ~isempty(tempSubjMat.(f{1}))
                 [tmp, fBase, fExt] = bst_fileparts(tempSubjMat.(f{1}));
                 targetSubjMat.(f{1}) = [bst_fileparts(sSubject.FileName), '/', [fBase, fExt]];

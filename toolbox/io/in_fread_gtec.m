@@ -7,7 +7,7 @@ function F = in_fread_gtec(sFile, iEpoch, SamplesBounds)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,7 +27,7 @@ function F = in_fread_gtec(sFile, iEpoch, SamplesBounds)
 if (nargin < 3) || isempty(SamplesBounds)
     SamplesBounds = [];
 else
-    iTime = (SamplesBounds(1):SamplesBounds(2)) - sFile.prop.samples(1) + 1;
+    iTime = (SamplesBounds(1):SamplesBounds(2)) - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
 end
 if (nargin < 2) || isempty(iEpoch)
     iEpoch = 1;

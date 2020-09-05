@@ -25,7 +25,7 @@ function varargout = panel_protocols(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -53,6 +53,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     InterfaceScaling = bst_get('InterfaceScaling');
     % Get standard font
     stdFont = bst_get('Font');
+
     % Creation of the exploration tree
     jTreeProtocols = java_create('org.brainstorm.tree.BstTree', 'F', InterfaceScaling / 100, stdFont.getSize(), stdFont.getFontName());
     jTreeProtocols.setEditable(1);
@@ -80,12 +81,25 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jScrollPaneNew = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jTreeProtocols);
     jScrollPaneNew.setBorder(javax.swing.BorderFactory.createMatteBorder(1,1,0,1, java.awt.Color(.5,.5,.5)));
     
+    % Tabs for searches
+    jTabpaneSearch = java_create('javax.swing.JTabbedPane', 'II', javax.swing.JTabbedPane.TOP, javax.swing.JTabbedPane.WRAP_TAB_LAYOUT); 
+    jTabpaneSearch.setFont(bst_get('Font', 11));
+    java_setcb(jTabpaneSearch, 'StateChangedCallback', @DatabaseTabChanged_Callback, ...
+        'MouseClickedCallback', @DatabaseTabClicked_Callback);
+    
+    % Overall container to switch between tabs
+    jContainer = gui_component('Panel');
+    jContainer.add(jScrollPaneNew);
+    
     % Export panel to Brainstorm environment
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
-                           jScrollPaneNew, ...
-                           struct('jTreeProtocols', jTreeProtocols));
+                           jContainer, ...
+                           struct('jTreeProtocols', jTreeProtocols, ...
+                           'jContainer', jContainer, ...
+                           'jScrollPaneNew', jScrollPaneNew, ...
+                           'jTabpaneSearch', jTabpaneSearch));
 
 
 %% =================================================================================
@@ -289,8 +303,43 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             end
         end
     end
-end
 
+    %% ===== SELECT TAB =====
+    function DatabaseTabChanged_Callback(varargin)
+        bst_progress('start', 'Database explorer', 'Applying search...');
+        % Update database tree
+        UpdateTree(0);
+        % Move scrollbar to the left
+        hScrollbar = jScrollPaneNew.getHorizontalScrollBar();
+        hScrollbar.setValue(0);
+        % Update process box count
+        panel_nodelist('UpdatePanel', [], 1);
+        bst_progress('stop');
+    end
+
+    %% ===== CLICK TAB =====
+    function DatabaseTabClicked_Callback(jTabbedPane, ev)
+        import org.brainstorm.icon.*;
+        % Process right click
+        if (ev.getButton() == ev.BUTTON3) && ev.getSource().isEnabled()
+            % Do not add menu to default "Database" tab
+            iSearch = jTabbedPane.getSelectedIndex();
+            if iSearch > 0
+                % Create popup menu
+                jPopup = java_create('javax.swing.JPopupMenu');
+                % Menu "Edit search"
+                gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
+                % Menu "Copy search"
+                gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback(iSearch));
+                % Menu "Close search"
+                gui_component('MenuItem', jPopup, [], 'Close search', IconLoader.ICON_DELETE, [], @(h,ev)CloseDatabaseTab(iSearch));
+                % Show popup menu
+                jPopup.pack();
+                jPopup.show(jTabbedPane, ev.getPoint.getX(), ev.getPoint.getY());
+            end
+        end
+    end
+end
 
 
 
@@ -347,7 +396,12 @@ end
 
 %% ===== TREE: UPDATE =====
 % USAGE: panel_protocols('UpdateTree')
-function UpdateTree()
+function UpdateTree(resetNodes)
+    % Parse inputs
+    if nargin < 1
+        resetNodes = 1;
+    end
+
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
@@ -355,31 +409,65 @@ function UpdateTree()
     end
     % Set tree as loading (remove all nodes and add a "Loading..." node)
     ctrl.jTreeProtocols.setLoading(1);
+    % Get selected search tab
+    iSearch = GetSelectedSearch();
     % Get root node
     nodeRoot = ctrl.jTreeProtocols.getModel.getRoot();
-    % If protocol is not empty : fill the tree
-    defNode = [];
-    % Switch according to the mode button that is checked
-    switch bst_get('Layout', 'ExplorationMode')
-        case 'Subjects',     defNode = node_create_db_subjects(nodeRoot);
-        case 'StudiesSubj',  defNode = node_create_db_studies(nodeRoot, 'subject');
-        case 'StudiesCond',  defNode = node_create_db_studies(nodeRoot, 'condition');
+    % Reset existing nodes if required
+    if resetNodes
+        ResetSearchNodes();
     end
+    % Switch according to the mode button that is checked
+    explorationMode = bst_get('Layout', 'ExplorationMode');
+    % Try to load the tree
+    [dbNode, selNode, numNodes] = GetSearchNodes(iSearch, explorationMode);
+    % Fill the tree if empty
+    if isempty(dbNode)
+        switch explorationMode
+            case 'Subjects',     [selNode, dbNode, numNodes] = node_create_db_subjects(nodeRoot, iSearch);
+            case 'StudiesSubj',  [selNode, dbNode, numNodes] = node_create_db_studies(nodeRoot, 'subject', iSearch);
+            case 'StudiesCond',  [selNode, dbNode, numNodes] = node_create_db_studies(nodeRoot, 'condition', iSearch);
+        end
+        % Save node for quick tab changes
+        SaveSearchNodes(iSearch, explorationMode, dbNode, selNode, numNodes);
+    else
+        nodeRoot.add(dbNode);
+    end
+    
     % Remove "Loading..." node, validate changes and redraw tree
     ctrl.jTreeProtocols.setLoading(0);
     drawnow;
+    % Expand whole database if this is a search and we do not have too
+    % many elements
+    if iSearch > 0 && numNodes < 500
+        ExpandAll(1);
     % If a default node is defined : select and expand it
-    if ~isempty(defNode)
+    elseif ~isempty(selNode)
         % Expand default node
-        ExpandPath(defNode, 1);   
+        ExpandPath(selNode, 1);   
         % If default node is a study node
-        if ismember(char(defNode.getType()), {'study', 'studysubject', 'condition', 'rawcondition'})
+        if ismember(char(selNode.getType()), {'study', 'studysubject', 'condition', 'rawcondition'})
             % Select study node
-            SelectStudyNode(defNode);
+            SelectStudyNode(selNode);
         end
     end
+    
 end
 
+% Gets the ID of the search currently active (or 0 if no search active)
+function iSearch = GetSelectedSearch()
+    iSearch = 0;
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    % Get selected search tab
+    iSearch = ctrl.jTabpaneSearch.getSelectedIndex();
+    if isempty(iSearch) || iSearch < 0
+        iSearch = 0;
+    end
+end
 
 %% =================================================================================
 %  === NODES FUNCTIONS =============================================================
@@ -398,19 +486,21 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     if isempty(sStudy)
         return;
     end
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    % Create node sub-tree
-    UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-    isExpandTrials = 1;
-    node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel);
-    % Mark as updated
-    nodeStudy.setUserObject([]);
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
+    % Get subject
+    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+    % Get selected search tab
+    iSearch = GetSelectedSearch();
+    % Create node sub-tree
+    UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
+    isExpandTrials = 1;
+    node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+    % Mark as updated
+    nodeStudy.setUserObject([]);
     ctrl.jTreeProtocols.getModel.reload(nodeStudy);
 end
 
@@ -444,6 +534,8 @@ function UpdateNode(category, indices, isExpandTrials)
     if isempty(nodeRoot)
         return
     end
+    % Get selected search tab
+    iSearch = GetSelectedSearch();
     % Switch between nodes type to update
     switch lower(category)
         case 'subject'
@@ -462,9 +554,9 @@ function UpdateNode(category, indices, isExpandTrials)
                             nodeSubject.removeAllChildren();
                             % Create new subject node (default node / normal node)
                             if (iSubject == 0)
-                                node_create_subject(nodeSubject, ProtocolSubjects.DefaultSubject, 0);
+                                node_create_subject(nodeSubject, nodeRoot, ProtocolSubjects.DefaultSubject, 0, 0);
                             else
-                                node_create_subject(nodeSubject, ProtocolSubjects.Subject(iSubject), iSubject);
+                                node_create_subject(nodeSubject, nodeRoot, ProtocolSubjects.Subject(iSubject), iSubject, 0);
                             end
                             % Refresh node display
                             treeModel.reload(nodeSubject);
@@ -522,7 +614,7 @@ function UpdateNode(category, indices, isExpandTrials)
                             sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                             % Create new study node (default node / normal node)
                             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-                            node_create_study(nodeStudy, sStudy, iStudy, isExpandTrials, UseDefaultChannel);
+                            node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
                             % Refresh node display
                             ctrl.jTreeProtocols.getModel.reload(nodeStudy);
                             drawnow
@@ -932,7 +1024,7 @@ function destFile = PasteNode( targetNode )
         return
     end
     firstSrcType = lower(char(srcNodes(1).getType()));
-    isAnatomy = ismember(firstSrcType, {'anatomy','cortex','scalp','innerskull','outerskull','other'});
+    isAnatomy = ismember(firstSrcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get all target studies/subjects
     iTarget = [];
     for i = 1:length(targetNode)
@@ -1032,7 +1124,7 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
         sStudyTarget = bst_get('Study', iTarget);
         [sSubjectTargetRaw, iSubjectTargetRaw] = bst_get('Subject', sStudyTarget.BrainStormSubject, 1);
     end
-    isAnatomy = ismember(srcType, {'anatomy','cortex','scalp','innerskull','outerskull','other'});
+    isAnatomy = ismember(srcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get source subject
     if ~isAnatomy
         sStudySrc   = bst_get('Study', iSrcStudy);
@@ -1272,31 +1364,606 @@ function ExpandAll(isExpand) %#ok<DEFNU>
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
-%     % Get node path
-%     treeModel = ctrl.jTreeProtocols.getModel();
-%     nodes = treeModel.getPathToRoot(bstNode);
-%     % Create path
-%     jPath = java_create('javax.swing.tree.TreePath', 'Ljava.lang.Object;', nodes);
     
-    jPath = java_create('javax.swing.tree.TreePath', 'Ljava.lang.Object;', ctrl.jTreeProtocols.getModel().getRoot());
-    ExpandAllRecursive(jPath);
+    ExpandAllRecursive(isExpand, ctrl.jTreeProtocols, 1, ctrl.jTreeProtocols.getRowCount());
+end
+function ExpandAllRecursive(isExpand, tree, startingIndex, rowCount)
+    for iRow = startingIndex:rowCount
+        if isExpand
+            tree.expandRow(iRow - 1);
+        else
+            tree.collapseRow(iRow - 1);
+        end
+    end
+    
+    if tree.getRowCount() ~= rowCount
+        ExpandAllRecursive(isExpand, tree, rowCount, tree.getRowCount());
+    end
+end
 
-    function ExpandAllRecursive(parent)
-        % Traverse children
-        node = parent.getLastPathComponent();
-        e = node.children();
-        if (node.getChildCount() >= 0)
-            while (e.hasMoreElements())
-                n = e.nextElement();
-                ExpandAllRecursive(parent.pathByAddingChild(n));
+%% ===== ADD DATABASE TAB =====
+% Creates a search tab in the database tree
+function AddDatabaseTab(tabName)
+    import java.awt.GridBagConstraints;
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Add default Database tab if first tab
+    if ctrl.jTabpaneSearch.getTabCount() == 0
+        % Remove tab callback
+        bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+        java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+        
+        ctrl.jContainer.remove(ctrl.jScrollPaneNew);
+        ctrl.jTabpaneSearch.addTab('Database', ctrl.jScrollPaneNew);
+        ctrl.jContainer.add(ctrl.jTabpaneSearch);
+        
+        % Restore callback
+        java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+    end
+    
+    % Create tab
+    ctrl.jTabpaneSearch.addTab(tabName, []);
+    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    jPanelTab = java_create('javax.swing.JPanel');
+    jPanelTab.setLayout(java_create('java.awt.GridBagLayout'));
+    % Make tabs transparent for better looking display, except on Linux
+    % where it can cause weird behaviors on some environments
+    if isempty(strfind(bst_get('OsType'), 'linux'))
+        jPanelTab.setOpaque(0);
+    end
+    jLabel = gui_component('label', [], [], [tabName ' ']);
+    jBtnClose = gui_component('button', [], [], ' x ');
+    java_setcb(jBtnClose, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(tabName));
+    jBtnClose.setBorder([]);
+    
+    c = GridBagConstraints();
+    c.gridx = 0;
+    c.gridy = 0;
+    c.weightx = 1;
+    jPanelTab.add(jLabel, c);
+    
+    c.gridx = 1;
+    c.weightx = 0;
+    jPanelTab.add(jBtnClose, c);
+    
+    % Select new tab
+    ctrl.jTabpaneSearch.setTabComponentAt(index, jPanelTab);
+    index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    ctrl.jTabpaneSearch.setSelectedIndex(index);
+end
+
+%% ===== CLOSE DATABASE TAB =====
+% Closes the search tab of name or ID "tabName"
+function CloseDatabaseTab(tabName)
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Parse inputs
+    if isnumeric(tabName)
+        index = tabName;
+    else
+        index = ctrl.jTabpaneSearch.indexOfTab(tabName);
+    end
+    if index == -1
+        return
+    end
+    
+    % Remove tab changed callback
+    bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+    
+    ctrl.jTabpaneSearch.removeTabAt(index);
+    ActiveSearch('remove', index);
+    CloseDefaultDbTab();
+    
+    % Restore callback and call it exactly once
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+    bakCallback();
+end
+
+% Iteratively closes all active database tabs
+function CloseAllDatabaseTabs()
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Remove tab changed callback
+    bakCallback = java_getcb(ctrl.jTabpaneSearch, 'StateChangedCallback');
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', []);
+    
+    % Remove each tab one by one and release its Java objects
+    while ctrl.jTabpaneSearch.getTabCount() > 1
+        ctrl.jTabpaneSearch.removeTabAt(0);
+        ActiveSearch('remove', 1);
+    end
+
+    % Close the default 'Database' tab since it's not needed without active
+    % searches
+    CloseDefaultDbTab();
+    
+    % Restore callback and call it exactly once
+    java_setcb(ctrl.jTabpaneSearch, 'StateChangedCallback', bakCallback);
+    bakCallback();
+end
+
+% Closes the 'Default' database tab, only if no search is active
+function CloseDefaultDbTab()
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Do not close this default tab if searches are active
+    if ctrl.jTabpaneSearch.getTabCount() ~= 1
+        return;
+    end
+
+    ctrl.jContainer.remove(ctrl.jTabpaneSearch);
+    ctrl.jTabpaneSearch.removeTabAt(0);
+    ctrl.jContainer.add(ctrl.jScrollPaneNew);
+end
+
+% Prompts the user for a search query with the search panel
+%
+% Params:
+%  - tabName: str, name of tab if we are modifying an existing one
+%             Leave blank to create a new tab
+%
+% Returns: nothing
+function PromptSearch(tabName)
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    
+    % Parse inputs
+    if nargin < 1 || isempty(tabName)
+        iSearch = 0;
+        searchRoot = [];
+    else
+        % Load active search
+        if ~isnumeric(tabName)
+            iSearch = ctrl.jTabpaneSearch.indexOfTab(tabName);
+        else
+            iSearch = tabName;
+        end
+        searchRoot = ActiveSearch('get', iSearch);
+        % Make sure active search is compatible with the edit search GUI
+        [res, errorMsg] = panel_search_database('SearchGUICompatible', searchRoot);
+        if ~res
+            java_dialog('error', ['Your search query cannot be edited using the GUI.' 10 errorMsg], 'Edit search');
+            return;
+        end
+    end
+    
+    % Prompt user for search
+    searchRoot = gui_show_dialog('Search Database', @panel_search_database, 0, [], searchRoot);
+    if isempty(searchRoot)
+        return;
+    end
+    
+    % Apply search
+    ApplySearch(searchRoot, iSearch);
+end
+
+function ApplySearch(searchRoot, iSearch)
+    % Parse input
+    if nargin < 2
+        iSearch = 0;
+    end
+
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+
+    bst_progress('start', 'Database explorer', 'Applying search...');
+    
+    % Extract short and unique tab name
+    [node, foundNot] = panel_search_database('GetFirstValueNode', searchRoot);
+    if iscell(node.Value)
+        shortName = node.Value{1};
+    else
+        shortName = node.Value;
+    end
+    % Add NOT operator prefix if applicable
+    if foundNot
+        shortName = ['NOT ' shortName];
+    end
+    shortName = shortName(1:min(length(shortName), 12));
+    newTabName = shortName;
+    id = 1;
+    while ctrl.jTabpaneSearch.indexOfTab(newTabName) >= 0 ...
+            && (iSearch == 0 || iSearch ~= ctrl.jTabpaneSearch.indexOfTab(newTabName))
+        id = id + 1;
+        newTabName = [shortName ' (' num2str(id) ')'];
+    end
+    
+    % If this is a new tab, create it
+    if iSearch == 0
+        % Create tab
+        AddDatabaseTab(newTabName);
+        % Save to list of active searches
+        ActiveSearch('add', newTabName, searchRoot);
+    
+    % If this is an existing tab, modify it
+    else
+        % Update list of active searches
+        ActiveSearch('set', iSearch, searchRoot, newTabName);
+        % Rename tab
+        ctrl.jTabpaneSearch.setTitleAt(iSearch, newTabName);
+        jPanelTab = ctrl.jTabpaneSearch.getTabComponentAt(iSearch);
+        jLabel = jPanelTab.getComponent(0);
+        jButton = jPanelTab.getComponent(1);
+        jLabel.setText([newTabName ' '])
+        java_setcb(jButton, 'ActionPerformedCallback', @(h,ev)CloseDatabaseTab(newTabName));
+        % Update database
+        UpdateTree(0);
+        panel_nodelist('UpdatePanel', [], 1);
+    end
+    
+    bst_progress('stop');
+end
+
+% Apply custom search
+function ApplyCustomSearch(searchStr)
+    % Try to convert to search structure
+    try
+        searchRoot = panel_search_database('StringToSearch', searchStr);
+    catch e
+        java_dialog('error', ['There is an error in your search query.' 10 e.message], 'Custom search');
+        return;
+    end
+    % Apply converted search
+    ApplySearch(searchRoot);
+end
+
+% Popup menu when 'Search' is clicked from the main Brainstorm GUI
+function MainPopupMenu(jButton)
+    global GlobalData;
+    import org.brainstorm.icon.*;
+    % Get active search
+    iSearch = GetSelectedSearch();
+    % Create popup menu
+    jPopup = java_create('javax.swing.JPopupMenu');
+    
+    % New search
+    gui_component('MenuItem', jPopup, [], 'New search', IconLoader.ICON_ZOOM, [], @(h,ev)PromptSearch());
+    if iSearch > 0
+        % Edit search
+        gui_component('MenuItem', jPopup, [], 'Edit search', IconLoader.ICON_EDIT, [], @(h,ev)PromptSearch(iSearch));
+    end
+    jPopup.addSeparator();
+    
+    % === LOAD SEARCH ===
+    % If some searches are defined
+    if ~isempty(GlobalData.DataBase.Searches.All)
+        jMenuLoad = gui_component('Menu', jPopup, [], 'Load', IconLoader.ICON_FOLDER_OPEN, [], []);
+        % List all the searches
+        for iSavedSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuLoad, [], GlobalData.DataBase.Searches.All(iSavedSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)LoadSearch_Callback(iSavedSearch));
+        end
+    end
+
+    % === SAVE SEARCH ===
+    if iSearch > 0
+        jMenuSave = gui_component('Menu', jPopup, [], 'Save', IconLoader.ICON_SAVE, [], []);
+        % List all the searches
+        for iSavedSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuSave, [], GlobalData.DataBase.Searches.All(iSavedSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)SaveSearch_Callback(iSearch, iSavedSearch));
+        end
+        % Save new
+        gui_component('MenuItem', jMenuSave, [], 'New...', IconLoader.ICON_SAVE, [], @(h,ev)SaveSearch_Callback(iSearch));
+    end
+    
+    % === DELETE SEARCH ===
+    % If some searches are defined
+    if ~isempty(GlobalData.DataBase.Searches.All)
+        jMenuDel = gui_component('Menu', jPopup, [], 'Delete', IconLoader.ICON_DELETE, [], []);
+        % List all the searches
+        for iSavedSearch = 1:length(GlobalData.DataBase.Searches.All)
+            gui_component('MenuItem', jMenuDel, [], GlobalData.DataBase.Searches.All(iSavedSearch).Name, IconLoader.ICON_ZOOM, [], @(h,ev)DeleteSearch_Callback(iSavedSearch));
+        end
+    end
+    
+    if ~isempty(GlobalData.DataBase.Searches.All) || iSearch > 0
+        jPopup.addSeparator();
+    end
+
+    % Copy to clipboard
+    if iSearch > 0
+        gui_component('MenuItem', jPopup, [], 'Copy to clipboard', IconLoader.ICON_COPY, [], @(h,ev)CopySearch_Callback(iSearch));
+    end
+    % Paste from clipboard
+    gui_component('MenuItem', jPopup, [], 'Paste from clipboard', IconLoader.ICON_PASTE, [], @(h,ev)PasteSearch_Callback());
+    % Type custom search
+    gui_component('MenuItem', jPopup, [], 'Type search query', IconLoader.ICON_EDIT, [], @(h,ev)TypeSearch_Callback());
+    % Generate pipeline
+    if iSearch > 0
+        gui_component('MenuItem', jPopup, [], 'Generate process call', IconLoader.ICON_CONDITION, [], @(h,ev)GenerateProcessCall_Callback(iSearch));
+    end
+
+    % Show popup menu
+    jPopup.show(jButton, 0, jButton.getHeight());
+end
+
+%% Search menu callbacks
+% Load search callback
+function LoadSearch_Callback(iSearch)
+    global GlobalData;
+    ApplySearch(GlobalData.DataBase.Searches.All(iSearch).Search);
+end
+
+% Save search callback
+function SaveSearch_Callback(iActiveSearch, iSavedSearch)
+    global GlobalData;
+    searchRoot = ActiveSearch('get', iActiveSearch);
+    if isempty(searchRoot)
+        return;
+    end
+    % Create new search
+    if (nargin < 2) || isempty(iSavedSearch)
+        % Ask user the name for the new search
+        newName = java_dialog('input', 'Enter a name for the new search:', 'Save search');
+        if isempty(newName)
+            return;
+        end
+        % Check if search already exists
+        if ~isempty(GlobalData.DataBase.Searches.All) && any(strcmpi({GlobalData.DataBase.Searches.All}, newName))
+            bst_error('A search with this name already exists.', 'Save search', 0);
+            return;
+        end
+        % Create new structure
+        newSearch.Name = newName;
+        newSearch.Search = searchRoot;
+        % Add to list
+        if isempty(GlobalData.DataBase.Searches.All)
+            GlobalData.DataBase.Searches.All = newSearch;
+        else
+            GlobalData.DataBase.Searches.All(end+1) = newSearch;
+        end
+    % Update existing search
+    else
+        % Ask for confirmation
+        isConfirm = java_dialog('confirm', ['Overwrite search "' GlobalData.DataBase.Searches.All(iSavedSearch).Name '"?'], 'Save search');
+        % Overwrite existing entry
+        if isConfirm
+            GlobalData.DataBase.Searches.All(iSavedSearch).Search = searchRoot;
+        end
+    end
+end
+
+% Delete search callback
+function DeleteSearch_Callback(iSearch)
+    global GlobalData;
+    % Ask confirmation
+    if ~java_dialog('confirm', ['Delete search "' GlobalData.DataBase.Searches.All(iSearch).Name '"?'], 'Delete search')
+        return;
+    end
+    GlobalData.DataBase.Searches.All(iSearch) = [];
+end
+
+% Let user type their own custom search
+function TypeSearch_Callback()
+    [searchStr, isCancel] = java_dialog('input', 'Type your query:', 'Search');
+    if isCancel
+        return;
+    end
+
+    ApplyCustomSearch(searchStr);
+end
+
+% Copy search to clipboard
+function CopySearch_Callback(iSearch)
+    searchRoot = panel_protocols('ActiveSearch', 'get', iSearch);
+    if isempty(searchRoot)
+        return;
+    end
+    searchStr = panel_search_database('SearchToString', searchRoot);
+    disp(['BST> Copied the following search string to clipboard: ' searchStr]);
+    clipboard('copy', searchStr);
+end
+
+% Paste from clipboard
+function PasteSearch_Callback()
+    searchStr = clipboard('paste');
+    if isempty(searchStr)
+        return;
+    end
+    
+    ApplyCustomSearch(searchStr);
+end
+
+% Generate pipeline
+function GenerateProcessCall_Callback(iSearch)
+    % Get active search as string
+    searchRoot = ActiveSearch('get', iSearch);
+    % Generate process script
+    panel_search_database('GenerateProcessScript', searchRoot);
+end
+
+% Function that lets you modify the Searches.Active structure
+%
+% Params:
+%  - func: {'Get', 'Add', 'Remove'}, how to modify the search
+%  - indexOrName: ID or name of the search to work with
+%  - inNode: the db_template('searchnode') to save (for Add/Set only)
+%  - newName: the new tab name, for 'Set' only
+%
+% Returns:
+%  - Get: the requested db_template('searchnode') structure
+%  - Other actions: nothing
+function node = ActiveSearch(func, indexOrName, inNode, newName)
+    global GlobalData
+    
+    node = [];
+    numSearches = length(GlobalData.DataBase.Searches.Active);
+    
+    switch lower(func)
+        % Get saved root node of requested search
+        case 'get'
+            if isnumeric(indexOrName)
+                % Search IDs start at 2 since ID 1 is reserved for whole DB
+                index = indexOrName + 1;
+            else
+                index = find(strcmp({GlobalData.DataBase.Searches.Active.Name}, indexOrName));
             end
-        end
-        % Expansion or collapse must be done bottom-up
-        if (isExpand)
-            ctrl.jTreeProtocols.expandPath(parent);
-        elseif ~ctrl.jTreeProtocols.isCollapsed(parent) && (parent.getPathCount() > 2)
-            ctrl.jTreeProtocols.collapsePath(parent);
-        end
+            if isempty(index) || index > numSearches
+                node = [];
+            else
+                node = GlobalData.DataBase.Searches.Active(index).SearchNode;
+            end
+        % Replace saved root node with new search
+        case 'set'
+            if isnumeric(indexOrName)
+                % Search IDs start at 2 since ID 1 is reserved for whole DB
+                index = indexOrName + 1;
+            else
+                index = find(strcmp({GlobalData.DataBase.Searches.Active.Name}, indexOrName));
+            end
+            if isempty(index) || index > numSearches
+                node = [];
+            else
+                % Replace with new search values
+                GlobalData.DataBase.Searches.Active(index).Name = newName;
+                GlobalData.DataBase.Searches.Active(index).SearchNode = inNode;
+                % Reset search nodes to force display refresh
+                ResetSearchNodes(index);
+            end
+        % Add root node (inNode) of new search in memory
+        case 'add'
+            activeSearch = db_template('ActiveSearch');
+            activeSearch.Name = indexOrName;
+            activeSearch.SearchNode = inNode;
+            GlobalData.DataBase.Searches.Active(end + 1) = activeSearch;
+        % Remove nodes of requested search in memory
+        case 'remove'
+            if isnumeric(indexOrName)
+                % Search IDs start at 2 since ID 1 is reserved for whole DB
+                index = indexOrName + 1;
+            else
+                index = find(strcmp({GlobalData.DataBase.Searches.Active.Name}, indexOrName));
+            end
+            % Ensure we cannot remove search #1 (whole DB) from memory
+            if ~isempty(index) && index > 1 && index <= numSearches
+                iKeepNodes = 1:numSearches;
+                iKeepNodes(index) = [];
+                ResetSearchNodes(index);
+                GlobalData.DataBase.Searches.Active = GlobalData.DataBase.Searches.Active(iKeepNodes);
+            end
+    end
+end
+
+% Return the database nodes of requested search, if in memory
+%
+% Params:
+%  - iSearch: ID of the requested search
+%  - explorationMode: how the database is organised in the tree
+%       {'Subjects', 'StudiesSubj', 'StudiesCond'}
+%
+% Returns:
+%  - rootNode: Root node of the requested search
+%  - selNode: The node currently selected in the tree
+function [rootNode, selNode, numNodes] = GetSearchNodes(iSearch, explorationMode)
+    global GlobalData
+    
+    % Make sure the search ID exists
+    if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
+        rootNode = [];
+        selNode  = [];
+        numNodes = 0;
+        return;
+    end
+    
+    switch explorationMode
+        case 'Subjects'
+            % Anatomy view
+            rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode;
+            selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode;
+            numNodes = GlobalData.DataBase.Searches.Active(iSearch+1).AnatNumNodes;
+        case 'StudiesSubj'
+            % Functional view, grouped by subjects
+            rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode;
+            selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode;
+            numNodes = GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjNumNodes;
+        case 'StudiesCond'
+            % Functional view, grouped by conditions
+            rootNode = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode;
+            selNode  = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode;
+            numNodes = GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondNumNodes;
+        otherwise
+            error('Unsupported database view mode');
+    end
+end
+
+% Save the results of a search in memory for a specific display mode
+%
+% Params:
+%  - iSearch: ID of the requested search
+%  - explorationMode: how the database is organised in the tree
+%       {'Subjects', 'StudiesSubj', 'StudiesCond'}
+%  - rootNode: root of the result database nodes
+%  - selNode: the node currently selected in the tree
+%
+% Returns: nothing
+function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode, numNodes)
+    global GlobalData
+    
+    switch explorationMode
+        case 'Subjects'
+            % Anatomy view
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode = rootNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatNumNodes = numNodes;
+        case 'StudiesSubj'
+            % Functional view, grouped by subjects
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode = rootNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjNumNodes = numNodes;
+        case 'StudiesCond'
+            % Functional view, grouped by conditions
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode = rootNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode  = selNode;
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondNumNodes = numNodes;
+        otherwise
+            error('Unsupported database view mode');
+    end
+end
+
+% Clears all saved searches nodes from memory
+%
+% Params:
+%  - iSearches: list of search IDs to remove
+%       If empty, clear all searches
+%
+% Returns: nothing
+function ResetSearchNodes(iSearches)
+    global GlobalData
+    
+    % If no parameter: reset everything
+    if nargin < 1 || isempty(iSearches)
+        iSearches = 1:length(GlobalData.DataBase.Searches.Active);
+    end
+    
+    for iSearch = iSearches
+        GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncSubjRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncSubjSelNode  = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncCondRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).FuncCondSelNode  = [];
     end
 end
 

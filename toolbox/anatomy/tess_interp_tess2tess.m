@@ -1,11 +1,11 @@
-function [Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat, isStopWarped] = tess_interp_tess2tess( srcSurfFile, destSurfFile, isInteractive, isStopWarped )
-% TESS_INTERP_TESS2TESS: Compute an inteprolation matrix between two cortex surfaces.
+function [Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat, isStopWarped] = tess_interp_tess2tess( srcSurfFile, destSurfFile, isInteractive, isStopWarped, isSingleHemi )
+% TESS_INTERP_TESS2TESS: Compute an interpolation matrix between two cortex surfaces.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,10 +19,13 @@ function [Wmat, sSrcSubj, sDestSubj, srcSurfMat, destSurfMat, isStopWarped] = te
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2019
 %          Anand Joshi, 2015
 
 % Parse inputs
+if (nargin < 5) || isempty(isSingleHemi)
+    isSingleHemi = 0;
+end
 if (nargin < 4) || isempty(isStopWarped)
     isStopWarped = [];
 end
@@ -93,68 +96,89 @@ if isempty(Wmat) && ~isempty(strfind(srcSurfFile, '_warped')) && ~isSrcDefaultSu
 end
 
 % ===== STRUCTURES ATLAS =====
-% Find structure atlases
-iStructSrc  = find(strcmpi({srcSurfMat.Atlas.Name}, 'Structures'));
-iStructDest = find(strcmpi({destSurfMat.Atlas.Name}, 'Structures'));
-% Do not accept surfaces from different generations...
-if (isempty(iStructSrc) && ~isempty(iStructDest)) || (~isempty(iStructSrc) && isempty(iStructDest))
-    error('One surface has an atlas "Structures", the other does not. You need to use surfaces coming from the same software to project sources.');
-end
-% Atlases not found: Try to separate the left and right hemispheres
-if isempty(iStructSrc) && isempty(iStructDest)
-    % Split hemispheres
-    [rHsrc, lHsrc, isConnected(1)]  = tess_hemisplit(srcSurfMat);
-    [rHdest,lHdest, isConnected(2)] = tess_hemisplit(destSurfMat);
-    % If the two hemispheres are connected: Not supported anymore
-    if any(isConnected)
-        error('Surfaces with connected hemispheres are not supported anymore. Please use FreeSurfer, BrainSuite or BrainVISA.');
+% Split left-right
+if ~isSingleHemi
+    % Find structure atlases
+    iStructSrc  = find(strcmpi({srcSurfMat.Atlas.Name}, 'Structures'));
+    iStructDest = find(strcmpi({destSurfMat.Atlas.Name}, 'Structures'));
+    % Do not accept surfaces from different generations...
+    if (isempty(iStructSrc) && ~isempty(iStructDest)) || (~isempty(iStructSrc) && isempty(iStructDest))
+        error('One surface has an atlas "Structures", the other does not. You need to use surfaces coming from the same software to project sources.');
     end
-    % Create scout: Source left
-    sScoutLeftSrc = db_template('scout');
-    sScoutLeftSrc.Label    = 'Cortex L';
-    sScoutLeftSrc.Vertices = lHsrc;
-    sScoutLeftSrc.Seed     = lHsrc(1);
-    sScoutLeftSrc.Region   = 'LU';
-    sScoutLeftSrc.Color    = [0.7451 0.7451 0.7451];
-    % Create scout: Destination left
-    sScoutLeftDest = sScoutLeftSrc;
-    sScoutLeftDest.Vertices = lHdest;
-    sScoutLeftDest.Seed     = lHdest(1);
-    % Create scout: Source right
-    sScoutRightSrc = sScoutLeftSrc;
-    sScoutRightSrc.Label    = 'Cortex R';
-    sScoutRightSrc.Region   = 'RU';
-    sScoutRightSrc.Vertices = rHsrc;
-    sScoutRightSrc.Seed     = rHsrc(1);
-    % Create scout: Destination right
-    sScoutRightDest = sScoutRightSrc;
-    sScoutRightDest.Vertices = rHdest;
-    sScoutRightDest.Seed     = rHdest(1);
-    % Create new atlases
-    iStructSrc  = length(srcSurfMat.Atlas) + 1;
-    iStructDest = length(destSurfMat.Atlas) + 1;
-    srcSurfMat.Atlas(iStructSrc).Name   = 'Structures';
-    destSurfMat.Atlas(iStructDest).Name = 'Structures';
-    % Add scouts for the two hemispheres
-    srcSurfMat.Atlas(iStructSrc).Scouts   = [sScoutLeftSrc, sScoutRightSrc];
-    destSurfMat.Atlas(iStructDest).Scouts = [sScoutLeftDest, sScoutRightDest];
-end
-% Get the indices of the "Cortex L" and "Cortex R" structures
-iCortexLsrc  = find(strcmpi('Cortex L', {srcSurfMat.Atlas(iStructSrc).Scouts.Label}));
-iCortexRsrc  = find(strcmpi('Cortex R', {srcSurfMat.Atlas(iStructSrc).Scouts.Label}));
-iCortexLdest = find(strcmpi('Cortex L', {destSurfMat.Atlas(iStructDest).Scouts.Label}));
-iCortexRdest = find(strcmpi('Cortex R', {destSurfMat.Atlas(iStructDest).Scouts.Label}));
-% Get the cortex scouts
-if ~isempty(iCortexLsrc) && ~isempty(iCortexRsrc) && ~isempty(iCortexLdest) && ~isempty(iCortexRdest)
-    iVertLsrc  = srcSurfMat.Atlas(iStructSrc).Scouts(iCortexLsrc).Vertices;
-    iVertRsrc  = srcSurfMat.Atlas(iStructSrc).Scouts(iCortexRsrc).Vertices;
-    iVertLdest = destSurfMat.Atlas(iStructDest).Scouts(iCortexLdest).Vertices;
-    iVertRdest = destSurfMat.Atlas(iStructDest).Scouts(iCortexRdest).Vertices;
-    nCortexSrc  = length(iVertLsrc) + length(iVertRsrc);
-    nCortexDest = length(iVertLdest) + length(iVertRdest);
+    % Atlases not found: Try to separate the left and right hemispheres
+    if isempty(iStructSrc) && isempty(iStructDest)
+        % Split hemispheres
+        [rHsrc, lHsrc, isConnected(1)]  = tess_hemisplit(srcSurfMat);
+        [rHdest,lHdest, isConnected(2)] = tess_hemisplit(destSurfMat);
+        % If the two hemispheres are connected: Not supported anymore
+        if any(isConnected)
+            error('Surfaces with connected hemispheres are not supported anymore. Please use FreeSurfer, BrainSuite or BrainVISA.');
+        end
+        % Create scout: Source left
+        sScoutLeftSrc = db_template('scout');
+        sScoutLeftSrc.Label    = 'Cortex L';
+        sScoutLeftSrc.Vertices = lHsrc;
+        sScoutLeftSrc.Seed     = lHsrc(1);
+        sScoutLeftSrc.Region   = 'LU';
+        sScoutLeftSrc.Color    = [0.7451 0.7451 0.7451];
+        % Create scout: Destination left
+        sScoutLeftDest = sScoutLeftSrc;
+        sScoutLeftDest.Vertices = lHdest;
+        sScoutLeftDest.Seed     = lHdest(1);
+        % Create scout: Source right
+        sScoutRightSrc = sScoutLeftSrc;
+        sScoutRightSrc.Label    = 'Cortex R';
+        sScoutRightSrc.Region   = 'RU';
+        sScoutRightSrc.Vertices = rHsrc;
+        sScoutRightSrc.Seed     = rHsrc(1);
+        % Create scout: Destination right
+        sScoutRightDest = sScoutRightSrc;
+        sScoutRightDest.Vertices = rHdest;
+        sScoutRightDest.Seed     = rHdest(1);
+        % Create new atlases
+        iStructSrc  = length(srcSurfMat.Atlas) + 1;
+        iStructDest = length(destSurfMat.Atlas) + 1;
+        srcSurfMat.Atlas(iStructSrc).Name   = 'Structures';
+        destSurfMat.Atlas(iStructDest).Name = 'Structures';
+        % Add scouts for the two hemispheres
+        srcSurfMat.Atlas(iStructSrc).Scouts   = [sScoutLeftSrc, sScoutRightSrc];
+        destSurfMat.Atlas(iStructDest).Scouts = [sScoutLeftDest, sScoutRightDest];
+    end
+    % Get the indices of the "Cortex L" and "Cortex R" structures
+    iCortexLsrc  = find(strcmpi('Cortex L', {srcSurfMat.Atlas(iStructSrc).Scouts.Label}));
+    iCortexRsrc  = find(strcmpi('Cortex R', {srcSurfMat.Atlas(iStructSrc).Scouts.Label}));
+    iCortexLdest = find(strcmpi('Cortex L', {destSurfMat.Atlas(iStructDest).Scouts.Label}));
+    iCortexRdest = find(strcmpi('Cortex R', {destSurfMat.Atlas(iStructDest).Scouts.Label}));
+    % Get the cortex scouts
+    if ~isempty(iCortexLsrc) && ~isempty(iCortexRsrc) && ~isempty(iCortexLdest) && ~isempty(iCortexRdest)
+        iVertLsrc  = srcSurfMat.Atlas(iStructSrc).Scouts(iCortexLsrc).Vertices;
+        iVertRsrc  = srcSurfMat.Atlas(iStructSrc).Scouts(iCortexRsrc).Vertices;
+        iVertLdest = destSurfMat.Atlas(iStructDest).Scouts(iCortexLdest).Vertices;
+        iVertRdest = destSurfMat.Atlas(iStructDest).Scouts(iCortexRdest).Vertices;
+        nCortexSrc  = length(iVertLsrc) + length(iVertRsrc);
+        nCortexDest = length(iVertLdest) + length(iVertRdest);
+    else
+        nCortexSrc = -1;
+        nCortexDest = -1;
+    end
+    % Return scouts
+    sScoutStructSrc = srcSurfMat.Atlas(iStructSrc).Scouts;
+    sScoutStructDest = destSurfMat.Atlas(iStructDest).Scouts;
 else
-    nCortexSrc = -1;
-    nCortexDest = -1;
+    % Only one hemisphere
+    nCortexSrc = length(srcSurfMat.Vertices);
+    nCortexDest = length(destSurfMat.Vertices);
+    iVertLsrc = 1:nCortexSrc;
+    iVertRsrc = [];
+    iVertLdest = 1:nCortexDest;
+    iVertRdest = [];
+    % Create a structure atlas that contains all the vertices in one region
+    sScoutStructSrc = db_template('scout');
+    sScoutStructSrc.Label = 'Cortex L';
+    sScoutStructSrc.Vertices = iVertLsrc;
+    sScoutStructDest = db_template('scout');
+    sScoutStructDest.Label = 'Cortex L';
+    sScoutStructDest.Vertices = iVertLdest;
 end
 
 % ===== GET FREESURFER SPHERES =====
@@ -165,7 +189,7 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Sphere')  && isfield(
     % Basic version: doesn't work because the the Reg.Sphere contains only the vertices of the cortex hemispheres, not all the surface, therefore the indices do not match
     % But rehabilitated in Sept 2018 to handle some old databases from 2015, where the order of the vertices is not preserved in the downsampling
     % Old surfaces can be identified with Cortex scouts with vertex indices that are not sorted
-    if (length(destSurfMat.Atlas(iStructDest).Scouts) == 2) && ((~isequal(1:length(iVertLsrc), iVertLsrc) && ~isequal(1:length(iVertRsrc), iVertRsrc)) || (~isequal(1:length(iVertLdest), iVertLdest) && ~isequal(1:length(iVertRdest), iVertRdest)))
+    if ~isSingleHemi && (length(destSurfMat.Atlas(iStructDest).Scouts) == 2) && ((~isequal(1:length(iVertLsrc), iVertLsrc) && ~isequal(1:length(iVertRsrc), iVertRsrc)) || (~isequal(1:length(iVertLdest), iVertLdest) && ~isequal(1:length(iVertRdest), iVertRdest)))
         % This old version of the code works only if there are only the two hemispheres in the cortex surface
         if (length(srcSurfMat.Reg.Sphere.Vertices) == length(srcSurfMat.Vertices)) && (length(destSurfMat.Reg.Sphere.Vertices) == length(destSurfMat.Vertices))
             vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(iVertLsrc, :);
@@ -179,7 +203,9 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Sphere')  && isfield(
     % Correct code for new databases
     else
         % Source surface: Get the vertices of the left/right spheres
-        if (iVertLsrc(1) < iVertRsrc(1))
+        if isSingleHemi
+            vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices;
+        elseif (iVertLsrc(1) < iVertRsrc(1))
             vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(1:length(iVertLsrc), :);
             vertSphRsrc = srcSurfMat.Reg.Sphere.Vertices(length(iVertLsrc)+1:end, :);
         else
@@ -187,7 +213,9 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Sphere')  && isfield(
             vertSphLsrc = srcSurfMat.Reg.Sphere.Vertices(length(iVertRsrc)+1:end, :);
         end
         % Destination surface: Get the vertices of the left/right spheres
-        if (iVertLdest(1) < iVertRdest(1))
+        if isSingleHemi
+            vertSphLdest = destSurfMat.Reg.Sphere.Vertices;
+        elseif (iVertLdest(1) < iVertRdest(1))
             vertSphLdest = destSurfMat.Reg.Sphere.Vertices(1:length(iVertLdest), :);
             vertSphRdest = destSurfMat.Reg.Sphere.Vertices(length(iVertLdest)+1:end, :);
         else
@@ -199,11 +227,12 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Sphere')  && isfield(
 else
     isFreeSurfer = 0;
 end
-% % Plot surfaces
+% Plot surfaces
 % figure; 
 % plot3(vertSphLsrc(:,1), vertSphLsrc(:,2), vertSphLsrc(:,3), 'Marker', '+', 'LineStyle', 'none', 'Color', [0 1 0]); hold on;
+% plot3(vertSphLdest(:,1), vertSphLdest(:,2), vertSphLdest(:,3), 'Marker', '+', 'LineStyle', 'none', 'Color', [1 0 0]); axis equal; rotate3d
 % plot3(vertSphRsrc(:,1), vertSphRsrc(:,2), vertSphRsrc(:,3), 'Marker', '+', 'LineStyle', 'none', 'Color', [1 0 0]); axis equal; rotate3d
-% figure; 
+% figure;
 % plot3(vertSphLdest(:,1), vertSphLdest(:,2), vertSphLdest(:,3), 'Marker', '+', 'LineStyle', 'none', 'Color', [0 1 0]); hold on;
 % plot3(vertSphRdest(:,1), vertSphRdest(:,2), vertSphRdest(:,3), 'Marker', '+', 'LineStyle', 'none', 'Color', [1 0 0]); axis equal; rotate3d
 
@@ -214,7 +243,9 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Square')  && isfield(
    isfield(destSurfMat, 'Reg') && isfield(destSurfMat.Reg, 'Square') && isfield(destSurfMat.Reg.Square, 'Vertices') && ~isempty(destSurfMat.Reg.Square.Vertices) && ...
    (length(srcSurfMat.Reg.Square.Vertices) == nCortexSrc) && (length(destSurfMat.Reg.Square.Vertices) == nCortexDest)
     % Source surface: Get the vertices of the left/right spheres
-    if (iVertLsrc(1) < iVertRsrc(1))
+    if isSingleHemi
+        vertSquareLsrc = srcSurfMat.Reg.Square.Vertices;
+    elseif (iVertLsrc(1) < iVertRsrc(1))
         vertSquareLsrc = srcSurfMat.Reg.Square.Vertices(1:length(iVertLsrc), :);
         vertSquareRsrc = srcSurfMat.Reg.Square.Vertices(length(iVertLsrc)+1:end, :);
     else
@@ -222,7 +253,9 @@ if isfield(srcSurfMat, 'Reg')  && isfield(srcSurfMat.Reg, 'Square')  && isfield(
         vertSquareLsrc = srcSurfMat.Reg.Square.Vertices(length(iVertRsrc)+1:end, :);
     end
     % Destination surface: Get the vertices of the left/right spheres
-    if (iVertLdest(1) < iVertRdest(1))
+    if isSingleHemi
+        vertSquareLdest = destSurfMat.Reg.Square.Vertices;
+    elseif (iVertLdest(1) < iVertRdest(1))
         vertSquareLdest = destSurfMat.Reg.Square.Vertices(1:length(iVertLdest), :);
         vertSquareRdest = destSurfMat.Reg.Square.Vertices(length(iVertLdest)+1:end, :);
     else
@@ -264,20 +297,20 @@ end
 isFirstMniWarning = 1;
 
 % ===== PROJECT: REGION BY REGION =====
-for iScoutSrc = 1:length(srcSurfMat.Atlas(iStructSrc).Scouts)
+for i = 1:length(sScoutStructSrc)
     % Get region in source surface
-    sScoutSrc = srcSurfMat.Atlas(iStructSrc).Scouts(iScoutSrc);
+    sScoutSrc = sScoutStructSrc(i);
     % Progress bar
     if isInteractive
         bst_progress('start', 'Project sources', ['Computing interpolation: "' sScoutSrc.Label '"...']);
     end
     % Get region in destination surface
-    iScoutDest = find(strcmpi(sScoutSrc.Label, {destSurfMat.Atlas(iStructDest).Scouts.Label}));
+    iScoutDest = find(strcmpi(sScoutSrc.Label, {sScoutStructDest.Label}));
     if isempty(iScoutDest)
         disp(['PROJECT> Warning: Structure not found in destination surface: ' sScoutSrc.Label ]);
         continue;
     end
-    sScoutDest = destSurfMat.Atlas(iStructDest).Scouts(iScoutDest);
+    sScoutDest = sScoutStructDest(iScoutDest);
     % Is it a cortex region
     isCortexL = ismember(sScoutSrc.Label, {'lh', '01_Lhemi L', 'Cortex L'});
     isCortexR = ismember(sScoutSrc.Label, {'rh', '01_Rhemi R', 'Cortex R'});

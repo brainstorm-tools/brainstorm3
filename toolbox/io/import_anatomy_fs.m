@@ -20,7 +20,7 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -142,13 +142,30 @@ end
 AsegFile = file_find(FsDir, 'aseg.mgz', 2);
 % Find labels
 AnnotLhFiles = {file_find(FsDir, 'lh.pRF.annot', 2), file_find(FsDir, 'lh.aparc.a2009s.annot', 2), file_find(FsDir, 'lh.aparc.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'lh.BA.annot', 2), file_find(FsDir, 'lh.BA.thresh.annot', 2), file_find(FsDir, 'lh.BA_exvivo.annot', 2), file_find(FsDir, 'lh.BA_exvivo.thresh.annot', 2), ...
-                file_find(FsDir, 'lh.myaparc_36.annot', 2), file_find(FsDir, 'lh.myaparc_60.annot', 2), file_find(FsDir, 'lh.myaparc_125.annot', 2), file_find(FsDir, 'lh.myaparc_250.annot', 2), ...
+                file_find(FsDir, 'lh.myaparc_36.annot', 2), file_find(FsDir, 'lh.myaparc_60.annot', 2), file_find(FsDir, 'lh.myaparc_125.annot', 2), file_find(FsDir, 'lh.myaparc_250.annot', 2), file_find(FsDir, 'lh.BN_Atlas.annot', 2), file_find(FsDir, 'lh.oasis.chubs.annot', 2), ...
                 file_find(FsDir, 'lh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'lh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'lh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'lh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'lh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'lh.Yeo2011_17Networks_N1000.annot', 2)};
 AnnotRhFiles = {file_find(FsDir, 'rh.pRF.annot', 2), file_find(FsDir, 'rh.aparc.a2009s.annot', 2), file_find(FsDir, 'rh.aparc.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'rh.BA.annot', 2), file_find(FsDir, 'rh.BA.thresh.annot', 2), file_find(FsDir, 'rh.BA_exvivo.annot', 2), file_find(FsDir, 'rh.BA_exvivo.thresh.annot', 2), ...
-                file_find(FsDir, 'rh.myaparc_36.annot', 2), file_find(FsDir, 'rh.myaparc_60.annot', 2), file_find(FsDir, 'rh.myaparc_125.annot', 2), file_find(FsDir, 'rh.myaparc_250.annot', 2), ...
+                file_find(FsDir, 'rh.myaparc_36.annot', 2), file_find(FsDir, 'rh.myaparc_60.annot', 2), file_find(FsDir, 'rh.myaparc_125.annot', 2), file_find(FsDir, 'rh.myaparc_250.annot', 2), file_find(FsDir, 'rh.BN_Atlas.annot', 2), file_find(FsDir, 'rh.oasis.chubs.annot', 2), ...
                 file_find(FsDir, 'rh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'rh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'rh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'rh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'rh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'rh.Yeo2011_17Networks_N1000.annot', 2)};
 AnnotLhFiles(cellfun(@isempty, AnnotLhFiles)) = [];
 AnnotRhFiles(cellfun(@isempty, AnnotRhFiles)) = [];
+% Remove old labels
+if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
+    % Freesurfer 5.3 creates "BA.annot", Freesurfer 6 creates "BA_exvivo.annot" 
+	% If the two are available in the same folder, both versions were executed, and the old "BA.annot" is outdated but not replaced: ignore it
+    % Left
+    iBAold = find(~cellfun(@(c)isempty(strfind(c, 'BA.annot')), AnnotLhFiles));
+    iBAnew = find(~cellfun(@(c)isempty(strfind(c, 'BA_exvivo.annot')), AnnotLhFiles));
+    if ~isempty(iBAold) && ~isempty(iBAnew)
+        AnnotLhFiles(iBAold) = [];
+    end
+    % Right
+    iBAold = find(~cellfun(@(c)isempty(strfind(c, 'BA.annot')), AnnotRhFiles));
+    iBAnew = find(~cellfun(@(c)isempty(strfind(c, 'BA_exvivo.annot')), AnnotRhFiles));
+    if ~isempty(iBAold) && ~isempty(iBAnew)
+        AnnotRhFiles(iBAold) = [];
+    end
+end
 % Find thickness maps
 if isExtraMaps
     ThickLhFile = file_find(FsDir, 'lh.thickness', 2);
@@ -291,7 +308,7 @@ if ~isempty(TessLhFile)
     % Load sphere
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile);
+        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -312,7 +329,7 @@ if ~isempty(TessRhFile)
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile);
+        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -332,7 +349,7 @@ if ~isempty(TessLwFile)
     end
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile);
+        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
@@ -353,7 +370,7 @@ if ~isempty(TessRwFile)
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile);
+        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile, 'FS');
         errorMsg = [errorMsg err];
     end
     % Downsample
