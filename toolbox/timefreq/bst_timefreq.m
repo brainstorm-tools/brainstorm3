@@ -454,6 +454,8 @@ for iData = 1:length(Data)
                     sFile = sMat.F;
                 else
                     sFile = sMat;
+                    sFile.events = sMat.Events;
+                    sFile.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
                 end
                 % Get list of bad segments in file
                 isChannelEvtBad = 0;
