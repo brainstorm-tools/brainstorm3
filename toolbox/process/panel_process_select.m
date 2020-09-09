@@ -2596,6 +2596,10 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     sProcesses = repmat(defProcess, 0);
     % Get description for each file
     for iFile = 1:length(bstFunc)
+        % Skip python support functions
+        if length(bstFunc{iFile} > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
+            continue;
+        end
         % Get function handle
         Function = str2func(strrep(bstFunc{iFile}, '.m', ''));
         % Call description function
