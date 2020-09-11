@@ -1,5 +1,5 @@
 function [isNewFile, Message] = db_combine_channel( iSrcStudies, iDestStudy, UserConfirm, NoWarning )
-% DB_COMBINE_CHANNEL: Create a channel file for a study that does not have one yet. 
+% DB_COMBINE_CHANNEL: Create a channel file for a study that do not have one yet. 
 %
 % USAGE:  db_combine_channel( iSrcStudies, iDestStudy, UserConfirm, NoWarning )
 %         db_combine_channel( iSrcStudies, iDestStudy, UserConfirm )
@@ -19,7 +19,7 @@ function [isNewFile, Message] = db_combine_channel( iSrcStudies, iDestStudy, Use
 % DESCRIPTION: 
 %     - Create a channel coherent with other input studies.
 %     - Do not replace any previous channel file.
-%     - If more than one source channel file, the channel locations are averaged.
+%     - If more than one source channel file, the channels locations are averaged.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -61,7 +61,6 @@ end
 % Get protocol directories
 ProtocolInfo = bst_get('ProtocolInfo');
 ChannelMats = {};
-iAvgStudies = [];
 
 %% ===== LOAD CHANNEL FILES =====
 for i = 1:length(iSrcStudies)
@@ -76,7 +75,6 @@ for i = 1:length(iSrcStudies)
     ChannelFile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Channel.FileName);
     % Load channel file
     ChannelMats{end + 1} = in_bst_channel(ChannelFile);
-    iAvgStudies(end + 1) = iStudy;
 end
 
 % If no valid source channel files
@@ -85,7 +83,7 @@ if isempty(ChannelMats)
 end
     
 %% ===== COMPUTE CHANNEL MEAN =====
-[MeanChannelMat, Message] = channel_average(ChannelMats, iAvgStudies, 'all');
+[MeanChannelMat, Message] = channel_average(ChannelMats);
 % An error occurred 
 if isempty(MeanChannelMat) 
     if ~NoWarning

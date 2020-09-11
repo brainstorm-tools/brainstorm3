@@ -42,8 +42,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === WARNING
     sProcess.options.warning.Comment = ['<B>Warning</B>: This process will standardize all the recordings<BR>' ...
                                         'in all the selected folders, not only the files you selected<BR>' ...
-                                        'in the Process1 tab. Note it cannot process links to raw files.<BR>' ...
-                                        'Removing channels will also remove associated projectors.<BR><BR>' ...
+                                        'in the Process1 tab. Note it cannot process links to raw files.<BR><BR>' ...
                                         'This proces may damage your database if not used properly.<BR>' ...
                                         'Backup your database before running it.<BR><BR>'];
     sProcess.options.warning.Type    = 'label';
@@ -128,15 +127,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Check that there is something to process
     if isempty(sInputs)
-        bst_report('Warning', sProcess, [], 'No data files to process.');
+        bst_report('Error', sProcess, [], 'No data files to process.');
         return;
     elseif (length(ChannelFiles) == 1)
-        bst_report('Info', sProcess, sInputs, 'All the input files share the same channel file, nothing to register.');
+        bst_report('Error', sProcess, sInputs, 'All the input files share the same channel file, nothing to register.');
         return;
     end
     % Check if there any difference in the channel names
     if all(isEqualChan)
-        bst_report('Info', sProcess, sInputs, 'All the input files have identical channel names.');
+        bst_report('Error', sProcess, sInputs, 'All the input files have identical channel names.');
         return;
     end
     % Check if there are channels left
@@ -264,43 +263,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         tmpChanMat.Channel(iChanDest{iFile}) = ChannelMats{iFile}.Channel(iChanSrc{iFile});
         % Update MegRefCoef
         if isfield(tmpChanMat, 'MegRefCoef') && ~isempty(tmpChanMat.MegRefCoef)
-            % Check that number of MEG references did not change, otherwise reset MegRefCoef
-            iMegSrc  = find(strcmpi({ChannelMats{iFile}.Channel.Type}, 'MEG REF'));
-            iMegDest = find(strcmpi({tmpChanMat.Channel.Type}, 'MEG REF'));
+            % Check that number of MEG sensors did not change, if not reset MegRefCoef
+            iMegSrc  = good_channel(ChannelMats{iFile}.Channel, [], {'MEG', 'MEG REF'});
+            iMegDest = good_channel(tmpChanMat.Channel, [], {'MEG', 'MEG REF'});
             if (length(iMegSrc) ~= length(iMegDest))
-                bst_report('Warning', sProcess, sInputs, 'Number of Meg reference channels changed. Removing CTF compensation matrix from channel file.');
+                bst_report('Warning', sProcess, sInputs, 'Number of Meg channels changed. Removing CTF compensation matrix from channel file.');
                 tmpChanMat.MegRefCoef = [];
-            else
-                % Adjust channel rows.  If some are added, they are empty
-                % and of type "added", so no need to add rows.
-                [iRemMeg, iiRC, iiMeg] = intersect(iRemChan, find(strcmpi({ChannelMats{iFile}.Channel.Type}, 'MEG')));
-                tmpChanMat.MegRefCoef(iiMeg, :) = [];
             end
         end
         % Update Projectors
         if isfield(tmpChanMat, 'Projector') && ~isempty(tmpChanMat.Projector)
-            nProjRem = 0;
-            for iProj = length(tmpChanMat.Projector):-1:1 % reverse because of potential removal
-                % Find channels involved.  If any are removed, the
-                % projector is no longer valid and removed as well.
-                iProjChan = find(any(ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},:) ~= 0, 2));
-                if ~isempty(intersect(iProjChan, iRemChan))
-                    tmpChanMat.Projector(iProj) = [];
-                    nProjRem = nProjRem + 1;
+            for iProj = 1:length(tmpChanMat.Projector)
+                % New form: decomposed
+                if ~isempty(tmpChanMat.Projector(iProj).CompMask)
+                    tmpChanMat.Projector(iProj).Components = zeros(length(ChanList), size(ChannelMats{iFile}.Projector(iProj).Components,2));
+                    tmpChanMat.Projector(iProj).Components(iChanDest{iFile},:) = ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},:);
+                % Old form: I-UUt
                 else
-                    % New form: decomposed
-                    if ~isempty(tmpChanMat.Projector(iProj).CompMask)
-                        tmpChanMat.Projector(iProj).Components = zeros(length(ChanList), size(ChannelMats{iFile}.Projector(iProj).Components,2));
-                        tmpChanMat.Projector(iProj).Components(iChanDest{iFile},:) = ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},:);
-                        % Old form: I-UUt
-                    else
-                        tmpChanMat.Projector(iProj).Components = zeros(length(ChanList));
-                        tmpChanMat.Projector(iProj).Components(iChanDest{iFile},iChanDest{iFile}) = ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},iChanSrc{iFile});
-                    end
+                    tmpChanMat.Projector(iProj).Components = zeros(length(ChanList));
+                    tmpChanMat.Projector(iProj).Components(iChanDest{iFile},iChanDest{iFile}) = ChannelMats{iFile}.Projector(iProj).Components(iChanSrc{iFile},iChanSrc{iFile});
                 end
-            end
-            if nProjRem > 0
-                bst_report('Warning', sProcess, sInputs, sprintf('Channels removed. Removing %d projectors from channel file.', nProjRem));
             end
         end
         % Update comment (replace channel number)
@@ -311,7 +293,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % No files processed: exit
     if isempty(iFileToProcess)
-        bst_report('Info', sProcess, sInputs, 'All channel files are similar.');
+        bst_report('Error', sProcess, sInputs, 'All channel files are similar.');
         return;
     end
 
