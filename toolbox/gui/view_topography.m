@@ -97,6 +97,10 @@ end
 
 %% ===== LOAD DATA =====
 bst_progress('start', 'Topography', 'Loading data file...');
+% Force short file names
+if ~isempty(DataFile) && file_exist(DataFile)
+    DataFile = file_short(DataFile);   
+end
 % Get DataFile type
 fileType = file_gettype(DataFile);
 % Load file

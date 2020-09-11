@@ -1480,7 +1480,7 @@ switch (lower(action))
                     end
                 end
                 % === MENU: EXPORT ===
-                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_data(GetAllFilenames(bstNodes)));
+                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_data, GetAllFilenames(bstNodes)));
 
                 % === VIEW CLUSTERS ===
                 if ~isempty(AllMod)
@@ -1743,7 +1743,7 @@ switch (lower(action))
                 
                 % === MENU: EXPORT ===
                 % Added later...
-                jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_result(filenameFull));
+                jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_result, filenameFull));
                 if ~isRaw && (length(bstNodes) == 1)
                     jMenuExport{2} = gui_component('MenuItem', [], [], 'Export as 4D matrix', IconLoader.ICON_SAVE, [], @(h,ev)panel_process_select('ShowPanelForFile', {filenameFull}, 'process_export_spmvol'));
 %                     if ~isVolumeGrid
@@ -1931,7 +1931,7 @@ switch (lower(action))
                         end
                         % Export to file
                         if strcmpi(nodeType, 'timefreq')
-                            jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                            jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_timefreq, filenameFull));
                         end
                         
                     % ===== PAC: FULL MAPS =====
@@ -2104,7 +2104,7 @@ switch (lower(action))
                         end
                         % Export to file
                         if strcmpi(nodeType, 'timefreq')
-                            jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                            jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_timefreq, filenameFull));
                         end
                     end
                 end
@@ -2233,7 +2233,7 @@ switch (lower(action))
                 end
                 % Export to file
                 if strcmpi(nodeType, 'spectrum')
-                    jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                    jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_timefreq, filenameFull));
                 end
                 
                 
@@ -2274,7 +2274,7 @@ switch (lower(action))
                 end
                 % Export to file
                 if strcmpi(nodeType, 'matrix')
-                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_matrix(filenameFull));
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_matrix, filenameFull));
                 end
                 
 %% ===== POPUP: MATRIX LIST =====

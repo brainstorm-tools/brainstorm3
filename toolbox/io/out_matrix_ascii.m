@@ -35,7 +35,7 @@ if (nargin < 4) || isempty(Label1)
     Label1 = [];
 end
 if (nargin < 3) || isempty(FileFormat)
-    FileFormat = 'ASCII-SPC';
+    FileFormat = 'ASCII-CSV';
 end
 
 % Convert numeric labels into strings
@@ -89,6 +89,15 @@ elseif (size(Data,3) > 1) % && ~strcmpi(FileFormat, 'EXCEL')
     Data = Data(:,:,iFreq);
     Label3 = [];
 end
+% Transpose data (dimensions 1 and 2)
+if ismember(FileFormat, {'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL-TR'})
+    FileFormat = FileFormat(1:end-3);
+    Data = permute(Data, [2,1,3]);
+    tmp = Label1;
+    Label1 = Label2;
+    Label2 = tmp;
+end
+    
 
 % Switch depending on the requested file format
 switch (FileFormat)
@@ -97,15 +106,19 @@ switch (FileFormat)
 %     case 'ASCII-CSV' 
 %         dlmwrite(OutputFile, Data, 'newline', 'unix', 'precision', '%17.9e', 'delimiter', ',');
         
-    case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR'}
+    case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR'}
         % Get separator character
         if ismember(FileFormat, {'ASCII-CSV-HDR', 'ASCII-CSV'})
             sep = ',';
+        elseif ismember(FileFormat, {'ASCII-TSV-HDR', 'ASCII-TSV'})
+            sep = sprintf('\t');
         else
             sep = ' ';
         end
+        % Pad with spaces for fixed column sizes
+        isPad = ismember(FileFormat, {'ASCII-SPC-HDR', 'ASCII-SPC'});
         % Are we saving a header
-        isHeader = ismember(FileFormat, {'ASCII-SPC-HDR', 'ASCII-CSV-HDR'});
+        isHeader = ismember(FileFormat, {'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR'});
         
         % Open output file
         fid = fopen(OutputFile, 'w');
@@ -115,19 +128,42 @@ switch (FileFormat)
         % Write header: labels for dimension 2
         if isHeader && ~isempty(Label2)
             if ~isempty(Label1)
-                fwrite(fid, sprintf(['%17s' sep], Title2), 'char');
+                if isPad
+                    fwrite(fid, sprintf(['%17s' sep], Title2), 'char');
+                else
+                    fwrite(fid, [Title2, sep], 'char');
+                end
             end
             for i2 = 1:length(Label2)
-                fwrite(fid, sprintf(['%17s' sep], Label2{i2}), 'char');
+                if isPad
+                    fwrite(fid, sprintf(['%17s' sep], Label2{i2}), 'char');
+                else
+                    fwrite(fid, [Label2{i2}, sep], 'char');
+                end
             end
             fwrite(fid, sprintf('\n'), 'char');
         end
         % Write channels one after the other
         for i1 = 1:size(Data,1)
+            % Print row header
             if isHeader && ~isempty(Label1) && ~isempty(Label1{i1})
-                fwrite(fid, sprintf(['%17s' sep], Label1{i1}), 'char');
+                if isPad
+                    fwrite(fid, sprintf(['%17s' sep], Label1{i1}), 'char');
+                else
+                    fwrite(fid, [Label1{i1}, sep], 'char');
+                end
             end
-            fwrite(fid, sprintf(['%17.9e' sep], Data(i1,:)), 'char');
+            % Print all data
+            if isPad
+                strChan = sprintf(['%17.9e' sep], Data(i1,:));
+            else
+                strChan = sprintf(['%1.9e' sep], Data(i1,:));
+            end
+            % Remove last separator
+            strChan(end) = [];
+            % Write data to file
+            fwrite(fid, strChan, 'char');
+            % End line
             fwrite(fid, sprintf('\n'), 'char');
         end
         % Close file
