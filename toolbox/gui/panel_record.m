@@ -2087,9 +2087,14 @@ function EventConvertToExtended()
     evtWindow = round(evtWindow .* sfreq) ./ sfreq;
     
     % Apply modificiation to each event type
+    if isempty(GlobalData.FullTimeWindow) || isempty(GlobalData.FullTimeWindow.CurrentEpoch)
+        FullTimeWindow = GlobalData.DataSet(iDS).Measures.Time;
+    else
+        FullTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+    end
     for i = 1:length(sEvents)
-        sEvents(i).times = [max(GlobalData.DataSet(iDS).Measures.Time(1), sEvents(i).times(1,:) + evtWindow(1)); ...
-                            min(GlobalData.DataSet(iDS).Measures.Time(2), sEvents(i).times(1,:) + evtWindow(2))];
+        sEvents(i).times = [max(FullTimeWindow(1), sEvents(i).times(1,:) + evtWindow(1)); ...
+                            min(FullTimeWindow(2), sEvents(i).times(1,:) + evtWindow(2))];
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end
@@ -2575,7 +2580,11 @@ end
 %    [bad_start_1, bad_start_2, ...
 %     bad_stop_1,  bad_stop_2, ...]
 % This array contains the sample indices of all the bad segments in the file
-function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile) %#ok<DEFNU>
+function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile, isChannelEvtBad) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 2) || isempty(isChannelEvtBad)
+        isChannelEvtBad = 1;
+    end
     % Initialize empty list
     badSeg = [];
     badEpochs = [];
@@ -2590,16 +2599,25 @@ function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile) %#ok<DEF
     for iEvt = 1:length(events)
         % Consider only the non-empty events that have the "bad" string in them
         if IsEventBad(events(iEvt).label) && ~isempty(events(iEvt).times)
+            % Exclude all the channel-specific events
+            if ~isChannelEvtBad
+                iOccBad = find(cellfun(@isempty, events(iEvt).channels));
+                if isempty(iOccBad)
+                    continue;
+                end
+            else
+                iOccBad = 1:size(events(iEvt).times,2);
+            end
             % If extended event
             if (size(events(iEvt).times,1) == 2)
-                badTimes = [badTimes, events(iEvt).times];
+                badTimes = [badTimes, events(iEvt).times(:,iOccBad)];
             % Else: single event
             else
-                badTimes = [badTimes, repmat(events(iEvt).times, 2, 1)];
+                badTimes = [badTimes, repmat(events(iEvt).times(:,iOccBad), 2, 1)];
             end
-            badEpochs = [badEpochs, events(iEvt).epochs];
+            badEpochs = [badEpochs, events(iEvt).epochs(iOccBad)];
             % Get channel events
-            badChan = [badChan, events(iEvt).channels];
+            badChan = [badChan, events(iEvt).channels(iOccBad)];
         end
     end
     badSeg = round(badTimes .* sFile.prop.sfreq);

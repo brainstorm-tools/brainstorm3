@@ -46,10 +46,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Method
     sProcess.options.method_title.Comment = '<BR>Defacing method:';
     sProcess.options.method_title.Type    = 'label';
-    sProcess.options.method.Comment = {'SPM: MNI coordinates (cut below a plane)', 'FreeSurfer: mri_deface'; ...
-                                       'spm', 'freesurfer'};
+    sProcess.options.method.Comment = {'FreeSurfer: mri_deface', 'BrainSuite: Remove the face with a pre-defined mask', 'SPM: Cut below a plane in MNI coordinates (a.x+b.y+c.z+d=0)'; ...
+                                       'freesurfer', 'brainsuite', 'spm'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'spm';
+    % SPM: MNI plane coordinates
+    sProcess.options.mniplane.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;[a, b, c, d]: ';
+    sProcess.options.mniplane.Type    = 'value';
+    sProcess.options.mniplane.Value   = {[0, -11, 9.6, 1], 'list', 3};
+    sProcess.options.mniplanedef.Comment = '<FONT color="#777777"><I>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cut face: a=0, b=-11, c=9.6, d=1<BR>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Cut neck: a=0, b=0, c=1, d=0.115 (Z&lt;-115)</I></FONT>';
+    sProcess.options.mniplanedef.Type    = 'label';
     % Option: Recompute head surface
     sProcess.options.defacehead.Comment = 'Recompute head surface';
     sProcess.options.defacehead.Type    = 'checkbox';
@@ -78,6 +84,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OPTIONS.Method = sProcess.options.method.Value;
     OPTIONS.isInteractive = 0;
     OPTIONS.isDefaceHead = sProcess.options.defacehead.Value;
+    if (length(sProcess.options.mniplane.Value{1}) == 4)
+        OPTIONS.MNIplane = sProcess.options.mniplane.Value{1};
+    else
+        bst_report('Error', sProcess, [], 'Invalid MNI plane equation (must be 4 values: a b c d).');
+        return;
+    end
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
@@ -153,7 +165,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
     % Default options
     Def_OPTIONS = struct(...
         'Method',        'spm', ...
-        'MNIplane',      [-0.00036476, -0.01128325, 0.00980049, 0.001025580777], ...
+        'MNIplane',      [0, -11, 9.6, 1], ...
         'isOverwrite',   0, ...
         'isInteractive', 1, ...
         'isDefaceHead',  1);
@@ -188,34 +200,21 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         % Switch depending on the method
         switch (OPTIONS.Method)
             case 'spm'
-                % Compute MNI transformation if not available (first volume only)
-                if (iFile == 1) && (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || ~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T))
-                    [sMri, errMsg] = bst_normalize_mni(MriFiles{iFile});
+                % Compute cut mask on first volume only
+                if (iFile == 1)
+                    [sMri, maskCut, errMsg] = CutMriPlane(sMri, OPTIONS.MNIplane);
+                    % Error management (if MNI normalization failed)
                     if ~isempty(errMsg)
                         if ~isProgress
                             bst_progress('stop');
                         end
                         return;
                     end
+                % Following volumes: just a apply the same cut
+                else
+                    sMri.Cube(maskCut) = 0;
                 end
-                % Compute cut mask on first volume only
-                mriSize = size(sMri.Cube);
-                if (iFile == 1)
-                    % Get MNI transformation
-                    vox2mni = cs_convert(sMri, 'voxel', 'mni');
-                    % Get cut plane in MRI coordinates
-                    cutPlane = OPTIONS.MNIplane * vox2mni;
-                    % Get voxel indices under the MNI plane defined in input
-                    [i,j,k] = ndgrid(1:mriSize(1), 1:mriSize(2), 1:mriSize(3));
-                    iCut = cutPlane(1)*i + cutPlane(2)*j + cutPlane(3)*k + cutPlane(4) < 0;
-                end
-                % Replicate over multiple volumes
-                if (mriSize(4) > 1)
-                    iCut = repmat(iCut, [1 1 1 mriSize(4)]);
-                end
-                % Set to zero the voxels below the plane
-                sMri.Cube(iCut) = 0;
-                
+
             case 'freesurfer'
                 % Get path to mri_deface (download if necessary)
                 [exePath, talFile, faceFile, errMsg] = InstallMriDeface(OPTIONS.isInteractive);
@@ -253,6 +252,26 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 % Saves defaced volume
                 sMri.Cube = sMriDefaced.Cube;
                 
+            case 'brainsuite'
+                % Get ICBM152 defacing template
+                sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
+                MaskFile = bst_fullfile(sTemplate.FilePath, 'facemask_300z.nii.gz');
+                if isempty(MaskFile)
+                    errMsg = ['Could not find face mask: ' MaskFile];
+                    if ~isProgress
+                        bst_progress('stop');
+                    end
+                    return;
+                end
+                % Load mask file
+                sMask = in_mri(MaskFile, 'Nifti1');
+                sMask.NCS.R = eye(3);
+                sMask.NCS.T = [-99; -135; -184];
+                % Reslice to the space of the MRI to deface
+                sMaskReslice = mri_reslice(sMask, sMri, 'ncs', 'ncs');
+                % Apply mask
+                sMri.Cube(sMaskReslice.Cube == 0) = 0;
+                
             otherwise
                 errMsg = ['Invalid defacing method: ' OPTIONS.Method];
                 if ~isProgress
@@ -269,6 +288,9 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         % Remove file history (may contain information in the original file names)
         sMri.History = [];
         sMri = bst_history('add', sMri, 'process', ['process_mri_deface: ', OPTIONS.Method]);
+        if strcmpi(OPTIONS.Method, 'spm')
+            sMri = bst_history('add', sMri, 'process', sprintf('Cut below MNI plane: %1.3fx + %1.3fy + %1.3fz + %1.3f = 0', OPTIONS.MNIplane));
+        end
         
         % Save defaced MRI
         bst_progress('text', 'Saving results to database...');
@@ -332,6 +354,42 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
 end
 
 
+%% ===== CUT MRI PLANE =====
+function [sMri, maskCut, errMsg] = CutMriPlane(sMri, MNIplane)
+    % If the MNI normalization are not available: compute it now
+    if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || ~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T))
+        [sMri, errMsg] = bst_normalize_mni(sMri);
+        if ~isempty(errMsg)
+            maskCut = [];
+            return;
+        end
+    else
+        errMsg = '';
+    end
+    % Get MNI transformation
+    vox2mni = cs_convert(sMri, 'voxel', 'mni');
+    % Get cut plane in MRI coordinates
+    cutPlane = MNIplane * vox2mni;
+    % Get voxel indices under the MNI plane defined in input
+    mriSize = size(sMri.Cube);
+    [i,j,k] = ndgrid(1:mriSize(1), 1:mriSize(2), 1:mriSize(3));
+    maskCut = (cutPlane(1)*i + cutPlane(2)*j + cutPlane(3)*k + cutPlane(4) < 0);
+    % Checking for errors
+    strPlane = sprintf('%1.3fx + %1.3fy + %1.3fz + %1.3f = 0', MNIplane);
+    if (nnz(maskCut) == 0)
+        errMsg = ['No voxels are located below the plane: ', strPlane];
+        return;
+    elseif (nnz(maskCut) == numel(maskCut))
+        errMsg = ['All the voxels are located below the plane: ', strPlane];
+        return;
+    end
+    % Replicate over multiple volumes
+    if (length(mriSize) == 4) && (mriSize(4) > 1)
+        maskCut = repmat(maskCut, [1 1 1 mriSize(4)]);
+    end
+    % Set to zero the voxels below the plane
+    sMri.Cube(maskCut) = 0;
+end
 
 
 %% ===== INSTALL MRI_DEFACE =====
@@ -442,6 +500,4 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
         errMsg = ['mri_convert could not be installed in: ' mriDefaceDir];
     end
 end
-
-
 

@@ -61,7 +61,7 @@ if isempty(tpmFile) || ~file_exist(tpmFile)
         mkdir(bst_fileparts(tpmFile));
     end
     % URL to download
-    tmpUrl = 'https://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
+    tmpUrl = 'http://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
     % Path to downloaded file
     tpmZip = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'SPM_TPM');
     % Download file

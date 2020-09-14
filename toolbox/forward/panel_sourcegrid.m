@@ -73,6 +73,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             HeadFile = CortexFile;
             sHead = sEnvelope;
         end
+        % Load inner skull if available
+        if ~isempty(sSubject.iInnerSkull)
+            sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
+        else
+            sInner = [];
+        end
         % If this is the default subject: do not show the option "use group grid"
         if (iSubject == 0)
             isShowGroup = 0;
@@ -106,6 +112,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         sEnvelope = [];
         sCortex = [];
         sHead = [];
+        sInner = [];
         HeadFile = [];
     end
 
@@ -236,6 +243,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                   'sEnvelope',        sEnvelope, ...
                   'sCortex',          sCortex, ...
                   'sHead',            sHead, ...
+                  'sInner',           sInner, ...
                   'jRadioGenerate',   jRadioGenerate, ...
                   'jRadioIsotropic',  jRadioIsotropic, ...
                   'jRadioBrain',      jRadioBrain, ...
@@ -328,9 +336,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             GridOptions = GetOptions(ctrl);
             % Get grid of source points
             if strcmpi(GridOptions.Method, 'isohead')
-                [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.HeadFile, ctrl.sHead, ctrl.sHead);
+                [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.HeadFile, ctrl.sHead, ctrl.sHead, ctrl.sHead);
             else
-                [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.CortexFile, ctrl.sCortex, ctrl.sEnvelope);
+                [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.CortexFile, ctrl.sCortex, ctrl.sEnvelope, ctrl.sInner);
             end
             % Variable not found
             if strcmpi(GridOptions.Method, 'var') && isempty(gGridLoc)
@@ -446,9 +454,9 @@ end
 
 
 %% ===== GET GRID =====
-% USAGE:  [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope)
+% USAGE:  [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope, sInner)
 %                      grid = GetGrid(GridOptions, CortexFile)
-function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope)
+function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope, sInner)
     grid = [];
     % Progress bar
     bst_progress('start', 'Volume grid', 'Creating grid...');
@@ -458,6 +466,13 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
         [sEnvelope, sCortex] = tess_envelope(CortexFile, 'convhull', GridOptions.nVerticesInit, .001, []);
         if isempty(sEnvelope)
             return;
+        end
+    end
+    % Inner skull
+    if (nargin < 5) || isempty(sInner)
+        sSubject = bst_get('SurfaceFile', CortexFile);
+        if ~isempty(sSubject.iInnerSkull)
+            sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
         end
     end
     % Switch between methods
@@ -471,10 +486,10 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
                 sEnvelope.Vertices = bst_bsxfun(@plus, sEnvelope.Vertices, center);
             end
             % Compute grid
-            grid = bst_sourcegrid(GridOptions, CortexFile, sCortex, sEnvelope);
+            grid = bst_sourcegrid(GridOptions, CortexFile, sInner, sEnvelope);
         case {'isotropic', 'isohead'}
             % Compute grid
-            grid = bst_sourcegrid(GridOptions, CortexFile, sCortex, sEnvelope);
+            grid = bst_sourcegrid(GridOptions, CortexFile, sInner, sEnvelope);
         case {'file', 'var'}
             % Read grid
             if ~isempty(GridOptions.FileName)

@@ -75,7 +75,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.openmeeg.Comment = {'panel_openmeeg', 'OpenMEEG options: '};
     sProcess.options.openmeeg.Type    = 'editpref';
     sProcess.options.openmeeg.Value   = bst_get('OpenMEEGOptions');
-    % Options: OpenMEEG Options
+    % Options: DUNEuro Options
     sProcess.options.duneuro.Comment = {'panel_duneuro', 'DUNEuro options: '};
     sProcess.options.duneuro.Type    = 'editpref';
     sProcess.options.duneuro.Value   = bst_get('DuneuroOptions');

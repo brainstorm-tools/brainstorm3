@@ -169,8 +169,10 @@ for iFile = 1:length(DataFiles)
         clustersActivity{iFile,k} = bst_scout_value(DataToPlot, ClusterFunction);
         if ~isempty(StdFunction)
             clustersStd{iFile, k} = bst_scout_value(DataToPlot, StdFunction);
-        elseif ~isempty(DataStd)
+        elseif ~isempty(DataStd) && all(size(clustersActivity{iFile,k}) == size(DataStd))
             clustersStd{iFile, k} = DataStd;
+        else
+            clustersStd{iFile, k} = [];
         end
 
         % === AXES LABELS ===

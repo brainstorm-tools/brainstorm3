@@ -212,7 +212,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         GlobalData.DataSet(iDS).Figure(iFig).Id      = FigureId;
         GlobalData.DataSet(iDS).Figure(iFig).hFigure = hFig;
         GlobalData.DataSet(iDS).Figure(iFig).Handles = FigHandles;
-    end   
+    end
     
     % Find selected channels
     [selChan,errMsg] = GetChannelsForFigure(iDS, iFig);

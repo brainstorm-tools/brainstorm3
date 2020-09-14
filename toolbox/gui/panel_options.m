@@ -132,9 +132,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
             jButtonSpmDir.setMargin(Insets(2,2,2,2));
             jButtonSpmDir.setFocusable(0);
+            % BrainSuite folder
+            gui_component('Label', jPanelImport, 'br', 'BrainSuite installation folder: ', [], [], []);
+            jTextBsDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
+            jButtonBsDir = gui_component('Button', jPanelImport, [], '...', [], [], @BsDirectory_Callback);
+            jButtonBsDir.setMargin(Insets(2,2,2,2));
+            jButtonBsDir.setFocusable(0);
         else
             jTextFtDir = [];
             jTextSpmDir = [];
+            jTextBsDir = [];
         end
     jPanelRight.add('br hfill', jPanelImport);
     
@@ -245,6 +252,9 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
         if ~isempty(jTextSpmDir)
             jTextSpmDir.setText(bst_get('SpmDir'));
+        end
+        if ~isempty(jTextBsDir)
+            jTextBsDir.setText(bst_get('BrainSuiteDir'));
         end
         % MNE-Python config
         PythonConfig = bst_get('PythonConfig');
@@ -371,6 +381,21 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
                     java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
                 else
                     bst_set('SpmDir', newSpmDir);
+                end
+            end
+        end
+        % BrainSuite directory
+        if ~isempty(jTextBsDir)
+            oldBsDir = bst_get('BrainSuiteDir');
+            newBsDir = char(jTextBsDir.getText());
+            if ~file_compare(oldBsDir, newBsDir)
+                % Folder doesn't exist
+                if ~isempty(newBsDir) && ~file_exist(newBsDir)
+                    java_dialog('warning', 'Selected BrainSuite folder doesn''t exist. Ignoring...');
+                elseif ~isempty(newBsDir) && ~file_exist(bst_fullfile(newBsDir, 'bdp'))
+                    java_dialog('warning', 'Selected folder does not contain a valid BrainSuite install (missing "bdp" folder). Ignoring...');
+                else
+                    bst_set('BrainSuiteDir', newBsDir);
                 end
             end
         end
@@ -533,6 +558,27 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     end
 
+%% ===== BRAINSUITE DIRECTORY SELECTION =====
+    % Callback for '...' button
+    function BsDirectory_Callback(varargin)
+        % Get the initial path
+        initDir = bst_get('BrainSuiteDir', 1);
+        % Open 'Select directory' dialog
+        bsDir = uigetdir(initDir, 'Select BrainSuite directory.');
+        % If no directory was selected : return without doing anything
+        if (isempty(bsDir) || (bsDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, bsDir)))
+            return;
+        % Directory is not a valid folder
+        elseif ~file_exist(bst_fullfile(bsDir, 'bdp'))
+            java_dialog('warning', 'Selected folder does not contain a valid BrainSuite install (missing folder "bdp").');
+            return;
+        end
+        % Else : update control text
+        jTextBsDir.setText(bsDir);
+        % Focus main brainstorm figure
+        jBstFrame = bst_get('BstFrame');
+        jBstFrame.setVisible(1);
+    end
 
 %% ===== PYTHON EXECUTABLE =====
     % Callback for '...' button

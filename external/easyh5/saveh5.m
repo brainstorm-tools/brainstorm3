@@ -65,6 +65,13 @@ opt.compresslevel=jsonopt('CompressLevel',5,opt);
 opt.compressarraysize=jsonopt('CompressArraySize',100,opt);
 opt.unpackhex=jsonopt('UnpackHex',1,opt);
 
+opt.releaseid=0;
+vers=ver('MATLAB');
+if(~isempty(vers))
+    opt.releaseid=datenum(vers(1).Date);
+end
+opt.skipempty=(opt.releaseid<datenum('1-Jan-2015'));
+
 if(isfield(opt,'rootname'))
    rootname=['/' opt.rootname];
 end
@@ -235,6 +242,13 @@ if(opt.unpackhex)
     name=decodevarname(name);
 end
 
+oid=[];
+
+if(isempty(item) && opt.skipempty)
+    warning('The HDF5 library is older than v1.8.7, and can not save empty datasets. Skip saving "%s"',name);
+    return;
+end
+
 if(isreal(item))
     if(issparse(item))
         idx=find(item);
@@ -257,12 +271,23 @@ else
         H5D.write(oid,'H5ML_DEFAULT','H5S_ALL','H5S_ALL','H5P_DEFAULT',struct(opt.complexformat{1},real(item),opt.complexformat{2},imag(item)));
     end
 end
-H5D.close(oid);
+if(~isempty(oid))
+   H5D.close(oid);
+end
 
 %%-------------------------------------------------------------------------
 function oid=sparse2h5(name, item,handle,level,varargin)
 
+opt=varargin{1};
+
 idx=item.SparseIndex;
+
+if(isempty(idx) && opt.skipempty)
+    warning('The HDF5 library is older than v1.8.7, and can not save empty datasets. Skip saving "%s"',name);
+    oid=[];
+    return;
+end
+
 adata=item.Size;
 item=rmfield(item,'Size');
 hasimag=isfield(item,'Imag');
@@ -271,7 +296,6 @@ typemap=h5types;
 
 pd = 'H5P_DEFAULT';
 
-opt=varargin{1};
 
 usefilter=opt.compression;
 complevel=opt.compresslevel;

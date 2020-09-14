@@ -141,6 +141,8 @@ if isempty(newEvents)
             newEvents = in_events_csv(sFile, EventFile);
         case 'CTFVIDEO'
             newEvents = in_events_video(sFile, ChannelMat, EventFile);
+        case 'ANYWAVE'
+            newEvents = in_events_anywave(sFile, EventFile);
         otherwise
             error('Unsupported file format.');
     end

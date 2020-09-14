@@ -2,7 +2,8 @@ function varargout = process_segment_cat12( varargin )
 % PROCESS_SEGMENT_CAT12: Run the segmentation of a T1 MRI with SPM12/CAT12.
 %
 % USAGE:     OutputFiles = process_segment_cat12('Run',     sProcess, sInputs)
-%         [isOk, errMsg] = process_segment_cat12('Compute', iSubject, iAnatomy=[default])
+%         [isOk, errMsg] = process_segment_cat12('Compute', iSubject, iAnatomy=[default], nVertices, isSphReg, isExtraMaps, isInteractive)
+%                          process_segment_cat12('ComputeInteractive', iSubject, iAnatomy)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +23,7 @@ function varargout = process_segment_cat12( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2020
 
 eval(macro_method);
 end
@@ -31,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Segment MRI with SPM12/CAT12';
+    sProcess.Comment     = 'Segment MRI with CAT12';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 31;
@@ -49,6 +50,28 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.nvertices.Comment = 'Number of vertices (cortex): ';
     sProcess.options.nvertices.Type    = 'value';
     sProcess.options.nvertices.Value   = {15000, '', 0};
+    % Option: TPM atlas
+    SelectOptions = {...
+        '', ...                            % Filename
+        'Nifti1', ...                      % FileFormat
+        'open', ...                        % Dialog type: {open,save}
+        'Select TPM atlas...', ...         % Window title
+        'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                      % Selection mode: {single,multiple}
+        'files', ...                       % Selection mode: {files,dirs,files_and_dirs}
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'Nifti1'}, ... % Get all the available file formats
+        'MriIn'};                          % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
+    sProcess.options.tpmnii.Comment = 'TPM atlas: ';
+    sProcess.options.tpmnii.Type    = 'filename';
+    sProcess.options.tpmnii.Value   = SelectOptions;
+    % Option: Spherical registration
+    sProcess.options.sphreg.Comment = 'Use spherical registration<BR><I><FONT color="#777777">Required for atlases, group analysis and thickness maps</FONT></I>';
+    sProcess.options.sphreg.Type    = 'checkbox';
+    sProcess.options.sphreg.Value   = 1;
+    % Option: Import extra map
+    sProcess.options.extramaps.Comment = 'Import additonal cortical maps<BR><I><FONT color="#777777">Cortical thickness, gyrification index, sulcal depth</FONT></I>';
+    sProcess.options.extramaps.Type    = 'checkbox';
+    sProcess.options.extramaps.Value   = 0;
 end
 
 
@@ -67,6 +90,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return
     end
+    % Spherical registration?
+    if isfield(sProcess.options, 'sphreg') && isfield(sProcess.options.sphreg, 'Value') && ~isempty(sProcess.options.sphreg.Value)
+        isSphReg = sProcess.options.sphreg.Value;
+    else
+        isSphReg = 1;
+    end
+    % TPM atlas
+    if isfield(sProcess.options, 'tpmnii') && isfield(sProcess.options.tpmnii, 'Value') && ~isempty(sProcess.options.tpmnii.Value) && ~isempty(sProcess.options.tpmnii.Value{1})
+        TpmNii = sProcess.options.tpmnii.Value{1};
+    else
+        TpmNii = bst_get('SpmTpmAtlas');
+    end
+    % Thickness maps
+    if isfield(sProcess.options, 'extramaps') && isfield(sProcess.options.extramaps, 'Value') && ~isempty(sProcess.options.extramaps.Value)
+        isExtraMaps = sProcess.options.extramaps.Value;
+    else
+        isExtraMaps = 0;
+    end
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
@@ -80,7 +121,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0);
+    [isOk, errMsg] = Compute(iSubject, [], nVertices, TpmNii, isSphReg, isExtraMaps, 0);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -92,8 +133,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
-%% ===== COMPUTE CANONICAL SURFACES =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
+%% ===== COMPUTE CAT12 SEGMENTATION =====
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphReg, isExtraMaps, isInteractive)
     isOk = 0;
     errMsg = '';
     % Initialize SPM
@@ -109,10 +150,25 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
         return;
     end
     % Check DARTEL template
-    dartelTpm = bst_fullfile(bst_get('SpmDir'), 'toolbox', 'cat12', 'templates_1.50mm', 'Template_1_IXI555_MNI152.nii');
+    SpmDir = bst_get('SpmDir');
+    dartelTpm = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_volumes', 'Template_1_IXI555_MNI152.nii');
     if ~file_exist(dartelTpm)
-        errMsg = ['Missing CAT12 template: ' 10 dartelTpm];
-        return;
+        dartelTpm = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_1.50mm', 'Template_1_IXI555_MNI152.nii');
+        if ~file_exist(dartelTpm)
+            errMsg = ['Missing CAT12 template: ' 10 dartelTpm];
+            return;
+        else
+            catVer = 12;
+        end
+    else
+        catVer = 12.7;
+    end
+    % Get default TPM.nii template
+    if isempty(TpmNii)
+        TpmNii = bst_get('SpmTpmAtlas');
+    end
+    if isempty(TpmNii) || ~file_exist(TpmNii)
+        error('Missing file TPM.nii');
     end
     
     % ===== GET SUBJECT =====
@@ -171,10 +227,12 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
     % ===== SAVE MRI AS NII =====
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
-    % Save MRI in .nii format
+    % Create temporay folder for CAT12 output
     catDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'cat12');
     mkdir(catDir);
-    NiiFile = bst_fullfile(catDir, 'spm_cat12.nii');
+    % Save MRI in .nii format
+    subjid = strrep(sSubject.Name, '@', '');
+    NiiFile = bst_fullfile(catDir, [subjid, '.nii']);
     out_mri_nii(sMri, NiiFile);
     % If a "world transformation" was not available in the MRI in the database, it was set to a default when saving to .nii
     % Let's reload this file to get the transformation matrix, it will be used when importing the results
@@ -192,46 +250,92 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
     end
 
     % ===== CALL CAT12 SEGMENTATION =====
-    % Get TPM.nii template
-    tpmFile = bst_get('SpmTpmAtlas');
-    if isempty(tpmFile) || ~file_exist(tpmFile)
-        error('Missing file TPM.nii');
-    end
     % Create SPM batch
     matlabbatch{1}.spm.tools.cat.estwrite.data = {[NiiFile ',1']};
     matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {tpmFile};
+    matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {TpmNii};
     matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg = 'mni';
     matlabbatch{1}.spm.tools.cat.estwrite.opts.biasstr = 0.5;
-    matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr = 0.5;
     matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP = 1070;
     matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr = 0.5;
     matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr = 2;
     matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.dartel.darteltpm = {dartelTpm};
     matlabbatch{1}.spm.tools.cat.estwrite.extopts.vox = 1.5;
-    matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.fixed = [1 0.1];
-    matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40 = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.labelnative = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 1;
     matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];
+    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.native = 1;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 1;
+    % Spherical registration (much slower)
+    if isSphReg
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;
+    else
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 5;
+    end
+    % Extra cortical maps
+    if isExtraMaps
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.data_surf(1) = cfg_dep('CAT12: Segmentation (current release): Left Central Surface', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','lhcentral', '()',{':'}));
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.GI = 1;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.SD = 1;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.FD = 0;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.nproc = 0;
+    end
+    % Switch depending on CAT12 versions
+    switch (catVer)
+        case 12
+            matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr = 0.5;
+            matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.fixed = [1 0.1];
+            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40 = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 1;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 1;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 1;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 1;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 1;
+        case 12.7
+            matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.optimal = [1 0.1];
+            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);
+            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 1;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 1;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
+            matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
+    end
+    % Switch to CAT12 expert mode
+    cat12('expert');
+    % Hide CAT12 figures
+    set([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
+         findall(0, 'Type', 'Figure', 'Tag', 'CAT'), ...
+         findall(0, 'Type', 'Figure', 'Tag', 'Graphics')], 'Visible', 'off');
     % Run SPM batch
     spm_jobman('initcfg');
     spm_jobman('run',matlabbatch);
-        
+    % Close CAT12 figures
+    close([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
+           findall(0, 'Type', 'Figure', 'Tag', 'CAT')]);
+    
+    
+%     % ===== PROJECT ATLASES =====
+%         fs_central = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.central.freesurfer.gii');
+%         fs_sphere  = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.sphere.freesurfer.gii');
+%         fs_annot   = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', 'lh.aparc_DK40.freesurfer.annot');
+% 
+%         subj_spherereg = bst_fullfile(catDir, 'surf', ['lh.sphere.reg.' subjid '.gii']);
+%         subj_annot = ['lh.aparc_DK40.' subjid '.annot'];
+% 
+%         cmd = sprintf('CAT_ResampleSurf "%s" "%s" "%s" NULL "%s" "%s"',...
+%           fs_central, fs_sphere, subj_spherereg, fs_annot, subj_annot);
+%         [ST, RS] = cat_system(cmd);
+%         cat_check_system_output(ST,RS,opt.verb-2);
+    
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
-    isExtraMaps = 0;
     isKeepMri = 1;
     errorMsg = import_anatomy_cat(iSubject, catDir, nVertices, isInteractive, [], isExtraMaps, isKeepMri);
     if ~isempty(errorMsg)
@@ -251,17 +355,20 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     if (nargin < 2) || isempty(iAnatomy)
         iAnatomy = [];
     end
-    % Open progress bar
-    bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
-    bst_progress('setimage', 'logo_cat.gif');
     % Ask for number of vertices
     nVertices = java_dialog('input', 'Number of vertices on the cortex surface:', 'CAT12 segmentation', [], '15000');
     if isempty(nVertices)
         return
     end
     nVertices = str2double(nVertices);
-    % Compute surfaces
-    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, 1);
+    % Open progress bar
+    bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
+    bst_progress('setimage', 'logo_cat.gif');
+    % Run CAT12
+    TpmNii = bst_get('SpmTpmAtlas');
+    isSphReg = 1;
+    isExtraMaps = 0;
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphReg, isExtraMaps, 1);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'CAT12 MRI segmentation', 0);

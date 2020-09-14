@@ -1,5 +1,5 @@
 function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
-% MRI_RESLICE: Use the MNI transformation to .
+% MRI_RESLICE: Relice a volume based on a reference volume.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
 %            [sMriReg, errMsg, fileTag] = mri_reslice(sMriSrc,    sMriRef, ...)
@@ -39,8 +39,11 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 % Authors: Francois Tadel, 2016-2020
 
 % ===== PARSE INPUTS =====
-sMriReg = [];
+% Initialize returned values
+MriFileReg = [];
 errMsg = [];
+fileTag = '';
+sMriReg = [];
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -68,7 +71,6 @@ end
 
 
 % ===== GET NCS/SCS TRANSFORMATIONS =====
-fileTag = '';
 % Source MRI
 if ischar(TransfSrc)
     if strcmpi(TransfSrc, 'ncs')
@@ -126,9 +128,6 @@ if ischar(TransfRef)
 end
 % Handle errors
 if ~isempty(errMsg)
-    if ~isempty(MriFileSrc)
-        bst_error(errMsg, 'MRI reslice', 0);
-    end
     return;
 end
 

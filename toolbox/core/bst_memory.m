@@ -98,6 +98,8 @@ function [sMri,iMri] = LoadMri(MriFile)
     end
 
     % ===== CHECK IF LOADED =====
+    % Use short file name
+    MriFile = file_short(MriFile);
     % Check if surface is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
     % If MRI is not loaded yet: load it
@@ -443,14 +445,20 @@ end
 %% ===== GET SURFACE =====
 function [sSurf, iSurf] = GetSurface(SurfaceFile)
     global GlobalData;
-    % Remove full path
-    SurfaceFile = file_short(SurfaceFile);
     % Check if surface is already loaded
     iSurf = find(file_compare({GlobalData.Surface.FileName}, SurfaceFile));
     if ~isempty(iSurf)
         sSurf = GlobalData.Surface(iSurf);
     else
-        sSurf = [];
+        % Remove full path
+        SurfaceFile = file_short(SurfaceFile);
+        % Check again
+        iSurf = find(file_compare({GlobalData.Surface.FileName}, SurfaceFile));
+        if ~isempty(iSurf)
+            sSurf = GlobalData.Surface(iSurf);
+        else
+            sSurf = [];
+        end
     end
 end
 
@@ -911,6 +919,10 @@ function LoadRecordingsMatrix(iDS)
     % If there is only one time sample : copy it to get 2 time samples
     if (size(GlobalData.DataSet(iDS).Measures.F, 2) == 1)
         GlobalData.DataSet(iDS).Measures.F = repmat(GlobalData.DataSet(iDS).Measures.F, [1,2]);
+        % Also duplicate Std if present
+        if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
+            GlobalData.DataSet(iDS).Measures.Std = repmat(GlobalData.DataSet(iDS).Measures.Std, [1,2]);
+        end    
     end
 end
 
@@ -3386,10 +3398,8 @@ end
 %% ===== UNLOAD MRI =====
 function UnloadMri(MriFile) %#ok<DEFNU>
     global GlobalData;
-    % Get SUBJECTS directory
-    ProtocolInfo = bst_get('ProtocolInfo');
     % Force relative path
-    MriFile = strrep(MriFile, ProtocolInfo.SUBJECTS, '');
+    MriFile = file_short(MriFile);
     % Check if MRI is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
     % If it is: unload it

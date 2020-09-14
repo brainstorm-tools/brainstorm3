@@ -38,7 +38,7 @@ function [fid, nifti] = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % ===== PARSE INPUTS =====
 % Write header of full file
 if (nargin < 4) || isempty(Nt)
-    Nt = size(sMri.Cube, 4);
+    Nt = [];
     isHdrOnly = 0;
 else
     isHdrOnly = 1;
@@ -56,6 +56,9 @@ byteOrder = 'l';
 if ischar(sMri)
     BstMriFile = sMri;
     sMri = in_mri_bst(BstMriFile);
+end
+if isempty(Nt)
+    Nt = size(sMri.Cube, 4);
 end
 % Get maximum
 MaxVal = max(abs(sMri.Cube(:)));

@@ -50,7 +50,7 @@ function [Histogram] = mri_histogram(volume, intensityMax, volumeType)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2010
+% Authors: Francois Tadel, 2006-2020
 
 % Parameters
 if (nargin < 2)
@@ -222,13 +222,14 @@ switch(volumeType)
         Histogram.bgLevel = defaultBg;
         Histogram.whiteLevel = defaultWhite;
         % Detect if the background has already been removed :
-        % ie. if there is a unique 0 valued interval a the beginning of the Histogram
+        % ie. if there is a unique 0 valued interval a the beginning of the Histogram, or if 0-values represents the majority of the volume
         % Practically : - nzero =  length of the first 0-valued interval
         %               - nnonzero = length of the first non-0-valued interval
         %               - bg removed if : (nzero > 1) and (nnonzero > nzero)
         nzero = find(Histogram.fncY(2:length(Histogram.fncY)) ~= 0);
         nnonzero = find(Histogram.fncY((nzero(1)+1):length(Histogram.fncY)) == 0);
-        if ((nzero(1)>2) && ~isempty(nnonzero) && (nnonzero(1) > nzero(1)))
+        if (((nzero(1)>2) && ~isempty(nnonzero) && (nnonzero(1) > nzero(1))) ...
+            || ((Histogram.fncX(1) == 0) && (Histogram.fncY(1) / sum(Histogram.fncY) > 0.5)))
             Histogram.bgLevel = nzero(1);
         % Else, background has not been removed yet
         % If there is less than two maxima : use the default background threshold

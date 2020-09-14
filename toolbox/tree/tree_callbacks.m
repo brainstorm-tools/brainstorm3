@@ -549,25 +549,41 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
+                    gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
                     AddSeparator(jPopup);
                     % === USE DEFAULT ===
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
                     if ~isempty(sTemplates)
                         jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefMni = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefUsc = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefFs = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
+                        jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
                         % Add an item per Template available
                         for i = 1:length(sTemplates)
+                            % Local or download?
                             if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
                                 Comment = ['Download: ' sTemplates(i).Name];
                             else
                                 Comment = sTemplates(i).Name;
                             end
-                            gui_component('MenuItem', jMenuDefaults, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
+                            % Sub-group
+                            if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
+                                jParent = jMenuDefMni;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
+                                jParent = jMenuDefUsc;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
+                                jParent = jMenuDefFs;
+                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
+                                jParent = jMenuDefInfants;
+                            end
+                            % Create item
+                            gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
                         end
                         % Create new template
                         AddSeparator(jMenuDefaults);
                         gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
-                        AddSeparator(jMenuDefaults);
                         gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
                     end
 
@@ -579,7 +595,7 @@ switch (lower(action))
                     end
                     % === GENERATE BEM ===
                     jItemBem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, []));
-                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, []));
+                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, []));
                     % Disable if no scalp or cortex available
                     if isempty(sSubject.Anatomy)
                         jItemBem.setEnabled(0);
@@ -1011,14 +1027,14 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
                         if ~bstNodes(1).isMarked()
                             jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
-                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
-                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 0));
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 1));
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 0));
                             AddSeparator(jMenuRegister);
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'ncs', 'ncs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'scs', 'scs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
                             AddSeparator(jMenuRegister);
-                            gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'vox2ras', 0));
+                            gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'vox2ras', 0));
                         end
                     end
                     AddSeparator(jPopup);
@@ -1027,7 +1043,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) <= 2)
-                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, iAnatomy));
+                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
                     end
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
@@ -1161,7 +1177,7 @@ switch (lower(action))
                 % Generate FEM mesh
                 if ~bst_get('ReadOnly')
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
+                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
@@ -1186,7 +1202,21 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
-                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_fem, 'SwitchHexaTetra', filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Compute FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_tensors, 'ComputeInteractive', iSubject, filenameFull));
+                    % If there are tensors to display
+                    varInfo = whos('-file', filenameFull, 'Tensors');
+                    if ~isempty(varInfo) && all(varInfo.size >= 12)
+                        jMenuFemDisp = gui_component('Menu', jPopup, [], 'Display FEM tensors', IconLoader.ICON_DISPLAY, [], []);
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipses (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse'));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow'));
+                        AddSeparator(jMenuFemDisp);
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipses (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse', [], filenameFull));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
+                    end
                 end
                 
 %% ===== POPUP: NOISECOV =====
@@ -2674,7 +2704,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         % Add separator before the menu with default EEGcaps
         AddSeparator(jMenu);
     else
-        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)ImportChannelCheck(iAllStudies));
+        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@ImportChannelCheck, iAllStudies));
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
     % === USE DEFAULT CHANNEL FILE ===
@@ -3481,4 +3511,19 @@ function ImportChannelCheck(iAllStudies)
 end
 
 
+%% ===== MRI COREGISTER =====
+function MriCoregister(MriFileSrc, MriFileRef, Method, isReslice)
+    [MriFileReg, errMsg] = bst_call(@mri_coregister, MriFileSrc, MriFileRef, Method, isReslice);
+    if isempty(MriFileReg) || ~isempty(errMsg)
+        bst_error(['Could not coregister volume.', 10, 10, errMsg], 'MRI coregistration', 0);
+    end
+end
 
+function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+    [MriFileReg, errMsg] = bst_call(@mri_reslice, MriFileSrc, MriFileRef, TransfSrc, TransfRef);
+    if isempty(MriFileReg) || ~isempty(errMsg)
+        bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
+    end
+end
+
+    

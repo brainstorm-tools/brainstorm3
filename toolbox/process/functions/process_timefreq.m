@@ -277,6 +277,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if ~isempty(Messages)
         if isError
             bst_report('Error', sProcess, sInputs, Messages);
+        elseif isempty(OutputFiles)
+            bst_report('Warning', sProcess, sInputs, Messages);
         else
             bst_report('Info', sProcess, sInputs, Messages);
             disp(['BST> process_timefreq: ' Messages]);

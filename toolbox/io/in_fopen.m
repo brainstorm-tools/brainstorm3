@@ -179,6 +179,8 @@ switch (FileFormat)
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'
         DataMat = in_data_neuroscan_dat(DataFile);
+    case 'EEG-TVB'
+        [DataMat, ChannelMat] = in_data_tvb(DataFile);
     case 'FT-TIMELOCK'
         [DataMat, ChannelMat] = in_data_fieldtrip(DataFile);
         % Check that time is linear
