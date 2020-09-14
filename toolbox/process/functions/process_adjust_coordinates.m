@@ -474,6 +474,8 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
     if sProcess.options.bad.Value
         if isRaw
             DataMat = DataMat.F;
+            % From in_bst_data
+            DataMat.Time = panel_time('GetRawTimeVector', DataMat);
         else
             DataMat.events = DataMat.Events;
             DataMat.prop.sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
