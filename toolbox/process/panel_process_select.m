@@ -2364,6 +2364,29 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 else
                     maxLength = 0;
                 end
+                % Remove unused options structures for specific processes (optional, only to make the script more compact)
+                if strcmp(procFunc, 'process_headmodel')
+                    iDuneuro = find(strcmpi(optNames, 'duneuro'));
+                    if ~isempty(iDuneuro) ...
+                        && (~ismember('meg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.meg.Value{2}{sExportProc(iProc).options.meg.Value{1}}), 'duneuro'))) ...
+                        && (~ismember('eeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.eeg.Value{2}{sExportProc(iProc).options.eeg.Value{1}}), 'duneuro'))) ...
+                        && (~ismember('seeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.seeg.Value{2}{sExportProc(iProc).options.seeg.Value{1}}), 'duneuro'))) ...
+                        && (~ismember('ecog', optNames) || isempty(strfind(lower(sExportProc(iProc).options.ecog.Value{2}{sExportProc(iProc).options.ecog.Value{1}}), 'duneuro')))
+                        optNames(iDuneuro) = [];
+                    end
+                    iOpenmeeg = find(strcmpi(optNames, 'openmeeg'));
+                    if ~isempty(iOpenmeeg) ...
+                        && (~ismember('meg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.meg.Value{2}{sExportProc(iProc).options.meg.Value{1}}), 'openmeeg'))) ...
+                        && (~ismember('eeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.eeg.Value{2}{sExportProc(iProc).options.eeg.Value{1}}), 'openmeeg'))) ...
+                        && (~ismember('seeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.seeg.Value{2}{sExportProc(iProc).options.seeg.Value{1}}), 'openmeeg'))) ...
+                        && (~ismember('ecog', optNames) || isempty(strfind(lower(sExportProc(iProc).options.ecog.Value{2}{sExportProc(iProc).options.ecog.Value{1}}), 'openmeeg')))
+                        optNames(iOpenmeeg) = [];
+                    end
+                    iVolumegrid = find(strcmpi(optNames, 'volumegrid'));
+                    if ~isempty(iVolumegrid) && ismember('sourcespace', optNames) && (sExportProc(iProc).options.sourcespace.Value ~= 2)
+                        optNames(iVolumegrid) = [];
+                    end
+                end
                 % Print each option on a separate line
                 for iOpt = 1:length(optNames)
                     opt = sExportProc(iProc).options.(optNames{iOpt});

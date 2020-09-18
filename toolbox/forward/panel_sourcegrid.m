@@ -473,6 +473,8 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
         sSubject = bst_get('SurfaceFile', CortexFile);
         if ~isempty(sSubject.iInnerSkull)
             sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
+        else
+            sInner = sEnvelope;
         end
     end
     % Switch between methods
