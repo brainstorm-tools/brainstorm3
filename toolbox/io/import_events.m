@@ -136,6 +136,8 @@ if isempty(newEvents)
             newEvents = in_events_kdf(sFile, EventFile);
         case 'PRESENTATION'
             newEvents = in_events_presentation(sFile, EventFile);
+        case 'NICOLET'
+            newEvents = in_events_nicolet(sFile, EventFile);
         case 'XLTEK'
             newEvents = in_events_xltek(sFile, EventFile);
         case 'ARRAY-TIMES'
