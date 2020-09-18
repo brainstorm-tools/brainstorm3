@@ -72,8 +72,9 @@ if ~isOk
     return
 end
 % Unzip file
-isOk = org.brainstorm.file.Unpack.unzip(ZipFile, ProtocolDir);
-if ~isOk
+try
+    unzip(ZipFile, ProtocolDir);
+catch
     bst_error('Could not unzip file.', 'Load protocol', 0);
     return
 end
