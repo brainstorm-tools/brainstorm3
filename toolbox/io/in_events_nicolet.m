@@ -49,9 +49,9 @@ while 1
     end
     % Get the time and duration
     try
-        vecStart = datevec(splitLine{2}, 'hh:mm:ss');
+        vecStart = datevec(splitLine{2}, 'HH:MM:SS');
         tStart = vecStart(4)*1200 + vecStart(5)*60 + vecStart(6);
-        vecDuration = datevec(splitLine{3}, 'mm:ss');
+        vecDuration = datevec(splitLine{3}, 'MM:SS');
         tDuration = vecDuration(5)*60 + vecDuration(6);
     catch
         continue;
