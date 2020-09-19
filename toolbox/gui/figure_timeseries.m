@@ -897,7 +897,7 @@ function ZoomSelection(hFig)
     end
     % Set axes bounds to selection
     hAxesList = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
-    set(hAxesList, 'XLim', [GraphSelection(1), GraphSelection(2)]);
+    set(hAxesList, 'XLim', [min(GraphSelection), max(GraphSelection)]);
     % Delete selection
     SetTimeSelectionLinked(hFig, []);
 end
@@ -946,8 +946,15 @@ end
 %% ===== FIGURE ZOOM: LINKED =====
 % Apply the same zoom operations to similar figures
 function FigureZoomLinked(hFig, direction, Factor)
+    % Get figure type
+    FigureId = getappdata(hFig, 'FigureId');
     % Get all the time-series figures
-    hAllFigs = bst_figures('GetFiguresByType', {'DataTimeSeries', 'ResultsTimeSeries'});
+    switch (FigureId.Type)
+        case {'DataTimeSeries', 'ResultsTimeSeries'}
+            hAllFigs = bst_figures('GetFiguresByType', {'DataTimeSeries', 'ResultsTimeSeries'});
+        case 'Spectrum'
+            hAllFigs = bst_figures('GetFiguresByType', 'Spectrum');
+    end
     % Place the input figure in first
     hAllFigs(hAllFigs == hFig) = [];
     hAllFigs = [hFig, hAllFigs];
@@ -1070,6 +1077,11 @@ end
 
 %% ===== FIGURE PAN =====
 function FigurePan(hFig, motion)
+    % Flip Y motion for flipped axis
+    TsInfo = getappdata(hFig, 'TsInfo');
+    if ~isempty(TsInfo) && isfield(TsInfo, 'FlipYAxis') && isequal(TsInfo.FlipYAxis, 1)
+        motion(2) = -motion(2);
+    end
     % Get list of axes in this figure
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Displacement in X
@@ -1995,17 +2007,24 @@ function SetProperty(hFig, propName, propVal)
     else
         propGraph = 'on';
     end
+    % Get axes handles
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Update figure
     switch propName
         case 'ShowXGrid'
-            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
             set(hAxes, 'XGrid',      propGraph);
             set(hAxes, 'XMinorGrid', propGraph);
         case 'ShowYGrid'
-            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
             set(hAxes, 'YGrid',      propGraph);
             set(hAxes, 'YMinorGrid', propGraph);
-        case {'ShowZeroLines', 'FlipYAxis', 'ShowEventsMode'}
+        case 'FlipYAxis'
+            ResetViewLinked(hFig);
+            YLimInit = getappdata(hAxes, 'YLimInit');
+            if (length(YLimInit) == 2)
+                setappdata(hAxes, 'YLimInit', [YLimInit(2), YLimInit(1)]);
+            end
+            bst_figures('ReloadFigures', hFig, 0);
+        case {'ShowZeroLines', 'ShowEventsMode'}
             bst_figures('ReloadFigures', hFig, 0);
         otherwise
             error('Invalid property name.');
