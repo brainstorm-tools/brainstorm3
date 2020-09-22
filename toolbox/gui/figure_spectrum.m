@@ -239,9 +239,11 @@ function FigureMouseDownCallback(hFig, ev)
         % CTRL+Mouse, or Mouse right
         case 'alt'
             clickAction = 'gzoom';
+            set(hFig, 'Pointer', 'top');
         % SHIFT+Mouse
         case 'extend'
             clickAction = 'pan';
+            set(hFig, 'Pointer', 'fleur');
         % DOUBLE CLICK
         case 'open'
             ResetView(hFig);
@@ -328,6 +330,9 @@ function FigureMouseUpCallback(hFig, event)
     % Reset figure mouse fields
     setappdata(hFig, 'clickAction', '');
     setappdata(hFig, 'hasMoved', 0);
+    % Restore mouse pointer
+    set(hFig, 'Pointer', 'arrow');
+    drawnow;
     % Get axes handles
     hAxes = getappdata(hFig, 'clickSource');
     if isempty(hAxes) || ~ishandle(hAxes)
@@ -531,7 +536,7 @@ function ZoomSelection(hFig)
     end
     % Set axes bounds to selection
     hAxesList = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
-    set(hAxesList, 'XLim', [GraphSelection(1), GraphSelection(2)]);
+    set(hAxesList, 'XLim', [min(GraphSelection), max(GraphSelection)]);
     % Draw new time selection
     setappdata(hFig, 'GraphSelection', []);
     DrawSelection(hFig);
@@ -1370,7 +1375,7 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     % Get automatic YLim
     if ~isempty(Fmax) && (Fmax(1) ~= Fmax(2))
         % Use the first local maximum: ignores the huge range of high frequencies
-        if any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
+        if any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
             TFmax = max(TF,[],1);
             iStart = find(diff(TFmax)>0,1);
             if ~isempty(iStart)
