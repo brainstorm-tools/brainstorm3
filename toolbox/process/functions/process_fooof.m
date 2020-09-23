@@ -74,7 +74,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === PROXIMITY THRESHOLD
     sProcess.options.proxthresh.Comment = 'Proximity threshold (default=2): ';
     sProcess.options.proxthresh.Type    = 'value';
-    sProcess.options.proxthresh.Value   = {2, 'stdev of noise', 1};
+    sProcess.options.proxthresh.Value   = {2, 'stdev of peak model', 1};
     sProcess.options.proxthresh.Class   = 'Matlab';
     % === APERIODIC MODE 
     sProcess.options.apermode.Comment = {'Fixed', 'Knee', 'Aperiodic mode (default=fixed):'; 'fixed', 'knee', ''};
@@ -230,6 +230,7 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
             peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
             peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
             peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
+            peak_pars = drop_peak_cf(peak_pars, opts.proximity_threshold, opts.freq_range); % remove peaks outside frequency limits
             peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
         end
         % Refit aperiodic
@@ -762,7 +763,7 @@ function guess = drop_peak_cf(guess, bw_std_edge, freq_range)
     % Check if peaks within drop threshold from the edge of the frequency range.
 
     keep_peak = abs(cf_params-freq_range(1)) > bw_params & ...
-        abs(cf_params-freq_range(1)) > bw_params;
+        abs(cf_params-freq_range(2)) > bw_params;
 
     % Drop peaks that fail the center frequency edge criterion
     guess = guess(keep_peak,:);
