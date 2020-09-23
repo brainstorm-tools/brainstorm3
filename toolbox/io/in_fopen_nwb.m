@@ -159,16 +159,16 @@ if RawDataPresent
     sFile.header.RawKey = all_raw_keys{iRawDataKey};
     sFile.header.LFPKey = [];
     
-    nChannels = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(2);
-    nSamples  = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(1);
+    nChannels = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(1);
+    nSamples  = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(2);
 
 elseif LFPDataPresent
     sFile.prop.sfreq = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).starting_time_rate;
     sFile.header.LFPKey = all_lfp_keys{iLFPDataKey};
     sFile.header.RawKey = [];
     
-    nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
-    nSamples  = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1);
+    nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1);
+    nSamples  = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
 
 end
 
@@ -189,7 +189,7 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditio
 amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
+group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group').data;
 
 % Get coordinates and set to 0 if they are not available
 x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB saves in m ???
@@ -206,7 +206,10 @@ for iChannel = 1:nChannels
     ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
     ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
                                         
-    ChannelMat.Channel(iChannel).Group   = group_name{iChannel};
+    
+    temp = split(group_name(iChannel).path,'/');
+    temp = temp{end};
+    ChannelMat.Channel(iChannel).Group   = temp;
     ChannelMat.Channel(iChannel).Type    = 'SEEG';
     
     ChannelMat.Channel(iChannel).Orient  = [];
@@ -253,7 +256,7 @@ sFile.filename     = DataFile;
 sFile.device       = 'NWB'; %nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
-sFile.prop.times   = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1) - 1] ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2) - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);

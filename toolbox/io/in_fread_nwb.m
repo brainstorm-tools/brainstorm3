@@ -93,9 +93,9 @@ for iChannel = 1:nChannels
                 % they need to be upsampled
                 % Moreover, there are multiple channels within each
                 % Behavioral description                
-                iAdditionalChannel = find(find(strcmp(allBehaviorKeys(:,2), allBehaviorKeys{selectedChannels(iChannel),2}))==selectedChannels(iChannel)); % This gives the index of the channel selected with the behavior channels
+                iAdditionalChannel = find(find(strcmp(allBehaviorKeys(:,1), allBehaviorKeys{selectedChannels(iChannel),1}))==selectedChannels(iChannel)); % This gives the index of the channel selected with the behavior channels
                 
-                temp = nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{selectedChannels(iChannel),1}).spatialseries.get(allBehaviorKeys{selectedChannels(iChannel),2}).data.load([iAdditionalChannel, selected_timestamps_bounds(1)], [iAdditionalChannel, selected_timestamps_bounds(2)]);
+                temp = nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{selectedChannels(iChannel),1}).spatialseries.get(allBehaviorKeys{selectedChannels(iChannel),2}).data.load([selected_timestamps_bounds(1), iAdditionalChannel], [selected_timestamps_bounds(2), iAdditionalChannel]);
                 temp = temp(~isnan(temp)); % Some entries might be NaNs
                 if ~isempty(temp)
                     % Upsampling the lower sampled behavioral signals
