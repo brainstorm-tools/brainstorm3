@@ -1152,6 +1152,14 @@ function DeleteMontage(MontageName)
     global GlobalData;
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
+    if isempty(sMontage)
+        disp(['BST> Error: Montage "' MontageName '" was not found.']);
+        return;
+    elseif (length(sMontage) >= 2)
+        disp(['BST> Error: Mulitple montages "' MontageName '" were found. Deleting only the first one.']);
+        sMontage = sMontage(1);
+        iMontage = iMontage(1);
+    end
     % If this is a non-editable montage: error
     if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'})
         return;
