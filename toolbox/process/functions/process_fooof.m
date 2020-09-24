@@ -230,7 +230,7 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
             peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
             peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
             peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
-            peak_pars = drop_peak_cf(peak_pars, opts.proximity_threshold, opts.freq_range); % remove peaks outside frequency limits
+            peak_pars = drop_peak_cf(peak_pars, opt.proximity_threshold, opt.freq_range); % remove peaks outside frequency limits
             peak_pars = drop_peak_overlap(peak_pars, opt.proximity_threshold); % remove smallest of two peaks fit too closely
         end
         % Refit aperiodic
