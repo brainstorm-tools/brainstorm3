@@ -116,10 +116,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     % === APPDATA STRUCTURE ===
     setappdata(hFig, 'Surface',     repmat(db_template('TessInfo'), 0));
     setappdata(hFig, 'iSurface',    []);
-    setappdata(hFig, 'StudyFile',   []);   
-    setappdata(hFig, 'SubjectFile', []);      
-    setappdata(hFig, 'DataFile',    []); 
+    setappdata(hFig, 'StudyFile',   []);
+    setappdata(hFig, 'SubjectFile', []);
+    setappdata(hFig, 'DataFile',    []);
     setappdata(hFig, 'ResultsFile', []);
+    setappdata(hFig, 'HeadModelFile', []);
     setappdata(hFig, 'isSelectingCorticalSpot', 0);
     setappdata(hFig, 'isSelectingCoordinates',  0);
     setappdata(hFig, 'hasMoved',    0);

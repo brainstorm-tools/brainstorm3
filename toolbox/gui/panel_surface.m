@@ -1465,6 +1465,13 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
         case 'Anatomy'
             ColormapType = 'source';
             DisplayUnits = [];
+
+        case 'HeadModel'
+            setappdata(hFig, 'HeadModelFile', dataFile);
+            ColormapType = '';
+            DisplayUnits = [];
+            TessInfo(iTess).Data = [];
+            TessInfo(iTess).DataWmat = [];
             
         otherwise
             ColormapType = '';
@@ -1488,7 +1495,11 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
     % Update figure appdata
     setappdata(hFig, 'Surface', TessInfo);
     % Plot surface
-    isOk = UpdateSurfaceData(hFig, iTess);
+    if strcmpi(dataType, 'HeadModel')
+        isOk = 1;
+    else
+        isOk = UpdateSurfaceData(hFig, iTess);
+    end
     % Update  panel
     UpdatePanel();
 end
@@ -1879,6 +1890,10 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
     % ===== UPDATE SURFACES =====
     for i = 1:length(iSurfaces)
         iTess = iSurfaces(i);
+        % If surface has no colormapped data to update, skip
+        if strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
+            continue;
+        end
         % === COLORMAPPING ===
         % Get colormap
         sColormap = bst_colormaps('GetColormap', TessInfo(iTess).ColormapType);

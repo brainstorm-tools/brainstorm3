@@ -1292,7 +1292,8 @@ switch (lower(action))
                     if ~bst_get('ReadOnly') && ~isSepGain
                         AddSeparator(jPopup);
                     end
-                    gui_component('MenuItem', jPopup, [], 'Check source grid', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Check source grid (Cortex)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Check source grid (MRI)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'V', 'MRI'));
                 elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'mixed')
                     if ~bst_get('ReadOnly') && ~isSepGain
                         AddSeparator(jPopup);

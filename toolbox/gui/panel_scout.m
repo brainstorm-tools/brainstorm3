@@ -916,6 +916,8 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
                 if isempty(FileMat.SurfaceFile) && ~isempty(FileMat.DataFile) && strcmpi(FileMat.DataType, 'results')
                     FileMat = in_bst_results(FileMat.DataFile, 0, 'SurfaceFile');
                 end
+            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
+                FileMat = in_bst_headmodel(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
             end
             if ~isempty(FileMat.SurfaceFile) % && strcmpi(file_gettype(FileMat.SurfaceFile), 'cortex')
                 SurfaceFile = FileMat.SurfaceFile;
@@ -1921,29 +1923,22 @@ end
 
 %% ===== CREATE ATLAS: VOLUME GRID =====
 function CreateAtlasVolumeGrid()
-    global GlobalData;
     % Get current 3D figure
     hFig = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         bst_error('No selected figure.', 'New volume atlas', 0);
         return;
     end
-    % Get current source files
-    ResultsFile = getappdata(hFig, 'ResultsFile');
-    if isempty(ResultsFile)
-        bst_error('No source results loaded in this figure.', 'New volume atlas', 0);
-        return;
-    end
-    % Load results file
-    [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-    if isempty(GlobalData.DataSet(iDS).Results(iResult).GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-        bst_error('No volume source grid loaded in this figure.', 'New volume atlas', 0);
+    % Get figure GridLoc
+    GridLoc = GetFigureGrid(hFig);
+    if isempty(GridLoc)
+        bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
         return;
     end
     % Else: Create a new empty structure
     sAtlasVol = db_template('Atlas');
     % New atlas name: append number of grid points
-    sAtlasVol.Name = ['Volume ' num2str(size(GlobalData.DataSet(iDS).Results(iResult).GridLoc, 1))];
+    sAtlasVol.Name = ['Volume ' num2str(size(GridLoc, 1))];
     % Find existing atlases
     [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
     iAtlasVol = find(strcmpi(sAtlasVol.Name, {sSurf.Atlas.Name}));
@@ -2725,17 +2720,10 @@ function CreateScoutMouse(hFig) %#ok<DEFNU>
     % Volume scouts: Get grid of points
     if isVolumeAtlas
         % === GET VOLUME GRID ===
-        % Get ResultsFile and Surface
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if isempty(ResultsFile)
-            bst_error('No source file loaded in this figure', 'Create new scout', 0);
-            return;
-        end
-        % Load results file
-        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-        GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-        if isempty(GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-            bst_error('No volume sources loaded in this figure', 'Create new scout', 0);
+        % Get figure GridLoc
+        GridLoc = GetFigureGrid(hFig);
+        if isempty(GridLoc)
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
             return;
         end
         % Check number of grid points
@@ -3077,7 +3065,6 @@ end
 
 %% ===== CREATE SCOUT: MNI COORDINATES =====
 function CreateScoutMni()
-    global GlobalData;
     % Prevent edition of read-only atlas
     if isAtlasReadOnly()
         return;
@@ -3145,17 +3132,10 @@ function CreateScoutMni()
         if isempty(hFig) || ~ishandle(hFig)
             return
         end
-        % Get ResultsFile and Surface
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if isempty(ResultsFile)
-            bst_error('No source file loaded in this figure', 'Create new scout', 0);
-            return;
-        end
-        % Load results file
-        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-        GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-        if isempty(GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-            bst_error('No volume sources loaded in this figure', 'Create new scout', 0);
+        % Get figure GridLoc
+        GridLoc = GetFigureGrid(hFig);
+        if isempty(GridLoc)
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
             return;
         end
         % Check number of grid points
@@ -3269,7 +3249,7 @@ end
 
 %% ===== EDIT SCOUTS SIZE =====
 function EditScoutsSize(action)
-    global mutexGrowScout GlobalData;
+    global mutexGrowScout;
     % Prevent edition of read-only atlas
     if isAtlasReadOnly()
         return;
@@ -3318,17 +3298,14 @@ function EditScoutsSize(action)
     % Volume scouts: Get number of points for this atlas
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     if isVolumeAtlas
-        % Get ResultsFile
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if isempty(ResultsFile)
-            disp('BST> Error: No source file loaded in this figure');
+        % Get figure GridLoc
+        [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig);
+        if isempty(HeadModelType)
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
             return;
         end
         % Load results file
-        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-        GridLoc   = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-        GridAtlas = GlobalData.DataSet(iDS).Results(iResult).GridAtlas;
-        if strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
+        if strcmpi(HeadModelType, 'surface')
             disp('BST> Error: These scouts are defined on a volume grid, but the sources were calculated on a surface.');
             return;
         elseif isempty(GridLoc) || (size(GridLoc,1) ~= nAtlasGrid)
@@ -3949,7 +3926,6 @@ end
 
 %% ===== EXPORT SCOUTS TO MRI MASK =====
 function ExportScoutsToMri()
-    global GlobalData;
     % Get selected scouts
     [sScouts, iScouts, sSurf] = GetSelectedScouts();
     % If nothing selected, take all scouts
@@ -3969,17 +3945,14 @@ function ExportScoutsToMri()
     if isempty(hFig)
         return
     end
-    % Get ResultsFile
-    ResultsFile = getappdata(hFig, 'ResultsFile');
-    if isempty(ResultsFile)
-        bst_error('No source file loaded in this figure', 'Create new scout', 0);
+    % Get figure GridLoc
+    GridLoc = GetFigureGrid(hFig);
+    if isempty(GridLoc)
+        bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
         return;
     end
     % Progress bar
     bst_progress('start', 'Export MRI mask', 'Loading volume...');
-    % Load results file
-    [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-    GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
     % Load MRI
     sMri = in_mri_bst(MriFile);
     % Convert grid to MRI coordinates
@@ -4028,7 +4001,6 @@ end
 % USAGE:  PlotScouts(iScouts, hFigures)
 %         PlotScouts()                 : Plot all the scouts
 function PlotScouts(iScouts, hFigSel)
-    global GlobalData;
     % Selected surfaces
     if (nargin < 2) || isempty(hFigSel)
         hFigSel = [];
@@ -4094,16 +4066,14 @@ function PlotScouts(iScouts, hFigSel)
         
         % VOLUME SCOUTS
         if isVolumeAtlas
-            % Get ResultsFile
-            ResultsFile = getappdata(hFig, 'ResultsFile');
-            if isempty(ResultsFile)
+            % Get figure GridLoc
+            [GridLoc, HeadModelType] = GetFigureGrid(hFig);
+            if isempty(HeadModelType)
                 disp('BST> Cannot display volume atlas: No volume sources loaded in this figure.');
-                continue;
+                return;
             end
-            % Load results file
-            [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-            GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-            if strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
+            % Check type
+            if strcmpi(HeadModelType, 'surface')
                 disp('BST> Error: These scouts are defined on a volume grid, but the sources were calculated on a surface.');
                 continue;
             elseif isempty(GridLoc) || (size(GridLoc,1) ~= nAtlasGrid)
@@ -5717,4 +5687,30 @@ function [isVolumeAtlas, nGrid, Comment] = ParseVolumeAtlas(AtlasName)
 end
 
 
-
+%% ===== GET FIGURE GRID =====
+function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
+    global GlobalData;
+    GridLoc = [];
+    HeadModelType = [];
+    GridAtlas = [];
+    % Get source file displayed in the figure
+    ResultsFile = getappdata(hFig, 'ResultsFile');
+    if ~isempty(ResultsFile)
+        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
+        HeadModelType = GlobalData.DataSet(iDS).Results(iResult).HeadModelType;
+        if ~isempty(GlobalData.DataSet(iDS).Results(iResult).GridLoc) && ~strcmpi(HeadModelType, 'surface')
+            GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
+            GridAtlas = GlobalData.DataSet(iDS).Results(iResult).GridAtlas;
+        end
+    end
+    % Get head model displayed in the figure
+    HeadModelFile = getappdata(hFig, 'HeadModelFile');
+    if ~isempty(HeadModelFile)
+        HeadModelMat = in_bst_headmodel(HeadModelFile, 0, 'HeadModelType', 'GridLoc', 'GridAtlas');
+        HeadModelType = HeadModelMat.HeadModelType;
+        if ~isempty(HeadModelMat.GridLoc) && ~strcmpi(HeadModelType, 'surface')
+            GridLoc = HeadModelMat.GridLoc;
+            GridAtlas = HeadModelMat.GridAtlas;
+        end
+    end
+end

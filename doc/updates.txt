@@ -3,6 +3,8 @@ September 2020
 - GUI: Added Y-log scale for spectrum figures
 - IO: Added export to TSV, with optional transposition for CSV/TSV/Excel
 - IO: Import Nicolet exported events (.txt)
+- Simulations: New tutorial and developments
+- MNE-Python: Wrapper for mne.preprocessing.maxwell_filter
 ---------------------------------------------------------------
 August 2020
 - Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
