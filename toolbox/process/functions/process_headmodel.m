@@ -38,7 +38,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.InputTypes  = {'data', 'raw', 'matrix'};
     sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
-    sProcess.nMinFiles   = 1;
+    sProcess.nMinFiles   = 0;
     % Options: Comment
     sProcess.options.Comment.Comment = 'Comment: ';
     sProcess.options.Comment.Type    = 'text';
@@ -79,6 +79,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.duneuro.Comment = {'panel_duneuro', 'DUNEuro options: '};
     sProcess.options.duneuro.Type    = 'editpref';
     sProcess.options.duneuro.Value   = bst_get('DuneuroOptions');
+    % Options: Channel file  (used for scripts when data files are not available)
+    sProcess.options.channelfile.Comment = 'Channel file: ';
+    sProcess.options.channelfile.Type    = 'text';
+    sProcess.options.channelfile.Value   = '';
+    sProcess.options.channelfile.Hidden  = 1;
 end
 
 
@@ -157,15 +162,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sMethod.GridOptions = bst_get('GridOptions_headmodel');
     end
 
-    % Get channel studies
-    [sChannels, iChanStudies] = bst_get('ChannelForStudy', unique([sInputs.iStudy]));
-    % Check if there are channel files everywhere
-    if (length(sChannels) ~= length(iChanStudies))
-        bst_report('Error', sProcess, sInputs, ['Some of the input files are not associated with a channel file.' 10 'Please import the channel files first.']);
+    % Get channel file in options
+    if isfield(sProcess.options, 'channelfile') && isfield(sProcess.options.channelfile, 'Value') && ~isempty(sProcess.options.channelfile.Value)
+        ChannelFile = sProcess.options.channelfile.Value;
+        [sChanStudies, iChanStudies] = bst_get('ChannelFile', ChannelFile);
+    % Get channel studies from inputs
+    elseif ~isempty(sInputs)
+        [sChannels, iChanStudies] = bst_get('ChannelForStudy', unique([sInputs.iStudy]));
+        % Check if there are channel files everywhere
+        if (length(sChannels) ~= length(iChanStudies))
+            bst_report('Error', sProcess, sInputs, ['Some of the input files are not associated with a channel file.' 10 'Please import the channel files first.']);
+            return;
+        end
+        % Keep only once each channel file
+        iChanStudies = unique(iChanStudies);
+    else
+        bst_report('Error', sProcess, [], 'No input channel file.');
         return;
     end
-    % Keep only once each channel file
-    iChanStudies = unique(iChanStudies);
     
     % Copy OpenMEEG options to OPTIONS structure
     if isOpenMEEG
