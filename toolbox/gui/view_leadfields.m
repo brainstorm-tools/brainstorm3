@@ -148,6 +148,8 @@ hLabel = uicontrol('Style', 'text', ...
     'Parent',              hFig);
 
 %% ===== DISPLAY LEADFIELD =====
+useLogScale = false;
+useLogScaleLegendMsg = 'Off';
 % Current sensor
 iChannel = 1;
 DrawArrows();
@@ -201,16 +203,26 @@ bst_progress('stop');
                 if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
                     delete(findobj(hAxes, 'Tag', 'allChannel'))
                 end
+            case 'l'
+                if ismember('shift', keyEvent.Modifier)
+                    useLogScale = ~useLogScale;
+                    if (useLogScale)
+                        useLogScaleLegendMsg = 'On';
+                    else
+                        useLogScaleLegendMsg = 'Off';
+                    end
+                end
             case 'h'
                 java_dialog('msgbox', ['<HTML><TABLE>' ...
-                    '<TR><TD><B>Left arrow</B></TD><TD>Previous channel</TD></TR>' ....
-                    '<TR><TD><B>Right arrow</B></TD><TD>Next channel</TD></TR>'....
-                    '<TR><TD><B>Page up</B></TD><TD>Previous 10th channel</TD></TR>'....
-                    '<TR><TD><B>Page down</B></TD><TD>Next 10th channel</TD></TR>'....
-                    '<TR><TD><B>M</B></TD><TD>Change the <B>M</B>odality (MEG, EEG, SEEG, ECOG)</TD></TR>'....
-                    '<TR><TD><B>R</B></TD><TD>Change the <B>R</B>eference electrode</TD></TR>'....
-                    '<TR><TD><B>S</B></TD><TD>Show/hide the source grid</TR>'....
-                    '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR></TABLE>'], 'Keyboard shortcuts');
+                    '<TR><TD><B>Left arrow</B></TD><TD>Previous channel</TD></TR>' ...
+                    '<TR><TD><B>Right arrow</B></TD><TD>Next channel</TD></TR>'...
+                    '<TR><TD><B>Page up</B></TD><TD>Previous 10th channel</TD></TR>'...
+                    '<TR><TD><B>Page down</B></TD><TD>Next 10th channel</TD></TR>'...
+                    '<TR><TD><B>M</B></TD><TD>Change the <B>M</B>odality (MEG, EEG, SEEG, ECOG)</TD></TR>'...
+                    '<TR><TD><B>R</B></TD><TD>Change the <B>R</B>eference electrode</TD></TR>'...
+                    '<TR><TD><B>S</B></TD><TD>Show/hide the source grid</TR>'...
+                    '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR>'...
+                    '<TR><TD><B>Shift + l</B></TD><TD>Toggle on/off logarithmic scale</TD></TR></TABLE>'], 'Keyboard shortcuts');
             otherwise
                 KeyPressFcn_bak(hQuiver, keyEvent);
                 return;
@@ -255,6 +267,9 @@ bst_progress('stop');
             end
             % Display arrows
             LeadField = reshape(LeadField,3,[])'; % each column is a vector
+            if(useLogScale)
+                LeadField = logScaledLeadField(LeadField);
+            end
             hQuiver(iLF) = quiver3(...
                 HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ...
                 LeadField(:,1), LeadField(:,2), LeadField(:,3), ...
@@ -299,12 +314,12 @@ bst_progress('stop');
             end
             % Title bar (channel name)
             if isAvgRef
-                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = AvgRef', iChannel, length(Channels), Channels(iChannel).Name,selectedModality);
+                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = AvgRef | Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality, useLogScaleLegendMsg);
             else
-                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name);
+                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = %s | Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name, useLogScaleLegendMsg);
             end
         else
-            strTitle = sprintf('Channel #%d/%d  (%s)', iChannel, length(Channels), Channels(iChannel).Name);            
+            strTitle = sprintf('Channel #%d/%d  (%s) | Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name, useLogScaleLegendMsg);
         end
         
         if (iChannel == 1) && (length(Channels) > 1)
@@ -379,4 +394,17 @@ bst_progress('stop');
             LF_finale{iLF} = HeadmodelMat{iLF}.Gain(iChannels,:);
         end
     end
+
+%% ===== LEADFIELD TO LOG SPACE =====
+    function lf_log = logScaledLeadField(lf)
+        lf_2 = lf.^2;
+        r = sqrt(sum(lf_2,2));
+        rho = sqrt(lf_2(:,1) + lf_2(:,2));
+        t = atan2(rho,lf(:,3));
+        f = atan2(lf(:,2),lf(:,1));
+        lf_log = [ log10(r) .* sin(t) .* cos(f) ...
+                   log10(r) .* sin(t) .* sin(f) ...
+                   log10(r) .* cos(t)];
+    end
+
 end
