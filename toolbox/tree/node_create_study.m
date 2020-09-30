@@ -140,6 +140,7 @@ end
 [uniqueComments,tmp,iData2List] = unique(listComments);
 % Sort trials groups in natural order (eg. {'1', '2', '101'})
 [uniqueComments, iSort] = sort_nat(uniqueComments);
+[tmp, iSort] = sort(iSort);
 iData2List = iSort(iData2List);
 % Build list of parents
 nLists = length(uniqueComments);
