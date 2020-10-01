@@ -141,14 +141,8 @@ end
 % Find volume segmentation
 AsegFile = file_find(FsDir, 'aseg.mgz', 2);
 % Find labels
-AnnotLhFiles = {file_find(FsDir, 'lh.pRF.annot', 2), file_find(FsDir, 'lh.aparc.a2009s.annot', 2), file_find(FsDir, 'lh.aparc.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'lh.BA.annot', 2), file_find(FsDir, 'lh.BA.thresh.annot', 2), file_find(FsDir, 'lh.BA_exvivo.annot', 2), file_find(FsDir, 'lh.BA_exvivo.thresh.annot', 2), ...
-                file_find(FsDir, 'lh.myaparc_36.annot', 2), file_find(FsDir, 'lh.myaparc_60.annot', 2), file_find(FsDir, 'lh.myaparc_125.annot', 2), file_find(FsDir, 'lh.myaparc_250.annot', 2), file_find(FsDir, 'lh.BN_Atlas.annot', 2), file_find(FsDir, 'lh.oasis.chubs.annot', 2), ...
-                file_find(FsDir, 'lh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'lh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'lh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'lh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'lh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'lh.Yeo2011_17Networks_N1000.annot', 2)};
-AnnotRhFiles = {file_find(FsDir, 'rh.pRF.annot', 2), file_find(FsDir, 'rh.aparc.a2009s.annot', 2), file_find(FsDir, 'rh.aparc.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'rh.BA.annot', 2), file_find(FsDir, 'rh.BA.thresh.annot', 2), file_find(FsDir, 'rh.BA_exvivo.annot', 2), file_find(FsDir, 'rh.BA_exvivo.thresh.annot', 2), ...
-                file_find(FsDir, 'rh.myaparc_36.annot', 2), file_find(FsDir, 'rh.myaparc_60.annot', 2), file_find(FsDir, 'rh.myaparc_125.annot', 2), file_find(FsDir, 'rh.myaparc_250.annot', 2), file_find(FsDir, 'rh.BN_Atlas.annot', 2), file_find(FsDir, 'rh.oasis.chubs.annot', 2), ...
-                file_find(FsDir, 'rh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'rh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'rh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'rh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'rh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'rh.Yeo2011_17Networks_N1000.annot', 2)};
-AnnotLhFiles(cellfun(@isempty, AnnotLhFiles)) = [];
-AnnotRhFiles(cellfun(@isempty, AnnotRhFiles)) = [];
+AnnotLhFiles = file_find(FsDir, 'lh.*.annot', 2, 0);
+AnnotRhFiles = file_find(FsDir, 'rh.*.annot', 2, 0);
 % Remove old labels
 if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
     % Freesurfer 5.3 creates "BA.annot", Freesurfer 6 creates "BA_exvivo.annot" 
@@ -303,7 +297,7 @@ if ~isempty(TessLhFile)
     if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left pial...');
         [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
-        errorMsg = [errorMsg err];
+        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
     end
     % Load sphere
     if ~isempty(TessLsphFile)
@@ -324,7 +318,7 @@ if ~isempty(TessRhFile)
     if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right pial...');
         [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
-        errorMsg = [errorMsg err];
+        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
     end
     % Load sphere
     if ~isempty(TessRsphFile)
@@ -345,7 +339,7 @@ if ~isempty(TessLwFile)
     if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left white...');
         [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLhFiles, 1);
-        errorMsg = [errorMsg err];
+        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
     end
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
@@ -365,7 +359,7 @@ if ~isempty(TessRwFile)
     if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right white...');
         [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRhFiles, 1);
-        errorMsg = [errorMsg err];
+        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
     end
     % Load sphere
     if ~isempty(TessRsphFile)
