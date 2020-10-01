@@ -960,7 +960,7 @@ function CreateHeadpointsFigure()
         % Get Digitizer JFrame
         bstContainer = get(bst_get('Panel','Digitize'), 'container');
         % Get maximum figure position
-        decorationSize = gui_layout('GetDecorationSize', bstContainer.handle{1});
+        decorationSize = bst_get('DecorationSize');
         [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
         if (FigPos(3) > 0) && (FigPos(4) > 0)

@@ -19,7 +19,7 @@ function varargout = process_evt_read( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -53,6 +53,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.zero.Comment = 'Accept zeros as trigger values';
     sProcess.options.zero.Type    = 'checkbox';
     sProcess.options.zero.Value   = 0;
+    % Option: Min event duration
+    sProcess.options.min_duration.Comment = 'Reject events shorter than: ';
+    sProcess.options.min_duration.Type    = 'value';
+    sProcess.options.min_duration.Value   = {0, 'samples', 0};
 end
 
 
@@ -81,8 +85,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         case 3,  EventsTrackMode = 'ttl';
         case 4,  EventsTrackMode = 'rttl';
     end
-    % Accept zeros
+    % Other options
     isAcceptZero = sProcess.options.zero.Value;
+    MinDuration = sProcess.options.min_duration.Value{1};
     
     % ===== GET FILE DESCRIPTOR =====
     % Load the raw file descriptor
@@ -103,7 +108,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
         
     % ===== DETECTION =====
-    events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero);
+    events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
 
     % ===== SAVE RESULT =====
     % Only save changes if something was change
@@ -128,8 +133,11 @@ end
 
 
 %% ===== COMPUTE =====
-function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration)
     % Parse inputs
+    if (nargin < 6)
+        MinDuration = 0;
+    end
     if (nargin < 5)
         isAcceptZero = 0;
     end
@@ -230,6 +238,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
 
     trackPrev = [];
+    nTooShort = 0;
     % For each block
     for iBlock = 1:nbBlocks
         % Increment progress bar
@@ -302,6 +311,11 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             end
             % Process each change individually
             for i = 1:length(iSmp)
+                % Skip if shorter than MinDuration
+                if (MinDuration > 0) && ((length(tracks) - iSmp(i) < MinDuration) || ~all(tracks(iSmp(i):iSmp(i)+MinDuration) == tracks(iSmp(i))))
+                    nTooShort = nTooShort + 1;
+                    continue;
+                end
                 % Build event name
                 switch lower(EventsTrackMode)
                     case 'bit'
@@ -342,7 +356,10 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             end
         end
     end
-
+    % Display warning with removed events
+    if (nTooShort > 0)
+        disp(sprintf('BST> %d events shorter than %d sample(s) removed.', nTooShort, MinDuration));
+    end
     % Close progress bar
     if ~isProgressBar
         bst_progress('stop');

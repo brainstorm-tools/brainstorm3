@@ -123,6 +123,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('isGUI')          : Return 1 if the Brainstorm interface is displayed
 %    - bst_get('GuiLevel')       : Return GUI level:  -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - bst_get('ScreenDef')      : Get screens configuration
+%    - bst_get('DecorationSize') : Get dimensions of the windows decorations
 %    - bst_get('Layout')         : Configuration of the main Brainstorm window
 %    - bst_get('Layout', prop)   : Get one property in the layout properties
 %    - bst_get('PanelContainer')                : Display list of registered panel containers
@@ -2313,7 +2314,19 @@ switch contextName
 %% ==== EEG DEFAULTS ====
     % Returns an array of struct(fullpath, name) of all the Brainstorm eeg nets defaults
     % Usage: EegDefaults = bst_get('EegDefaults')
+    %        EegDefaults = bst_get('EegDefaults', TemplateName=[], SetupName=[])
     case 'EegDefaults'
+        % Parse inputs
+        if (nargin >= 3)
+            SetupName = varargin{3};
+        else
+            SetupName = [];
+        end
+        if (nargin >= 2)
+            TemplateName = varargin{2};
+        else
+            TemplateName = [];
+        end
         % Get templates from the brainstorm3 folder
         progDir   = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'eeg');
         progFiles = dir(bst_fullfile(progDir, '*'));
@@ -2333,16 +2346,27 @@ switch contextName
             if ~isdir(dirList{iDir}) || isempty(fBase) || strcmpi(fBase(1),'.')
                 continue;
             end
+            % Skip if it is not the requested template
+            if ~isempty(TemplateName) && ~strcmpi(fBase, TemplateName)
+                continue;
+            end
             % Get files list
             fileList = dir(bst_fullfile(dirList{iDir}, 'channel*.mat'));
             defaultsList = repmat(struct('fullpath','', 'name',''), 0);
             % Find all the valid defaults (channel files)
             for iFile = 1:length(fileList)
-                defaultsList(iFile).fullpath = bst_fullfile(dirList{iDir}, fileList(iFile).name);
                 [tmp__, baseName] = bst_fileparts(fileList(iFile).name);
-                defaultsList(iFile).name = strrep(baseName, 'channel_', '');
-                defaultsList(iFile).name = strrep(defaultsList(iFile).name, '_channel', '');
-                defaultsList(iFile).name = strrep(defaultsList(iFile).name, '_', ' ');
+                baseName = strrep(baseName, 'channel_', '');
+                baseName = strrep(baseName, '_channel', '');
+                baseName = strrep(baseName, '_', ' ');
+                % Skip if it is not the requested template
+                if ~isempty(SetupName) && ~strcmpi(baseName, SetupName)
+                    continue;
+                end
+                % Add to list of templates
+                iNewDefault = length(defaultsList) + 1;
+                defaultsList(iNewDefault).fullpath = bst_fullfile(dirList{iDir}, fileList(iFile).name);
+                defaultsList(iNewDefault).name = baseName;
             end
             % Add files list to defaults list
             if ~isempty(defaultsList)
@@ -2430,6 +2454,12 @@ switch contextName
             argout1 = [];
         else
             argout1 = GlobalData.Program.ScreenDef;
+        end
+    case 'DecorationSize'
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'DecorationSize')
+            argout1 = [];
+        else
+            argout1 = GlobalData.Program.DecorationSize;
         end
     case 'Layout'
         % Default or current layout structure

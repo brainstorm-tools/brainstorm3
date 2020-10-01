@@ -1,7 +1,9 @@
-function hFig = view_gridloc(HeadModelFile, Type)
+function hFig = view_gridloc(HeadModelFile, GridType, AnatOverlay)
 % VIEW_GRIDLOC: Show the source grid points in 'mixed' and 'volume' head models
 %
-% USAGE:  hFig = view_gridloc(HeadModelFile, Type='V')
+% USAGE:  hFig = view_gridloc(HeadModelFile, GridType='V')               % Display grid on the cortex surface used by the head model
+%         hFig = view_gridloc(HeadModelFile, GridType='V', 'MRI')        % Display grid on subject's default MRI
+%         hFig = view_gridloc(HeadModelFile, GridType='V', SurfaceFile)  % Display grid on a specific surface
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,12 +23,16 @@ function hFig = view_gridloc(HeadModelFile, Type)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2020
 
 % Parse inputs
-if (nargin < 2) || isempty(Type)
-    Type = 'V';
+if (nargin < 3) || isempty(AnatOverlay)
+    AnatOverlay = [];
 end
+if (nargin < 2) || isempty(GridType)
+    GridType = 'V';
+end
+
 
 %% ===== LOAD DATA =====
 % Load head model
@@ -36,17 +42,27 @@ sSubject = bst_get('SurfaceFile', HeadModelMat.SurfaceFile);
 if isempty(sSubject.iScalp)
     error('No scalp surface available');
 end
+if isempty(sSubject.iAnatomy)
+    error('No MRI volume available');
+end
 
 
 %% ===== DISPLAY SURFACES =====
 % Display only selected scouts
 panel_scout('SetScoutShowSelection', 'select');
-% % Display head surface
-% ScalpSurface = sSubject.Surface(sSubject.iScalp).FileName;
-% hFig = view_surface(ScalpSurface, 0.8);
-% Display cortex surface
-hFig = view_surface(HeadModelMat.SurfaceFile, 0.95, [], 'NewFigure');
-
+% Display cortex surface used in the head model
+if isempty(AnatOverlay)
+    hFig = view_surface(HeadModelMat.SurfaceFile, 0.95, [], 'NewFigure');
+% Display subject's default MRI 
+elseif strcmpi(AnatOverlay, 'MRI')
+    hFig = view_mri_3d(sSubject.Anatomy(sSubject.iAnatomy).FileName, HeadModelFile, 0, 'NewFigure');
+    panel_scout('SetDefaultOptions');
+    panel_scout('PlotScouts', [], hFig);
+    panel_scout('UpdateScoutsDisplay', hFig);
+% Display user-defined surface
+elseif ~isempty(file_fullpath(AnatOverlay))
+    hFig = view_surface(AnatOverlay, 0.95, [], 'NewFigure');
+end
 % Set orientation: left
 figure_3d('SetStandardView', hFig, 'left');
 % Update figure name
@@ -75,13 +91,13 @@ switch (HeadModelMat.HeadModelType)
         % Loop on all the regions
         for i = 1:length(sScouts)
             % Skip regions that are not "volume"
-            if ~strcmpi(sScouts(i).Region(2), Type) || (strcmpi(Type,'S') && ~isempty(strfind(sScouts(i).Label, 'Cortex')))
+            if ~strcmpi(sScouts(i).Region(2), GridType) || (strcmpi(GridType,'S') && ~isempty(strfind(sScouts(i).Label, 'Cortex')))
                 continue;
             end
             % Get location
             GridLoc = HeadModelMat.GridLoc(sScouts(i).GridRows,:);
             % Plot points
-            if strcmpi(Type, 'V')
+            if strcmpi(GridType, 'V')
                 line(GridLoc(:,1), GridLoc(:,2), GridLoc(:,3), ...
                      'LineStyle',       'none', ...
                      'Color',            sScouts(i).Color, ...

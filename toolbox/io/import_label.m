@@ -153,10 +153,15 @@ for iFile = 1:length(LabelFiles)
         case 'FS-ANNOT'
             % === READ FILE ===
             % Read label file
-            [vertices, labels, colortable] = read_annotation(LabelFiles{iFile}, 0);
+            try
+                [vertices, labels, colortable] = read_annotation(LabelFiles{iFile}, 0);
+            catch
+                Messages = [Messages, sprintf('%s: read_annotation crashed: %s\n', [fBase, fExt], lasterr)];
+                continue
+            end
             % Check sizes
             if (length(labels) ~= length(Vertices))
-                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(labels))];
+                Messages = [Messages, sprintf('%s: Number of vertices in the surface (%d) and the label file (%d) do not match.\n', [fBase, fExt], length(Vertices), length(labels))];
                 continue
             end
 
@@ -184,7 +189,7 @@ for iFile = 1:length(LabelFiles)
                 sAtlas.Scouts(iScout).Region   = 'UU';
             end
             if isempty(sAtlas.Scouts)
-                Messages = [Messages, fBase, ':' 10 'Could not match labels and color table.' 10];
+                Messages = [Messages, fBase, ': Could not match labels and color table.' 10];
                 continue;
             end
 
@@ -197,7 +202,7 @@ for iFile = 1:length(LabelFiles)
             LabelMat.vertices = LabelMat.vertices + 1;
             % Check sizes
             if (max(LabelMat.vertices) > length(Vertices))
-                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the label file (%d) exceeds the number of vertices in the surface (%d)\n', fBase, max(LabelMat.vertices), length(Vertices))];
+                Messages = [Messages, sprintf('%s: Numbers of vertices in the label file (%d) exceeds the number of vertices in the surface (%d)\n', fBase, max(LabelMat.vertices), length(Vertices))];
                 continue
             end
             % === CONVERT TO SCOUTS ===
@@ -238,7 +243,7 @@ for iFile = 1:length(LabelFiles)
                 sAtlas.Scouts(iScout).Region   = 'UU';
             end
             if isempty(sAtlas.Scouts)
-                Messages = [Messages, fBase, ':' 10 'Could not match labels and color table.' 10];
+                Messages = [Messages, fBase, ': Could not match labels and color table.' 10];
                 continue;
             end
             
@@ -262,7 +267,7 @@ for iFile = 1:length(LabelFiles)
                 end
                 % Check sizes
                 if (length(Values{ia}) ~= length(Vertices))
-                    Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(Values{ia}))];
+                    Messages = [Messages, sprintf('%s: Numbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(Values{ia}))];
                     continue;
                 end
                 % Round the label values
@@ -461,12 +466,12 @@ for iFile = 1:length(LabelFiles)
             elseif isfield(ScoutMat, 'Scouts')
                 % Ok
             else
-                Messages = [Messages, fBase, ':' 10 'Invalid scouts file.' 10];
+                Messages = [Messages, fBase, ': Invalid scouts file.' 10];
                 continue;
             end
             % Check the number of vertices
             if ~isVolumeAtlas && (length(Vertices) ~= ScoutMat.TessNbVertices)
-                Messages = [Messages, sprintf('%s:\nNumbers of vertices in the surface (%d) and the scout file (%d) do not match\n', fBase, length(Vertices), ScoutMat.TessNbVertices)];
+                Messages = [Messages, sprintf('%s: Numbers of vertices in the surface (%d) and the scout file (%d) do not match\n', fBase, length(Vertices), ScoutMat.TessNbVertices)];
                 continue;
             end
             % If name is not defined: use the filename
@@ -535,13 +540,13 @@ for iFile = 1:length(LabelFiles)
                 sAtlas.Scouts(iScout).Region   = 'UU';
             end
             if isempty(sAtlas.Scouts)
-                Messages = [Messages, fBase, ':' 10 'Could not match vertex labels and label description file.' 10];
+                Messages = [Messages, fBase, ': Could not match vertex labels and label description file.' 10];
                 continue;
             end
 
         % ===== Unknown file =====
         otherwise
-            Messages = [Messages, fBase, ':' 10 'Unknown file extension.' 10];
+            Messages = [Messages, fBase, ': Unknown file extension.' 10];
             continue;
     end
     

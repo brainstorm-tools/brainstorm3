@@ -25,10 +25,12 @@ function OutputFile = export_ssp(Projectors, ChannelNames, OutputFile)
 
 % Ask for filename if not defined
 if (nargin < 2) || isempty(OutputFile)
+    % Get default directories and formats
+    LastUsedDirs = bst_get('LastUsedDirs');
     % Build a default file name
-    OutputFile = bst_process('GetNewFilename', '', 'proj.mat');
+    OutputFile = bst_process('GetNewFilename', LastUsedDirs.ExportData, 'proj.mat');
     [fPath,fBase,fExt] = bst_fileparts(OutputFile);
-    OutputFile = [fBase,fExt];
+    OutputFile = bst_fullfile(LastUsedDirs.ExportData, [fBase, fExt]);
     % Get filename where to store the filename
     [OutputFile, ProjFormat] = java_getfile('save', 'Save projectors', OutputFile, 'single', 'files', ...
                             {{'.fif'}, 'Elekta-Neuromag/MNE (*.fif)',        'FIF'; ...
@@ -36,6 +38,9 @@ if (nargin < 2) || isempty(OutputFile)
     if isempty(OutputFile)
         return;
     end
+    % Save new default export path
+    LastUsedDirs.ExportData = bst_fileparts(OutputFile);
+    bst_set('LastUsedDirs', LastUsedDirs);
 end
 
 % Get file extension
