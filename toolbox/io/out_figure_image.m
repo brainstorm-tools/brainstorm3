@@ -313,7 +313,7 @@ else
     else
         % frameGfx = getscreen(hFig);
         figPos = get(hFig, 'Position');
-        decoSize = gui_layout('GetDecorationSize');
+        decoSize = bst_get('DecorationSize');
         % Get the screen definition 
         ScreenDef = bst_get('ScreenDef');
         % Single screen (TODO: Handle the cases where the two screens are organized in different ways)

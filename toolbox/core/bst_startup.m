@@ -536,6 +536,8 @@ else
     panel_scout('UpdatePanel');
     panel_cluster('UpdatePanel');
 end
+% Get decoration size
+GlobalData.Program.DecorationSize = gui_layout('GetDecorationSize', jFrame);
 disp('BST> =================================');
 disp(' ');
 % Set a flag to mark that brainstorm is now running

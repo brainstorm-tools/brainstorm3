@@ -123,6 +123,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('isGUI')          : Return 1 if the Brainstorm interface is displayed
 %    - bst_get('GuiLevel')       : Return GUI level:  -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - bst_get('ScreenDef')      : Get screens configuration
+%    - bst_get('DecorationSize') : Get dimensions of the windows decorations
 %    - bst_get('Layout')         : Configuration of the main Brainstorm window
 %    - bst_get('Layout', prop)   : Get one property in the layout properties
 %    - bst_get('PanelContainer')                : Display list of registered panel containers
@@ -2453,6 +2454,12 @@ switch contextName
             argout1 = [];
         else
             argout1 = GlobalData.Program.ScreenDef;
+        end
+    case 'DecorationSize'
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'DecorationSize')
+            argout1 = [];
+        else
+            argout1 = GlobalData.Program.DecorationSize;
         end
     case 'Layout'
         % Default or current layout structure
