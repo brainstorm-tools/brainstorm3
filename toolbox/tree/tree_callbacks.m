@@ -1449,12 +1449,15 @@ switch (lower(action))
                 else
                     % Display of multiple files
                     if ~isempty(AllMod)
-                        % === ERP IMAGE ===
+                        % === TIME SERIES / ERP IMAGE ===
+                        jMenuTs = gui_component('Menu', jPopup, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], []);
                         jMenuErp = gui_component('Menu', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], []);
                         % For each modality, display a menu
                         for iMod = 1:length(AllMod)
                             channelTypeDisplay = getChannelTypeDisplay(AllMod{iMod}, AllMod);
-                            gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'data'), 'erpimage', AllMod{iMod}));
+                            DataFilenames = GetAllFilenames(bstNodes, 'data');
+                            gui_component('MenuItem', jMenuTs, [], channelTypeDisplay, IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(DataFilenames, AllMod{iMod}, [], 'NewFigure'));
+                            gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(DataFilenames, 'erpimage', AllMod{iMod}));
                         end
                         % === 2DLAYOUT ===
                         mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
