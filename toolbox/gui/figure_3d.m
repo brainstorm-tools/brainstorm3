@@ -1828,13 +1828,15 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('MenuItem', jMenuSave, [], 'Open as figure', IconLoader.ICON_IMAGE, [], @(h,ev)out_figure_image(hFig, 'Figure'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
         % === SAVE AS SSP ===
-        if strcmpi(FigureType, 'Topography')
+        if strcmpi(FigureType, 'Topography') && isempty(TfFile)
             jMenuSave.addSeparator();
             % Raw file: use it directly
             if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw')
                 gui_component('MenuItem', jMenuSave, [], 'Use as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 1));
             end
-            gui_component('MenuItem', jMenuSave, [], 'Save as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 0));
+            if ismember(GlobalData.DataSet(iDS).Measures.DataType, {'raw','recordings'})
+                gui_component('MenuItem', jMenuSave, [], 'Save as SSP projector', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)panel_ssp_selection('SaveFigureAsSsp', hFig, 0));
+            end
         end
         % === SAVE SURFACE ===
         if ~isempty(TessInfo)
