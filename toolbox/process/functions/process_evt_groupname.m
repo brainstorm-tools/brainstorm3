@@ -268,7 +268,7 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
                 end
                 % Remove this occurrence
                 if isDelete
-                    removeEvt(end+1,1:2) = [iEvts(i), iOcc];
+                    removeEvt = [removeEvt; repmat(iEvts(i),length(iOcc),1), reshape(iOcc,[],1)];
                 end
             end
             % New event name
