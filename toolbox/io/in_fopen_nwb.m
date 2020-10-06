@@ -174,7 +174,8 @@ end
 
 
 %% Check for epochs/trials
-[sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
+% [sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
+[sFile, nEpochs] = in_epochs_nwb(sFile, nwb2);
 
 
 %% ===== CREATE EMPTY CHANNEL FILE =====
@@ -234,7 +235,7 @@ if additionalChannelsPresent
                 ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
 
                 ChannelMat.Channel(nChannels + iChannel).Group   = allBehaviorKeys{iBehavior,1};
-                ChannelMat.Channel(nChannels + iChannel).Type    = 'Misc';
+                ChannelMat.Channel(nChannels + iChannel).Type    = 'Behavior';
 
                 ChannelMat.Channel(nChannels + iChannel).Orient  = [];
                 ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
