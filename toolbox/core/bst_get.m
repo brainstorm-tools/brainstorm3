@@ -2305,8 +2305,10 @@ switch contextName
             sTemplates = sTemplates(iAnat);
         end
         % Sort in alphabetical order
-        [tmp__, I] = sort_nat({sTemplates(2:end).Name});
-        sTemplates = sTemplates([1, I+1]);
+        if ~isempty(sTemplates)
+            [tmp__, I] = sort_nat({sTemplates(2:end).Name});
+            sTemplates = sTemplates([1, I+1]);
+        end
         % Return defaults list
         argout1 = sTemplates;
         

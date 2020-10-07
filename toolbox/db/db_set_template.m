@@ -120,24 +120,40 @@ dirFiles = dir(bst_fullfile(templateDir, '*.mat'));
 for i = 1:length(dirFiles)
     fileType = file_gettype(dirFiles(i).name);
     % Subject description: get the default surfaces and MRIs
-    if strcmpi('brainstormsubject', fileType)
-        % Load template subject mat
-        tempSubjMat = load(bst_fullfile(templateDir, dirFiles(i).name));
-        % Load target subject mat
-        targetSubjFile = file_fullpath(sSubject.FileName);
-        targetSubjMat = load(targetSubjFile);
-        % Copy default filenames
-        for f = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'FEM'}
-            if isfield(tempSubjMat, f{1}) && ~isempty(tempSubjMat.(f{1}))
-                [tmp, fBase, fExt] = bst_fileparts(tempSubjMat.(f{1}));
-                targetSubjMat.(f{1}) = [bst_fileparts(sSubject.FileName), '/', [fBase, fExt]];
+    switch (fileType)
+        % Subject definition
+        case 'brainstormsubject'
+            % Load template subject mat
+            tempSubjMat = load(bst_fullfile(templateDir, dirFiles(i).name));
+            % Load target subject mat
+            targetSubjFile = file_fullpath(sSubject.FileName);
+            targetSubjMat = load(targetSubjFile);
+            % Copy default filenames
+            for f = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'FEM'}
+                if isfield(tempSubjMat, f{1}) && ~isempty(tempSubjMat.(f{1}))
+                    [tmp, fBase, fExt] = bst_fileparts(tempSubjMat.(f{1}));
+                    targetSubjMat.(f{1}) = [bst_fileparts(sSubject.FileName), '/', [fBase, fExt]];
+                end
             end
-        end
-        % Save updated subject mat
-        bst_save(targetSubjFile, targetSubjMat, 'v7');
-    % Else: plain copy of the file
-    else
-        file_copy(bst_fullfile(templateDir, dirFiles(i).name), targetDir);
+            % Save updated subject mat
+            bst_save(targetSubjFile, targetSubjMat, 'v7');
+        % Anatomy file
+        case {'subjectimage', 'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers', 'fem'}
+            file_copy(bst_fullfile(templateDir, dirFiles(i).name), targetDir);
+        % Channel file
+        case 'channel'
+            % Get user EEG template folder
+            eegDefDir = bst_fullfile(bst_get('UserDefaultsDir'), 'eeg');
+            eegTargetDir = bst_fullfile(eegDefDir, sTemplate.Name);
+            % Create folder if needed
+            if ~isdir(eegTargetDir)
+                mkdir(eegTargetDir);
+            end
+            % Copy to template channel file folder
+            if isdir(eegTargetDir)
+                file_copy(bst_fullfile(templateDir, dirFiles(i).name), eegTargetDir);
+                disp(['BST> Installed new EEG template: ' bst_fullfile(eegTargetDir, dirFiles(i).name)]);
+            end
     end
 end
 
