@@ -297,13 +297,18 @@ if ~isempty(TessLhFile)
     if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left pial...');
         [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
-        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     % Load sphere
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left pial...');
@@ -318,13 +323,18 @@ if ~isempty(TessRhFile)
     if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right pial...');
         [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
-        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right pial...');
@@ -339,12 +349,17 @@ if ~isempty(TessLwFile)
     if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left white...');
         [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLhFiles, 1);
-        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left white...');
@@ -359,13 +374,18 @@ if ~isempty(TessRwFile)
     if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right white...');
         [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRhFiles, 1);
-        disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right white...');
