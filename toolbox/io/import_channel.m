@@ -360,7 +360,7 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'I
 %% ===== MRI/NII TRANSFORMATION =====
 % If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
 % Only available if there is one study in output
-elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0)
+elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
     % Get the folders
     sStudies = bst_get('Study', iStudies);
     if (length(sStudies) > 1) && ~all(strcmpi(sStudies(1).BrainStormSubject, {sStudies.BrainStormSubject}))
