@@ -497,9 +497,81 @@ function UpdatePanel(hFig)
         ctrl.jPanelSelect.setVisible(isEnabledEdge || isEnabledRow);
 
         % === CONNECTIVITY ===
-        % Connectivity options
+       
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
         isConnect = strcmpi(FigureId.Type, 'Connect');
-        if isConnect
+       
+        % NEW Connectivity (ConnectViz) display panel options
+        if isConnectViz
+            ctrl.jPanelThreshold.setVisible(1);
+            % Get Threshold Min/Max
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
+            if isempty(ThresholdMinMax)
+                ThresholdMinMax = getappdata(hFig, 'DataMinMax');
+            end
+            Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
+            % Threshold filter
+            Threshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
+            SliderValue = (Threshold - ThresholdMinMax(1)) / Diff * 100;
+            ctrl.jSliderThreshold.setValue(SliderValue);
+            ctrl.jLabelConnectThresh.setText(num2str(Threshold,3));
+            % Distance filter
+            MinimumDistanceThresh = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
+            ctrl.jSliderMinimumDistance.setValue(MinimumDistanceThresh);
+            % Direction filter
+            DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
+            DisplayInwardMeasure = getappdata(hFig, 'DisplayInwardMeasure');
+            DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
+            ctrl.jToggleOut.setSelected(DisplayOutwardMeasure && ~DisplayInwardMeasure);
+            ctrl.jToggleIn.setSelected(DisplayInwardMeasure && ~DisplayOutwardMeasure);
+            ctrl.jToggleBoth.setSelected(DisplayOutwardMeasure && DisplayInwardMeasure);
+            ctrl.jToggleBiDir.setSelected(~DisplayOutwardMeasure && ~DisplayInwardMeasure && DisplayBidirectionalMeasure);
+            % Update Anatomical filtering      
+            MeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
+            ctrl.jToggleAll.setSelected(MeasureAnatomicalFilter == 0);
+            ctrl.jToggleHemi.setSelected(MeasureAnatomicalFilter == 1);
+            ctrl.jToggleLobe.setSelected(MeasureAnatomicalFilter == 2);
+            % Update fiber filtering
+            MeasureFiberFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureFiberFilter');
+            ctrl.jToggleAllConns.setSelected(MeasureFiberFilter == 0);
+            ctrl.jToggleAnatConsistConns.setSelected(MeasureFiberFilter == 1);
+            ctrl.jToggleAnatInconsistConns.setSelected(MeasureFiberFilter == 2);
+            % Update filtering title
+            MinIntensity = sprintf('%1.3f',ThresholdMinMax(1));
+            MaxIntensity = sprintf('%1.3f',ThresholdMinMax(2));
+            ctrl.jPanelThreshold.get('Border').setTitle(['Intensity Thresh. (' MinIntensity ' - ' MaxIntensity ')']);
+            MinDistance = num2str(0);
+            MaxDistance = num2str(150);
+            ctrl.jPanelDistance.get('Border').setTitle(['Distance Filtering (' MinDistance ' - ' MaxDistance 'mm)']);
+
+            % Filter Distance Panel
+            HasLocationsData = getappdata(hFig, 'HasLocationsData');
+            if isempty(HasLocationsData)
+                HasLocationsData = 0;
+            end
+            ctrl.jPanelDistance.setVisible(HasLocationsData);
+
+            % Display Direction Panel
+            IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+            if isempty(IsDirectionalData)
+                IsDirectionalData = 0;
+            end
+            ctrl.jPanelLinks.setVisible(IsDirectionalData);
+            % Filter Anatomical Panel
+            DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
+            if isempty(DisplayInRegion)
+                DisplayInRegion = 0;
+            end
+            ctrl.jPanelAnatomical.setVisible(DisplayInRegion);
+            % Filter fiber panel
+            plotFibers = getappdata(hFig, 'plotFibers');
+            if isempty(plotFibers)
+                plotFibers = 0;
+            end
+            ctrl.jPanelFiber.setVisible(plotFibers);
+        
+        % CONNECTIVITY OPTIONS %
+        elseif isConnect
             ctrl.jPanelThreshold.setVisible(1);
             % Get Threshold Min/Max
             ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
@@ -574,6 +646,7 @@ function UpdatePanel(hFig)
             ctrl.jPanelAnatomical.setVisible(0);
             ctrl.jPanelFiber.setVisible(0);
         end
+        
     end
     % Repaint just in case
     ctrl.jPanelThreshold.getParent().revalidate();
@@ -741,6 +814,7 @@ function SetDisplayOptions(sOptions)
         case '3DViz',      panel_surface('UpdateSurfaceData', hFig);
         case 'MriViewer',  panel_surface('UpdateSurfaceData', hFig);
         case 'Connect',    figure_connect('UpdateFigurePlot', hFig);
+        case 'ConnectViz', figure_connect_viz('UpdateFigurePlot', hFig); %@TODO: check
         case 'Pac'   
             % Update this figure
             figure_pac('UpdateFigurePlot', hFig);
@@ -980,6 +1054,8 @@ function SetSelectedRowName(hFig, newRowName) %#ok<DEFNU>
                 figure_pac('UpdateFigurePlot', hFig);
             case 'Connect'
                 warning('todo');
+             case 'ConnectViz' %@TODO: check
+                warning('todo');
         end
         % Update panel
         UpdatePanel(hFig);
@@ -1078,6 +1154,34 @@ function SetThresholdOptions(sOptions)
             % Update panel
             UpdatePanel(hFig);
         end
+        
+        % @TODO: New ConnectViz slider logic, may need combine with previous
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+        if isConnectViz
+            % Threshold min/max
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
+            if isempty(ThresholdMinMax)
+                ThresholdMinMax = getappdata(hFig, 'DataMinMax');
+            end
+            Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
+            sOptions.DataThreshold = sOptions.DataThreshold * Diff + ThresholdMinMax(1);
+
+            % Get current threshold
+            curDataThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
+            if isempty(curDataThreshold)
+                return;
+            end
+            % Nothing changed
+            if (sOptions.DataThreshold == curDataThreshold)
+                return;
+            end
+            % Refresh figure with new threshold
+            figure_connect_viz('SetMeasureThreshold', hFig, sOptions.DataThreshold);
+            figure_connect_viz('UpdateColormap', hFig);
+            % Update panel
+            UpdatePanel(hFig);
+        end
+        
         % Release mutex
         ConnectSliderMutex = [];
     else
@@ -1122,6 +1226,26 @@ function SetDistanceOptions(sOptions)
             figure_connect('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, 150);
             figure_connect('UpdateColormap', hFig);
         end
+        
+        % @TODO: new distance thresh logic for Connect-viz, may combine with
+        % previous
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+        if isConnectViz
+            % Get current threshold
+            curMinDistanceThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
+            if isempty(curMinDistanceThreshold)
+                return;
+            end
+            % Nothing changed
+            if (sOptions.MinDistanceThreshold == curMinDistanceThreshold)
+                return;
+            end
+            % Refresh figure with new threshold
+            figure_connect_viz('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, 150);
+            figure_connect_viz('UpdateColormap', hFig);
+        end
+        
+        
         % Release mutex
         ConnectSliderMutex = [];
     else
@@ -1170,8 +1294,17 @@ function SetConnectivityDisplayOptions(sOptions, DisplayButton)
         curDisplayInwardMeasure ~= DisplayInwardMeasure || ...
         curDisplayBidirectionalMeasure ~= DisplayBidirectionalMeasure)
         % Refresh figure with new threshold
-        figure_connect('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
-        figure_connect('UpdateColormap', hFig);
+        
+        % @TODO: check logic for new vs old connect-viz tool
+        FigureId = getappdata(hFig, 'FigureId');
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+        if isConnectViz
+            figure_connect_viz('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
+            figure_connect_viz('UpdateColormap', hFig);
+        else
+            figure_connect('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
+            figure_connect('UpdateColormap', hFig);
+        end
     end
     UpdatePanel(hFig);
 end
@@ -1195,8 +1328,17 @@ function SetAnatomicalFilteringOptions(sOptions, AnatomicalFilter)
         MeasureAnatomicalFilter = 0;
     end
     % Update figure
-    figure_connect('SetMeasureAnatomicalFilterTo', hFig, MeasureAnatomicalFilter);
-    figure_connect('UpdateColormap', hFig);
+    % @TODO: check logic for new vs old connect-viz tool
+    FigureId = getappdata(hFig, 'FigureId');
+    isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+    if isConnectViz
+        figure_connect_viz('SetMeasureAnatomicalFilterTo', hFig, MeasureAnatomicalFilter);
+        figure_connect_viz('UpdateColormap', hFig);
+    else
+        figure_connect('SetMeasureAnatomicalFilterTo', hFig, MeasureAnatomicalFilter);
+        figure_connect('UpdateColormap', hFig);
+    end
+    
     % Update panel
     UpdatePanel(hFig);
 end
@@ -1213,8 +1355,17 @@ function SetFiberFilteringOptions(sOptions, FiberFilter)
     end
     bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate connections...');
     % Update figure
-    figure_connect('SetMeasureFiberFilterTo', hFig, FiberFilter);
-    figure_connect('UpdateColormap', hFig);
+    % @TODO: check logic for new vs old connect-viz tool
+    FigureId = getappdata(hFig, 'FigureId');
+    isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+    if isConnectViz
+        figure_connect_viz('SetMeasureFiberFilterTo', hFig, FiberFilter);
+        figure_connect_viz('UpdateColormap', hFig);
+    else
+        figure_connect('SetMeasureFiberFilterTo', hFig, FiberFilter);
+        figure_connect('UpdateColormap', hFig);
+    end
+    
     % Update panel
     UpdatePanel(hFig);
     bst_progress('stop');
