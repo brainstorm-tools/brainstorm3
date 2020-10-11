@@ -563,12 +563,8 @@ function UpdatePanel(hFig)
                 DisplayInRegion = 0;
             end
             ctrl.jPanelAnatomical.setVisible(DisplayInRegion);
-            % Filter fiber panel
-            plotFibers = getappdata(hFig, 'plotFibers');
-            if isempty(plotFibers)
-                plotFibers = 0;
-            end
-            ctrl.jPanelFiber.setVisible(plotFibers);
+            % No fiber panel @TODO: remove jPanelFiber for NEW tool
+            ctrl.jPanelFiber.setVisible(0);
         
         % CONNECTIVITY OPTIONS %
         elseif isConnect

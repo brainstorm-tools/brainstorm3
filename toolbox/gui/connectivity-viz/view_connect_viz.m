@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_connect_viz(TimefreqFile, DisplayMode, hFig)
 %
 % INPUT: 
 %     - TimefreqFile : Path to connectivity file to visualize
-%     - DisplayMode  : {'Image', 'GraphFull', '3DGraph', 'Fibers'}
+%     - DisplayMode  : {'GraphFull'}
 %     - hFig         : If defined, display file in existing figure
 %
 % OUTPUT : 
@@ -51,18 +51,12 @@ elseif isequal(hFig,'NewFigure')
     CreateMode = 'AlwaysCreate';
 end
 
-% If fibers are requested, plot the graph as well
-if strcmpi(DisplayMode, 'Fibers')
-    DisplayMode = 'GraphFull';
-    plotFibers = 1;
-else
-    plotFibers = 0;
-end
-
 % Initializations
 global GlobalData;
 iDS = [];
 iFig = [];
+
+% @TODO: remove once OpenGL is no longer needed
 % Check if OpenGL is activated
 if strcmpi(DisplayMode, 'GraphFull')
 %     if (bst_get('DisableOpenGL') == 1)
@@ -97,6 +91,7 @@ switch file_gettype(TimefreqFile)
     otherwise
         error('File type not supported.');
 end
+
 % Progress bar
 bst_progress('start', 'View connectivity map', 'Loading data...');
 % Load file
@@ -104,9 +99,10 @@ bst_progress('start', 'View connectivity map', 'Loading data...');
 if isempty(iDS)
     return;
 end
+
 % Detect modality
 Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
-% Check that the matrix is square: cannot display [NxM] connectivity matrix where N~=M
+% Check that the matrix is square: cannot display [NxM] connectivity  where N~=M
 if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) ~= length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)) && ~strcmpi(DisplayMode, 'Image')
     bst_error(sprintf('The connectivity matrix size is [%dx%d].\nThis graph display can be used only for square matrices (NxN).', ...
               length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames), length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)), ...
@@ -114,59 +110,8 @@ if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) ~= length(Gl
     return;
 end
 
-
-%% ===== DISPLAY AS IMAGE =====
-% Display as image
-if strcmpi(DisplayMode, 'Image')
-    if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'none')
-        TfFunction = 'magnitude';
-    else
-        TfFunction = 'other';
-    end
-    % Get values
-    TF = bst_memory('GetTimefreqValues', iDS, iTimefreq, [], [], [], TfFunction);
-    % Get connectivity matrix
-    C = bst_memory('ReshapeConnectMatrix', iDS, iTimefreq, TF);
-    % Remove diagonals for NxN
-    if isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) || ...
-       isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames')
-        N = size(C,1);
-        M = size(C,3)*size(C,4);
-        indDiag = (1:N) + N*(0:N-1);
-        indDiag = repmat(indDiag',1,M) + N*N*repmat(0:M-1,N,1);
-        C(indDiag) = 0;
-    end
-    % Get time vector
-    if (size(TF,3) < 2)
-        TimeVector = [];
-    else
-        TimeVector = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Time;
-    end
-    % Plot as a flat image
-    Labels = {GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, ...
-              GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, ...
-              TimeVector, ...
-              GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
-    hFig = view_image_reg(C, Labels, [1,2], {'From (A)', 'To (B)'}, TimefreqFile, hFig, [], 0, '$freq');
-    % Reload call
-    ReloadCall = {'view_connect_viz', TimefreqFile, DisplayMode, hFig};
-    setappdata(hFig, 'ReloadCall', ReloadCall);
-    % Close progress bar and return
-    bst_progress('stop');
-    return;
-
-end
-
-% Check numbers of rows
-if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames) <= 2)
-    bst_error('Not enough nodes to display a connectivity graph.', 'View connectivity matrix', 0);
-    return;
-end
-
-
-%% ===== CREATE FIGURE =====
+%% ===== CREATE MATLAB FIGURE =====
 if isempty(hFig)
-    disp('creating FigureID=ConnectViz figure') %TODO: remove
     % Prepare FigureId structure
     FigureId          = db_template('FigureId');
     FigureId.Type     = 'ConnectViz';
@@ -187,50 +132,21 @@ if ~isNewFig
     figure_connect_viz('ResetDisplay', hFig);
 end
 
-%% ===== DISPLAY FIBERS =====
-if plotFibers
-    bst_progress('start', 'View connectivity map', 'Loading fibers...');
-    % Get necessary surface files
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    try
-        surfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
-        fibersFile = sSubject.Surface(sSubject.iFibers).FileName;
-        assert(~isempty(surfaceFile) && ~isempty(fibersFile));
-    catch
-        bst_error('Cannot display connectivity results on fibers without fibers and cortex files.');
-        return;
-    end
-    
-    % Prepare fibers figure
-    FigureFibId = db_template('FigureId');
-    FigureFibId.Type = '3DViz';
-    hFigFib = bst_figures('CreateFigure', iDS, FigureFibId);
-    setappdata(hFigFib, 'EmptyFigure', 1);
-
-    % Display fibers
-    hFigFib = view_surface(fibersFile, [], [], hFigFib);
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.hFigFib = hFigFib;
-    
-    % Display cortex surface
-    panel_surface('AddSurface', hFigFib, surfaceFile);
-    % Add transparency to cortex surface
-    iSurface = getappdata(hFigFib, 'iSurface');
-    panel_surface('SetSurfaceTransparency', hFigFib, iSurface, 0.8);
-end
-
 
 %% ===== INITIALIZE FIGURE =====
 % Configure app data
 setappdata(hFig, 'DataFile',     GlobalData.DataSet(iDS).DataFile);
 setappdata(hFig, 'StudyFile',    GlobalData.DataSet(iDS).StudyFile);
 setappdata(hFig, 'SubjectFile',  GlobalData.DataSet(iDS).SubjectFile);
-setappdata(hFig, 'plotFibers',   plotFibers);
+setappdata(hFig, 'plotFibers',   0); %TODO: remove entirely once no dependencies
+
 % Static dataset
 isStatic = (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 1) || ...
            ((GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples == 2) && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,1,:,:,:), GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,2,:,:,:)));
 setappdata(hFig, 'isStatic', isStatic);
 isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
 setappdata(hFig, 'isStaticFreq', isStaticFreq);
+
 % Get figure data
 TfInfo = getappdata(hFig, 'Timefreq');
 % Create time-freq information structure
@@ -242,6 +158,7 @@ TfInfo.RowName     = [];
 IsDirectionalData = 0;
 IsBinaryData = 0;
 ThresholdAbsoluteValue = 0;
+
 switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
     case 'corr',     TfInfo.Function = 'other';
                      ThresholdAbsoluteValue = 1;
@@ -263,12 +180,13 @@ switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
         end
     otherwise,       TfInfo.Function = 'other';
 end
+
 % Update figure variable
 setappdata(hFig, 'Method', GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
 setappdata(hFig, 'IsDirectionalData', IsDirectionalData);
 setappdata(hFig, 'IsBinaryData', IsBinaryData);
 setappdata(hFig, 'ThresholdAbsoluteValue', ThresholdAbsoluteValue);
-setappdata(hFig, 'is3DDisplay', strcmpi(DisplayMode, '3DGraph'));
+setappdata(hFig, 'is3DDisplay', strcmpi(DisplayMode, '3DGraph')); %TODO: remove if no dependencies
 
 % Frequency selection
 if isStaticFreq
