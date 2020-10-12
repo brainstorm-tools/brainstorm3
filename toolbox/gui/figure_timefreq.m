@@ -1049,22 +1049,28 @@ function UpdateFigurePlot(hFig, isForced)
                 PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask);
             elseif TfInfo.DisplayAsDots
                 PlotTimefreqAsDots(hAxes, Time, TF);
+            elseif TfInfo.DisplayAsPhase
+                PlotTimefreqAsPhase(hAxes, Time, Freqs, TF);
             else
                 PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask);
             end
-            % Configure axes
-            ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, LowFreq);
-            % Plot current time/frequency markers
-            PlotTimefreqCursor(hAxes);
+            
+            if ~TfInfo.DisplayAsPhase
+                ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, LowFreq);
+                
+                % Plot current time/frequency markers
+                PlotTimefreqCursor(hAxes);
+            end
+            
             % Store initial XLim and YLim
             setappdata(hFig, 'XLimInit', get(hAxes, 'XLim'));
             setappdata(hFig, 'YLimInit', get(hAxes, 'YLim'));
         case '2dlayout'
-            PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, 1);
+            PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, 1);
         case '2dlayoutopt'
-            PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, 2);
+            PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, 2);
         case 'allsensors'
-            PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, 0);
+            PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, 0);
     end
     % Update figure handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = TopoHandles;
@@ -1076,7 +1082,7 @@ function UpdateFigurePlot(hFig, isForced)
         set(hColorbar, 'FontSize', bst_get('FigFont'), 'FontUnits', 'points');
     end
     % Do not display colorbar for single color dots
-    if TfInfo.DisplayAsDots
+    if TfInfo.DisplayAsDots || TfInfo.DisplayAsPhase
         sColormap.DisplayColorbar = 0;
     end
 %     % Get figure colormap
@@ -1182,6 +1188,32 @@ function hSurf = PlotTimefreqAsDots(hAxes, Time, TF)
        'MarkerSize', 5, ...
        'Tag', surfTag, ...
        'Parent', hAxes);
+end
+
+
+%% ===== PLOT TIME-FREQ AS PHASE =====
+function hSurf = PlotTimefreqAsPhase(hAxes, Time, Freqs, TF)
+    % Delete previous objects
+    surfTag = 'TimefreqSurf';
+    hOld = findobj(hAxes, '-depth', 1, 'tag', surfTag);
+    delete(hOld);
+
+    nBins = length(Freqs);
+    w = squeeze(TF(1, 1, :));
+
+    single_neuron_and_channel_phase = [];
+    for iBin = 1:nBins
+        single_neuron_and_channel_phase = [single_neuron_and_channel_phase; ones(w(iBin),1) * Freqs(iBin)];
+    end
+
+    pval_rayleigh = circ_rtest(single_neuron_and_channel_phase);
+    pval_omnibus = circ_otest(single_neuron_and_channel_phase);
+    mean_value = circ_mean(single_neuron_and_channel_phase);
+    mean_value_degrees = mean_value * (180/pi);
+
+    hSurf = circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r','Parent', hAxes);
+    set(hSurf, 'Tag', surfTag);
+    title(hAxes, {['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
 end
 
 
@@ -1301,6 +1333,9 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
         xlabel(hAxes, 'Time (s)');
         ylabel(hAxes, 'Trials');
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'spiking_phase_locking'))
+        xlabel(hAxes, ' ');
+        ylabel(hAxes, ' ');
     else
         xlabel(hAxes, 'Time (s)');
         ylabel(hAxes, 'Frequency (Hz)');
@@ -1502,7 +1537,7 @@ end
 
 
 %% ===== PLOT ALL SENSORS =====
-function PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, is2DLayout)
+function PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, is2DLayout)
     % Find axes
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesTimefreq');
     cla(hAxes);
@@ -1552,6 +1587,22 @@ function PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, is2DLayout)
                  'Parent',    hAxes, ...
                  'Tag', 'TimefreqSurfSmall', ...
                  'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+             
+             
+        elseif TfInfo.DisplayAsPhase
+            % Create white background
+            hAxes = subplot('Position', [XData(1), YData(1), XData(2) - XData(1), YData(2) - YData(1)]);
+
+            nBins = length(Freqs);
+            w = TF_sensor(:,1)';
+
+            single_neuron_and_channel_phase = [];
+            for iBin = 1:nBins
+                single_neuron_and_channel_phase = [single_neuron_and_channel_phase; ones(w(iBin),1) * Freqs(iBin)];
+            end
+            hSurf = circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r','Parent', hAxes);
+            set(hSurf, 'Tag', 'TimefreqSurfSmall');     
+        
         else
             [Xgrid, Ygrid] = meshgrid(linspace(XData(1), XData(2), size(TF_sensor,2) + 1), ...
                                       linspace(YData(1), YData(2), size(TF_sensor,1) + 1));
