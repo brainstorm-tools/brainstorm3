@@ -231,6 +231,9 @@ function Dispose(hFig) %#ok<DEFNU>
         for i = 1:length(c.Node)
             delete(c.Node(i));
         end
+        for i = 1:length(c.testNodes)
+            delete(c.testNodes(i));
+        end
     end
 
     
@@ -255,7 +258,7 @@ end
 
 
 %% ===== RESET DISPLAY =====
-% NOTE: updated remove ogl
+% NOTE: ready, updated remove ogl
 function ResetDisplay(hFig)
     % Reset display
 %     OGL = getappdata(hFig, 'OpenGLDisplay');
@@ -804,11 +807,8 @@ function JavaClickCallback(hFig, ev)
                             return;
                         end
                         % There's no exploration in 3D
-                        is3DDisplay = getappdata(hFig, 'is3DDisplay');
-                        if (~is3DDisplay)
-                            bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', nodeIndex);
-                            UpdateFigurePlot(hFig);
-                        end
+                        bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', nodeIndex);
+                        UpdateFigurePlot(hFig);
                     end
                 end
             end
@@ -903,8 +903,7 @@ function DisplayFigurePopup(hFig)
     end
     
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
-    
+   
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
     
@@ -926,29 +925,6 @@ function DisplayFigurePopup(hFig)
     jGraphMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
         % Check Matlab version: Works only for R2007b and newer
         if (bst_get('MatlabVersion') >= 705)
-            if is3DDisplay
-                % == MODIFY CORTEX TRANSPARENCY ==
-                jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
-                Transparency = GetCortexTransparency(hFig);
-                % Label
-                jPanelModifiers.add(JLabel('Cortex Opacity'));
-                % Slider
-                jSliderContrast = JSlider(0,250,250);
-                jSliderContrast.setValue(round(Transparency * 1000));
-                jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-                %jSliderContrast.setToolTipText(tooltipSliders);
-                jSliderContrast.setFocusable(0);
-                jSliderContrast.setOpaque(0);
-                jPanelModifiers.add('tab hfill', jSliderContrast);
-                % Value (text)
-                jLabelContrast = JLabel(sprintf('%0.2f', Transparency));
-                jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-                jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-                jPanelModifiers.add(jLabelContrast);
-                % Slider callbacks
-                java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)CortexTransparencySliderModifying_Callback(hFig, ev, jLabelContrast));
-                jGraphMenu.add(jPanelModifiers);
-            end
             
             % == MODIFY LINK TRANSPARENCY ==
             jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
@@ -1120,6 +1096,7 @@ end
 %  ===========================================================================
 
 %% ===== GET FIGURE DATA =====
+% NOTE: ready, no changes needed
 function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig)
     global GlobalData;
     % === GET FIGURE INFO ===
@@ -1191,6 +1168,7 @@ function IsDirectional = IsDirectionalData(hFig)
     end
 end
 
+% @NOTE: ready, no change required
 function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     % Parse input
     if (nargin < 2)
@@ -1221,46 +1199,6 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
         Valid = ones(size(M));
         Valid(M == 0) = 0;
         Valid(diag(ones(size(M)))) = 0;
-        
-        % === ZERO-OUT NEIGHBORS VALUES ===
-%         if isfield(Options,'Neighbours') && Options.Neighbours
-%             % Do we have data to work with ?
-%             if ~isempty(Atlas) && ~isempty(Surface)
-%                 % Because
-%                 VertConn = full(Surface.VertConn);
-%                 % 
-%                 nScouts = length(Atlas.Scouts);
-%                 % If sources are elemental dipole
-%                 if (nScouts == size(Surface.Vertices,1))
-%                     Valid = Valid & ~VertConn;
-%                 else
-%                     CellIndex = cellfun(@(V,I) repmat(I,1,length(V)), {Atlas.Scouts.Vertices}, num2cell(1:length(Atlas.Scouts)), 'UniformOutput', 0);
-%                     Index = zeros(size(Surface.Vertices,1),1);
-%                     Index([Atlas.Scouts.Vertices]) = [CellIndex{:}];
-%                     % 
-%                     for i=1:nScouts
-%                         Idx = unique(Index(any(VertConn(Atlas.Scouts(i).Vertices,:),1)));
-%                         Idx(Idx == i) = [];
-%                         Idx(Idx == 0) = [];
-%                         Valid(i,Idx) = 0;
-%                     end
-%                 end
-%             end
-%         end
-        
-        % === ZERO-OUT DISTANCE ===
-%         if isfield(Options,'Distance') && Options.Distance
-%             if isempty(Atlas)
-%                 [n,dims] = size(Surface.Vertices);
-%                 a = reshape(Surface.Vertices,1,n,dims);
-%                 b = reshape(Surface.Vertices,n,1,dims);
-%                 dmat = sqrt(sum((a(ones(n,1),:,:) - b(:,ones(n,1),:)).^2,3));
-%                 DistanceFactor = getappdata(hFig, 'MeasureDistanceFactor');
-%                 dmat = dmat .* DistanceFactor;
-%                 Valid = Valid & (dmat > 20);
-%             else
-%             end
-%         end
         
         % === ZERO-OUT LOWEST VALUES ===
         if isfield(Options,'Highest') && Options.Highest
@@ -1332,11 +1270,12 @@ end
 
 
 %% ===== UPDATE FIGURE PLOT =====
-%% TODO: CREATE NEW LOAD FIGURE PLOT
 function LoadFigurePlot(hFig) %#ok<DEFNU>
     testPlot(hFig)
     
     global GlobalData;
+    %% === Initialize data @NOTE: DONE ===
+    
     % Necessary for data initialization
     ResetDisplay(hFig);
     % Get figure description
@@ -1456,12 +1395,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         otherwise
             error('Unsupported');
     end
-
-    %TODO: check if 3dDisplay always false, remove
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
-    if isempty(is3DDisplay) || isempty(RowLocs) || isempty(SurfaceMat)
-        is3DDisplay = 0;
-    end
+    
     DisplayInCircle = 0;
     DisplayInRegion = 0;
     
@@ -1478,46 +1412,37 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         RowNames = cellstr(num2str(RowNames));
     end
     
-    %% === ASSIGN GROUPS: CRUCIAL STEP ===
-    if is3DDisplay
-        % 3D display uses groups to speed the pathway computation
-        if isempty(sGroups)
-            % Assign groups
+    %% === ASSIGN GROUPS: CRUCIAL STEP @NOTE: DONE ===
+    % display in circle
+    if isempty(sGroups)
+        % No data to arrange in groups
+        if isempty(RowLocs) || isempty(SurfaceMat)
+            DisplayInCircle = 1;
+            % Create a group for each node
+            sGroups = repmat(struct('Name', [], 'RowNames', [], 'Region', []), 0);
+            for i=1:length(RowNames)
+                sGroups(1).Name = RowNames{i};
+                sGroups(1).RowNames = [sGroups(1).RowNames {num2str(RowNames{i})}];
+                sGroups(1).Region = 'UU';
+            end
+        else
+            % We have location data so we can aim for
+            % a basic 4 quadrants display
+            DisplayInRegion = 1;            
             sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, SurfaceMat);
         end
     else
-        % If no hierarchy is defined, display in circle
-        if isempty(sGroups)
-            % No data to arrange in groups
-            if isempty(RowLocs) || isempty(SurfaceMat)
-                DisplayInCircle = 1;
-                % Create a group for each node
-                sGroups = repmat(struct('Name', [], 'RowNames', [], 'Region', []), 0);
-                for i=1:length(RowNames)
-                    sGroups(1).Name = RowNames{i};
-                    sGroups(1).RowNames = [sGroups(1).RowNames {num2str(RowNames{i})}];
-                    sGroups(1).Region = 'UU';
-                end
-            else
-                % We have location data so we can aim for
-                % a basic 4 quadrants display
-                DisplayInRegion = 1;            
-                sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, SurfaceMat);
-            end
-        else
-            % Display in region
-            DisplayInRegion = 1;
-            % Force basic Anterior/Posterior if necessary
-            if (length(sGroups) == 2 && ...
-                strcmp(sGroups(1).Region(2), 'U') == 1 && ...
-                strcmp(sGroups(2).Region(2), 'U') == 1)
-                sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, SurfaceMat);
-            end
+        % Display in region
+        DisplayInRegion = 1;
+        % Force basic Anterior/Posterior if necessary
+        if (length(sGroups) == 2 && ...
+            strcmp(sGroups(1).Region(2), 'U') == 1 && ...
+            strcmp(sGroups(2).Region(2), 'U') == 1)
+            sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, SurfaceMat);
         end
     end
     setappdata(hFig, 'DisplayInCircle', DisplayInCircle);
     setappdata(hFig, 'DisplayInRegion', DisplayInRegion);
-    setappdata(hFig, 'is3DDisplay', is3DDisplay);
 
     % IsBinaryData -> Granger
     % IsDirectionalData -> Granger
@@ -1536,111 +1461,15 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'RowLocs', RowLocs);
     bst_figures('SetFigureHandleField', hFig, 'RowColors', RowColors);
     
-  %  OGL = getappdata(hFig, 'OpenGLDisplay');
         
     %% ===== ORGANISE VERTICES =====    
+    %  OGL = getappdata(hFig, 'OpenGLDisplay');
     if DisplayInCircle
         [Vertices Paths Names] = OrganiseNodeInCircle(hFig, RowNames, sGroups);
     elseif DisplayInRegion
-        % TODO: FOUND DISPLAY LOGIC
         [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, RowNames, sGroups, RowLocs, 1);
-    elseif is3DDisplay
-        % === 3D DISPLAY IS A PROTOTYPE ===
-        % Copy cortex Vertices and Faces
-        V = SurfaceMat.Vertices;
-        F = SurfaceMat.Faces;
-        % Scale vertex to stay inside viewing space
-        CameraZoom = getappdata(hFig, 'CameraZoom');
-        VertexScale3D = (CameraZoom + 1) / (max(sqrt(sum(V.^2,2))));
-        % Centroid offset is used to center the model
-        Centroid = sum(V,1) / size(V,1);
-        V = V - repmat(Centroid, size(V,1), 1);
-        V = V * VertexScale3D;
-        % Reassign
-        TempSurf = SurfaceMat;
-        TempSurf.Vertices = V;
-        
-        % Both variables are needed in OrganiseChannelsIn3D
-        setappdata(hFig, 'VertexScale3D', VertexScale3D);
-        setappdata(hFig, 'VertexInitCentroid', Centroid);
-        
-        % Add polygon to Java
-        OGL.addPolygon(reshape(V',[],1), reshape(F',[],1) - 1, 1);
-        % Typical rendering options
-        SetCortexTransparency(hFig, 0.025);
-        OGL.setPolygonColor(0, 0, 0, 0);
-        OGL.setPolygonVisible(0, 1);
-        
-%        Atlas = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Atlas;
-%        nScouts = size(Atlas.Scouts,2);
-%        for i=1:nScouts
-%             sV = Atlas.Scouts(i).Vertices;
-%             vIndex = zeros(size(V,1),1);
-%             vIndex(sV) = find(sV);
-%             mF = ismember(F,sV);
-%             sF = F(sum(mF,2) == 3,:);
-%             sF = vIndex(sF(:,:));
-%             
-%             OGL.addPolygon(reshape(V(sV,:)',[],1), reshape(sF',[],1) - 1, 1);
-%             OGL.setPolygonColor(i - 1, rand(1,1), rand(1,1), rand(1,1));
-%             OGL.setPolygonTransparency(i - 1, 0.2);
-% 
-%             Outlines = ComputePolygonOutline(SurfaceMat, Atlas.Scouts(i));
-%             O = Outlines{1};
-%             OGL.addRegionOutline(V(sV(O),1), V(sV(O),2), V(sV(O),3));
-%             OGL.setRegionOutlineColor(i - 1, rand(1,1), rand(1,1), rand(1,1));
-%             OGL.setRegionOutlineTransparency(i - 1, 0.3);
-%             OGL.setRegionOutlineThickness(i - 1, 0.5);
-%        end
-
-         % 3D agregating node connectivity map
-        Conn = zeros(24);
-        Connected = [1 2; 1 3; 1 17; 1 18; 1 20; 1 21;
-                     2 1; 2 4; 2 18; 2 19; 2 21; 2 22;
-                     3 1; 3 4; 3 7; 3 8; 3 10; 3 11;
-                     4 2; 4 3; 4 8; 4 9; 4 11; 4 12;
-                     ...
-                     5 6; 5 8;
-                     6 8;
-                     7 8; 7 10;
-                     8 9; 8 11;
-                     9 12;
-                     10 11;
-                     11 12; 11 13; 11 14;
-                     12 14;
-                     13 14;
-                     14 13;
-                     ...
-                     15 16; 15 18;
-                     16 18;
-                     17 18; 17 20;
-                     18 19; 18 21;
-                     19 22;
-                     20 21;
-                     21 22; 21 23; 21 24;
-                     22 24;
-                     23 24;
-                     24 23];
-        
-        idx = sub2ind(size(Conn), Connected(:,1), Connected(:,2));
-        idx2 = sub2ind(size(Conn), Connected(:,2), Connected(:,1));
-        Conn([idx;idx2]) = 1;
-        % Cost function is favoring middle lines (better display)
-        Cost = ones(size(Conn));
-        C = [8 5; 8 6; 8 11;
-             11 13; 11 14; 11 8;
-             18 15; 18 16; 18 21;
-             21 23; 21 24; 21 18];
-        idx = sub2ind(size(Cost), C(:,1), C(:,2));
-        idx2 = sub2ind(size(Cost), C(:,2), C(:,1));
-        Conn([idx;idx2]) = 1;% * 0.5;
-        % Dijkstra 
-        [tmp, AgregatingNodeConnectMap] = jk_dijkstra(Conn, Cost);
-        bst_figures('SetFigureHandleField', hFig, 'AgregatingNodeConnectMap', AgregatingNodeConnectMap);
-        % 
-        [Vertices Paths Names] = OrganiseChannelsIn3D(hFig, sGroups, RowNames, RowLocs, TempSurf);
     else
-        disp('Unsupported display. Contact administrator, sorry for the inconvenience');
+        disp('Unsupported display. Please contact administrator- Sorry for the inconvenience.');
     end
     
     % Keep graph data
@@ -1661,11 +1490,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     BackgroundColor = GetBackgroundColor(hFig);
     SetBackgroundColor(hFig, BackgroundColor);
 
-    % Prototype (Not working)
-    % Compute and add radial region for selection
-    % if (is3DDisplay == 0 && DisplayInCircle == 0)
-    %    SetupRadialRegion(hFig, Vertices, sGroups, RowNames, RowLocs);
-    % end
     
     %% ===== Compute Links =====
     % Data cleaning options
@@ -1685,11 +1509,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'MeasureDistance', MeasureDistance);
     
     % Build path based on region
-    if is3DDisplay
-        MeasureLinks = BuildRegionPath3D(hFig, Paths, DataPair, Vertices);
-    else
-        MeasureLinks = BuildRegionPath(hFig, Paths, DataPair);
-    end
+    MeasureLinks = BuildRegionPath(hFig, Paths, DataPair);
     
     % Compute spline based on MeasureLinks
     aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
@@ -1700,20 +1520,13 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         LinkSize = getappdata(hFig, 'LinkSize');
         % Set link width
         SetLinkSize(hFig, LinkSize);
-        % Set link transparency
-        if (is3DDisplay)
-            SetLinkTransparency(hFig, 0.75);
-        else
-            SetLinkTransparency(hFig, 0.00);
-        end
+        % Set link transparency (if 3DDisplay, set to 0.75)
+        SetLinkTransparency(hFig, 0.00);
     end
         
     %% ===== Init Filters =====
     % 
     MinThreshold = 0.9;
-    if is3DDisplay
-        MinThreshold = 0.5;        
-    end
     
     % Don't refresh display for each filter at loading time
     Refresh = 0;
@@ -1767,18 +1580,11 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % GL_DEPTH_TEST = 2929
     
     % These options are necessary for proper display
-    if ~is3DDisplay
-       % OGL.OpenGLDisable(2896);
-      %  OGL.OpenGLDisable(2903);
-        SetHierarchyNodeIsVisible(hFig, 1);
-        RenderInQuad = 1;
-    else
-      %  OGL.OpenGLEnable(2896);
-     %   OGL.OpenGLEnable(2903);
-        SetHierarchyNodeIsVisible(hFig, 0);
-        setappdata(hFig, 'TextDisplayMode', []);
-        RenderInQuad = 0;
-    end
+   % OGL.OpenGLDisable(2896);
+  %  OGL.OpenGLDisable(2903);
+    SetHierarchyNodeIsVisible(hFig, 1);
+    RenderInQuad = 1;
+    
     % 
    % OGL.renderInQuad(RenderInQuad);
     setappdata(hFig, 'RenderInQuad', RenderInQuad);
@@ -1803,14 +1609,28 @@ function testPlot(hFig)
     
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
     M(M<test_thresh) = 0;
-   % M(M>=test_thresh) = 1;
-   
-    %fig_test = figure; %create new figure or it will overlap with current
     circularGraph(M, 'Label', RowNames);
 end
 
 function test(hFig)
     %
+    %set colourmap value and labels for each node
+%     for i = 1: 148%nVertices
+%         UserData.testNodes(i) = node(V(i,1),V(i,2));
+%         UserData.testNodes(i).Color = UserData.ColorMap(i,:);
+%         UserData.testNodes(i).Label = UserData.Label{i};
+%         UserData.testNodes(i).LabelColor = [1 1 1];
+%     end 
+    
+%    
+    % Node are color coded to their Scout counterpart
+    RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
+    if ~isempty(RowColors)
+        for i=1:length(RowColors)
+            %UserData.testNodes(nAgregatingNodes+i).Color = RowColors(i,:);
+        end 
+%             OGL.setNodeInnerColor(nAgregatingNodes+i-1, RowColors(i,1), RowColors(i,2), RowColors(i,3));
+    end
 end
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
@@ -1862,8 +1682,7 @@ function UpdateFigurePlot(hFig)
     OGL = getappdata(hFig, 'OpenGLDisplay');
     % Clear links
     OGL.clearLinks();
-    % 3D display ?
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
+
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
 
@@ -1950,11 +1769,7 @@ function UpdateFigurePlot(hFig)
     % Get computed vertices paths to center
     NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
     % Build Datapair path based on region
-    if is3DDisplay
-        MeasureLinks = BuildRegionPath3D(hFig, NodePaths, DataPair, Vertices);
-    else
-        MeasureLinks = BuildRegionPath(hFig, NodePaths, DataPair);
-    end
+    MeasureLinks = BuildRegionPath(hFig, NodePaths, DataPair);
     % Compute spline for MeasureLinks based on Vertices position
     aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
     if ~isempty(aSplines)
@@ -2279,7 +2094,7 @@ function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
 end
 
 
-%ready
+%@Note: ready, no changes needed
 function MeasureDistance = ComputeEuclideanMeasureDistance(hFig, aDataPair, mLoc)
     % Correct offset
     nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
@@ -2442,7 +2257,6 @@ function UpdateColormap(hFig)
     % === UPDATE DISPLAY ===
     CMap = sColormap.CMap;
     OGL = getappdata(hFig, 'OpenGLDisplay');
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
     
     if (sum(DataMask) > 0)
         % Normalize DataPair for Offset
@@ -2463,10 +2277,9 @@ function UpdateColormap(hFig)
 %             find(DataMask) - 1, ...
 %             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
 %             EndColor(:,1), EndColor(:,2), EndColor(:,3));
-        if (~is3DDisplay)
-            % Offset is always in absolute
-           % OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
-        end
+
+        % TODO: Offset is always in absolute
+        % OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
     end
     
     [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig);
@@ -2488,10 +2301,10 @@ function UpdateColormap(hFig)
 %             find(RegionDataMask) - 1, ...
 %             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
 %             EndColor(:,1), EndColor(:,2), EndColor(:,3));
-        if (~is3DDisplay)
-            % Offset is always in absolute
-%             OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
-        end
+       
+        % TODO: Offset is always in absolute
+%       OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
+
     end
     
 %     OGL.repaint();
@@ -2943,6 +2756,7 @@ end
 
 %% ===== LINK TRANSPARENCY =====
 % TODO: set link / line transparency
+% TODO: was this only for 3d link?
 function SetLinkTransparency(hFig, LinkTransparency)
     % Get display
    % OGL = getappdata(hFig,'OpenGLDisplay');
@@ -2956,6 +2770,7 @@ function SetLinkTransparency(hFig, LinkTransparency)
 end
 
 %% ===== CORTEX TRANSPARENCY =====
+% TODO: was this only for 3d link?
 function CortexTransparency = GetCortexTransparency(hFig)
     CortexTransparency = getappdata(hFig, 'CortexTransparency');
     if isempty(CortexTransparency)
@@ -2964,16 +2779,7 @@ function CortexTransparency = GetCortexTransparency(hFig)
 end
 
 function SetCortexTransparency(hFig, CortexTransparency)
-    %
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
-    if is3DDisplay
-        % Get display
-        OGL = getappdata(hFig,'OpenGLDisplay');
-        % 
-        OGL.setPolygonTransparency(0, CortexTransparency);
-        OGL.repaint();
-    end
-    % 
+    %only for 3d display
     setappdata(hFig, 'CortexTransparency', CortexTransparency);
 end
 
@@ -3190,7 +2996,7 @@ end
 
 
 %% ===== COMPUTING LINK PATH =====
-% ready
+% @note: ready, no changes needed
 function MeasureLinks = BuildRegionPath(hFig, mPaths, mDataPair)
     % Init return variable
     MeasureLinks = [];
@@ -3250,7 +3056,7 @@ function MeasureLinks = BuildRegionPath3D(hFig, mPaths, mDataPair, mLoc)
 end
 
 
-% ready, no change
+% @Note: ready, no change
 function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
     %
     aSplines = [];
@@ -3333,18 +3139,6 @@ function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
         % Bundling factor
         Bundling = 0.9;
         
-        is3DDisplay = getappdata(hFig, 'is3DDisplay');
-        if (is3DDisplay)
-            % Compute weights
-            Order = [1 2 3 4 5 6 7 8 9 10];
-            Weights = cell(10,1);
-            for i=3:10
-                n = i - 1;
-                t = [0 0 0:1/(n-1):1 1 1];
-                Weights{i} = bspline_basismatrix(3, t, Spread);
-            end
-            Bundling = 0.95;
-        end
         
         % Compute spline for each MeasureLinks
         MaxDist = max(max(Vertices(:,:))) * 2;
@@ -3490,6 +3284,7 @@ end
 
 
 %% ===== ADD NODES TO JAVA ENGINE =====
+%%@TODO: in progress
 function ClearAndAddChannelsNode(hFig, V, Names)
     % Get OpenGL handle
     % OGL = getappdata(hFig, 'OpenGLDisplay');
@@ -3500,14 +3295,8 @@ function ClearAndAddChannelsNode(hFig, V, Names)
     NumberOfMeasureNode = length(DisplayedMeasureNodes);
     nAgregatingNodes = length(AgregatingNodes);
     
-    % Is display in 3D ?
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
-    if isempty(is3DDisplay)
-        is3DDisplay = 0;
-    end
     
-    % @TODO: If the number of node is greater than a certain number
-    % our current Java engine might not run smoothly for that many text
+    % @TODO: If the number of node is greater than a certain number, we do not display text due to too many nodes
     FigureHasText = NumberOfMeasureNode <= 500;
     setappdata(hFig, 'FigureHasText', FigureHasText);
     
@@ -3522,30 +3311,30 @@ function ClearAndAddChannelsNode(hFig, V, Names)
     % Default text distance from node
     TextDistanceFromNode = 1;
     
-    if ~is3DDisplay
-        %
-        NodeSize = 30 / NumberOfMeasureNode * 0.25;
-        % Small number of node have different hardcoded values
-        if (NumberOfMeasureNode <= 20)
-            NodeSize = 0.25;
-            % For very long text, radial display are much nicer
-            MaxLabelLength = max(cellfun(@(x) size(x,2), Names));
-            if (MaxLabelLength > 10)
-                RadialTextDisplay = 1;
-            end
-        else
+    %
+    NodeSize = 30 / NumberOfMeasureNode * 0.25;
+    % Small number of node have different hardcoded values
+    if (NumberOfMeasureNode <= 20)
+        NodeSize = 0.25;
+        % For very long text, radial display are much nicer
+        MaxLabelLength = max(cellfun(@(x) size(x,2), Names));
+        if (MaxLabelLength > 10)
             RadialTextDisplay = 1;
         end
-        % Note: 1/20 is an arbitrarily defined ratio 
-        %       to compensate for the high font resolution
-        FontScalingRatio = 1 / 20;
-        TextSize = 1.2 * NodeSize * FontScalingRatio;
-        TextDistanceFromNode = NodeSize * 2.5;
-        LinkSize = NodeSize * 20;
-        if (LinkSize < 1)
-            LinkSize = 1;
-        end
+    else
+        RadialTextDisplay = 1;
     end
+    % Note: 1/20 is an arbitrarily defined ratio 
+    %       to compensate for the high font resolution
+    FontScalingRatio = 1 / 20;
+    TextSize = 1.2 * NodeSize * FontScalingRatio;
+    TextDistanceFromNode = NodeSize * 2.5;
+    LinkSize = NodeSize * 20;
+    if (LinkSize < 1)
+        LinkSize = 1;
+    end
+    
+    
     RegionNodeSize = 0.5 * NodeSize;
     if (RegionNodeSize < 0.05)
         RegionNodeSize = 0.05;
@@ -3557,50 +3346,60 @@ function ClearAndAddChannelsNode(hFig, V, Names)
     
     nVertices = size(V,1);
 
-%     OGL.addNode(V(:,1), V(:,2), V(:,3));
-%     % 
-%     OGL.setNodeInnerColor(0:(nVertices-1), 0.7, 0.7, 0.7);
-%     OGL.setNodeOuterColor(0:(nVertices-1), 0.5, 0.5, 0.5);
-%     OGL.setNodeOuterRadius(0:(nVertices-1), NodeSize);
-%     OGL.setNodeInnerRadius(0:(nVertices-1), 0.75 * NodeSize);
-%     OGL.setNodeOuterRadius(AgregatingNodes - 1, RegionNodeSize);
-%     OGL.setNodeInnerRadius(AgregatingNodes - 1, 0.75 * RegionNodeSize);
-    
-    % Node are color coded to their Scout counterpart
-    RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
-    if ~isempty(RowColors)
-        for i=1:length(RowColors)
-%             OGL.setNodeInnerColor(nAgregatingNodes+i-1, RowColors(i,1), RowColors(i,2), RowColors(i,3));
-        end
-    end
-    
-    Pos = V(:,1:3);
-    if ~is3DDisplay
-        Dir = bsxfun(@minus, V(:,1:3), [0 0 0]);
-        Sum = sum(abs(Dir).^2,2).^(1/2);
-        NonZero = Sum ~= 0;
-        Dir(NonZero,:) = bsxfun(@rdivide, Dir(NonZero,:), Sum(NonZero));
-        Pos(MeasureNodes,:) = V(MeasureNodes,1:3) + Dir(MeasureNodes,:) * TextDistanceFromNode;
-    end
-    
-    % Middle axe used for text alignment
-    Axe = [0 1 0];
-    % For each node
-    for i=1:nVertices
+    % NEW: Create testNodes in circularGraphset colourmap value and labels for each node
+    UserData = hFig.UserData 
+    delete(UserData.testNodes);
+%     t = linspace(-pi,pi,length(adjacencyMatrix) + 1).'; % theta for each node
+%     extent = zeros(length(adjacencyMatrix),1);
+    %set colourmap value and labels for each node
+    for i = 1: nVertices
         % Blank name if none is assigned
         if (isempty(Names(i)) || isempty(Names{i}))
             Names{i} = '';
         end
         
-        if (is3DDisplay)
-%             OGL.setNodeTransparency(i - 1, 1.00);
-        else
-%             OGL.setNodeTransparency(i - 1, 0.01);
-        end
+        UserData.testNodes(i) = node(V(i,1),V(i,2));
+        UserData.testNodes(i).Color = [1 1 1];
+        UserData.testNodes(i).Label = Names(i);
+        UserData.testNodes(i).LabelColor = [1 1 1];
+        
+        % OGL.setNodeTransparency(i - 1, 0.01); %TODO: check needed
+
+    end 
+    
+%     OGL.addNode(V(:,1), V(:,2), V(:,3)); %done
+%     OGL.setNodeInnerColor(0:(nVertices-1), 0.7, 0.7, 0.7); %done
+
+%     OGL.setNodeOuterColor(0:(nVertices-1), 0.5, 0.5, 0.5);
+%     OGL.setNodeOuterRadius(0:(nVertices-1), NodeSize); 
+%     OGL.setNodeInnerRadius(0:(nVertices-1), 0.75 * NodeSize);
+%     OGL.setNodeOuterRadius(AgregatingNodes - 1, RegionNodeSize);
+%     OGL.setNodeInnerRadius(AgregatingNodes - 1, 0.75 * RegionNodeSize);
+    
+    % @NOTE: done
+    % Node are color coded to their Scout counterpart
+    RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
+    if ~isempty(RowColors)
+        for i=1:length(RowColors)
+            UserData.testNodes(nAgregatingNodes+i).Color = RowColors(i,:);
+        end 
+    end
+    
+   % @todo: alignment
+    Pos = V(:,1:3);
+    Dir = bsxfun(@minus, V(:,1:3), [0 0 0]);
+    Sum = sum(abs(Dir).^2,2).^(1/2);
+    NonZero = Sum ~= 0;
+    Dir(NonZero,:) = bsxfun(@rdivide, Dir(NonZero,:), Sum(NonZero));
+    Pos(MeasureNodes,:) = V(MeasureNodes,1:3) + Dir(MeasureNodes,:) * TextDistanceFromNode;
+    
+    % Middle axe used for text alignment
+    Axe = [0 1 0];
+    % For each node
+    for i=1:nVertices
         
         if (FigureHasText)
-            % Assign name
-%             OGL.setNodeText(i-1, Names(i));
+           
             % Text alignment code
             %   1: Left,
             %   2: Middle,
@@ -3638,6 +3437,7 @@ function ClearAndAddChannelsNode(hFig, V, Names)
         end
     end
     
+   % @TODO: default visibility etc
     if (FigureHasText)
 %         OGL.setTextSize(0:(nVertices-1), TextSize);
 %         OGL.setTextSize(AgregatingNodes - 1, RegionTextSize);
@@ -4376,6 +4176,7 @@ end
 % 
 % end
 
+% @NOTE: ready, no changed needed
 function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sGroups, RowLocs, UpdateStructureStatistics)
 
     % Display options
@@ -4708,25 +4509,6 @@ function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sG
             RegionIndex = RegionIndex + 1;
         end
     end
-    
-    
-%     if (nCerebellum > 0)
-%         CereHem = ChannelData(:,2) == 4;
-%         Vertices(CereHem,2) = Vertices(CereHem,2) * 1.2;
-%     end
-%     
-%     if (nUnkown > 0)
-%         Unknown = ChannelData(:,3) == 0;
-%         Vertices(Unknown,2) = Vertices(Unknown,2) * 1.2;
-%     end
-%     
-%     %Prototype: Empirical values for a more oval/head-like shape
-%     LeftHem = ChannelData(:,3) == 1;
-%     RightHem = ChannelData(:,3) == 2;
-%     Vertices(LeftHem,1) = Vertices(LeftHem,1) - 0.6;
-%     Vertices(LeftHem,2) = Vertices(LeftHem,2) * 1.2;
-% 	  Vertices(RightHem,1) = Vertices(RightHem,1) + 0.6;
-%     Vertices(RightHem,2) = Vertices(RightHem,2) * 1.2;
     
     if (~isempty(UpdateStructureStatistics) && UpdateStructureStatistics == 1)
         % Keep Structures Statistics

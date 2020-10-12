@@ -25,6 +25,7 @@ classdef circularGraph < handle
     % Copyright 2016 The MathWorks, Inc.
     properties
         Node = node(0,0); % Array of nodes
+        testNodes = node(0,0); %array of nodes
         ColorMap;         % Colormap
         Label;            % Cell array of strings
         ShowButton;       % Turn all nodes on
@@ -164,12 +165,6 @@ classdef circularGraph < handle
             % figure_connect
         end
         
-        function setAllLabelColor(this, color)
-            n = this.UserData.Node;
-            for i = 1:length(n)
-                n(i).updateTextLabelColor(this, color)
-            end
-        end
     end
     
     
