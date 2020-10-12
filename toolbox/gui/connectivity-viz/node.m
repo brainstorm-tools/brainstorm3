@@ -7,6 +7,7 @@ classdef node < handle
         Connection = line(0,0); % Array of lines
         Position;               % [x,y] coordinates
         Color = [0 0 0];        % [r g b]
+        LabelColor = [1 1 1]    % [r g b]
         Visible = true;         % Logical true or false
     end
     
@@ -61,6 +62,11 @@ classdef node < handle
             updateTextLabel(this);
         end
         
+        function set.LabelColor(this,value)
+            this.LabelColor = value;
+            updateTextLabelColor(this);
+        end
+        
         function value = get.Extent(this)
             value = this.TextLabel.Extent(3);
         end
@@ -86,6 +92,10 @@ classdef node < handle
             set(this.Connection,'Color',this.Color);
         end
         
+        function updateTextLabelColor(this)
+            set(this.TextLabel,'Color',this.LabelColor);
+        end
+        
         function updateTextLabel(this)
             delete(this.TextLabel);
             
@@ -103,7 +113,7 @@ classdef node < handle
                 this.TextLabel.Rotation = t*180/pi;
             end
         end
-        
+
         function delete(this)
             % Destructor
             delete(this.Connection(:))

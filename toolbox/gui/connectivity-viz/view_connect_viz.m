@@ -186,7 +186,7 @@ setappdata(hFig, 'Method', GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
 setappdata(hFig, 'IsDirectionalData', IsDirectionalData);
 setappdata(hFig, 'IsBinaryData', IsBinaryData);
 setappdata(hFig, 'ThresholdAbsoluteValue', ThresholdAbsoluteValue);
-setappdata(hFig, 'is3DDisplay', strcmpi(DisplayMode, '3DGraph')); %TODO: remove if no dependencies
+setappdata(hFig, 'is3DDisplay', 0); %TODO: remove entirely once no dependencies
 
 % Frequency selection
 if isStaticFreq

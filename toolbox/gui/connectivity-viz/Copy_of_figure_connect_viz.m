@@ -1,7 +1,7 @@
-function varargout = figure_connect( varargin )
-% FIGURE_CONNECT: Creation and callbacks for connectivity figures.
+function varargout = figure_connect_viz( varargin )
+% FIGURE_CONNECT_VIZ: Creation and callbacks for connectivity figures.
 %
-% USAGE:  hFig = figure_connect('CreateFigure', FigureId)
+% USAGE:  hFig = figure_connect_viz('CreateFigure', FigureId)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,9 +21,95 @@ function varargout = figure_connect( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin Cousineau, 2019
-disp('figure_connect.m : ' + string(varargin(1))) % @TODO: remove test
+% Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin
+% Cousineau, 2019; Helen Lin & Yaqi Li, 2020
+
+disp('figure_connect_viz.m : ' + string(varargin(1))) % @TODO: remove test
+
 eval(macro_method);
+end
+
+%% ===== NEW: CREATE MATLAB FIGURE =====
+function hFig = CreateFigureNew(FigureId) %#ok<DEFNU>
+	% Create new figure
+    % @TODO: replace previous 'Renderer',  'opengl', ... 
+    hFig = figure('Visible',               'off', ...
+                  'NumberTitle',           'off', ...
+                  'IntegerHandle',         'off', ...
+                  'MenuBar',               'none', ...
+                  'Toolbar',               'none', ...
+                  'DockControls',          'off', ...earnadd
+                  'Units',                 'pixels', ...
+                  'Color',                 [0 0 0], ...
+                  'Pointer',               'arrow', ...
+                  'BusyAction',            'queue', ...
+                  'Interruptible',         'off', ...
+                  'HitTest',               'on', ...
+                  'Tag',                   FigureId.Type, ...
+                  'CloseRequestFcn',       @(h,ev)bst_figures('DeleteFigure',h,ev), ...
+                  'KeyPressFcn',           @(h,ev)bst_call(@FigureKeyPressedCallback,h,ev), ...
+                  'KeyReleaseFcn',         @(h,ev)bst_call(@FigureKeyReleasedCallback,h,ev), ...
+                  'WindowButtonDownFcn',   @FigureMouseDownCallback, ...
+                  'WindowButtonMotionFcn', @FigureMouseMoveCallback, ...
+                  'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
+                  'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
+                  bst_get('ResizeFunction'), []);
+
+	% === CREATE AXES ===
+    % Because colormap functions have Axes check
+    % (even though they don't actually need it...)
+    %     hAxes = axes('Parent',   hFig, ...
+    %                  'Units',    'normalized', ...
+    %                  'Position', [.05 .05 .9 .9], ...
+    %                  'Tag',      'AxesConnect', ...
+    %                  'Visible',  'off', ...
+    %                  'BusyAction',    'queue', ...
+    %                  'Interruptible', 'off');
+              
+	% Create rendering panel
+    [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
+    % Resize callback
+    set(hFig, bst_get('ResizeFunction'), @(h,ev)ResizeCallback(hFig, container));
+    % Java callbacks
+    set(OGL, 'MouseClickedCallback',    @(h,ev)JavaClickCallback(hFig,ev));
+    set(OGL, 'MousePressedCallback',    @(h,ev)FigureMouseDownCallback(hFig,ev));
+    set(OGL, 'MouseDraggedCallback',    @(h,ev)FigureMouseMoveCallback(hFig,ev));
+    set(OGL, 'MouseReleasedCallback',   @(h,ev)FigureMouseUpCallback(hFig,ev));
+    set(OGL, 'KeyPressedCallback',      @(h,ev)FigureKeyPressedCallback(hFig,ev));
+    set(OGL, 'KeyReleasedCallback',     @(h,ev)FigureKeyReleasedCallback(hFig,ev));
+    
+    % Prepare figure appdata
+    setappdata(hFig, 'FigureId', FigureId);
+    setappdata(hFig, 'hasMoved', 0);
+    setappdata(hFig, 'isPlotEditToolbar', 0);
+    setappdata(hFig, 'isStatic', 0);
+    setappdata(hFig, 'isStaticFreq', 1);
+    setappdata(hFig, 'Colormap', db_template('ColormapInfo'));
+    setappdata(hFig, 'GraphSelection', []);
+    
+    % Time-freq specific appdata
+    setappdata(hFig, 'Timefreq', db_template('TfInfo'));
+    
+    % J3D Container
+    setappdata(hFig, 'OpenGLDisplay', OGL);
+    setappdata(hFig, 'OpenGLContainer', container);
+    setappdata(hFig, 'TextDisplayMode', 1);
+    setappdata(hFig, 'NodeDisplay', 1);
+    setappdata(hFig, 'HierarchyNodeIsVisible', 1);
+    setappdata(hFig, 'MeasureLinksIsVisible', 1);
+    setappdata(hFig, 'RegionLinksIsVisible', 0);
+    setappdata(hFig, 'RegionFunction', 'mean');
+    setappdata(hFig, 'LinkTransparency',  0);
+        
+    % Camera variables
+    setappdata(hFig, 'CameraZoom', 6);
+    setappdata(hFig, 'CamPitch', 0.5 * 3.1415);
+    setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
+    setappdata(hFig, 'CameraPosition', [0 0 0]);
+    setappdata(hFig, 'CameraTarget', [0 0 0]);
+    
+	% Add colormap
+    bst_colormaps('AddColormapToFigure', hFig, 'connectn');
 end
 
 
@@ -227,6 +313,9 @@ function Dispose(hFig) %#ok<DEFNU>
     OGL.resetDisplay();
     delete(OGL);
     setappdata(hFig, 'OpenGLDisplay', []);
+    
+    
+    %====NEW====
 end
 
 
@@ -540,6 +629,8 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         ConnectKeyboardMutex = 0.1;
         % Process event
         switch (keyEvent.Key)
+            case 't' %TODO: test new plot shortcut
+                testPlot(hFig);
             case 'a'
                 SetSelectedNodes(hFig, [], 1, 1);
             case 'b'
@@ -1283,6 +1374,7 @@ end
 
 
 %% ===== UPDATE FIGURE PLOT =====
+%% TODO: CREATE NEW LOAD FIGURE PLOT
 function LoadFigurePlot(hFig) %#ok<DEFNU>
     global GlobalData;
     % Necessary for data initialization
@@ -1489,6 +1581,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     if DisplayInCircle
         [Vertices Paths Names] = OrganiseNodeInCircle(hFig, RowNames, sGroups);
     elseif DisplayInRegion
+        % TODO: FOUND DISPLAY LOGIC
         [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, RowNames, sGroups, RowLocs, 1);
     elseif is3DDisplay
         % === 3D DISPLAY IS A PROTOTYPE ===
@@ -1739,6 +1832,19 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     DefaultCamera(hFig);
     % Make sure we have a final request for redraw
     OGL.repaint();
+end
+
+function testPlot(hFig)
+    test_thresh = 0.75;
+    
+    [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
+    
+    % current circular graph is adjcency matrix only (no weights repped by
+    % colours)
+    M(M<test_thresh) = 0;
+   % M(M>=test_thresh) = 1;
+    fig_test = figure; %create new figure or it will overlap with current
+    circularGraph(M, 'Label', RowNames);
 end
 
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
@@ -2117,51 +2223,11 @@ function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, Measur
     end
 end
 
+%TODO: remove if not needed
 function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilter)
-    global GlobalData;
-    ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
     MeasureFiberMask = zeros(size(DataPair,1),1);
-    
-    % Only filter if there are fibers shown
-    plotFibers = getappdata(hFig, 'plotFibers');
-    hFigFib = bst_figures('GetFigureHandleField', hFig, 'hFigFib');
-    if MeasureFiberFilter == 0 || isempty(plotFibers) || ~plotFibers || ~ishandle(hFigFib)
-        MeasureFiberMask(:) = 1;
-        return;
-    end
-    
-    %% Get fibers information
-    TfInfo = getappdata(hFig, 'Timefreq');
-    TessInfo = getappdata(hFigFib, 'Surface');
-    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
-    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
-    
-    %% If fibers not yet assigned to atlas, do so now
-    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
-        ScoutNames     = bst_figures('GetFigureHandleField', hFig, 'RowNames');
-        ScoutCentroids = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
-        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
-        % Save in memory to avoid recomputing
-        GlobalData.Fibers(iFib) = FibMat;
-    end
-    
-    % Get scout assignment
-    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
-    assign = FibMat.Scouts(iFile).Assignment;
-    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-    nAgregatingNode = size(AgregatingNodes, 2);
-    DataPair = DataPair(:,1:2) - nAgregatingNode;
-    
-    %% Find nodes that have fiber assignments
-    assignBsx = reshape(assign', [1 size(assign')]);
-    % Get the matches for the pairs and for the flipped pairs
-    indices =  all(bsxfun(@eq, DataPair, assignBsx), 2) | all( bsxfun(@eq, DataPair, flip(assignBsx,2)), 2);
-    % Find the indices of the rows with a match
-    MeasureFiberMask = any(indices,3);
-        
-    if MeasureFiberFilter == 2 % Anatomically inaccurate
-        MeasureFiberMask = ~MeasureFiberMask;
-    end
+    MeasureFiberMask(:) = 1;
+    return;
 end
 
 function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureMaxDistanceFilter, Refresh)
@@ -2431,17 +2497,6 @@ function UpdateColormap(hFig)
             % Offset is always in absolute
             OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
         end
-        
-        % === UPDATE FIBER COLORS ===
-        plotFibers = getappdata(hFig, 'plotFibers');
-        if plotFibers
-            % Get scout information
-            AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-            nAgregatingNode = size(AgregatingNodes, 2);
-            iData = find(DataMask == 1) - 1;
-            iScouts = DataPair(iData + 1, 1:2) - nAgregatingNode;
-            figure_3d('SelectFiberScouts', hFig, iScouts, StartColor, 1);
-        end
     end
     
     [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig);
@@ -2514,6 +2569,7 @@ end
 
 %% ===== UPDATE CAMERA =====
 function UpdateCamera(hFig)
+    disp('UpdateCamera reached') %TODO: remove test
     Pos = getappdata(hFig, 'CameraPosition');
     CameraTarget = getappdata(hFig, 'CameraTarget');
     Zoom = getappdata(hFig, 'CameraZoom');
@@ -2525,10 +2581,11 @@ end
 
 %% ===== ZOOM CAMERA =====
 function ZoomCamera(hFig, inc)
+    disp('ZoomCamera reached') %TODO: remove test
     Zoom = getappdata(hFig, 'CameraZoom');
     Zoom = Zoom + (inc * 0.01);
     setappdata(hFig, 'CameraZoom', Zoom);
-	UpdateCamera(hFig);
+	UpdateCaupdmera(hFig);
 end
 
 %% ===== ROTATE CAMERA =====
@@ -2706,28 +2763,6 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     else
         bst_figures('SetSelectedRows', []);
         panel_scout('SetSelectedScoutLabels', []);
-    end
-    if isSelected
-        % If we're plotting fibers, send pairs of scouts that are to be displayed
-        plotFibers = getappdata(hFig, 'plotFibers');
-        if plotFibers
-            % Get scout information
-            nAgregatingNode = size(AgregatingNodes, 2);
-            iScouts = DataToFilter(iData + 1, 1:2) - nAgregatingNode;
-            
-            % Get color information
-            CMap = get(hFig, 'Colormap');
-            CLim = getappdata(hFig, 'CLim');
-            if isempty(CLim)
-                CLim = [0, 1];
-            end
-            Color = InterpolateColorMap(hFig, abs(DataToFilter(DataMask,:)), CMap, CLim);
-            
-            % Send to 3D fibers
-            if ~isempty(iScouts)
-                figure_3d('SelectFiberScouts', hFig, iScouts, Color);
-            end
-        end
     end
 end
 

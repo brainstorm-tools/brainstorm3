@@ -29,93 +29,11 @@ disp('figure_connect_viz.m : ' + string(varargin(1))) % @TODO: remove test
 eval(macro_method);
 end
 
-%% ===== NEW: CREATE MATLAB FIGURE =====
-function hFig = CreateFigureNew(FigureId) %#ok<DEFNU>
-	% Create new figure
-    % @TODO: replace previous 'Renderer',  'opengl', ... 
-    hFig = figure('Visible',               'off', ...
-                  'NumberTitle',           'off', ...
-                  'IntegerHandle',         'off', ...
-                  'MenuBar',               'none', ...
-                  'Toolbar',               'none', ...
-                  'DockControls',          'off', ...earnadd
-                  'Units',                 'pixels', ...
-                  'Color',                 [0 0 0], ...
-                  'Pointer',               'arrow', ...
-                  'BusyAction',            'queue', ...
-                  'Interruptible',         'off', ...
-                  'HitTest',               'on', ...
-                  'Tag',                   FigureId.Type, ...
-                  'CloseRequestFcn',       @(h,ev)bst_figures('DeleteFigure',h,ev), ...
-                  'KeyPressFcn',           @(h,ev)bst_call(@FigureKeyPressedCallback,h,ev), ...
-                  'KeyReleaseFcn',         @(h,ev)bst_call(@FigureKeyReleasedCallback,h,ev), ...
-                  'WindowButtonDownFcn',   @FigureMouseDownCallback, ...
-                  'WindowButtonMotionFcn', @FigureMouseMoveCallback, ...
-                  'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
-                  'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
-                  bst_get('ResizeFunction'), []);
-
-	% === CREATE AXES ===
-    % Because colormap functions have Axes check
-    % (even though they don't actually need it...)
-    %     hAxes = axes('Parent',   hFig, ...
-    %                  'Units',    'normalized', ...
-    %                  'Position', [.05 .05 .9 .9], ...
-    %                  'Tag',      'AxesConnect', ...
-    %                  'Visible',  'off', ...
-    %                  'BusyAction',    'queue', ...
-    %                  'Interruptible', 'off');
-              
-	% Create rendering panel
-    [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
-    % Resize callback
-    set(hFig, bst_get('ResizeFunction'), @(h,ev)ResizeCallback(hFig, container));
-    % Java callbacks
-    set(OGL, 'MouseClickedCallback',    @(h,ev)JavaClickCallback(hFig,ev));
-    set(OGL, 'MousePressedCallback',    @(h,ev)FigureMouseDownCallback(hFig,ev));
-    set(OGL, 'MouseDraggedCallback',    @(h,ev)FigureMouseMoveCallback(hFig,ev));
-    set(OGL, 'MouseReleasedCallback',   @(h,ev)FigureMouseUpCallback(hFig,ev));
-    set(OGL, 'KeyPressedCallback',      @(h,ev)FigureKeyPressedCallback(hFig,ev));
-    set(OGL, 'KeyReleasedCallback',     @(h,ev)FigureKeyReleasedCallback(hFig,ev));
-    
-    % Prepare figure appdata
-    setappdata(hFig, 'FigureId', FigureId);
-    setappdata(hFig, 'hasMoved', 0);
-    setappdata(hFig, 'isPlotEditToolbar', 0);
-    setappdata(hFig, 'isStatic', 0);
-    setappdata(hFig, 'isStaticFreq', 1);
-    setappdata(hFig, 'Colormap', db_template('ColormapInfo'));
-    setappdata(hFig, 'GraphSelection', []);
-    
-    % Time-freq specific appdata
-    setappdata(hFig, 'Timefreq', db_template('TfInfo'));
-    
-    % J3D Container
-    setappdata(hFig, 'OpenGLDisplay', OGL);
-    setappdata(hFig, 'OpenGLContainer', container);
-    setappdata(hFig, 'TextDisplayMode', 1);
-    setappdata(hFig, 'NodeDisplay', 1);
-    setappdata(hFig, 'HierarchyNodeIsVisible', 1);
-    setappdata(hFig, 'MeasureLinksIsVisible', 1);
-    setappdata(hFig, 'RegionLinksIsVisible', 0);
-    setappdata(hFig, 'RegionFunction', 'mean');
-    setappdata(hFig, 'LinkTransparency',  0);
-        
-    % Camera variables
-    setappdata(hFig, 'CameraZoom', 6);
-    setappdata(hFig, 'CamPitch', 0.5 * 3.1415);
-    setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
-    setappdata(hFig, 'CameraPosition', [0 0 0]);
-    setappdata(hFig, 'CameraTarget', [0 0 0]);
-    
-	% Add colormap
-    bst_colormaps('AddColormapToFigure', hFig, 'connectn');
-end
-
-
 %% ===== CREATE FIGURE =====
+% NOTE: updated remove ogl
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
 	% Create new figure
+    %TODO: replace renderer 'Renderer',              'opengl', ...
     hFig = figure('Visible',               'off', ...
                   'NumberTitle',           'off', ...
                   'IntegerHandle',         'off', ...
@@ -129,7 +47,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'Interruptible',         'off', ...
                   'HitTest',               'on', ...
                   'Tag',                   FigureId.Type, ...
-                  'Renderer',              'opengl', ...
                   'CloseRequestFcn',       @(h,ev)bst_figures('DeleteFigure',h,ev), ...
                   'KeyPressFcn',           @(h,ev)bst_call(@FigureKeyPressedCallback,h,ev), ...
                   'KeyReleaseFcn',         @(h,ev)bst_call(@FigureKeyReleasedCallback,h,ev), ...
@@ -137,30 +54,32 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowButtonMotionFcn', @FigureMouseMoveCallback, ...
                   'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
                   'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
-                  bst_get('ResizeFunction'), []);
+                  bst_get('ResizeFunction'), @(h,ev)ResizeCallback(h,ev));
+    
+%             DONE:  'CloseRequestFcn',       @(h,ev)bst_figures('DeleteFigure',h,ev), ...
+%             TODO      'KeyPressFcn',           @(h,ev)bst_call(@FigureKeyPressedCallback,h,ev), ...
+%             TODO      'KeyReleaseFcn',         @(h,ev)bst_call(@FigureKeyReleasedCallback,h,ev), ...
+%             TODO      'WindowButtonDownFcn',   @FigureMouseDownCallback, ...
+%             TODO      'WindowButtonMotionFcn', @FigureMouseMoveCallback, ...
+%             TODO      'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
+%             TODO      'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
+%             TODO      bst_get('ResizeFunction'), @(h,ev)ResizeCallback(h,ev));
 
-	% === CREATE AXES ===
-    % Because colormap functions have Axes check
-    % (even though they don't actually need it...)
-    %     hAxes = axes('Parent',   hFig, ...
-    %                  'Units',    'normalized', ...
-    %                  'Position', [.05 .05 .9 .9], ...
-    %                  'Tag',      'AxesConnect', ...
-    %                  'Visible',  'off', ...
-    %                  'BusyAction',    'queue', ...
-    %                  'Interruptible', 'off');
-              
+	
+     % OGL SECTION -- TODO: REPLACE/REMOVE
 	% Create rendering panel
-    [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
+   % [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
+    
     % Resize callback
-    set(hFig, bst_get('ResizeFunction'), @(h,ev)ResizeCallback(hFig, container));
-    % Java callbacks
-    set(OGL, 'MouseClickedCallback',    @(h,ev)JavaClickCallback(hFig,ev));
-    set(OGL, 'MousePressedCallback',    @(h,ev)FigureMouseDownCallback(hFig,ev));
-    set(OGL, 'MouseDraggedCallback',    @(h,ev)FigureMouseMoveCallback(hFig,ev));
-    set(OGL, 'MouseReleasedCallback',   @(h,ev)FigureMouseUpCallback(hFig,ev));
-    set(OGL, 'KeyPressedCallback',      @(h,ev)FigureKeyPressedCallback(hFig,ev));
-    set(OGL, 'KeyReleasedCallback',     @(h,ev)FigureKeyReleasedCallback(hFig,ev));
+   % set(hFig, bst_get('ResizeFunction'), @(h,ev)ResizeCallback(hFig, container));
+    
+    % Other figure (previously Java) callbacks
+%     set(OGL, 'MouseClickedCallback',    @(h,ev)JavaClickCallback(hFig,ev));
+%     set(OGL, 'MousePressedCallback',    @(h,ev)FigureMouseDownCallback(hFig,ev));
+%     set(OGL, 'MouseDraggedCallback',    @(h,ev)FigureMouseMoveCallback(hFig,ev));
+%     set(OGL, 'MouseReleasedCallback',   @(h,ev)FigureMouseUpCallback(hFig,ev));
+%     set(OGL, 'KeyPressedCallback',      @(h,ev)FigureKeyPressedCallback(hFig,ev));
+%     set(OGL, 'KeyReleasedCallback',     @(h,ev)FigureKeyReleasedCallback(hFig,ev));
     
     % Prepare figure appdata
     setappdata(hFig, 'FigureId', FigureId);
@@ -175,8 +94,8 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'Timefreq', db_template('TfInfo'));
     
     % J3D Container
-    setappdata(hFig, 'OpenGLDisplay', OGL);
-    setappdata(hFig, 'OpenGLContainer', container);
+   % setappdata(hFig, 'OpenGLDisplay', OGL);
+   % setappdata(hFig, 'OpenGLContainer', container);
     setappdata(hFig, 'TextDisplayMode', 1);
     setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
@@ -299,32 +218,50 @@ function SelectedRowChangedCallback(iDS, iFig) %#ok<DEFNU>
 end
 
 
+
 %% ===== DISPOSE FIGURE =====
+% NOTE: updated remove ogl
 function Dispose(hFig) %#ok<DEFNU>
-    SetBackgroundColor(hFig, [1 1 1]);
-    OGL = getappdata(hFig, 'OpenGLDisplay');
-    set(OGL, 'MouseClickedCallback',    []);
-    set(OGL, 'MousePressedCallback',    []);
-    set(OGL, 'MouseDraggedCallback',    []);
-    set(OGL, 'MouseReleasedCallback',   []);
-    set(OGL, 'KeyReleasedCallback',     []);
-    set(OGL, 'KeyPressedCallback',      []);
-    set(OGL, 'MouseWheelMovedCallback', []);
-    OGL.resetDisplay();
-    delete(OGL);
-    setappdata(hFig, 'OpenGLDisplay', []);
-    
+    %NOTE: do not need to delete gcf (curr figure) because this is done in
+    %bst_figures(DeleteFigure)
     
     %====NEW====
+    c = hFig.UserData;
+    if (~isempty(c))
+        for i = 1:length(c.Node)
+            delete(c.Node(i));
+        end
+    end
+
+    
+    %===old===
+    SetBackgroundColor(hFig, [1 1 1]); %[1 1 1]= white [0 0 0]= black
+    
+%     OGL = getappdata(hFig, 'OpenGLDisplay');
+%     set(OGL, 'MouseClickedCallback',    []);
+%     set(OGL, 'MousePressedCallback',    []);
+%     set(OGL, 'MouseDraggedCallback',    []);
+%     set(OGL, 'MouseReleasedCallback',   []);
+%     set(OGL, 'KeyReleasedCallback',     []);
+%     set(OGL, 'KeyPressedCallback',      []);
+%     set(OGL, 'MouseWheelMovedCallback', []);
+%     OGL.resetDisplay();
+%     delete(OGL);
+%     setappdata(hFig, 'OpenGLDisplay', []);
+    
+    
+
 end
 
 
 %% ===== RESET DISPLAY =====
+% NOTE: updated remove ogl
 function ResetDisplay(hFig)
     % Reset display
-    OGL = getappdata(hFig, 'OpenGLDisplay');
-    OGL.resetDisplay();
-    % Defaults value
+%     OGL = getappdata(hFig, 'OpenGLDisplay');
+%     OGL.resetDisplay();
+    
+    % Default values
     setappdata(hFig, 'DisplayOutwardMeasure', 1);
     setappdata(hFig, 'DisplayInwardMeasure', 0);
     setappdata(hFig, 'DisplayBidirectionalMeasure', 0);
@@ -354,7 +291,7 @@ end
 function backgroundColor = GetBackgroundColor(hFig)
     backgroundColor = getappdata(hFig, 'BgColor');
     if isempty(backgroundColor)
-        backgroundColor = [0 0 0];
+        backgroundColor = [0 0 0]; %default bg color is black
     end
 end
 
@@ -366,6 +303,7 @@ function ResizeCallback(hFig, container)
     UpdateContainer(hFig, container);
 end
 
+%TODO: remove jogl container
 function UpdateContainer(hFig, container)
     % Get figure position
     figPos = get(hFig, 'Position');
@@ -395,18 +333,19 @@ function UpdateContainer(hFig, container)
         % Reposition the container
         marginAxes = 0;
         if ~isempty(container)
-            set(container, 'Units',    'pixels', ...
-                           'Position', [marginAxes, ...
-                                        marginAxes, ...
-                                        max(1, figPos(3) - colorbarWidth - marginWidth - marginAxes), ... 
-                                        max(1, figPos(4) - 2*marginAxes - titleHeight)]);
+            
+%             set(container, 'Units',    'pixels', ...
+%                            'Position', [marginAxes, ...
+%                                         marginAxes, ...
+%                                         max(1, figPos(3) - colorbarWidth - marginWidth - marginAxes), ... 
+%                                         max(1, figPos(4) - 2*marginAxes - titleHeight)]);
         end
         uistack(hColorbar,'top',1);
     else
         if ~isempty(container)
             % Java container can take all the figure space
-            set(container, 'Units',    'normalized', ...
-                           'Position', [.05, .05, .9, .9]);
+%             set(container, 'Units',    'normalized', ...
+%                            'Position', [.05, .05, .9, .9]);
         end
     end
 end
@@ -629,43 +568,43 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         ConnectKeyboardMutex = 0.1;
         % Process event
         switch (keyEvent.Key)
-            case 't' %TODO: test new plot shortcut
-                testPlot(hFig);
+            case 't' %TODO: remove test
+                 test(hFig);
             case 'a'
-                SetSelectedNodes(hFig, [], 1, 1);
+                SetSelectedNodes(hFig, [], 1, 1); %TODO
             case 'b'
-                ToggleBlendingMode(hFig);
+                ToggleBlendingMode(hFig); %TODO
             case 'l'
-                ToggleTextDisplayMode(hFig);
-            case 'h'
+                ToggleTextDisplayMode(hFig); %TODO
+            case 'h' %TODO
                 HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
                 HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
                 SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
-            case 'd'
+            case 'd' %TODO
                 ToggleDisplayMode(hFig);
-            case 'm'
+            case 'm' %TODO
                 ToggleMeasureToRegionDisplay(hFig)
-            case 'q'
+            case 'q' %TODO
                 RenderInQuad = 1 - getappdata(hFig, 'RenderInQuad');
                 setappdata(hFig, 'RenderInQuad', RenderInQuad)
                 OGL = getappdata(hFig, 'OpenGLDisplay');
                 OGL.renderInQuad(RenderInQuad)
                 OGL.repaint();
-            case {'+', 'add'}
+            case {'+', 'add'} %TODO
                 panel_display('ConnectKeyCallback', keyEvent);
-            case {'-', 'subtract'}
+            case {'-', 'subtract'} %TODO
                 panel_display('ConnectKeyCallback', keyEvent);
-            case 'leftarrow'
+            case 'leftarrow' %TODO
                 ToggleRegionSelection(hFig, 1);
-            case 'rightarrow'
+            case 'rightarrow' %TODO
                 ToggleRegionSelection(hFig, -1);
-            case 'uparrow'
+            case 'uparrow' %TODO
                 ZoomCamera(hFig, -10);
-            case 'downarrow'
+            case 'downarrow' %TODO
                 ZoomCamera(hFig, 10);
-            case 'escape'
+            case 'escape' %TODO
                 SetExplorationLevelTo(hFig, 1);
-            case 'shift'
+            case 'shift' %TODO
                 setappdata(hFig, 'MouseMoveCamera', 1);
         end
         %ConnectKeyboardMutex = [];
@@ -678,6 +617,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     end
 end
 
+%TODO: CHECK
 function FigureKeyReleasedCallback(hFig, keyEvent)
     % Convert to Matlab key event
     keyEvent = gui_brainstorm('ConvertKeyEvent', keyEvent);
@@ -916,6 +856,7 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
 end
 
 %% ===== JAVA MOUSE WHEEL CALLBACK =====
+%TODO: update factor calculation
 function FigureMouseWheelCallback(hFig, ev)
     % Control Zoom
     CameraZoom = getappdata(hFig, 'CameraZoom');
@@ -926,6 +867,22 @@ function FigureMouseWheelCallback(hFig, ev)
     end
     setappdata(hFig, 'CameraZoom', CameraZoom);
     UpdateCamera(hFig);
+    
+%     %Or use Factor calculation from figure_timefreq.m function FigureMouseWheelCallback(hFig, event)
+%     if isempty(ev)
+%         return;
+%     elseif (ev.VerticalScrollCount < 0)
+%         % ZOOM IN
+%         Factor = 1 - double(ev.VerticalScrollCount) ./ 10;
+%     elseif (ev.VerticalScrollCount > 0)
+%         % ZOOM OUT
+%         Factor = 1./(1 + double(ev.VerticalScrollCount) ./ 10);
+%     else
+%         Factor = 1;
+%     end
+%     
+%     % apply zoom
+%     gui_zoom(hFig, 'horizontal', Factor);
 end
 
 
@@ -1041,6 +998,7 @@ function DisplayFigurePopup(hFig)
         end
         
         % === TOGGLE BACKGROUND WHITE/BLACK ===
+        % @NOTE: done
         jGraphMenu.addSeparator();
         BackgroundColor = getappdata(hFig, 'BgColor');
         isWhite = all(BackgroundColor == [1 1 1]);
@@ -1376,6 +1334,8 @@ end
 %% ===== UPDATE FIGURE PLOT =====
 %% TODO: CREATE NEW LOAD FIGURE PLOT
 function LoadFigurePlot(hFig) %#ok<DEFNU>
+    testPlot(hFig)
+    
     global GlobalData;
     % Necessary for data initialization
     ResetDisplay(hFig);
@@ -1497,6 +1457,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
             error('Unsupported');
     end
 
+    %TODO: check if 3dDisplay always false, remove
     is3DDisplay = getappdata(hFig, 'is3DDisplay');
     if isempty(is3DDisplay) || isempty(RowLocs) || isempty(SurfaceMat)
         is3DDisplay = 0;
@@ -1575,7 +1536,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'RowLocs', RowLocs);
     bst_figures('SetFigureHandleField', hFig, 'RowColors', RowColors);
     
-    OGL = getappdata(hFig, 'OpenGLDisplay');
+  %  OGL = getappdata(hFig, 'OpenGLDisplay');
         
     %% ===== ORGANISE VERTICES =====    
     if DisplayInCircle
@@ -1733,9 +1694,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % Compute spline based on MeasureLinks
     aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
     if ~isempty(aSplines)
-        % Add on Java side
-        OGL.addPrecomputedMeasureLinks(aSplines);
-        % Get link size
+        % Add on Java side TODO
+        %OGL.addPrecomputedMeasureLinks(aSplines);
+        % Get link size (type double)
         LinkSize = getappdata(hFig, 'LinkSize');
         % Set link width
         SetLinkSize(hFig, LinkSize);
@@ -1807,19 +1768,19 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     % These options are necessary for proper display
     if ~is3DDisplay
-        OGL.OpenGLDisable(2896);
-        OGL.OpenGLDisable(2903);
+       % OGL.OpenGLDisable(2896);
+      %  OGL.OpenGLDisable(2903);
         SetHierarchyNodeIsVisible(hFig, 1);
         RenderInQuad = 1;
     else
-        OGL.OpenGLEnable(2896);
-        OGL.OpenGLEnable(2903);
+      %  OGL.OpenGLEnable(2896);
+     %   OGL.OpenGLEnable(2903);
         SetHierarchyNodeIsVisible(hFig, 0);
         setappdata(hFig, 'TextDisplayMode', []);
         RenderInQuad = 0;
     end
     % 
-    OGL.renderInQuad(RenderInQuad);
+   % OGL.renderInQuad(RenderInQuad);
     setappdata(hFig, 'RenderInQuad', RenderInQuad);
     
     % Update colormap
@@ -1831,22 +1792,26 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % Position camera
     DefaultCamera(hFig);
     % Make sure we have a final request for redraw
-    OGL.repaint();
+   % OGL.repaint();
+    
+    
+    
 end
 
 function testPlot(hFig)
     test_thresh = 0.75;
     
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
-    
-    % current circular graph is adjcency matrix only (no weights repped by
-    % colours)
     M(M<test_thresh) = 0;
    % M(M>=test_thresh) = 1;
-    fig_test = figure; %create new figure or it will overlap with current
+   
+    %fig_test = figure; %create new figure or it will overlap with current
     circularGraph(M, 'Label', RowNames);
 end
 
+function test(hFig)
+    %
+end
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
     if ~isempty(Atlas)
@@ -2058,9 +2023,10 @@ function UpdateFigurePlot(hFig)
     bst_progress('stop');
 end
 
+%TODO: update OGL
 function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     % Get OpenGL handle
-	OGL = getappdata(hFig, 'OpenGLDisplay');
+%	OGL = getappdata(hFig, 'OpenGLDisplay');
     % Update variable
     if (IsVisible == 0)
         IsVisible = -1;
@@ -2075,10 +2041,10 @@ function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
         Index = find(DisplayNode > 0);
     end
     for i=1:size(Index,1)
-        OGL.setNodeVisibility(Index(i) - 1, DisplayNode(Index(i)) > 0);
+      %  OGL.setNodeVisibility(Index(i) - 1, DisplayNode(Index(i)) > 0);
     end
     % Redraw
-    OGL.repaint();
+    %OGL.repaint();
 end
 
 function HideLonelyRegionNode(hFig)
@@ -2313,6 +2279,7 @@ function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
 end
 
 
+%ready
 function MeasureDistance = ComputeEuclideanMeasureDistance(hFig, aDataPair, mLoc)
     % Correct offset
     nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
@@ -2403,6 +2370,7 @@ end
 
 
 %% ===== UPDATE COLORMAP =====
+%TODO: update ogl
 function UpdateColormap(hFig)
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
@@ -2488,14 +2456,16 @@ function UpdateColormap(hFig)
         end
         % Interpolate
         [StartColor, EndColor] = InterpolateColorMap(hFig, DataPair(DataMask,:), CMap, CLim);
+       
+        %TODO: update colour of link
         % Update color
-        OGL.setMeasureLinkColorGradient( ...
-            find(DataMask) - 1, ...
-            StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
-            EndColor(:,1), EndColor(:,2), EndColor(:,3));
+%         OGL.setMeasureLinkColorGradient( ...
+%             find(DataMask) - 1, ...
+%             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
+%             EndColor(:,1), EndColor(:,2), EndColor(:,3));
         if (~is3DDisplay)
             % Offset is always in absolute
-            OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
+           % OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
         end
     end
     
@@ -2512,18 +2482,19 @@ function UpdateColormap(hFig)
         end
         % Normalize within the colormap range 
         [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
-        % Update display
-        OGL.setRegionLinkColorGradient( ...
-            find(RegionDataMask) - 1, ...
-            StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
-            EndColor(:,1), EndColor(:,2), EndColor(:,3));
+        
+        % TODO: Update display
+%         OGL.setRegionLinkColorGradient( ...
+%             find(RegionDataMask) - 1, ...
+%             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
+%             EndColor(:,1), EndColor(:,2), EndColor(:,3));
         if (~is3DDisplay)
             % Offset is always in absolute
-            OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
+%             OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
         end
     end
     
-    OGL.repaint();
+%     OGL.repaint();
 end
 
 
@@ -2573,19 +2544,24 @@ function UpdateCamera(hFig)
     Pos = getappdata(hFig, 'CameraPosition');
     CameraTarget = getappdata(hFig, 'CameraTarget');
     Zoom = getappdata(hFig, 'CameraZoom');
-    OGL = getappdata(hFig, 'OpenGLDisplay');
-    OGL.zoom(Zoom);
-    OGL.lookAt(Pos(1), Pos(2), Pos(3), CameraTarget(1), CameraTarget(2), CameraTarget(3), 0, 1, 0);
-    OGL.repaint();
+   % OGL = getappdata(hFig, 'OpenGLDisplay');
+   % OGL.zoom(Zoom);
+   % OGL.lookAt(Pos(1), Pos(2), Pos(3), CameraTarget(1), CameraTarget(2), CameraTarget(3), 0, 1, 0);
+  %  OGL.repaint();
+  
+  
+   
 end
 
 %% ===== ZOOM CAMERA =====
+%when key event= 'uparrow' or'downarrow' %TODO
+% @TODO
 function ZoomCamera(hFig, inc)
     disp('ZoomCamera reached') %TODO: remove test
     Zoom = getappdata(hFig, 'CameraZoom');
     Zoom = Zoom + (inc * 0.01);
     setappdata(hFig, 'CameraZoom', Zoom);
-	UpdateCaupdmera(hFig);
+	UpdateCamera(hFig);
 end
 
 %% ===== ROTATE CAMERA =====
@@ -2631,6 +2607,7 @@ end
 %  ===========================================================================
 
 %% ===== SET SELECTED NODES =====
+%TODO: update 
 % USAGE:  SetSelectedNodes(hFig, iNodes=[], isSelected=1, isRedraw=1) : Add or remove nodes from the current selection
 %         If node selection is empty: select/unselect all the nodes
 function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
@@ -2665,17 +2642,17 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', selNodes);
     
     % Get OpenGL handle
-    OGL = getappdata(hFig, 'OpenGLDisplay');
+   % OGL = getappdata(hFig, 'OpenGLDisplay');
     
     % Agregating nodes are not visually selected
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     NoColorNodes = ismember(iNodes,AgregatingNodes);
     if (sum(~NoColorNodes) > 0)
         if isSelected
-            OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 1);
-            OGL.setNodeOuterColor(iNodes(~NoColorNodes) - 1, SelectedNodeColor(1), SelectedNodeColor(2), SelectedNodeColor(3));
+           % OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 1);
+           % OGL.setNodeOuterColor(iNodes(~NoColorNodes) - 1, SelectedNodeColor(1), SelectedNodeColor(2), SelectedNodeColor(3));
         else
-            OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 0);
+           % OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 0);
         end
     end
     RefreshTextDisplay(hFig, isRedraw);
@@ -2736,21 +2713,21 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     if (~isempty(iData))
         % Update visibility
         if (MeasureLinksIsVisible)
-            OGL.setMeasureLinkVisibility(iData, isSelected);
+         %   OGL.setMeasureLinkVisibility(iData, isSelected);
         else
-            OGL.setRegionLinkVisibility(iData, isSelected);
+          %  OGL.setRegionLinkVisibility(iData, isSelected);
         end
     end
     
     % These functions sets global Boolean value in Java that allows
     % or disallows the drawing of these measures, which makes it
     % really fast to switch between the two mode
-    OGL.setMeasureIsVisible(MeasureLinksIsVisible);
-    OGL.setRegionIsVisible(~MeasureLinksIsVisible);
+  %  OGL.setMeasureIsVisible(MeasureLinksIsVisible);
+ %   OGL.setRegionIsVisible(~MeasureLinksIsVisible);
     
     % Redraw OpenGL
     if isRedraw
-        OGL.repaint();
+      %  OGL.repaint();
     end
     
     % Propagate selection to other figures
@@ -2786,6 +2763,7 @@ end
 
 
 %% 
+%TODO: update no ogl
 function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     % Does data has regions to cluster ?
     DisplayInCircle = getappdata(hFig, 'DisplayInCircle');
@@ -2804,9 +2782,9 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                 RegionDataPair = ComputeMeanMeasureMatrix(hFig, M);
         end
         %
-        OGL = getappdata(hFig, 'OpenGLDisplay');
+       % OGL = getappdata(hFig, 'OpenGLDisplay');
         % Clear
-        OGL.clearRegionLinks();
+       % OGL.clearRegionLinks();
         %
         Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
         Vertices = bst_figures('GetFigureHandleField', hFig, 'Vertices');
@@ -2816,11 +2794,11 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
         if (~isempty(aSplines))
             % Add on Java side
-            OGL.addPrecomputedHierarchyLink(aSplines); 
+           % OGL.addPrecomputedHierarchyLink(aSplines); 
             % Get link size
             LinkSize = 6;
             % Width
-            OGL.setRegionLinkWidth(0:(size(RegionDataPair,1) - 1), LinkSize);
+           % OGL.setRegionLinkWidth(0:(size(RegionDataPair,1) - 1), LinkSize);
         end
         % Update figure value
         bst_figures('SetFigureHandleField', hFig, 'RegionDataPair', RegionDataPair);
@@ -2909,15 +2887,16 @@ end
 % GL_ONE = 1;
 % GL_ZERO = 0;
 
+%TODO: update ogl
 function SetBlendingMode(hFig, BlendingEnabled)
     % Update figure variable
     setappdata(hFig, 'BlendingEnabled', BlendingEnabled);
     % Update display
-    OGL = getappdata(hFig,'OpenGLDisplay');
+    %OGL = getappdata(hFig,'OpenGLDisplay');
     % 
     if BlendingEnabled
         % Good looking additive blending
-        OGL.setMeasureLinkBlendingFunction(770,1);
+        %OGL.setMeasureLinkBlendingFunction(770,1);
         % Blending only works nicely on black background
         SetBackgroundColor(hFig, [0 0 0], [1 1 1]);
         % AND with a minimum amount of transparency
@@ -2927,10 +2906,10 @@ function SetBlendingMode(hFig, BlendingEnabled)
         end
     else
         % Translucent blending only
-        OGL.setMeasureLinkBlendingFunction(770,771);
+      %  OGL.setMeasureLinkBlendingFunction(770,771);
     end
     % Request redraw
-    OGL.repaint();
+   % OGL.repaint();
 end
 
 function ToggleBlendingMode(hFig)
@@ -2949,27 +2928,29 @@ function LinkSize = GetLinkSize(hFig)
     end
 end
 
+% TODO: set link size (line size)
 function SetLinkSize(hFig, LinkSize)
     % Get display
-    OGL = getappdata(hFig,'OpenGLDisplay');
-    % Get # of data to update
+   % OGL = getappdata(hFig,'OpenGLDisplay');
+    % Get # of data to update (test # 4513 links)
     nLinks = size(bst_figures('GetFigureHandleField', hFig, 'DataPair'), 1);
     % Update size
-    OGL.setMeasureLinkWidth(0:(nLinks - 1), LinkSize);
-    OGL.repaint();
+  %  OGL.setMeasureLinkWidth(0:(nLinks - 1), LinkSize);
+  %  OGL.repaint();
     % 
     setappdata(hFig, 'LinkSize', LinkSize);
 end
 
 %% ===== LINK TRANSPARENCY =====
+% TODO: set link / line transparency
 function SetLinkTransparency(hFig, LinkTransparency)
     % Get display
-    OGL = getappdata(hFig,'OpenGLDisplay');
+   % OGL = getappdata(hFig,'OpenGLDisplay');
     % 
     nLinks = size(bst_figures('GetFigureHandleField', hFig, 'DataPair'),1);
     % 
-    OGL.setMeasureLinkTransparency(0:(nLinks - 1), LinkTransparency);
-    OGL.repaint();
+    %OGL.setMeasureLinkTransparency(0:(nLinks - 1), LinkTransparency);
+    %OGL.repaint();
     % 
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
 end
@@ -2997,18 +2978,18 @@ function SetCortexTransparency(hFig, CortexTransparency)
 end
 
 %% ===== BACKGROUND COLOR =====
+% @TODO: BLENDING
+% @TODO: Agregating node text (region node - lobe label)
 function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     % Negate text color if necessary
     if nargin < 3
         TextColor = ~BackgroundColor;
     end
-    % Get display
-    OGL = getappdata(hFig,'OpenGLDisplay');
-    % Update Java background color
-    OGL.setClearColor(BackgroundColor(1), BackgroundColor(2), BackgroundColor(3), 0);
+
     % Update Matlab background color
     set(hFig, 'Color', BackgroundColor)
-    % === BLENDING ===
+    
+    % === @TODO: BLENDING ===
     % Ensures that if background is white no blending is on.
     % Blending is additive and therefore won't be visible.
     if all(BackgroundColor == [1 1 1])
@@ -3018,33 +2999,28 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     % === UPDATE TEXT COLOR ===
     FigureHasText = getappdata(hFig, 'FigureHasText');
     if FigureHasText
-        % Agregating node text
+        % TODO: Agregating node text (region node - lobe label)
         AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
         if ~isempty(AgregatingNodes)
-            OGL.setTextColor(AgregatingNodes - 1, TextColor(1), TextColor(2), TextColor(3));
+           % OGL.setTextColor(AgregatingNodes - 1, TextColor(1), TextColor(2), TextColor(3));
         end
-        % Measure node text
+        
+        % Measure node text @NOTE: done
         MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         if ~isempty(MeasureNodes)
-            OGL.setTextColor(MeasureNodes - 1, TextColor(1), TextColor(2), TextColor(3));
+            nodes = hFig.UserData.Node;
+            for i = 1:length(nodes)
+                nodes(i).LabelColor = TextColor;
+            end
         end
     end
     
-    % === 3D POLYGON ===
-    is3DDisplay = getappdata(hFig, 'is3DDisplay');
-    if is3DDisplay
-        OGL.setPolygonColor(0, TextColor(1), TextColor(2), TextColor(3));
-    end
-    % Update
-    OGL.repaint();
-    % 
-    setappdata(hFig, 'BgColor', BackgroundColor);
-    %
+    setappdata(hFig, 'BgColor', BackgroundColor); %set app data for toggle
     UpdateContainer(hFig, []);
 end
 
+% @NOTE: DONE
 function ToggleBackground(hFig)
-    % 
     BackgroundColor = getappdata(hFig, 'BgColor');
     if all(BackgroundColor == [1 1 1])
         BackgroundColor = [0 0 0];
@@ -3142,6 +3118,7 @@ function RefreshBinaryStatus(hFig)
 end
 
 % ===== REFRESH TEXT VISIBILITY =====
+%TODO: updatefor no ogl
 function RefreshTextDisplay(hFig, isRedraw)
     % 
     FigureHasText = getappdata(hFig, 'FigureHasText');
@@ -3171,17 +3148,17 @@ function RefreshTextDisplay(hFig, isRedraw)
         end
         InvisibleText = ~VisibleText;
         % OpenGL Handle
-        OGL = getappdata(hFig, 'OpenGLDisplay');
+       % OGL = getappdata(hFig, 'OpenGLDisplay');
         % Update text visibility
         if (sum(VisibleText) > 0)
-            OGL.setTextVisible(find(VisibleText) - 1, 1.0);
+         %   OGL.setTextVisible(find(VisibleText) - 1, 1.0);
         end
         if (sum(InvisibleText) > 0)
-            OGL.setTextVisible(find(InvisibleText) - 1, 0.0);
+         %   OGL.setTextVisible(find(InvisibleText) - 1, 0.0);
         end
         % Refresh
         if (isRedraw)
-            OGL.repaint();
+          %  OGL.repaint();
         end
     end
 end
@@ -3213,6 +3190,7 @@ end
 
 
 %% ===== COMPUTING LINK PATH =====
+% ready
 function MeasureLinks = BuildRegionPath(hFig, mPaths, mDataPair)
     % Init return variable
     MeasureLinks = [];
@@ -3272,6 +3250,7 @@ function MeasureLinks = BuildRegionPath3D(hFig, mPaths, mDataPair, mLoc)
 end
 
 
+% ready, no change
 function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
     %
     aSplines = [];
@@ -3513,7 +3492,7 @@ end
 %% ===== ADD NODES TO JAVA ENGINE =====
 function ClearAndAddChannelsNode(hFig, V, Names)
     % Get OpenGL handle
-    OGL = getappdata(hFig, 'OpenGLDisplay');
+    % OGL = getappdata(hFig, 'OpenGLDisplay');
     MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     DisplayedNodes = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode'));
@@ -3578,20 +3557,20 @@ function ClearAndAddChannelsNode(hFig, V, Names)
     
     nVertices = size(V,1);
 
-    OGL.addNode(V(:,1), V(:,2), V(:,3));
-    % 
-    OGL.setNodeInnerColor(0:(nVertices-1), 0.7, 0.7, 0.7);
-    OGL.setNodeOuterColor(0:(nVertices-1), 0.5, 0.5, 0.5);
-    OGL.setNodeOuterRadius(0:(nVertices-1), NodeSize);
-    OGL.setNodeInnerRadius(0:(nVertices-1), 0.75 * NodeSize);
-    OGL.setNodeOuterRadius(AgregatingNodes - 1, RegionNodeSize);
-    OGL.setNodeInnerRadius(AgregatingNodes - 1, 0.75 * RegionNodeSize);
+%     OGL.addNode(V(:,1), V(:,2), V(:,3));
+%     % 
+%     OGL.setNodeInnerColor(0:(nVertices-1), 0.7, 0.7, 0.7);
+%     OGL.setNodeOuterColor(0:(nVertices-1), 0.5, 0.5, 0.5);
+%     OGL.setNodeOuterRadius(0:(nVertices-1), NodeSize);
+%     OGL.setNodeInnerRadius(0:(nVertices-1), 0.75 * NodeSize);
+%     OGL.setNodeOuterRadius(AgregatingNodes - 1, RegionNodeSize);
+%     OGL.setNodeInnerRadius(AgregatingNodes - 1, 0.75 * RegionNodeSize);
     
     % Node are color coded to their Scout counterpart
     RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
     if ~isempty(RowColors)
         for i=1:length(RowColors)
-            OGL.setNodeInnerColor(nAgregatingNodes+i-1, RowColors(i,1), RowColors(i,2), RowColors(i,3));
+%             OGL.setNodeInnerColor(nAgregatingNodes+i-1, RowColors(i,1), RowColors(i,2), RowColors(i,3));
         end
     end
     
@@ -3614,28 +3593,28 @@ function ClearAndAddChannelsNode(hFig, V, Names)
         end
         
         if (is3DDisplay)
-            OGL.setNodeTransparency(i - 1, 1.00);
+%             OGL.setNodeTransparency(i - 1, 1.00);
         else
-            OGL.setNodeTransparency(i - 1, 0.01);
+%             OGL.setNodeTransparency(i - 1, 0.01);
         end
         
         if (FigureHasText)
             % Assign name
-            OGL.setNodeText(i-1, Names(i));
+%             OGL.setNodeText(i-1, Names(i));
             % Text alignment code
             %   1: Left,
             %   2: Middle,
             %   3: Right
             if (i < nAgregatingNodes)
                 % Region nodes are always middle aligned
-                OGL.setTextAlignment(i-1, 2);
+%                 OGL.setTextAlignment(i-1, 2);
             else
                 if (V(i,1) > 0)
                     % Right hemisphere
-                    OGL.setTextAlignment(i-1, 1);
+%                     OGL.setTextAlignment(i-1, 1);
                 else
                     % Left hemisphere
-                    OGL.setTextAlignment(i-1, 3);
+%                     OGL.setTextAlignment(i-1, 3);
                 end
             end
             
@@ -3654,19 +3633,19 @@ function ClearAndAddChannelsNode(hFig, V, Names)
                 end
                 % Convert angle
                 thetaDeg = (180 / pi) .* theta;
-                OGL.setTextOrientation(i-1, thetaDeg);
+%                 OGL.setTextOrientation(i-1, thetaDeg);
             end
         end
     end
     
     if (FigureHasText)
-        OGL.setTextSize(0:(nVertices-1), TextSize);
-        OGL.setTextSize(AgregatingNodes - 1, RegionTextSize);
-        OGL.setTextPosition(0:(nVertices-1), Pos(:,1), Pos(:,2), Pos(:,3));
-        OGL.setTextTransparency(0:(nVertices-1), 0.0);
-        OGL.setTextColor(0:(nVertices-1), 0.1, 0.1, 0.1);
-        OGL.setTextVisible(0:(nVertices-1), 1.0);
-        OGL.setTextVisible(AgregatingNodes - 1, 0);
+%         OGL.setTextSize(0:(nVertices-1), TextSize);
+%         OGL.setTextSize(AgregatingNodes - 1, RegionTextSize);
+%         OGL.setTextPosition(0:(nVertices-1), Pos(:,1), Pos(:,2), Pos(:,3));
+%         OGL.setTextTransparency(0:(nVertices-1), 0.0);
+%         OGL.setTextColor(0:(nVertices-1), 0.1, 0.1, 0.1);
+%         OGL.setTextVisible(0:(nVertices-1), 1.0);
+%         OGL.setTextVisible(AgregatingNodes - 1, 0);
     end
 end
 

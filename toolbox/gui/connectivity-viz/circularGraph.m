@@ -66,8 +66,7 @@ classdef circularGraph < handle
             
             fig = gcf; %returns current figure handle
             set(fig,...
-                'UserData',this,...
-                'CloseRequestFcn',@circularGraph.CloseRequestFcn);
+                'UserData',this);
             
             % Draw the nodes
             delete(this.Node);
@@ -161,11 +160,20 @@ classdef circularGraph < handle
             ax.SortMethod = 'depth';
             
             fig = gcf;
-            fig.Color = [1 1 1];
+            % fig.Color = [1 1 1]; %todo remove (default set in
+            % figure_connect
         end
         
+        function setAllLabelColor(this, color)
+            n = this.UserData.Node;
+            for i = 1:length(n)
+                n(i).updateTextLabelColor(this, color)
+            end
+        end
     end
     
+    
+    %% CALLBACKs
     methods (Static = true)
         function showNodes(this,~)
             % Callback for 'Show All' button
@@ -183,14 +191,6 @@ classdef circularGraph < handle
             end
         end
         
-        function CloseRequestFcn(this,~)
-            % Callback for figure CloseRequestFcn
-            c = this.UserData;
-            for i = 1:length(c.Node)
-                delete(c.Node(i));
-            end
-            delete(gcf);
-        end
         
     end
     
