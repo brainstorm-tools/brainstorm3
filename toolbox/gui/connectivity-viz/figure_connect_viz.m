@@ -251,9 +251,6 @@ function Dispose(hFig) %#ok<DEFNU>
 %     OGL.resetDisplay();
 %     delete(OGL);
 %     setappdata(hFig, 'OpenGLDisplay', []);
-    
-    
-
 end
 
 
@@ -427,6 +424,10 @@ end
 %% ===========================================================================
 %  ===== KEYBOARD AND MOUSE CALLBACKS ========================================
 %  ===========================================================================
+
+% TODO: remove java canvas, use key events in MATLAB
+% Can use WindowKeyPressFcn, KeyPressFcn 
+% getkey
 
 %% ===== FIGURE MOUSE CLICK CALLBACK =====
 function FigureMouseDownCallback(hFig, ev)   
@@ -855,7 +856,7 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
     end
 end
 
-%% ===== JAVA MOUSE WHEEL CALLBACK =====
+%% =====  % Or use Factor calculation from figure_timefreq.m function FigureMouseWheelCallback(hFig, event) =====
 %TODO: update factor calculation
 function FigureMouseWheelCallback(hFig, ev)
     % Control Zoom
@@ -868,21 +869,21 @@ function FigureMouseWheelCallback(hFig, ev)
     setappdata(hFig, 'CameraZoom', CameraZoom);
     UpdateCamera(hFig);
     
-%     %Or use Factor calculation from figure_timefreq.m function FigureMouseWheelCallback(hFig, event)
-%     if isempty(ev)
-%         return;
-%     elseif (ev.VerticalScrollCount < 0)
-%         % ZOOM IN
-%         Factor = 1 - double(ev.VerticalScrollCount) ./ 10;
-%     elseif (ev.VerticalScrollCount > 0)
-%         % ZOOM OUT
-%         Factor = 1./(1 + double(ev.VerticalScrollCount) ./ 10);
-%     else
-%         Factor = 1;
-%     end
-%     
-%     % apply zoom
-%     gui_zoom(hFig, 'horizontal', Factor);
+    % Or use Factor calculation from figure_timefreq.m function FigureMouseWheelCallback(hFig, event)
+    if isempty(ev)
+        return;
+    elseif (ev.VerticalScrollCount < 0)
+        % ZOOM IN
+        Factor = 1 - double(ev.VerticalScrollCount) ./ 10;
+    elseif (ev.VerticalScrollCount > 0)
+        % ZOOM OUT
+        Factor = 1./(1 + double(ev.VerticalScrollCount) ./ 10);
+    else
+        Factor = 1;
+    end
+    
+    % apply zoom
+    gui_zoom(hFig, 'horizontal', Factor);
 end
 
 
@@ -1271,6 +1272,9 @@ end
 
 %% ===== UPDATE FIGURE PLOT =====
 function LoadFigurePlot(hFig) %#ok<DEFNU>
+
+% Currently using a "test" plot with defined threshold
+% for testing purposes only
     testPlot(hFig)
     
     global GlobalData;
@@ -1604,8 +1608,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
 end
 
+% calls circularGraph in MATLAB
 function testPlot(hFig)
-    test_thresh = 0.75;
+    test_thresh = 0.75; % temporary value used for now
     
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
     M(M<test_thresh) = 0;
@@ -2367,7 +2372,8 @@ function UpdateCamera(hFig)
 end
 
 %% ===== ZOOM CAMERA =====
-%when key event= 'uparrow' or'downarrow' %TODO
+%new feature: when key event= 'uparrow' or'downarrow' %TODO
+% old code uses SelectedRowChangedCallback (dead code)??
 % @TODO
 function ZoomCamera(hFig, inc)
     disp('ZoomCamera reached') %TODO: remove test
@@ -2924,7 +2930,7 @@ function RefreshBinaryStatus(hFig)
 end
 
 % ===== REFRESH TEXT VISIBILITY =====
-%TODO: updatefor no ogl
+%TODO: remove ogl
 function RefreshTextDisplay(hFig, isRedraw)
     % 
     FigureHasText = getappdata(hFig, 'FigureHasText');
