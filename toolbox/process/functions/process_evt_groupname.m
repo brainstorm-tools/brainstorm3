@@ -178,17 +178,24 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             % Find event in the list
             evtLabel = evtList{iCombEvt};
             iEvt = find(strcmpi({events.label}, evtLabel));
-            % If events are extended events: skip
+            % If events doesn't exist: skip
             if isempty(iEvt)
                 bst_report('Warning', 'process_evt_groupname', sInput, ['Event "' evtLabel '" does not exist. Skipping group...']);
                 isSkip = 1;
-                continue;
+                break;
+            end
+            % If renaming event: simply update the label and move on
+            if (length(combineCell{iComb,2}) == 1)
+                eventsNew(iEvt).label = combineCell{iComb,1};
+                isSkip = 1;
+                isModified = 1;
+                break;
             end
             % If events are extended events: skip
             if (size(events(iEvt).times,1) > 1)
                 bst_report('Error', 'process_evt_groupname', sInput, 'Cannot process extended events. Skipping group...');
                 isSkip = 1;
-                continue;
+                break;
             end
             % Add to the list of all the processes
             iEvtList(end+1) = iEvt;
