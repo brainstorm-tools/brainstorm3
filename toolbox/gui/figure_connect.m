@@ -63,7 +63,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     %                  'Visible',  'off', ...
     %                  'BusyAction',    'queue', ...
     %                  'Interruptible', 'off');
-              
+
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
 	% Create rendering panel
     [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
     % Resize callback
