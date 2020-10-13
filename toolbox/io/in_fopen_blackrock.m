@@ -51,10 +51,19 @@ if ~file_exist(NevFile)
     disp(['Event file could not be found: ' NevFile]);
     NevFile = [];
 end
+% Disable the 'uV' warning (otherwise 'noread' and 'uv' are incompatible, and we have a necessary input from the command line)
+disp('BST> Disabling NPMKSettings:ShowuVWarning...');
+NPMKSettings = settingsManager;
+NPMKSettings.ShowuVWarning = 0;
+settingsManager(NPMKSettings);
 % Read the firs two samples of the file to get the header information
-rec = openNSx('noread', DataFile);
+rec = openNSx(DataFile, 'noread');
 % Read useful information from there
 hdr = rec.MetaTags;
+% Display warning when there are multiple records
+if (length(hdr.DataPoints))
+    disp(['BST> WARNING: The file "' DataFile '" contains ' num2str(length(hdr.DataPoints)) ' blocks of recordings.' 10 '     All the data blocks will appear concatenated in Brainstorm.']);
+end
 
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
@@ -69,7 +78,7 @@ sFile.header    = hdr;
 sFile.comment   = [fBase, fExt];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.SamplingFreq;
-sFile.prop.times   = [0, hdr.DataPoints - 1] ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, sum(hdr.DataPoints) - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
@@ -187,4 +196,21 @@ if ~isempty(NevFile)
     end
 end
 
+
+% Add events to indicate block separations
+if (length(hdr.DataPoints) > 1)
+    events = repmat(db_template('event'), 1, length(hdr.DataPoints));
+    timeBlocks = [0, cumsum(hdr.DataPoints(1:end-1)) - 1] ./ sFile.prop.sfreq;
+    for iEvt = 1:length(hdr.DataPoints)
+        events(iEvt).label      = sprintf('Block%02d', iEvt);
+        events(iEvt).color      = [];
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).times      = timeBlocks(iEvt);
+        events(iEvt).epochs     = 1;
+        events(iEvt).channels   = {[]};
+        events(iEvt).notes      = {[]};
+    end
+    sFile = import_events(sFile, [], events);
+end
 
