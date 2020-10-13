@@ -52,21 +52,14 @@ if ischar(MriFile)
         return;
     end
     % Try to get volume labels for this atlas
-    if isAseg
-        if (nnz(sMri.Cube == 7) == 0)
-            FsVersion = 3;  % Old FreeSurfer
-        else
-            FsVersion = 5;  % FreeSurfer 5 and 6
-        end
-        if isBrainSuite 
-            FsVersion = 0;  % Set Fs version 0 for BrainSuite
-        end
-        
-        VolumeLabels = panel_scout('GetVolumeLabels', MriFile, FsVersion);
+    if isBrainSuite 
+        FsVersion = 0;  % Set Fs version 0 for BrainSuite
+    elseif isAseg
+        FsVersion = 5;  % FreeSurfer 5 and 6
     else
-        % Other file formats
-        VolumeLabels = panel_scout('GetVolumeLabels', MriFile);
+        FsVersion = [];   % Other file formats
     end
+    VolumeLabels = panel_scout('GetVolumeLabels', MriFile, FsVersion);
 else
     sMri = MriFile;
     MriFile = [];
@@ -120,9 +113,22 @@ if (length(allValues) > 10) && ~isempty(MriFile) && isAseg
                 48,  'Thalamus R'; ...
                 49,  'Thalamus R'; ...
                 };
-            % Grouping the cerebellum white+cortex voxels
+            % Group the cerebellum white+cortex voxels
             sMri.Cube(sMri.Cube == 7) = 8;
             sMri.Cube(sMri.Cube == 46) = 47;
+            % Group all the brainstem elements
+            sMri.Cube(sMri.Cube == 170) = 16;
+            sMri.Cube(sMri.Cube == 171) = 16;
+            sMri.Cube(sMri.Cube == 172) = 16;
+            sMri.Cube(sMri.Cube == 173) = 16;
+            sMri.Cube(sMri.Cube == 174) = 16;
+            sMri.Cube(sMri.Cube == 175) = 16;
+            sMri.Cube(sMri.Cube == 177) = 16;
+            sMri.Cube(sMri.Cube == 178) = 16;
+            sMri.Cube(sMri.Cube == 179) = 16;
+            % Update unique values
+            allValues = unique(sMri.Cube);
+            
         case 3
             Labels = {...
                 48,  'Brainstem'; ...
