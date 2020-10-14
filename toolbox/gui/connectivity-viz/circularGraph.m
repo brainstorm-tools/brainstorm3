@@ -1,5 +1,5 @@
 classdef circularGraph < handle
-    % CIRCULARGRAPH Plot an interactive circular graph to illustrate connections in a network.
+    % CIRCULARGRAPH Plot an interactive circular graph to illustrate Linkss in a network.
     %
     %% Syntax
     % circularGraph(X)
@@ -8,11 +8,11 @@ classdef circularGraph < handle
     %
     %% Description
     % A 'circular graph' is a visualization of a network of nodes and their
-    % connections. The nodes are laid out along a circle, and the connections
-    % are drawn within the circle. Click on a node to make the connections that
+    % Linkss. The nodes are laid out along a circle, and the Linkss
+    % are drawn within the circle. Click on a node to make the Linkss that
     % emanate from it more visible or less visible. Click on the 'Show All'
-    % button to make all nodes and their connections visible. Click on the
-    % 'Hide All' button to make all nodes and their connections less visible.
+    % button to make all nodes and their Linkss visible. Click on the
+    % 'Hide All' button to make all nodes and their Linkss less visible.
     %
     % Required input arguments.
     % X : A symmetric matrix of numeric or logical values.
@@ -24,7 +24,7 @@ classdef circularGraph < handle
     %%
     % Copyright 2016 The MathWorks, Inc.
     properties
-        Node = node(0,0); % Array of nodes
+        Nodes = node(0,0); % Array of nodes
         testNodes = node(0,0); %array of nodes
         ColorMap;         % Colormap
         Label;            % Cell array of strings
@@ -70,14 +70,14 @@ classdef circularGraph < handle
                 'UserData',this);
             
             % Draw the nodes
-            delete(this.Node);
+            delete(this.Nodes);
             t = linspace(-pi,pi,length(adjacencyMatrix) + 1).'; % theta for each node
             extent = zeros(length(adjacencyMatrix),1);
             %set colourmap value and labels for each node
             for i = 1:length(adjacencyMatrix)
-                this.Node(i) = node(cos(t(i)),sin(t(i)));
-                this.Node(i).Color = this.ColorMap(i,:);
-                this.Node(i).Label = this.Label{i};
+                this.Nodes(i) = node(cos(t(i)),sin(t(i)));
+                this.Nodes(i).Color = this.ColorMap(i,:);
+                this.Nodes(i).Label = this.Label{i};
             end
             
             % Find non-zero values of s and their indices
@@ -93,7 +93,7 @@ classdef circularGraph < handle
                 lineWidth = lineWidthCoef*lineWidth + minLineWidth;
             end
             
-            % Draw connections on the Poincare hyperbolic disk.
+            % Draw Linkss on the Poincare hyperbolic disk.
             %
             % Equation of the circles on the disk:
             % x^2 + y^2
@@ -115,7 +115,7 @@ classdef circularGraph < handle
                         % points are diametric, so draw a straight line
                         u = [cos(t(row(i)));sin(t(row(i)))];
                         v = [cos(t(col(i)));sin(t(col(i)))];
-                        this.Node(row(i)).Connection(end+1) = line(...
+                        this.Nodes(row(i)).Links(end+1) = line(...
                             [u(1);v(1)],...
                             [u(2);v(2)],...
                             'LineWidth', lineWidth(i),...
@@ -138,7 +138,7 @@ classdef circularGraph < handle
                             theta = linspace(thetaLim(1),thetaLim(2)).';
                         end
                         
-                        this.Node(row(i)).Connection(end+1) = line(...
+                        this.Nodes(row(i)).Links(end+1) = line(...
                             r*cos(theta)+x0,...
                             r*sin(theta)+y0,...
                             'LineWidth', lineWidth(i),...
@@ -150,8 +150,11 @@ classdef circularGraph < handle
             
             axis image;
             ax = gca;
+            extent = 0;
             for i = 1:length(adjacencyMatrix)
-                extent(i) = this.Node(i).Extent;
+                if (this.Nodes(i).Extent > extent)
+                    extent = this.Nodes(i).Extent;
+                end
             end
             extent = max(extent(:));
             ax.XLim = ax.XLim + extent*[-1 1];
@@ -161,8 +164,7 @@ classdef circularGraph < handle
             ax.SortMethod = 'depth';
             
             fig = gcf;
-            % fig.Color = [1 1 1]; %todo remove (default set in
-            % figure_connect
+
         end
         
     end
@@ -172,7 +174,7 @@ classdef circularGraph < handle
     methods (Static = true)
         function showNodes(this,~)
             % Callback for 'Show All' button
-            n = this.UserData.Node;
+            n = this.UserData.Nodes;
             for i = 1:length(n)
                 n(i).Visible = true;
             end
@@ -180,7 +182,7 @@ classdef circularGraph < handle
         
         function hideNodes(this,~)
             % Callback for 'Hide All' button
-            n = this.UserData.Node;
+            n = this.UserData.Nodes;
             for i = 1:length(n)
                 n(i).Visible = false;
             end

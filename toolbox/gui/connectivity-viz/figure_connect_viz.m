@@ -195,30 +195,6 @@ function CurrentFreqChangedCallback(hFig)   %#ok<DEFNU>
 end
 
 
-%% ===== SELECTED ROW CHANGED =====
-function SelectedRowChangedCallback(iDS, iFig) %#ok<DEFNU>
-%     global GlobalData;
-%     % Get figure appdata
-%     hFig = GlobalData.DataSet(iDS).Figure(iFig).hFigure;
-%     % Get current selection for the figure
-%     curSelRows = figure_timeseries('GetFigSelectedRows', hFig);
-%     % Get new selection that the figure should show (keep only the ones available for this figure)
-%     allFigRows = GlobalData.DataSet(iDS).Figure(iFig).Handles.LinesLabels;
-%     newSelRows = intersect(GlobalData.DataViewer.SelectedRows, allFigRows);
-%     % Sensors to select
-%     rowsToSel = setdiff(newSelRows, curSelRows);
-%     if ~isempty(rowsToSel)
-%         figure_timeseries('SetFigSelectedRows', hFig, rowsToSel, 1);
-%     end
-%     % Sensors to unselect
-%     rowsToUnsel = setdiff(curSelRows, newSelRows);
-%     if ~isempty(rowsToUnsel)
-%         figure_timeseries('SetFigSelectedRows', hFig, rowsToUnsel, 0);
-%     end
-end
-
-
-
 %% ===== DISPOSE FIGURE =====
 % NOTE: updated remove ogl
 function Dispose(hFig) %#ok<DEFNU>
@@ -228,8 +204,8 @@ function Dispose(hFig) %#ok<DEFNU>
     %====NEW====
     c = hFig.UserData;
     if (~isempty(c))
-        for i = 1:length(c.Node)
-            delete(c.Node(i));
+        for i = 1:length(c.Nodes)
+            delete(c.Nodes(i));
         end
         for i = 1:length(c.testNodes)
             delete(c.testNodes(i));
@@ -1466,8 +1442,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'RowColors', RowColors);
     
         
-    %% ===== ORGANISE VERTICES =====    
-    %  OGL = getappdata(hFig, 'OpenGLDisplay');
+    %% ===== ORGANISE VERTICES @NOTE: DONE=====    
     if DisplayInCircle
         [Vertices Paths Names] = OrganiseNodeInCircle(hFig, RowNames, sGroups);
     elseif DisplayInRegion
@@ -1486,9 +1461,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     % Add nodes to Java
     %   This also defines some data-based display parameters
-    ClearAndAddChannelsNode(hFig, Vertices, Names);
+    ClearAndAddNodes(hFig, Vertices, Names);
     
-    % Background color :
+    % background color : 
     %   White is for publications
     %   Black for visualization (default)
     BackgroundColor = GetBackgroundColor(hFig);
@@ -1601,8 +1576,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     HideLonelyRegionNode(hFig);
     % Position camera
     DefaultCamera(hFig);
-    % Make sure we have a final request for redraw
-   % OGL.repaint();
+    % display final figure on top
+    shg
     
     
     
@@ -1615,28 +1590,41 @@ function testPlot(hFig)
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
     M(M<test_thresh) = 0;
     circularGraph(M, 'Label', RowNames);
+    
+    
+    %hide test nodes
+    delete(hFig.UserData.Nodes);
+    
+    %test display
+   % shg %force show current figure
+    BackgroundColor = GetBackgroundColor(hFig);
+    SetBackgroundColor(hFig, BackgroundColor);
 end
 
+
+%test callback function
 function test(hFig)
-    %
-    %set colourmap value and labels for each node
-%     for i = 1: 148%nVertices
-%         UserData.testNodes(i) = node(V(i,1),V(i,2));
-%         UserData.testNodes(i).Color = UserData.ColorMap(i,:);
-%         UserData.testNodes(i).Label = UserData.Label{i};
-%         UserData.testNodes(i).LabelColor = [1 1 1];
-%     end 
-    
-%    
-    % Node are color coded to their Scout counterpart
-    RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
-    if ~isempty(RowColors)
-        for i=1:length(RowColors)
-            %UserData.testNodes(nAgregatingNodes+i).Color = RowColors(i,:);
-        end 
-%             OGL.setNodeInnerColor(nAgregatingNodes+i-1, RowColors(i,1), RowColors(i,2), RowColors(i,3));
-    end
+   nodes = hFig.UserData.Nodes;
+   testNodes = hFig.UserData.testNodes;
+   
+   axis image;
+   ax = hFig.CurrentAxes;
+   extent = 0;
+   for i = 1: length(nodes)
+       if (testNodes(i).Extent> extent)
+           extent = testNodes(i).Extent;
+       end
+   end
+
+   ax.XLim = ax.XLim + extent*[-1 1];
+   fudgeFactor = 1.75; % Not sure why this is necessary. Eyeballed it.
+   ax.YLim = ax.YLim + fudgeFactor*extent*[-1 1];
+   ax.Visible = 'off';
+   ax.SortMethod = 'depth';
+           
+        
 end
+
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
     if ~isempty(Atlas)
@@ -1748,8 +1736,8 @@ function UpdateFigurePlot(hFig)
         % 
         bst_figures('SetFigureHandleField', hFig, 'DisplayNode', DisplayNode);
         bst_figures('SetFigureHandleField', hFig, 'ValidNode', DisplayNode);
-        % Add the nodes to Java
-        ClearAndAddChannelsNode(hFig, Vertices, bst_figures('GetFigureHandleField', hFig, 'Names'));
+        % Add the nodes
+        ClearAndAddNodes(hFig, Vertices, bst_figures('GetFigureHandleField', hFig, 'Names'));
     else
         % We assume that if 3D display, we did not unload the polygons
         % so we simply need to load new data
@@ -1902,6 +1890,7 @@ end
 
 
 %% ===== FILTERS =====
+%@NOTE: inprogress
 function SetMeasureDisplayFilter(hFig, NewMeasureDisplayMask, Refresh)
     % Refresh by default
     if (nargin < 3)
@@ -2373,7 +2362,6 @@ end
 
 %% ===== ZOOM CAMERA =====
 %new feature: when key event= 'uparrow' or'downarrow' %TODO
-% old code uses SelectedRowChangedCallback (dead code)??
 % @TODO
 function ZoomCamera(hFig, inc)
     disp('ZoomCamera reached') %TODO: remove test
@@ -2426,7 +2414,8 @@ end
 %  ===========================================================================
 
 %% ===== SET SELECTED NODES =====
-%TODO: update 
+%TODO: Links visibility for selected nodes
+% NOTE: updated node "visibility" (changes selection marker)
 % USAGE:  SetSelectedNodes(hFig, iNodes=[], isSelected=1, isRedraw=1) : Add or remove nodes from the current selection
 %         If node selection is empty: select/unselect all the nodes
 function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
@@ -2451,27 +2440,33 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     end
     % Define node properties
     if isSelected
-        SelectedNodeColor = [0.95, 0.0, 0.0];
+       % SelectedNodeColor = [0.95, 0.0, 0.0]; %selection is indicated by
+       % marker type now (x or O)
         selNodes = union(selNodes, iNodes);
     else
-        SelectedNodeColor = getappdata(hFig, 'BgColor');
+        %SelectedNodeColor = getappdata(hFig, 'BgColor');
         selNodes = setdiff(selNodes, iNodes);
     end
     % Update list of selected channels
     bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', selNodes);
     
-    % Get OpenGL handle
-   % OGL = getappdata(hFig, 'OpenGLDisplay');
+    %get nodes from figure
+    testNodes = hFig.UserData.testNodes;
     
     % Agregating nodes are not visually selected
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     NoColorNodes = ismember(iNodes,AgregatingNodes);
     if (sum(~NoColorNodes) > 0)
+        %sets current visibility type and updates display marker
+        allIdx = iNodes(~NoColorNodes);
         if isSelected
-           % OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 1);
-           % OGL.setNodeOuterColor(iNodes(~NoColorNodes) - 1, SelectedNodeColor(1), SelectedNodeColor(2), SelectedNodeColor(3));
+           for i = length(allIdx)
+               testNodes(allIdx(i)).Visible = true;
+           end
         else
-           % OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 0);
+           for i = length(allIdx)
+               testNodes(allIdx(i)).Visible = false;
+           end
         end
     end
     RefreshTextDisplay(hFig, isRedraw);
@@ -2529,6 +2524,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     DataMask = DataMask == 1 & ValidDataForDisplay == 2;
 
     iData = find(DataMask == 1) - 1;
+    %Todo Links visibility
     if (~isempty(iData))
         % Update visibility
         if (MeasureLinksIsVisible)
@@ -2762,7 +2758,6 @@ end
 
 %% ===== LINK TRANSPARENCY =====
 % TODO: set link / line transparency
-% TODO: was this only for 3d link?
 function SetLinkTransparency(hFig, LinkTransparency)
     % Get display
    % OGL = getappdata(hFig,'OpenGLDisplay');
@@ -2820,9 +2815,19 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
         % Measure node text @NOTE: done
         MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         if ~isempty(MeasureNodes)
-            nodes = hFig.UserData.Node;
-            for i = 1:length(nodes)
-                nodes(i).LabelColor = TextColor;
+            nodes = hFig.UserData.Nodes;
+            if isvalid(nodes) %check in case no nodes (deleted handle)
+                for i = 1:length(nodes)
+                    nodes(i).LabelColor = TextColor;
+                end
+            end
+            
+            %@TODO: remove testing nodes
+            testNodes = hFig.UserData.testNodes;
+            if isvalid(testNodes)
+                for i = 1:length(testNodes)
+                    testNodes(i).LabelColor = TextColor;
+                end
             end
         end
     end
@@ -2930,7 +2935,7 @@ function RefreshBinaryStatus(hFig)
 end
 
 % ===== REFRESH TEXT VISIBILITY =====
-%TODO: remove ogl
+%TODO: Check
 function RefreshTextDisplay(hFig, isRedraw)
     % 
     FigureHasText = getappdata(hFig, 'FigureHasText');
@@ -2958,16 +2963,19 @@ function RefreshTextDisplay(hFig, isRedraw)
             selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
             VisibleText(selNodes) = ValidNode(selNodes);
         end
-        InvisibleText = ~VisibleText;
         % OpenGL Handle
        % OGL = getappdata(hFig, 'OpenGLDisplay');
+       
         % Update text visibility
-        if (sum(VisibleText) > 0)
-         %   OGL.setTextVisible(find(VisibleText) - 1, 1.0);
+        testNodes = hFig.UserData.testNodes;
+        for i=1:length(VisibleText)
+            if (VisibleText(i) == 1)
+                testNodes(i).LabelVisible = true;
+            else
+                testNodes(i).LabelVisible = false;
+            end
         end
-        if (sum(InvisibleText) > 0)
-         %   OGL.setTextVisible(find(InvisibleText) - 1, 0.0);
-        end
+     
         % Refresh
         if (isRedraw)
           %  OGL.repaint();
@@ -3289,101 +3297,44 @@ end
 % end
 
 
-%% ===== ADD NODES TO JAVA ENGINE =====
-%%@TODO: in progress
-function ClearAndAddChannelsNode(hFig, V, Names)
-    % Get OpenGL handle
-    % OGL = getappdata(hFig, 'OpenGLDisplay');
+%% ===== ADD NODES TO DISPLAY =====
+%@Note: new display prototype (working)
+%@TODO: default link and node size (user adjustable)
+%@TODO: figurehastext default on/off
+function ClearAndAddNodes(hFig, V, Names)
+    
+    % get calculated nodes
     MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     DisplayedNodes = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode'));
     DisplayedMeasureNodes = MeasureNodes(ismember(MeasureNodes,DisplayedNodes));
+    
     NumberOfMeasureNode = length(DisplayedMeasureNodes);
     nAgregatingNodes = length(AgregatingNodes);
-    
-    
-    % @TODO: If the number of node is greater than a certain number, we do not display text due to too many nodes
-    FigureHasText = NumberOfMeasureNode <= 500;
-    setappdata(hFig, 'FigureHasText', FigureHasText);
-    
-    % Default link size
-    LinkSize = GetLinkSize(hFig);
-    % Default radial display option
-    RadialTextDisplay = 0;
-    % Default node size
-    NodeSize = 0;
-    % Default text size
-    TextSize = 0.005;
-    % Default text distance from node
-    TextDistanceFromNode = 1;
-    
-    %
-    NodeSize = 30 / NumberOfMeasureNode * 0.25;
-    % Small number of node have different hardcoded values
-    if (NumberOfMeasureNode <= 20)
-        NodeSize = 0.25;
-        % For very long text, radial display are much nicer
-        MaxLabelLength = max(cellfun(@(x) size(x,2), Names));
-        if (MaxLabelLength > 10)
-            RadialTextDisplay = 1;
-        end
-    else
-        RadialTextDisplay = 1;
-    end
-    % Note: 1/20 is an arbitrarily defined ratio 
-    %       to compensate for the high font resolution
-    FontScalingRatio = 1 / 20;
-    TextSize = 1.2 * NodeSize * FontScalingRatio;
-    TextDistanceFromNode = NodeSize * 2.5;
-    LinkSize = NodeSize * 20;
-    if (LinkSize < 1)
-        LinkSize = 1;
-    end
-    
-    
-    RegionNodeSize = 0.5 * NodeSize;
-    if (RegionNodeSize < 0.05)
-        RegionNodeSize = 0.05;
-    end
-    RegionTextSize = TextSize;
-    
-    setappdata(hFig, 'NodeSize', NodeSize);
-    setappdata(hFig, 'LinkSize', LinkSize);
-    
     nVertices = size(V,1);
-
-    % NEW: Create testNodes in circularGraphset colourmap value and labels for each node
-    UserData = hFig.UserData 
+    
+    % --- CREATE AND ADD NODES TO DISPLAY ---- %
+    UserData = hFig.UserData; 
     delete(UserData.testNodes);
-%     t = linspace(-pi,pi,length(adjacencyMatrix) + 1).'; % theta for each node
-%     extent = zeros(length(adjacencyMatrix),1);
-    %set colourmap value and labels for each node
+    
+    scaleFactor = 0.6; %new scale factor for x,y position of nodes
     for i = 1: nVertices
-        % Blank name if none is assigned
-        if (isempty(Names(i)) || isempty(Names{i}))
-            Names{i} = '';
+        UserData.testNodes(i) = node(scaleFactor*V(i,1),scaleFactor*V(i,2)); %create node
+        if (i<=nAgregatingNodes)
+            %this alters display/rotation of lobe node text
+            UserData.testNodes(i).isAgregatingNode = true; 
         end
         
-        UserData.testNodes(i) = node(V(i,1),V(i,2));
-        UserData.testNodes(i).Color = [1 1 1];
+        % add label to node
+        if (isempty(Names(i)) || isempty(Names{i}))
+            Names{i} = ''; % Blank name if none is assigned
+        end
         UserData.testNodes(i).Label = Names(i);
-        UserData.testNodes(i).LabelColor = [1 1 1];
         
         % OGL.setNodeTransparency(i - 1, 0.01); %TODO: check needed
-
     end 
     
-%     OGL.addNode(V(:,1), V(:,2), V(:,3)); %done
-%     OGL.setNodeInnerColor(0:(nVertices-1), 0.7, 0.7, 0.7); %done
-
-%     OGL.setNodeOuterColor(0:(nVertices-1), 0.5, 0.5, 0.5);
-%     OGL.setNodeOuterRadius(0:(nVertices-1), NodeSize); 
-%     OGL.setNodeInnerRadius(0:(nVertices-1), 0.75 * NodeSize);
-%     OGL.setNodeOuterRadius(AgregatingNodes - 1, RegionNodeSize);
-%     OGL.setNodeInnerRadius(AgregatingNodes - 1, 0.75 * RegionNodeSize);
-    
-    % @NOTE: done
-    % Node are color coded to their Scout counterpart
+    % Measure Nodes are color coded to their Scout counterpart
     RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
     if ~isempty(RowColors)
         for i=1:length(RowColors)
@@ -3391,59 +3342,28 @@ function ClearAndAddChannelsNode(hFig, V, Names)
         end 
     end
     
-   % @todo: alignment
-    Pos = V(:,1:3);
-    Dir = bsxfun(@minus, V(:,1:3), [0 0 0]);
-    Sum = sum(abs(Dir).^2,2).^(1/2);
-    NonZero = Sum ~= 0;
-    Dir(NonZero,:) = bsxfun(@rdivide, Dir(NonZero,:), Sum(NonZero));
-    Pos(MeasureNodes,:) = V(MeasureNodes,1:3) + Dir(MeasureNodes,:) * TextDistanceFromNode;
-    
-    % Middle axe used for text alignment
-    Axe = [0 1 0];
-    % For each node
-    for i=1:nVertices
-        
-        if (FigureHasText)
-           
-            % Text alignment code
-            %   1: Left,
-            %   2: Middle,
-            %   3: Right
-            if (i < nAgregatingNodes)
-                % Region nodes are always middle aligned
-%                 OGL.setTextAlignment(i-1, 2);
-            else
-                if (V(i,1) > 0)
-                    % Right hemisphere
-%                     OGL.setTextAlignment(i-1, 1);
-                else
-                    % Left hemisphere
-%                     OGL.setTextAlignment(i-1, 3);
-                end
-            end
-            
-            if (RadialTextDisplay && i > nAgregatingNodes)
-                % Find out the angle between the node vertex and the center
-                theta = 0;
-                Denom = (norm(Axe)*norm(Pos(i,:)));
-                if (Denom ~= 0)
-                    theta = acos(dot(Axe,Pos(i,:))/Denom);
-                end
-                % Right or Left
-                if (V(i,1) > 0)
-                    theta = -theta + 3.1415 / 2;
-                else
-                    theta = theta - 3.1415 / 2;
-                end
-                % Convert angle
-                thetaDeg = (180 / pi) .* theta;
-%                 OGL.setTextOrientation(i-1, thetaDeg);
-            end
+    % refresh display extent
+    ax = hFig.CurrentAxes;
+    extent = 0;
+    for i = 1: nVertices
+        if (UserData.testNodes(i).Extent > extent)
+            extent = UserData.testNodes(i).Extent;
         end
     end
+    ax.XLim = ax.XLim + extent*[-1 1];
+    fudgeFactor = 1.75; % Not sure why this is necessary. Eyeballed it.
+    ax.YLim = ax.YLim + fudgeFactor*extent*[-1 1];
+    ax.Visible = 'off';
+    ax.SortMethod = 'depth';
     
-   % @TODO: default visibility etc
+    
+    % @TODO: default link and node size (user adjustable)
+    %setappdata(hFig, 'NodeSize', NodeSize);
+    %setappdata(hFig, 'LinkSize', LinkSize);
+    
+    % @TODO: If the number of node is greater than a certain number, we do not display text due to too many nodes
+    FigureHasText = NumberOfMeasureNode <= 500;
+    setappdata(hFig, 'FigureHasText', FigureHasText);
     if (FigureHasText)
 %         OGL.setTextSize(0:(nVertices-1), TextSize);
 %         OGL.setTextSize(AgregatingNodes - 1, RegionTextSize);
@@ -3453,322 +3373,10 @@ function ClearAndAddChannelsNode(hFig, V, Names)
 %         OGL.setTextVisible(0:(nVertices-1), 1.0);
 %         OGL.setTextVisible(AgregatingNodes - 1, 0);
     end
+    
 end
 
-
-% function SetupRadialRegion(hFig, Vertices, sGroups, aNames, RowLocs)
-%     % 
-%     OGL = getappdata(hFig, 'OpenGLDisplay');
-%     MeasureLevelDistance = getappdata(hFig, 'MeasureLevelDistance');
-%     % 
-%     MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
-%     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-%     NumberOfAgregatingNodes = size(AgregatingNodes,2);
-%     nMeasureNodes = size(MeasureNodes,2);
-%     % Common rendering parameters
-%     rbLineDetail = 50;
-%     rbVertexCount = rbLineDetail * 2;
-%     rbIndices = zeros(rbVertexCount,1);
-%     rbIndices(1:2:rbVertexCount) = 1:1:rbLineDetail;
-% 	rbIndices(2:2:rbVertexCount) = (rbLineDetail+1):1:rbVertexCount;
-%     rbIndices = rbIndices - 1;
-%     % Selection data
-%     NumberOfGroups = size(sGroups,2);
-%     RadialRegionSelection = zeros(NumberOfGroups * 3,1);
-%     RegionParameters = zeros(NumberOfGroups,2);
-%     for i=1:NumberOfGroups
-%         % Find which node and their Index
-%         NodesOfThisGroup = ismember(aNames, sGroups(i).RowNames);
-%         Index = find(NodesOfThisGroup) + NumberOfAgregatingNodes;
-%         % Get vertices and sort Ant-Post
-%         Order = 1:size(Index,1);
-%         if ~isempty(RowLocs)
-%             [tmp, Order] = sort(RowLocs(NodesOfThisGroup,1), 'descend');
-%         end
-%         NodesVertices = Vertices(Index(Order),:);
-%         % 
-%         RegionParameters(i,1) = VectorToAngle(NodesVertices(1,:) / norm(NodesVertices(1,:)));
-%         RegionParameters(i,2) = VectorToAngle(NodesVertices(end,:) / norm(NodesVertices(end,:)));
-%         % 1st to 4th Quadrant correction
-%         if (RegionParameters(i,1) >= 0   && RegionParameters(i,1) <= 90 && ...
-%             RegionParameters(i,2) >= 270 && RegionParameters(i,2) <= 360)  
-%             RegionParameters(i,1) = 360 + RegionParameters(i,1);
-%         end
-%     end
-% 
-%     Parameters{1} = RegionParameters;
-%     Lengths = [1.10 1.16];
-%     
-%     Parameter = Parameters{1};
-%     nRadialBox = size(Parameter,1);
-%     for i=1:nRadialBox
-%         % 
-%         StartAngle = Parameter(i,1);
-%         EndAngle = Parameter(i,2);
-%         % Compute cartesian
-%         Interp = linspace(StartAngle, EndAngle, rbLineDetail);
-%         [x,y] = pol2cart(deg2rad(Interp), MeasureLevelDistance);
-%         % Assign
-%         rbVertices = zeros(rbVertexCount,3);
-%         rbVertices(1:(rbVertexCount/2),1:2) = Lengths(1,1) * [x' y'];
-%         rbVertices((rbVertexCount/2+1):rbVertexCount,1:2) = Lengths(1,2) * [x' y'];
-%         % 
-%         OGL.addRadialBox(rbVertices(:,1), rbVertices(:,2), rbVertices(:,3), rbIndices(:));
-%     end
-%     
-%     setappdata(hFig, 'RadialRegionSelection', RadialRegionSelection);
-%     
-%     %LeftHem = ChannelData(:,3) == 1;
-%     %RightHem = ChannelData(:,3) == 2;
-%     %if (nCerebellum > 0)
-%     %    CereHem = ChannelData(:,2) == 4;
-%     %    Vertices(CereHem,2) = Vertices(CereHem,2) * 1.2;
-%     %end
-%     %if (nUnkown > 0)
-%     %    Unknown = ChannelData(:,3) == 0;
-%     %    Vertices(Unknown,2) = Vertices(Unknown,2) * 1.2;
-%     %end
-%     
-%     %Vertices(LeftHem,1) = Vertices(LeftHem,1) - 0.6;
-%     %Vertices(LeftHem,2) = Vertices(LeftHem,2) * 1.2;
-% 	%Vertices(RightHem,1) = Vertices(RightHem,1) + 0.6;
-%     %Vertices(RightHem,2) = Vertices(RightHem,2) * 1.2;
-% 
-% end
-
-% function Angle = VectorToAngle(Vector)
-%     Reference = [1 0 0];
-%     Angle = zeros(size(Vector,1),1);
-%     for i=1:size(Vector,1)
-%         Angle(i) = acosd(Vector(i,:) * Reference');
-%         if (Vector(i,2) < 0 - 0.000001)
-%             Angle(i) = 360 - Angle(i);
-%         end
-%     end
-% end
-
-
-function [Vertices Paths Names] = OrganiseChannelsIn3D(hFig, sGroups, aNames, aLocs, SurfaceStruct)
-    % Some values are Hardcoded for Display consistency
-    NumberOfMeasureNodes = size(aNames,1);
-    NumberOfGroups = size(sGroups,2);
-    NumberOfLobes = 7;
-    NumberOfHemispheres = 4;
-    NumberOfLevels = 5;
-    
-    [V H] = ComputeCortexPathBundle(SurfaceStruct);
-    NumberOfAgregatingNodes = size(V,1);
-    
-    % Extract only the first region letter of each group
-    HemisphereRegions = cellfun(@(x) {x(1)}, {sGroups.Region})';
-    LobeRegions = cellfun(@(x) {LobeIndexToTag(LobeTagToIndex(x))}, {sGroups.Region})';
-    
-    LeftGroupsIndex = strcmp('L',HemisphereRegions) == 1;
-    RightGroupsIndex = strcmp('R',HemisphereRegions) == 1;
-    
-    Lobes = [];
-    NumberOfNodesPerLobe = zeros(NumberOfLobes * 2,1);
-    for i=1:NumberOfLobes
-        Tag = LobeIndexToTag(i);
-        RegionsIndex = strcmp(Tag,LobeRegions) == 1;
-        NodesInLeft = [sGroups(LeftGroupsIndex & RegionsIndex).RowNames];
-        NodesInRight = [sGroups(RightGroupsIndex & RegionsIndex).RowNames];
-        NumberOfNodesPerLobe(i) = size(NodesInLeft,2);
-        NumberOfNodesPerLobe(NumberOfLobes + i) = size(NodesInRight,2);
-        if (size(NodesInLeft,2) > 0 || size(NodesInRight,2) > 0)
-            Lobes = [Lobes i];
-        end
-    end
-    
-    % Actual number of lobes with data
-    NumberOfLobes = size(Lobes,2);    
-    NumberOfVertices = NumberOfMeasureNodes + NumberOfAgregatingNodes;
-    Vertices = zeros(NumberOfVertices,3);
-    Names = cell(NumberOfVertices,1);
-    Paths = cell(NumberOfVertices,1);
-    ChannelData = zeros(NumberOfVertices,3);
-    Levels = cell(3,1);
-    
-    AgregatingNodeIndex = NumberOfHemispheres;
-    for z=1:NumberOfHemispheres
-        HemisphereTag = HemisphereIndexToTag(z);
-        HemisphereIndex = z;
-        for i=1:NumberOfLobes
-            LobeTag = LobeIndexToTag(Lobes(i));
-            RegionMask = strcmp(LobeTag,LobeRegions) == 1 & strcmp(HemisphereTag,HemisphereRegions) == 1;
-            NumberOfRegionInLobe = sum(RegionMask);
-            if (NumberOfRegionInLobe > 0)
-                AgregatingNodeIndex = AgregatingNodeIndex + 1;
-                LobeIndex = AgregatingNodeIndex;
-                RegionNodeIndex = find(RegionMask == 1);
-                for y=1:NumberOfRegionInLobe
-                    AgregatingNodeIndex = AgregatingNodeIndex + 1;
-                    RegionIndex = AgregatingNodeIndex;
-                    ChannelsOfThisGroup = ismember(aNames, sGroups(RegionNodeIndex(y)).RowNames);
-                    Index = find(ChannelsOfThisGroup) + NumberOfAgregatingNodes;
-                    Vertices(Index,1:3) = aLocs(ChannelsOfThisGroup, 1:3);
-                    Names(Index) = aNames(ChannelsOfThisGroup);
-                    ChannelData(Index,:) = repmat([RegionIndex LobeIndex HemisphereIndex], size(Index));
-                end
-            end
-        end
-    end
-    
-    VertexScale3D = getappdata(hFig, 'VertexScale3D');
-    Centroid = getappdata(hFig, 'VertexInitCentroid');
-    %Centroid = sum(Vertices) / size(Vertices,1);
-    Vertices = Vertices - repmat(Centroid, size(Vertices,1), 1);
-    Vertices = Vertices * VertexScale3D;
-    
-    m = size(Vertices,1);
-    n = size(V,1);
-    XX = sum(Vertices.*Vertices,2);
-    YY = sum(V'.*V',1);
-    D = XX(:,ones(1,n)) + YY(ones(1,m),:) - 2*Vertices*V';
-    for i=NumberOfAgregatingNodes+1:NumberOfVertices
-        Hemis = ChannelData(i,3);
-        Valid = find(H == Hemis);
-        [tmp, nearestNode] = min(D(i,Valid));
-        nearestNode = Valid(nearestNode);
-        Paths{i} = [i nearestNode];
-    end
-    
-    Vertices(1:NumberOfAgregatingNodes,:) = V;
-    
-    bst_figures('SetFigureHandleField', hFig, 'AgregatingNodes', 1:NumberOfAgregatingNodes);
-    bst_figures('SetFigureHandleField', hFig, 'MeasureNodes', (NumberOfAgregatingNodes + 1):(NumberOfAgregatingNodes + NumberOfMeasureNodes));
-    bst_figures('SetFigureHandleField', hFig, 'NumberOfLevels', NumberOfLevels);
-    bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
-    bst_figures('SetFigureHandleField', hFig, 'ChannelData', ChannelData);
-end
-
-
-function [V H] = ComputeCortexPathBundle(SurfaceStruct)
-
-    Vertices = SurfaceStruct.Vertices;
-    Middle = sum(Vertices) / size(Vertices,1);
-    [yMin, minHideVert] = min(Vertices(:,2));
-    [yMax, maxHideVert] = max(Vertices(:,2));
-    xMin = min(Vertices(:,1));
-    xMax = max(Vertices(:,1));
-    zMin = min(Vertices(:,3));
-    zMax = max(Vertices(:,3));
-    
-    V(1,:) = Middle + [xMin * 0.00 yMin * 0.20 zMin * 0.20];
-    V(2,:) = Middle + [xMin * 0.00 yMin * 0.20 zMax * 0.10];
-    V(3,:) = Middle + [xMin * 0.00 yMax * 0.20 zMin * 0.20];
-    V(4,:) = Middle + [xMin * 0.00 yMax * 0.20 zMax * 0.10];
-    H(1:4) = [1 1 2 2]'; 
-    vIndex = 4;
-    
-    % Start point
-    START_PERCENT = .3;
-    
-    % Left hemisphere
-    LeftSurface = find(Vertices(:,2) < START_PERCENT * yMin)';
-    LeftSurface = setdiff(LeftSurface, minHideVert);
-    if ~isempty(minHideVert)
-        while ~isempty(LeftSurface)
-            minHideVert = union(minHideVert, LeftSurface);
-            LeftSurface = tess_scout_swell(minHideVert, SurfaceStruct.VertConn);
-        end
-    end
-    
-    % Right hemisphere
-    RightSurface = find(Vertices(:,2) > START_PERCENT * yMax)';
-    RightSurface = setdiff(RightSurface, maxHideVert);
-    if ~isempty(maxHideVert)
-        while ~isempty(RightSurface)
-            maxHideVert = union(maxHideVert, RightSurface);
-            RightSurface = tess_scout_swell(maxHideVert, SurfaceStruct.VertConn);
-        end
-    end
-    
-    Surface{1} = Vertices(maxHideVert,:);
-    Surface{2} = Vertices(minHideVert,:);
-    
-%     nCoronalSlice = 4;
-%     nTransversalSlice = [2 3 3 2];
-%     Connected = [1 2; 1 3; 1 17; 1 18; 1 20; 1 21;
-%                  2 1; 2 4; 2 18; 2 19; 2 21; 2 22;
-%                  3 1; 3 4; 3 7; 3 8; 3 10; 3 11;
-%                  4 2; 4 3; 4 8; 4 9; 4 11; 4 12;
-%                  ...
-%                  5 6; 5 8;
-%                  6 8;
-%                  7 8; 7 10;
-%                  8 9; 8 11;
-%                  9 12;
-%                  10 11;
-%                  11 12; 11 13; 11 14;
-%                  12 14;
-%                  13 14;
-%                  14 13;
-%                  ...
-%                  15 16; 15 18;
-%                  16 18;
-%                  17 18; 17 20;
-%                  18 19; 18 21;
-%                  19 22;
-%                  20 21;
-%                  21 22; 21 23; 21 24;
-%                  22 24;
-%                  23 24;
-%                  24 23];
-    nCoronalSlice = 4;
-    nTransversalSlice = [2 3 3 2];
-    CoronalStep = (xMax + abs(xMin)) / nCoronalSlice;
-    for y=1:2
-        Surf = Surface{y};
-        cStart = xMin;
-        for i=1:nCoronalSlice
-            cEnd = cStart + CoronalStep;
-            cIndex = Surf(:,1) >= cStart & Surf(:,1) < cEnd;
-            tStart = zMin;
-            TransversalStep = (zMax + abs(zMin)) / nTransversalSlice(i);
-            for z=1:nTransversalSlice(i)
-                tEnd = tStart + TransversalStep;
-                tIndex = Surf(:,3) >= tStart & Surf(:,3) < tEnd;
-                denom = sum(cIndex & tIndex);
-                vIndex = vIndex + 1;
-                V(vIndex,:) = [0 0 0];
-                H(vIndex) = y;
-                if (denom > 0)
-                    V(vIndex,:) = sum(Surf(cIndex & tIndex,:)) / denom;
-                    V(vIndex,:) = (0.75 * V(vIndex,:));
-                end
-                tStart = tEnd;
-            end
-            cStart = cEnd;
-        end
-    end
-end
-
-
-% Experimental code
-% function [sGroups] = AssignRegionBasedOnPosition(hFig, aNames, aLocs, sGroups)
-%     NumberOfGroups = size(sGroups,2);
-%     CentroidOfEachGroups = zeros(NumberOfGroups,3);
-%     for i=1:NumberOfGroups
-%         NumberOfChannelsInGroup = size(sGroups(i).RowNames,1);
-%         ChannelsInGroupIndex = ismember(aNames, sGroups(i).RowNames);
-%         C = aLocs(ChannelsInGroupIndex,:);
-%         CentroidOfEachGroups(i,:) = [sum(C(:,1)) sum(C(:,2)) sum(C(:,3))] / NumberOfChannelsInGroup;
-%         % Assign channel hemisphere
-%         if (CentroidOfEachGroups(i,2) > 0.05)
-%             sGroups(i).Region = 1;
-%         elseif (CentroidOfEachGroups(i,2) <= -0.05)
-%             sGroups(i).Region = 2;
-%         else
-%             if (CentroidOfEachGroups(i,1) <= 0)
-%                 sGroups(i).Region = 3;
-%             else
-%                 sGroups(i).Region = 4;
-%             end
-%         end
-%     end
-% end
-
+%%
 function Index = HemisphereTagToIndex(Region)
     Tag = Region(1);
     Index = 4; % Unknown
@@ -3939,248 +3547,6 @@ function [sGroups] = GroupScouts(Atlas)
     end
 end
 
-
-% function ChannelData = BuildChannelData(hFig, aNames, sGroups)
-%     % Get number of nodes
-%     nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
-%     nMeasureNodes = size(bst_figures('GetFigureHandleField', hFig, 'MeasureNodes'),2);
-%     NumberOfChannels = nAgregatingNodes + nMeasureNodes;
-%     % Get levels
-%     % Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-%     % Number of levels
-%     NumberOfLevels = bst_figures('GetFigureHandleField', hFig, 'NumberOfLevels');
-%     % Init structure - (Hemisphere / Lobe / Region)
-%     ChannelData = ones(NumberOfChannels, NumberOfLevels - 2);
-%     % Constant variable
-%     NumberOfHemisphere = 3;
-%     NumberOfLobes = 6;
-%     NumberOfGroups = size(sGroups,2);
-%     % Level specific
-%     if (NumberOfLevels == 5)
-%         % Hemisphere
-%         for i=1:NumberOfHemisphere
-%             HemisphereRegions = cellfun(@(x) {x(1)}, {sGroups.Region})';
-%             HemisphereFilter = strcmp(HemisphereIndexToTag(i), HemisphereRegions) == 1;
-%             RowNames = [sGroups(HemisphereFilter).RowNames];
-%             if (~isempty(RowNames))
-%                 Index = ismember(aNames, RowNames);
-%                 ChannelData(Index,3) = i;
-%             end    
-%         end
-%         % Lobes
-%         for i=1:NumberOfLobes
-%             LobeRegions = cellfun(@(x) {x(2)}, {sGroups.Region})';
-%             LobeFilter = strcmp(LobeIndexToTag(i), LobeRegions) == 1;
-%             RowNames = [sGroups(LobeFilter).RowNames];
-%             if (~isempty(RowNames))
-%                 Index = ismember(aNames, RowNames);
-%                 ChannelData(Index,2) = i;
-%             end
-%         end
-%     end
-%     % Lobe Regions
-%     for i=1:NumberOfGroups
-%         RowNames = [sGroups(i).RowNames];
-%         if (~isempty(RowNames))
-%             Index = ismember(aNames, RowNames);
-%             ChannelData(Index,1) = i;
-%         end
-%     end
-% end
-
-%function BuildDisplayStatistics(hFig, sGroups)
-%     RowNames = [sGroups.RowNames];
-%     NumberOfMeasure = size(RowNames,1);
-%     NumberOfRegion = size(sGroups,1);
-%     
-%     Hemispheres = [];
-%     Lobes = [];
-%     
-%     RegionsSize = cellfun(@(x) {size(x,2)}, {sGroups.Region});
-%     NumberOfLevel = max(RegionsSize) + 1;
-%     if (NumberOfLevel > 0)
-%         Hemispheres = unique(cellfun(@(x) {x(1)}, {sGroups.Region}));
-%     end
-%     if (NumberOfLevel > 1)
-%         Lobes = unique(cellfun(@(x) {x(2)}, {sGroups.Region}));
-%     end
-%     
-%     NumberOfLobes = size(Lobes,2);
-%     NumberOfHemispheres = size(Hemispheres,2);
-%end
-
-%
-% Experimental display, could be updated and used one day.
-%
-% function [Vertices Paths Names] = OrganiseNodesWithMeasureDensity(hFig, aNames, sGroups)
-% 
-%     % Display options
-%     MeasureLevel = 4;
-%     RegionLevel = 3.5;
-%     LobeLevel = 2;
-%     HemisphereLevel = 0.5;
-% 
-%     
-%     RowNames = [sGroups.RowNames];    
-%     Hemispheres = [];
-%     Lobes = [];
-%     
-%     RegionsSize = cellfun(@(x) {size(x,2)}, {sGroups.Region});
-%     % NumberOfLevel = Self + Middle + EverythingInBetween
-%     NumberOfLevel = max([RegionsSize{:}]) + 2;
-%     Levels = cell(NumberOfLevel,1);
-%     if (NumberOfLevel > 0)
-%         Levels{1} = cellfun(@(x) {x(1)}, {sGroups.Region});
-%         Hemispheres = unique(Levels{1});
-%     end
-%     if (NumberOfLevel > 1)
-%         Levels{2} = unique(cellfun(@(x) {x(2)}, {sGroups.Region}));
-%         Lobes = unique(Levels{2});
-%     end
-%     
-%     % Interior to Exterior
-%     NumberOfEachLevel = zeros(NumberOfLevel,1);
-%     NumberOfEachLevel(1) = 1;
-%     NumberOfEachLevel(2) = size(Hemispheres,1);
-%     NumberOfEachLevel(3) = size(Lobes,1) * 2;
-%     NumberOfEachLevel(4) = size(sGroups,2);
-%     NumberOfEachLevel(5) = size(RowNames,2);
-%     
-%     NumberOfAgregatingNodes = sum(NumberOfEachLevel(1:(end-1)));
-%     NumberOfMeasureNodes = sum(NumberOfEachLevel(end));
-%     NumberOfVertices = sum(NumberOfEachLevel);
-%     Vertices = zeros(NumberOfVertices,3);
-%     Names = cell(NumberOfVertices,1);
-%     Paths = zeros(NumberOfVertices,NumberOfLevel);
-%     
-%     AngleStep = 360 / (NumberOfMeasureNodes + 2 * sum(NumberOfEachLevel(2:(end-1))));
-% 
-%     HemispheresChannels = cell(NumberOfEachLevel(2),1);
-%     HemispheresPercent = zeros(NumberOfEachLevel(2),1);
-%     for i=1:NumberOfEachLevel(2)
-%         GroupsIndex = strcmp(LobeIndexToTag(i), Levels{1}) == 1;
-%         HemispheresChannels{i} = [sGroups(GroupsIndex).RowNames];
-%         HemispheresPercent(i) = size(HemispheresChannels{i},2) / NumberOfMeasureNodes;
-%     end
-%      
-%     % Static Nodes
-%     Vertices(1,:) = [0 0 0];                    % Corpus Callosum
-%     Vertices(2,:) = [-HemisphereLevel 0 0];     % Left Hemisphere
-%     Vertices(3,:) = [ HemisphereLevel 0 0];     % Right Hemisphere
-%     Vertices(4,:) = [ 0 -HemisphereLevel 0];    % Cerebellum
-%     Names(1) = {'Corpus Callosum'};
-%     Names(2) = {'Left Hemisphere'};
-%     Names(3) = {'Right Hemisphere'};
-%     Names(4) = {'Cerebellum'};
-% 
-%     % The lobes are determined by the mean of the regions nodes
-%     % The regions nodes are determined by the mean of their nodes
-% 
-%     % Organise Left Hemisphere
-%     RegionIndex = 4 + NumberOfLobes * 2 + 1;
-%     for i=1:NumberOfLobes
-%         LobeIndex = i;
-%         Angle = 90 + LobeSections(LobeIndex,1);
-%         LobeTag = LobeIndexToTag(i);
-%         HemisphereRegions
-%         RegionMask = strcmp(LobeTag,LobeRegions) == 1 & strcmp('L',HemisphereRegions) == 1;
-%         RegionNodeIndex = find(RegionMask == 1);
-%         NumberOfRegionInLobe = sum(RegionMask);
-%         for y=1:NumberOfRegionInLobe
-%             Group = sGroups(RegionNodeIndex(y));
-%             Region = [Group.Region];
-%             NumberOfNodesInGroup = size([Group.RowNames],2);
-%             % Figure out how much space per node
-%             AllowedPercent = NumberOfNodesInGroup / NumberOfNodesPerLobe(LobeIndex);
-%             LobeSpace = LobeSections(LobeIndex,2) - LobeSections(LobeIndex,1);
-%             AllowedSpace = AllowedPercent * LobeSpace;
-%             % +2 is for the offset at borders so regions don't touch
-%             LocalTheta = linspace((pi/180) * (Angle), (pi/180) * (Angle + AllowedSpace), NumberOfNodesInGroup + 2);
-%             % Retrieve cartesian coordinate
-%             [posX,posY] = pol2cart(LocalTheta(2:end-1),1);
-%             % Assign
-%             ChannelsOfThisGroup = ismember(aNames, Group.RowNames);
-%             % Compensate for agregating nodes
-%             Index = find(ChannelsOfThisGroup) + NumberOfAgregatingNodes;
-%             Vertices(Index, 1:2) = [posX' posY'] * MeasureLevel;
-%             Names(Index) = aNames(ChannelsOfThisGroup);
-%             % Update Paths
-%             Paths(ChannelsOfThisGroup,1) = Index;
-%             Paths(ChannelsOfThisGroup,2) = RegionIndex;
-%             Paths(ChannelsOfThisGroup,3) = LobeIndex + 4;
-%             Paths(ChannelsOfThisGroup,4) = 2;
-%             Paths(ChannelsOfThisGroup,5) = 1;
-%             % Update current angle
-%             Angle = Angle + AllowedSpace;
-%             % Update agregating node
-%             Mean = mean([posX' posY']);
-%             Mean = Mean / norm(Mean);
-%             Vertices(RegionIndex, 1:2) = Mean * RegionLevel;
-%             Names(RegionIndex) = {['Region ' Region(3:end)]};
-%             RegionIndex = RegionIndex + 1;
-%         end
-%         
-%         Pos = 90 + (LobeSections(LobeIndex,2) + LobeSections(LobeIndex,1)) / 2;
-%         [posX,posY] = pol2cart((pi/180) * (Pos),1);
-%         Vertices(i+4, 1:2) = [posX,posY] * LobeLevel;
-%         Names(i+4) = {['Left ' LobeTag]};
-%     end
-% %     
-% %     % Organise Right Hemisphere
-% %     for i=1:NumberOfLobes
-% %         LobeIndex = i;
-% %         Angle = 90 - LobeSections(LobeIndex,1);
-% %         LobeTag = LobeIndexToTag(i);
-% %         RegionMask = strcmp(LobeTag,LobeRegions) == 1 & strcmp('R',HemisphereRegions) == 1;
-% %         RegionNodeIndex = find(RegionMask == 1);
-% %         NumberOfRegionInLobe = sum(RegionMask);
-% %         for y=1:NumberOfRegionInLobe
-% %             Group = sGroups(RegionNodeIndex(y));
-% %             Region = [Group.Region];
-% %             NumberOfNodesInGroup = size([Group.RowNames],2);
-% %             % Figure out how much space per node
-% %             AllowedPercent = NumberOfNodesInGroup / NumberOfNodesPerLobe(LobeIndex);
-% %             LobeSpace = LobeSections(LobeIndex,2) - LobeSections(LobeIndex,1);
-% %             AllowedSpace = AllowedPercent * LobeSpace;
-% %             % +2 is for the offset at borders so regions don't touch        
-% %             LocalTheta = linspace(deg2rad(Angle), deg2rad(Angle - AllowedSpace), NumberOfNodesInGroup + 2);
-% %             % Retrieve cartesian coordinate
-% %             [posX,posY] = pol2cart(LocalTheta(2:end-1),1);
-% %             % Assign
-% %             ChannelsOfThisGroup = ismember(aNames, Group.RowNames);
-% %             % Compensate for agregating nodes
-% %             Index = find(ChannelsOfThisGroup) + NumberOfAgregatingNodes;
-% %             Vertices(Index, 1:2) = [posX' posY'] * MeasureLevel;
-% %             Names(Index) = aNames(ChannelsOfThisGroup);
-% %             % Update Paths
-% %             Paths(ChannelsOfThisGroup,1) = Index;
-% %             Paths(ChannelsOfThisGroup,2) = RegionIndex;
-% %             Paths(ChannelsOfThisGroup,3) = NumberOfLobes + LobeIndex + 4;
-% %             Paths(ChannelsOfThisGroup,4) = 3;
-% %             Paths(ChannelsOfThisGroup,5) = 1;
-% %             % Update current angle
-% %             Angle = Angle - AllowedSpace;
-% %             % Update agregating node
-% %             Mean = mean([posX' posY']);
-% %             Mean = Mean / norm(Mean);
-% %             Vertices(RegionIndex, 1:2) = Mean * RegionLevel;
-% %             Names(RegionIndex) = {['Region ' Region(3:end)]};
-% %             RegionIndex = RegionIndex + 1;
-% %         end
-% %         
-% %         Pos = 90 - (LobeSections(LobeIndex,2) + LobeSections(LobeIndex,1)) / 2;
-% %         [posX,posY] = pol2cart(deg2rad(Pos),1);
-% %         Vertices(i+NumberOfLobes+4, 1:2) = [posX,posY] * LobeLevel;
-% %         Names(i+NumberOfLobes+4) = {['Right ' LobeTag]};
-% %     end
-% %     
-% %     % Keep Structures Statistics
-% %     AgregatingNodes = 1:NumberOfAgregatingNodes;
-% %     MeasureNodes = NumberOfAgregatingNodes+1:NumberOfAgregatingNodes+NumberOfNodes;    
-% %     bst_figures('SetFigureHandleField', hFig, 'AgregatingNodes', AgregatingNodes);
-% %     bst_figures('SetFigureHandleField', hFig, 'MeasureNodes', MeasureNodes);
-% 
-% end
 
 % @NOTE: ready, no changed needed
 function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sGroups, RowLocs, UpdateStructureStatistics)

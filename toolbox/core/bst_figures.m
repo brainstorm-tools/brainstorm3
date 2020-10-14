@@ -2072,9 +2072,9 @@ function FireSelectedRowChanged()
                 case 'Pac'
                     % Nothing to do
                 case 'Connect'
-                    figure_connect('SelectedRowChangedCallback', iDS, iFig);
-                case 'ConnectViz' % TODO: check
-                    figure_connect_viz('SelectedRowChangedCallback', iDS, iFig);
+                    figure_connect('SelectedRowChangedCallback', iDS, iFig); % empty callback
+                case 'ConnectViz' 
+                    % Nothing to do
                 case 'Image'
                     % Nothing to do
                 otherwise
