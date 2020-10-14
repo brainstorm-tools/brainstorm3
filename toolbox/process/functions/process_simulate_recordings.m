@@ -44,48 +44,55 @@ function sProcess = GetDescription() %#ok<DEFNU>
 
     % Notice inputs
     sProcess.options.label1.Comment = ['<FONT COLOR="#777777">&nbsp;- N signals (constrained) or 3*N signals (unconstrained)<BR>' ...
-                                       '&nbsp;- N scouts: selected in the process options</FONT>'];
+                                       '&nbsp;- N scouts: selected below</FONT>'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.label1.Group   = 'input';
     % Notice algorithm
     sProcess.options.label2.Comment = ['<FONT COLOR="#777777">Algorithm:<BR>' ...
                                        '&nbsp;- Create an empty source file with zeros at every vertex<BR>' ...
                                        '&nbsp;- Assign each signal #i to all the vertices within scout #i<BR>' ... 
-                                       '&nbsp;- Add random noise to the source maps:<BR>' ...
+                                       '&nbsp;- Add random noise to the source maps (optional):<BR>' ...
                                        '&nbsp;&nbsp;&nbsp;<I>Src = Src + SNR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:)));</I><BR>' ...
                                        '&nbsp;- Multiply simulated sources with forward model to obtain recordings<BR>' ...
-                                       '&nbsp;- Add sensor noise, based on noise covariance:<BR>' ...
-                                       '&nbsp;&nbsp;&nbsp;<I>Rec = Rec + SNR2 .* get_noise_signals(NoiseCov);</I><BR><BR></FONT>'];
+                                       '&nbsp;- Add sensor noise, based on noise covariance (optional):<BR>' ...
+                                       '&nbsp;&nbsp;&nbsp;<I>Rec = Rec + SNR2 .* get_noise_signals(NoiseCov);</I><BR></FONT>'];
     sProcess.options.label2.Type    = 'label';
 
     % === SCOUTS
     sProcess.options.scouts.Comment = '';
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
-    % === SAVE DATA 
-    sProcess.options.savedata.Comment = 'Save recordings';
-    sProcess.options.savedata.Type    = 'checkbox';
-    sProcess.options.savedata.Value   = 1;
-    sProcess.options.savedata.Hidden  = 1;
-    % === SAVE SOURCES
-    sProcess.options.savesources.Comment = 'Save full sources <FONT COLOR="#777777">(see process <I>Full source maps from scouts</I>)</FONT>';
-    sProcess.options.savesources.Type    = 'checkbox';
-    sProcess.options.savesources.Value   = 1;
+    sProcess.options.scouts.Group   = 'input';
     % === ADD NOISE
     sProcess.options.isnoise.Comment = 'Add noise';
     sProcess.options.isnoise.Type    = 'checkbox';
     sProcess.options.isnoise.Value   = 0;
     sProcess.options.isnoise.Controller = 'Noise';
     % === LEVEL OF NOISE (SNR1)
-    sProcess.options.noise1.Comment = 'Level of source noise (SNR1):';
+    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (SNR1):';
     sProcess.options.noise1.Type    = 'value';
     sProcess.options.noise1.Value   = {0, '', 2};
     sProcess.options.noise1.Class   = 'Noise';
     % === LEVEL OF SENSOR NOISE (SNR2)
-    sProcess.options.noise2.Comment = 'Level of sensor noise, based on noise covariance (SNR2):';
+    sProcess.options.noise2.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of sensor noise (SNR2):';
     sProcess.options.noise2.Type    = 'value';
     sProcess.options.noise2.Value   = {0, '', 2};
     sProcess.options.noise2.Class   = 'Noise';
+    % === SAVE SOURCES
+    sProcess.options.savesources.Comment = 'Save full sources <FONT COLOR="#777777">(see process <I>Full source maps from scouts</I>)</FONT>';
+    sProcess.options.savesources.Type    = 'checkbox';
+    sProcess.options.savesources.Value   = 1;
+    sProcess.options.savesources.Group   = 'output';
+    % === SAVE DATA 
+    sProcess.options.savedata.Comment = 'Save recordings';
+    sProcess.options.savedata.Type    = 'checkbox';
+    sProcess.options.savedata.Value   = 1;
+    sProcess.options.savedata.Hidden  = 1;
+    % === HEAD MODEL (when simulated on the fly by process_simulate_dipole)
+    sProcess.options.headmodel.Comment = 'Head model file: ';
+    sProcess.options.headmodel.Type    = 'label';
+    sProcess.options.headmodel.Value   = [];
+    sProcess.options.headmodel.Hidden  = 1;
 end
 
 
@@ -98,11 +105,15 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFiles = {};
+    % Two options: using 1) fixed dipoles in input or 2) source model from the database
+    isFixedDipoles = isfield(sProcess.options, 'headmodel') && isfield(sProcess.options.headmodel, 'Value') && ~isempty(sProcess.options.headmodel.Value);
     % Get scouts
-    AtlasList = sProcess.options.scouts.Value;
-    if isempty(AtlasList)
-        bst_report('Error', sProcess, [], 'No scouts selected.');
-        return;
+    if ~isFixedDipoles
+        AtlasList = sProcess.options.scouts.Value;
+        if isempty(AtlasList)
+            bst_report('Error', sProcess, [], 'No scouts selected.');
+            return;
+        end
     end
     % Get other options
     SaveSources = sProcess.options.savesources.Value;
@@ -111,7 +122,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     SNR1 = sProcess.options.noise1.Value{1};
     SNR2 = sProcess.options.noise2.Value{1};
     
-    % === LOAD CHANNEL FILE / HEAD MODEL===
+    % === LOAD CHANNEL FILE ===
     % Get condition
     sStudy = bst_get('Study', sInput.iStudy);
     % Get channel file
@@ -122,16 +133,25 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
     % Get study channel
     sStudyChannel = bst_get('Study', iStudyChannel);
-    % Check head model
-    if isempty(sStudyChannel.iHeadModel)
-        bst_report('Error', sProcess, [], ['No head model file available.' 10 'Please calculate a head model before running simulations.']);
-        return;
-    end
     % Load channel file
     ChannelMat = in_bst_channel(sChannel.FileName);
-    % Load head model
-    HeadModelFile = sStudyChannel.HeadModel(sStudyChannel.iHeadModel).FileName;
-    HeadModelMat = in_bst_headmodel(HeadModelFile);
+    
+    % === LOAD HEAD MODEL ===
+    % Use headmodel in input:  Simulating from dipoles
+    if isFixedDipoles
+        HeadModelFile = [];
+        HeadModelMat = sProcess.options.headmodel.Value;
+    % Load default subject's headmodel:  Simulating from sources
+    else
+        % Check head model
+        if isempty(sStudyChannel.iHeadModel)
+            bst_report('Error', sProcess, [], ['No head model file available.' 10 'Please calculate a head model before running simulations.']);
+            return;
+        end
+        % Load headmodel
+        HeadModelFile = sStudyChannel.HeadModel(sStudyChannel.iHeadModel).FileName;
+        HeadModelMat = in_bst_headmodel(HeadModelFile);
+    end
     % If no orientations: error
     if isempty(HeadModelMat.GridOrient)
         bst_report('Error', sProcess, [], 'No source orientations available in this head model.');
@@ -153,21 +173,23 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
     iChannels = channel_find(ChannelMat.Channel, Modalities);
     
-    % === LOAD CORTEX ===
-    % Get surface from the head model
-    SurfaceFile = HeadModelMat.SurfaceFile;
-    % Get scout structures
-    [sScouts, AtlasNames] = process_extract_scout('GetScoutsInfo', sProcess, sInput, SurfaceFile, AtlasList);
-    if isempty(sScouts)
-        return;
+    % === GET SIMULATED SCOUTS ===
+    if ~isFixedDipoles
+        % Get surface from the head model
+        SurfaceFile = HeadModelMat.SurfaceFile;
+        % Get scout structures
+        [sScouts, AtlasNames] = process_extract_scout('GetScoutsInfo', sProcess, sInput, SurfaceFile, AtlasList);
+        if isempty(sScouts)
+            return;
+        end
+        % Accept only scouts from the same atlas
+        if (length(AtlasNames) > 1) && any(~strcmpi(AtlasNames, AtlasNames{1}))
+            bst_report('Error', sProcess, [], 'All the scouts in input must come from the same atlas.');
+            return;
+        end
+        % Check if this is a volume atlas
+        isVolumeAtlas = panel_scout('ParseVolumeAtlas', AtlasNames{1});
     end
-    % Accept only scouts from the same atlas
-    if (length(AtlasNames) > 1) && any(~strcmpi(AtlasNames, AtlasNames{1}))
-        bst_report('Error', sProcess, [], 'All the scouts in input must come from the same atlas.');
-        return;
-    end
-    % Check if this is a volume atlas
-    isVolumeAtlas = panel_scout('ParseVolumeAtlas', AtlasNames{1});
     
     % === LOAD INPUT FILE ===
     % Read input file
@@ -178,7 +200,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     switch (HeadModelMat.HeadModelType)
         case 'surface'
             % Constrained orientation: one scout = one signal
-            if (length(sScouts) == size(sMatrix.Value,1))
+            if isFixedDipoles || (length(sScouts) == size(sMatrix.Value,1))
                 nComponents = 1;
                 % Apply the fixed orientation to the Gain matrix (normal to the cortex)
                 HeadModelMat.Gain = bst_gain_orient(HeadModelMat.Gain, HeadModelMat.GridOrient);
@@ -190,7 +212,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 return;
             end
             % Check volume/surface
-            if isVolumeAtlas
+            if ~isFixedDipoles && isVolumeAtlas
                 bst_report('Error', sProcess, [], 'You cannot use a volume scout with a surface head model.');
                 return;
             end
@@ -224,25 +246,34 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     nSources = size(HeadModelMat.Gain,2);
     % Number of time points: copy from matrix file
     nTime = size(sMatrix.Value,2);
-    % Initialize space matrix
-    ImageGridAmp = sparse([],[],[],nSources, nTime, sum(cellfun(@length, {sScouts.Vertices}))*nTime);
-    % Fill matrix
-    for i = 1:length(sScouts)
-        % Get source indices
-        iSourceRows = bst_convert_indices(sScouts(i).Vertices, nComponents, HeadModelMat.GridAtlas, ~isVolumeAtlas);
-        % Constrained models: One scout x One signal
-        if (nComponents == 1)   
-            % Replicate signal values for all the dipoles in the scout
-            ImageGridAmp(iSourceRows,:) = repmat(sMatrix.Value(i,:), length(iSourceRows), 1);
-        % Unconstrained models: One scout x One orientation (x,y,z) = one signal
-        elseif (nComponents == 3)
-            for dim = 1:3
-                iSignal = 3*(i-1) + dim;
-                % Replicate signal values for all the dipoles in the scout (with <dim> orientation only)
-                ImageGridAmp(iSourceRows(dim:3:end),:) = repmat(sMatrix.Value(iSignal,:), length(iSourceRows)/3, 1);
+    
+    % If not using a fixed list of dipoles: rebuild full source maps
+    if ~isFixedDipoles
+        % Initialize space matrix
+        ImageGridAmp = sparse([],[],[],nSources, nTime, sum(cellfun(@length, {sScouts.Vertices}))*nTime);
+        % Fill matrix
+        for i = 1:length(sScouts)
+            % Get source indices
+            iSourceRows = bst_convert_indices(sScouts(i).Vertices, nComponents, HeadModelMat.GridAtlas, ~isVolumeAtlas);
+            % Constrained models: One scout x One signal
+            if (nComponents == 1)   
+                % Replicate signal values for all the dipoles in the scout
+                ImageGridAmp(iSourceRows,:) = repmat(sMatrix.Value(i,:), length(iSourceRows), 1);
+            % Unconstrained models: One scout x One orientation (x,y,z) = one signal
+            elseif (nComponents == 3)
+                for dim = 1:3
+                    iSignal = 3*(i-1) + dim;
+                    % Replicate signal values for all the dipoles in the scout (with <dim> orientation only)
+                    ImageGridAmp(iSourceRows(dim:3:end),:) = repmat(sMatrix.Value(iSignal,:), length(iSourceRows)/3, 1);
+                end
             end
         end
+
+    % Not using scouts: Source map = list of signals in input
+    else
+        ImageGridAmp = sMatrix.Value;
     end
+
     % Add noise SNR1 (random noise on the sources)
     if isNoise && (SNR1 > 0)
         ImageGridAmp = ImageGridAmp + SNR1 .* (rand(size(ImageGridAmp))-0.5) .* max(max(abs(ImageGridAmp)));
