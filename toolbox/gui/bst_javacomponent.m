@@ -58,9 +58,8 @@ if (sum(bgColor) < 0.5)
 end
 
 % ===== OLD: JAVACOMPONENTS ======
-% Older version of Matlab (< 2020a): use java components
+% Older version of Matlab (< 2019b): use java components
 if bst_get('isJavacomponent')
-% if 1
     switch (compType)
         case 'label'
             jComp = java_create('javax.swing.JLabel');
@@ -106,7 +105,7 @@ if bst_get('isJavacomponent')
     set(hComp, 'Units', 'pixels');
     
     
-% ===== NEW >= 2020 =====
+% ===== NEW >= 2019b =====
 % Newer matlab versions: use dedicated functions
 else
     switch (compType)
