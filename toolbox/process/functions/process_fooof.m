@@ -147,6 +147,12 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     
+    hasOptimToolbox = 0;
+    if exist('fir2','file') == 2 && strcmp(implementation,'matlab')
+        hasOptimToolbox = 1;
+        disp("Using constrained optimization, Guess Weight ignored.")
+    end
+    
     % Initialize returned list of files
     OutputFile = {};
     for iFile = 1:length(sInputs)
@@ -162,7 +168,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         % Switch between implementations
         switch (implementation)
             case 'matlab'   % Matlab standalone FOOOF
-                [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt);  
+                [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt, hasOptimToolbox);  
             case 'python'
                 opt.peak_type = 'gaussian';
                 [FOOOF_freqs, FOOOF_data] = process_fooof_py('FOOOF_python', PsdMat.TF, PsdMat.Freqs, opt);
@@ -211,12 +217,7 @@ end
 %  ===================================================================================
 
 %% ===== MATLAB STANDALONE FOOOF =====
-function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
-    hasOptimToolbox = 0;
-    if exist('fir2','file') == 2
-        hasOptimToolbox = 1;
-        disp("Using constrained optimization, Guess Weight ignored.")
-    end
+function [fs, fg] = FOOOF_matlab(TF, Freqs, opt, hOT)
     % Find all frequency values within user limits
     fMask = (bst_round(Freqs,1) >= opt.freq_range(1)) & (Freqs <= opt.freq_range(2));
     fs = Freqs(fMask);
@@ -232,8 +233,8 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
         flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
         % Fit peaks
         [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
-            opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,hasOptimToolbox);
-        if opt.thresh_after && ~hasOptimToolbox  % Check thresholding requirements are met for unbounded optimization
+            opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,hOT);
+        if opt.thresh_after && ~hOT  % Check thresholding requirements are met for unbounded optimization
             peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
             peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
             peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
