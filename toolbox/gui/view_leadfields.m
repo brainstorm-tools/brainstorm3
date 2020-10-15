@@ -447,7 +447,7 @@ bst_progress('stop');
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, '       [Press arrows for next/previous channel (or H for help)]'];
         end
-        set(hLabel, 'String', strTitle, 'Position', [10 1 1500 35],'ForegroundColor', [1 1 1]);
+        set(hLabel, 'String', strTitle, 'Position', [10 1 1600 35],'ForegroundColor', [1 1 1]);
         % Arrows legend
         legend(hQuiver, strLegend, ...
             'TextColor',   'w', ...
