@@ -164,7 +164,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             case 'matlab'   % Matlab standalone FOOOF
                 [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt);  
             case 'python'
-                opt.peak_type = 'Gaussian';
+                opt.peak_type = 'gaussian';
                 [FOOOF_freqs, FOOOF_data] = process_fooof_py('FOOOF_python', PsdMat.TF, PsdMat.Freqs, opt);
             otherwise
                 error('Invalid implentation.');
@@ -233,7 +233,7 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
         % Fit peaks
         [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
             opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,hasOptimToolbox);
-        if opt.thresh_after  % Check thresholding requirements are met again
+        if opt.thresh_after && ~hasOptimToolbox  % Check thresholding requirements are met again
             peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
             peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
             peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
@@ -409,7 +409,7 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 %           Parameter estimates for aperiodic fit.
 
 %       Set guess params for lorentzian aperiodic fit, guess params set at init
-    options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
+    options = optimset('Display', 'off', 'TolX', 1e-4, 'TolFun', 1e-6, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
 
     switch (aperiodic_mode)
@@ -458,7 +458,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
 
     % Second aperiodic fit - using results of first fit as guess parameters
 
-    options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
+    options = optimset('Display', 'off', 'TolX', 1e-4, 'TolFun', 1e-6, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
     guess_vec = popt;
 
@@ -854,14 +854,17 @@ function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_
 %       peak_params : mx3, where m =  No. of peaks.
 %           Peak parameters post-optimization.
 
-    options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
-        'MaxFunEvals', 5000, 'MaxIter', 5000);
+    
     if hOT % Use OptimToolbox for fmincon
+        options = optimset('Display', 'off', 'TolX', 1e-3, 'TolFun', 1e-5, ...
+        'MaxFunEvals', 3000, 'MaxIter', 3000); % Tuned options
         lb = [guess(:,1)-guess(:,3)*2,zeros(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(1)];
         ub = [guess(:,1)+guess(:,3)*2,inf(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(2)];
         peak_params = fmincon(@error_model_constr,guess,[],[],[],[], ...
             lb,ub,[],options,freqs,flat_spec, peak_type);
     else % Use basic simplex approach, fminsearch, with guess_weight
+        options = optimset('Display', 'off', 'TolX', 1e-4, 'TolFun', 1e-5, ...
+        'MaxFunEvals', 5000, 'MaxIter', 5000);
         peak_params = fminsearch(@error_model,...
             guess, options, freqs, flat_spec, peak_type, guess, guess_weight);
     end
