@@ -149,7 +149,13 @@ hLabel = uicontrol('Style', 'text', ...
 
 %% ===== DISPLAY LEADFIELD =====
 % Current sensor
+useLogScale = false;
+useLogScaleLegendMsg = 'Off';
 iChannel = 1;
+iQuiverSize = 1;
+iQuiverWidth = 1;
+iThresholdLF = 1;
+iBalance = 0; % sense of the threshold
 DrawArrows();
 bst_progress('stop');
 
@@ -163,16 +169,54 @@ bst_progress('stop');
     function KeyPress_Callback(hFig, keyEvent)
         switch (keyEvent.Key)
             % === LEFT, RIGHT, PAGEUP, PAGEDOWN : Processed by TimeWindow  ===
-            case {'leftarrow', 'space', 'uparrow'}
-                iChannel = iChannel - 1;
-            case 'pagedown'
-                iChannel = iChannel - 10;
-            case {'rightarrow', 'downarrow'}
-                iChannel = iChannel + 1;
-            case 'pageup'
-                iChannel = iChannel + 10;
+            case {'leftarrow',}
+                if ismember('shift', keyEvent.Modifier)
+                    iQuiverSize = iQuiverSize /1.2;
+                elseif ismember('control', keyEvent.Modifier)
+                    iQuiverWidth = iQuiverWidth / 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    iThresholdLF = iThresholdLF - 0.01;
+                else
+                    iChannel = iChannel - 1; 
+                end
+            case {'rightarrow'}
+                 if ismember('shift', keyEvent.Modifier)
+                    iQuiverSize = iQuiverSize * 1.2;
+                 elseif ismember('control', keyEvent.Modifier)
+                     iQuiverWidth = iQuiverWidth * 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    iThresholdLF = iThresholdLF + 0.01;
+                 else
+                     iChannel = iChannel + 1;
+                 end
+            case 'uparrow'
+                if ismember('shift', keyEvent.Modifier)
+                    iQuiverSize = iQuiverSize * 1.2;
+                elseif ismember('control', keyEvent.Modifier)
+                    iQuiverWidth = iQuiverWidth * 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    iThresholdLF = iThresholdLF + 0.01;
+                 else                   
+                    if ~isempty(iRef)
+                        iRef = iRef + 1;
+                    end
+                end
+            case 'downarrow'
+                if ismember('shift', keyEvent.Modifier)
+                    iQuiverSize = iQuiverSize / 1.2;
+                 elseif ismember('control', keyEvent.Modifier)
+                    iQuiverWidth = iQuiverWidth / 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    iThresholdLF = iThresholdLF - 0.01;
+                 else
+                    if ~isempty(iRef)
+                        iRef = iRef - 1;
+                    end
+                end
             case 'r' %% not for MEG
                 SelectReference();
+            case 't' %% not for MEG
+                SelectTarget();
             case 's'
                 if ~isempty(findobj(hFig, 'Tag', 'SetVertices'))
                     delete(findobj(hFig, 'Tag', 'SetVertices'))
@@ -201,16 +245,79 @@ bst_progress('stop');
                 if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
                     delete(findobj(hAxes, 'Tag', 'allChannel'))
                 end
+           
+            case 'l'
+                if ismember('shift', keyEvent.Modifier)
+                    useLogScale = ~useLogScale;
+                    if (useLogScale)
+                        useLogScaleLegendMsg = 'On';
+                    else
+                        useLogScaleLegendMsg = 'Off';
+                    end
+                end
+                
+             case 'return'
+                if ismember('shift', keyEvent.Modifier)
+                    useLogScale = ~useLogScale;
+                    if (useLogScale)
+                        useLogScaleLegendMsg = 'On';
+                    else
+                        useLogScaleLegendMsg = 'Off';
+                    end
+                elseif ismember('alt', keyEvent.Modifier)
+                     iBalance = ~iBalance;
+                else
+                    return;    
+                end
             case 'h'
                 java_dialog('msgbox', ['<HTML><TABLE>' ...
-                    '<TR><TD><B>Left arrow</B></TD><TD>Previous channel</TD></TR>' ....
-                    '<TR><TD><B>Right arrow</B></TD><TD>Next channel</TD></TR>'....
-                    '<TR><TD><B>Page up</B></TD><TD>Previous 10th channel</TD></TR>'....
-                    '<TR><TD><B>Page down</B></TD><TD>Next 10th channel</TD></TR>'....
+                    '<TR><TD><B>Left arrow</B></TD><TD>Previous target channel (red color)</TD></TR>' ....
+                    '<TR><TD><B>Right arrow</B></TD><TD>Next target channel (red color)</TD></TR>'....
+                    '<TR><TD><B>Up arrow</B></TD><TD>Previous ref channel (green color)</TD></TR>'....
+                    '<TR><TD><B>Down arrow</B></TD><TD>Next ref channel (green color)</TD></TR>'....
+                    '<TR><TD><B>Shift + uparrow</B></TD><TD>Increase the vector length</TD></TR>'...
+                    '<TR><TD><B>Shift + downarrow</B></TD><TD>Decrease the vector length</TD></TR>'...                   
+                    '<TR><TD><B>Control + uparrow</B></TD><TD>Increase the vector width</TD></TR>'...
+                    '<TR><TD><B>Control + downarrow</B></TD><TD>Decrease the vector width</TD></TR>'... 
+                    '<TR><TD><B>Shift + L</B></TD><TD>Toggle on/off logarithmic scale</TD></TR>'...
                     '<TR><TD><B>M</B></TD><TD>Change the <B>M</B>odality (MEG, EEG, SEEG, ECOG)</TD></TR>'....
-                    '<TR><TD><B>R</B></TD><TD>Change the <B>R</B>eference electrode</TD></TR>'....
+                    '<TR><TD><B>R</B></TD><TD>Select the <B>R</B>eference channel</TD></TR>'....
+                    '<TR><TD><B>T</B></TD><TD>Select the <B>T</B>arget channel</TD></TR>'....
                     '<TR><TD><B>S</B></TD><TD>Show/hide the source grid</TR>'....
-                    '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR></TABLE>'], 'Keyboard shortcuts');
+                    '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR>'...
+                    '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'...
+                    '</TABLE>'], 'Keyboard shortcuts');
+           
+                  
+                % === NUMBERS : VIEW SHORTCUTS ===
+            case '0'
+                SetStandardView(hFig, {'left', 'right', 'top'});
+            case '1'
+                SetStandardView(hFig, 'left');
+                
+            case '2'
+                SetStandardView(hFig, 'bottom');
+            case '3'
+                SetStandardView(hFig, 'right');
+                
+            case '4'
+                SetStandardView(hFig, 'front');
+                
+            case '5'
+                SetStandardView(hFig, 'top');
+                
+            case '6'
+                SetStandardView(hFig, 'back');
+                
+            case '7'
+                SetStandardView(hFig, {'left', 'right'});
+                
+            case '8'
+                SetStandardView(hFig, {'bottom', 'top'});
+                
+            case '9'
+                SetStandardView(hFig, {'front', 'back'});
+                
             otherwise
                 KeyPressFcn_bak(hQuiver, keyEvent);
                 return;
@@ -222,9 +329,15 @@ bst_progress('stop');
         if (iChannel > length(Channels))
             iChannel = 1;
         end
+        % Redraw arrows
+        if (iRef <= 0)
+            iRef = length(Channels);
+        end
+        if (iRef > length(Channels))
+            iRef = 1;
+        end
         DrawArrows();
     end
-
 
 %% ===== DRAW CURRENT CHANNEL =====
     function DrawArrows()
@@ -255,12 +368,34 @@ bst_progress('stop');
             end
             % Display arrows
             LeadField = reshape(LeadField,3,[])'; % each column is a vector
+            if(useLogScale)
+                LeadField = logScaledLeadField(LeadField);
+            end
+            % thresholding
+            normLF = sqrt((LeadField(:,1) ).^2 +(LeadField(:,2) ).^2 + (LeadField(:,3)).^2);
+            [col1, ind] = sort(normLF, 'ascend');
+            LeadFieldRordered = LeadField(ind,:);
+            cdf = cumsum(col1); % Compute cdf
+            cdf = cdf/cdf(end); % Normalize
+            % Find index bellow or above the thresholding
+            if iBalance == 0 % 0 ==> inferior and 1 is superior 
+                index = find(cdf <= iThresholdLF);
+                iSymbole = '<=';
+            else
+                index = find(cdf > iThresholdLF);   
+                iSymbole = '>';
+            end
+            dataValue = zeros(size(LeadFieldRordered));
+            dataValue(index,:) = LeadFieldRordered(index,:);
+
             hQuiver(iLF) = quiver3(...
-                HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ...
-                LeadField(:,1), LeadField(:,2), LeadField(:,3), ...
-                5, ...
+                ...HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ...
+                ...LeadField(:,1), LeadField(:,2), LeadField(:,3), ...
+                HeadmodelMat{iLF}.GridLoc(ind,1), HeadmodelMat{iLF}.GridLoc(ind,2), HeadmodelMat{iLF}.GridLoc(ind,3), ...
+                dataValue(:,1), dataValue(:,2), dataValue(:,3), ...
+                iQuiverSize, ...
                 'Parent',    hAxes, ...
-                'LineWidth', 1, ...
+                'LineWidth', iQuiverWidth, ...
                 'Color',     ColorOrder(mod(iLF-1, length(ColorOrder)) + 1, :), ...
                 'Tag',       'lfArrows');
             % Arrow legends
@@ -299,18 +434,18 @@ bst_progress('stop');
             end
             % Title bar (channel name)
             if isAvgRef
-                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = AvgRef', iChannel, length(Channels), Channels(iChannel).Name,selectedModality);
+                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = AvgRef  | iThresholdLF %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality, iSymbole,  num2str(iThresholdLF*100),useLogScaleLegendMsg);
             else
-                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name);
+                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = %s| iThresholdLF %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name, iSymbole, num2str(iThresholdLF*100),useLogScaleLegendMsg);
             end
         else
-            strTitle = sprintf('Channel #%d/%d  (%s)', iChannel, length(Channels), Channels(iChannel).Name);            
+            strTitle = sprintf('Target channel (red) #%d/%d  (%s) | iThresholdLF %s %s %%|Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name, iSymbole,num2str(iThresholdLF*100),useLogScaleLegendMsg);
         end
         
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, '       [Press arrows for next/previous channel (or H for help)]'];
         end
-        set(hLabel, 'String', strTitle, 'Position', [10 1 1200 35]);
+        set(hLabel, 'String', strTitle, 'Position', [10 1 1500 35],'ForegroundColor', [1 1 1]);
         % Arrows legend
         legend(hQuiver, strLegend, ...
             'TextColor',   'w', ...
@@ -351,32 +486,180 @@ bst_progress('stop');
     function isOk = SelectReference()
         isOk = 1;
         if ~strcmp(selectedModality,'MEG')
-            [isAvgRef, isCancel] = java_dialog('confirm', ...
-                ['<HTML>Do you want to use the <B>average refence</B> for the ' selectedModality ' ?<BR>'...
-                'Otherwise you will choose one reference electrode.'], [selectedModality ' average reference'], [], ...
-                {'Yes, use average reference'}, 1);
-            if isCancel
-                isOk = 0;
-                return;
-            end
-            if ~isAvgRef
+%             [isAvgRef, isCancel] = java_dialog('confirm', ...
+%                 ['<HTML>Do you want to use the <B>average refence</B> for the ' selectedModality ' ?<BR>'...
+%                 'Otherwise you will choose one reference electrode.'], [selectedModality ' average reference'], [], ...
+%                 {'Yes, use average reference'}, 1);
+%             if isCancel
+%                 isOk = 0;
+%                 return;
+%             end
+%             if ~isAvgRef
+%                 % Ask for the reference electrode
+%                 refChan = java_dialog('combo', '<HTML>Select the reference channel:<BR><BR>', [selectedModality ' reference'], [], {Channels.Name});
+%                 if isempty(refChan)
+%                     isOk = 0;
+%                     return;
+%                 end
+%                 iRef = find(strcmpi({Channels.Name}, refChan));
+%             end
                 % Ask for the reference electrode
-                refChan = java_dialog('combo', '<HTML>Select the reference channel:<BR><BR>', [selectedModality ' reference'], [], {Channels.Name});
+                refChan = java_dialog('combo', '<HTML>Select the reference channel (green color):<BR><BR>', [selectedModality ' reference'], [], {'Average Ref', Channels.Name});
                 if isempty(refChan)
                     isOk = 0;
                     return;
-                end
+                end                
                 iRef = find(strcmpi({Channels.Name}, refChan));
-            end
+                if isempty(iRef)
+                    isAvgRef = 1;
+                else
+                    isAvgRef = 0;
+                end                   
         end
     end
 
+%% ===== SET TARGET =====
+    function isOk = SelectTarget()
+        isOk = 1;
+        % Ask for the target electrode
+        trgChan = java_dialog('combo', '<HTML>Select the target channel (red color):<BR><BR>', [selectedModality ' Target'], [], {Channels.Name});
+        if isempty(trgChan)
+            isOk = 0;
+            return;
+        end
+        iChannel = find(strcmpi({Channels.Name}, trgChan));
+    end
 
-%% ===== GET LEADFIELD =====
+    %% ===== GET LEADFIELD =====
     function GetLeadField       
         % Update the LF according to the selected channels only
         for iLF = 1:length(HeadmodelFiles)
             LF_finale{iLF} = HeadmodelMat{iLF}.Gain(iChannels,:);
+        end
+    end
+
+%% ===== LEADFIELD TO LOG SPACE =====
+    function lf_log = logScaledLeadField(lf)
+        lf_2 = lf.^2;
+        r = sqrt(sum(lf_2,2));
+        rho = sqrt(lf_2(:,1) + lf_2(:,2));
+        t = atan2(rho,lf(:,3));
+        f = atan2(lf(:,2),lf(:,1));
+        lf_log = [ log10(r) .* sin(t) .* cos(f) ...
+                   log10(r) .* sin(t) .* sin(f) ...
+                   log10(r) .* cos(t)];
+    end
+
+    %= = From this line, these functions are part of the figure3d
+    %% ===== SET STANDARD VIEW =====
+    function SetStandardView(hFig, viewNames)
+        % Make sure that viewNames is a cell array
+        if ischar(viewNames)
+            viewNames = {viewNames};
+        end
+        % Get Axes handle
+        hAxes = findobj(hFig, '-depth', 1, 'Tag', 'Axes3D');
+        % Get the data types displayed in this figure
+        ColormapInfo = getappdata(hFig, 'Colormap');
+        % Get surface information
+        TessInfo = getappdata(hFig, 'Surface');
+
+        % ===== ANATOMY ORIENTATION =====
+        % If MRI displayed in the figure, use the orientation of the slices, instead of the orientation of the axes
+        R = eye(3);
+        % Get the mri surface
+        Ranat = [];
+        if ismember('anatomy', ColormapInfo.AllTypes)
+            iTess = find(strcmpi({TessInfo.Name}, 'Anatomy'));
+            if ~isempty(iTess)
+                % Get the subject MRI structure in memory
+                sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
+                % Calculate transformation: SCS => MRI  (inverse MRI => SCS)
+                Ranat = pinv(sMri.SCS.R);
+            end
+        end
+        % Displaying a surface: Load the SCS field from the MRI
+        if isempty(Ranat) && ~isempty(TessInfo) && ~isempty(TessInfo(1).SurfaceFile)
+            % Get subject
+            sSubject = bst_get('SurfaceFile', TessInfo(1).SurfaceFile);
+            % If there is an MRI associated with it
+            if ~isempty(sSubject) && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(sSubject.iAnatomy).FileName)
+                % Load the SCS+MNI transformation from this file
+                sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'NCS', 'SCS', 'Comment');
+                if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
+                    % Calculate the SCS => MNI rotation   (inverse(MRI=>SCS) * MRI=>MNI)
+                    Ranat = sMri.NCS.R * pinv(sMri.SCS.R);
+                end
+            end
+        end
+        % Get the rotation to change orientation
+        if ~isempty(Ranat)
+            R = [0 1 0;-1 0 0; 0 0 1] * Ranat;
+        end    
+
+        % ===== MOVE CAMERA =====
+        % Apply the first orientation to the target figure
+        switch lower(viewNames{1})
+            case {'left', 'right_intern'}
+                newView = [0,1,0];
+                newCamup = [0 0 1];
+            case {'right', 'left_intern'}
+                newView = [0,-1,0];
+                newCamup = [0 0 1];
+            case 'back'
+                newView = [-1,0,0];
+                newCamup = [0 0 1];
+            case 'front'
+                newView = [1,0,0];
+                newCamup = [0 0 1];
+            case 'bottom'
+                newView = [0,0,-1];
+                newCamup = [1 0 0];
+            case 'top'
+                newView = [0,0,1];
+                newCamup = [1 0 0];
+        end
+        % Update camera position
+        view(hAxes, newView * R);
+        camup(hAxes, double(newCamup * R));
+        % Update head light position
+        camlight(findobj(hAxes, '-depth', 1, 'Tag', 'FrontLight'), 'headlight');
+        % Select only one hemisphere
+        if any(ismember(viewNames, {'right_intern', 'left_intern'}))
+            bst_figures('SetCurrentFigure', hFig, '3D');
+            drawnow;
+            if strcmpi(viewNames{1}, 'right_intern')
+                panel_surface('SelectHemispheres', 'right');
+            elseif strcmpi(viewNames{1}, 'left_intern')
+                panel_surface('SelectHemispheres', 'left');
+            else
+                panel_surface('SelectHemispheres', 'none');
+            end
+        end
+
+        % ===== OTHER FIGURES =====
+        % If there are other view to represent
+        if (length(viewNames) > 1)
+            hClones = bst_figures('GetClones', hFig);
+            % Process the other required views
+            for i = 2:length(viewNames)
+                if ~isempty(hClones)
+                    % Use an already cloned figure
+                    hNewFig = hClones(1);
+                    hClones(1) = [];
+                else
+                    % Clone figure
+                    hNewFig = bst_figures('CloneFigure', hFig);
+                end
+                % Set orientation
+                SetStandardView(hNewFig, viewNames(i));
+            end
+            % If there are some cloned figures left : close them
+            if ~isempty(hClones)
+                close(hClones);
+                % Update figures layout
+                gui_layout('Update');
+            end
         end
     end
 end
