@@ -233,7 +233,7 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
         % Fit peaks
         [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
             opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,hasOptimToolbox);
-        if opt.thresh_after && ~hasOptimToolbox  % Check thresholding requirements are met again
+        if opt.thresh_after && ~hasOptimToolbox  % Check thresholding requirements are met for unbounded optimization
             peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
             peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
             peak_pars(peak_pars(:,3) > opt.peak_width_limits(2)/2,:)  = []; % remove peaks broader than limit
