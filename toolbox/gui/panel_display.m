@@ -448,9 +448,9 @@ function UpdatePanel(hFig)
                     case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
                     case 'error' 
                         ctrl.jRadioFError.setSelected(1);
-                        ctrl.jRadioFunPower.setEnabled(1);
+                        ctrl.jRadioFunPower.setEnabled(0);
                         ctrl.jRadioFunMag.setEnabled(0);
-                        ctrl.jRadioFunLog.setEnabled(0);
+                        ctrl.jRadioFunLog.setEnabled(1);
                 end
             else
                 ctrl.jRadioFSpectrum.setSelected(1);
@@ -644,26 +644,26 @@ function sOptions = GetDisplayOptions()
     % Get FOOOF display specifics 
     if ctrl.jRadioFSpectrum.isSelected()
         sOptions.FOOOFDisp = 'spectrum';
+        ctrl.jRadioFunPower.setEnabled(1);
         ctrl.jRadioFunMag.setEnabled(1);
-        ctrl.jRadioFunLog.setEnabled(1);
     elseif ctrl.jRadioFModel.isSelected()
         sOptions.FOOOFDisp = 'model';
+        ctrl.jRadioFunPower.setEnabled(1);
         ctrl.jRadioFunMag.setEnabled(1);
-        ctrl.jRadioFunLog.setEnabled(1);
     elseif ctrl.jRadioFAperiodic.isSelected()
         sOptions.FOOOFDisp = 'aperiodic';
+        ctrl.jRadioFunPower.setEnabled(1);
         ctrl.jRadioFunMag.setEnabled(1);
-        ctrl.jRadioFunLog.setEnabled(1);
     elseif ctrl.jRadioFPeaks.isSelected()
         sOptions.FOOOFDisp = 'peaks';
+        ctrl.jRadioFunPower.setEnabled(1);
         ctrl.jRadioFunMag.setEnabled(1);
-        ctrl.jRadioFunLog.setEnabled(1);
     elseif ctrl.jRadioFError.isSelected()
         sOptions.FOOOFDisp = 'error';
-        ctrl.jRadioFunPower.setSelected(1);
+        ctrl.jRadioFunLog.setSelected(1);
+        ctrl.jRadioFunPower.setEnabled(0);
         ctrl.jRadioFunMag.setEnabled(0);
-        ctrl.jRadioFunLog.setEnabled(0);
-        sOptions.Function = 'power';
+        sOptions.Function = 'log';
     end
     
     % Hide edge effects / Resolution

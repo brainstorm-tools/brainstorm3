@@ -1073,7 +1073,7 @@ function UpdateFigurePlot(hFig, isForced)
                  case 'peaks'
                      TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.peak_fit;
                  case 'error'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.stats(chan).frequency_wise_error;
+                     TF(chan,1,i_model) = 10.^(GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.stats(chan).frequency_wise_error);
              end
              % Apply requested function to measure
              switch TfInfo.Function
