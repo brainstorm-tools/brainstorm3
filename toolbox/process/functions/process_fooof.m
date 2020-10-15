@@ -164,6 +164,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             case 'matlab'   % Matlab standalone FOOOF
                 [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt);  
             case 'python'
+                opt.peak_type = 'Gaussian';
                 [FOOOF_freqs, FOOOF_data] = process_fooof_py('FOOOF_python', PsdMat.TF, PsdMat.Freqs, opt);
             otherwise
                 error('Invalid implentation.');
@@ -211,6 +212,11 @@ end
 
 %% ===== MATLAB STANDALONE FOOOF =====
 function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
+    hasOptimToolbox = 0;
+    if exist('fir2','file') == 2
+        hasOptimToolbox = 1;
+        disp("Using constrained optimization, Guess Weight ignored.")
+    end
     % Find all frequency values within user limits
     fMask = (bst_round(Freqs,1) >= opt.freq_range(1)) & (Freqs <= opt.freq_range(2));
     fs = Freqs(fMask);
@@ -226,7 +232,7 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt)
         flat_spec = flatten_spectrum(fs, spec(chan,:), aperiodic_pars, opt.aperiodic_mode);
         % Fit peaks
         [peak_pars, pti] = fit_peaks(fs, flat_spec, opt.max_peaks, opt.peak_threshold, opt.min_peak_height, ...
-            opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight);
+            opt.peak_width_limits/2, opt.proximity_threshold, opt.peak_type, opt.guess_weight,hasOptimToolbox);
         if opt.thresh_after  % Check thresholding requirements are met again
             peak_pars(peak_pars(:,2) < opt.min_peak_height,:)     = []; % remove peaks shorter than limit
             peak_pars(peak_pars(:,3) < opt.peak_width_limits(1)/2,:)  = []; % remove peaks narrower than limit
@@ -488,7 +494,7 @@ spectrum_flat = power_spectrum - gen_aperiodic(freqs,robust_aperiodic_params,ape
 
 end
 
-function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, peakType, guess_weight)
+function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_threshold, min_peak_height, gauss_std_limits, proxThresh, peakType, guess_weight,hOT)
 %       Iteratively fit peaks to flattened spectrum.
 %
 %       Parameters
@@ -511,6 +517,9 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 %           Which types of peaks are being fitted
 %       guess_weight : {'none', 'weak', 'strong'}
 %           Parameter to weigh initial estimates during optimization (None, Weak, or Strong)
+%       hOT : 0 or 1
+%           Defines whether to use constrained optimization, fmincon, or
+%           basic simplex, fminsearch.
 %
 %       Returns
 %       -------
@@ -589,7 +598,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 
             % If there are peak guesses, fit the peaks, and sort results.
             if ~isempty(guess_params)
-                model_params = fit_peak_guess(guess_params, freqs, flat_spec, 1, guess_weight);
+                model_params = fit_peak_guess(guess_params, freqs, flat_spec, 1, guess_weight, gauss_std_limits,hOT);
             else
                 model_params = zeros(1, 3);
             end
@@ -640,7 +649,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
 
             % If there are peak guesses, fit the peaks, and sort results.
             if ~isempty(guess_params)
-                model_params = fit_peak_guess(guess_params, freqs, flat_spec, 2, guess_weight);
+                model_params = fit_peak_guess(guess_params, freqs, flat_spec, 2, guess_weight, gauss_std_limits,hOT);
             else
                 model_params = zeros(1, 3);
             end
@@ -679,7 +688,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
             guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
             if ~isempty(guess_params)
-                gauss_params = fit_peak_guess(guess_params, freqs, flat_spec, 1, guess_weight);
+                gauss_params = fit_peak_guess(guess_params, freqs, flat_spec, 1, guess_weight, gauss_std_limits,hOT);
                 flat_gauss = zeros(size(freqs));
                 for peak = 1:size(gauss_params,1)
                     flat_gauss =  flat_gauss + gaussian_function(freqs,gauss_params(peak,1),...
@@ -724,7 +733,7 @@ function [model_params,pti] = fit_peaks(freqs, flat_iter, max_n_peaks, peak_thre
             guess_params = drop_peak_cf(guess_params, proxThresh, [min(freqs) max(freqs)]);
             guess_params = drop_peak_overlap(guess_params, proxThresh);
             if ~isempty(guess_params)
-                cauchy_params = fit_peak_guess(guess_params, freqs, flat_spec, 2, guess_weight);
+                cauchy_params = fit_peak_guess(guess_params, freqs, flat_spec, 2, guess_weight, gauss_std_limits,hOT);
                 flat_cauchy = zeros(size(freqs));
                 for peak = 1:size(cauchy_params,1)
                     flat_cauchy =  flat_cauchy + cauchy_function(freqs,cauchy_params(peak,1),...
@@ -819,7 +828,7 @@ function guess = drop_peak_overlap(guess, proxThresh)
     guess(drop_inds,:) = [];
 end
 
-function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_weight)
+function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_weight, std_limits, hOT)
 %     Fits a group of peak guesses with a fit function.
 %
 %     Parameters
@@ -831,9 +840,14 @@ function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_
 %       flat_iter : 1xn array
 %           Flattened (aperiodic removed) power spectrum.
 %       peakType : {'gaussian', 'cauchy', 'best'}
-%           Which types of peaks are being fitted
+%           Which types of peaks are being fitted.
 %       guess_weight : 'none', 'weak', 'strong'
-%           Parameter to weigh initial estimates during optimization
+%           Parameter to weigh initial estimates during optimization.
+%       std_limits: 1x2 array
+%           Minimum and maximum standard deviations for distribution.
+%       hOT : 0 or 1
+%           Defines whether to use constrained optimization, fmincon, or
+%           basic simplex, fminsearch.
 %
 %       Returns
 %       -------
@@ -842,10 +856,15 @@ function peak_params = fit_peak_guess(guess, freqs, flat_spec, peak_type, guess_
 
     options = optimset('Display', 'off', 'TolX', 1e-6, 'TolFun', 1e-8, ...
         'MaxFunEvals', 5000, 'MaxIter', 5000);
-
-    peak_params = fminsearch(@error_model,...
-        guess, options, freqs, flat_spec, peak_type, guess, guess_weight);
-
+    if hOT % Use OptimToolbox for fmincon
+        lb = [guess(:,1)-guess(:,3)*2,zeros(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(1)];
+        ub = [guess(:,1)+guess(:,3)*2,inf(size(guess(:,2))),ones(size(guess(:,3)))*std_limits(2)];
+        peak_params = fmincon(@error_model_constr,guess,[],[],[],[], ...
+            lb,ub,[],options,freqs,flat_spec, peak_type);
+    else % Use basic simplex approach, fminsearch, with guess_weight
+        peak_params = fminsearch(@error_model,...
+            guess, options, freqs, flat_spec, peak_type, guess, guess_weight);
+    end
 end
 
 
@@ -884,6 +903,19 @@ function err = error_model(params, xVals, yVals, peak_type, guess, guess_weight)
                  strong*sum((params(:,1)-guess(:,1)).^2) + ...
                  strong*sum((params(:,2)-guess(:,2)).^2);
     end
+end
+
+function err = error_model_constr(params, xVals, yVals, peak_type)
+    fitted_vals = 0;
+    for set = 1:size(params,1)
+        switch (peak_type)
+            case 1 % Gaussian
+                fitted_vals = fitted_vals + gaussian_function(xVals, params(set,1), params(set,2), params(set,3));
+            case 2 % Cauchy
+                fitted_vals = fitted_vals + cauchy_function(xVals, params(set,1), params(set,2), params(set,3));
+        end
+    end
+    err = sum((yVals - fitted_vals).^2);
 end
 
 
