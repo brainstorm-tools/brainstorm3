@@ -337,7 +337,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
                     return;
                 end
-            end
+            end                    
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
                 if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
@@ -356,34 +356,45 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 % Get tissue label
                 for iBem = 1:length(OPTIONS.BemFiles)
                     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
-                    if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
-                        TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
-                    else
-                        TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
-                    end
-                end
-                % Sort from inner to outer
-                iSort = [];
-                iOther = 1:length(OPTIONS.BemFiles);
-                for label = {'white', 'gray', 'csf', 'skull', 'scalp'}
-                    iLabel = find(strcmpi(label{1}, TissueLabels));
-                    iSort = [iSort, iLabel];
-                    iOther(iLabel) = NaN;
-                end
-                iSort = [iSort, iOther(~isnan(iOther))];
-                OPTIONS.BemFiles = OPTIONS.BemFiles(iSort);
-                TissueLabels = TissueLabels(iSort);
-            end
+                        TissueLabels{iBem} = sSubject.Surface(iSurface).Comment;
+                end        
+            end      
             % Load surfaces
             bst_progress('text', 'Loading surfaces...');
             bemMerge = {};
             disp(' ');
             nBem = length(OPTIONS.BemFiles);
-            for iBem = 1:nBem
-                disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));
+            distance_in = zeros(1,nBem);
+%             distance_out = zeros(1,nBem);            
+            for iBem = 1:nBem                               
+                disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));        
                 BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
+                % compute the distances
+                if iBem ==1
+                    center_inner = mean(bemMerge{1}, 1);
+                end
+                faceList = unique(BemMat.Faces);
+                nodeList = BemMat.Vertices(faceList,:);
+                % Find the largest distance between two point
+                maxYcoor = max(nodeList(:,2));
+                minYcoor = min(nodeList(:,2));
+                maxYpoint = [center_inner(1) maxYcoor center_inner(3)];
+                minYpoint = [center_inner(1) minYcoor center_inner(3)];
+                % Find the nearest node on the mesh and update
+                k = dsearchn(nodeList,[maxYpoint;minYpoint]);
+                maxYpoint = nodeList(k(1),:); minYpoint = nodeList(k(2),:);
+                distance_in(iBem) = norm(maxYpoint-minYpoint);
+                listPointasSeed(iBem,:) = maxYpoint;
             end
+            %  Sort from inner to outer
+                [tmp, orderIn] = sort(distance_in);
+                distance_in = distance_in(orderIn);
+             % update the reorder of the labels from inner to outer
+                TissueLabels = TissueLabels(orderIn);
+                listPointasSeed = listPointasSeed(orderIn,:);
+                listPointasSeed = listPointasSeed - [0 0.002 0];
+                listPointasSeed(1,:) = center_inner;
             disp(' ');
             % Merge all the surfaces
             bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
@@ -406,30 +417,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 otherwise
                     error(['Invalid merge method: ' OPTIONS.MergeMethod]);
             end
-            % Center of the head = barycenter of the innermost BEM layer (hopefully the inner skull?)
-            center_inner = mean(bemMerge{1}, 1);
+
             % Find the intersection between the vertical axis (from the head center to the vertex) and all the BEM layers
-            orig = center_inner;
-            v0 = [0 0 1];
-            [dist,tmp,tmp,iFace] = raytrace(orig,v0,newnode,newelem);
-            dist = dist(iFace);
-            % Sort from bottom to top
-            [dist,I] = sort(dist);
-            iFace = iFace(I);
-            % Keep only superior part of the head (less chances of having multiple intersections for one layer)
-            iFace = iFace(end-nBem+1:end);
-            dist = dist(end-nBem+1:end);
-            % Define region seeds for all the BEM regions: head center, then half-way between each layer
-            dist = dist(:);
-            distSeed = [0; (dist(1:end-1) + dist(2:end)) .* 0.5];
-            regions = repmat(orig, nBem, 1) + distSeed * v0;
-            
+            regions = listPointasSeed;
             % Create tetrahedral mesh
             bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
             factor_bst = 1.e-6;
             [node,elem] = surf2mesh(newnode, newelem, min(newnode), max(newnode),...
-                OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, regions, [], [], 'tetgen1.5');
-            
+                OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, (regions), [], [], 'tetgen1.5');            
             % Removing the label 0 (Tetgen 1.4) or higher than number of layers (Tetgen 1.5)
             bst_progress('text', 'Fixing 3D mesh...');
             iOther = find((elem(:,5) == 0) & (elem(:,5) > nBem));
@@ -438,12 +433,45 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
             % Check labelling from 1 to nBem
             allLabels = unique(elem(:,5));
+            % id =6; figure; plotmesh(node,elem(elem(:,5)==id,:),'facealpha',0.2,'edgecolor','none'); hold on; plotmesh(orig,'ko') 
+            % Process the outputs:  compute the distances
+            bst_progress('text', 'Identification of the 3D volumes...');
+            distance_out= zeros(1,length(allLabels));
+            for ind = 1: length(allLabels) 
+                elemList = elem(elem(:,5)==allLabels(ind),1:end-1);
+                elemList = unique(elemList(:)); % figure; plotmesh(node(elemList,:),'r.');xlabel('x');ylabel('y');zlabel('z');
+                nodeList = node(elemList,:);
+                maxYcoor = max(nodeList(:,2));
+                minYcoor = min(nodeList(:,2));
+                maxYpoint = [center_inner(1) maxYcoor center_inner(3)];
+                minYpoint = [center_inner(1) minYcoor center_inner(3)];
+                k = dsearchn(nodeList,[maxYpoint;minYpoint]);
+                maxYpoint = nodeList(k(1),:); minYpoint = nodeList(k(2),:);
+                % figure; plotmesh(node(elemList,:),'r.');xlabel('x');ylabel('y');zlabel('z');hold on; plotmesh([maxYpoint;minYpoint],'bo') 
+                distance_out(ind) = norm(maxYpoint-minYpoint);
+            end
+            % sort weired elements, works in all case even when there are
+            % more output tissues than inputs
+           distOut_tmp = distance_out;
+           for ind = 1 : length(distance_in)
+               tmp = find(round(distOut_tmp,3)<=round(distance_in(ind),3));
+               distOut_tmp(tmp) = ind;
+           end
+            % replace with the correct ID
+            tmp = elem;
+            tmp(:,5) = tmp(:,5) +10; % translation to avoind overlapping
+            allLabels = unique(tmp(:,5));
+            for  ind = 1: length(allLabels) 
+                tmp(tmp(:,5) == allLabels(ind),5) = distOut_tmp(ind);
+            end        
+            % check again just in case
+             allLabels = unique(tmp(:,5));
             if ~isequal(allLabels(:)', 1:nBem)
-                errMsg = ['Problem with Tetget: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
+                errMsg = ['Problem with tissue labels: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
                 bst_progress('stop');
                 return;
             end
-            
+            elem = tmp;
             % Mesh check and repair
             [no,el] = removeisolatednode(node,elem(:,1:4));
             % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
@@ -452,7 +480,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             node = no; % need to updates the new list of nodes (it's wiered that it was working before)
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';
-
+            
         case 'brain2mesh'
             disp([10 'FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File 10]);
@@ -1296,4 +1324,238 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     elseif (elemSize.size(2) == 4)
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
+end
+
+%% ===== Refine Mesh =====
+function errMsg = RefineMesh(filenameRelative) 
+     bst_progress('start', 'Refine FEM mesh ','Loading surounding 3D points ');
+    % Install iso2mesh if needed
+    if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+        errMsg = InstallIso2mesh(isInteractive);
+        if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
+            return;
+        end
+    end    
+    
+    % ask for option : list of the node where to apply the refinement
+    [res, isCancel]  = java_dialog('radio', 'Select the surounding region to refine :', 'Refine FEM Mesh', [], ...
+       {['<HTML><B> Area surounding the cortex (source space)</B><BR>' ], ...
+        ['<HTML><B> Area surounding the electrodes (do not apply for MEG)</B><BR>'], ...
+        ['<HTML><B> Area surounding the cortex and electrode</B><BR>'], ...
+        ['<HTML><B> [TODO] Area surounding the 3D points loaded from file/matlab (x,y,z) positions</B><BR>']}, 1);
+    if isCancel || isempty(str2double(res))
+        return
+    end
+    suroundingRegion = res;
+    % ask for the factor that will be applied / divided the mean edege
+    % length by this factor
+    [res, isCancel]  = java_dialog('input', 'Factor of refinement (mean edge length divided by this factor):', ...
+        'Refinement Mesh factor', [], '5');
+    if isCancel || isempty(str2double(res))
+        return
+    end
+    refinementFactor = str2double(res);    
+    % ===== Get subject/study information =====
+    % Get study
+    sStudy = bst_get('Study')  ;
+    if isempty(sStudy.Channel) || isempty(sStudy.Channel.FileName)
+        errMessage = 'No channel file available.';
+    end
+    % Get current subject
+    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+    if isempty(sSubject) || isempty(sSubject.iCortex)
+        errMessage = 'No cortex surface available for this subject.';
+    end
+    % Loading surounding 3D points 
+    bst_progress('text', 'Loading surounding 3D points ');
+    switch suroundingRegion
+        case 1 % load the cortexe vertices
+            disp('load the cortexe vertices...')
+            CortexFile = file_fullpath(sSubject.Surface(sSubject.iCortex).FileName);
+            CortexPosition = in_bst_data(CortexFile,'Vertices');
+            refiningPosition = CortexPosition.Vertices;
+        case 2 % load the electrode position
+            disp('load the electrode position...')
+            % Load channel description
+            ChannelFile = file_fullpath(sStudy.Channel.FileName);
+            ChannelMat = in_bst_channel(ChannelFile);
+            % List of sensors
+            iEeg  = good_channel(ChannelMat.Channel,[],'EEG');
+            iEcog = good_channel(ChannelMat.Channel,[],'ECOG');
+            iSeeg = good_channel(ChannelMat.Channel,[],'SEEG');
+            isGood = [iEeg, iEcog, iSeeg];
+            elecPosition = cat(2, ChannelMat.Channel(isGood).Loc);
+            refiningPosition = elecPosition';
+        case 3 % load the cortexe vertices and the electrodes
+            disp('load the cortexe vertices and the electrodes...')
+            disp('load the cortexe vertices...')
+            CortexFile = file_fullpath(sSubject.Surface(sSubject.iCortex).FileName);
+            CortexPosition = in_bst_data(CortexFile,'Vertices');
+            CortexPosition = CortexPosition.Vertices;
+            disp('load the electrode position...')
+            % Load channel description
+            ChannelFile = file_fullpath(sStudy.Channel.FileName);
+            ChannelMat = in_bst_channel(ChannelFile);
+            % List of sensors
+            iEeg  = good_channel(ChannelMat.Channel,[],'EEG');
+            iEcog = good_channel(ChannelMat.Channel,[],'ECOG');
+            iSeeg = good_channel(ChannelMat.Channel,[],'SEEG');
+            isGood = [iEeg, iEcog, iSeeg];
+            elecPosition = cat(2, ChannelMat.Channel(isGood).Loc)';
+            %% concatenate
+            refiningPosition = [CortexPosition; elecPosition];
+        case 4 % load the 3D points
+            disp('load the 3d points from matlab/file TODO...');
+        otherwise
+            disp('Not implemented')
+    end    
+    
+    % Get file in database
+    bst_progress('text', 'Loading headmodels ...');
+    FemFullFile = file_fullpath(filenameRelative);
+    % load the current Mesh
+    FemMat = load(FemFullFile);
+    % Get dimensions of the Elements variable
+    elemSize = whos('-file', FemFullFile, 'Elements');
+    if isempty(elemSize) || (length(elemSize.size) ~= 2) || ~ismember(elemSize.size(2), [4 8])
+        error(['Invalid FEM mesh file: ' FemFile]);
+    end
+    volElem =elemvolume(FemMat.Vertices,FemMat.Elements);
+    maxVol = max(volElem ); % will be used by the surf2mesh
+    %% Extract surfaces and then store them
+    % Create one surface per tissue
+    nBem = max(FemMat.Tissue);
+    distance_in = zeros(1,nBem);
+    bemMerge = {};
+    bst_progress('text', 'Extract surfaces', 'Extracting surfaces...', 0, nBem + 1);    
+    for iTissue = 1:nBem
+        bst_progress('text', ['Extracting surfaces: ' FemMat.TissueLabels{iTissue} '...']);
+        bst_progress('inc', 1);
+        % ===== EXTRACT SURFACE =====
+        % Select elements of this tissue
+        Elements = FemMat.Elements(FemMat.Tissue <= iTissue, 1:4);
+        % Create a surface for the outside surface of this tissue
+        Faces = tess_voledge(FemMat.Vertices, Elements);
+        if isempty(Faces)
+            continue;
+        end
+        % Detect all unused vertices
+        Vertices = FemMat.Vertices;
+        iRemoveVert = setdiff((1:size(Vertices,1))', unique(Faces(:)));
+        % Remove all the unused vertices
+        if ~isempty(iRemoveVert)
+            [Vertices, Faces] = tess_remove_vert(Vertices, Faces, iRemoveVert);
+        end
+        % Remove small elements
+        [Vertices, Faces] = tess_remove_small(Vertices, Faces);
+        % merge surfaces
+        bemMerge = cat(2, bemMerge, Vertices, Faces);        
+        % compute the distances
+        if iTissue ==1
+            center_inner = mean(bemMerge{1}, 1);
+        end
+        faceList = Faces;
+        nodeList = Vertices(faceList,:);
+        maxYcoor = max(nodeList(:,2));
+        minYcoor = min(nodeList(:,2));
+        maxYpoint = [center_inner(1) maxYcoor center_inner(3)];
+        minYpoint = [center_inner(1) minYcoor center_inner(3)];
+        k = dsearchn(nodeList,[maxYpoint;minYpoint]);
+        maxYpoint = nodeList(k(1),:); minYpoint = nodeList(k(2),:);
+        distance_in(iTissue) = norm(maxYpoint-minYpoint);
+        listPointasSeed(iTissue,:) = maxYpoint; 
+    end
+    %  Sort from inner to outer
+    [tmp, orderIn] = sort(distance_in);
+    distance_in = distance_in(orderIn);
+    % update the reorder of the labels from inner to outer
+    TissueLabels = FemMat.TissueLabels;
+    TissueLabels = TissueLabels(orderIn);
+    listPointasSeed = listPointasSeed(orderIn,:);
+    listPointasSeed = listPointasSeed - [0 0.002 0];
+    listPointasSeed(1,:) = center_inner;
+    disp(' ');              
+    % Merge all the surfaces
+    bst_progress('text', ['Merging surfaces (Iso2mesh/mergemesh)...']);
+    % Faster and simpler: Simple concatenation without intersection checks
+    [newnode, newelem] = mergemesh(bemMerge{:});   
+
+    bst_progress('text', 'Creating 3D mesh (Iso2mesh/surf2mesh)...');
+    regions = listPointasSeed;  nodevol = nodevolume(newnode,newelem(:,1:3));
+    nodeEdge = nthroot(nodevol, 2);
+    meanNodeEdge = mean(nodeEdge);
+    % Create tetrahedral mesh
+    nfull=[newnode;refiningPosition];                   % append additional control points
+    %              nodesize=[(meanDist+1.5*stdDist)*ones(size(newnode,1),1) ; (meanDist/refinementFactor)*ones(size(refiningPosition,1),1)];
+    nodesize=[(meanNodeEdge)*ones(size(newnode,1),1) ; (meanNodeEdge/refinementFactor)*ones(size(refiningPosition,1),1)];   
+    [node,elem] = surf2mesh([nfull,nodesize], newelem, min(newnode), max(newnode),...
+                                                1,  maxVol, regions, [], [], 'tetgen1.5');  %%figure; plotmesh(node,elem,'x>0'); hold on; plotmesh(refiningPosition,'ro')
+    % Removing the label 0 (Tetgen 1.4) or higher than number of layers (Tetgen 1.5)
+    bst_progress('text', 'Fixing 3D mesh...');
+    iOther = find((elem(:,5) == 0) & (elem(:,5) > nBem));
+    if ~isempty(iOther) && (length(iOther) < 0.1 * length(elem))
+        elem(iOther,:) = [];
+    end
+    % Check labelling from 1 to nBem
+    allLabels = unique(elem(:,5));% 
+    % Process the outputs:  compute the distances
+    distance_out= zeros(1,length(allLabels));
+    for ind = 1: length(allLabels) 
+        elemList = elem(elem(:,5)==allLabels(ind),1:end-1);
+        elemList = unique(elemList(:)); % figure; plotmesh(node(elemList,:),'r.');xlabel('x');ylabel('y');zlabel('z');
+        nodeList = node(elemList,:);
+        maxYcoor = max(nodeList(:,2));
+        minYcoor = min(nodeList(:,2));
+        maxYpoint = [center_inner(1) maxYcoor center_inner(3)];
+        minYpoint = [center_inner(1) minYcoor center_inner(3)];
+        k = dsearchn(nodeList,[maxYpoint;minYpoint]);
+        maxYpoint = nodeList(k(1),:); minYpoint = nodeList(k(2),:);
+        distance_out(ind) = norm(maxYpoint-minYpoint);
+    end
+    % sort weired elements, works in all case even when there are
+    % more output tissues than inputs
+   distOut_tmp = distance_out;
+   for ind = 1 : length(distance_in)
+        tmp = find(round(distOut_tmp,3)<=round(distance_in(ind),3));
+        distOut_tmp(tmp) = ind;
+    end
+    % replace with the correct ID
+    tmp = elem;
+    tmp(:,5) = tmp(:,5) +10; % translation to avoid overlapping
+    allLabels = unique(tmp(:,5));
+    for  ind = 1: length(allLabels) 
+        tmp(tmp(:,5) == allLabels(ind),5) = distOut_tmp(ind);
+    end        
+    % check again just in case
+     allLabels = unique(tmp(:,5));
+    if ~isequal(allLabels(:)', 1:nBem)
+        errMsg = ['Problem with tissue labels: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
+        bst_progress('stop');
+        return;
+    end
+    elem = tmp;
+    % Mesh check and repair
+    [no,el] = removeisolatednode(node,elem(:,1:4));
+    % Orientation required for the FEM computation (at least with SimBio, maybe not for Duneuro)
+    newelem = meshreorient(no, el(:,1:4));
+    elem = [newelem elem(:,5)];  node = no;    
+    bst_progress('text', 'Saving 3D mesh to Brainstorm...');
+    % New surface structure
+    NewTess = db_template('FemMat');
+    NewTess.Comment  = [FemMat.Comment 'I refined to FEM ' num2str(length(node)) 'V' ];
+    NewTess.Vertices = node;
+    NewTess.Elements    = elem(:,1:end-1);
+    NewTess.Tissue    = elem(:,end);
+    NewTess.TissueLabels    = FemMat.TissueLabels;
+    NewTess.Tensors    = []; % New tensors should be computed after this process
+    % History: File name
+    NewTess = bst_history('add', NewTess,  ['refined: ' FemMat.Comment  ', factor ' num2str(refinementFactor) ]);
+    % Produce a default surface filename &   Make this filename unique
+    [filepath,name,ext] = bst_fileparts(FemFullFile);
+    ModelFile = file_unique(bst_fullfile(filepath, ...
+        sprintf(['tess_fem_iso2mesh_%dV.mat'], length(NewTess.Vertices))));
+    % Save new surface in Brainstorm format
+    bst_save(ModelFile, NewTess, 'v7');
+    db_add_surface(iSubject, ModelFile, NewTess.Comment);
+    bst_progress('stop');
 end
