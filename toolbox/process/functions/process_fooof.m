@@ -147,9 +147,9 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     
-    hasOptimToolbox = 0;
-    if exist('fir2','file') == 2 && strcmp(implementation,'matlab')
-        hasOptimToolbox = 1;
+    hasOptimTools = 0;
+    if exist('fmincon') == 2 && strcmp(implementation,'matlab')
+        hasOptimTools = 1;
         disp("Using constrained optimization, Guess Weight ignored.")
     end
     
@@ -168,7 +168,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
         % Switch between implementations
         switch (implementation)
             case 'matlab'   % Matlab standalone FOOOF
-                [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt, hasOptimToolbox);  
+                [FOOOF_freqs, FOOOF_data] = FOOOF_matlab(PsdMat.TF, PsdMat.Freqs, opt, hasOptimTools);  
             case 'python'
                 opt.peak_type = 'gaussian';
                 [FOOOF_freqs, FOOOF_data] = process_fooof_py('FOOOF_python', PsdMat.TF, PsdMat.Freqs, opt);
