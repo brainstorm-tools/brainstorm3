@@ -197,7 +197,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'));
         jMenu.addSeparator();
         jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'));
-        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj'));
+        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj', [], 1));
         
         % === EVENTS TYPES ===
         jListEvtType = JList();

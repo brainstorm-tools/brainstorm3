@@ -140,7 +140,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('MatlabVersion')         : Matlab version (version number * 100, eg. 801)
 %    - bst_get('MatlabReleaseName')     : Matlab version (release name, eg. "R2014a")
 %    - bst_get('JavaVersion')           : Java version
-%    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2020a), 0 otherwise
+%    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2019b), 0 otherwise
 %    - bst_get('SystemMemory')          : Amount of memory available, in Mb
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
@@ -288,8 +288,8 @@ switch contextName
         end
         
     case 'isJavacomponent'
-        % After Matlab 2020a, javacomponent() and JavaFrame property have been deprecated
-        argout1 = (bst_get('MatlabVersion') < 908);
+        % After Matlab 2019b, javacomponent() and JavaFrame property have been deprecated
+        argout1 = (bst_get('MatlabVersion') <= 906);
         
     case 'SystemMemory'
         maxvar = [];
@@ -2305,8 +2305,10 @@ switch contextName
             sTemplates = sTemplates(iAnat);
         end
         % Sort in alphabetical order
-        [tmp__, I] = sort_nat({sTemplates(2:end).Name});
-        sTemplates = sTemplates([1, I+1]);
+        if ~isempty(sTemplates)
+            [tmp__, I] = sort_nat({sTemplates(2:end).Name});
+            sTemplates = sTemplates([1, I+1]);
+        end
         % Return defaults list
         argout1 = sTemplates;
         
@@ -3853,13 +3855,13 @@ switch contextName
             elseif (MatlabVersion <= 803)
                 jf = get(handle(hFig), 'javaframe');
                 jFrame = jf.fHG1Client.getWindow();
-            elseif (MatlabVersion <= 908)
+            elseif (MatlabVersion < 907)    % Matlab >= 2019b deprecated the JavaFrame property
                 warning('off', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 jf = get(hFig, 'javaframe');
                 warning('on', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 jFrame = jf.fHG2Client.getWindow();
             else
-                disp('BST> Error: Matlab 2020a deprecated the JavaFrame property.');
+                disp('BST> Error: Matlab 2019b deprecated the JavaFrame property.');
             end
         catch
             disp('BST> Warning: Cannot get the JavaFrame property for the selected figure.');

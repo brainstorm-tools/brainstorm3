@@ -21,7 +21,7 @@ function varargout = process_evt_groupname( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2019
+% Authors: Francois Tadel, 2013-2020
 
 eval(macro_method);
 end
@@ -56,6 +56,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.dt.Comment = 'Maximum delay between simultaneous events: ';
     sProcess.options.dt.Type    = 'value';
     sProcess.options.dt.Value   = {0, 'ms', 0};
+    % Maximum duration between simulateous events
+    sProcess.options.order.Comment = {'First', 'Last', 'Event to select (if not strictly aligned): '; ...
+                                     'first', 'last', ''};
+    sProcess.options.order.Type    = 'radio_linelabel';
+    sProcess.options.order.Value   = 'first';
     % Delete original events
     sProcess.options.delete.Comment = 'Delete the original events';
     sProcess.options.delete.Type    = 'checkbox';
@@ -77,6 +82,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Get the options
     isDelete = sProcess.options.delete.Value;
+    Order = sProcess.options.order.Value;
     dt = sProcess.options.dt.Value{1};
     % Combination string
     combineStr = strtrim(sProcess.options.combine.Value);
@@ -128,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Convert the distance in time to distance in samples
         ds = round(dt .* sFile.prop.sfreq);
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, combineCell, ds, isDelete, sFile.prop.sfreq);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, combineCell, ds, isDelete, sFile.prop.sfreq, Order);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -149,7 +155,11 @@ end
 
 
 %% ===== GROUP EVENTS =====
-function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDelete, sfreq)
+function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDelete, sfreq, Order)
+    % Parse inputs
+    if (nargin < 7) || isempty(Order)
+        Order = 'first';
+    end
     % No modification
     isModified = 0;
     eventsNew = events;
@@ -158,27 +168,41 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
     for iComb = 1:size(combineCell,1)
         AllEvt = zeros(2,0);
         iEvtList = [];
+        isSkip = 0;
+        % Use the output of the previous combination as the input to this combination
+        events = eventsNew;
+        % Remove duplicated events
+        evtList = unique(combineCell{iComb,2});
         % Get events for this combination
-        for iCombEvt = 1:length(combineCell{iComb,2})
+        for iCombEvt = 1:length(evtList)
             % Find event in the list
-            evtLabel = combineCell{iComb,2}{iCombEvt};
+            evtLabel = evtList{iCombEvt};
             iEvt = find(strcmpi({events.label}, evtLabel));
-            % If events are extended events: skip
+            % If events doesn't exist: skip
             if isempty(iEvt)
                 bst_report('Warning', 'process_evt_groupname', sInput, ['Event "' evtLabel '" does not exist. Skipping group...']);
-                continue;
+                isSkip = 1;
+                break;
+            end
+            % If renaming event: simply update the label and move on
+            if (length(combineCell{iComb,2}) == 1)
+                eventsNew(iEvt).label = combineCell{iComb,1};
+                isSkip = 1;
+                isModified = 1;
+                break;
             end
             % If events are extended events: skip
             if (size(events(iEvt).times,1) > 1)
                 bst_report('Error', 'process_evt_groupname', sInput, 'Cannot process extended events. Skipping group...');
-                continue;
+                isSkip = 1;
+                break;
             end
             % Add to the list of all the processes
             iEvtList(end+1) = iEvt;
             AllEvt = [AllEvt, [round(events(iEvt).times .* sfreq); repmat(iEvt, size(events(iEvt).times))]];
         end
         % Skip combination if one of the events is not found or not a simple event
-        if (length(iEvtList) ~= length(combineCell{iComb,2}))
+        if isSkip
             continue;
         end
         
@@ -189,7 +213,12 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             % [alldist(i,j)=5] means that event #i is 5 samples before event #j
             alldist = repmat(AllEvt(1,:),N,1) - repmat(AllEvt(1,:)',1,N);
             % Get the distances for the different event types only: we don't want to collapse two events of the same category
-            diffmask = (repmat(AllEvt(2,:),N,1) ~= repmat(AllEvt(2,:)',1,N));
+            if (length(iEvtList) > 1)
+                diffmask = (repmat(AllEvt(2,:),N,1) ~= repmat(AllEvt(2,:)',1,N));
+            % Unless there is only one event in input
+            else
+                diffmask = (eye(N) == 0);
+            end
             % Find the events that can be collapsed
             collapse = ((alldist > 0) & (alldist <= ds)) .* diffmask;
             collapse(:,sum(collapse,1) > 1) = 0;
@@ -206,9 +235,19 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
                     smpAfter = round(events(AllEvt(2,iAfter(iEvt))).times .* sfreq);
                     iOccBefore = find(smpBefore == AllEvt(1,iBefore(iEvt)));
                     iOccAfter  = find(smpAfter == AllEvt(1,iAfter(iEvt)));
-                    events(AllEvt(2,iAfter(iEvt))).times(iOccAfter) = events(AllEvt(2,iBefore(iEvt))).times(iOccBefore);
+                    switch (Order)
+                        case 'first'
+                            events(AllEvt(2,iAfter(iEvt))).times(iOccAfter) = events(AllEvt(2,iBefore(iEvt))).times(iOccBefore);
+                        case 'last'
+                            events(AllEvt(2,iAfter(iEvt))).times(iOccBefore) = events(AllEvt(2,iBefore(iEvt))).times(iOccAfter);
+                    end
                 end
-                AllEvt(1,iAfter) = AllEvt(1,iBefore);
+                switch (Order)
+                    case 'first'
+                        AllEvt(1,iAfter) = AllEvt(1,iBefore);
+                    case 'last'
+                        AllEvt(1,iBefore) = AllEvt(1,iAfter);
+                end
             end
         end
         
@@ -218,7 +257,9 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
             % Look for all the events happening at this time
             iEvts = AllEvt(2, (AllEvt(1,:) == uniqueSamples(iSmp)));
             % If only one occurrence: skip to the next time
-            if (length(iEvts) < length(iEvtList))
+            if (length(iEvtList) > 1) && (length(iEvts) < length(iEvtList))   % Two different events
+                continue;
+            elseif (length(iEvtList) == 1) && (length(iEvts) < 2)    % One event with itself
                 continue;
             end
             % Remove occurrence from each event type (and build new event name)
@@ -234,7 +275,7 @@ function [eventsNew, isModified] = Compute(sInput, events, combineCell, ds, isDe
                 end
                 % Remove this occurrence
                 if isDelete
-                    removeEvt(end+1,1:2) = [iEvts(i), iOcc];
+                    removeEvt = [removeEvt; repmat(iEvts(i),length(iOcc),1), reshape(iOcc,[],1)];
                 end
             end
             % New event name

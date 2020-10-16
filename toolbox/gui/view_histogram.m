@@ -82,7 +82,7 @@ Scaling = bst_get('InterfaceScaling') / 100;
     
 % ===== TOOLBAR =====
 nBins = 9;
-% Older version of Matlab (< 2020a): use java components
+% Older version of Matlab (< 2019b): use java components
 if bst_get('isJavacomponent')
     isJava = 1;
     % Add toolbar to window

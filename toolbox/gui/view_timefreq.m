@@ -58,7 +58,8 @@ end
 
 if ~isempty(strfind(lower(TimefreqFile), 'spike_field_coherence')) ...
         || ~isempty(strfind(lower(TimefreqFile), 'noise_correlation')) ...
-        || ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))
+        || ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))...
+        || ~isempty(strfind(lower(TimefreqFile), 'spiking_phase_locking'))
     isEphysFile = 1;
     GlobalData.UserFrequencies.HideFreqPanel = 1;
 else
@@ -188,6 +189,8 @@ if ~isempty(strfind(lower(TimefreqFile), 'noise_correlation'))
 elseif ~isempty(strfind(lower(TimefreqFile), 'rasterplot'))
     TfInfo.DisplayAsDots = 1;
     TfInfo.DisableSmoothDisplay = 1;
+elseif ~isempty(strfind(lower(TimefreqFile), 'spiking_phase_locking'))
+    TfInfo.DisplayAsPhase = 1;
 end
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);

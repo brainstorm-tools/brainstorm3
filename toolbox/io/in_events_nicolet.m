@@ -38,7 +38,9 @@ while 1
         continue;
     elseif ~isempty(strfind(newLine, 'Name')) && ~isempty(strfind(newLine, 'Time')) && ~isempty(strfind(newLine, 'Duration'))
         isMarkerSection = 1;
-        continue;
+        continue
+    elseif ~isempty(strfind(newLine, 'Exam Start')) || (nnz(newLine == 9) >= 2)    % Lines with tabs = events
+        isMarkerSection = 1;
     elseif ~isMarkerSection
         continue;
     end
@@ -50,7 +52,7 @@ while 1
     % Get the time and duration
     try
         vecStart = datevec(splitLine{2}, 'HH:MM:SS');
-        tStart = vecStart(4)*1200 + vecStart(5)*60 + vecStart(6);
+        tStart = vecStart(4)*3600 + vecStart(5)*60 + vecStart(6);
         vecDuration = datevec(splitLine{3}, 'MM:SS');
         tDuration = vecDuration(5)*60 + vecDuration(6);
     catch

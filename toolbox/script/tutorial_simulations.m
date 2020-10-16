@@ -55,8 +55,9 @@ SubjectName = 'Simulation';
 FolderName = 'VolumeEEG';
 iStudy = db_add_condition(SubjectName, FolderName);
 
+% ===== EXAMPLE 3: VOLUME/UNCONSTRAINED =====
 
-% ===== FORWARD MODEL =====
+% === 3. FORWARD MODEL ===
 % Get EEG template ICBM152/10-10 (65 channels)
 eegTemplate = bst_get('EegDefaults', 'icbm152', '10-10 65');
 % Set channel file for the simulation folder
@@ -89,8 +90,7 @@ bst_process('CallProcess', 'process_headmodel', [], [], ...
 % Set identity noise covariance
 import_noisecov(iStudy, 'Identity');
 
-
-% ===== CREATE SCOUT =====
+% === 3. CREATE SCOUT ===
 % Load MRI file
 sSubject = bst_get('Subject', iSubject);
 sMri = in_mri_bst(sSubject.Anatomy(1).FileName);
@@ -128,8 +128,7 @@ TessMat.iAtlas = iAtlas;
 % Update cortex surface
 bst_save(TessFile, TessMat, 'v7');
 
-
-%% ===== SIMULATE SIGNALS =====
+% === 3. SIMULATE SIGNALS ===
 % Dipole X: (1,0,0)
 % Process: Simulate generic signals
 sFilesMatrixX = bst_process('CallProcess', 'process_simulate_matrix', [], [], ...
@@ -169,8 +168,7 @@ sFilesMatrixZ = bst_process('CallProcess', 'process_set_comment', sFilesMatrixZ,
     'tag',           'Simulated Z', ...
     'isindex',       1);
 
-
-% ===== SIMULATE EEG =====
+% === 3. SIMULATE EEG ===
 % Process: Simulate recordings from scouts
 sFilesRec = bst_process('CallProcess', 'process_simulate_recordings', [sFilesMatrixX, sFilesMatrixY, sFilesMatrixZ], [], ...
     'scouts',      {AtlasName, {DipoleName}}, ...
@@ -180,8 +178,7 @@ sFilesRec = bst_process('CallProcess', 'process_simulate_recordings', [sFilesMat
     'noise1',      0.01, ...
     'noise2',      0.01);
 
-
-% ===== SCREEN CAPTURES =====
+% === 3. SCREEN CAPTURES ===
 % Process: Snapshot: Sensors/MRI registration
 bst_process('CallProcess', 'process_snapshot', sFilesRec(1), [], ...
     'target',         1, ...  % Sensors/MRI registration
@@ -201,6 +198,81 @@ bst_process('CallProcess', 'process_snapshot', sFilesRec, [], ...
     'time',           0.223, ...
     'Comment',        '');
 
+
+% ===== EXAMPLE 4: SINGLE DIPOLES =====
+% Create new folder
+FolderName = 'Dipoles';
+iStudy = db_add_condition(SubjectName, FolderName);
+% Get EEG template ICBM152/10-10 (65 channels)
+eegTemplate = bst_get('EegDefaults', 'icbm152', '10-10 65');
+% Set channel file for the simulation folder
+db_set_channel(iStudy, eegTemplate.contents.fullpath, 1, 0);
+% Set identity noise covariance
+import_noisecov(iStudy, 'Identity');
+
+% Process: Simulate generic signals
+sFileSim = bst_process('CallProcess', 'process_simulate_matrix', [], [], ...
+    'subjectname', SubjectName, ...
+    'condition',   FolderName, ...
+    'samples',     600, ...
+    'srate',       600, ...
+    'matlab',      ['Data(1,:) = sin(2*pi*t);' 10 'Data(2,:) = sin(2*pi*t + pi/4);']);
+% Process: Set name: Simulated bilateral
+sFileSim = bst_process('CallProcess', 'process_set_comment', sFileSim, [], ...
+    'tag',           'Simulated bilateral', ...
+    'isindex',       0);
+% Process: Simulate recordings from dipoles
+sFileEeg = bst_process('CallProcess', 'process_simulate_dipoles', sFileSim, [], ...
+    'dipoles',  ['-48, -2, -4, 0.2, 1, 0' 10 '48, -2, -4, -0.2, 1, 0'], ...
+    'cs',       'mni', ...  % MNI
+    'meg',      {''}, ...  % 
+    'eeg',      {'openmeeg'}, ...  % OpenMEEG BEM
+    'ecog',     {''}, ...  % 
+    'seeg',     {''}, ...  % 
+    'openmeeg', struct(...
+         'BemFiles',     {{}}, ...
+         'BemNames',     {{'Scalp', 'Skull', 'Brain'}}, ...
+         'BemCond',      [1, 0.0125, 1], ...
+         'BemSelect',    [1, 1, 1], ...
+         'isAdjoint',    0, ...
+         'isAdaptative', 1, ...
+         'isSplit',      0, ...
+         'SplitLength',  4000), ...
+    'isnoise',  1, ...
+    'noise1',   0.1, ...
+    'noise2',   0.5, ...
+    'savedip',  1, ...
+    'savedata', 1);
+
+% Process: Snapshot: Recordings time series
+bst_process('CallProcess', 'process_snapshot', sFileSim, [], ...
+    'target',         5, ...  % Recordings time series
+    'time',           0);
+% Process: Snapshot: Recordings time series
+bst_process('CallProcess', 'process_snapshot', sFileEeg, [], ...
+    'target',         5, ...  % Recordings time series
+    'modality',       4, ...  % EEG
+    'time',           0);
+% Process: Snapshot: Recordings topography (contact sheet)
+bst_process('CallProcess', 'process_snapshot', sFileEeg, [], ...
+    'target',         7, ...  % Recordings topography (contact sheet)
+    'modality',       4, ...  % EEG
+    'contact_time',   [0, 0.998], ...
+    'contact_nimage', 12);
+
+% Process: Select files using search query
+sFileDip = bst_process('CallProcess', 'process_select_search', [], [], ...
+    'search', '([type EQUALS "Dipoles"])');
+% Display dipoles
+hFig = view_dipoles(sFileDip.FileName, 'mri3d');
+figure_3d('SetStandardView', hFig, 'top');
+bst_report('Snapshot', hFig, sFileDip.FileName, 'Two dipoles: MNI(-48,-2,-4) and MNI(+48,-2,-4)', [200, 200, 640, 400]);
+figure_3d('SetStandardView', hFig, 'left');
+bst_report('Snapshot', hFig, sFileDip.FileName, 'Two dipoles: MNI(-48,-2,-4) and MNI(+48,-2,-4)', [200, 200, 640, 400]);
+close(hFig);
+
+
+% ===== SAVE REPORT =====
 % Save and display report
 ReportFile = bst_report('Save', []);
 if ~isempty(reports_dir) && ~isempty(ReportFile)

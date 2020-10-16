@@ -2727,12 +2727,12 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         for iDir = 1:length(bstDefaults)
             jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Create subfolder for cap manufacturer
-            jMenuOther = gui_component('Menu', jMenuDir, [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuAnt = gui_component('Menu', jMenuDir, [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBs  = gui_component('Menu', jMenuDir, [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBp  = gui_component('Menu', jMenuDir, [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuEgi = gui_component('Menu', jMenuDir, [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuNs  = gui_component('Menu', jMenuDir, [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Add an item per Template available
             fList = bstDefaults(iDir).contents;
             for iFile = 1:length(fList)
@@ -2760,6 +2760,25 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                 end
                 % Create item
                 gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback);
+            end
+            % Add if not empty
+            if (jMenuOther.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuOther);
+            end
+            if (jMenuAnt.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuAnt);
+            end
+            if (jMenuBs.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuBs);
+            end
+            if (jMenuBp.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuBp);
+            end
+            if (jMenuEgi.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuEgi);
+            end
+            if (jMenuNs.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuNs);
             end
         end
     end

@@ -19,8 +19,10 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2020
 
+% Check SPM installation
+bst_spm_init();
 % Check if SPM is in the path
 if ~exist('file_array', 'file')
     error('SPM must be in the Matlab path to use this feature.');

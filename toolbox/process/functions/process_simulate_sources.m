@@ -43,27 +43,28 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
     % Notice inputs
     sProcess.options.label1.Comment = ['<FONT COLOR="#777777">&nbsp;- N signals (constrained) or 3*N signals (unconstrained)<BR>' ...
-                                       '&nbsp;- N scouts: selected in the process options</FONT>'];
+                                       '&nbsp;- N scouts: selected below</FONT>'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.label1.Group   = 'input';
     % Notice algorithm
     sProcess.options.label2.Comment = ['<FONT COLOR="#777777">Algorithm (first part of process <I>Simulate recordings from scouts</I>):<BR>' ...
                                        '&nbsp;- Create an empty source file with zeros at every vertex<BR>' ...
                                        '&nbsp;- Assign each signal #i to all the vertices within scout #i<BR>' ... 
-                                       '&nbsp;- Add random noise to the source maps:<BR>' ...
+                                       '&nbsp;- Add random noise to the source maps (optional):<BR>' ...
                                        '&nbsp;&nbsp;&nbsp;<I>Src = Src + SNR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:)));</I><BR><BR></FONT>'];
     sProcess.options.label2.Type    = 'label';
     % === SCOUTS
     sProcess.options.scouts.Comment = '';
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
+    sProcess.options.scouts.Group   = 'input';
     % === ADD NOISE
     sProcess.options.isnoise.Comment    = 'Add noise';
     sProcess.options.isnoise.Type       = 'checkbox';
     sProcess.options.isnoise.Value      = 0;
     sProcess.options.isnoise.Controller = 'Noise';
     % === LEVEL OF NOISE (SNR1)
-    sProcess.options.noise1.Comment = 'Level of source noise (SNR1):';
+    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (SNR1):';
     sProcess.options.noise1.Type    = 'value';
     sProcess.options.noise1.Value   = {0, '', 2};
     sProcess.options.noise1.Class   = 'Noise';

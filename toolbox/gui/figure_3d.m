@@ -1019,7 +1019,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 case {'uparrow', 'downarrow'}
                     % If there are tensors displayed: update display
                     Handles = bst_figures('GetFigureHandles', hFig);
-                    if ~isempty(Handles.TensorDisplay)
+                    if isfield(Handles, 'TensorDisplay') && ~isempty(Handles.TensorDisplay)
                         PlotTensorCut(hFig, [], [], [], keyEvent.Key, []);
                     % Up/Down: Process by Freq panel
                     else
