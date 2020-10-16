@@ -281,8 +281,8 @@ bst_progress('stop');
                     '<TR><TD><B>Control + uparrow</B></TD><TD>Increase the vector width</TD></TR>'...
                     '<TR><TD><B>Control + downarrow</B></TD><TD>Decrease the vector width</TD></TR>'... 
                     '<TR><TD><B>Alt + Enter </B></TD><TD>Toggle to superior/inferior for LF threshold</TD></TR>'...
-                    '<TR><TD><B>Alt + uparrow </B></TD><TD>Increase LF threshold</TD></TR>'...
-                    '<TR><TD><B>Alt + downarrow </B></TD><TD>Decrease LF threshold</TD></TR>'...
+                    '<TR><TD><B>Alt + uparrow </B></TD><TD>Increase Amplitude threshold</TD></TR>'...
+                    '<TR><TD><B>Alt + downarrow </B></TD><TD>Decrease Amplitude threshold</TD></TR>'...
                     '<TR><TD><B>M</B></TD><TD>Change the <B>M</B>odality (MEG, EEG, SEEG, ECOG)</TD></TR>'....
                     '<TR><TD><B>R</B></TD><TD>Select the <B>R</B>eference channel</TD></TR>'....
                     '<TR><TD><B>T</B></TD><TD>Select the <B>T</B>arget channel</TD></TR>'....
@@ -338,6 +338,14 @@ bst_progress('stop');
         if (iRef > length(Channels))
             iRef = 1;
         end
+        
+        if iThresholdLF <= 0
+            iThresholdLF = 0;
+        end        
+        if iThresholdLF >= 1
+            iThresholdLF = 1;
+        end
+        
         DrawArrows();
     end
 
@@ -373,10 +381,11 @@ bst_progress('stop');
             if(useLogScale)
                 LeadField = logScaledLeadField(LeadField);
             end
+            
             % thresholding
             normLF = sqrt((LeadField(:,1) ).^2 +(LeadField(:,2) ).^2 + (LeadField(:,3)).^2);
             [col1, ind] = sort(normLF, 'ascend');
-            LeadFieldRordered = LeadField(ind,:);
+            LeadFieldReordered = LeadField(ind,:);
             cdf = cumsum(col1); % Compute cdf
             cdf = cdf/cdf(end); % Normalize
             % Find index bellow or above the thresholding
@@ -387,11 +396,11 @@ bst_progress('stop');
                 index = find(cdf > iThresholdLF);   
                 iSymbole = '>';
             end
-            dataValue = zeros(size(LeadFieldRordered));
-            dataValue(index,:) = LeadFieldRordered(index,:);
+            dataValue = zeros(size(LeadFieldReordered));
+            dataValue(index,:) = LeadFieldReordered(index,:);
 
             hQuiver(iLF) = quiver3(...
-                ...HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ...
+                ...HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ... % These two line are remaining in order to check if the thresholiding display is correct
                 ...LeadField(:,1), LeadField(:,2), LeadField(:,3), ...
                 HeadmodelMat{iLF}.GridLoc(ind,1), HeadmodelMat{iLF}.GridLoc(ind,2), HeadmodelMat{iLF}.GridLoc(ind,3), ...
                 dataValue(:,1), dataValue(:,2), dataValue(:,3), ...
@@ -436,12 +445,12 @@ bst_progress('stop');
             end
             % Title bar (channel name)
             if isAvgRef
-                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = AvgRef  | iThresholdLF %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality, iSymbole,  num2str(iThresholdLF*100),useLogScaleLegendMsg);
+                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = AvgRef  | Amp threshold %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality, iSymbole,  num2str(iThresholdLF*100),useLogScaleLegendMsg);
             else
-                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = %s| iThresholdLF %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name, iSymbole, num2str(iThresholdLF*100),useLogScaleLegendMsg);
+                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = %s| Amp threshold %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name, iSymbole, num2str(iThresholdLF*100),useLogScaleLegendMsg);
             end
         else
-            strTitle = sprintf('Target channel (red) #%d/%d  (%s) | iThresholdLF %s %s %%|Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name, iSymbole,num2str(iThresholdLF*100),useLogScaleLegendMsg);
+            strTitle = sprintf('Target channel (red) #%d/%d  (%s) | Amp threshold %s %s %%|Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name, iSymbole,num2str(iThresholdLF*100),useLogScaleLegendMsg);
         end
         
         if (iChannel == 1) && (length(Channels) > 1)
