@@ -342,6 +342,19 @@ function FigureMouseMoveCallback(hFig, ev)
             % Gain zoom
             ScrollCount = -motionFigure(2) * 10;
             figure_timeseries('FigureScroll', hFig, ScrollCount, 'vertical');
+            % Apply same limits as when panning
+            YLimInit = getappdata(hAxes, 'YLimInit');
+            YLim = get(hAxes, 'YLim');
+            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if YLog
+                YLim = log10(YLim);
+                YLimInit = log10(YLimInit);
+            end
+            YLim = bst_saturate(YLim, YLimInit, 1);
+            if YLog
+                YLim = 10.^YLim;
+            end
+            set(hAxes, 'YLim', YLim);
     end
 end
             
