@@ -77,6 +77,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'FOOOF Model',  jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFAperiodic   = gui_component('Radio', jPanelFOOOF, 'br', 'Aperiodic only', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks only', jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFError = gui_component('Radio', jPanelFOOOF, 'br', 'Frequency-wise error', jButtonGroup, '', @DisplayOptions_Callback);
     jPanelNew.add(jPanelFOOOF);
     
     % ===== PAC: PAC/FLOW/FHIGH =====
@@ -184,6 +185,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jRadioFModel.setEnabled(0);
     jRadioFAperiodic.setEnabled(0);
     jRadioFPeaks.setEnabled(0);
+    jRadioFError.setEnabled(0);
     
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
@@ -203,10 +205,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioFunMag',           jRadioFunMag, ...
                                   'jRadioFunLog',           jRadioFunLog, ...
                                   'jRadioFunPhase',         jRadioFunPhase, ...
-                                  'jRadioFSpectrum',      jRadioFSpectrum, ...
-                                  'jRadioFModel',         jRadioFModel, ...
-                                  'jRadioFAperiodic',     jRadioFAperiodic, ...
-                                  'jRadioFPeaks',         jRadioFPeaks, ...
+                                  'jRadioFSpectrum',        jRadioFSpectrum, ...
+                                  'jRadioFModel',           jRadioFModel, ...
+                                  'jRadioFAperiodic',       jRadioFAperiodic, ...
+                                  'jRadioFPeaks',           jRadioFPeaks, ...
+                                  'jRadioFError',           jRadioFError, ...
                                   'jRadioPacMax',           jRadioPacMax, ...
                                   'jRadioPacFlow',          jRadioPacFlow, ...
                                   'jRadioPacFhigh',         jRadioPacFhigh, ...
@@ -333,6 +336,7 @@ function UpdatePanel(hFig)
         ctrl.jRadioFModel.setEnabled(0);
         ctrl.jRadioFAperiodic.setEnabled(0);
         ctrl.jRadioFPeaks.setEnabled(0);
+        ctrl.jRadioFError.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelSelect.setVisible(0);
@@ -373,6 +377,7 @@ function UpdatePanel(hFig)
         ctrl.jRadioFModel.setEnabled(0);
         ctrl.jRadioFAperiodic.setEnabled(0);
         ctrl.jRadioFPeaks.setEnabled(0);
+        ctrl.jRadioFError.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelFunction.setVisible(0);
@@ -435,11 +440,17 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
+                ctrl.jRadioFError.setEnabled(1);
                 switch TfInfo.FOOOFDisp
                     case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
                     case 'model', ctrl.jRadioFModel.setSelected(1);
                     case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
                     case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
+                    case 'error' 
+                        ctrl.jRadioFError.setSelected(1);
+                        ctrl.jRadioFunPower.setEnabled(0);
+                        ctrl.jRadioFunMag.setEnabled(0);
+                        ctrl.jRadioFunLog.setEnabled(1);
                 end
             else
                 ctrl.jRadioFSpectrum.setSelected(1);
@@ -447,6 +458,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFModel.setEnabled(0);
                 ctrl.jRadioFAperiodic.setEnabled(0);
                 ctrl.jRadioFPeaks.setEnabled(0);
+                ctrl.jRadioFError.setEnabled(0);
             end                
         end
 
@@ -632,12 +644,26 @@ function sOptions = GetDisplayOptions()
     % Get FOOOF display specifics 
     if ctrl.jRadioFSpectrum.isSelected()
         sOptions.FOOOFDisp = 'spectrum';
+        ctrl.jRadioFunPower.setEnabled(1);
+        ctrl.jRadioFunMag.setEnabled(1);
     elseif ctrl.jRadioFModel.isSelected()
         sOptions.FOOOFDisp = 'model';
+        ctrl.jRadioFunPower.setEnabled(1);
+        ctrl.jRadioFunMag.setEnabled(1);
     elseif ctrl.jRadioFAperiodic.isSelected()
         sOptions.FOOOFDisp = 'aperiodic';
+        ctrl.jRadioFunPower.setEnabled(1);
+        ctrl.jRadioFunMag.setEnabled(1);
     elseif ctrl.jRadioFPeaks.isSelected()
         sOptions.FOOOFDisp = 'peaks';
+        ctrl.jRadioFunPower.setEnabled(1);
+        ctrl.jRadioFunMag.setEnabled(1);
+    elseif ctrl.jRadioFError.isSelected()
+        sOptions.FOOOFDisp = 'error';
+        ctrl.jRadioFunLog.setSelected(1);
+        ctrl.jRadioFunPower.setEnabled(0);
+        ctrl.jRadioFunMag.setEnabled(0);
+        sOptions.Function = 'log';
     end
     
     % Hide edge effects / Resolution
