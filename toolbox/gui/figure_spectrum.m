@@ -284,22 +284,46 @@ function FigureMouseMoveCallback(hFig, ev)
 
     % Switch between different actions (Pan, Rotate, Contrast)
     switch(clickAction)                          
-        case 'pan'
+        case 'pan' % maybe could use figure_timeseries.FigurePan
             % Get initial XLim and YLim
             XLimInit = getappdata(hAxes, 'XLimInit');
             YLimInit = getappdata(hAxes, 'YLimInit');
             
             % Move view along X axis
             XLim = get(hAxes, 'XLim');
+            XLog = strcmpi(get(hAxes, 'XScale'), 'log');
+            if XLog
+                XLim = log10(XLim);
+                XLimInit = log10(XLimInit);
+            end
             XLim = XLim - (XLim(2) - XLim(1)) * motionFigure(1);
             XLim = bst_saturate(XLim, XLimInit, 1);
+            if XLog
+                XLim = 10.^XLim;
+            end
             set(hAxes, 'XLim', XLim);
             
             % Move view along Y axis
             YLim = get(hAxes, 'YLim');
+            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if YLog
+                YLim = log10(YLim);
+                YLimInit = log10(YLimInit);
+            end
             YLim = YLim - (YLim(2) - YLim(1)) * motionFigure(2);
             YLim = bst_saturate(YLim, YLimInit, 1);
+            if YLog
+                YLim = 10.^YLim;
+            end
             set(hAxes, 'YLim', YLim);
+            % Set the cursor height
+            hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+            set(hCursor, 'YData', YLim);
+            % Set the selection rectangle dimensions
+            hSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'SelectionPatch');
+            if ~isempty(hSelectionPatch)
+                set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+            end
 
         case 'selection'
             % Get time selection
@@ -317,7 +341,20 @@ function FigureMouseMoveCallback(hFig, ev)
         case 'gzoom'
             % Gain zoom
             ScrollCount = -motionFigure(2) * 10;
-            figure_timeseries('FigureScroll', hFig, ScrollCount, 'gzoom');
+            figure_timeseries('FigureScroll', hFig, ScrollCount, 'vertical');
+            % Apply same limits as when panning
+            YLimInit = getappdata(hAxes, 'YLimInit');
+            YLim = get(hAxes, 'YLim');
+            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if YLog
+                YLim = log10(YLim);
+                YLimInit = log10(YLimInit);
+            end
+            YLim = bst_saturate(YLim, YLimInit, 1);
+            if YLog
+                YLim = 10.^YLim;
+            end
+            set(hAxes, 'YLim', YLim);
     end
 end
             
