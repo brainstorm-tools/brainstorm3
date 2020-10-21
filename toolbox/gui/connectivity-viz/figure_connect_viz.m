@@ -55,16 +55,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
                   'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
                   bst_get('ResizeFunction'), @(h,ev)ResizeCallback(h,ev));
-    
-%             DONE:  'CloseRequestFcn',       @(h,ev)bst_figures('DeleteFigure',h,ev), ...
-%             TODO      'KeyPressFcn',           @(h,ev)bst_call(@FigureKeyPressedCallback,h,ev), ...
-%             TODO      'KeyReleaseFcn',         @(h,ev)bst_call(@FigureKeyReleasedCallback,h,ev), ...
-%             TODO      'WindowButtonDownFcn',   @FigureMouseDownCallback, ...
-%             TODO      'WindowButtonMotionFcn', @FigureMouseMoveCallback, ...
-%             TODO      'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
-%             TODO      'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
-%             TODO      bst_get('ResizeFunction'), @(h,ev)ResizeCallback(h,ev));
-
 	
      % OGL SECTION -- TODO: REPLACE/REMOVE
 	% Create rendering panel
@@ -104,12 +94,12 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'RegionFunction', 'mean');
     setappdata(hFig, 'LinkTransparency',  0);
         
-    % Camera variables
-    setappdata(hFig, 'CameraZoom', 6);
+    % Default Camera variables
+    setappdata(hFig, 'CameraZoom', 6); %TODO: remove
     setappdata(hFig, 'CamPitch', 0.5 * 3.1415);
     setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
-    setappdata(hFig, 'CameraPosition', [0 0 0]);
-    setappdata(hFig, 'CameraTarget', [0 0 0]);
+    setappdata(hFig, 'CameraPosition', [0 0 36]); % %TODO: remove
+    setappdata(hFig, 'CameraTarget', [0 0 -0.5]); % %TODO: remove 
     
 	% Add colormap
     bst_colormaps('AddColormapToFigure', hFig, 'connectn');
@@ -406,25 +396,36 @@ end
 % getkey
 
 %% ===== FIGURE MOUSE CLICK CALLBACK =====
+    % TODO: remove java canvas once prototype complete
+    % Mouse click callbacks include:
+        % Right-click for popup menu (NOTE: DONE)
+        % Double click to reset display (NOTE: DONE)
+        % SHIFT+CLICK to move/pan camera (NOTE: DONE)
+        % CLICK colorbar to change colormap, double-click colorbar to reset
+        % (NOTE: DONE)
 function FigureMouseDownCallback(hFig, ev)   
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
         return;
     end
-    % Click on the Java canvas
-    if ~isempty(ev)
-        if isjava(ev)
+    
+    % TODO: remove java canvas, use key events in MATLAB
+    if ~isempty(ev) 
+        if isjava(ev) % Click on the Java canvas
             if ((ev.getButton() == ev.BUTTON3) || (ev.getButton() == ev.BUTTON2))
-                clickAction = 'popup';
+                clickAction = 'popup'; % pop-up menu on right-click
             else
-                clickAction = 'rotate';
+                clickAction = 'MouseMoveCamera';
             end
             clickPos = [ev.getX() ev.getY()];
-        else
+        else % click from Matlab figure
             if strcmpi(get(hFig, 'SelectionType'), 'alt')
                 clickAction = 'popup';
+            elseif strcmpi(get(hFig, 'SelectionType'), 'open')
+                %double-click to reset display
+                clickAction = 'ResetCamera';
             else
-                clickAction = 'rotate';
+                clickAction = 'MouseMoveCamera';
             end
             clickPos = get(hFig, 'CurrentPoint');
         end
@@ -460,11 +461,11 @@ function FigureMouseMoveCallback(hFig, ev)
     if strcmpi(clickAction, 'MouseDownNotConsumed') || isempty(getappdata(hFig, 'clickPositionFigure'))
         return
     end
-    % Click on the Java canvas
-    if ~isempty(ev) && isjava(ev)
+    
+    % TODO: REMOVE JAVA CANVAS
+    if ~isempty(ev) && isjava(ev) %Click on the Java canvas
         curPos = [ev.getX() ev.getY()];
-    % Click on the Matlab colorbar
-    else
+    else  % Click on the Matlab colorbar or matlab figure
         curPos = get(hFig, 'CurrentPoint');
     end
     % Motion from the previous event
@@ -476,19 +477,21 @@ function FigureMouseMoveCallback(hFig, ev)
     % Switch between different actions
     switch(clickAction)              
         case 'colorbar'
+            %TODO
             % Get colormap type
             ColormapInfo = getappdata(hFig, 'Colormap');
             % Changes contrast            
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
-        case 'rotate'
+        case 'MouseMoveCamera'
+            %check SHIFT+MOUSEMOVE
              MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
              if isempty(MouseMoveCamera)
                  MouseMoveCamera = 0;
              end
              if (MouseMoveCamera)
                  motion = -motionFigure * 0.05;
-                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
+                 MoveCamera(hFig, [motion(1) motion(2) 0]);
              else
                  % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
                  %motion = -motionFigure * 0.01;
@@ -521,6 +524,8 @@ function FigureMouseUpCallback(hFig, varargin)
     if ~hasMoved
         if strcmpi(clickAction, 'popup')
             DisplayFigurePopup(hFig);
+        elseif strcmpi(clickAction, 'ResetCamera')
+            DefaultCamera(hFig);
         end
     % ===== MOUSE HAS MOVED =====
     else
@@ -548,43 +553,46 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         ConnectKeyboardMutex = 0.1;
         % Process event
         switch (keyEvent.Key)
-            case 't' %TODO: remove test
+            case 't'                            %TODO: remove test
                  test(hFig);
             case 'a'
-                SetSelectedNodes(hFig, [], 1, 1); %TODO
+                SetSelectedNodes(hFig, [], 1, 1);   %TODO
             case 'b'
-                ToggleBlendingMode(hFig); %TODO
+                ToggleBlendingMode(hFig);           %TODO
             case 'l'
-                ToggleTextDisplayMode(hFig); %TODO
-            case 'h' %TODO
+                ToggleTextDisplayMode(hFig);         % DONE
+            case 'h'                            %TODO
                 HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
                 HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
                 SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
-            case 'd' %TODO
+            case 'd'                    %TODO
                 ToggleDisplayMode(hFig);
-            case 'm' %TODO
+            case 'm'                    %TODO
                 ToggleMeasureToRegionDisplay(hFig)
-            case 'q' %TODO
+            case 'q'                    %TODO
                 RenderInQuad = 1 - getappdata(hFig, 'RenderInQuad');
                 setappdata(hFig, 'RenderInQuad', RenderInQuad)
                 OGL = getappdata(hFig, 'OpenGLDisplay');
                 OGL.renderInQuad(RenderInQuad)
                 OGL.repaint();
-            case {'+', 'add'} %TODO
+            case {'+', 'add'}             %TODO
                 panel_display('ConnectKeyCallback', keyEvent);
-            case {'-', 'subtract'} %TODO
+            case {'-', 'subtract'}              %TODO
                 panel_display('ConnectKeyCallback', keyEvent);
-            case 'leftarrow' %TODO
+            case 'leftarrow'                    %TODO
                 ToggleRegionSelection(hFig, 1);
-            case 'rightarrow' %TODO
+            case 'rightarrow'                    %TODO
                 ToggleRegionSelection(hFig, -1);
-            case 'uparrow' %TODO
-                ZoomCamera(hFig, -10);
-            case 'downarrow' %TODO
-                ZoomCamera(hFig, 10);
-            case 'escape' %TODO
+            case 'uparrow'          %DONE - oct 20 2020
+                % zoom in
+                ZoomCamera(hFig, 0.95 ); % zoom in
+            case 'downarrow'        %DONE - oct 20 2020
+                % zoom out
+                ZoomCamera(hFig, 1.05); % zoom out
+            case 'escape'           %TODO
                 SetExplorationLevelTo(hFig, 1);
-            case 'shift' %TODO
+            case 'shift'            %DONE - oct 20 2020
+                % SHIFT+CLICK to move camera horizontally/vertically
                 setappdata(hFig, 'MouseMoveCamera', 1);
         end
         %ConnectKeyboardMutex = [];
@@ -597,7 +605,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     end
 end
 
-%TODO: CHECK
+%Note: ready
 function FigureKeyReleasedCallback(hFig, keyEvent)
     % Convert to Matlab key event
     keyEvent = gui_brainstorm('ConvertKeyEvent', keyEvent);
@@ -606,7 +614,7 @@ function FigureKeyReleasedCallback(hFig, keyEvent)
     end
     % Process event
     switch (keyEvent.Key)
-        case 'shift'
+        case 'shift'  % no longer panning/hor. translation
             setappdata(hFig, 'MouseMoveCamera', 0);
     end
 end
@@ -684,6 +692,7 @@ end
 
 
 %% ===== JAVA MOUSE CLICK CALLBACK =====
+% TODO: convert to matlab callbacks
 function JavaClickCallback(hFig, ev)
     % Retrieve button
     ButtonClicked = ev.get('Button');
@@ -791,22 +800,14 @@ function JavaClickCallback(hFig, ev)
             end
         else
             if (ClickCount == 2)
+                % double click resets display
                 DefaultCamera(hFig);
             end
         end
     end
 end
 
-function DefaultCamera(hFig)
-    setappdata(hFig, 'CameraZoom', 6);
-    setappdata(hFig, 'CamPitch', 0.5 * 3.1415);
-    setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
-    setappdata(hFig, 'CameraPosition', [0 0 0]);
-    setappdata(hFig, 'CameraTarget', [0 0 0]);
-    RotateCameraAlongAxis(hFig, 0, 0);
-end
-
-
+%%
 function UpdateHierarchySelection(hFig, NodeIndex, Select)
     % Incorrect data
     if (size(NodeIndex,1) > 1 || isempty(NodeIndex ))
@@ -832,34 +833,24 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
     end
 end
 
-%% =====  % Or use Factor calculation from figure_timefreq.m function FigureMouseWheelCallback(hFig, event) =====
-%TODO: update factor calculation
+%% =====  ZOOM CALLBACK USING MOUSEWHEEL =========
+    % Note: Done Oct 20, 2020
 function FigureMouseWheelCallback(hFig, ev)
+    disp("Mouse wheel callback reached");
     % Control Zoom
-    CameraZoom = getappdata(hFig, 'CameraZoom');
-    % 0.1 Factor is too much (6 Dec 2013). Now 0.05
-    CameraZoom = CameraZoom + (double(ev.VerticalScrollCount) * double(ev.VerticalScrollAmount)) * 0.05;
-    if (CameraZoom <= 0)
-        CameraZoom = 0;
-    end
-    setappdata(hFig, 'CameraZoom', CameraZoom);
-    UpdateCamera(hFig);
-    
-    % Or use Factor calculation from figure_timefreq.m function FigureMouseWheelCallback(hFig, event)
     if isempty(ev)
         return;
     elseif (ev.VerticalScrollCount < 0)
-        % ZOOM IN
-        Factor = 1 - double(ev.VerticalScrollCount) ./ 10;
-    elseif (ev.VerticalScrollCount > 0)
         % ZOOM OUT
-        Factor = 1./(1 + double(ev.VerticalScrollCount) ./ 10);
+        Factor = 1./(1 - double(ev.VerticalScrollCount) ./ 20);
+    elseif (ev.VerticalScrollCount > 0)
+        % ZOOM IN
+         Factor = 1 + double(ev.VerticalScrollCount) ./ 20;
     else
         Factor = 1;
     end
+    ZoomCamera(hFig, Factor);
     
-    % apply zoom
-    gui_zoom(hFig, 'horizontal', Factor);
 end
 
 
@@ -1604,25 +1595,24 @@ end
 
 %test callback function
 function test(hFig)
-   nodes = hFig.UserData.Nodes;
    testNodes = hFig.UserData.testNodes;
    
    axis image;
-   ax = hFig.CurrentAxes;
-   extent = 0;
-   for i = 1: length(nodes)
-       if (testNodes(i).Extent> extent)
-           extent = testNodes(i).Extent;
-       end
-   end
-
-   ax.XLim = ax.XLim + extent*[-1 1];
-   fudgeFactor = 1.75; % Not sure why this is necessary. Eyeballed it.
-   ax.YLim = ax.YLim + fudgeFactor*extent*[-1 1];
-   ax.Visible = 'off';
-   ax.SortMethod = 'depth';
-           
-        
+%    ax = hFig.CurrentAxes;
+%    extent = 0;
+%    for i = 1: length(testNodes)
+%        if (testNodes(i).Extent> extent)
+%            extent = testNodes(i).Extent;
+%        end
+%    end
+% 
+%    ax.XLim = ax.XLim + extent*[-1 1];
+%    fudgeFactor = 1.5; % Not sure why this is necessary. Eyeballed it.
+%    ax.YLim = ax.YLim + fudgeFactor*extent*[-1 1];
+%    ax.Visible = 'off';
+%    ax.SortMethod = 'depth';
+%            
+%         
 end
 
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
@@ -2345,68 +2335,104 @@ function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, L
 end
 
 
+%% ======== RESET CAMERA DISPLAY ================
+    % NOTE: DONE Oct 20 2020
+    % Resets camera position, target and view angle of the figure
+function DefaultCamera(hFig)
+    disp('set DefaultCamera reached') %TODO: remove test
+   % setappdata(hFig, 'CameraZoom', 6);  %TODO: remove
+   %zoom angle default is 6deg
+   % setappdata(hFig, 'CamPitch', 0.5 * 3.1415);
+  %  setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
+  %  setappdata(hFig, 'CameraPosition', [0 0 36]);  %TODO: remove
+   % setappdata(hFig, 'CameraTarget', [0 0 -0.5]);  %TODO: remove
+  %   RotateCameraAlongAxis(hFig, 0, 0);
+    hFig.CurrentAxes.CameraViewAngle = 6;
+    hFig.CurrentAxes.CameraPosition = [0 0 36];
+    hFig.CurrentAxes.CameraTarget = [0 0 -0.5];
+   
+end
+
+%% ======= ZOOM CAMERA =================
+    % Note: Done Oct 20, 2020
+    % Zoom in/out by changing CameraViewAngle of default z-axis
+    % The greater the angle (0 to 180), the larger the field of view
+    % ref: https://www.mathworks.com/help/matlab/ref/matlab.graphics.axis.axes-properties.html#budumk7-CameraViewAngle
+function ZoomCamera(hFig, factor)
+    angle = hFig.CurrentAxes.CameraViewAngle * factor;
+    min = 3; max = 20;
+    if (angle > max)
+        angle = max;
+    elseif (angle < min)
+        angle = min;
+    end
+    hFig.CurrentAxes.CameraViewAngle = angle;
+end
+
+%% ====== MOVE CAMERA HORIZONTALLY/ VERTIVALLY ===============
+    % NOTE: Oct 20, 2020. Needs accuracy improvement.
+    % Move camera horizontally/vertically (from SHIFT+MOUSEMOVE) 
+    % by applying X and Y translation to the CameraPosition and CameraTarget
+    % ref: https://www.mathworks.com/help/matlab/ref/matlab.graphics.axis.axes-properties.html#budumk7-CameraTarget
+function MoveCamera(hFig, Translation)
+    disp('MoveCamera reached') %TODO: remove test
+  %  CameraPosition = getappdata(hFig, 'CameraPosition') + Translation;
+   % CameraTarget = getappdata(hFig, 'CameraTarget') + Translation;
+  %  setappdata(hFig, 'CameraPosition', CameraPosition);
+  %  setappdata(hFig, 'CameraTarget', CameraTarget);
+  %  UpdateCamera(hFig);
+    
+    %new 
+    position = hFig.CurrentAxes.CameraPosition + Translation; %[0.01 0.01 0]; 
+    target = hFig.CurrentAxes.CameraTarget + Translation; %[0.01 0.01 0];
+    hFig.CurrentAxes.CameraPosition = position;
+    hFig.CurrentAxes.CameraTarget = target;
+end
+
 %% ===== UPDATE CAMERA =====
+% TODO: REMOVE
 function UpdateCamera(hFig)
-    disp('UpdateCamera reached') %TODO: remove test
-    Pos = getappdata(hFig, 'CameraPosition');
-    CameraTarget = getappdata(hFig, 'CameraTarget');
-    Zoom = getappdata(hFig, 'CameraZoom');
+   % disp('UpdateCamera reached') %TODO: remove test
+   % Pos = getappdata(hFig, 'CameraPosition');
+   % CameraTarget = getappdata(hFig, 'CameraTarget');
+  %  Zoom = getappdata(hFig, 'CameraZoom');
    % OGL = getappdata(hFig, 'OpenGLDisplay');
    % OGL.zoom(Zoom);
    % OGL.lookAt(Pos(1), Pos(2), Pos(3), CameraTarget(1), CameraTarget(2), CameraTarget(3), 0, 1, 0);
   %  OGL.repaint();
-  
-  
-   
-end
-
-%% ===== ZOOM CAMERA =====
-%new feature: when key event= 'uparrow' or'downarrow' %TODO
-% @TODO
-function ZoomCamera(hFig, inc)
-    disp('ZoomCamera reached') %TODO: remove test
-    Zoom = getappdata(hFig, 'CameraZoom');
-    Zoom = Zoom + (inc * 0.01);
-    setappdata(hFig, 'CameraZoom', Zoom);
-	UpdateCamera(hFig);
 end
 
 %% ===== ROTATE CAMERA =====
+% TODO: REMOVE
 function RotateCameraAlongAxis(hFig, theta, phi)
-	Pos = getappdata(hFig, 'CameraPosition');
-    Target = getappdata(hFig, 'CameraTarget');
-    Zoom = getappdata(hFig, 'CameraZoom');
-    Pitch = getappdata(hFig, 'CamPitch');
-    Yaw = getappdata(hFig, 'CamYaw');
-    
-    Pitch = Pitch + theta;
-    Yaw = Yaw + phi;
-    if (Pitch > (0.5 * 3.1415))
-        Pitch = (0.5 * 3.1415);
-    elseif (Pitch < -(0.5 * 3.1415))
-        Pitch = -(0.5 * 3.1415);
-    end
-    
-    % Projection 
-    Pos(1) = cos(Yaw) * cos(Pitch);
-	Pos(2) = sin(Yaw) * cos(Pitch);
-    Pos(3) = sin(Pitch);
-    Pos = Target + Zoom * Pos;
-    
-    setappdata(hFig, 'CamPitch', Pitch);
-    setappdata(hFig, 'CamYaw', Yaw);
-    setappdata(hFig, 'CameraPosition', Pos);
-
-	UpdateCamera(hFig);
+%     disp('RotateCamera reached') %TODO: remove test
+% 	Pos = getappdata(hFig, 'CameraPosition');
+%     Target = getappdata(hFig, 'CameraTarget');
+%     Zoom = getappdata(hFig, 'CameraZoom');
+%     Pitch = getappdata(hFig, 'CamPitch');
+%     Yaw = getappdata(hFig, 'CamYaw');
+%     
+%     Pitch = Pitch + theta;
+%     Yaw = Yaw + phi;
+%     if (Pitch > (0.5 * 3.1415))
+%         Pitch = (0.5 * 3.1415);
+%     elseif (Pitch < -(0.5 * 3.1415))
+%         Pitch = -(0.5 * 3.1415);
+%     end
+%     
+%     % Projection 
+%     Pos(1) = cos(Yaw) * cos(Pitch);
+% 	Pos(2) = sin(Yaw) * cos(Pitch);
+%     Pos(3) = sin(Pitch);
+%     Pos = Target + Zoom * Pos;
+%     
+%     setappdata(hFig, 'CamPitch', Pitch);
+%     setappdata(hFig, 'CamYaw', Yaw);
+%     setappdata(hFig, 'CameraPosition', Pos);
+% 
+% 	UpdateCamera(hFig);
 end
 
-function MoveCamera(hFig, Translation)
-    CameraPosition = getappdata(hFig, 'CameraPosition') + Translation;
-    CameraTarget = getappdata(hFig, 'CameraTarget') + Translation;
-    setappdata(hFig, 'CameraPosition', CameraPosition);
-    setappdata(hFig, 'CameraTarget', CameraTarget);
-    UpdateCamera(hFig);
-end
 
 
 %% ===========================================================================
@@ -2678,6 +2704,7 @@ function SetTextDisplayMode(hFig, DisplayMode)
     RefreshTextDisplay(hFig);
 end
 
+%% == Toggle label displays for lobes === 
 function ToggleTextDisplayMode(hFig)
     % Get display mode
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -2935,7 +2962,7 @@ function RefreshBinaryStatus(hFig)
 end
 
 % ===== REFRESH TEXT VISIBILITY =====
-%TODO: Check
+%TODO: Check text display modes 1,2,3
 function RefreshTextDisplay(hFig, isRedraw)
     % 
     FigureHasText = getappdata(hFig, 'FigureHasText');
@@ -2975,11 +3002,7 @@ function RefreshTextDisplay(hFig, isRedraw)
                 testNodes(i).LabelVisible = false;
             end
         end
-     
-        % Refresh
-        if (isRedraw)
-          %  OGL.repaint();
-        end
+
     end
 end
 
@@ -3343,18 +3366,20 @@ function ClearAndAddNodes(hFig, V, Names)
     end
     
     % refresh display extent
-    ax = hFig.CurrentAxes;
-    extent = 0;
-    for i = 1: nVertices
-        if (UserData.testNodes(i).Extent > extent)
-            extent = UserData.testNodes(i).Extent;
-        end
-    end
-    ax.XLim = ax.XLim + extent*[-1 1];
-    fudgeFactor = 1.75; % Not sure why this is necessary. Eyeballed it.
-    ax.YLim = ax.YLim + fudgeFactor*extent*[-1 1];
+    axis image; %fit display to all objects in image
+    ax = hFig.CurrentAxes; %z-axis on default
+%     extent = 0;
+%     for i = 1: nVertices
+%         if (UserData.testNodes(i).Extent > extent)
+%             extent = UserData.testNodes(i).Extent;
+%         end
+%     end
+%     
+%     ax.XLim = ax.XLim + extent*[-1 1];
+%     displayFactor = 1.5;
+%     ax.YLim = ax.YLim + displayFactor*extent*[-1 1];
     ax.Visible = 'off';
-    ax.SortMethod = 'depth';
+ %   ax.SortMethod = 'depth'; % this sorts (displays) the ax.Children  by their z-coordinate.
     
     
     % @TODO: default link and node size (user adjustable)
