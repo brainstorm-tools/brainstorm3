@@ -126,7 +126,7 @@ if isempty(OPTIONS.Channel)
     return;
 end
 % No sources locations specified
-if strcmpi(OPTIONS.HeadModelType, 'surface') && ~isempty(OPTIONS.GridLoc) && (size(OPTIONS.GridOrient,2) == size(OPTIONS.GridLoc,2))
+if strcmpi(OPTIONS.HeadModelType, 'surface') && ~isempty(OPTIONS.GridLoc) && (size(OPTIONS.GridOrient,1) ~= size(OPTIONS.GridLoc,1))
     errMessage = 'Size of GridOrient and GridLoc do not match.';
     OPTIONS = [];
     return;

@@ -46,7 +46,7 @@ if (nargin < 3) || isempty(isRefresh)
     isRefresh = 1;
 end
 if (nargin < 2)
-    ConditionName = java_dialog('input', 'New condition name: ', 'Add condition', [], 'NewCondition');
+    ConditionName = java_dialog('input', 'New folder name: ', 'Add folder', [], 'NewCondition');
     if isempty(ConditionName)
         return
     end
