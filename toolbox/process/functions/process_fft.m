@@ -43,6 +43,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
     sProcess.options.timewindow.InputTypes = {'raw', 'data'};
+    % Options: Units / scaling
+    sProcess.options.units.Comment    = {'Physical: U^2/Hz', '<HTML><FONT color="#a0a0a0">Normalized freq: U^2/(Hz⋅s)</FONT>', ...
+        '<HTML><FONT color="#a0a0a0">As before Nov 2020</FONT>', 'Units (scaling):'; ...
+        'physical', 'normalized', 'old', ''};
+    sProcess.options.units.Type       = 'radio_linelabel';
+    sProcess.options.units.Value      = 'physical';
     % Options: Scouts
     sProcess.options.clusters.Comment = '';
     sProcess.options.clusters.Type    = 'scout_confirm';

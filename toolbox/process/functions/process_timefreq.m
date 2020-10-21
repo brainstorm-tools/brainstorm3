@@ -164,6 +164,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             tfOPTIONS.Comment = [tfOPTIONS.Comment ' std'];
         end
     end
+    % If units specified (PSD)
+    if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
+        tfOPTIONS.PowerUnits = sProcess.options.units.Value;
+    end    
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
         if iscell(sProcess.options.mt_taper.Value)
