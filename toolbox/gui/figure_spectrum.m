@@ -868,6 +868,14 @@ function ToggleLogScaleX(hAxes, hFig, loglin)
     bst_set('XScale', loglin);
 end
 function ToggleLogScaleY(hAxes, hFig, loglin)
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    global GlobalData;
+    % Prevent log scale for data that's already log (dB), or negative.
+    if ~isempty(iDS) && ~isempty(iFig) && ...
+            isfield(GlobalData.DataSet(iDS).Figure(iFig), 'Handles') && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'DataMinMax') && ...
+            ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) && GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
+        loglin = 'linear';
+    end
     set(hAxes, 'YScale', loglin);
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.YScale = loglin;
@@ -1277,7 +1285,8 @@ function UpdateFigurePlot(hFig, isForced)
     else
         set(hAxes, 'XScale', TsInfo.XScale);
     end
-    if ~isfield(TsInfo, 'YScale')
+    % Ignore Y log scale if displaying dB
+    if ~isfield(TsInfo, 'YScale') || PlotHandles.DataMinMax(1) < 0
         TsInfo.YScale = 'linear';
         setappdata(hFig, 'TsInfo', TsInfo);
     else

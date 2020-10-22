@@ -4074,6 +4074,14 @@ end
 
 %% ===== SET Y-SCALE MODE =====
 function SetScaleModeY(hFig, newMode)
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    global GlobalData;
+    % Prevent log scale for data that's already log (dB), or negative.
+    if ~isempty(iDS) && ~isempty(iFig) && ...
+            isfield(GlobalData.DataSet(iDS).Figure(iFig), 'Handles') && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'DataMinMax') && ...
+            ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) && GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
+        newMode = 'linear';
+    end
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.YScale = newMode;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
