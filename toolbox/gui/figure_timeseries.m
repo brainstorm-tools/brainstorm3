@@ -985,15 +985,15 @@ function FigureZoom(hFig, direction, Factor, center)
                 % Get current zoom factor
                 XLim = get(hAxes(i), 'XLim');
                 YLim = get(hAxes(i), 'YLim');
-                YLog = strcmpi(get(hAxes(i), 'YScale'), 'log');
-                if YLog
+                isYLog = strcmpi(get(hAxes(i), 'YScale'), 'log');
+                if isYLog
                     YLim = log10(YLim);
                 end
                 Ylength = YLim(2) - YLim(1);
                 % Butterfly plot
                 if strcmpi(TsInfo.DisplayMode, 'butterfly')
                     % In case everything is positive: zoom from the bottom, except log spectrum.
-                    if (YLim(1) >= 0) && ~YLog
+                    if (YLim(1) >= 0) && ~isYLog
                         YLim = [YLim(1), YLim(1) + Ylength/Factor];
                     % Else: zoom from the middle
                     else
@@ -1011,7 +1011,7 @@ function FigureZoom(hFig, direction, Factor, center)
                         else
                             Ycenter = curPt(1,2);
                         end
-                        if YLog
+                        if isYLog
                             Ycenter = log10(Ycenter);
                         end
                         Yratio = (Ycenter - YLim(1)) ./ Ylength;
@@ -1027,14 +1027,14 @@ function FigureZoom(hFig, direction, Factor, center)
                         YLim = [YLim(1), YLim(1) + Ylength/Factor];
                     end
                     % Restrict zoom
-                    if YLog
+                    if isYLog
                         YLim(2) = min(YLim(2), 0);
                     else
                         YLim(1) = max(YLim(1), 0);
                         YLim(2) = min(YLim(2), 1);
                     end
                 end
-                if YLog
+                if isYLog
                     YLim = 10.^YLim;
                 end                
                 % Update zoom factor
@@ -1141,15 +1141,15 @@ function FigurePan(hFig, motion)
         % Get initial and current YLim
         YLimInit = getappdata(hAxes(1), 'YLimInit');
         YLim = get(hAxes(1), 'YLim');
-        YLog = strcmpi(get(hAxes, 'YScale'), 'log');
-        if YLog
+        isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+        if isYLog
             YLim = log10(YLim);
             YLimInit = log10(YLimInit);
         end
         % Move view along Y axis
         YLim = YLim - (YLim(2) - YLim(1)) * motion(2);
         YLim = bst_saturate(YLim, YLimInit, 1);
-        if YLog
+        if isYLog
             YLim = 10.^YLim;
         end
         set(hAxes, 'YLim', YLim);
@@ -4081,14 +4081,15 @@ function SetScaleModeY(hFig, newMode)
             isfield(GlobalData.DataSet(iDS).Figure(iFig), 'Handles') && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'DataMinMax') && ...
             ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) && GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
         newMode = 'linear';
+    else
+        % Update preferred value
+        bst_set('YScale', newMode);
     end
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.YScale = newMode;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'YScale', newMode);
     setappdata(hFig, 'TsInfo', TsInfo);
-    % Update value
-    bst_set('YScale', newMode);
 end
 
 
@@ -4283,11 +4284,21 @@ function ScaleToFitY(hFig, ev)
     isSpectrum = strcmpi(FigureId.Type, 'spectrum');
     [PlotHandles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
     hAxes = PlotHandles.hAxes;
+    % Get initial YLim
+    YLimInit = getappdata(hAxes(1), 'YLimInit');
 
     % ===== GET DATA =====
     if isSpectrum
         % Get data to plot
         [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
+        % Remove the first frequency bin (0) : SPECTRUM ONLY
+        if isSpectrum && ~iscell(XVector) && (size(TF,3)>1)
+            iZero = find(XVector == 0);
+            if ~isempty(iZero)
+                XVector(iZero) = [];
+                TF(:,:,iZero) = [];
+            end
+        end
         % Redimension TF according to what we want to display
         TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
     else
@@ -4299,20 +4310,38 @@ function ScaleToFitY(hFig, ev)
     
     % Get limits of currently plotted data
     XLim = get(hAxes, 'XLim');    
-    [val, idx1] = min(abs(XVector - XLim(1)));
-    [val, idx2] = min(abs(XVector - XLim(2)));
-    curTF = TF(:, idx1:idx2);
-    YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+    % For linear y axis spectrum, ignore very low frequencies with high amplitudes. Use the first local maximum
+    if isSpectrum && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
+        TFmax = max(TF,[],1);
+        iStartMin = find(diff(TFmax)>0,1);
+    else
+        iStartMin = 1;
+    end
+    [val, iStart] = min(abs(XVector - XLim(1)));
+    iStart = max(iStartMin, iStart);
+    [val, iEnd] = min(abs(XVector - XLim(2)));
+    curTF = TF(:, iStart:iEnd);
+    isYLog = strcmpi(TsInfo.YScale, 'log');
+    if isYLog
+        YLim = log10([min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor);
+    else
+        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+    end
     % Add 5% margin above and below
     YSpan = YLim(2) - YLim(1);
     YLim(1) = YLim(1) - YSpan * 0.05;
     YLim(2) = YLim(2) + YSpan * 0.05;
-    
-    % Power of 10 in the legend rather than in the axis
-    if isSpectrum && PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
-        Fpow = round(log10(max(abs(PlotHandles.DataMinMax))));
-        if (Fpow < -3)
-            YLim = YLim * 10^-Fpow;
+    if isYLog
+        YLim = 10.^YLim;
+    end
+    % Respect data limits
+    if isSpectrum 
+        if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
+            YLim(1) = max(YLim(1), YLimInit(1));
+            YLim(2) = min(YLim(2), YLimInit(2));
+        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
+            YLim(1) = max(YLim(1), PlotHandles.DataMinMax(1) * PlotHandles.DisplayFactor);
+            YLim(2) = min(YLim(2), PlotHandles.DataMinMax(2) * PlotHandles.DisplayFactor);
         end
     end
     
@@ -4320,7 +4349,18 @@ function ScaleToFitY(hFig, ev)
     set(hAxes, 'YLim', YLim);
     % Update TimeCursor position
     hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
-    set(hCursor, 'YData', ylim);
+    set(hCursor, 'YData', YLim);
+    % Update selection patches
+    hTimeSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TimeSelectionPatch');
+    if ~isempty(hTimeSelectionPatch)
+        set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+    else % Check for spectrum selection patch
+        hSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'SelectionPatch');
+        if ~isempty(hSelectionPatch)
+            set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+        end
+    end
+    
 end
 
 

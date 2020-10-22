@@ -305,14 +305,14 @@ function FigureMouseMoveCallback(hFig, ev)
             
             % Move view along Y axis
             YLim = get(hAxes, 'YLim');
-            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
-            if YLog
+            isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if isYLog
                 YLim = log10(YLim);
                 YLimInit = log10(YLimInit);
             end
             YLim = YLim - (YLim(2) - YLim(1)) * motionFigure(2);
             YLim = bst_saturate(YLim, YLimInit, 1);
-            if YLog
+            if isYLog
                 YLim = 10.^YLim;
             end
             set(hAxes, 'YLim', YLim);
@@ -345,13 +345,13 @@ function FigureMouseMoveCallback(hFig, ev)
             % Apply same limits as when panning
             YLimInit = getappdata(hAxes, 'YLimInit');
             YLim = get(hAxes, 'YLim');
-            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
-            if YLog
+            isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if isYLog
                 YLim = log10(YLim);
                 YLimInit = log10(YLimInit);
             end
             YLim = bst_saturate(YLim, YLimInit, 1);
-            if YLog
+            if isYLog
                 YLim = 10.^YLim;
             end
             set(hAxes, 'YLim', YLim);
@@ -873,14 +873,18 @@ function ToggleLogScaleY(hAxes, hFig, loglin)
     % Prevent log scale for data that's already log (dB), or negative.
     if ~isempty(iDS) && ~isempty(iFig) && ...
             isfield(GlobalData.DataSet(iDS).Figure(iFig), 'Handles') && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'DataMinMax') && ...
-            ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) && GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
-        loglin = 'linear';
+            ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) 
+        if GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
+            loglin = 'linear';
+        end
+    else
+        % Update preferred value
+        bst_set('YScale', loglin);
     end
     set(hAxes, 'YScale', loglin);
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.YScale = loglin;
     setappdata(hFig, 'TsInfo', TsInfo);
-    bst_set('YScale', loglin);
 end
 function RefreshLogScaleBtnDisplay(hFig, TsInfo)
     % Toggle selection of associated button if possible
@@ -1230,6 +1234,19 @@ function UpdateFigurePlot(hFig, isForced)
     end
         
     % ===== DISPLAY =====
+    % Get preferred scale modes.
+    if ~isfield(TsInfo, 'XScale')
+        TsInfo.XScale = bst_get('XScale');
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
+    % Force linear y scale for log-power dB
+    if strcmpi(TfInfo.Function, 'log')
+        TsInfo.YScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
+    elseif ~isfield(TsInfo, 'YScale')
+        TsInfo.YScale = bst_get('YScale');
+        setappdata(hFig, 'TsInfo', TsInfo);
+    end
     % Clear figure
     clf(hFig);
     % Plot data in the axes
@@ -1240,6 +1257,10 @@ function UpdateFigurePlot(hFig, isForced)
     setappdata(hAxes, 'YLimInit', get(hAxes, 'YLim'));
     % Update figure list of handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
+    % Hide high amplitudes for very low frequencies when linear y scale.
+    if isSpectrum && strcmpi(TsInfo.YScale, 'linear') && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
+        figure_timeseries('ScaleToFitY', hFig);
+    end
     % X Axis legend
     xlabel(hAxes, XLegend, ...
         'FontSize',    bst_get('FigFont'), ...
@@ -1279,19 +1300,8 @@ function UpdateFigurePlot(hFig, isForced)
         set(hAxes, 'YGrid', 'on');
         set(hAxes, 'YMinorGrid', 'on');
     end
-    if ~isfield(TsInfo, 'XScale')
-        TsInfo.XScale = 'linear';
-        setappdata(hFig, 'TsInfo', TsInfo);
-    else
-        set(hAxes, 'XScale', TsInfo.XScale);
-    end
-    % Ignore Y log scale if displaying dB
-    if ~isfield(TsInfo, 'YScale') || PlotHandles.DataMinMax(1) < 0
-        TsInfo.YScale = 'linear';
-        setappdata(hFig, 'TsInfo', TsInfo);
-    else
-        set(hAxes, 'YScale', TsInfo.YScale);
-    end
+    set(hAxes, 'XScale', TsInfo.XScale);
+    set(hAxes, 'YScale', TsInfo.YScale);
 
     % Create scale buttons
     if isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
@@ -1367,7 +1377,7 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
     PlotHandles.DisplayUnits = DisplayUnits;
 
     % ===== SWITCH DISPLAY MODE =====
-    TsInfo = getappdata(hFig, 'TsInfo');
+    %TsInfo = getappdata(hFig, 'TsInfo');
     switch (lower(TsInfo.DisplayMode))
         case 'butterfly'
             PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, TF, LinesLabels);
@@ -1398,12 +1408,15 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     Fmax = PlotHandles.DataMinMax;
     % Display power of 10 in the legend rather than in the axis
     strPow = '';
-    if (Fmax(1) ~= Fmax(2))
+    % Set display Factor
+    PlotHandles.DisplayFactor = 1;
+    if (Fmax(1) ~= Fmax(2)) 
         Fpow = round(log10(max(abs(Fmax))));
         if (Fpow < -3)
             Fpow = -Fpow;
-            Fmax = Fmax * 10^Fpow;
-            TF   = TF * 10^Fpow;
+            PlotHandles.DisplayFactor = 10^Fpow;
+            Fmax = Fmax * PlotHandles.DisplayFactor;
+            TF   = TF * PlotHandles.DisplayFactor;
             strPow = sprintf(' * 10^{-%d}', Fpow);
         end
     else
@@ -1418,21 +1431,22 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     set(PlotHandles.hLines, 'Tag', 'DataLine');
     
     % ===== YLIM =====
-    % Set display Factor
-    PlotHandles.DisplayFactor = 1;
     % Get automatic YLim
     if ~isempty(Fmax) && (Fmax(1) ~= Fmax(2))
-        % Use the first local maximum: ignores the huge range of high frequencies
-        if any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
-            TFmax = max(TF,[],1);
-            iStart = find(diff(TFmax)>0,1);
-            if ~isempty(iStart)
-                Fmax(2) = max(TFmax(iStart:end));
-            end
-        end
+        %         % Use the first local maximum: ignores the huge range of high frequencies
+        %         if any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
+        %             TFmax = max(TF,[],1);
+        %             iStart = find(diff(TFmax)>0,1);
+        %             if ~isempty(iStart)
+        %                 Fmax(2) = max(TFmax(iStart:end));
+        %             end
+        %         end
         % Compute the scale
-        margin = (Fmax(2) - Fmax(1)) * 0.02;
-        YLim = PlotHandles.DisplayFactor * [Fmax(1), Fmax(2) + margin];
+        if strcmpi(TsInfo.YScale, 'log')
+            YLim = Fmax;
+        else
+            YLim = [Fmax(1), Fmax(2) + (Fmax(2) - Fmax(1)) * 0.02];
+        end
     else
         YLim = [-1, 1];
     end
