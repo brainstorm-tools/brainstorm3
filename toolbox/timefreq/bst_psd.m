@@ -20,6 +20,7 @@ function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOve
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2017
+%          Marc Lalancette, 2020
 
 % Parse inputs
 if (nargin < 8) || isempty(PowerUnits)
