@@ -90,7 +90,7 @@ for iWin = 1:Nwin
     % Select indices
     Fwin = F(:,iTimes);
     % No need to enforce removing DC component (0 frequency).
-    %Fwin = bst_bsxfun(@minus, Fwin, mean(Fwin,2));
+    Fwin = bst_bsxfun(@minus, Fwin, mean(Fwin,2));
     % Apply a hamming window to signal
     Win = bst_window('hamming', Lwin)';
     WinNoisePowerGain = sum(Win.^2);
