@@ -19,7 +19,7 @@ function varargout = process_fft( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -44,8 +44,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Value   = [];
     sProcess.options.timewindow.InputTypes = {'raw', 'data'};
     % Options: Units / scaling
-    sProcess.options.units.Comment    = {'Physical: U^2/Hz', '<HTML><FONT color="#a0a0a0">Normalized freq: U^2/(Hz⋅s)</FONT>', ...
-        '<HTML><FONT color="#a0a0a0">As before Nov 2020</FONT>', 'Units (scaling):'; ...
+    sProcess.options.units.Comment    = {'Physical: U<SUP>2</SUP>/Hz', '<FONT color="#a0a0a0">Normalized: U<SUP>2</SUP>/Hz/s</FONT>', ...
+        '<FONT color="#a0a0a0">Before Nov 2020</FONT>', 'Units:'; ...
         'physical', 'normalized', 'old', ''};
     sProcess.options.units.Type       = 'radio_linelabel';
     sProcess.options.units.Value      = 'physical';
