@@ -1,4 +1,11 @@
 ---------------------------------------------------------------
+October 2020
+- New process: Simulate recordings from dipoles
+- Anatomy: Standard EEG caps included with infant templates
+- Anatomy: FreeSurfer import now loads all the .annot files in /label
+- ephys: Phase locking circular plots 
+- Process: Apply montage: Include processing of headmodels
+---------------------------------------------------------------
 September 2020
 - GUI: Added Y-log scale for spectrum figures
 - IO: Added export to TSV, with optional transposition for CSV/TSV/Excel

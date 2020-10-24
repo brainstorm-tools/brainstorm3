@@ -985,11 +985,15 @@ function FigureZoom(hFig, direction, Factor, center)
                 % Get current zoom factor
                 XLim = get(hAxes(i), 'XLim');
                 YLim = get(hAxes(i), 'YLim');
+                YLog = strcmpi(get(hAxes(i), 'YScale'), 'log');
+                if YLog
+                    YLim = log10(YLim);
+                end
                 Ylength = YLim(2) - YLim(1);
                 % Butterfly plot
                 if strcmpi(TsInfo.DisplayMode, 'butterfly')
-                    % In case everything is positive: zoom from the bottom
-                    if (YLim(1) >= 0)
+                    % In case everything is positive: zoom from the bottom, except log spectrum.
+                    if (YLim(1) >= 0) && ~YLog
                         YLim = [YLim(1), YLim(1) + Ylength/Factor];
                     % Else: zoom from the middle
                     else
@@ -1007,6 +1011,9 @@ function FigureZoom(hFig, direction, Factor, center)
                         else
                             Ycenter = curPt(1,2);
                         end
+                        if YLog
+                            Ycenter = log10(Ycenter);
+                        end
                         Yratio = (Ycenter - YLim(1)) ./ Ylength;
                         if (Ycenter - Ylength/Factor/2 < 0)
                             YLim = [0, Ylength/Factor];
@@ -1020,9 +1027,16 @@ function FigureZoom(hFig, direction, Factor, center)
                         YLim = [YLim(1), YLim(1) + Ylength/Factor];
                     end
                     % Restrict zoom
-                    YLim(1) = max(YLim(1), 0);
-                    YLim(2) = min(YLim(2), 1);
+                    if YLog
+                        YLim(2) = min(YLim(2), 0);
+                    else
+                        YLim(1) = max(YLim(1), 0);
+                        YLim(2) = min(YLim(2), 1);
+                    end
                 end
+                if YLog
+                    YLim = 10.^YLim;
+                end                
                 % Update zoom factor
                 set(hAxes(i), 'YLim', YLim);
                 % Set the time cursor height to the maximum of the display
@@ -1032,6 +1046,11 @@ function FigureZoom(hFig, direction, Factor, center)
                 hTimeSelectionPatch = findobj(hAxes(i), '-depth', 1, 'Tag', 'TimeSelectionPatch');
                 if ~isempty(hTimeSelectionPatch)
                     set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+                else % Check for spectrum selection patch
+                    hSelectionPatch = findobj(hAxes(i), '-depth', 1, 'Tag', 'SelectionPatch');
+                    if ~isempty(hSelectionPatch)
+                        set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+                    end
                 end
                 % Update amplitude bar (columns mode only)
                 if strcmpi(TsInfo.DisplayMode, 'column')
@@ -1063,10 +1082,23 @@ function FigureZoom(hFig, direction, Factor, center)
             XLimInit = getappdata(hAxes(1), 'XLimInit');
             % Get current limits
             XLim = get(hAxes(1), 'XLim');
+            % Avoid errors when Xcurrent was 0 and log scale.
+            if Xcurrent < XLimInit(1)
+                Xcurrent = XLimInit(1);
+            end
+            XLog = strcmpi(get(hAxes(1), 'XScale'), 'log');
+            if XLog
+                XLim = log10(XLim);
+                XLimInit = log10(XLimInit);
+                Xcurrent = log10(Xcurrent);
+            end
             % Apply zoom factor
             Xlength = XLim(2) - XLim(1);
             XLim = [Xcurrent - Xlength/Factor/2, Xcurrent + Xlength/Factor/2];
             XLim = bst_saturate(XLim, XLimInit, 1);
+            if XLog
+                XLim = 10.^XLim;
+            end
             % Apply to ALL Axes in the figure
             set(hAxes, 'XLim', XLim);
             % RAW: Set the time limits of the events bar
@@ -1089,9 +1121,17 @@ function FigurePan(hFig, motion)
         % Get initial and current XLim
         XLimInit = getappdata(hAxes(1), 'XLimInit');
         XLim = get(hAxes(1), 'XLim');
+        XLog = strcmpi(get(hAxes, 'XScale'), 'log');
+        if XLog
+            XLim = log10(XLim);
+            XLimInit = log10(XLimInit);
+        end
         % Move view along X axis
         XLim = XLim - (XLim(2) - XLim(1)) * motion(1);
         XLim = bst_saturate(XLim, XLimInit, 1);
+        if XLog
+            XLim = 10.^XLim;
+        end
         set(hAxes, 'XLim', XLim);
         % Update raw events bar xlim
         UpdateRawXlim(hFig, XLim);
@@ -1101,9 +1141,17 @@ function FigurePan(hFig, motion)
         % Get initial and current YLim
         YLimInit = getappdata(hAxes(1), 'YLimInit');
         YLim = get(hAxes(1), 'YLim');
+        YLog = strcmpi(get(hAxes, 'YScale'), 'log');
+        if YLog
+            YLim = log10(YLim);
+            YLimInit = log10(YLimInit);
+        end
         % Move view along Y axis
         YLim = YLim - (YLim(2) - YLim(1)) * motion(2);
         YLim = bst_saturate(YLim, YLimInit, 1);
+        if YLog
+            YLim = 10.^YLim;
+        end
         set(hAxes, 'YLim', YLim);
         % Set the time cursor height to the maximum of the display
         hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
