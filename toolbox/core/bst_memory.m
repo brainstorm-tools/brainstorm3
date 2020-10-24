@@ -1767,7 +1767,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.TF,1) < length(Timefreq.RowNames)^2)
         Timefreq.TF = process_compress_sym('Expand', Timefreq.TF, length(Timefreq.RowNames));
     end
-    % Store new Results structure in GlobalData
+    % Store new Timefreq structure in GlobalData
     if isempty(iTimefreq)
         iTimefreq = length(GlobalData.DataSet(iDS).Timefreq) + 1;
     end

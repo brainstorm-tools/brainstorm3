@@ -736,8 +736,8 @@ function AddParentBadChannels(hFig, BadChan)
         newChannelFlag(iBad) = -1;
         % Update channel flag
         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
-        % Reset selection
-        bst_figures('SetSelectedRows', []);
+        % Reset selection (done in UpdateChannelFlag)
+        %bst_figures('SetSelectedRows', []);
     end
 end
 
