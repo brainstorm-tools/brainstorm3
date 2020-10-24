@@ -941,7 +941,6 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
             iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
             TF = TF(iSelected,:,:);
             RowNames = RowNames(iSelected);
-            %TfInfo
         end
 
         % Show stat clusters
