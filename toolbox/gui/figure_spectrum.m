@@ -1120,9 +1120,8 @@ function UpdateFigurePlot(hFig, isForced)
     end
     % Display units
     DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
-    % Get figure time-freq info (already there?)
-    %TfInfo   = getappdata(hFig, 'Timefreq');
-    TsInfo   = getappdata(hFig, 'TsInfo');
+    % Get figure time series
+    TsInfo = getappdata(hFig, 'TsInfo');
     
     % ===== GET GLOBAL MAXIMUM =====
     % If maximum is not defined yet
