@@ -193,7 +193,7 @@ if ~isempty(subjMat)
     % By default : use the first anatomy in list
     if ~isempty(sSubject(1).Anatomy)
         % sSubject(1).iAnatomy = length(sSubject(1).Anatomy);
-        sSubject(1).iAnatomy = 1;
+        sSubject(1).iAnatomy = 0;
     else
         sSubject(1).iAnatomy = [];
     end
@@ -205,7 +205,7 @@ if ~isempty(subjMat)
         if ~isempty(ind)
             % Reorder anatomy entries
             sSubject(1).Anatomy = sSubject(1).Anatomy([ind, setdiff(1:length(sSubject(1).Anatomy), ind)]);
-            sSubject(1).iAnatomy = 1;
+            sSubject(1).iAnatomy = sSubject(1).Anatomy(1).FileName;
         end
     end
 
@@ -213,18 +213,18 @@ if ~isempty(subjMat)
     % Sort surfaces by categories
     subjectSurfaces = db_surface_sort(sSubject(1).Surface);
     % Select one surface in each category
-    for surfaceCatergory = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
+    for surfaceCategory = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
         % By default : use the last surface in list
-        if ~isempty(subjectSurfaces.(surfaceCatergory{1}))
-            sSubject(1).(['i' (surfaceCatergory{1})]) = subjectSurfaces.(['Index' surfaceCatergory{1}])(end);
+        if ~isempty(subjectSurfaces.(surfaceCategory{1}))
+            sSubject(1).(['i' (surfaceCategory{1})]) = subjectSurfaces.(surfaceCategory{1})(end).FileName;
         else
-            sSubject(1).(['i' (surfaceCatergory{1})]) = [];
+            sSubject(1).(['i' (surfaceCategory{1})]) = [];
         end
         % If a default was defined in the brainstormsubject*.mat
-        if (isfield(subjMat, surfaceCatergory{1}) && ~isempty(subjMat.(surfaceCatergory{1})) && ischar(subjMat.(surfaceCatergory{1})))
-            ind = find(file_compare({sSubject(1).Surface.FileName}, subjMat.(surfaceCatergory{1})), 1);
+        if (isfield(subjMat, surfaceCategory{1}) && ~isempty(subjMat.(surfaceCategory{1})) && ischar(subjMat.(surfaceCategory{1})))
+            ind = find(file_compare({sSubject(1).Surface.FileName}, subjMat.(surfaceCategory{1})), 1);
             if (ind > 0)
-                sSubject(1).(['i' (surfaceCatergory{1})]) = ind;
+                sSubject(1).(['i' (surfaceCategory{1})]) = sSubject(1).Surface(ind).FileName;
             end
         end
     end

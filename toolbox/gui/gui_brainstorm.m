@@ -949,7 +949,9 @@ function SetCurrentProtocol(iProtocol)
     % Close any active searches
     panel_protocols('CloseAllDatabaseTabs');
     % Update tree model
-    panel_protocols('UpdateTree');
+    if bst_get('isProtocolLoaded')
+        panel_protocols('UpdateTree');
+    end
     % Update "Time Window" 
     panel_time('UpdatePanel');
     % Reset processes and stat panels
@@ -1360,7 +1362,6 @@ function ChangeDatabaseFolder()
             GlobalData.DataBase.ProtocolSubjects(:) = [];
             GlobalData.DataBase.ProtocolStudies(:)  = [];
             GlobalData.DataBase.isProtocolLoaded    = [];
-            GlobalData.DataBase.isProtocolModified  = [];
             % Select current protocol in combo list
             SetCurrentProtocol(0);
             % Update interface

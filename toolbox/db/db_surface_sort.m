@@ -35,7 +35,14 @@ function surfaces = db_surface_sort( surfacesArray )
 %
 % Authors: Francois Tadel, 2008-2010
 
-templateSurface = db_template('Surface');
+if length(surfacesArray) > 0
+    templateSurface = surfacesArray(1);
+elseif isstruct(surfacesArray)
+    templateSurface = surfacesArray;
+else
+    templateSurface = db_template('AnatomyFile');
+end
+
 % Initialize output structure
 surfaces = struct('Scalp',      repmat(templateSurface,0), ...
                   'OuterSkull', repmat(templateSurface,0), ...

@@ -34,42 +34,16 @@ isLoaded = 0;
 for i = 1:length(iProtocols)
     % ===== CHECK FOLDERS =====
     isReload = 0;
-    % Protocol matrix filename
-    ProtocolFile = bst_fullfile(GlobalData.DataBase.ProtocolInfo(iProtocols(i)).STUDIES, 'protocol.mat');
-    % Check file
-    if ~file_exist(ProtocolFile)
+    dbInfo = db_template('databaseinfo');
+    ProtocolDB = bst_fullfile(GlobalData.DataBase.ProtocolInfo(iProtocols(i)).STUDIES, 'protocol.db');
+    if ~file_exist(ProtocolDB)
         isReload = 1;
-    elseif ~file_attrib(ProtocolFile, 'r')
-        disp(['BST> Error: Insufficient rights to read the protocol file "' ProtocolFile '".']);
+    elseif ~file_attrib(ProtocolDB, 'r')
+        disp(['BST> Error: Insufficient rights to read the protocol database "' ProtocolDB '".']);
         isReload = 1;
-    end
-    
-    % ===== LOAD PROTOCOL.MAT =====
-    if ~isReload
-        try
-            ProtocolMat = load(ProtocolFile);
-        catch
-            disp(['BST> Error: Cannot read protocol file "' ProtocolFile '".']);
-            isReload = 1;
-        end
-    end
-    
-%     % ===== CHECK LAST USER =====
-%     % If the last user is different from the current user (testing user home directories)
-%     if ~isReload && isfield(ProtocolMat, 'LastAccessUserDir') && ~isempty(ProtocolMat.LastAccessUserDir) && ~strcmpi(ProtocolMat.LastAccessUserDir, bst_get('UserDir'))
-%         if bst_get('isGUI')
-%             isReload = java_dialog('confirm', ['Warning: Another user accessed the protocol "' ProtocolMat.ProtocolInfo.Comment '" recently.' 10 ...
-%                                     'User folder: "' ProtocolMat.LastAccessUserDir '"' 10 10 ...
-%                                     'You may have to reload it in order to see the latest modifications.' 10 ...
-%                                     'Reload protocol now?']);
-%         else
-%             isReload = 1;
-%         end
-%     end
-
-    % ===== CHECK DATABASE VERSION =====
-    if ~isReload && (~isfield(ProtocolMat, 'DbVersion') || ~isfield(GlobalData.DataBase, 'DbVersion') || (GlobalData.DataBase.DbVersion ~= ProtocolMat.DbVersion))
-        isReload = 1;
+    else
+        dbInfo.Rdbms = 'sqlite';
+        dbInfo.Location = ProtocolDB;
     end
 
     % ===== SAVE =====
@@ -78,13 +52,16 @@ for i = 1:length(iProtocols)
         db_reload_database(iProtocols(i));
     % Protocol loaded successfully: Copy protoco.mat fields in memory
     else
-        GlobalData.DataBase.ProtocolInfo(iProtocols(i)).iStudy            = ProtocolMat.ProtocolInfo.iStudy;
-        GlobalData.DataBase.ProtocolInfo(iProtocols(i)).UseDefaultAnat    = ProtocolMat.ProtocolInfo.UseDefaultAnat;
-        GlobalData.DataBase.ProtocolInfo(iProtocols(i)).UseDefaultChannel = ProtocolMat.ProtocolInfo.UseDefaultChannel;
-        GlobalData.DataBase.ProtocolSubjects(iProtocols(i))   = ProtocolMat.ProtocolSubjects;
-        GlobalData.DataBase.ProtocolStudies(iProtocols(i))    = ProtocolMat.ProtocolStudies;
-        GlobalData.DataBase.isProtocolLoaded(iProtocols(i))   = 1;
-        GlobalData.DataBase.isProtocolModified(iProtocols(i)) = 0;
+        % Load database info about protocol
+        sqlConn = sql_connect(dbInfo);
+        sProtocol = sql_query(sqlConn, 'select', 'protocol', {'UseDefaultAnat', 'UseDefaultChannel'}, []);
+        sql_close(sqlConn, dbInfo);
+        %TODO: iStudy
+        %GlobalData.DataBase.ProtocolInfo(iProtocols(i)).iStudy            = ProtocolMat.ProtocolInfo.iStudy;
+        GlobalData.DataBase.ProtocolInfo(iProtocols(i)).UseDefaultAnat    = sProtocol.UseDefaultAnat;
+        GlobalData.DataBase.ProtocolInfo(iProtocols(i)).UseDefaultChannel = sProtocol.UseDefaultChannel;
+        GlobalData.DataBase.ProtocolInfo(iProtocols(i)).Database          = dbInfo;
+        GlobalData.DataBase.isProtocolLoaded(iProtocols(i)) = 1;
         % Refresh tree
         panel_protocols('UpdateTree');
     end

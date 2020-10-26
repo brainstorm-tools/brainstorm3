@@ -590,17 +590,17 @@ switch (lower(action))
                     % === GENERATE HEAD ===
                     AddSeparator(jPopup);
                     jItem = gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(iSubject));
-                    if isempty(sSubject.Anatomy)
+                    if isempty(sSubject.iAnatomy)
                         jItem.setEnabled(0);
                     end
                     % === GENERATE BEM ===
                     jItemBem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, []));
                     jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, []));
                     % Disable if no scalp or cortex available
-                    if isempty(sSubject.Anatomy)
+                    if isempty(sSubject.iAnatomy)
                         jItemBem.setEnabled(0);
                     end
-                    if isempty(sSubject.iScalp) && isempty(sSubject.Anatomy)
+                    if isempty(sSubject.iScalp) && isempty(sSubject.iAnatomy)
                         jItemFem.setEnabled(0);
                     end
                     % === SEGMENTATION ===
@@ -608,7 +608,7 @@ switch (lower(action))
                     jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, []));
                     jItem2 = gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, []));
                     jItem3 = gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, []));
-                    if isempty(sSubject.Anatomy)
+                    if isempty(sSubject.iAnatomy)
                         jItem1.setEnabled(0);
                         jItem2.setEnabled(0);
                         jItem3.setEnabled(0);
@@ -617,7 +617,7 @@ switch (lower(action))
                     AddSeparator(jPopup);
                     OPTIONS = struct('isDefaceHead', 1);
                     jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
-                    if isempty(sSubject.Anatomy)
+                    if isempty(sSubject.iAnatomy)
                         jItem.setEnabled(0);
                     end
 

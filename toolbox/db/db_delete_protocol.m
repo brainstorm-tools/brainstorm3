@@ -90,7 +90,6 @@ GlobalData.DataBase.ProtocolInfo      = sProtocolsListInfo;
 GlobalData.DataBase.ProtocolSubjects  = sProtocolsListSubjects;
 GlobalData.DataBase.ProtocolStudies   = sProtocolsListStudies;
 GlobalData.DataBase.isProtocolLoaded(iProtocol)   = [];
-GlobalData.DataBase.isProtocolModified(iProtocol) = [];
 % Update protocols ComboBox
 gui_brainstorm('UpdateProtocolsList');
 

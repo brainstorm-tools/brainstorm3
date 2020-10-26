@@ -323,6 +323,21 @@ switch contextName
             userDir = bst_get('BrainstormHomeDir');
         end
         argout1 = userDir;
+    
+    case 'UserName'
+        try
+            if ispc
+                userName = getenv('username');
+            else
+                userName = char(java.lang.System.getProperty('user.name'));
+            end
+        catch
+            userName = '';
+        end
+        if isempty(userName)
+            userName = 'Unknown';
+        end
+        argout1 = userName;
         
     case 'BrainstormUserDir'
         bstUserDir = bst_fullfile(bst_get('UserDir'), '.brainstorm');
@@ -466,7 +481,7 @@ switch contextName
             argout1 = [];
         end
         
-    case {'ProtocolInfo', 'ProtocolSubjects', 'ProtocolStudies', 'isProtocolLoaded', 'isProtocolModified'}
+    case {'ProtocolInfo', 'isProtocolLoaded'}
         argout2 = GlobalData.DataBase.iProtocol;
         % No protocol: return empty matrix
         if isempty(argout2) || ~isnumeric(argout2) || argout2 == 0
@@ -476,6 +491,95 @@ switch contextName
         if ((argout2 <= 0) || (argout2 > length(GlobalData.DataBase.ProtocolInfo))), warning('Brainstorm:InvalidIndex', 'Invalid index'), return, end
         % Get requested protocol structure
         argout1 = GlobalData.DataBase.(contextName)(argout2);
+        
+    case 'ProtocolSubjects'
+        argout1 = db_template('ProtocolSubjects');
+        if GlobalData.DataBase.iProtocol == 0
+            % No protocol loaded
+            return;
+        elseif isempty(GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol).Database.Location)
+            % Missing database information
+            error('No database information.');
+        end
+        
+        % Get all subjects
+        sqlConn = sql_connect();
+        sSubjects = sql_query(sqlConn, 'select', 'subject', '*');
+        iDefaultSubject = [];
+        for iSubject = 1:length(sSubjects)
+            % Find default subject
+            if strcmp(sSubjects(iSubject).Name, '@default_subject')
+                iDefaultSubject = iSubject;
+            end
+            % Get all anatomy files of each subject
+            sSubjects(iSubject) = db_get('FilesWithSubject', sqlConn, sSubjects(iSubject));
+        end
+        
+        % Separate default subject
+        if ~isempty(iDefaultSubject)
+            argout1.DefaultSubject = sSubjects(iDefaultSubject);
+            sSubjects(iDefaultSubject) = [];
+        end
+        argout1.Subject = sSubjects;
+        
+        sql_close(sqlConn);
+        
+        
+    case 'ProtocolStudies'
+        warning('This function is deprecated with the new Brainstorm database system.');
+        argout1 = db_template('ProtocolStudies');
+        if GlobalData.DataBase.iProtocol == 0
+            % No protocol loaded
+            return;
+        elseif isempty(GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol).Database.Location)
+            % Missing database information
+            error('No database information.');
+        end
+        
+        sqlConn = sql_connect();
+        argout1.Study = sql_query(sqlConn, 'select', 'study', '*', [], 'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")');
+        defaultStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Subject', 0, 'Name', '@default_study'));
+        analysisStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Name', '@inter'));
+        
+        for iSub = -1:length(argout1.Study)
+            if iSub == -1
+                sStudy = defaultStudy;
+            elseif iSub == 0
+                sStudy = analysisStudy;
+            else
+                sStudy = argout1.Study(iSub);
+            end
+            
+            if ~isempty(sStudy)
+                sSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', struct('Id', sStudy.Subject));
+                sStudy.BrainStormSubject = sSubject.FileName;
+                
+                if isempty(sStudy.Condition)
+                    sStudy.Condition = {sStudy.Name};
+                elseif ~iscell(sStudy.Condition)
+                    sStudy.Condition = {sStudy.Condition};
+                end
+                
+                % Populate functional files data
+                sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
+            end
+            
+            if iSub == -1
+                argout1.DefaultStudy = sStudy;
+            elseif iSub == 0
+                argout1.AnalysisStudy = sStudy;
+            else
+                argout1.Study(iSub) = sStudy;
+            end
+        end
+        
+        sql_close(sqlConn);
+        
+    case 'isProtocolLoaded'
+        error('TODO: Not supported anymore.');
+        
+    case 'isProtocolModified'
+        error('TODO: Not supported anymore.');
 
         
 %% ==== STUDY ====
@@ -487,10 +591,8 @@ switch contextName
             return;
         end
         % Get list of current protocols
-        ProtocolInfo    = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
-        ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
-        % Get list of current protocol studies
-        if isempty(ProtocolStudies) || isempty(ProtocolInfo)
+        ProtocolInfo = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
+        if isempty(ProtocolInfo)
             return;
         end
         % ===== PARSE INPUTS =====
@@ -509,55 +611,67 @@ switch contextName
         iAnalysisStudy = -2;    % CANNOT USE -1 => DISABLES SEARCH FUNCTIONS
         iDefaultStudy  = -3;
         % Indices > 0: normal studies indiced in ProtocolStudies.Study array
+        sqlConn = sql_connect();
+        
+        % ===== GET STUDY BY FILENAME =====
+        % Call: bst_get('Study', StudyFileName);
+        if ~isempty(StudyFileName)
+            sStudy = sql_query(sqlConn, 'select', 'study', {'Id', 'Subject', 'Name'}, struct('FileName', StudyFileName));
+            if ~isempty(sStudy)
+                if strcmpi(sStudy.Name, '@inter')
+                    iStudies(end + 1) = iAnalysisStudy;
+                elseif sStudy.Subject == 0 && strcmpi(sStudy.Name, '@default_study')
+                    iStudies(end + 1) = iDefaultStudy;
+                else
+                    iStudies(end + 1) = sStudy.Id;
+                end
+            end
+        end
             
         % ===== GET STUDY BY INDEX =====
         % Call: bst_get('Study', iStudies);
         if ~isempty(iStudies)
-            argout1 = repmat(ProtocolStudies.DefaultStudy, 0);
-            % Get analysis study
-            iTargetAnalysis = find(iStudies == iAnalysisStudy);
-            if ~isempty(iTargetAnalysis)
-                argout1(iTargetAnalysis) = repmat(ProtocolStudies.AnalysisStudy, size(iTargetAnalysis));
-                argout2(iTargetAnalysis) = repmat(iAnalysisStudy, size(iTargetAnalysis));
+            argout1 = repmat(db_template('Study'), 0);
+            argout2 = [];
+            iNext = 1;
+            for iStudy = iStudies
+                if iStudy == iAnalysisStudy
+                    sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Name', '@inter'));
+                    iOutStudy = iAnalysisStudy;
+                elseif iStudy == iDefaultStudy
+                    sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Subject', 0, 'Name', '@default_study'));
+                    iOutStudy = iDefaultStudy;
+                else
+                    sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Id', iStudy));
+                    iOutStudy = iStudy;
+                end
+                
+                if isempty(sStudy)
+                    continue
+                end
+                
+                sSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', struct('Id', sStudy.Subject));
+                sStudy.BrainStormSubject = sSubject.FileName;
+                if isempty(sStudy.Condition)
+                    sStudy.Condition = {sStudy.Name};
+                else
+                    sStudy.Condition = {sStudy.Condition};
+                end
+                
+                % Populate functional files data
+                sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
+                
+                argout1(iNext) = sStudy;
+                argout2(iNext) = iOutStudy;
+                iNext = iNext + 1;
             end
-            % Get default study
-            iTargetDefault = find(iStudies == iDefaultStudy);
-            if ~isempty(iTargetDefault) 
-                argout1(iTargetDefault) = repmat(ProtocolStudies.DefaultStudy, size(iTargetDefault));
-                argout2(iTargetDefault) = repmat(iDefaultStudy, size(iTargetDefault));
-            end
-            % Get normal studies
-            iTargetNormal = find((iStudies >= 1) & (iStudies <= length(ProtocolStudies.Study)));
-            if ~isempty(iTargetNormal)
-                argout1(iTargetNormal) = ProtocolStudies.Study(iStudies(iTargetNormal));
-                argout2(iTargetNormal) = iStudies(iTargetNormal);
-            end
+            sql_close(sqlConn);
             % Error
             if isempty(argout1)
                 GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol).iStudy = [];
             end
-            
-        % ===== GET STUDY BY FILENAME =====
-        % Call: bst_get('Study', StudyFileName);
-        elseif ~isempty(StudyFileName)
-            % NORMAL STUDY
-            iStudy = find(file_compare({ProtocolStudies.Study.FileName}, StudyFileName), 1);
-            % If a study is found : return it
-            if ~isempty(iStudy)
-                argout1 = ProtocolStudies.Study(iStudy);
-                argout2   = iStudy;
-            % DEFAULT STUDY
-            elseif ~isempty(ProtocolStudies.DefaultStudy) && file_compare({ProtocolStudies.DefaultStudy.FileName}, StudyFileName)
-                argout1 = ProtocolStudies.DefaultStudy;
-                argout2   = iDefaultStudy;
-            % ANALYSIS STUDY
-            elseif ~isempty(ProtocolStudies.AnalysisStudy) && file_compare({ProtocolStudies.AnalysisStudy.FileName}, StudyFileName)
-                argout1 = ProtocolStudies.AnalysisStudy;
-                argout2   = iAnalysisStudy;
-            end
-        else
-            return
         end
+        sql_close(sqlConn);
  
         
 %% ==== STUDY WITH SUBJECT FILE ====
@@ -580,55 +694,74 @@ switch contextName
             return;
         end
         % Get list of current protocol description
-        ProtocolInfo    = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
-        ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
-        if isempty(ProtocolStudies) || isempty(ProtocolInfo)
+        ProtocolInfo = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
+        if isempty(ProtocolInfo)
             return;
         end
         
+        sqlConn = sql_connect();
         % Get default subject
-        sDefaultSubject = bst_get('Subject', 0);
+        sDefaultSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', ...
+            struct('Name', '@default_subject'));
         % If SubjectFile is the default subject filename
-        if ~isempty(sDefaultSubject) && ~isempty(sDefaultSubject.FileName) && file_compare( SubjectFile{1}, sDefaultSubject.FileName)
+        if ~isempty(sDefaultSubject) && ~isempty(sDefaultSubject.FileName) && file_compare(SubjectFile{1}, sDefaultSubject.FileName)
             % Get all the subjects files that use default anatomy
-            ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
-            iSubjectUseDefaultAnat = find([ProtocolSubjects.Subject.UseDefaultAnat]);
-            if isempty(iSubjectUseDefaultAnat)
+            sSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', struct('UseDefaultAnat', 1));
+            if isempty(sSubject)
+                sql_close(sqlConn);
                 return
             end
-            SubjectFile = {ProtocolSubjects.Subject(iSubjectUseDefaultAnat).FileName};
+            SubjectFile = {sSubject.FileName};
             % Also updates inter-subject node
-            isInterSubject = 1;
+            InterSubject = 1;
         else
-            isInterSubject = 0;
+            InterSubject = 0;
         end
+        
+        qry = ['SELECT Study.Id FROM Study ' ...
+            'LEFT JOIN Subject ON Subject.Id = Study.Subject ' ...
+            'WHERE Subject.FileName = "%s"'];
+        
+        % Remove "analysis_intra" and "default_study" studies from list
+        notName = {};
+        if ~IntraStudies
+            notName{end + 1} = bst_get('DirAnalysisIntra');
+        end
+        if ~DefaultStudies
+            notName{end + 1} = bst_get('DirDefaultStudy');
+        end
+        if ~InterSubject
+            notName{end + 1} = bst_get('DirAnalysisInter');
+        end
+        if ~isempty(notName)
+            qry = [qry ' AND Study.Name NOT IN ('];
+            for iName = 1:length(notName)
+                if iName > 1
+                    qry = [qry ', '];
+                end
+                qry = [qry '"' notName{iName} '"'];
+            end
+            qry = [qry ')'];
+        end
+        
         % Search all the current protocol's studies
         iStudies = [];
         for i=1:length(SubjectFile)
-            iStudies = [iStudies, find(file_compare({ProtocolStudies.Study.BrainStormSubject}, SubjectFile{i}))];
+            result = sql_query(sqlConn, sprintf(qry, SubjectFile{i}));
+            while result.next()
+                iStudies(end + 1) = result.getInt('Id');
+            end
+            result.close();
         end
         % Return results
         if ~isempty(iStudies)
-            % Remove "analysis_intra" and "default_study" studies from list
-            if ~IntraStudies
-                iStudies(strcmpi({ProtocolStudies.Study(iStudies).Name}, bst_get('DirAnalysisIntra'))) = [];
-            end
-            if ~DefaultStudies
-                iStudies(strcmpi({ProtocolStudies.Study(iStudies).Name}, bst_get('DirDefaultStudy'))) = [];
-            end
             % Return studies
-            argout1 = ProtocolStudies.Study(iStudies);
-            argout2   = iStudies;
+            [argout1, argout2] = bst_get('Study', iStudies);
         else
             argout1 = repmat(db_template('Study'), 0);
-            argout2   = [];
+            argout2 = [];
         end
-        % Add inter-subject node, if needed
-        if isInterSubject
-            [sInterStudy, iInterStudy] = bst_get('AnalysisInterStudy');
-            argout1 = [argout1, sInterStudy];
-            argout2   = [argout2,   iInterStudy];
-        end
+        sql_close(sqlConn);
               
         
 %% ==== STUDY WITH CONDITION PATH ====
@@ -784,9 +917,7 @@ switch contextName
             argout1 = 0;
             return;
         end
-        % Get list of current protocol studies
-        ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
-        argout1 = length(ProtocolSubjects.Subject);
+        argout1 = sql_query([], 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
         
 %% ==== NORMALIZED SUBJECT ====
     case 'NormalizedSubject'
@@ -852,53 +983,52 @@ switch contextName
             return;
         end
         % Parse inputs
+        sqlConn = sql_connect();
+        sSubject = [];
         if (nargin == 1)
             iSubject = 0;
         elseif (nargin == 2) && isnumeric(varargin{2})
             iSubject = varargin{2};
+            if iSubject ~= 0
+                sSubject = bst_get('Subject', iSubject, 1);
+            end
         elseif (nargin == 2) && ischar(varargin{2})
             SubjectFile = varargin{2};
             % Get subject attached to study
             [sSubject, iSubject] = bst_get('Subject', SubjectFile, 1);
-            if isempty(sSubject) || ~sSubject.UseDefaultChannel
-                return;
-            end
         else
             error('Invalid call to bst_get()');
         end
         % === DEFAULT SUBJECT ===
         % => Return global default study
         if (iSubject == 0)
-            % Get protocol's studies
-            ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
             % Return Global default study
-            argout1 = ProtocolStudies.DefaultStudy;
-            argout2   = -3;
+            argout1 = bst_get('Study', -3);
+            argout2 = -3;
         % === NORMAL SUBJECT ===
         else
-            % Get subject
-            sSubject = bst_get('Subject', iSubject, 1);
+            if isempty(sSubject) || ~sSubject.UseDefaultChannel
+                sql_close(sqlConn);
+                return;
+            end
             % === GLOBAL DEFAULT STUDY ===
             if sSubject.UseDefaultChannel == 2
-                % Get protocol's studies
-                ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
                 % Return Global default study
-                argout1 = ProtocolStudies.DefaultStudy;
-                argout2   = -3;
+                argout1 = bst_get('Study', -3);
+                argout2 = -3;
             % === SUBJECT'S DEFAULT STUDY ===
             elseif sSubject.UseDefaultChannel == 1
                 % Get studies related to subject
-                [sSubjStudies, iSubjStudies] = bst_get('StudyWithSubject', sSubject.FileName, 'default_study');
-                % Look for the 'DefaultStudy' study
-                iFound = find(cellfun(@(c)ismember(bst_get('DirDefaultStudy'), c), {sSubjStudies.Condition}));
-                iDefaultStudy = iSubjStudies(iFound);
-                sDefaultStudy = sSubjStudies(iFound);
-                % Return found structure
-                argout1 = sDefaultStudy;
-                argout2   = iDefaultStudy;        
+                sStudy = sql_query(sqlConn, 'select', 'study', 'Id', ...
+                    struct('Subject', iSubject, 'Name', '@default_study'));
+                if ~isempty(sStudy)
+                    argout1 = bst_get('Study', sStudy.Id);
+                    argout2 = sStudy.Id;
+                end
             end
         end
         
+        sql_close(sqlConn);
         
         
 %% ==== SUBJECT ====
@@ -912,9 +1042,8 @@ switch contextName
         if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
             return;
         end
-         % Get list of current protocol subjects
-        ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
         sSubject = [];
+        iSubject = [];
         SubjectName = [];
         SubjectFileName = [];
         % ISRAW parameter
@@ -923,31 +1052,32 @@ switch contextName
         else
             isRaw = varargin{3};
         end
+        sqlConn = sql_connect();
         % Call: bst_get('subject', iSubject, isRaw);
         if (nargin >= 2) && isnumeric(varargin{2})
             iSubject = varargin{2};
-            if (iSubject > length(ProtocolSubjects.Subject))
-                error('Invalid subject indice.');
-            end
             % If required subject is default subject (iSubject = 0)
             if (iSubject == 0)
-                % Default subject available
-                if ~isempty(ProtocolSubjects.DefaultSubject)
-                    sSubject = ProtocolSubjects.DefaultSubject;
-                % Default subject not available
-                else
-                    return
-                end
+                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('Name', '@default_subject'));
             % Normal subject 
             else
-                sSubject = ProtocolSubjects.Subject(iSubject);
+                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('Id', iSubject));
+            end
+            % Subject not found
+            if isempty(sSubject)
+                sql_close(sqlConn);
+                argout1 = sSubject;
+                argout2 = iSubject;
+                return
             end
             
         % Call: bst_get('subject', SubjectFileName, isRaw);
         % Call: bst_get('subject', SubjectName,     isRaw);
         elseif (nargin >= 2) && isempty(varargin{2})
             % If study name is empty: use DefaultSubject
-            SubjectFileName = ProtocolSubjects.DefaultSubject.FileName;
+            SubjectName = '@default_subject';
         elseif (nargin >= 2) && (ischar(varargin{2}))
             [fName, fBase, fExt] = bst_fileparts(varargin{2});
             % Argument is a Matlab .mat filename
@@ -965,10 +1095,10 @@ switch contextName
             if isempty(sStudy)
                 return
             end
-            SubjectFileName = sStudy.BrainStormSubject;
+            SubjectName = sStudy.BrainStormSubject;
             % If study's subject is not defined, get DefaultSubject
-            if isempty(SubjectFileName) && ~isempty(ProtocolSubjects.DefaultSubject)
-                SubjectFileName = ProtocolSubjects.DefaultSubject.FileName;
+            if isempty(SubjectName)
+                SubjectName = '@default_subject';
             end
         else
             error('Invalid call to bst_get()');
@@ -976,39 +1106,48 @@ switch contextName
 
         % If Subject is defined by its filename/name
         if isempty(sSubject)
-            % Look in Default Subject
-            if ~isempty(ProtocolSubjects.DefaultSubject) && (file_compare(ProtocolSubjects.DefaultSubject.FileName, SubjectFileName) ...
-                                                          || strcmpi(ProtocolSubjects.DefaultSubject.Name, SubjectName))
-                sSubject = ProtocolSubjects.DefaultSubject;
-                iSubject = 0;
-            % If not found : find target subject file name in normal subjects
-            elseif ~isempty(SubjectFileName)
-                iSubject = find(file_compare({ProtocolSubjects.Subject.FileName}, SubjectFileName), 1);
-                sSubject = ProtocolSubjects.Subject(iSubject);
+            if ~isempty(SubjectFileName)
+                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('FileName', SubjectFileName));
             elseif ~isempty(SubjectName)
-                iSubject = find(file_compare({ProtocolSubjects.Subject.Name}, SubjectName), 1);
-                sSubject = ProtocolSubjects.Subject(iSubject);
+                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('Name', SubjectName));
             else
                 error('Subject name not specified.');
+            end
+            
+            if ~isempty(sSubject)
+                if strcmpi(sSubject.Name, '@default_subject')
+                    iSubject = 0;
+                else
+                    iSubject = sSubject.Id;
+                end
             end
         end
         
         % Return found subject
         if ~isempty(iSubject) && ~isempty(sSubject)
             % If subject uses default subject
-            if sSubject.UseDefaultAnat && ~isRaw && ~isempty(ProtocolSubjects.DefaultSubject) && ~isempty(ProtocolSubjects.DefaultSubject.FileName)
-                % Return default subject (WITH REAL SUBJECT'S NAME)
-                argout1                   = ProtocolSubjects.DefaultSubject;
-                argout1.Name              = sSubject.Name;
-                argout1.UseDefaultAnat    = sSubject.UseDefaultAnat;
-                argout1.UseDefaultChannel = sSubject.UseDefaultChannel;
-                argout2                     = iSubject;
-            % Else, return found subject
-            else
-                argout1  = sSubject;
-                argout2    = iSubject;
+            useDefaultSubject = sSubject.UseDefaultAnat && ~isRaw && iSubject ~= 0;
+            if useDefaultSubject
+                sDefaultSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('Name', '@default_subject'));
             end
+            if useDefaultSubject && ~isempty(sDefaultSubject)
+                % Return default subject (WITH REAL SUBJECT'S NAME)
+                sDefaultSubject.Name              = sSubject.Name;
+                sDefaultSubject.UseDefaultAnat    = sSubject.UseDefaultAnat;
+                sDefaultSubject.UseDefaultChannel = sSubject.UseDefaultChannel;
+                sSubject = sDefaultSubject;
+            end
+            
+            % Populate Surface & Anatomy files
+            sSubject = db_get('FilesWithSubject', sqlConn, sSubject);
+            
+            argout1 = sSubject;
+            argout2 = iSubject;
         end
+        sql_close(sqlConn);
 
         
 %% ==== SURFACE FILE ====
@@ -3843,7 +3982,7 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
         fieldFolders = {fileparts(fieldFile)};
     end
     % Get protocol information
-    ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
+    ProtocolStudies = bst_get('ProtocolStudies');
     % List studies to process
     if (nargin < 4) || isempty(iStudiesList)
         iStudiesList = [-2, -3, 1:length(ProtocolStudies.Study)];
@@ -3879,7 +4018,7 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
         iItem = find(file_compare(filesList(iValidFiles), fieldFile));
         if ~isempty(iItem)
             sFoundStudy  = sStudy;
-            iFoundStudy  = iStudy;
+            iFoundStudy  = sStudy.Id;
             iItem = iValidFiles(iItem);
             return
         end

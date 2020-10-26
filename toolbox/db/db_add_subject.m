@@ -1,21 +1,19 @@
-function [sSubject, iSubject] = db_add_subject( varargin )
+function sSubject = db_add_subject( varargin )
 % DB_ADD_SUBJECT: Add a subject to data base.
 %
-% USAGE:                        db_add_subject(sSubject, iSubject)
+% USAGE:                        db_add_subject(sSubject)
 %        [sSubject, iSubject] = db_add_subject(sSubject)
 %        [sSubject, iSubject] = db_add_subject(SubjectName)
-%        [sSubject, iSubject] = db_add_subject(SubjectName, iSubject)
-%        [sSubject, iSubject] = db_add_subject(SubjectName, iSubject, UseDefaultAnat, UseDefaultChannel)
+%        [sSubject, iSubject] = db_add_subject(SubjectName)
+%        [sSubject, iSubject] = db_add_subject(SubjectName, UseDefaultAnat, UseDefaultChannel)
 %
 % INPUT:
 %     - SubjectName : Name of the subject
 %     - sSubject    : subject structure
-%     - iSubject    : Indice of the subject in the ProtocolSubjects.Subject array
-%                     Set to [] to create a new subject
 %     - UseDefaultAnat, UseDefaultChannel : values for new subject
 % OUTPUT:
 %     - sSubject : Subject structure (set to [] if an error occurs)
-%     - iSubject : Subject indice in current protocol
+%     - iSubject : Subject index in current protocol
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -39,8 +37,6 @@ function [sSubject, iSubject] = db_add_subject( varargin )
 
 % Get protocol description
 ProtocolInfo     = bst_get('ProtocolInfo');
-ProtocolSubjects = bst_get('ProtocolSubjects');
-nbSubjects = length(ProtocolSubjects.Subject);
 
 %% ===== PARSE INPUTS =====
 % CALL: db_add_subject( sSubject )
@@ -53,43 +49,35 @@ elseif ischar(varargin{1})
     % Create a new empty subject
     sSubject = db_template('Subject');
     sSubject.Name              = SubjectName;
-    sSubject.FileName          = bst_fullfile(SubjectName, 'brainstormsubject.mat');
     sSubject.UseDefaultAnat    = ProtocolInfo.UseDefaultAnat;
     sSubject.UseDefaultChannel = ProtocolInfo.UseDefaultChannel;
 else
     error('Invalid call to db_add_subject()');
 end
-% CALL: db_add_subject( ..., iSubject )
-if (nargin < 2) || isempty(varargin{2})
-    % New indice
-    iSubject = nbSubjects + 1;
-else
-    iSubject = varargin{2};
-end
 % CALL: db_add_subject( ..., UseDefaultAnat, UseDefaultChannel )
+if (nargin >= 2)
+    sSubject.UseDefaultAnat = varargin{2};
+end
 if (nargin >= 3)
-    sSubject.UseDefaultAnat = varargin{3};
-end
-if (nargin >= 4)
-    sSubject.UseDefaultChannel = varargin{4};
+    sSubject.UseDefaultChannel = varargin{3};
 end
 
-% Is new subject ?
-isNewSubject = (iSubject > nbSubjects);
 
+%% ===== UPDATE DATABASE =====
+sqlConn = sql_connect();
 
-%% ===== CHECK SUBJECT UNICITY =====
-% Only if creating a new subject
-if isNewSubject
-    % Check the subject unicity
-    if ~isempty(bst_get('Subject', sSubject.Name, 1))
-        % A subject with the same Name is found : display an error box and return to 'Subject editor' window
-        bst_error(sprintf('Subject "%s" already exists in protocol.', sSubject.Name), 'Subject editor', 0);
-        sSubject = [];
-        return
-    end
+% Check the subject unicity
+if sql_row_exists(sqlConn, 'Subject', struct('Name', sSubject.Name))
+    % A subject with the same Name is found : display an error box and return to 'Subject editor' window
+    bst_error(sprintf('Subject "%s" already exists in protocol.', sSubject.Name), 'Subject editor', 0);
+    sSubject = [];
+    sql_close(sqlConn);
+    return
 end
 
+% Add subject to database
+sql_query(sqlConn, 'insert', 'subject', sSubject);
+sql_close(sqlConn);
 
 %% ===== SAVE SUBJECT FILE =====
 SubjectMat = db_template('subjectmat');
@@ -110,22 +98,9 @@ catch
     return
 end
 
-
-%% ===== UPDATE DATABASE =====
-% === Update Subjects ===
-% Register subject in ProtocolSubjects
-ProtocolSubjects.Subject(iSubject) = sSubject;
-% Update database in Matlab preferences
-bst_set('ProtocolSubjects', ProtocolSubjects);
-
 % === Create extra system conditions ===
-% Only if it is a new subject
-if isNewSubject
-    % Add conditions: analysis_intra and default_study
-    db_add_condition(sSubject.Name, bst_get('DirAnalysisIntra'), 0);
-    db_add_condition(sSubject.Name, bst_get('DirDefaultStudy'),  0);
-end
-% Save database
-db_save();
-
+% Add conditions: analysis_intra and default_study
+%TODO: Implement folders
+%db_add_condition(sSubject.Name, bst_get('DirAnalysisIntra'), 0);
+%db_add_condition(sSubject.Name, bst_get('DirDefaultStudy'),  0);
 

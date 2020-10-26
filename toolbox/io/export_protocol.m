@@ -130,7 +130,6 @@ if ~isempty(iSubject)
     % Remove temporary protocol file
     file_delete(bst_fullfile(StudyDir, 'protocol.mat'), 1);
     % Save again the original one
-    GlobalData.DataBase.isProtocolModified(iProtocol) = 1;
     db_save(1);
 end
 % Restore initial folder

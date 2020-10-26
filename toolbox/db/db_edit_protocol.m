@@ -42,11 +42,8 @@ function iProtocol = db_edit_protocol(action, sProtocol, iProtocol)
 %% ===== PARSE INPUTS =====
 global GlobalData;
 % Get ProtocolsListInfo structure 
-sProtocolsListInfo     = GlobalData.DataBase.ProtocolInfo;
-sProtocolsListSubjects = GlobalData.DataBase.ProtocolSubjects;
-sProtocolsListStudies  = GlobalData.DataBase.ProtocolStudies;
-isProtocolLoaded       = GlobalData.DataBase.isProtocolLoaded;
-isProtocolModified     = GlobalData.DataBase.isProtocolModified;
+sProtocolsListInfo = GlobalData.DataBase.ProtocolInfo;
+isProtocolLoaded   = GlobalData.DataBase.isProtocolLoaded;
 nbProtocols = length(sProtocolsListInfo);
 % Switch between actions
 switch (action)
@@ -110,33 +107,26 @@ end
 sProtocolsListInfo(iProtocol).Comment  = sProtocol.Comment;
 sProtocolsListInfo(iProtocol).SUBJECTS = sProtocol.SUBJECTS;
 sProtocolsListInfo(iProtocol).STUDIES  = sProtocol.STUDIES;
-% ===== SUBJECT DEFAULTS =====
-if strcmpi(action, 'edit') || strcmpi(action, 'create')
-    % Anatomy class (defaults or individual)
-    sProtocolsListInfo(iProtocol).UseDefaultAnat = sProtocol.UseDefaultAnat;
-    % Channel/Headmodel class (defaults or individual)
-    sProtocolsListInfo(iProtocol).UseDefaultChannel = sProtocol.UseDefaultChannel;
-end
+% Anatomy class (defaults or individual)
+sProtocolsListInfo(iProtocol).UseDefaultAnat = sProtocol.UseDefaultAnat;
+% Channel/Headmodel class (defaults or individual)
+sProtocolsListInfo(iProtocol).UseDefaultChannel = sProtocol.UseDefaultChannel;
+% Database information
+sProtocolsListInfo(iProtocol).Database = sProtocol.Database;
 
 %% ===== UPDATE EXISTING PROTOCOL DATABASE =====
 if strcmpi(action, 'load')
-    db_update(GlobalData.DataBase.DbVersion, sProtocol);
+    %TODO: Change to SQL update
+    %db_update(GlobalData.DataBase.DbVersion, sProtocol);
 end
 
 %% ===== NEW PROTOCOL =====
 if strcmpi(action, 'load') || strcmpi(action, 'create')
-    % Register protocol in ProtocolsListSubjects and ProtocolsListStudies
-    if isempty(sProtocolsListSubjects) || isempty(sProtocolsListStudies)
-        sProtocolsListSubjects = db_template('ProtocolSubjects');
-        sProtocolsListStudies  = db_template('ProtocolStudies');
-        isProtocolLoaded       = 0;
-        isProtocolModified     = 1;
-    else
-        sProtocolsListSubjects(iProtocol) = db_template('ProtocolSubjects');
-        sProtocolsListStudies(iProtocol)  = db_template('ProtocolStudies');
-        isProtocolLoaded(iProtocol)       = 0;
-        isProtocolModified(iProtocol)     = 1;
-    end
+    isProtocolLoaded(iProtocol) = 0;
+    
+    % === UPDATE DATABASE ===
+    GlobalData.DataBase.ProtocolInfo     = sProtocolsListInfo;
+    GlobalData.DataBase.isProtocolLoaded = isProtocolLoaded;
     
     % === DEFAULT SUBJECT ===
     % Create a "SUBJECTS/DirDefaultSubject" directory
@@ -154,6 +144,7 @@ if strcmpi(action, 'load') || strcmpi(action, 'create')
         % Save brainstormsubject file in 'DirDefaultSubject' directory
         bst_save(newSubjectFile, SubjectMat, 'v7');
     end
+    %TODO: Add default subject to database
 
     % === DEFAULT STUDY ===
     % Create a "STUDIES/DirDefaultStudy" directory
@@ -168,6 +159,7 @@ if strcmpi(action, 'load') || strcmpi(action, 'create')
         StudyMat.Name = bst_get('DirDefaultStudy');
         bst_save(newStudyFile, StudyMat, 'v7');
     end
+    %TODO: Add default study to DB
     
     % === ANALYSIS STUDY ===
     % Create a "STUDIES/DirAnalysisInter" directory
@@ -182,23 +174,20 @@ if strcmpi(action, 'load') || strcmpi(action, 'create')
         StudyMat.Name = bst_get('DirAnalysisInter');
         bst_save(newStudyFile, StudyMat, 'v7');
     end
+    %TODO: Add analysis study to DB
     
-    % === UPDATE DATABASE ===
-    GlobalData.DataBase.ProtocolInfo       = sProtocolsListInfo;
-    GlobalData.DataBase.ProtocolSubjects   = sProtocolsListSubjects;
-    GlobalData.DataBase.ProtocolStudies    = sProtocolsListStudies;
-    GlobalData.DataBase.isProtocolLoaded   = isProtocolLoaded;
-    GlobalData.DataBase.isProtocolModified = isProtocolModified;
     % Update GUI, build exploration tree, etc...
     gui_brainstorm('UpdateProtocolsList');
 
 % ===== ACTION: EDIT  =====
 elseif strcmpi(action, 'edit')
-    % Update ProtocolInfo fields
-    sProtocolsListInfo(iProtocol).Comment = sProtocol.Comment;
+    % Update SQL database
+    sql_query([], 'update', 'protocol', struct(...
+        'UseDefaultAnat', sProtocol.UseDefaultAnat, ...
+        'UseDefaultChannel', sProtocol.UseDefaultChannel));
+    
     % Update ProtocolInfo
     GlobalData.DataBase.ProtocolInfo = sProtocolsListInfo;
-    GlobalData.DataBase.isProtocolModified(iProtocol) = 1;
     % Update tree display
     panel_protocols('UpdateTree');
 end

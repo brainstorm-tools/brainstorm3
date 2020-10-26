@@ -1,5 +1,5 @@
 function numElems = node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject, iSearch)
-% NODE_CREATE_SUBJECT: Create subject node from subject structure.
+% NODE_CREATE_SUBJECT: Create subject node from subject structure for anatomy view.
 %
 % USAGE:  node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject)
 %
@@ -65,22 +65,35 @@ if sSubject.UseDefaultAnat && (iSubject ~= 0)
 
 % ==== Individual anatomy ====
 else
+    sqlConn = sql_connect();
+    anatomies = sql_query(sqlConn, 'select', 'anatomyfile', '*', ...
+        struct('subject', iSubject, 'type', 'anatomy'), 'ORDER BY Id ASC');
+    surfaces  = sql_query(sqlConn, 'select', 'anatomyfile', '*', ...
+        struct('subject', iSubject, 'type', 'surface'), 'ORDER BY Id ASC');
+    sql_close(sqlConn);
+    
     % Create list of anat files (put the default at the top)
-    iAnatList = 1:length(sSubject.Anatomy);
+    nAnatomies = length(anatomies);
+    iAnatList = 1:nAnatomies;
     iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,sSubject.iAnatomy)];
     % Create and add anatomy nodes
     for iAnatomy = iAnatList
+        % Skip invalid anatomies
+        if iAnatomy > nAnatomies
+            continue;
+        end
+        
         [nodeCreated, nodeAnatomy] = CreateNode('anatomy', ...
-            char(sSubject.Anatomy(iAnatomy).Comment), ...
-            char(sSubject.Anatomy(iAnatomy).FileName), ...
-            iAnatomy, iSubject, iSearch);
+            char(anatomies(iAnatomy).Name), ...
+            char(anatomies(iAnatomy).FileName), ...
+            anatomies(iAnatomy).Id, iSubject, iSearch);
 
         if nodeCreated
             % If current item is default one
-            if ismember(iAnatomy, sSubject.iAnatomy)
+            if ismember(anatomies(iAnatomy).Id, sSubject.iAnatomy)
                 nodeAnatomy.setMarked(1);
             end
-            if showParentNodes
+            if showParentNodes || isempty(nodeRoot)
                 nodeSubject.add(nodeAnatomy);
             else
                 nodeRoot.add(nodeAnatomy);
@@ -90,24 +103,24 @@ else
     end
 
     % Sort surfaces by category
-    SortedSurfaces = db_surface_sort(sSubject.Surface);
+    SortedSurfaces = db_surface_sort(surfaces);
     iSorted = [SortedSurfaces.IndexScalp, SortedSurfaces.IndexOuterSkull, SortedSurfaces.IndexInnerSkull, ...
                SortedSurfaces.IndexCortex, SortedSurfaces.IndexOther, SortedSurfaces.IndexFibers, SortedSurfaces.IndexFEM];
     % Process all the surfaces
     for i = 1:length(iSorted)
         iSurface = iSorted(i);
-        SurfaceType = sSubject.Surface(iSurface).SurfaceType;
+        SurfaceType = surfaces(iSurface).SurfaceType;
         % Create a node adapted to represent this surface
         [nodeCreated, nodeSurface] = CreateNode(lower(SurfaceType), ...
-            char(sSubject.Surface(iSurface).Comment), ...
-            char(sSubject.Surface(iSurface).FileName), ...
-            iSurface, iSubject, iSearch);
+            char(surfaces(iSurface).Name), ...
+            char(surfaces(iSurface).FileName), ...
+            surfaces(iSurface).Id, iSubject, iSearch);
         if nodeCreated
             % If current item is default one
-            if ismember(iSurface, sSubject.(['i' SurfaceType]))
+            if ismember(surfaces(iSurface).Id, sSubject.(['i' SurfaceType]))
                 nodeSurface.setMarked(1);
             end
-            if showParentNodes
+            if showParentNodes || isempty(nodeRoot)
                 nodeSubject.add(nodeSurface);
             else
                 nodeRoot.add(nodeSurface);

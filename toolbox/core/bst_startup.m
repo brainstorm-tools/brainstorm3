@@ -67,7 +67,6 @@ end
 global GlobalData;
 GlobalData = db_template('GlobalData');
 GlobalData.Program.GuiLevel = GuiLevel;
-GlobalData.DataBase.LastSavedTime = tic();   % Save the current time, to know when to save the database
 % Save the software home directory
 bst_set('BrainstormHomeDir', BrainstormHomeDir);
 % Test for headless mode
@@ -170,7 +169,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 5.02;
+CurrentDbVersion = 6.00;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -191,7 +190,7 @@ if file_exist(dbFile)
         bstOptions = [];
     end
     % Invalid structure read from dbFile
-    if any(~isfield(bstOptions, {'iProtocol', 'ProtocolsListInfo', 'ProtocolsListSubjects', 'ProtocolsListStudies', 'BrainStormDbDir'}))
+    if any(~isfield(bstOptions, {'iProtocol', 'ProtocolsListInfo', 'BrainStormDbDir'}))
         disp(['BST> Warning: Ignoring corrupted options file: ' dbFile]);
         bstOptions = [];
     end
@@ -204,13 +203,7 @@ if ~isempty(bstOptions)
     if isfield(bstOptions, 'iProtocol')
         GlobalData.DataBase.iProtocol          = bstOptions.iProtocol;
         GlobalData.DataBase.ProtocolInfo       = bstOptions.ProtocolsListInfo;
-        GlobalData.DataBase.ProtocolSubjects   = bstOptions.ProtocolsListSubjects;
-        GlobalData.DataBase.ProtocolStudies    = bstOptions.ProtocolsListStudies;
         GlobalData.DataBase.BrainstormDbDir    = bstOptions.BrainStormDbDir;
-        GlobalData.DataBase.isProtocolModified = zeros(1, length(bstOptions.ProtocolsListInfo));
-        if isfield(bstOptions, 'DbVersion') && ~isempty(bstOptions.DbVersion)
-            GlobalData.DataBase.DbVersion = bstOptions.DbVersion;
-        end
         if isfield(bstOptions, 'isProtocolLoaded') && ~isempty(bstOptions.isProtocolLoaded)
             GlobalData.DataBase.isProtocolLoaded = bstOptions.isProtocolLoaded;
         else
@@ -257,11 +250,26 @@ if ~isempty(bstOptions)
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
     end
-    % Check database structure for updates
-    db_update(CurrentDbVersion);
+    % Update GlobalData structure
+    if GlobalData.DataBase.DbVersion < CurrentDbVersion
+        %TODO: Create its own function?
+        if GlobalData.DataBase.DbVersion < 6
+            defProtocolInfo = db_template('ProtocolInfo');
+            for iProtocol = 1:length(GlobalData.DataBase.ProtocolInfo)
+                GlobalData.DataBase.ProtocolInfo(iProtocol).Database = db_template('DatabaseInfo');
+                if isempty(GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultAnat)
+                    GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultAnat = defProtocolInfo.UseDefaultAnat;
+                end
+                if isempty(GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultChannel)
+                    GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultChannel = defProtocolInfo.UseDefaultChannel;
+                end
+            end
+        end
+        GlobalData.DataBase.DbVersion = CurrentDbVersion;
+    end
 end
 if GlobalData.DataBase.DbVersion == 0
-    % Database version is not defined, so it up-to-date
+    % Database version is not defined, so it's up-to-date
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
 end
 % Check that Colormaps are defined
@@ -341,10 +349,7 @@ if ~isDbLoaded
     % Initialize structures
     GlobalData.DataBase.iProtocol          = 0;
     GlobalData.DataBase.ProtocolInfo       = repmat(db_template('ProtocolInfo'), 0);
-    GlobalData.DataBase.ProtocolSubjects   = repmat(db_template('ProtocolSubjects'), 0);
-    GlobalData.DataBase.ProtocolStudies    = repmat(db_template('ProtocolStudies'), 0);
     GlobalData.DataBase.isProtocolLoaded   = [];
-    GlobalData.DataBase.isProtocolModified = [];
 end
 
 

@@ -1,4 +1,4 @@
-function bst_set( varargin )
+function argout1 = bst_set( varargin )
 % BST_SET: Set a Brainstorm structure.
 %
 % DESCRIPTION:  This function is used to abstract the way that these structures are stored.
@@ -119,6 +119,7 @@ if ((nargin >= 1) && ischar(varargin{1}))
 else
     error('Usage : bst_set(contextName, contextValue)');
 end
+argout1 = [];
 
 % Get required context structure
 switch contextName      
@@ -139,58 +140,199 @@ switch contextName
         else
             error('iProtocol should be a number.');
         end
-    case {'ProtocolSubjects', 'ProtocolStudies'}
-        for structField = fieldnames(contextValue)'
-            GlobalData.DataBase.(contextName)(GlobalData.DataBase.iProtocol).(structField{1}) = contextValue.(structField{1});
+    
+    case 'ProtocolSubjects'
+        %contextValue = db_template('ProtocolSubjects');
+        sqlConn = sql_connect();
+        
+        % Delete existing subjects and anatomy files
+        sql_query(sqlConn, 'delete', 'subject');
+        sql_query(sqlConn, 'delete', 'anatomyfile');
+        
+        for iSubject = 0:length(contextValue.Subject)
+            if iSubject == 0
+                sSubject = contextValue.DefaultSubject;
+            else
+                sSubject = contextValue.Subject(iSubject);
+            end
+            if isempty(sSubject)
+                continue
+            end
+            if iSubject == 0
+                sSubject.Id = 0;
+            else
+                sSubject.Id = [];
+            end
+            
+            % Extract selected anat/surf files to get inserted ID later
+            selAnatomy = [];
+            if ~isempty(sSubject.iAnatomy)
+                if ischar(sSubject.iAnatomy)
+                    selAnatomy = sSubject.iAnatomy;
+                elseif sSubject.iAnatomy > 0 && sSubject.iAnatomy < length(sSubject.Anatomy)
+                    selAnatomy = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                end
+                sSubject.iAnatomy = [];
+            end
+            %TODO: all iSurfaces
+            
+            % Insert subject
+            SubjectId = sql_query(sqlConn, 'insert', 'subject', sSubject);
+            
+            % Insert anatomy & surface files
+            [sAnatomy, selAnatomy] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, SubjectId, selAnatomy);
+            [sSurface, selSurface] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, SubjectId, []);
+            
+            % Update subject entry to add selected anat/surf files, if any
+            hasSelFiles = 0;
+            selFiles = struct();
+            if ~isempty(selAnatomy)
+                selFiles.iAnatomy = selAnatomy;
+                hasSelFiles = 1;
+            end
+            if ~isempty(selSurface)
+                selFiles.iSurface = selSurface;
+                hasSelFiles = 1;
+            end
+            if hasSelFiles
+                sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', SubjectId));
+            end
         end
-        GlobalData.DataBase.isProtocolModified(GlobalData.DataBase.iProtocol) = 1;
+        
+        sql_close(sqlConn);
+        
+    case 'ProtocolStudies'
+        sqlConn = sql_connect();
+        
+        % Delete existing studies and functional files
+        sql_query(sqlConn, 'delete', 'study');
+        sql_query(sqlConn, 'delete', 'functionalfile');
+        
+        for iStudy = -1:length(contextValue.Study)
+            if iStudy == -1
+                sStudy = contextValue.DefaultStudy;
+            elseif iStudy == 0
+                sStudy = contextValue.AnalysisStudy;
+            else
+                sStudy = contextValue.Study(iStudy);
+            end
+            
+            if isempty(sStudy)
+                continue
+            end
+            
+            % Get ID of parent subject
+            sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudy.BrainStormSubject));
+            sStudy.Id = [];
+            sStudy.Subject = sSubject.Id;
+            sStudy.Condition = char(sStudy.Condition);
+            
+            % Insert study
+            StudyId = sql_query(sqlConn, 'insert', 'study', sStudy);
+            sStudy.Id = StudyId;
+            
+            % Insert functional files
+            db_set(sqlConn, 'FilesWithStudy', sStudy);
+        end
+        
+        sql_close(sqlConn);
+        
     case 'ProtocolInfo'
         for structField = fieldnames(contextValue)'
             GlobalData.DataBase.(contextName)(GlobalData.DataBase.iProtocol).(structField{1}) = contextValue.(structField{1});
         end
     case 'isProtocolLoaded'
         GlobalData.DataBase.isProtocolLoaded(GlobalData.DataBase.iProtocol) = contextValue;
-    case 'isProtocolModified'
-        GlobalData.DataBase.isProtocolModified(GlobalData.DataBase.iProtocol) = contextValue;
 
 %% ==== SUBJECT ====
     case 'Subject'
-        % Get subjects list
-        ProtocolSubjects = bst_get('ProtocolSubjects');
         iSubject = varargin{2};
         sSubject = varargin{3};
+        sqlConn = sql_connect();
+        
         % If default subject
         if (iSubject == 0)
-            ProtocolSubjects.DefaultSubject = sSubject;
+            sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Name', '@default_subject'));
         else
-            ProtocolSubjects.Subject(iSubject) = sSubject;
+            sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Id', iSubject));
         end
-        % Update DataBase
-        bst_set('ProtocolSubjects', ProtocolSubjects);
+        
+        % If subject exists, UPDATE query
+        if ~isempty(sExistingSubject)
+            sSubject.Id = sExistingSubject.Id;
+            result = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', sExistingSubject.Id));
+            if ~result
+                argout1 = sExistingSubject.Id;
+            end
+        else
+            sSubject.Id = [];
+            iSubject = sql_query(sqlConn, 'insert', 'subject', sSubject);
+            if ~isempty(iSubject)
+                argout1 = iSubject;
+            end
+        end
+        
+        if ~isempty(argout1)
+            % Delete existing anatomy files
+            sql_query(sqlConn, 'delete', 'anatomyfile', struct('Subject', argout1));
+            % Insert new anatomy files
+            db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, argout1);
+            db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, argout1);
+        end
+        sql_close(sqlConn);
         
         
 %% ==== STUDY ====
     case 'Study'
         % Get studies list
-        ProtocolStudies = bst_get('ProtocolStudies');
         iStudies = varargin{2};
         sStudies = varargin{3};
         iAnalysisStudy = -2;
         iDefaultStudy  = -3;
+        
+        sqlConn = sql_connect();
         for i = 1:length(iStudies)
-            % Normal study
-            if (iStudies(i) > 0)
-                ProtocolStudies.Study(iStudies(i)) = sStudies(i);
             % Inter-subject analysis study
-            elseif (iStudies(i) == iAnalysisStudy)
-                ProtocolStudies.AnalysisStudy = sStudies(i);
+            if iStudies(i) == iAnalysisStudy
+                sExistingStudy = sql_query(sqlConn, 'select', 'study', 'Id', struct('Name', '@inter'));
             % Default study
-            elseif (iStudies(i) == iDefaultStudy)
-                ProtocolStudies.DefaultStudy = sStudies(i);
+            elseif iStudies(i) == iDefaultStudy
+                sExistingStudy = sql_query(sqlConn, 'select', 'study', 'Id', struct('Name', '@default_study'));
+            % Normal study
+            else
+                sExistingStudy = sql_query(sqlConn, 'select', 'study', 'Id', struct('Id', iStudies(i)));
+            end
+            
+            % Get ID of parent subject
+            sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudies(i).BrainStormSubject));
+            sStudies(i).Subject = sSubject.Id;
+            
+            % If study exists, UPDATE query
+            if ~isempty(sExistingStudy)
+                sStudies(i).Id = sExistingStudy.Id;
+                result = sql_query(sqlConn, 'update', 'study', sStudies(i), struct('Id', sExistingStudy.Id));
+                if result
+                    iStudy = sExistingStudy.Id;
+                    argout1(end + 1) = iStudy;
+                else
+                    iStudy = [];
+                end
+            % If study is new, INSERT query
+            else
+                sStudies(i).Id = [];
+                iStudy = sql_query(sqlConn, 'insert', 'study', sStudies(i));
+                if ~isempty(iStudy)
+                    argout1(end + 1) = iStudy;
+                end
+            end
+            
+            % Insert functional files
+            if ~isempty(iStudy)
+                sql_query(sqlConn, 'delete', 'functionalfile', struct('Study', iStudy));
+                db_set(sqlConn, 'FilesWithStudy', sStudies(i));
             end
         end
-        % Update DataBase
-        bst_set('ProtocolStudies', ProtocolStudies);
+        sql_close(sqlConn);
         
         
 %% ==== GUI ====
@@ -295,7 +437,4 @@ switch contextName
         
 
 end
-
-
-
 

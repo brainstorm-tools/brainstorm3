@@ -35,7 +35,40 @@ end
 % Get protocol info
 isError = 0;
 isFixed = 1;
-ProtocolInfo     = bst_get('ProtocolInfo');
+ProtocolInfo = bst_get('ProtocolInfo');
+
+% Fix database information
+if isempty(ProtocolInfo.Database)
+    ProtocolInfo.Database = db_template('DatabaseInfo');
+end
+if isempty(ProtocolInfo.Database.Rdbms) || isempty(ProtocolInfo.Database.Location) ...
+        || (strcmp(ProtocolInfo.Database.Rdbms, 'sqlite') && ~file_exist(ProtocolInfo.Database.Location))
+    if isempty(ProtocolInfo.Database.Rdbms)
+        ProtocolInfo.Database.Rdbms = 'sqlite';
+    end
+    % Create database if missing
+    switch ProtocolInfo.Database.Rdbms
+        case 'sqlite'
+            % Get database file
+            if isempty(ProtocolInfo.Database.Location)
+                ProtocolInfo.Database.Location = bst_fullfile(ProtocolInfo.STUDIES, 'protocol.db');
+            end
+            sqlConn = sql_connect(ProtocolInfo.Database);
+            sql_create(sqlConn, sql_generate_db(), ProtocolInfo.Database);
+            sql_query(sqlConn, 'insert', 'protocol', struct(...
+                'Name', ProtocolInfo.Comment, ...
+                'UseDefaultAnat', ProtocolInfo.UseDefaultAnat, ...
+                'UseDefaultChannel', ProtocolInfo.UseDefaultChannel, ...
+                'Owner', bst_get('UserName'), ...
+                'CreationTime', datestr(datetime('now')), ...
+                'DatabaseVersion', 0.1));
+            sql_close(sqlConn, ProtocolInfo.Database);
+        otherwise
+            error('Unsupported database system.');
+    end
+    bst_set('ProtocolInfo', ProtocolInfo);
+end
+
 ProtocolSubjects = bst_get('ProtocolSubjects');
 ProtocolStudies  = bst_get('ProtocolStudies');
 % Subjects folder

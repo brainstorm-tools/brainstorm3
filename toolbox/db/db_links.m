@@ -41,7 +41,7 @@ if (nargin == 0)
         % If subject do not share channel file (already processed)
         %if (sSubjectsList.Subject(iSubject).UseDefaultChannel ~= 0)
             % Update results links for subject
-            db_links('Subject', iSubject);
+            db_links('Subject', sSubjectsList.Subject(iSubject).Id);
         %end
     end
     % Hide progress bar

@@ -49,21 +49,17 @@ showParentNodes = node_show_parents(iSearch);
 bstDefaultNode = [];
 nodeSubjectsDB = [];
 numTotalElems  = 0;
-% Get current protocol subjects list
-ProtocolSubjects = bst_get('ProtocolSubjects');
-if (isempty(ProtocolSubjects))
-    %warning('Brainstorm:NoProtocol', 'No protocol selected')
-    return
-end;
 % Get current protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
-% Get current subject
-CurrentSubject = bst_get('Subject');
-if (isempty(CurrentSubject) || isempty(CurrentSubject.FileName))
-    selectedSubjectFileName = '';
-else
-    selectedSubjectFileName = CurrentSubject.FileName;
+if (isempty(ProtocolInfo))
+    %warning('Brainstorm:NoProtocol', 'No protocol selected')
+    return
 end
+% Get current protocol subjects list
+sSubjects = sql_query([], 'select', 'subject', '*');
+iDefaultSubject = find(strcmp({sSubjects.Name}, bst_get('DirDefaultSubject')), 1);
+
+%TODO: Save current study in GlobalData, retrieve current subject and return it as bstDefaultNode
     
 
 %% ===== CREATE TREE =====
@@ -71,60 +67,45 @@ end
 nodeSubjectsDB = BstNode('subjectdb', [ProtocolInfo.Comment ' (anatomy)'], ProtocolInfo.SUBJECTS, 0, 0);
 
 % Add default subject node (if it exists)
-if ~isempty(ProtocolSubjects.DefaultSubject)
+if ~isempty(iDefaultSubject)
     % Create subject node
-    nodeSubject = BstNode('subject', '');
-    % Fill it with MRI and surfaces children nodes
-    numElems = node_create_subject(nodeSubject, nodeSubjectsDB, ProtocolSubjects.DefaultSubject, 0, iSearch);
-    % Add new node if it has elements that passed the search filter
-    if numElems > 0 && showParentNodes
-        % Add subject node to 'Subjects database' node
-        nodeSubjectsDB.add(nodeSubject);
-        numTotalElems = numTotalElems + numElems;
-        % If default subject is the subject associated with the default study
-        % Mark it as the default subject
-        if file_compare(selectedSubjectFileName, ProtocolSubjects.DefaultSubject.FileName)
-            bstDefaultNode = nodeSubject;
-        end
+    nodeSubject = BstNode('subject', '(Default anatomy)', sSubjects(iDefaultSubject).FileName, 0, sSubjects(iDefaultSubject).Id);
+    
+    % Set the node as un-processed if it has children
+    if subjectHasChildren(sSubjects(iDefaultSubject))
+        nodeSubject.setUserObject(0);
+        % Add a "Loading" node
+        nodeSubject.add(BstNode('loading', 'Loading...'));
     end
-end
-
-% Sort subjects by Name
-[tmp__, iSubjectsSorted] = sort({ProtocolSubjects.Subject.Name});
-% Find subject "Group_analysis"
-iSubjectGroup = find(strcmpi({ProtocolSubjects.Subject.Name}, bst_get('NormalizedSubjectName')));
-% If it exists: Remove it from the sorted list
-if ~isempty(iSubjectGroup)
-    iSubjectsSorted(iSubjectsSorted == iSubjectGroup) = [];
-    % iSubjectsSorted = [iSubjectGroup, iSubjectsSorted];
+    nodeSubjectsDB.add(nodeSubject);
 end
 
 % Add subjects entries for current protocol
-for i = 1:length(iSubjectsSorted)
-    iSubject = iSubjectsSorted(i);
-    % Create subject node
-    nodeSubject = BstNode('subject', '');
-    % Fill it with MRI and surfaces children nodes
-    try
-        numElems = node_create_subject(nodeSubject, nodeSubjectsDB, ProtocolSubjects.Subject(iSubject), iSubject, iSearch);
-        % Add subject node to 'Subjects database' node
-        if numElems > 0 && showParentNodes
-            nodeSubjectsDB.add(nodeSubject);
-            numTotalElems = numTotalElems + numElems;
-            % If current subject is the subject associated with the default study
-            % Mark it as the default subject
-            if file_compare(selectedSubjectFileName, ProtocolSubjects.Subject(iSubject).FileName)
-                bstDefaultNode = nodeSubject;
-            end
-        end
-    catch
-        % Could not create node
-        warning('Brainstorm:NodeError', ['Cannot create node for subject: "' ProtocolSubjects.Subject(iSubject).Name '"']);
+for iSubject = 1:length(sSubjects)
+    % Skip default subject
+    if ~isempty(iDefaultSubject) && iSubject == iDefaultSubject
+        continue
     end
+    % Create subject node
+    nodeSubject = BstNode('subject', sSubjects(iSubject).Name, sSubjects(iSubject).FileName, 0, sSubjects(iSubject).Id);
+    % Set the node as un-processed if it has children
+    if subjectHasChildren(sSubjects(iSubject))
+        nodeSubject.setUserObject(0);
+        % Add a "Loading" node
+        nodeSubject.add(BstNode('loading', 'Loading...'));
+    end
+    
+    nodeSubjectsDB.add(nodeSubject);
 end
 
 % Add 'Subjects database' node to root node
 nodeRoot.add(nodeSubjectsDB);
 
 
+end
+
+function hasChildren = subjectHasChildren(sSubject)
+    hasChildren = ~isempty(sSubject.iAnatomy) || ~isempty(sSubject.iScalp) || ~isempty(sSubject.iCortex) ...
+        || ~isempty(sSubject.iInnerSkull) || ~isempty(sSubject.iOuterSkull) || ~isempty(sSubject.iFibers) ...
+        || ~isempty(sSubject.iFEM) || ~isempty(sSubject.iOther);
 end

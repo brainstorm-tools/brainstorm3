@@ -101,6 +101,8 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     if ~isempty(jarfile)
         javaaddpath([BrainstormHomeDir '/java/' jarfile]);
     end
+    % SQLite JDBC
+    javaaddpath([BrainstormHomeDir '/java/sqlite-jdbc.jar']);
     
     % === INITIALIZE MFFMATLABIO LIBRARY ===
     [mffJarPath, mffJarExists] = bst_get('MffJarFile');

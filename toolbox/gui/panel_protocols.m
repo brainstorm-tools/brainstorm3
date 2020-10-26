@@ -172,8 +172,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         nodeExpand = event.getPath().getLastPathComponent();
         nodeType = char(nodeExpand(1).getType());
         % If this is a study node, node created yet: create it
-        if ismember(nodeType, {'condition', 'rawcondition', 'studysubject', 'study', 'defaultstudy'}) && (nodeExpand.getStudyIndex() ~= 0)
-            panel_protocols('CreateStudyNode', nodeExpand);
+        if ismember(nodeType, {'condition', 'rawcondition', 'study', 'defaultstudy'})
+            CreateStudyNode(nodeExpand);
+        elseif strcmp(nodeType, 'studysubject')
+            CreateSubjectNode(nodeExpand, 0);
+        elseif strcmp(nodeType, 'subject')
+            CreateSubjectNode(nodeExpand, 1);
         end
     end
         
@@ -478,12 +482,52 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     if isempty(nodeStudy.getUserObject())
         return;
     end
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
     % Remove existing nodes
     nodeStudy.removeAllChildren();
     % Get study and subject
     iStudy = nodeStudy.getStudyIndex();
-    sStudy = bst_get('Study', iStudy);
-    if isempty(sStudy)
+    if iStudy ~= 0
+        sqlConn = sql_connect();
+        sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Id', iStudy));
+        sSubject = sql_query(sqlConn, 'select', 'subject', 'UseDefaultChannel', struct('Id', sStudy.Subject));
+        sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
+        sql_close(sqlConn);
+        if ~isempty(sStudy)
+            % Get selected search tab
+            iSearch = GetSelectedSearch();
+            % Create node sub-tree
+            UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
+            isExpandTrials = 1;
+            node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+        end
+    end
+    
+    % Mark as updated
+    nodeStudy.setUserObject([]);
+    ctrl.jTreeProtocols.getModel.reload(nodeStudy);
+end
+
+%% ===== NODE: CREATE SUBJECT NODE =====
+function CreateSubjectNode(nodeSubject, isAnatomyView) %#ok<DEFNU>
+    % If node is already generated: return
+    if isempty(nodeSubject.getUserObject())
+        return;
+    end
+    % Remove existing nodes
+    nodeSubject.removeAllChildren();
+    % Get subject
+    if isAnatomyView
+        iSubject = nodeSubject.getStudyIndex();
+    else
+        iSubject = nodeSubject.getItemIndex();
+    end
+    sSubject = db_get('Subject', iSubject);
+    if isempty(sSubject)
         return;
     end
     % Get tree handle
@@ -491,17 +535,17 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
     % Get selected search tab
     iSearch = GetSelectedSearch();
     % Create node sub-tree
-    UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-    isExpandTrials = 1;
-    node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+    if isAnatomyView
+        node_create_subject(nodeSubject, [], sSubject, iSubject, iSearch);
+    else
+        node_create_studysubject(nodeSubject, [], sSubject, iSubject, iSearch);
+    end
     % Mark as updated
-    nodeStudy.setUserObject([]);
-    ctrl.jTreeProtocols.getModel.reload(nodeStudy);
+    nodeSubject.setUserObject([]);
+    ctrl.jTreeProtocols.getModel.reload(nodeSubject);
 end
 
 
@@ -1472,7 +1516,7 @@ end
 function CloseAllDatabaseTabs()
     % Get tree handle
     ctrl = bst_get('PanelControls', 'protocols');
-    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols) || ctrl.jTabpaneSearch.getTabCount() == 0
         return;
     end
     
@@ -1920,6 +1964,9 @@ end
 % Returns: nothing
 function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode, numNodes)
     global GlobalData
+    
+    %TODO: Temporary disabled for quick testing
+    return
     
     switch explorationMode
         case 'Subjects'

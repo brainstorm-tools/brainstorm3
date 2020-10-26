@@ -30,9 +30,6 @@ iSubject  = [];
 % Get ProtocolSubjects structure 
 ProtocolInfo = bst_get('ProtocolInfo');
 ProtocolSubjects = bst_get('ProtocolSubjects');
-if isempty(ProtocolSubjects)
-    error('No selected protocol'); 
-end
 nbSubjects = length(ProtocolSubjects.Subject);
 % Get subject to edit (parse inputs)
 if (nargin == 0)
@@ -172,7 +169,7 @@ UpdatePanel();
         % ==== ADD SUBJECT ====
         % Create a new subject
         if isNewSubject
-            sSubject = db_add_subject(sSubject, iSubject);
+            sSubject = db_add_subject(sSubject);
             if isempty(sSubject)
                 bst_error('Subject could not be created.', 'Subject editor', 0);
                 return

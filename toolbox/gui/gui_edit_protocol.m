@@ -132,6 +132,9 @@ end
         sProtocol.Comment  = char(ctrl.jTextProtocolName.getText());
         sProtocol.SUBJECTS = char(ctrl.jTextSubjectsPath.getText());
         sProtocol.STUDIES  = char(ctrl.jTextStudiesPath.getText());
+        % Database information
+        sProtocol.Database.Rdbms = 'sqlite';
+        sProtocol.Database.Location = bst_fullfile(sProtocol.STUDIES, 'protocol.db');
         % Do not accept a blank protocol name
         if isempty(sProtocol.Comment)
             bst_error('You must specify a protocol name.', 'Protocol editor', 0);
