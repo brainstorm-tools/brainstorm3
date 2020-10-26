@@ -53,20 +53,18 @@ if (nnz([isEeg, isMeg, isEcog, isSeeg]) > 2) || ((nnz([isEeg, isMeg, isEcog, isS
     return;
 end
 % Get the modality
-if isEeg && isMeg
+if isMeg
+    dnModality = 'meg';  
+elseif ((isEeg || isEcog || isSeeg) && isMeg)
     dnModality = 'meeg';
-elseif isEeg
-    dnModality = 'eeg';
-elseif isMeg
-    dnModality = 'meg';
-elseif isEcog
-    dnModality = 'ecog';
-elseif isSeeg
-    dnModality = 'seeg';
+elseif  isEeg || isEcog || isSeeg
+    dnModality = 'eeg'; % from DUNEuro side, EEG, sEEG, ECOG  uses the same process
 end
 % Get EEG positions
 if isEeg
     EegLoc = cat(2, cfg.Channel(cfg.iEeg).Loc);
+else
+EegLoc = [];
 end
 % Get MEG positions/orientations
 if isMeg
@@ -78,6 +76,27 @@ if isMeg
         end
     end
 end
+% TODO : use the real position of the sensors unstead of the integration
+% points ==> Too much memory for low accuracies advantages ==> discuss with
+% ftadel and create git discussion + PR
+
+% Get sEEG positions
+if isSeeg
+    sEegLoc = cat(2, cfg.Channel(cfg.iSeeg).Loc);
+else
+    sEegLoc = [];
+end
+% Get Ecog positions
+if isEcog
+    EcogLoc = cat(2, cfg.Channel(cfg.iEcog).Loc);
+else
+    EcogLoc = [];    
+end
+
+% Combined modalities for EEG/sEEG/EcoG
+% TODO : define the same matrix for all the location that share the same
+% modality ==> faster
+ElectrodeLocation = [EegLoc sEegLoc EcogLoc];
 
 
 %% ===== HEAD MODEL =====
@@ -155,7 +174,6 @@ end
 % Write mesh model
 MeshFile = fullfile(TmpDir, MeshFile);
 out_fem(FemMat, MeshFile);
-
 
 %% ====== SOURCE SPACE =====
 % Source space type
@@ -319,9 +337,9 @@ fclose(fid);
 %% ===== SENSOR MODEL =====
 % Write the EEG electrode file
 ElecFile = 'electrode_model.txt';
-if isEeg
+if isEeg || isEcog || isSeeg 
     fid = fopen(fullfile(TmpDir, ElecFile), 'wt+');
-    fprintf(fid, '%d %d %d  \n', EegLoc);
+    fprintf(fid, '%d %d %d  \n', ElectrodeLocation);
     fclose(fid); 
 end
 % Write the MEG sensors file
@@ -379,10 +397,16 @@ fprintf(fid, 'solver_type = %s\n', cfg.SolverType);
 fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
 fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
 % [electrodes]
+if isEcog || isSeeg 
+  cfg.ElecType = 'closest_subentity_center';
+  % Unstead to select the electrode on the outer surface,
+  % it uses the nearest FEM node as an electrode location.
+end
 if strcmp(dnModality, 'eeg') || strcmp(dnModality, 'meeg')
     fprintf(fid, '[electrodes]\n');
     fprintf(fid, 'filename = %s\n', fullfile(TmpDir, ElecFile));
     fprintf(fid, 'type = %s\n', cfg.ElecType);
+    fprintf(fid, 'codims = %s\n', '3');
 end
 % [meg]
 if strcmp(dnModality, 'meg') || strcmp(dnModality, 'meeg')
@@ -476,10 +500,12 @@ disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
 % EEG
-if isEeg
+if isEeg || isEcog || isSeeg 
     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
 end
 % MEG
+% TODO : add an option to use the real sensors location without the
+% integrations points.
 if isMeg
     GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
     
@@ -527,10 +553,16 @@ Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
 if isMeg
     Gain(cfg.iMeg,:) = GainMeg; 
 end 
-if isEeg
+if isEeg 
     Gain(cfg.iEeg,:) = GainEeg; 
 end
-
+if isEcog 
+    Gain(cfg.iEcog,:) = GainEeg; 
+end
+if isSeeg 
+    Gain(cfg.iSeeg,:) = GainEeg; 
+end
+% TODO : check if this is possible wiht combined sEEG/EEG and EcoG
 
 %% ===== SAVE TRANSFER MATRIX ======
 disp('DUNEURO> TODO: Save transferOut.dat to database.')
