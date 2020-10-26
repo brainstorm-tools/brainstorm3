@@ -22,8 +22,8 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     .EEGMethod:  Method used to compute the forward model for EEG sensors.
 %         - 'eeg_3sphereberg' : EEG forward modeling with a set of 3 concentric spheres (Scalp, Skull, Brain/CSF) 
 %         - 'openmeeg'        : OpenMEEG forward model
-%     .SEEGMethod:    'openmeeg' only 
-%     .ECOGMethod:    'openmeeg' only
+%     .SEEGMethod:    'openmeeg' and 'duneuro'  
+%     .ECOGMethod:    'openmeeg' and 'duneuro' 
 %
 %     ======= METHODS OPTIONS =============================================
 %     OpenMEEG: see bst_openmeeg
