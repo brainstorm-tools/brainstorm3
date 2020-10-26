@@ -1,10 +1,12 @@
 ---------------------------------------------------------------
 October 2020
+- Major bug fix: Changed units in PSD computation
 - New process: Simulate recordings from dipoles
 - Anatomy: Standard EEG caps included with infant templates
 - Anatomy: FreeSurfer import now loads all the .annot files in /label
 - ephys: Phase locking circular plots 
 - Process: Apply montage: Include processing of headmodels
+- Python: More generic initialization, using pyenv when available
 ---------------------------------------------------------------
 September 2020
 - GUI: Added Y-log scale for spectrum figures

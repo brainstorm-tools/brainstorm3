@@ -32,7 +32,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     [isOk, errorMsg] = bst_mne_init('Initialize', 0);
     if ~isOk
         if isempty(errorMsg)
-            errorMsg = 'Could not load Python in Matlab.';
+            errorMsg = 'Could not initialize MNE-Python.';
         end
         bst_report('Error', sProcess, sInput, errorMsg);
         return;

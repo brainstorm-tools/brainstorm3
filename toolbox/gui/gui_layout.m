@@ -58,7 +58,13 @@ end
 
 
 %% ===== GET DECORATION SIZE =====
+% Get decorations size for a window: [left, top, right, bottom, menubarHeight, toolbarHeight]
 function decorationSize = GetDecorationSize(jBstWindow)
+    % Do not try to get it when running in server or nogui mode
+    if (bst_get('GuiLevel') <= 0)
+        decorationSize = [0 0 0 0 0 0];
+        return;
+    end
     % Get brainstorm window if needed
     if (nargin < 1) || isempty(jBstWindow)
         jBstWindow = bst_get('BstFrame');

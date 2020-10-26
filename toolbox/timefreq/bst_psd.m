@@ -1,4 +1,4 @@
-function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOverlap, BadSegments, ImagingKernel, isVariance )
+function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOverlap, BadSegments, ImagingKernel, isVariance, PowerUnits )
 % BST_PSD: Compute the PSD of a set of signals using Welch method
 
 % @=============================================================================
@@ -20,8 +20,12 @@ function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOve
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2017
+%          Marc Lalancette, 2020
 
 % Parse inputs
+if (nargin < 8) || isempty(PowerUnits)
+    PowerUnits = 'physical';
+end
 if (nargin < 7) || isempty(isVariance)
     isVariance = 0;
 end
@@ -85,15 +89,43 @@ for iWin = 1:Nwin
     end
     % Select indices
     Fwin = F(:,iTimes);
-    % Remove mean of the signal
+    % No need to enforce removing DC component (0 frequency).
     Fwin = bst_bsxfun(@minus, Fwin, mean(Fwin,2));
     % Apply a hamming window to signal
-    Fwin = bst_bsxfun(@times, Fwin, bst_window('hamming', Lwin)');
+    Win = bst_window('hamming', Lwin)';
+    WinNoisePowerGain = sum(Win.^2);
+    Fwin = bst_bsxfun(@times, Fwin, Win);
     % Compute FFT
     Ffft = fft(Fwin, NFFT, 2);
-    % Keep only first half
+    % One-sided spectrum (keep only first half)
     % (x2 to recover full power from negative frequencies)
-    TFwin = 2 * Ffft(:,1:NFFT/2+1) ./ length(iTimes);
+    % Scaling options
+    switch PowerUnits
+    % Physical units, amplitude independent of window length
+        case 'physical'
+            % Normalize by the window "noise power gain" and convert "per
+            % freq bin (or Hz⋅s)" to "per Hz".
+            TFwin = Ffft(:,1:NFFT/2+1) * sqrt(2 ./ (sfreq * WinNoisePowerGain));
+            % x2 doesn't apply to DC and Nyquist.
+            TFwin(:, [1,end]) = TFwin(:, [1,end]) ./ sqrt(2);
+    % Normalized frequencies
+        case 'normalized'
+            % Normalize by the window "noise power gain".
+            TFwin = Ffft(:,1:NFFT/2+1) * sqrt(2 ./ WinNoisePowerGain);
+            % x2 doesn't apply to DC and Nyquist.
+            TFwin(:, [1,end]) = TFwin(:, [1,end]) ./ sqrt(2);
+            FreqVector = 0.5 * linspace(0,1,NFFT/2+1);
+    % Pre 2020 fix:
+        case 'old'
+            % Issues: Factor of 2 applies to power, here it multiplies
+            % amplitude. Rectangular window "noise power gain" is Lwin, but
+            % here we used Hamming.  Further, it would again divide the
+            % power, so would need sqrt here.
+            TFwin = 2 * Ffft(:,1:NFFT/2+1) ./ Lwin;
+        otherwise
+            error('Unknown power spectrum units option.');
+    end
+    
     % Apply imaging kernel
     if ~isempty(ImagingKernel)
         TFwin = ImagingKernel * TFwin;

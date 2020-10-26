@@ -44,20 +44,10 @@ if exist(exeFile, 'file')
 end
 
 % === GET CURRENT ONLINE VERSION ===
-% Reading function: urlread replaced with webread in Matlab 2014b
-if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @urlread;
-else
-    url_read_fcn = @webread;
-end
 % Read online version.txt
-try
-    str = url_read_fcn('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
-catch
-    errMsg = 'Could not get current online version of bst_duneuro.';
-    return;
-end
+str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
 if (length(str) < 6)
+    errMsg = 'Could not get current online version of bst_duneuro.';
     return;
 end
 DuneuroVersion = str(1:6);

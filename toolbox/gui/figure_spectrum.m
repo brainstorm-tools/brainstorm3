@@ -736,8 +736,8 @@ function AddParentBadChannels(hFig, BadChan)
         newChannelFlag(iBad) = -1;
         % Update channel flag
         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
-        % Reset selection
-        bst_figures('SetSelectedRows', []);
+        % Reset selection (done in UpdateChannelFlag)
+        %bst_figures('SetSelectedRows', []);
     end
 end
 
@@ -1171,9 +1171,8 @@ function UpdateFigurePlot(hFig, isForced)
     end
     % Display units
     DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
-    % Get figure time-freq info
-    TfInfo   = getappdata(hFig, 'Timefreq');
-    TsInfo   = getappdata(hFig, 'TsInfo');
+    % Get figure time series
+    TsInfo = getappdata(hFig, 'TsInfo');
     
     % ===== GET GLOBAL MAXIMUM =====
     % If maximum is not defined yet
@@ -1193,7 +1192,23 @@ function UpdateFigurePlot(hFig, isForced)
             XLegend = 'Time (s)';
         case 'Spectrum'
             X = Freqs;
-            XLegend = 'Frequency (Hz)';
+            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'PowerUnits') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.PowerUnits)
+                switch GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.PowerUnits
+                    case 'physical'
+                        XLegend = 'Frequency (Hz)';
+                        TfInfo.FreqUnits = 'Hz';
+                    case 'normalized'
+                        XLegend = 'Normalized frequency (Hz⋅s)';
+                        TfInfo.FreqUnits = 'Hz⋅s';
+                    case 'old'
+                        XLegend = 'Frequency (Hz)';
+                        TfInfo.FreqUnits = '"bin"';
+                    otherwise
+                        error('Unknown power spectrum units.');
+                end
+            else
+                XLegend = 'Frequency (Hz)';
+            end
         otherwise
             error('Invalid display mode');
     end
@@ -1377,7 +1392,6 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
     PlotHandles.DisplayUnits = DisplayUnits;
 
     % ===== SWITCH DISPLAY MODE =====
-    %TsInfo = getappdata(hFig, 'TsInfo');
     switch (lower(TsInfo.DisplayMode))
         case 'butterfly'
             PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, TF, LinesLabels);
@@ -1410,9 +1424,10 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     strPow = '';
     % Set display Factor
     PlotHandles.DisplayFactor = 1;
-    if (Fmax(1) ~= Fmax(2)) 
-        Fpow = round(log10(max(abs(Fmax))));
-        if (Fpow < -3)
+    if (Fmax(1) ~= Fmax(2))
+        % Force powers of 3 (SI prefix)
+        Fpow = round(round(log10(max(abs(Fmax))))/3)*3;
+        if (Fpow < -2)
             Fpow = -Fpow;
             PlotHandles.DisplayFactor = 10^Fpow;
             Fmax = Fmax * PlotHandles.DisplayFactor;
@@ -1458,10 +1473,13 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
             strAmp = 't-values';
         end
     else
+        if ~isfield(TfInfo, 'FreqUnits') || isempty(TfInfo.FreqUnits)
+            TfInfo.FreqUnits = 'Hz';
+        end
         switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Power   (signal units^2/Hz' strPow ')'];
-            case 'magnitude',  strAmp = ['Magnitude   (signal units/sqrt(Hz)' strPow ')'];
-            case 'log',        strAmp = ['Log-power   (dB/Hz' strPow ')'];
+            case 'power',      strAmp = ['Power   (signal units^2/' TfInfo.FreqUnits strPow ')'];
+            case 'magnitude',  strAmp = ['Magnitude   (signal units/sqrt(' TfInfo.FreqUnits ')' strPow ')'];
+            case 'log',        strAmp = ['Log-power   (dB/' TfInfo.FreqUnits strPow ')'];
             case 'phase',      strAmp = 'Angle';
             otherwise,         strAmp = 'No units';
         end
