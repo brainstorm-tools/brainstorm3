@@ -4068,28 +4068,27 @@ function SetScaleModeX(hFig, newMode)
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'XScale', newMode);
     setappdata(hFig, 'TsInfo', TsInfo);
-    % Update value
+    % Update preferred value
     bst_set('XScale', newMode);
 end
 
 %% ===== SET Y-SCALE MODE =====
 function SetScaleModeY(hFig, newMode)
-    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-    global GlobalData;
+    [Handles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
     % Prevent log scale for data that's already log (dB), or negative.
-    if ~isempty(iDS) && ~isempty(iFig) && ...
-            isfield(GlobalData.DataSet(iDS).Figure(iFig), 'Handles') && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'DataMinMax') && ...
-            ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) && GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
+    if ~isempty(Handles) && Handles.DataMinMax(1) < 0
         newMode = 'linear';
     else
         % Update preferred value
         bst_set('YScale', newMode);
     end
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.YScale = newMode;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'YScale', newMode);
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.YScale = newMode;
     setappdata(hFig, 'TsInfo', TsInfo);
+    % Readjust y scale limits.
+    ScaleToFitY(hFig);
 end
 
 

@@ -867,25 +867,6 @@ function ToggleLogScaleX(hAxes, hFig, loglin)
     RefreshLogScaleBtnDisplay(hFig, TsInfo);
     bst_set('XScale', loglin);
 end
-function ToggleLogScaleY(hAxes, hFig, loglin)
-    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-    global GlobalData;
-    % Prevent log scale for data that's already log (dB), or negative.
-    if ~isempty(iDS) && ~isempty(iFig) && ...
-            isfield(GlobalData.DataSet(iDS).Figure(iFig), 'Handles') && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, 'DataMinMax') && ...
-            ~isempty(GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax) 
-        if GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax(1) < 0
-            loglin = 'linear';
-        end
-    else
-        % Update preferred value
-        bst_set('YScale', loglin);
-    end
-    set(hAxes, 'YScale', loglin);
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.YScale = loglin;
-    setappdata(hFig, 'TsInfo', TsInfo);
-end
 function RefreshLogScaleBtnDisplay(hFig, TsInfo)
     % Toggle selection of associated button if possible
     buttonContainer = findobj(hFig, '-depth', 1, 'Tag', 'ButtonSetScaleLog');
@@ -1038,9 +1019,9 @@ function DisplayFigurePopup(hFig, menuTitle)
         % YScale
         isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
         if isYLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleY(hAxes, hFig, 'linear'));
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: linear', IconLoader.ICON_LOG, [], @(h,ev)figure_timeseries('SetScaleModeY', hFig, 'linear'));
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleY(hAxes, hFig, 'log'));
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: log', IconLoader.ICON_LOG, [], @(h,ev)figure_timeseries('SetScaleModeY', hFig, 'log'));
         end
         jMenuFigure.addSeparator();
         
@@ -1250,17 +1231,17 @@ function UpdateFigurePlot(hFig, isForced)
         
     % ===== DISPLAY =====
     % Get preferred scale modes.
-    if ~isfield(TsInfo, 'XScale')
-        TsInfo.XScale = bst_get('XScale');
-        setappdata(hFig, 'TsInfo', TsInfo);
-    end
+%     if ~isfield(TsInfo, 'XScale')
+%         TsInfo.XScale = bst_get('XScale');
+%         setappdata(hFig, 'TsInfo', TsInfo);
+%     end
     % Force linear y scale for log-power dB
     if strcmpi(TfInfo.Function, 'log')
         TsInfo.YScale = 'linear';
         setappdata(hFig, 'TsInfo', TsInfo);
-    elseif ~isfield(TsInfo, 'YScale')
-        TsInfo.YScale = bst_get('YScale');
-        setappdata(hFig, 'TsInfo', TsInfo);
+%     elseif ~isfield(TsInfo, 'YScale')
+%         TsInfo.YScale = bst_get('YScale');
+%         setappdata(hFig, 'TsInfo', TsInfo);
     end
     % Clear figure
     clf(hFig);
