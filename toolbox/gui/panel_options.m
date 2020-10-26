@@ -23,7 +23,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2020
 
 eval(macro_method);
 end
@@ -145,27 +145,27 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         end
     jPanelRight.add('br hfill', jPanelImport);
     
-    % ===== RIGHT: MNE-PYTHON =====
-    jPanelMne = gui_river([5 5], [0 15 15 15], 'MNE-Python');
+    % ===== RIGHT: PYTHON =====
+    jPanelPython = gui_river([5 5], [0 15 15 15], 'Python');
         % Python executable
-        gui_component('Label', jPanelMne, '', 'Python executable: ', [], [], []);
-        jTextPythonExe   = gui_component('Text', jPanelMne, 'br hfill', '', [], [], []);
-        jButtonPythonExe = gui_component('Button', jPanelMne, [], '...', [], [], @PythonExe_Callback);
+        gui_component('Label', jPanelPython, '', 'Python executable: ', [], [], []);
+        jTextPythonExe   = gui_component('Text', jPanelPython, 'br hfill', '', [], [], []);
+        jButtonPythonExe = gui_component('Button', jPanelPython, [], '...', [], [], @PythonExe_Callback);
         jButtonPythonExe.setMargin(Insets(2,2,2,2));
         jButtonPythonExe.setFocusable(0);
         % System path
-        gui_component('Label', jPanelMne, 'br', 'System PATH for Python (separated with semi-colon): ', [], [], []);
-        jTextPythonPath = gui_component('Text', jPanelMne, 'br hfill', '', [], [], []);
-        jButtonAddPath = gui_component('Button', jPanelMne, [], ' + ', [], [], @AddPath_Callback);
+        gui_component('Label', jPanelPython, 'br', 'System PATH for Python (separated with semi-colon): ', [], [], []);
+        jTextPythonPath = gui_component('Text', jPanelPython, 'br hfill', '', [], [], []);
+        jButtonAddPath = gui_component('Button', jPanelPython, [], ' + ', [], [], @AddPath_Callback);
         jButtonAddPath.setMargin(Insets(2,2,2,2));
         jButtonAddPath.setFocusable(0);
         % Qt path
-        gui_component('Label', jPanelMne, 'br', 'Qt platform plugin (QT_QPA_PLATFORM_PLUGIN_PATH): ', [], [], []);
-        jTextQtDir   = gui_component('Text', jPanelMne, 'br hfill', '', [], [], []);
-        jButtonQtDir = gui_component('Button', jPanelMne, [], '...', [], [], @QtDirectory_Callback);
+        gui_component('Label', jPanelPython, 'br', 'Qt platform plugin (QT_QPA_PLATFORM_PLUGIN_PATH): ', [], [], []);
+        jTextQtDir   = gui_component('Text', jPanelPython, 'br hfill', '', [], [], []);
+        jButtonQtDir = gui_component('Button', jPanelPython, [], '...', [], [], @QtDirectory_Callback);
         jButtonQtDir.setMargin(Insets(2,2,2,2));
         jButtonQtDir.setFocusable(0);
-    jPanelRight.add('br hfill', jPanelMne);
+    jPanelRight.add('br hfill', jPanelPython);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
@@ -256,7 +256,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if ~isempty(jTextBsDir)
             jTextBsDir.setText(bst_get('BrainSuiteDir'));
         end
-        % MNE-Python config
+        % Python config
         PythonConfig = bst_get('PythonConfig');
         jTextPythonExe.setText(PythonConfig.PythonExe);
         jTextPythonPath.setText(PythonConfig.PythonPath);
@@ -400,7 +400,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             end
         end
         
-        % ===== MNE-PYTHON =====
+        % ===== PYTHON =====
         % Get saved configuration
         PythonConfig = bst_get('PythonConfig');
         % Get new configuration
@@ -429,17 +429,17 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             % If the Qt dir changed: update environement variables
             if isQtDirChanged
                 setenv('QT_PLUGIN_PATH', bst_fileparts(PythonConfig.QtDir));
-                disp(['MNE> Setting environment variable: QT_PLUGIN_PATH=' bst_fileparts(PythonConfig.QtDir)]);
+                disp(['BST> Setting environment variable: QT_PLUGIN_PATH=' bst_fileparts(PythonConfig.QtDir)]);
                 setenv('QT_QPA_PLATFORM_PLUGIN_PATH', PythonConfig.QtDir);
-                disp(['MNE> Setting environment variable: QT_QPA_PLATFORM_PLUGIN_PATH=' PythonConfig.QtDir]);
+                disp(['BST> Setting environment variable: QT_QPA_PLATFORM_PLUGIN_PATH=' PythonConfig.QtDir]);
             end
             % If something changed: try to load python
             if isPythonExeChanged
-                % Is python already loaded?
-                [pyVer, pyExe, isLoaded] = pyversion();
-                % Initialized MNE-Python if possible
+                % Check if Python already loaded
+                [pyVer, PythonExe, isLoaded] = bst_python_ver();
+                % Initialize Python if possible
                 if ~isLoaded
-                    bst_mne_init('Initialize', 1);
+                    bst_python_init('Initialize', 1);
                 else
                     bst_error('You must close and restart Matlab for this change to take effect.', 'Python exectutable', 0);
                 end
@@ -597,7 +597,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % Else : update control text
         jTextPythonExe.setText(exePath);
         % Get additional folders to add to path
-        [PythonPath, QtDir] = bst_mne_init('GetPythonPath', exePath);
+        [PythonPath, QtDir] = bst_python_init('GetPythonPath', exePath);
         if ~isempty(PythonPath)
             jTextPythonPath.setText(PythonPath);
         end

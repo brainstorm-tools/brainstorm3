@@ -6,6 +6,7 @@ October 2020
 - Anatomy: FreeSurfer import now loads all the .annot files in /label
 - ephys: Phase locking circular plots 
 - Process: Apply montage: Include processing of headmodels
+- Python: More generic initialization, using pyenv when available
 ---------------------------------------------------------------
 September 2020
 - GUI: Added Y-log scale for spectrum figures
