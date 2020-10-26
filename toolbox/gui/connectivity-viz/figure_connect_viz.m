@@ -2486,6 +2486,14 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         %sets current visibility type and updates display marker
         allIdx = iNodes(~NoColorNodes);
         if isSelected
+            % old code
+            %if isSelected
+            %OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 1);
+            %OGL.setNodeOuterColor(iNodes(~NoColorNodes) - 1, SelectedNodeColor(1), SelectedNodeColor(2), SelectedNodeColor(3));
+        %else
+            %OGL.setNodeOuterCircleVisibility(iNodes(~NoColorNodes) - 1, 0);
+        %end
+                  
            for i = length(allIdx)
                testNodes(allIdx(i)).Visible = true;
            end

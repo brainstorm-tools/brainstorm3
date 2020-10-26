@@ -88,13 +88,17 @@ classdef node < handle
         function updateVisible(this)
             if this.Visible
                 this.NodeMarker.Marker = 'o';
+                this.NodeMarker.MarkerSize = 5;
                 set(this.Links,'Color',this.Color);
+                
                 for i = 1:length(this.Links)
                     this.Links(i).ZData = ones(size(this.Links(i).XData));
                 end
             else
-                this.NodeMarker.Marker = 'x';
-                set(this.Links,'Color',0.9*[1 1 1]);
+                this.NodeMarker.Marker = 'diamond'; % changed on Oct 25
+                this.NodeMarker.MarkerSize = 8; % changed on Oct 25
+                set(this.Links,'Color',[1 1 1]);
+                
                 for i = 1:length(this.Links)
                     this.Links(i).ZData = zeros(size(this.Links(i).XData));
                 end
@@ -165,6 +169,7 @@ classdef node < handle
         function ButtonDownFcn(this,~)
             n = this.UserData;
             disp(n.Label + " clicked");
+          
             if n.Visible
                 n.Visible = false;
             else
