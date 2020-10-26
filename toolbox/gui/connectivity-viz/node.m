@@ -73,6 +73,7 @@ classdef node < handle
         
         function set.isAgregatingNode(this,value)
             this.isAgregatingNode = value;
+            updateAgregatingNode(this); % added Oct 25
             updateTextLabel(this);
         end
         
@@ -85,10 +86,16 @@ classdef node < handle
             value = this.TextLabel.Extent(3);
         end
         
+        % TODO to identify nodes linked to a selected lobe
+        %function setSelectedNodes()
+            
+        %end
+        
         function updateVisible(this)
             if this.Visible
                 this.NodeMarker.Marker = 'o';
                 this.NodeMarker.MarkerSize = 5;
+                this.NodeMarker.MarkerFaceColor = this.Color;
                 set(this.Links,'Color',this.Color);
                 
                 for i = 1:length(this.Links)
@@ -97,6 +104,7 @@ classdef node < handle
             else
                 this.NodeMarker.Marker = 'diamond'; % changed on Oct 25
                 this.NodeMarker.MarkerSize = 8; % changed on Oct 25
+                this.NodeMarker.MarkerFaceColor = 'red'; % changed on Oct 25
                 set(this.Links,'Color',[1 1 1]);
                 
                 for i = 1:length(this.Links)
@@ -170,11 +178,16 @@ classdef node < handle
             n = this.UserData;
             disp(n.Label + " clicked");
           
-            if n.Visible
+            if n.Visible % can just change to n.Visible = ~n.Visible? 
                 n.Visible = false;
             else
                 n.Visible = true;
             end
+            
+            % TODO: Implement function similar to JavaClickCallback +
+            % SetSelectedNodes to form aggregates
+            % SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
+            
         end
     end
 end

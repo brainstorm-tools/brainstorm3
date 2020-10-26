@@ -530,7 +530,7 @@ end
 
 
 %% ===== FIGURE KEY PRESSED CALLBACK =====
-function FigureKeyPressedCallback(hFig, keyEvent)
+function FigureKeyPressedCallback(hFig, keyEvent)setSlect
     global ConnectKeyboardMutex;
     % Convert to Matlab key event
     [keyEvent, tmp, tmp] = gui_brainstorm('ConvertKeyEvent', keyEvent);
