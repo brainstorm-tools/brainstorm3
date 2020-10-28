@@ -131,13 +131,9 @@ end
 %% ===== DISPLAY OPTIONS CHANGED =====
 function DisplayOptionsChangedCallback(hFig) %#ok<DEFNU>
     % Restore intial view
-    ResetView(hFig);
+    %ResetView(hFig);
     % Update display
     UpdateFigurePlot(hFig, 1);
-    % Get figure
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
-    % Redraw select sensors
-    SelectedRowChangedCallback(iDS, iFig);
 end
 
 %% ===== SELECTED ROW CHANGED =====
@@ -291,14 +287,14 @@ function FigureMouseMoveCallback(hFig, ev)
             
             % Move view along X axis
             XLim = get(hAxes, 'XLim');
-            XLog = strcmpi(get(hAxes, 'XScale'), 'log');
-            if XLog
+            isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
+            if isXLog
                 XLim = log10(XLim);
                 XLimInit = log10(XLimInit);
             end
             XLim = XLim - (XLim(2) - XLim(1)) * motionFigure(1);
             XLim = bst_saturate(XLim, XLimInit, 1);
-            if XLog
+            if isXLog
                 XLim = 10.^XLim;
             end
             set(hAxes, 'XLim', XLim);
@@ -825,6 +821,11 @@ function ResetView(hFig)
     % Set the time cursor height to the maximum of the display
     hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
     set(hCursor, 'YData', YLim);
+    % Set the selection rectangle dimensions
+    hSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'SelectionPatch');
+    if ~isempty(hSelectionPatch)
+        set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+    end
 end
 
 
@@ -1088,32 +1089,6 @@ function UpdateFigurePlot(hFig, isForced)
     if isempty(TF)
         return;
     end
-    % FOOOF: Swap TF data for relevant FOOOF data
-    if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF) && ~strcmp(TfInfo.FOOOFDisp, 'spectrum')
-         fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.freqs;
-         i_model = ismember(Freqs, fFreqs);
-         TF = NaN(size(TF));
-         for chan = 1:size(TF,1)
-             % Get requested FOOOF measure
-             switch TfInfo.FOOOFDisp
-                 case 'model'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.fooofed_spectrum;
-                 case 'aperiodic'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.ap_fit;
-                 case 'peaks'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.peak_fit;
-                 case 'error'
-                     TF(chan,1,i_model) = 10.^(GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.stats(chan).frequency_wise_error);
-             end
-             % Apply requested function to measure
-             switch TfInfo.Function
-                 case 'magnitude'
-                     TF(chan,1,i_model) = sqrt(abs(TF(chan,1,i_model)));
-                 case 'log'
-                     TF(chan,1,i_model) = 10 .* log10(abs(TF(chan,1,i_model)));
-             end
-        end
-    end
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)
         RowNames = {RowNames};
@@ -1158,8 +1133,9 @@ function UpdateFigurePlot(hFig, isForced)
     % ===== GET GLOBAL MAXIMUM =====
     % If maximum is not defined yet
     if isempty(sFig.Handles.DataMinMax) || isForced
+        % bst_memory('GetTimefreqMaximum' doesn't get the FOOOF values.
         sFig.Handles.DataMinMax = [min(TF(:)), max(TF(:))];
-        % In case there are infinite values, due to the log10(0) operation that may happen: look only for non-empty values
+        % Ignore infinite values, possible due to log.
         if any(isinf(sFig.Handles.DataMinMax))
             iNotInf = ~isinf(TF(:));
             sFig.Handles.DataMinMax = [min(TF(iNotInf)), max(TF(iNotInf))];
@@ -1223,25 +1199,17 @@ function UpdateFigurePlot(hFig, isForced)
         disp('BST> Error: No data to display...');
         XLim = [0 1];
     end
-    % Auto-detect if legend should be displayed
-    if isempty(TsInfo.ShowLegend)
+    % Auto-detect if legend should be displayed, reset if changed FOOOF display.
+    if isempty(TsInfo.ShowLegend) || (isfield(TfInfo, 'isFooofDispChanged') && TfInfo.isFooofDispChanged)
         TsInfo.ShowLegend = (length(LinesLabels) <= 15);
         setappdata(hFig, 'TsInfo', TsInfo);
     end
         
     % ===== DISPLAY =====
-    % Get preferred scale modes.
-%     if ~isfield(TsInfo, 'XScale')
-%         TsInfo.XScale = bst_get('XScale');
-%         setappdata(hFig, 'TsInfo', TsInfo);
-%     end
     % Force linear y scale for log-power dB
     if strcmpi(TfInfo.Function, 'log')
         TsInfo.YScale = 'linear';
         setappdata(hFig, 'TsInfo', TsInfo);
-%     elseif ~isfield(TsInfo, 'YScale')
-%         TsInfo.YScale = bst_get('YScale');
-%         setappdata(hFig, 'TsInfo', TsInfo);
     end
     % Clear figure
     clf(hFig);
@@ -1254,7 +1222,7 @@ function UpdateFigurePlot(hFig, isForced)
     % Update figure list of handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
     % Hide high amplitudes for very low frequencies when linear y scale.
-    if isSpectrum && strcmpi(TsInfo.YScale, 'linear') && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
+    if isSpectrum && isequal(TsInfo.YScale, 'linear') && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
         figure_timeseries('ScaleToFitY', hFig);
     end
     % X Axis legend
@@ -1316,7 +1284,7 @@ function UpdateFigurePlot(hFig, isForced)
     % Set current object/axes
     set(hFig, 'CurrentAxes', hAxes, 'CurrentObject', hAxes);
     % Update selected channels 
-    figure_spectrum('SelectedRowChangedCallback', iDS, iFig);
+    SelectedRowChangedCallback(iDS, iFig);
 end
 
 
@@ -1429,16 +1397,12 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     % ===== YLIM =====
     % Get automatic YLim
     if ~isempty(Fmax) && (Fmax(1) ~= Fmax(2))
-        %         % Use the first local maximum: ignores the huge range of high frequencies
-        %         if any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
-        %             TFmax = max(TF,[],1);
-        %             iStart = find(diff(TFmax)>0,1);
-        %             if ~isempty(iStart)
-        %                 Fmax(2) = max(TFmax(iStart:end));
-        %             end
-        %         end
         % Compute the scale
         if strcmpi(TsInfo.YScale, 'log')
+            % Avoid 0 for log scales.
+            if Fmax(1) <= 0
+                Fmax(1) = min(TF(TF(:)>0));
+            end
             YLim = Fmax;
         else
             YLim = [Fmax(1), Fmax(2) + (Fmax(2) - Fmax(1)) * 0.02];
