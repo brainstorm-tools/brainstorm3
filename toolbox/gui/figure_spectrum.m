@@ -1125,23 +1125,9 @@ function UpdateFigurePlot(hFig, isForced)
             TF(:,:,iZero) = [];
         end
     end
-    % Display units
-    DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
     % Get figure time series
     TsInfo = getappdata(hFig, 'TsInfo');
     
-    % ===== GET GLOBAL MAXIMUM =====
-    % If maximum is not defined yet
-    if isempty(sFig.Handles.DataMinMax) || isForced
-        % bst_memory('GetTimefreqMaximum' doesn't get the FOOOF values.
-        sFig.Handles.DataMinMax = [min(TF(:)), max(TF(:))];
-        % Ignore infinite values, possible due to log.
-        if any(isinf(sFig.Handles.DataMinMax))
-            iNotInf = ~isinf(TF(:));
-            sFig.Handles.DataMinMax = [min(TF(iNotInf)), max(TF(iNotInf))];
-        end
-    end
-
     % ===== X AXIS =====
     switch (TfInfo.DisplayMode)
         case 'TimeSeries'
@@ -1205,16 +1191,39 @@ function UpdateFigurePlot(hFig, isForced)
         setappdata(hFig, 'TsInfo', TsInfo);
     end
         
-    % ===== DISPLAY =====
-    % Force linear y scale for log-power dB
-    if strcmpi(TfInfo.Function, 'log')
-        TsInfo.YScale = 'linear';
-        setappdata(hFig, 'TsInfo', TsInfo);
+    % ===== Y AXIS =====
+    % Get global maximum if not defined yet
+    if isempty(sFig.Handles.DataMinMax) || isForced
+        sFig.Handles.DataMinMax = [min(TF(:)), max(TF(:))];
+        % In case there are infinite values, due to the log10(0) operation that may happen: look only for non-empty values
+        if any(isinf(sFig.Handles.DataMinMax))
+            iNotInf = ~isinf(TF(:));
+            sFig.Handles.DataMinMax = [min(TF(iNotInf)), max(TF(iNotInf))];
+        end
     end
+    % Display units
+    DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
+    DisplayFactor = 1;
+    if isempty(DisplayUnits)
+        % Get signal units and display factor
+        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+            [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
+        end
+    end
+    switch lower(TfInfo.Function)
+        case 'power'
+            DisplayFactor = DisplayFactor.^2;
+        case 'log'
+            % Force linear y scale for log-power dB
+            TsInfo.YScale = 'linear';
+            setappdata(hFig, 'TsInfo', TsInfo);
+    end
+    
+    % ===== DISPLAY =====
     % Clear figure
     clf(hFig);
     % Plot data in the axes
-    PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits);
+    PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits, DisplayFactor);
     hAxes = PlotHandles.hAxes;
     % Store initial XLim and YLim
     setappdata(hAxes, 'XLimInit', get(hAxes, 'XLim'));
@@ -1289,7 +1298,7 @@ end
 
 
 %% ===== PLOT AXES =====
-function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, LinesLabels, DisplayUnits)
+function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, LinesLabels, DisplayUnits, DisplayFactor)
     % ===== CREATE AXES =====
     % Look for existing axes
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
@@ -1339,6 +1348,7 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
     PlotHandles.hAxes = hAxes;
     PlotHandles.DataMinMax = DataMinMax;
     PlotHandles.DisplayUnits = DisplayUnits;
+    PlotHandles.DisplayFactor = DisplayFactor;
 
     % ===== SWITCH DISPLAY MODE =====
     switch (lower(TsInfo.DisplayMode))
@@ -1368,24 +1378,8 @@ end
 function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, TF, LinesLabels)
     % ===== NORMALIZE =====
     % Get data maximum
-    Fmax = PlotHandles.DataMinMax;
-    % Display power of 10 in the legend rather than in the axis
-    strPow = '';
-    % Set display Factor
-    PlotHandles.DisplayFactor = 1;
-    if (Fmax(1) ~= Fmax(2))
-        % Force powers of 3 (SI prefix)
-        Fpow = round(round(log10(max(abs(Fmax))))/3)*3;
-        if (Fpow < -2)
-            Fpow = -Fpow;
-            PlotHandles.DisplayFactor = 10^Fpow;
-            Fmax = Fmax * PlotHandles.DisplayFactor;
-            TF   = TF * PlotHandles.DisplayFactor;
-            strPow = sprintf(' * 10^{-%d}', Fpow);
-        end
-    else
-        Fmax = [];
-    end
+    TF = TF * PlotHandles.DisplayFactor;
+    Fmax = PlotHandles.DataMinMax * PlotHandles.DisplayFactor;
     
     % ===== PLOT TIME SERIES =====
     % Plot lines
@@ -1396,7 +1390,7 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     
     % ===== YLIM =====
     % Get automatic YLim
-    if ~isempty(Fmax) && (Fmax(1) ~= Fmax(2))
+    if (Fmax(1) ~= Fmax(2))
         % Compute the scale
         if strcmpi(TsInfo.YScale, 'log')
             % Avoid 0 for log scales.
@@ -1411,23 +1405,18 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
         YLim = [-1, 1];
     end
     % Set axes legend for Y axis
-    if ~isempty(PlotHandles.DisplayUnits)
-        strAmp = PlotHandles.DisplayUnits;
-        % Make it more readable
-        if isequal(strAmp, 't')
-            strAmp = 't-values';
-        end
-    else
-        if ~isfield(TfInfo, 'FreqUnits') || isempty(TfInfo.FreqUnits)
-            TfInfo.FreqUnits = 'Hz';
-        end
-        switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Power   (signal units^2/' TfInfo.FreqUnits strPow ')'];
-            case 'magnitude',  strAmp = ['Magnitude   (signal units/sqrt(' TfInfo.FreqUnits ')' strPow ')'];
-            case 'log',        strAmp = ['Log-power   (dB/' TfInfo.FreqUnits strPow ')'];
-            case 'phase',      strAmp = 'Angle';
-            otherwise,         strAmp = 'No units';
-        end
+    if ~isfield(TfInfo, 'FreqUnits') || isempty(TfInfo.FreqUnits)
+        TfInfo.FreqUnits = 'Hz';
+    end
+    if isempty(PlotHandles.DisplayUnits)
+        PlotHandles.DisplayUnits = 'signal units';
+    end
+    switch lower(TfInfo.Function)
+        case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
+        case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
+        case 'log',        strAmp = ['Log-power   (dB/' TfInfo.FreqUnits ')'];
+        case 'phase',      strAmp = 'Angle';
+        otherwise,         strAmp = 'No units';
     end
     ylabel(hAxes, strAmp, ...
         'FontSize',    bst_get('FigFont'), ...

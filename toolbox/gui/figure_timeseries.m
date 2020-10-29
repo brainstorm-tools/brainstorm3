@@ -4289,17 +4289,22 @@ function ScaleToFitY(hFig, ev)
     % ===== GET DATA =====
     if isSpectrum
         % Get data to plot
-        [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
-        % Remove the first frequency bin (0) : SPECTRUM ONLY
-        if isSpectrum && ~iscell(XVector) && (size(TF,3)>1)
-            iZero = find(XVector == 0);
-            if ~isempty(iZero)
-                XVector(iZero) = [];
-                TF(:,:,iZero) = [];
-            end
+        switch lower(FigureId.SubType)
+            case 'timeseries'
+                [XVector, Freq, TfInfo, TF] = figure_timefreq('GetFigureData', hFig);
+            otherwise %case 'spectrum'
+                [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
+                % Remove the first frequency bin (0) : SPECTRUM ONLY
+                if isSpectrum && ~iscell(XVector) && (size(TF,3)>1)
+                    iZero = find(XVector == 0);
+                    if ~isempty(iZero)
+                        XVector(iZero) = [];
+                        TF(:,:,iZero) = [];
+                    end
+                end
+                % Redimension TF according to what we want to display
+                TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
         end
-        % Redimension TF according to what we want to display
-        TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
     else
         TF = GetFigureData(iDS, iFig);
         TF = TF{1};
@@ -4310,7 +4315,8 @@ function ScaleToFitY(hFig, ev)
     % Get limits of currently plotted data
     XLim = get(hAxes, 'XLim');    
     % For linear y axis spectrum, ignore very low frequencies with high amplitudes. Use the first local maximum
-    if isSpectrum && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
+    if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ...
+            any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
         TFmax = max(TF,[],1);
         iStartMin = find(diff(TFmax)>0,1);
     else
