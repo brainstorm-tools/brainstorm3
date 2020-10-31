@@ -64,7 +64,7 @@ end
 if isEeg
     EegLoc = cat(2, cfg.Channel(cfg.iEeg).Loc);
 else
-EegLoc = [];
+    EegLoc = [];
 end
 % Get MEG positions/orientations
 if isMeg
@@ -553,7 +553,7 @@ Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
 if isMeg
     Gain(cfg.iMeg,:) = GainMeg; 
 end 
-if isEeg 
+if isEeg
     Gain(cfg.iEeg,:) = GainEeg; 
 end
 if isEcog 
