@@ -220,14 +220,12 @@ bst_progress('stop');
                 if ~isempty(findobj(hFig, 'Tag', 'SetVertices'))
                     delete(findobj(hFig, 'Tag', 'SetVertices'))
                 else
-                    hold on;
                     plot3(HeadmodelMat{1}.GridLoc(:,1), HeadmodelMat{1}.GridLoc(:,2), HeadmodelMat{1}.GridLoc(:,3), 'r.', ...
                         'Parent', hAxes, ...
                         'Tag', 'SetVertices');
                 end
             case 'e'
                 if ~ismember('shift', keyEvent.Modifier)
-                    hold on;
                     % Plot sensors
                     if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
                         delete(findobj(hAxes, 'Tag', 'allChannel'))
@@ -238,7 +236,6 @@ bst_progress('stop');
                         end
                     end
                 else
-                    hold on;
                     % Plot sensors name
                     if ~isempty(findobj(hAxes, 'Tag', 'allChannelName'))
                         delete(findobj(hAxes, 'Tag', 'allChannelName'))
@@ -250,7 +247,6 @@ bst_progress('stop');
                             for iChan = 1 : length(Channels)
                                 channelAllName{iChan} = Channels(iChan).Name;
                             end
-                            hold on;
                             text(markersLocs(:,1), markersLocs(:,2), markersLocs(:,3),channelAllName,...
                                 'color','y',...
                                 'Parent', hAxes, ...
@@ -403,7 +399,6 @@ bst_progress('stop');
                 'Tag',       'lfArrows');
             % Arrow legends
             strLegend{iLF} = [SubjectName{iLF} ' : ' selectedModality  ' ' HeadmodelMat{iLF}.Comment];
-            hold on
         end
 
         % Remove previous selected sensor
@@ -516,7 +511,7 @@ bst_progress('stop');
         iChannel = find(strcmpi({Channels.Name}, trgChan));
     end
 
-    %% ===== GET LEADFIELD =====
+%% ===== GET LEADFIELD =====
     function GetLeadField       
         % Update the LF according to the selected channels only
         for iLF = 1:length(HeadmodelFiles)
