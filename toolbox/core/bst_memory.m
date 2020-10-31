@@ -2228,16 +2228,22 @@ end
 
 
 %% ===== GET TIME-FREQ VALUES =====
-% USAGE:  [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime,              Function, RefRowName)
+% USAGE:  [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime,              Function, RefRowName, FooofDisp)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, 'UserTimeWindow')
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, 'CurrentTimeIndex')
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, 'firstrow', ...)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq)
-function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime, Function, RefRowName)
+function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime, Function, RefRowName, FooofDisp)
     global GlobalData;
     % ===== PARSE INPUTS =====
+    if (nargin < 8) || isempty(FooofDisp)
+        FooofDisp = [];
+        isFooof = false;
+    else
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
+    end
     % Default RefRowName: all
     if (nargin < 7) || isempty(RefRowName)
         RefRowName = [];
@@ -2344,9 +2350,45 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     
     % ===== GET VALUES =====
     % Extract values
-    if isequal(Function, 'maxpac')
-        Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
-        isApplyFunction = 0;
+    % FOOOF: Swap TF data for relevant FOOOF data
+    if isFooof && ~isequal(FooofDisp, 'spectrum')
+        isFooofFreq = ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.freqs);
+        if isequal(FooofDisp, 'overlay')
+            nFooofRow = 4;
+        else
+            nFooofRow = numel(iRow);
+        end
+        Values = NaN([nFooofRow, size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF, [2,3])]);
+        nFooofFreq = sum(isFooofFreq);
+        % Get requested FOOOF measure
+        switch FooofDisp
+            case 'overlay'
+                Values(1,1,:) = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, 1, :);
+                Values(4,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
+                Values(2,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
+                % Peaks are fit in log space, so they are multiplicative in linear space and not in the same scale, show difference instead. 
+                Values(3,1,isFooofFreq) = Values(4,1,isFooofFreq) - Values(2,1,isFooofFreq); 
+                %Values(3,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
+                % Use TF min as cut-off level for peak display.
+                YLowLim = min(Values(1,1,:));
+                Values(3,1,Values(3,1,:) < YLowLim) = NaN;
+                % Debugging
+                if any(any(Values(:, 1, :) <= 0,3))
+                    iz = y(any(Values(:, 1, :) <= 0,3))
+                    squeeze(min(Values(iz, 1, :), [], 3))
+                end
+            case 'model'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
+            case 'aperiodic'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
+            case 'peaks'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
+            case 'error'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]);
+            otherwise
+                error('Unknown FOOOF display option.');
+        end
+        isApplyFunction = ~isempty(Function);
     elseif isequal(Function, 'pacflow')
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestingFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
@@ -2354,6 +2396,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestedFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
     elseif isempty(Function) || ~ismember(Function, {'power', 'magnitude', 'log', 'phase', 'none'}) || ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'power', 'magnitude', 'log', 'phase', 'none'})
+        % includes 'maxpac'
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
         isApplyFunction = 0;
     else
@@ -2516,6 +2559,11 @@ function DataMinMax = GetTimefreqMaximum(iDS, iTimefreq, Function) %#ok<DEFNU>
     end
     % Store minimum and maximum of displayed data
     DataMinMax = [min(values(:)), max(values(:))];
+    % Ignore infinite values, possible due to log.
+    if any(isinf(DataMinMax))
+        isNotInf = ~isinf(values(:));
+        DataMinMax = [min(values(isNotInf)), max(values(isNotInf))];
+    end
     % Display warning message if analysis time was more than 3s
     t = toc;
     if (t > 3)
