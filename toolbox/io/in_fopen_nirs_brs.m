@@ -112,7 +112,7 @@ if isfield(nirs,'CondNames')
     for iEvt = 1:n_event
         
         % assume simple event (non-extended)
-        eventSample     = find( nirs.s(:,iEvt));
+        eventSample     = find( nirs.s(:,iEvt)) - 1;
         evtTime         =  eventSample/sFile.prop.sfreq;
 
         % Events structure
