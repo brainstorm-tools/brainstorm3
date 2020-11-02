@@ -172,7 +172,7 @@ for iFile = 1:length(RawFiles)
         sSubject = bst_get('Subject', iSubject, 1);
     end
     % Do not allow automatic registration with head points when using the default anatomy
-    if (sSubject.UseDefaultAnat)
+    if (sSubject.UseDefaultAnat) || isempty(sSubject.Anatomy) || any(~cellfun(@(c)isempty(strfind(lower(sSubject.Anatomy(sSubject.iAnatomy).Comment), c)), {'icbm152', 'colin27', 'bci-dni', 'uscbrain', 'fsaverage', 'oreilly', 'kabdebon'}))
         ImportOptions.ChannelAlign = 0;
     end
 
