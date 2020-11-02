@@ -35,6 +35,8 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 %         match the index of the corresponding line in 'ml'
 %     - aux (nb_samples x nb_auxiliary_signals):
 %       Will be stored as channels AUX1, ... AUX<nb_auxiliary_signals>
+%     - CondNames (n_events cell): list of events name
+%     - s (nb_samples x n_events): events times. Contains 1 during events
 %                
 %   The "optodes.txt" and "fudicials.txt" are coordinates files with the 
 %   following format:
@@ -99,6 +101,27 @@ sFile.byteorder  = 'l';
 sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
 sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
 sFile.prop.nAvg  = 1;
+
+% Reading events 
+if isfield(nirs,'CondNames')
+    n_event = length(nirs.CondNames);
+    events = repmat(db_template('event'), 1, length(n_event));
+    for iEvt = 1:n_event
+        % Assume simple event (non-extended)
+        eventSample = find(nirs.s(:,iEvt)) - 1;
+        evtTime     =  eventSample ./ sFile.prop.sfreq;
+        % Events structure
+        events(iEvt).label      = nirs.CondNames{iEvt};
+        events(iEvt).times      = evtTime(:)';
+        events(iEvt).epochs     = ones(1, length(evtTime));
+        events(iEvt).notes      = cell(1, length(evtTime));
+        events(iEvt).channels   = cell(1, length(evtTime));
+        events(iEvt).reactTimes = [];
+    end
+    sFile.events = events;
+end
+
+
 
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
@@ -259,13 +282,3 @@ function [coords] = load_brainsight_coords(coords_file)
     fclose(fid);
 
 end
-
-
-
-
-
-
-
-
-
-
