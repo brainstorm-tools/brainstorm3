@@ -2360,6 +2360,17 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         end
         Values = NaN([nFooofRow, size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF, [2,3])]);
         nFooofFreq = sum(isFooofFreq);
+        % Check for old structure format with extra .FOOOF. level.
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data, 'FOOOF')
+            for iiRow = 1:numel(iRow)
+                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).fooofed_spectrum = ...
+                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.fooofed_spectrum;
+                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).ap_fit = ...
+                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.ap_fit;
+                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).peak_fit = ...
+                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.peak_fit;
+            end
+        end
         % Get requested FOOOF measure
         switch FooofDisp
             case 'overlay'
@@ -2372,11 +2383,6 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
                 % Use TF min as cut-off level for peak display.
                 YLowLim = min(Values(1,1,:));
                 Values(3,1,Values(3,1,:) < YLowLim) = NaN;
-                % Debugging
-                if any(any(Values(:, 1, :) <= 0,3))
-                    iz = y(any(Values(:, 1, :) <= 0,3))
-                    squeeze(min(Values(iz, 1, :), [], 3))
-                end
             case 'model'
                 Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
             case 'aperiodic'
@@ -2451,7 +2457,12 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     % If a measure is asked, different from what is saved in the file
     if isApplyFunction
         % Convert
-        [Values, isError] = process_tf_measure('Compute', Values, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, Function);
+        if isFooof
+            isKeepNan = true;
+        else
+            isKeepNan = false;
+        end
+        [Values, isError] = process_tf_measure('Compute', Values, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, Function, isKeepNan);
         % If conversion is impossible
         if isError
             error(['Invalid measure conversion: ' GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, ' => ' Function]);
