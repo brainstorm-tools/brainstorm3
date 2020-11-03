@@ -38,10 +38,8 @@ if (nargin < 2)
     error('Invalid call to db_delete_protocol().');
 end
 % Get Protocols list structures (Infos, Subjects, Studies)
-sProtocolsListInfo     = GlobalData.DataBase.ProtocolInfo;
-sProtocolsListSubjects = GlobalData.DataBase.ProtocolSubjects;
-sProtocolsListStudies  = GlobalData.DataBase.ProtocolStudies;
-iProtocol              = GlobalData.DataBase.iProtocol;
+sProtocolsListInfo = GlobalData.DataBase.ProtocolInfo;
+iProtocol          = GlobalData.DataBase.iProtocol;
 if isempty(sProtocolsListInfo) || isempty(iProtocol)
     disp('BST> No protocol selected, nothing to delete.');
     return;
@@ -82,14 +80,10 @@ if isRemoveFiles
 end
     
 %% ===== REMOVE PROTOCOL =====
-sProtocolsListInfo(iProtocol)     = [];
-sProtocolsListSubjects(iProtocol) = [];
-sProtocolsListStudies(iProtocol)  = [];
+sProtocolsListInfo(iProtocol) = [];
 % Update database
-GlobalData.DataBase.ProtocolInfo      = sProtocolsListInfo;
-GlobalData.DataBase.ProtocolSubjects  = sProtocolsListSubjects;
-GlobalData.DataBase.ProtocolStudies   = sProtocolsListStudies;
-GlobalData.DataBase.isProtocolLoaded(iProtocol)   = [];
+GlobalData.DataBase.ProtocolInfo  = sProtocolsListInfo;
+GlobalData.DataBase.isProtocolLoaded(iProtocol) = [];
 % Update protocols ComboBox
 gui_brainstorm('UpdateProtocolsList');
 
