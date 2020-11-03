@@ -2,9 +2,10 @@ function varargout = process_fooof(varargin)
 % PROCESS_FOOOF: Applies the "Fitting Oscillations and One Over F" algorithm on a Welch's PSD
 %
 % REFERENCE: Please cite the original algorithm:
-%    Haller M, Donoghue T, Peterson E, Varma P, Sebastian P, Gao R, Noto T, Knight RT, Shestyuk A, Voytek B (2018)
-%    Parameterizing Neural Power Spectra
-%    BioRxiv, 299859. doi: https://doi.org/10.1101/299859
+%    Donoghue T, Haller M, Peterson E, Varma P, Sebastian P, Gao R, Noto T,
+%    Lara AH, Wallis JD, Knight RT, Shestyuk A, Voytek B. Parameterizing 
+%    neural power spectra into periodic and aperiodic components. 
+%    Nature Neuroscience (in press)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -224,7 +225,8 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt, hOT)
     fMask = (bst_round(Freqs,1) >= opt.freq_range(1)) & (Freqs <= opt.freq_range(2));
     fs = Freqs(fMask);
     spec = log10(squeeze(TF(:,1,fMask))); % extract log spectra
-    nChan = size(spec,1);
+    nChan = size(TF,1);
+    if nChan == 1, spec = spec'; end
     % Initalize FOOOF structs
     fg(nChan) = struct(...
             'aperiodic_params', [],...
