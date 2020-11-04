@@ -890,11 +890,6 @@ function nodeStudy = SelectStudyNode( varargin )
     if isempty(nodeSubject)
         return
     end
-    % Get subject structure
-    sSubject = bst_get('Subject', char(nodeSubject.getFileName()));
-    if isempty(sSubject)
-        return
-    end
 end
 
 
