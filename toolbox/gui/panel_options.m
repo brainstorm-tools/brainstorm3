@@ -98,44 +98,35 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jPanelScaling.add('hfill', jSliderScaling);
     jPanelLeft.add('br hfill', jPanelScaling);
     
-    % ===== LEFT: RESET =====
-    if (GlobalData.Program.GuiLevel == 1)
-        jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
-            gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], []);
-            gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback);
-        jPanelLeft.add('br hfill', jPanelReset);
-    end
-    
-    
     % ===== RIGHT =====
     jPanelRight = gui_river();
     jPanelNew.add(jPanelRight);
     % ===== RIGHT: FOLDERS =====
-    jPanelImport = gui_river([5 5], [0 15 15 15], 'Folders');
+    jPanelFolders = gui_river([5 5], [0 15 15 15], 'Installation folders');
         % Temporary directory
-        gui_component('Label', jPanelImport, '', 'Temporary directory: ', [], [], []);
-        jTextTempDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-        jButtonTempDir = gui_component('Button', jPanelImport, [], '...', [], [], @TempDirectory_Callback);
+        gui_component('Label', jPanelFolders, '', 'Brainstorm temporary directory: ', [], [], []);
+        jTextTempDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
+        jButtonTempDir = gui_component('Button', jPanelFolders, [], '...', [], [], @TempDirectory_Callback);
         jButtonTempDir.setMargin(Insets(2,2,2,2));
         jButtonTempDir.setFocusable(0);
         % External toolboxes (only in non-compiled mode)
         if ~isCompiled
             % FieldTrip folder
-            gui_component('Label', jPanelImport, 'br', 'FieldTrip toolbox: ', [], [], []);
-            jTextFtDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-            jButtonFtDir = gui_component('Button', jPanelImport, [], '...', [], [], @FtDirectory_Callback);
+            gui_component('Label', jPanelFolders, 'br', 'FieldTrip toolbox: ', [], [], []);
+            jTextFtDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
+            jButtonFtDir = gui_component('Button', jPanelFolders, [], '...', [], [], @FtDirectory_Callback);
             jButtonFtDir.setMargin(Insets(2,2,2,2));
             jButtonFtDir.setFocusable(0);
             % SPM folder
-            gui_component('Label', jPanelImport, 'br', 'SPM toolbox: ', [], [], []);
-            jTextSpmDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-            jButtonSpmDir = gui_component('Button', jPanelImport, [], '...', [], [], @SpmDirectory_Callback);
+            gui_component('Label', jPanelFolders, 'br', 'SPM toolbox: ', [], [], []);
+            jTextSpmDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
+            jButtonSpmDir = gui_component('Button', jPanelFolders, [], '...', [], [], @SpmDirectory_Callback);
             jButtonSpmDir.setMargin(Insets(2,2,2,2));
             jButtonSpmDir.setFocusable(0);
             % BrainSuite folder
-            gui_component('Label', jPanelImport, 'br', 'BrainSuite installation folder: ', [], [], []);
-            jTextBsDir   = gui_component('Text', jPanelImport, 'br hfill', '', [], [], []);
-            jButtonBsDir = gui_component('Button', jPanelImport, [], '...', [], [], @BsDirectory_Callback);
+            gui_component('Label', jPanelFolders, 'br', 'BrainSuite installation folder: ', [], [], []);
+            jTextBsDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
+            jButtonBsDir = gui_component('Button', jPanelFolders, [], '...', [], [], @BsDirectory_Callback);
             jButtonBsDir.setMargin(Insets(2,2,2,2));
             jButtonBsDir.setFocusable(0);
         else
@@ -143,29 +134,13 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jTextSpmDir = [];
             jTextBsDir = [];
         end
-    jPanelRight.add('br hfill', jPanelImport);
-    
-    % ===== RIGHT: PYTHON =====
-    jPanelPython = gui_river([5 5], [0 15 15 15], 'Python');
         % Python executable
-        gui_component('Label', jPanelPython, '', 'Python executable: ', [], [], []);
-        jTextPythonExe   = gui_component('Text', jPanelPython, 'br hfill', '', [], [], []);
-        jButtonPythonExe = gui_component('Button', jPanelPython, [], '...', [], [], @PythonExe_Callback);
+        gui_component('Label', jPanelFolders, 'br', 'Python executable: ', [], [], []);
+        jTextPythonExe   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
+        jButtonPythonExe = gui_component('Button', jPanelFolders, [], '...', [], [], @PythonExe_Callback);
         jButtonPythonExe.setMargin(Insets(2,2,2,2));
         jButtonPythonExe.setFocusable(0);
-        % System path
-        gui_component('Label', jPanelPython, 'br', 'System PATH for Python (separated with semi-colon): ', [], [], []);
-        jTextPythonPath = gui_component('Text', jPanelPython, 'br hfill', '', [], [], []);
-        jButtonAddPath = gui_component('Button', jPanelPython, [], ' + ', [], [], @AddPath_Callback);
-        jButtonAddPath.setMargin(Insets(2,2,2,2));
-        jButtonAddPath.setFocusable(0);
-        % Qt path
-        gui_component('Label', jPanelPython, 'br', 'Qt platform plugin (QT_QPA_PLATFORM_PLUGIN_PATH): ', [], [], []);
-        jTextQtDir   = gui_component('Text', jPanelPython, 'br hfill', '', [], [], []);
-        jButtonQtDir = gui_component('Button', jPanelPython, [], '...', [], [], @QtDirectory_Callback);
-        jButtonQtDir.setMargin(Insets(2,2,2,2));
-        jButtonQtDir.setFocusable(0);
-    jPanelRight.add('br hfill', jPanelPython);
+    jPanelRight.add('br hfill', jPanelFolders);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
     jPanelProc = gui_river([5 5], [0 15 15 15], 'Processing');
@@ -176,6 +151,14 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jBlockSizeLabel.setToolTipText(blockSizeTooltip);
         jBlockSize.setToolTipText(blockSizeTooltip);
     jPanelRight.add('br hfill', jPanelProc);
+    
+    % ===== RIGHT: RESET =====
+    if (GlobalData.Program.GuiLevel == 1)
+        jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
+            gui_component('Label',  jPanelReset, [], 'Reset database and options to defaults: ', [], [], []);
+            gui_component('Button', jPanelReset, [], 'Reset', [], [], @ButtonReset_Callback);
+        jPanelRight.add('br hfill', jPanelReset);
+    end
     
     % ===== BOTTOM =====
     jPanelBottom = gui_river();
@@ -257,10 +240,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jTextBsDir.setText(bst_get('BrainSuiteDir'));
         end
         % Python config
-        PythonConfig = bst_get('PythonConfig');
-        jTextPythonExe.setText(PythonConfig.PythonExe);
-        jTextPythonPath.setText(PythonConfig.PythonPath);
-        jTextQtDir.setText(PythonConfig.QtDir);
+        jTextPythonExe.setText(bst_get('PythonExe'));
         % Use signal processing toolbox
         isToolboxInstalled = (exist('fir2', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
@@ -402,48 +382,21 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         
         % ===== PYTHON =====
         % Get saved configuration
-        PythonConfig = bst_get('PythonConfig');
+        oldPythonExe = bst_get('PythonExe');
         % Get new configuration
         newPythonExe = char(jTextPythonExe.getText());
-        newPythonPath = char(jTextPythonPath.getText());
-        newQtDir = char(jTextQtDir.getText());
         % If something changed
-        isPythonExeChanged = ~isequal(newPythonExe, PythonConfig.PythonExe);
-        isPythonPathChanged = ~isequal(newPythonPath, PythonConfig.PythonPath);
-        isQtDirChanged = ~isequal(newQtDir, PythonConfig.QtDir);
-        if isPythonExeChanged || isPythonPathChanged || isQtDirChanged
-            % If the path changed: remove the old path for system path
-            if isPythonPathChanged
-                if ~isempty(PythonConfig.PythonPath)
-                    SystemPathRemove(PythonConfig.PythonPath);
-                end
-                if ~isempty(newPythonPath)
-                    SystemPathAdd(newPythonPath);
-                end
-            end
+        if ~isequal(newPythonExe, oldPythonExe)
             % Save new values in user preferences
-            PythonConfig.PythonPath = newPythonPath;
-            PythonConfig.PythonExe = newPythonExe;
-            PythonConfig.QtDir = newQtDir;
-            bst_set('PythonConfig', PythonConfig);
-            % If the Qt dir changed: update environement variables
-            if isQtDirChanged
-                setenv('QT_PLUGIN_PATH', bst_fileparts(PythonConfig.QtDir));
-                disp(['BST> Setting environment variable: QT_PLUGIN_PATH=' bst_fileparts(PythonConfig.QtDir)]);
-                setenv('QT_QPA_PLATFORM_PLUGIN_PATH', PythonConfig.QtDir);
-                disp(['BST> Setting environment variable: QT_QPA_PLATFORM_PLUGIN_PATH=' PythonConfig.QtDir]);
+            bst_set('PythonExe', newPythonExe);
+            % Set the new version of Python in Matlab
+            try
+                [pyVer, newPythonExe, isLoaded] = bst_python_ver(newPythonExe);
+            catch
+                bst_error('You must close and restart Matlab for this change to take effect.', 'Python exectutable', 0);
             end
-            % If something changed: try to load python
-            if isPythonExeChanged
-                % Check if Python already loaded
-                [pyVer, PythonExe, isLoaded] = bst_python_ver();
-                % Initialize Python if possible
-                if ~isLoaded
-                    bst_python_init('Initialize', 1);
-                else
-                    bst_error('You must close and restart Matlab for this change to take effect.', 'Python exectutable', 0);
-                end
-            end
+            % Initialize Python if possible
+            bst_python_init('Initialize', 1);
         end
         
         % ===== PROCESSING OPTIONS =====
@@ -584,85 +537,76 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     % Callback for '...' button
     function PythonExe_Callback(varargin)
         % Get the initial path
-        PythonConfig = bst_get('PythonConfig', 1);
-        initExe = PythonConfig.PythonExe;
+        initExe = bst_get('PythonExe');
         % Ask for python path
-        exePath = java_getfile( 'open', ...
+        newExe = java_getfile( 'open', ...
             'Select Python executable', ...  % Window title
             bst_fileparts(initExe), 'single', 'files', ...     % Default directory, Selection mode
             {{'*'}, 'Python executable (version 3.5 or higher)', 'Python'}, 'Python');
-        if isempty(exePath) || isequal(initExe, exePath)
+        if isempty(newExe) || isequal(initExe, newExe)
             return;
         end
         % Else : update control text
-        jTextPythonExe.setText(exePath);
-        % Get additional folders to add to path
-        [PythonPath, QtDir] = bst_python_init('GetPythonPath', exePath);
-        if ~isempty(PythonPath)
-            jTextPythonPath.setText(PythonPath);
-        end
-        if ~isempty(QtDir)
-            jTextQtDir.setText(QtDir);
-        end
+        jTextPythonExe.setText(newExe);
         % Focus main brainstorm figure
         jBstFrame = bst_get('BstFrame');
         jBstFrame.setVisible(1);
     end
 
 
-%% ===== QT DIRECTORY SELECTION =====
-    % Callback for '...' button
-    function QtDirectory_Callback(varargin)
-        % Get the initial path
-        PythonConfig = bst_get('PythonConfig', 1);
-        initDir = PythonConfig.QtDir;
-        % Open 'Select directory' dialog
-        qtDir = uigetdir(initDir, 'Select Qt plugin directory.');
-        % If no directory was selected : return without doing anything
-        if (isempty(qtDir) || (qtDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, qtDir)))
-            return;
-        % Directory is not avalid Qt folder (test on windows only)
-        elseif ispc && ~file_exist(bst_fullfile(qtDir, 'qwindows.dll'))
-            java_dialog('warning', 'Selected folder does not contain a valid Qt plugin install (qwindows.dll missing).');
-            return;
-        end
-        % Else : update control text
-        jTextQtDir.setText(qtDir);
-        % Focus main brainstorm figure
-        jBstFrame = bst_get('BstFrame');
-        jBstFrame.setVisible(1);
-    end
-
-%% ===== ADD PYTHON PATH =====
-    % Callback for '+' button
-    function AddPath_Callback(varargin)
-        % Get the initial path
-        PythonConfig = bst_get('PythonConfig', 1);
-        if ~isempty(PythonConfig.PythonPath)
-            initPath = str_split(PythonConfig.PythonPath);
-            initDir = initPath{1};
-        else
-            initPath = {};
-            initDir = [];
-        end
-        % Open 'Select directory' dialog
-        addDir = uigetdir(initDir, 'Add folder to system path');
-        % If no directory was selected : return without doing anything
-        if (isempty(addDir) || (addDir(1) == 0) || ismember(addDir, initPath))
-            return;
-        end
-        % New python path
-        if ~isempty(PythonConfig.PythonPath)
-            newPath = [PythonConfig.PythonPath ';' addDir];
-        else
-            newPath = addDir;
-        end
-        % Else : update control text
-        jTextPythonPath.setText(newPath);
-        % Focus main brainstorm figure
-        jBstFrame = bst_get('BstFrame');
-        jBstFrame.setVisible(1);
-    end
+% %% ===== QT DIRECTORY SELECTION =====
+%     % Callback for '...' button
+%     function QtDirectory_Callback(varargin)
+%         % Get the initial path
+%         PythonConfig = bst_get('PythonConfig', 1);
+%         initDir = PythonConfig.QtDir;
+%         % Open 'Select directory' dialog
+%         qtDir = uigetdir(initDir, 'Select Qt plugin directory.');
+%         % If no directory was selected : return without doing anything
+%         if (isempty(qtDir) || (qtDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, qtDir)))
+%             return;
+%         % Directory is not avalid Qt folder (test on windows only)
+%         elseif ispc && ~file_exist(bst_fullfile(qtDir, 'qwindows.dll'))
+%             java_dialog('warning', 'Selected folder does not contain a valid Qt plugin install (qwindows.dll missing).');
+%             return;
+%         end
+%         % Else : update control text
+%         jTextQtDir.setText(qtDir);
+%         % Focus main brainstorm figure
+%         jBstFrame = bst_get('BstFrame');
+%         jBstFrame.setVisible(1);
+%     end
+% 
+% %% ===== ADD PYTHON PATH =====
+%     % Callback for '+' button
+%     function AddPath_Callback(varargin)
+%         % Get the initial path
+%         PythonConfig = bst_get('PythonConfig', 1);
+%         if ~isempty(PythonConfig.PythonPath)
+%             initPath = str_split(PythonConfig.PythonPath);
+%             initDir = initPath{1};
+%         else
+%             initPath = {};
+%             initDir = [];
+%         end
+%         % Open 'Select directory' dialog
+%         addDir = uigetdir(initDir, 'Add folder to system path');
+%         % If no directory was selected : return without doing anything
+%         if (isempty(addDir) || (addDir(1) == 0) || ismember(addDir, initPath))
+%             return;
+%         end
+%         % New python path
+%         if ~isempty(PythonConfig.PythonPath)
+%             newPath = [PythonConfig.PythonPath ';' addDir];
+%         else
+%             newPath = addDir;
+%         end
+%         % Else : update control text
+%         jTextPythonPath.setText(newPath);
+%         % Focus main brainstorm figure
+%         jBstFrame = bst_get('BstFrame');
+%         jBstFrame.setVisible(1);
+%     end
 end
 
 

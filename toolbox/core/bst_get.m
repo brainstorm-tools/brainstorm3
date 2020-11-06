@@ -30,7 +30,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('SpmDir')                : Full path to a local installation of SPM
 %    - bst_get('BrainSuiteDir')         : Full path to a local installation of BrainSuite
 %    - bst_get('SpmTpmAtlas')           : Full path to the SPM atlas TPM.nii
-%    - bst_get('PythonConfig')          : Configuration of the python environment from Matlab
+%    - bst_get('PythonExe')             : Path to the python executable
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_get('iProtocol')             : Indice of current protocol 
@@ -2728,25 +2728,26 @@ switch contextName
         % Return the preferred location: .brainstorm/defaults/spm/TPM.nii
         argout1 = tpmUser;
         
-    case 'PythonConfig'
-        defPref = struct(...
-            'PythonExe',  '', ...
-            'PythonPath', 0, ...
-            'QtDir',      '');
-        argout1 = FillMissingFields(contextName, defPref);
-        % Check that the python executable is available
-        if ~isempty(argout1.PythonExe) && ~file_exist(argout1.PythonExe)
-            disp(['Error: Python executable not found: ' argout1.PythonExe]);
-            argout1.PythonExe = '';
-        elseif ~ischar(argout1.PythonExe)
-            argout1.PythonExe = '';
+    case 'PythonExe'
+        % Get saved value
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'PythonExe') && ~isempty(GlobalData.Preferences.PythonExe)
+            if file_exist(GlobalData.Preferences.PythonExe)
+                argout1 = GlobalData.Preferences.PythonExe;
+            else
+                disp(['BST> Error: Python executable not found: ' GlobalData.Preferences.PythonExe]);
+                argout1 = [];
+            end
+        else
+            argout1 = [];
         end
-        % Check the validity of the other values
-        if ~ischar(argout1.PythonPath)
-            argout1.PythonPath = '';
-        end
-        if ~ischar(argout1.QtDir)
-            argout1.QtDir = '';
+        % If not defined in Brainstorm, but set in Matlab
+        if isempty(argout1)
+            [pyVer, PythonExe] = bst_python_ver();
+            if ~isempty(PythonExe) && file_exist(PythonExe)
+                disp(['BST> Found Python executable: ' PythonExe]);
+                argout1 = PythonExe;
+                bst_set('PythonExe', PythonExe);
+            end
         end
         
     case 'ElectrodeConfig'
