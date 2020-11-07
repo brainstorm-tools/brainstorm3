@@ -173,6 +173,12 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuOpenmeeg.addSeparator();
             gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
+        if (GlobalData.Program.GuiLevel == 1)
+            jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
+            gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)bst_call(@DownloadNIRSTORM), fontSize);
+            gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
+
+        end       
         
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
@@ -1469,6 +1475,19 @@ function DownloadOpenmeeg()
         web('http://openmeeg.gforge.inria.fr/download/', '-browser');
     catch
     end
+end
+
+%% ==== Downlonad NIRSTORM ==== 
+
+function DownloadNIRSTORM()
+
+% Possible configuration: 
+
+[status,err] = install_nirstorm(); 
+
+%[status,err] = install_nirstorm({'wip'});
+%[status,err] = install_nirstorm({'wip'},'link','/Users/edelaire1/Documents/software'); 
+
 end
 
 
