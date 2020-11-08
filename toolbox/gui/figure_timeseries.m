@@ -4305,6 +4305,10 @@ function ScaleToFitY(hFig, ev)
                 % Redimension TF according to what we want to display
                 TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
         end
+        % Frequency bands: XVector is a vector
+        if iscell(XVector)
+            XVector = mean(process_tf_bands('GetBounds', XVector), 2);
+        end
     else
         TF = GetFigureData(iDS, iFig);
         TF = TF{1};
