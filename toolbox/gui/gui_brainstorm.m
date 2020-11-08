@@ -1505,6 +1505,7 @@ function UninstallNIRSTORM()
     cur_dir=pwd;
     cd(bst_get('UserProcessDir'));
     uninstall_nirstorm();
+    delete( which('uninstall_nirstorm'));
     java_dialog('msgbox', 'NIRSTORM was uninstalled successfully ', 'NIRSTORM installation ');
     cd(cur_dir);
 end
