@@ -151,7 +151,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
     hasOptimTools = 0;
     if exist('fmincon') == 2 && strcmp(implementation,'matlab')
         hasOptimTools = 1;
-        disp("Using constrained optimization, Guess Weight ignored.")
+        disp('Using constrained optimization, Guess Weight ignored.')
     end
     
     % Initialize returned list of files
