@@ -175,11 +175,11 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         if (GlobalData.Program.GuiLevel == 1)
             jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
-            if exist('uninstall_nirstorm')==2
-                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)bst_call(@DownloadNIRSTORM), fontSize);
-                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)bst_call(@UninstallNIRSTORM), fontSize);
+            if nst_setup('status')
+                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)nst_setup('uninstall',[],1), fontSize);
             else
-                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)bst_call(@DownloadNIRSTORM), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
             end    
             
             gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
@@ -1482,34 +1482,6 @@ function DownloadOpenmeeg()
     catch
     end
 end
-
-%% ==== Downlonad NIRSTORM ==== 
-
-function DownloadNIRSTORM()
-isOk = java_dialog('confirm','Would you like to download work in progress features?', 'NIRSTORM installation');
-if  isOk     
-    [status,err] = install_nirstorm({'wip'});
-else
-    [status,err] = install_nirstorm(); 
-end
-
-if ~status
-    java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
-else
-   java_dialog('msgbox', 'NIRSTORM was installed successfully ', 'NIRSTORM installation ');
-
-end    
-end
-
-function UninstallNIRSTORM()
-    cur_dir=pwd;
-    cd(bst_get('UserProcessDir'));
-    uninstall_nirstorm();
-    delete( which('uninstall_nirstorm'));
-    java_dialog('msgbox', 'NIRSTORM was uninstalled successfully ', 'NIRSTORM installation ');
-    cd(cur_dir);
-end
-
 %% ===== DOWNLOAD FILE =====
 function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
     errMsg = [];
