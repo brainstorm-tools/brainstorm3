@@ -23,20 +23,30 @@ if nargin < 3
 end
 
 nistorm_folder=fullfile(tmp_folder,'nirstorm-master');
+try 
+    unzip(nistorm_url,tmp_folder);
+catch
+   err='Unable to download nirstorm';
+   status = 0; 
+   return;
+end
 
-unzip(nistorm_url,tmp_folder);
 addpath(nistorm_folder);
 
-nst_install(mode,extra,nistorm_folder )
+try 
+    nst_install(mode,extra,nistorm_folder )
+catch ME
+    err = ME.message;
+    status = 0;
+    return;
+end    
 
 if strcmp(mode,'copy')
     rmpath(nistorm_folder)
     rmpath( fullfile(nistorm_folder, 'dist_tools'));
     
     [status,msg] = rmdir(nistorm_folder, 's');
-    if ~status
-        err{end+1}=err;
-    end
+    err= msg;
 end
 end
 

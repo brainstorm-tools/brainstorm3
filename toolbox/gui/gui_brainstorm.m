@@ -1484,7 +1484,12 @@ function DownloadNIRSTORM()
 % Possible configuration: 
 
 [status,err] = install_nirstorm(); 
+if ~status
+    java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation ');
+else
+   java_dialog('msgbox', 'NIRSTORM was installed successfully ', 'NIRSTORM installation ');
 
+end    
 %[status,err] = install_nirstorm({'wip'});
 %[status,err] = install_nirstorm({'wip'},'link','/Users/edelaire1/Documents/software'); 
 
