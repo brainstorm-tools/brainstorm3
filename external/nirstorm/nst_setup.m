@@ -44,7 +44,9 @@ elseif  strcmp(action, 'install')
         unzip(nistorm_url,tmp_folder);
     catch
         err = 'Unable to download nirstorm'; status=0;
-        java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
+        if isInteractive 
+            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
+        end
         return;
     end
     
@@ -54,7 +56,9 @@ elseif  strcmp(action, 'install')
         nst_install(mode,extra,nistorm_folder);
     catch ME
         err = ME.message; status=0;
-        java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
+        if isInteractive
+            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
+        end
         return;
     end
     
@@ -64,12 +68,16 @@ elseif  strcmp(action, 'install')
         rmpath(fullfile(nistorm_folder, 'dist_tools'));
     
         [status,err] = rmdir(nistorm_folder, 's');
-        if ~status
+         if ~status && isInteractive
             java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
             return;
-        end
+         end
     end
-    java_dialog('msgbox', 'NIRSTORM was installed successfully ', 'NIRSTORM installation ');
+    
+    err='NIRSTORM was installed successfully';
+    if isInteractive
+        java_dialog('msgbox', err, 'NIRSTORM installation ');
+    end    
 
 elseif  strcmp(action, 'uninstall')   
     cur_dir=pwd;
@@ -78,8 +86,9 @@ elseif  strcmp(action, 'uninstall')
     delete( which('uninstall_nirstorm'));
     cd(cur_dir);
     
-
-    java_dialog('msgbox', 'NIRSTORM was uninstalled successfully.', 'NIRSTORM installation ');
+    if isInteractive
+        java_dialog('msgbox', 'NIRSTORM was uninstalled successfully.', 'NIRSTORM installation ');
+    end    
 end    
 end
 
