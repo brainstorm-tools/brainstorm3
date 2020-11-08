@@ -125,7 +125,7 @@ function [isOk, errorMsg, pyVer] = Initialize(isInteractive)
     end
     disp(['BST> Python ' pyVer ' executable: ' PythonExeMatlab]);
     % Set locale (use eval to avoid the parser to load the python environment)
-    eval('py.locale.setlocale(py.locale.LC_ALL, ''en_US'');');
+    eval('py.locale.setlocale(py.locale.LC_ALL, ''en_US.UTF-8'');');
     % Return success
     isOk = 1;
 end
