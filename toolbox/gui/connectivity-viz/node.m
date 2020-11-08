@@ -73,7 +73,7 @@ classdef node < handle
         
         function set.isAgregatingNode(this,value)
             this.isAgregatingNode = value;
-            updateAgregatingNode(this); % added Oct 25
+            % updateAgregatingNode(this); % added Oct 25, bug?
             updateTextLabel(this);
         end
         

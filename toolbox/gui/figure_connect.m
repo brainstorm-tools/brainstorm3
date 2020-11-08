@@ -22,7 +22,7 @@ function varargout = figure_connect( varargin )
 % =============================================================================@
 %
 % Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin Cousineau, 2019
-disp('figure_connect.m : ' + string(varargin(1))) % @TODO: remove test
+
 eval(macro_method);
 end
 
@@ -530,7 +530,7 @@ end
 
 
 %% ===== FIGURE KEY PRESSED CALLBACK =====
-function FigureKeyPressedCallback(hFig, keyEvent)setSlect
+function FigureKeyPressedCallback(hFig, keyEvent)
     global ConnectKeyboardMutex;
     % Convert to Matlab key event
     [keyEvent, tmp, tmp] = gui_brainstorm('ConvertKeyEvent', keyEvent);
