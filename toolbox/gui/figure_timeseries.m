@@ -4294,8 +4294,10 @@ function ScaleToFitY(hFig, ev)
                 [XVector, Freq, TfInfo, TF] = figure_timefreq('GetFigureData', hFig);
             otherwise %case 'spectrum'
                 [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
-                % Remove the first frequency bin (0) : SPECTRUM ONLY
-                if isSpectrum && ~iscell(XVector) && (size(TF,3)>1)
+                if iscell(XVector) % frequency bands
+                    XVector = mean(process_tf_bands('GetBounds', XVector), 2)';
+                elseif (size(TF,3)>1)
+                    % Remove the first frequency bin (0)
                     iZero = find(XVector == 0);
                     if ~isempty(iZero)
                         XVector(iZero) = [];
