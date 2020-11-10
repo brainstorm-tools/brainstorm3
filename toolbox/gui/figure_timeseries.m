@@ -4294,11 +4294,18 @@ function ScaleToFitY(hFig, ev)
                 [XVector, Freq, TfInfo, TF] = figure_timefreq('GetFigureData', hFig);
             otherwise %case 'spectrum'
                 [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
-		% Frequency bands (cell array of named bands): Compute center of each band
+                % Frequency bands (cell array of named bands): Compute center of each band
                 if iscell(XVector)
-                    XVector = mean(process_tf_bands('GetBounds', XVector), 2)';
-		% Remove the first frequency bin (0)
-                elseif (size(TF,3)>1)
+                    % Multiple frequency bands
+                    if (size(XVector,1) > 1)
+                        XVector = mean(process_tf_bands('GetBounds', XVector), 2)';
+                    % One frequency band: replicate data on both ends of the band
+                    else
+                        XVector = XVector{2};
+                        TF = cat(3, TF, TF);
+                    end
+                % Remove the first frequency bin (0)
+                elseif (size(TF,3)>2)
                     iZero = find(XVector == 0);
                     if ~isempty(iZero)
                         XVector(iZero) = [];
