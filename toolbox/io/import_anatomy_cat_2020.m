@@ -136,8 +136,10 @@ end
 % Find surfaces
 TessLhFile = file_find(CatDir, 'lh.central.*.gii', 2);
 TessRhFile = file_find(CatDir, 'rh.central.*.gii', 2);
+TessCbFile = file_find(CatDir, 'cb.central.*.gii', 2);
 TessLsphFile = file_find(CatDir, 'lh.sphere.reg.*.gii', 2);
 TessRsphFile = file_find(CatDir, 'rh.sphere.reg.*.gii', 2);
+TessCsphFile = file_find(CatDir, 'cb.sphere.reg.*.gii', 2);
 if isempty(TessLhFile)
     errorMsg = [errorMsg 'Surface file was not found: lh.central' 10];
 end
@@ -336,6 +338,18 @@ if ~isempty(TessRhFile)
         errorMsg = [errorMsg err];
     end
 end
+% Cerebellum
+if ~isempty(TessCbFile)
+    % Import file
+    [iCb, BstTessCbFile, nVertOrigC] = import_surfaces(iSubject, TessCbFile, 'GII-WORLD', 0);
+    BstTessCbFile = BstTessCbFile{1};
+    % Load sphere
+    if ~isempty(TessCsphFile)
+        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: cerebellum...');
+        [TessMat, err] = tess_addsphere(BstTessCbFile, TessCsphFile, 'GII-CAT');
+        errorMsg = [errorMsg err];
+    end
+end
 
 % Process error messages
 if ~isempty(errorMsg)
@@ -358,19 +372,31 @@ if ~isempty(TessLhFile)
     bst_progress('start', 'Import CAT12 folder', 'Downsampling: left pial...');
     [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
 end
+if ~isempty(TessCbFile)
+    bst_progress('start', 'Import CAT12 folder', 'Downsampling: cerebellum...');
+    [BstTessCbLowFile, iCbLow, xCbLow] = tess_downsize(BstTessCbFile, nVertHemi, 'reducepatch');
+end
 
 
 %% ===== MERGE SURFACES =====
+CortexHiFile = [];
+CortexLowFile = [];
+CortexCbHiFile = [];
+CortexCbLowFile = [];
+rmFiles = {};
 % Merge hemispheres
 if ~isempty(TessLhFile) && ~isempty(TessRhFile)
-    % Hi-resolution surface
+    % Merge left+right+cerebellum
+    if ~isempty(TessCbFile)
+        CortexCbHiFile  = tess_concatenate({BstTessLhFile,    BstTessRhFile,    BstTessCbFile},    sprintf('cortex_cereb_%dV', nVertOrigL + nVertOrigR + nVertOrigC), 'Cortex');
+        CortexCbLowFile = tess_concatenate({BstTessLhLowFile, BstTessRhLowFile, BstTessCbLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCbLow)), 'Cortex');
+        rmFiles = cat(2, rmFiles, {BstTessCbFile, BstTessCbLowFile});
+    end
+    % Merge left+right
     CortexHiFile  = tess_concatenate({BstTessLhFile,    BstTessRhFile},    sprintf('cortex_%dV', nVertOrigL + nVertOrigR), 'Cortex');
     CortexLowFile = tess_concatenate({BstTessLhLowFile, BstTessRhLowFile}, sprintf('cortex_%dV', length(xLhLow) + length(xRhLow)), 'Cortex');
     % Delete separate hemispheres
     rmFiles = cat(2, rmFiles, {BstTessLhFile, BstTessRhFile, BstTessLhLowFile, BstTessRhLowFile});
-else
-    CortexHiFile = [];
-    CortexLowFile = [];
 end
 
 
@@ -379,18 +405,31 @@ end
 if ~isempty(rmFiles)
     file_delete(file_fullpath(rmFiles), 1);
 end
-% Rename final files
+% Rename final file: cortex
 if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     % Rename high-res file
     oldCortexHiFile = file_fullpath(CortexHiFile);
     CortexHiFile    = bst_fullfile(bst_fileparts(oldCortexHiFile), 'tess_cortex_pial_high.mat');
     file_move(oldCortexHiFile, CortexHiFile);
     CortexHiFile = file_short(CortexHiFile);
-    % Rename high-res file
+    % Rename low-res file
     oldCortexLowFile = file_fullpath(CortexLowFile);
     CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
     file_move(oldCortexLowFile, CortexLowFile);
     CortexHiFile = file_short(CortexHiFile);
+end
+% Rename final file: cortex + cerebellum
+if ~isempty(TessCbFile) && ~isempty(TessLhFile) && ~isempty(TessRhFile)
+    % Rename high-res file
+    oldCortexCbHiFile = file_fullpath(CortexCbHiFile);
+    CortexCbHiFile    = bst_fullfile(bst_fileparts(oldCortexCbHiFile), 'tess_cortex_cereb_pial_high.mat');
+    file_move(oldCortexCbHiFile, CortexCbHiFile);
+    CortexCbHiFile = file_short(CortexCbHiFile);
+    % Rename low-res file
+    oldCortexCbLowFile = file_fullpath(CortexCbLowFile);
+    CortexCbLowFile    = bst_fullfile(bst_fileparts(oldCortexCbLowFile), 'tess_cortex_cereb_pial_low.mat');
+    file_move(oldCortexCbLowFile, CortexCbLowFile);
+    CortexCbHiFile = file_short(CortexCbHiFile);
 end
 % Reload subject
 db_reload_subjects(iSubject);
@@ -415,7 +454,7 @@ if isExtraMaps && ~isempty(CortexHiFile)
     end
     % Import sulcal depth
     if ~isempty(SulcalLhFile) && ~isempty(SulcalRhFile)
-        import_sources(iStudy, CortexHiFile, SulcalLhFile, SulcalRhFile, 'FS', 'sqrtsulc');
+        import_sources(iStudy, CortexHiFile, SulcalLhFile, SulcalRhFile, 'FS', 'depth');
     end
     % Import cortex complexity
     if ~isempty(FDLhFile) && ~isempty(FDRhFile)
