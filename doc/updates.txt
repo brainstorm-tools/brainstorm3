@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+November 2020
+- Python: New integration with Python and MNE-Python based on CPython
+---------------------------------------------------------------
 October 2020
 - Major bug fix: Changed units in PSD computation
 - New process: Simulate recordings from dipoles

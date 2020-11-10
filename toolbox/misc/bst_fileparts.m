@@ -25,6 +25,10 @@ function varargout = bst_fileparts(filename, isFolder)
 if (nargin < 2) || isempty(isFolder)
     isFolder = 0;
 end
+% Empty input
+if isempty(filename)
+    filename = '';
+end
 % MacOS and Linux: Replace \ with /
 if ~ispc
     filename(filename == '\') = '/';
