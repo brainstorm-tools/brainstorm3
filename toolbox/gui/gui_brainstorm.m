@@ -173,6 +173,18 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuOpenmeeg.addSeparator();
             gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
+        if (GlobalData.Program.GuiLevel == 1)
+            jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
+            if nst_setup('status')
+                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)nst_setup('uninstall',[],1), fontSize);
+            else
+                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
+            end    
+            
+            gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
+
+        end       
         
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
@@ -1470,8 +1482,6 @@ function DownloadOpenmeeg()
     catch
     end
 end
-
-
 %% ===== DOWNLOAD FILE =====
 function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
     errMsg = [];
