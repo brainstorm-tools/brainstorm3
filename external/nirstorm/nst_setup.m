@@ -35,23 +35,35 @@ elseif  strcmp(action, 'install')
     
     mode = 'copy'; 
     tmp_folder = bst_get('BrainstormTmpDir');
+    tmp_file   = fullfile(tmp_folder,'nirstorm.zip');
     nistorm_folder = fullfile(tmp_folder,'nirstorm-master');
-
+    
     nistorm_url = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
     
-    % Download nirstorm
-    try 
-        unzip(nistorm_url,tmp_folder);
-    catch
-        err = 'Unable to download nirstorm'; status=0;
+    err = gui_brainstorm('DownloadFile',nistorm_url, tmp_file, 'Download NIRSTORM');
+    if ~isempty(err)
+        status=0;
         if isInteractive 
             java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
         end
+        return;
+    end   
+        
+    % Unzip nirstorm
+    try 
+        unzip(tmp_file,tmp_folder);
+    catch
+        err = 'Unable to unzip nirstorm'; status=0;
+        if isInteractive 
+            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
+        end
+        delete(tmp_file);
         return;
     end
     
     % Install nistorm
     addpath(nistorm_folder);
+
     try 
         nst_install(mode,extra,nistorm_folder);
     catch ME
@@ -66,7 +78,8 @@ elseif  strcmp(action, 'install')
     if strcmp(mode,'copy')
         rmpath(nistorm_folder)
         rmpath(fullfile(nistorm_folder, 'dist_tools'));
-    
+        
+        delete(tmp_file);
         [status,err] = rmdir(nistorm_folder, 's');
          if ~status && isInteractive
             java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
