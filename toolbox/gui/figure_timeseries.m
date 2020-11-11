@@ -4329,6 +4329,9 @@ function ScaleToFitY(hFig, ev)
             any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
         TFmax = max(TF,[],1);
         iStartMin = find(diff(TFmax)>0,1);
+        if isempty(iStartMin)
+            iStartMin = 1;
+        end
     else
         iStartMin = 1;
     end
