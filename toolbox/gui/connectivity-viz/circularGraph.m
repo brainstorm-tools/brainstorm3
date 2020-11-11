@@ -30,6 +30,7 @@ classdef circularGraph < handle
         Label;            % Cell array of strings
         ShowButton;       % Turn all nodes on
         HideButton;       % Turn all nodes off
+        AllLinks;
     end
     
     methods
@@ -109,7 +110,7 @@ classdef circularGraph < handle
             % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
             % r^2 = x0^2 + y0^2 - 1
             
-            for i = 1:length(v)
+            for i = 1:length(v) %for each link
                 if row(i) ~= col(i) % not at a diagonal
                     if abs(row(i) - col(i)) - length(adjacencyMatrix)/2 == 0
                         % points are diametric, so draw a straight line

@@ -94,22 +94,22 @@ classdef node < handle
         function updateVisible(this)
             if this.Visible
                 this.NodeMarker.Marker = 'o';
-                this.NodeMarker.MarkerSize = 5;
-                this.NodeMarker.MarkerFaceColor = this.Color;
-                set(this.Links,'Color',this.Color);
+               % this.NodeMarker.MarkerSize = 5;
+              %  this.NodeMarker.MarkerFaceColor = this.Color;
+              %  set(this.Links,'Color',this.Color);
                 
-                for i = 1:length(this.Links)
-                    this.Links(i).ZData = ones(size(this.Links(i).XData));
-                end
+             %   for i = 1:length(this.Links)
+                 %   this.Links(i).ZData = ones(size(this.Links(i).XData));
+               % end
             else
-                this.NodeMarker.Marker = 'diamond'; % changed on Oct 25
-                this.NodeMarker.MarkerSize = 8; % changed on Oct 25
-                this.NodeMarker.MarkerFaceColor = 'red'; % changed on Oct 25
-                set(this.Links,'Color',[1 1 1]);
+                this.NodeMarker.Marker = 'x'; % changed on Oct 25
+                %this.NodeMarker.MarkerSize = 8; % changed on Oct 25
+               % this.NodeMarker.MarkerFaceColor = 'red'; % changed on Oct 25
+              %  set(this.Links,'Color',[1 1 1]);
                 
-                for i = 1:length(this.Links)
-                    this.Links(i).ZData = zeros(size(this.Links(i).XData));
-                end
+               % for i = 1:length(this.Links)
+                  %  this.Links(i).ZData = zeros(size(this.Links(i).XData));
+               % end
             end
         end
         
