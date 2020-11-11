@@ -25,8 +25,8 @@ CatDir = varargin{2};
 % Switch between versions for the CAT12 reader, depending on the existence of a label file
 AnnotFile = file_find(bst_fullfile(CatDir, 'label'), 'lh.aparc_DK40.*.annot', 0);
 if file_exist(AnnotFile)
-    import_anatomy_cat_2020(varargin{:});
+    errorMsg = import_anatomy_cat_2020(varargin{:});
 else
-    import_anatomy_cat_2019(varargin{:});
+    errorMsg = import_anatomy_cat_2019(varargin{:});
 end
 

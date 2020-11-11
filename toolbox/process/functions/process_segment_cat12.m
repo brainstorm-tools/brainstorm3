@@ -340,7 +340,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
         return;
     end
     % Delete temporary folder
-    file_delete(catDir, 1, 3);
+    % file_delete(catDir, 1, 3);
     % Return success
     isOk = 1;
 end
