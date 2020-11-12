@@ -1423,20 +1423,18 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
             otherwise,         strAmp = 'No units';
         end
     elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
-        % Normalized by frequency
-        Operator = '*';
+        % Normalized by frequency. 
         switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2' Operator TfInfo.FreqUnits ')'];
-            case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits Operator 'sqrt(' TfInfo.FreqUnits '))'];
-            case 'log',        strAmp = ['Log normalized power   (dB' Operator TfInfo.FreqUnits ')'];
+            case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2)'];
+            case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits ')'];
+            case 'log',        strAmp = 'Log normalized power   (dB)';
             otherwise,         strAmp = 'No units';
         end
     else
-        Operator = '/';
         switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2' Operator TfInfo.FreqUnits ')'];
-            case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits Operator 'sqrt(' TfInfo.FreqUnits '))'];
-            case 'log',        strAmp = ['Log-power   (dB' Operator TfInfo.FreqUnits ')'];
+            case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
+            case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
+            case 'log',        strAmp = 'Log power   (dB)';
             case 'phase',      strAmp = 'Angle';
             otherwise,         strAmp = 'No units';
         end
