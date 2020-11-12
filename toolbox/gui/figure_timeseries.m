@@ -4288,6 +4288,7 @@ function ScaleToFitY(hFig, ev)
 
     % ===== GET DATA =====
     if isSpectrum
+        isBands = false;
         % Get data to plot
         switch lower(FigureId.SubType)
             case 'timeseries'
@@ -4296,6 +4297,7 @@ function ScaleToFitY(hFig, ev)
                 [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
                 % Frequency bands (cell array of named bands): Compute center of each band
                 if iscell(XVector)
+                    isBands = true;
                     % Multiple frequency bands
                     if (size(XVector,1) > 1)
                         XVector = mean(process_tf_bands('GetBounds', XVector), 2)';
@@ -4325,7 +4327,7 @@ function ScaleToFitY(hFig, ev)
     % Get limits of currently plotted data
     XLim = get(hAxes, 'XLim');    
     % For linear y axis spectrum, ignore very low frequencies with high amplitudes. Use the first local maximum
-    if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ...
+    if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ~isBands && ...
             any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
         TFmax = max(TF,[],1);
         iStartMin = find(diff(TFmax)>0,1);

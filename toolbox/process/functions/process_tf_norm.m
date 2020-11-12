@@ -43,7 +43,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Options: Normalization
-    sProcess.options.normalize.Comment = {'1/f compensation (multiple by frequency)', 'Relative power (divide by total power)'; ...
+    sProcess.options.normalize.Comment = {'1/f compensation (multiply power by frequency)', 'Relative power (divide by total power)'; ...
                                           'multiply', 'relative'};
     sProcess.options.normalize.Type    = 'radio_label';
     sProcess.options.normalize.Value   = 'multiply';
@@ -115,21 +115,26 @@ function [TF, errorMsg] = Compute(TF, Measure, Freqs, Method)
                 BandBounds = process_tf_bands('GetBounds', Freqs);
                 Factor = mean(BandBounds,2);
             end
-            % If processing power: square the frequency
-            if strcmpi(Measure, 'power')
-                Factor = Factor .^ 2;
+            % If processing magnitude: 
+            if strcmpi(Measure, 'magnitude')
+                Factor = sqrt(Factor);
             end
             % Reshape to have the scaling values in the third dimension
             Factor = reshape(Factor, 1, 1, []);
         case 'relative'
-            % If measure is not power/magnitude/log
-            if ~ismember(Measure, {'power', 'magnitude'})
-                errorMsg = ['Values with measure "' Measure '" cannot be normalized with this process.'];
-                TF = [];
-                return;
+            % Always sum total power (then sqrt for relative magnitude)
+            switch Measure
+                case 'power'
+                    % Divide by the total power
+                    Factor = 1 ./ sum(TF,3);
+                case 'magnitude'
+                    Factor = 1 ./ sqrt(sum(TF.^2,3));
+                % If measure is not power/magnitude
+                otherwise
+                    errorMsg = ['Values with measure "' Measure '" cannot be normalized with this process.'];
+                    TF = [];
+                    return;
             end
-            % Divide by the total power
-            Factor = 1 ./ sum(TF,3);
         otherwise
             errorMsg = ['Invalid normalization method: ' Method];
             TF = [];

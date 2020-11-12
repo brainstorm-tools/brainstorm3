@@ -1206,7 +1206,10 @@ function UpdateFigurePlot(hFig, isForced)
     DisplayFactor = 1;
     if isempty(DisplayUnits)
         % Get signal units and display factor
-        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+        % Check if relative or normalized spectrum
+        if ~isempty(strfind(TfInfo.FileName, 'relative'))
+            DisplayUnits = 'no units';
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
             [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
         end
     end
@@ -1411,12 +1414,32 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     if isempty(PlotHandles.DisplayUnits)
         PlotHandles.DisplayUnits = 'signal units';
     end
-    switch lower(TfInfo.Function)
-        case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
-        case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
-        case 'log',        strAmp = ['Log-power   (dB/' TfInfo.FreqUnits ')'];
-        case 'phase',      strAmp = 'Angle';
-        otherwise,         strAmp = 'No units';
+    if ~isempty(strfind(TfInfo.FileName, 'relative'))
+        switch lower(TfInfo.Function)
+            % Relative is always compared to total power, then sqrt when magnitude.
+            case 'power',      strAmp = 'Relative power per bin   (no units)';
+            case 'magnitude',  strAmp = 'Sqrt relative power per bin  (no units)';
+            case 'log',        strAmp = 'Log relative power per bin  (dB)';
+            otherwise,         strAmp = 'No units';
+        end
+    elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
+        % Normalized by frequency
+        Operator = '*';
+        switch lower(TfInfo.Function)
+            case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2' Operator TfInfo.FreqUnits ')'];
+            case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits Operator 'sqrt(' TfInfo.FreqUnits '))'];
+            case 'log',        strAmp = ['Log normalized power   (dB' Operator TfInfo.FreqUnits ')'];
+            otherwise,         strAmp = 'No units';
+        end
+    else
+        Operator = '/';
+        switch lower(TfInfo.Function)
+            case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2' Operator TfInfo.FreqUnits ')'];
+            case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits Operator 'sqrt(' TfInfo.FreqUnits '))'];
+            case 'log',        strAmp = ['Log-power   (dB' Operator TfInfo.FreqUnits ')'];
+            case 'phase',      strAmp = 'Angle';
+            otherwise,         strAmp = 'No units';
+        end
     end
     ylabel(hAxes, strAmp, ...
         'FontSize',    bst_get('FigFont'), ...
