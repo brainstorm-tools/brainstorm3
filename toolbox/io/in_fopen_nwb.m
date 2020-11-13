@@ -186,31 +186,55 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditio
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Check which one to select here!!!
-% % % % % amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
+% amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load + 1;
 amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
+% The following is weird - this should probably be stored differently in
+% the NWB - change how Ben stores electrode assignements to shank
 group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group').data;
+try
+    assignChannelsToShank = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load+1; % Python based - first entry is 0 - maybe add condition for matlab based entries
+    
+    groups = cell(1,length(group_name));
+    for iChannel = 1:length(group_name)
+        
+        ii = find(assignChannelsToShank==iChannel);
+        
+        temp = split(group_name(ii).path,'/');
+        temp = temp{end};
+        
+        groups{iChannel} = temp;
+    end
+    
+catch
+    assignChannelsToShank = 1:length(group_name);
+end
+    
+try
+    % Get coordinates and set to 0 if they are not available
+    x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB saves in m ???
+    y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load'./1000;
+    z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load'./1000;
+    
+    x(isnan(x)) = 0;
+    y(isnan(y)) = 0;
+    z(isnan(z)) = 0;
+catch
+    x = zeros(1, length(group_name));
+    y = zeros(1, length(group_name));
+    z = zeros(1, length(group_name));
+end
+  
 
-% Get coordinates and set to 0 if they are not available
-x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB saves in m ???
-y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load'./1000;
-z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load'./1000;
 
-x(isnan(x)) = 0;
-y(isnan(y)) = 0;
-z(isnan(z)) = 0;
 
 ChannelType = cell(nChannels + nAdditionalChannels, 1);
 
 for iChannel = 1:nChannels
-    ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))]; % This gives the AMP labels (it is not in order, but it seems to be the correct values - COME BACK TO THAT)
+    ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))];
     ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
-                                        
-    
-    temp = split(group_name(iChannel).path,'/');
-    temp = temp{end};
-    ChannelMat.Channel(iChannel).Group   = temp;
+    ChannelMat.Channel(iChannel).Group   = groups{iChannel};
     ChannelMat.Channel(iChannel).Type    = 'SEEG';
     
     ChannelMat.Channel(iChannel).Orient  = [];

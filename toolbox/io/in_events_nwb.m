@@ -83,8 +83,9 @@ end
     
 if SpikesExist
      
-    amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
-    maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
+    amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load + 1; % Add 1 for Neuroscope starting at 0
+    maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load + 1; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
+                                                                              % Neuroscope starts at 0
     
     if ~exist('events')
         events_spikes = repmat(db_template('event'), 1, nNeurons);
@@ -105,7 +106,8 @@ if SpikesExist
         iNeuronsOnChannel = find(maxWaveformCh == maxWaveformCh(iNeuron));
            
         
-        theChannel = find(amp_channel_IDs==maxWaveformCh(iNeuron));
+%         theChannel = find(amp_channel_IDs==maxWaveformCh(iNeuron));
+        theChannel = maxWaveformCh(iNeuron);
         
         if nNeuronsOnChannel == 1
             events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name];
