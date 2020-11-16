@@ -62,6 +62,8 @@ end
 %% ===== GET FILE TAG =====
 function fileTag = GetFileTag(sProcess)
     fileTag = sProcess.options.normalize.Value;
+    % Remove '2020'
+    fileTag = strrep(fileTag, '2020', '');
 end
 
 
@@ -71,6 +73,19 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     switch lower(sProcess.options.normalize.Value)
         case {1, 'multiply'},  Method = 'multiply';
         case {2, 'relative'},  Method = 'relative';
+        otherwise
+            Method = lower(sProcess.options.normalize.Value);
+    end
+    % Check if normalization was already applied.
+    if isfield(sInput, 'Options') && isfield(sInput.Options, 'Normalized') && ...
+            ~isempty(sInput.Options.Normalized) && ~isequal(sInput.Options.Normalized, 'none')
+        if isequal(sInput.Options.Normalized, Method)
+            bst_report('Warning', sProcess, sInput, ['Skipping file, requested normalization ' Method ' already applied.']);
+            return;
+        else
+            bst_report('Error', sProcess, sInput, ['Cannot apply multiple normalization methods to the same file. Requested: ' Method ', already applied: ' sInput.Options.Normalized '.']);
+            return;
+        end
     end
     % Load the frequency and measure information
     TfMat = in_bst_timefreq(sInput.FileName, 0, 'Measure', 'Freqs');
@@ -85,6 +100,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];
     end
+    % Save normalization info.
+    sInput.Options.Normalized = Method;
 end
 
 

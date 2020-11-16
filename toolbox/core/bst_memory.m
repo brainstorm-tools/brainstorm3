@@ -1578,14 +1578,14 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     isStat = strcmpi(FileType, 'ptimefreq');
     if ~isStat
         % Load .Mat
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Normalized', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas');
 %         % Load inverse kernel that goes with it if applicable
 %         if ~isempty(ParentFile) && strcmpi(TimefreqMat.DataType, 'results') % && (size(TimefreqMat.TF,1) < length(TimefreqMat.RowNames))
 %             [iDS, iResults] = LoadResultsFileFull(ParentFile);
 %         end
     else
         % Load stat matrix
-        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Normalized', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
+        TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'pmap', 'tmap', 'df', 'SPM', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TF', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'Correction', 'StatClusters');
         % Report thresholded maps
         [TimefreqMat.TF, tThreshUnder, tThreshOver] = process_extract_pthresh('Compute', TimefreqMat);
         % Open the "Stat" tab
@@ -1748,7 +1748,6 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     Timefreq.RefRowNames     = TimefreqMat.RefRowNames;
     Timefreq.Measure         = TimefreqMat.Measure;
     Timefreq.Method          = TimefreqMat.Method;
-    Timefreq.Normalized      = TimefreqMat.Normalized;
     Timefreq.NumberOfSamples = length(TimefreqMat.Time);
     Timefreq.SamplingRate    = TimefreqMat.Time(2) - TimefreqMat.Time(1);
     Timefreq.Options         = TimefreqMat.Options;

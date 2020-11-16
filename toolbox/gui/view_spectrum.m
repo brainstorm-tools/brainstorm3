@@ -128,7 +128,7 @@ else
 end
 % Is this TF normalized?
 if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'Normalized')
-    TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Normalized;
+    TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized;
 else
     TfInfo.Normalized = 'none';
 end

@@ -710,7 +710,7 @@ for iData = 1:length(Data)
         % Add normalization comment
         if ~isAddedCommentNorm
             isAddedCommentNorm = 1;
-            OPTIONS.Comment = [OPTIONS.Comment ' | ' OPTIONS.NormalizeFunc];
+            OPTIONS.Comment = [OPTIONS.Comment ' | ' strrep(OPTIONS.NormalizeFunc, '2020', '')];
         end
     end
 
@@ -785,7 +785,6 @@ end
         FileMat.RowNames  = RowNames;
         FileMat.Measure   = OPTIONS.Measure;
         FileMat.Method    = OPTIONS.Method;
-        FileMat.Normalized = OPTIONS.NormalizeFunc;
         FileMat.nAvg      = nAvgFile;
         FileMat.Leff      = nAvgFile;
         FileMat.SurfaceFile   = SurfaceFile;
@@ -803,6 +802,7 @@ end
         % Options
         FileMat.Options.Method          = OPTIONS.Method;
         FileMat.Options.Measure         = OPTIONS.Measure;
+        FileMat.Options.Normalized      = OPTIONS.NormalizeFunc;
         FileMat.Options.Output          = OPTIONS.Output;
         FileMat.Options.RemoveEvoked    = OPTIONS.RemoveEvoked;
         FileMat.Options.MorletFc        = OPTIONS.MorletFc;

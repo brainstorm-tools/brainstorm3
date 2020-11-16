@@ -433,6 +433,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     else
         TFmask = [];
     end
+    % Get TF options
+    if isfield(sMat, 'Options') && ~isempty(sMat.Options)
+        sInput.Options = sMat.Options;
+    end
     
     % Progress bar comment
     txtProgress = ['Running process: ' sProcess.Comment '...'];
@@ -967,6 +971,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % TFmask
     if isfield(sMat, 'TFmask')
         sMat.TFmask = OutputTFmask;
+    end
+    % TF options
+    if isfield(sMat, 'Options') && isfield(sInput, 'Options') && ~isempty(sInput.Options)
+        sMat.Options = sInput.Options;
     end
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
