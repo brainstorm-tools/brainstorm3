@@ -1414,30 +1414,53 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     if isempty(PlotHandles.DisplayUnits)
         PlotHandles.DisplayUnits = 'signal units';
     end
-    if ~isempty(strfind(TfInfo.FileName, 'relative'))
-        switch lower(TfInfo.Function)
-            % Relative is always compared to total power, then sqrt when magnitude.
-            case 'power',      strAmp = 'Relative power per bin   (no units)';
-            case 'magnitude',  strAmp = 'Sqrt relative power per bin  (no units)';
-            case 'log',        strAmp = 'Log relative power per bin  (dB)';
-            otherwise,         strAmp = 'No units';
+    % For older spectrum files, look in file name if normalized.
+    if ~isfield(TfInfo, 'Normalized') || isempty(TfInfo.Normalized)
+        if ~isempty(strfind(TfInfo.FileName, 'relative2020'))
+            TfInfo.Normalized = 'relative2020';
+        elseif ~isempty(strfind(TfInfo.FileName, 'relative'))
+            TfInfo.Normalized = 'relative';
+        elseif ~isempty(strfind(TfInfo.FileName, 'multiply2020'))
+            TfInfo.Normalized = 'multiply2020';
+        elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
+            TfInfo.Normalized = 'multiply';
+        else
+            TfInfo.Normalized = 'none';
         end
-    elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
-        % Normalized by frequency. 
-        switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2)'];
-            case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits ')'];
-            case 'log',        strAmp = 'Log normalized power   (dB)';
-            otherwise,         strAmp = 'No units';
-        end
-    else
-        switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
-            case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
-            case 'log',        strAmp = 'Log power   (dB)';
-            case 'phase',      strAmp = 'Angle';
-            otherwise,         strAmp = 'No units';
-        end
+    end
+    switch TfInfo.Normalized
+        case {'relative', 'relative2020'}
+            switch lower(TfInfo.Function)
+                % Relative is always compared to total power, then sqrt when magnitude.
+                case 'power',      strAmp = 'Relative power per bin   (no units)';
+                case 'magnitude',  strAmp = 'Sqrt relative power per bin  (no units)';
+                case 'log',        strAmp = 'Log relative power per bin  (dB)';
+                otherwise,         strAmp = 'No units';
+            end
+        case 'multiply2020'
+            % Normalized by frequency.
+            switch lower(TfInfo.Function)
+                case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2)'];
+                case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits ')'];
+                case 'log',        strAmp = 'Log normalized power   (dB)';
+                otherwise,         strAmp = 'No units';
+            end
+        case 'multiply'
+            % Normalized by frequency squared.
+            switch lower(TfInfo.Function)
+                case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2*' TfInfo.FreqUnits ')'];
+                case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '*sqrt(' TfInfo.FreqUnits '))'];
+                case 'log',        strAmp = 'Log normalized power   (dB)';
+                otherwise,         strAmp = 'No units';
+            end
+        otherwise
+            switch lower(TfInfo.Function)
+                case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
+                case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
+                case 'log',        strAmp = 'Log power   (dB)';
+                case 'phase',      strAmp = 'Angle';
+                otherwise,         strAmp = 'No units';
+            end
     end
     ylabel(hAxes, strAmp, ...
         'FontSize',    bst_get('FigFont'), ...

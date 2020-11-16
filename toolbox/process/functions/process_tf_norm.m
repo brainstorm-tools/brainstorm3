@@ -24,6 +24,9 @@ function varargout = process_tf_norm( varargin )
 %
 % Authors: Francois Tadel, 2014
 
+% To do: save TfMat.Normalized = Method.  And then check if already normalized first.  
+% Not done here yet (because this process is category Filter), but done in bst_timefreq.
+
 eval(macro_method);
 end
 
@@ -43,10 +46,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Options: Normalization
-    sProcess.options.normalize.Comment = {'1/f compensation (multiply power by frequency)', 'Relative power (divide by total power)'; ...
-                                          'multiply', 'relative'};
+    sProcess.options.normalize.Comment = {'1/f compensation (multiply power by frequency)', '<FONT color="#a0a0a0">1/f<SUP>2</SUP> compensation (default before Nov 2020)</FONT>', 'Relative power (divide by total power)'; ...
+                                          'multiply2020', 'multiply', 'relative2020'};
     sProcess.options.normalize.Type    = 'radio_label';
-    sProcess.options.normalize.Value   = 'multiply';
+    sProcess.options.normalize.Value   = 'multiply2020';
 end
 
 
@@ -103,10 +106,34 @@ function [TF, errorMsg] = Compute(TF, Measure, Freqs, Method)
     end
     % Different normalization methods
     Factor = [];
-    switch (Method)
+    switch Method
         case 'none'
             % Nothing to do
         case 'multiply'
+            % Frequency bins
+            if isnumeric(Freqs)
+                Factor = Freqs;
+            % Frequency bands
+            elseif iscell(Freqs)
+                BandBounds = process_tf_bands('GetBounds', Freqs);
+                Factor = mean(BandBounds,2);
+            end
+            % If processing power: 
+            if strcmpi(Measure, 'power')
+                Factor = Factor.^2;
+            end
+            % Reshape to have the scaling values in the third dimension
+            Factor = reshape(Factor, 1, 1, []);
+        case 'relative'
+            % Divide by the total (power or magnitude)
+            Factor = 1 ./ sum(TF,3);
+            % If measure is not power/magnitude
+            if ~ismember(lower(Measure), {'power', 'magnitude'})
+                errorMsg = ['Values with measure "' Measure '" cannot be normalized with this process.'];
+                TF = [];
+                return;
+            end
+        case 'multiply2020'
             % Frequency bins
             if isnumeric(Freqs)
                 Factor = Freqs;
@@ -121,7 +148,7 @@ function [TF, errorMsg] = Compute(TF, Measure, Freqs, Method)
             end
             % Reshape to have the scaling values in the third dimension
             Factor = reshape(Factor, 1, 1, []);
-        case 'relative'
+        case 'relative2020'
             % Always sum total power (then sqrt for relative magnitude)
             switch Measure
                 case 'power'

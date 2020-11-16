@@ -698,7 +698,7 @@ for iData = 1:length(Data)
     end
 
     % ===== NORMALIZE VALUES =====
-    if ~isempty(OPTIONS.NormalizeFunc) && strcmpi(OPTIONS.NormalizeFunc, 'multiply')
+    if ~isempty(OPTIONS.NormalizeFunc) && ismember(OPTIONS.NormalizeFunc, {'multiply', 'multiply2020'})
         % Call normalization function
         [TF, errorMsg] = process_tf_norm('Compute', TF, OPTIONS.Measure, OPTIONS.Freqs, OPTIONS.NormalizeFunc);
         % Error handling
@@ -785,6 +785,7 @@ end
         FileMat.RowNames  = RowNames;
         FileMat.Measure   = OPTIONS.Measure;
         FileMat.Method    = OPTIONS.Method;
+        FileMat.Normalized = OPTIONS.NormalizeFunc;
         FileMat.nAvg      = nAvgFile;
         FileMat.Leff      = nAvgFile;
         FileMat.SurfaceFile   = SurfaceFile;

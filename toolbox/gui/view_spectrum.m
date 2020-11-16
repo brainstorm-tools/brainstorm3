@@ -126,6 +126,12 @@ elseif ismember(TfMethod, {'fft', 'psd'})
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end
+% Is this TF normalized?
+if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'Normalized')
+    TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Normalized;
+else
+    TfInfo.Normalized = 'none';
+end
 % Frequency selection: depends on the display type
 if isStaticFreq || strcmpi(DisplayMode, 'Spectrum')
     TfInfo.iFreqs = [];
