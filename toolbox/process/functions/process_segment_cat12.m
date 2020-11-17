@@ -290,10 +290,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);   % CGaser comment: Correct syntax to disable ROI processing for volumes   
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;  % No volume atlases
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 0;
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;  % No volume atlases
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 0;
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 0;
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 0;
     % Spherical registration (much slower)
     if isSphReg && ~isCerebellum    % CGaser comment: Cerebellum extraction is experimental, not to be used routinely
         matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;   % 1: lh+rh
@@ -327,27 +327,27 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     close([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
            findall(0, 'Type', 'Figure', 'Tag', 'CAT')]);
 
-%     % ===== PROJECT ATLASES =====
-%     TessLhFile = file_find(catDir, 'lh.central.*.gii', 2);
-%     if exist('cat_surf_map_atlas', 'file') && file_exist(TessLhFile)
-%         % Get SPM dir
-%         SpmDir = bst_get('SpmDir');
-%         % List of parcellations to project
-%         allAnnot = {...
-%             'lh.aparc_a2009s.freesurfer.annot', ...
-%             'lh.aparc_DK40.freesurfer.annot', ...
-%             'lh.aparc_HCP_MMP1.freesurfer.annot', ...
-%             'lh.Schaefer2018_100Parcels_17Networks_order.annot', ...
-%             'lh.Schaefer2018_200Parcels_17Networks_order.annot', ...
-%             'lh.Schaefer2018_400Parcels_17Networks_order.annot', ...
-%             'lh.Schaefer2018_600Parcels_17Networks_order.annot'};
-%         % Import atlases (cat_surf_map_atlas calls both hemispheres at once)
-%         for annot = allAnnot
-%             bst_progress('text', ['Interpolating atlas: ' annot{1} '...']);
-%             fs_annot = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', annot{1});
-%             cat_surf_map_atlas(TessLhFile, fs_annot);
-%         end
-%     end
+    % ===== PROJECT ATLASES =====
+    TessLhFile = file_find(catDir, 'lh.central.*.gii', 2);
+    if exist('cat_surf_map_atlas', 'file') && file_exist(TessLhFile)
+        % Get SPM dir
+        SpmDir = bst_get('SpmDir');
+        % List of parcellations to project
+        allAnnot = {...
+            'lh.aparc_a2009s.freesurfer.annot', ...
+            'lh.aparc_DK40.freesurfer.annot', ...
+            'lh.aparc_HCP_MMP1.freesurfer.annot', ...
+            'lh.Schaefer2018_100Parcels_17Networks_order.annot', ...
+            'lh.Schaefer2018_200Parcels_17Networks_order.annot', ...
+            'lh.Schaefer2018_400Parcels_17Networks_order.annot', ...
+            'lh.Schaefer2018_600Parcels_17Networks_order.annot'};
+        % Import atlases (cat_surf_map_atlas calls both hemispheres at once)
+        for annot = allAnnot
+            bst_progress('text', ['Interpolating atlas: ' annot{1} '...']);
+            fs_annot = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', annot{1});
+            cat_surf_map_atlas(TessLhFile, fs_annot);
+        end
+    end
     
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
