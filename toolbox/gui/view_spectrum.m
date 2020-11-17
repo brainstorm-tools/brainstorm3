@@ -127,7 +127,7 @@ else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end
 % Is this TF normalized?
-if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'Normalized')
+if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'Normalized') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized)
     TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized;
 else
     TfInfo.Normalized = 'none';
