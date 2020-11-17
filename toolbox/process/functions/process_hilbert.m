@@ -65,8 +65,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.normalize2020.Type    = 'checkbox';
     sProcess.options.normalize2020.Value   = 0;    
     % Old normalize option, for backwards compatibility.
-    %sProcess.options.labelnorm.Comment = '<BR>Spectral flattening:';
-    %sProcess.options.labelnorm.Type    = 'label';
     sProcess.options.normalize.Comment = {'<B>None</B>: Save non-standardized time-frequency maps', '<B>1/f compensation</B>: Multiply output values by frequency'; ...
                                           'none', 'multiply'};
     sProcess.options.normalize.Type    = 'radio_label';
