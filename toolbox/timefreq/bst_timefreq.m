@@ -698,7 +698,7 @@ for iData = 1:length(Data)
     end
 
     % ===== NORMALIZE VALUES =====
-    if ~isempty(OPTIONS.NormalizeFunc) && strcmpi(OPTIONS.NormalizeFunc, 'multiply')
+    if ~isempty(OPTIONS.NormalizeFunc) && ismember(OPTIONS.NormalizeFunc, {'multiply', 'multiply2020'})
         % Call normalization function
         [TF, errorMsg] = process_tf_norm('Compute', TF, OPTIONS.Measure, OPTIONS.Freqs, OPTIONS.NormalizeFunc);
         % Error handling
@@ -710,7 +710,7 @@ for iData = 1:length(Data)
         % Add normalization comment
         if ~isAddedCommentNorm
             isAddedCommentNorm = 1;
-            OPTIONS.Comment = [OPTIONS.Comment ' | ' OPTIONS.NormalizeFunc];
+            OPTIONS.Comment = [OPTIONS.Comment ' | ' strrep(OPTIONS.NormalizeFunc, '2020', '')];
         end
     end
 
@@ -802,6 +802,7 @@ end
         % Options
         FileMat.Options.Method          = OPTIONS.Method;
         FileMat.Options.Measure         = OPTIONS.Measure;
+        FileMat.Options.Normalized      = OPTIONS.NormalizeFunc;
         FileMat.Options.Output          = OPTIONS.Output;
         FileMat.Options.RemoveEvoked    = OPTIONS.RemoveEvoked;
         FileMat.Options.MorletFc        = OPTIONS.MorletFc;

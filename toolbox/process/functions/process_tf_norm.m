@@ -23,6 +23,7 @@ function varargout = process_tf_norm( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2014
+%          Marc Lalancette, 2020
 
 eval(macro_method);
 end
@@ -43,10 +44,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Options: Normalization
-    sProcess.options.normalize.Comment = {'1/f compensation (multiple by frequency)', 'Relative power (divide by total power)'; ...
-                                          'multiply', 'relative'};
+    sProcess.options.normalize.Comment = {'1/f compensation (multiply power by frequency)', '<FONT color="#a0a0a0">1/f<SUP>2</SUP> compensation (default before Nov 2020)</FONT>', 'Relative power (divide by total power)'; ...
+                                          'multiply2020', 'multiply', 'relative2020'};
     sProcess.options.normalize.Type    = 'radio_label';
-    sProcess.options.normalize.Value   = 'multiply';
+    sProcess.options.normalize.Value   = 'multiply2020';
 end
 
 
@@ -59,6 +60,8 @@ end
 %% ===== GET FILE TAG =====
 function fileTag = GetFileTag(sProcess)
     fileTag = sProcess.options.normalize.Value;
+    % Remove '2020'
+    fileTag = strrep(fileTag, '2020', '');
 end
 
 
@@ -68,6 +71,19 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     switch lower(sProcess.options.normalize.Value)
         case {1, 'multiply'},  Method = 'multiply';
         case {2, 'relative'},  Method = 'relative';
+        otherwise
+            Method = lower(sProcess.options.normalize.Value);
+    end
+    % Check if normalization was already applied.
+    if isfield(sInput, 'Options') && isfield(sInput.Options, 'Normalized') && ...
+            ~isempty(sInput.Options.Normalized) && ~isequal(sInput.Options.Normalized, 'none')
+        if isequal(sInput.Options.Normalized, Method)
+            bst_report('Warning', sProcess, sInput, ['Skipping file, requested normalization ' Method ' already applied.']);
+            return;
+        else
+            bst_report('Error', sProcess, sInput, ['Cannot apply multiple normalization methods to the same file. Requested: ' Method ', already applied: ' sInput.Options.Normalized '.']);
+            return;
+        end
     end
     % Load the frequency and measure information
     TfMat = in_bst_timefreq(sInput.FileName, 0, 'Measure', 'Freqs');
@@ -82,6 +98,8 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];
     end
+    % Save normalization info.
+    sInput.Options.Normalized = Method;
 end
 
 
@@ -103,7 +121,7 @@ function [TF, errorMsg] = Compute(TF, Measure, Freqs, Method)
     end
     % Different normalization methods
     Factor = [];
-    switch (Method)
+    switch Method
         case 'none'
             % Nothing to do
         case 'multiply'
@@ -115,21 +133,50 @@ function [TF, errorMsg] = Compute(TF, Measure, Freqs, Method)
                 BandBounds = process_tf_bands('GetBounds', Freqs);
                 Factor = mean(BandBounds,2);
             end
-            % If processing power: square the frequency
+            % If processing power: 
             if strcmpi(Measure, 'power')
-                Factor = Factor .^ 2;
+                Factor = Factor.^2;
             end
             % Reshape to have the scaling values in the third dimension
             Factor = reshape(Factor, 1, 1, []);
         case 'relative'
-            % If measure is not power/magnitude/log
-            if ~ismember(Measure, {'power', 'magnitude'})
+            % Divide by the total (power or magnitude)
+            Factor = 1 ./ sum(TF,3);
+            % If measure is not power/magnitude
+            if ~ismember(lower(Measure), {'power', 'magnitude'})
                 errorMsg = ['Values with measure "' Measure '" cannot be normalized with this process.'];
                 TF = [];
                 return;
             end
-            % Divide by the total power
-            Factor = 1 ./ sum(TF,3);
+        case 'multiply2020'
+            % Frequency bins
+            if isnumeric(Freqs)
+                Factor = Freqs;
+            % Frequency bands
+            elseif iscell(Freqs)
+                BandBounds = process_tf_bands('GetBounds', Freqs);
+                Factor = mean(BandBounds,2);
+            end
+            % If processing magnitude: 
+            if strcmpi(Measure, 'magnitude')
+                Factor = sqrt(Factor);
+            end
+            % Reshape to have the scaling values in the third dimension
+            Factor = reshape(Factor, 1, 1, []);
+        case 'relative2020'
+            % Always sum total power (then sqrt for relative magnitude)
+            switch Measure
+                case 'power'
+                    % Divide by the total power
+                    Factor = 1 ./ sum(TF,3);
+                case 'magnitude'
+                    Factor = 1 ./ sqrt(sum(TF.^2,3));
+                % If measure is not power/magnitude
+                otherwise
+                    errorMsg = ['Values with measure "' Measure '" cannot be normalized with this process.'];
+                    TF = [];
+                    return;
+            end
         otherwise
             errorMsg = ['Invalid normalization method: ' Method];
             TF = [];
