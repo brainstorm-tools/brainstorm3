@@ -2577,14 +2577,8 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     bstList = dir(bst_fullfile(bst_fileparts(mfilename('fullpath')), 'functions', 'process_*.m'));
     bstFunc = {bstList.name};
     % Get the contents of user's custom processes (~user/.brainstorm/process)
-    if ~(exist('isdeployed', 'builtin') && isdeployed)
-        usrList = dir(bst_fullfile(bst_get('UserProcessDir'), 'process_*.m'));
-        usrFunc = {usrList.name};
-    % User processes disabled in compiled code
-    else
-        usrList = [];
-        usrFunc = {};
-    end
+    usrList = dir(bst_fullfile(bst_get('UserProcessDir'), 'process_*.m'));
+    usrFunc = {usrList.name};
     % Display warning for overridden processes
     override = intersect(usrFunc, bstFunc);
     for i = 1:length(override)

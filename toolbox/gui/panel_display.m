@@ -803,14 +803,21 @@ function SetDisplayOptions(sOptions)
             % If there is a selected RowName and if it was updated: Try updating other figures   (Skip update for RefRowName change)
             if ~isempty(sOptions.RowName) && ~isequal(sOptions.RowName, prevRowName) && isempty(TfInfo.RefRowName)
                 % Find other similar figures that could be updated
-                hFigOthers = bst_figures('GetFiguresByType', 'Timefreq');
+                hFigOthers = bst_figures('GetFiguresByType', {'Timefreq','Spectrum','Pac'});
                 hFigOthers = setdiff(hFigOthers, hFig);
                 for i = 1:length(hFigOthers)
                     % Get figure configuration
                     TfInfoOther = getappdata(hFigOthers(i), 'Timefreq');
+                    if iscell(TfInfoOther.RowName) && (length(TfInfoOther.RowName) == 1)
+                        otherRowName = TfInfoOther.RowName{1};
+                    elseif ischar(TfInfoOther.RowName)
+                        otherRowName = TfInfoOther.RowName;
+                    else
+                        otherRowName = [];
+                    end
                     % Check that the figure had the same initial RowName selection
                     % (and skip the figures showing the same file, to allow the change of row for a cloned figure)
-                    if isempty(TfInfoOther) || ~isequal(TfInfoOther.RowName, prevRowName) || isequal(TfInfo.FileName, TfInfoOther.FileName)
+                    if isempty(TfInfoOther) || ~isequal(otherRowName, prevRowName) || (isequal(TfInfo.FileName, TfInfoOther.FileName) && isequal(TfInfo.DisplayMode, TfInfoOther.DisplayMode))
                         continue;
                     end
                     % Get loaded timefreq file
@@ -821,10 +828,22 @@ function SetDisplayOptions(sOptions)
                     % If the new destination RowName also exists in this file: Update figure
                     if ismember(sOptions.RowName, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)
                         % Update figure description
-                        TfInfoOther.RowName = sOptions.RowName;
+                        if iscell(TfInfoOther.RowName)
+                            TfInfoOther.RowName{1} = sOptions.RowName;
+                        else
+                            TfInfoOther.RowName = sOptions.RowName;
+                        end
                         setappdata(hFigOthers(i), 'Timefreq', TfInfoOther);
                         % Redraw this figure
-                        figure_timefreq('UpdateFigurePlot', hFigOthers(i), 1);
+                        FigureId = getappdata(hFigOthers(i), 'FigureId');
+                        switch (FigureId.Type)
+                            case 'Timefreq'
+                                figure_timefreq('UpdateFigurePlot', hFigOthers(i), 1);
+                            case 'Spectrum'
+                                figure_spectrum('UpdateFigurePlot', hFigOthers(i), 1);
+                            case 'Pac'
+                                figure_pac('UpdateFigurePlot', hFigOthers(i));
+                        end
                     end
                 end
             end
@@ -976,7 +995,7 @@ function SetSelectedRowName(hFig, newRowName) %#ok<DEFNU>
     else
         iCurRow = TfInfo.RowName;
     end
-    % Get new row
+    % Get new row index
     if strcmpi(newRowName, 'downarrow')
         iNewRow = min(iCurRow + 1, length(RowNames));
     elseif strcmpi(newRowName, 'uparrow')
@@ -984,32 +1003,19 @@ function SetSelectedRowName(hFig, newRowName) %#ok<DEFNU>
     else
         iNewRow = find(strcmpi(RowNames, newRowName));
     end
-    % Update figure structure
-    if ~isempty(iNewRow)
-        if iscell(RowNames)
-            TfInfo.RowName = RowNames{iNewRow(1)};
-        else
-            TfInfo.RowName = RowNames(iNewRow(1));
-        end
-        setappdata(hFig, 'Timefreq', TfInfo);
+    if isempty(iNewRow)
+        return;
     end
-    % If row selection was modified: Update figure
-    if ~strcmpi(oldRowName, TfInfo.RowName)
-        FigureId = getappdata(hFig, 'FigureId');
-        % Redraw figure
-        switch (FigureId.Type)
-            case 'Timefreq'
-                figure_timefreq('UpdateFigurePlot', hFig);
-            case 'Spectrum'
-                figure_spectrum('UpdateFigurePlot', hFig, 1);
-            case 'Pac'
-                figure_pac('UpdateFigurePlot', hFig);
-            case 'Connect'
-                warning('todo');
-        end
-        % Update panel
-        UpdatePanel(hFig);
+    % Get new row name
+    if iscell(RowNames)
+        NewRowName = RowNames{iNewRow(1)};
+    else
+        NewRowName = RowNames(iNewRow(1));
     end
+    % Update Display panel options
+    sOptions = GetDisplayOptions();
+    sOptions.RowName = NewRowName;
+    SetDisplayOptions(sOptions);
 end
 
 

@@ -1224,7 +1224,7 @@ function UpdateFigurePlot(hFig, isForced)
     
     % ===== DISPLAY =====
     % Clear figure
-    clf(hFig);
+    % clf(hFig);   => Commented out by FT on 17-nov-2020: not sure why this is needed
     % Plot data in the axes
     PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits, DisplayFactor);
     hAxes = PlotHandles.hAxes;

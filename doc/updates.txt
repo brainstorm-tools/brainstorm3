@@ -1,6 +1,8 @@
 ---------------------------------------------------------------
 November 2020
 - Python: New integration with Python and MNE-Python based on CPython
+- Distrib: Compiled version now includes NIRSTORM, Brain2Mesh and Iso2Mesh
+- Anatomy: Updated CAT12 to version r1733
 ---------------------------------------------------------------
 October 2020
 - Major bug fix: Changed units in PSD computation

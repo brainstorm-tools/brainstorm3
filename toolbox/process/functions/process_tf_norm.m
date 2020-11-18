@@ -23,6 +23,7 @@ function varargout = process_tf_norm( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2014
+%          Marc Lalancette, 2020
 
 % To do: save TfMat.Normalized = Method.  And then check if already normalized first.  
 % Not done here yet (because this process is category Filter), but done in bst_timefreq.
