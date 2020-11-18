@@ -1204,13 +1204,19 @@ function UpdateFigurePlot(hFig, isForced)
     % Display units
     DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
     DisplayFactor = 1;
+    % Check measure for baseline normalized data.
+    if ~isfield(TfInfo, 'Measure') || isempty(TfInfo.Measure)
+        TfInfo.Measure = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure;
+    end
+    if ~isfield(TfInfo, 'OrigMeasure') || isempty(TfInfo.OrigMeasure)
+        TfInfo.OrigMeasure = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Measure;
+    end
     if isempty(DisplayUnits)
-        % Get signal units and display factor
-        % Check if relative or normalized spectrum
-        if ~isempty(strfind(TfInfo.FileName, 'relative'))
-            DisplayUnits = 'no units';
-        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+        % Get signal units and display factor 
+        if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
             [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
+        else
+            DisplayUnits = 'signal units';
         end
     end
     switch lower(TfInfo.Function)
@@ -1220,6 +1226,11 @@ function UpdateFigurePlot(hFig, isForced)
             % Force linear y scale for log-power dB
             TsInfo.YScale = 'linear';
             setappdata(hFig, 'TsInfo', TsInfo);
+    end
+    % Force linear y scale if data is all negative.
+    if all(TF(:) <= 0)
+        TsInfo.YScale = 'linear';
+        setappdata(hFig, 'TsInfo', TsInfo);
     end
     
     % ===== DISPLAY =====
@@ -1397,8 +1408,14 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
         % Compute the scale
         if strcmpi(TsInfo.YScale, 'log')
             % Avoid 0 for log scales.
-            if Fmax(1) <= 0
-                Fmax(1) = min(TF(TF(:)>0));
+            if Fmax(1) <= 0 
+                if any(TF(:)>0)
+                    Fmax(1) = min(TF(TF(:)>0));
+                else
+                    % All negative, just set default scale, user should turn off log scale.
+                    % Should not happen normally, as we force lin scale if all negative.
+                    Fmax = [0.1, 1];
+                end
             end
             YLim = Fmax;
         else
@@ -1413,54 +1430,70 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     end
     if isempty(PlotHandles.DisplayUnits)
         PlotHandles.DisplayUnits = 'signal units';
+    elseif isequal(PlotHandles.DisplayUnits, 't')
+        % Make more readable.
+        PlotHandles.DisplayUnits = 't-values';
     end
-    % For older spectrum files, look in file name if normalized.
-    if ~isfield(TfInfo, 'Normalized') || isempty(TfInfo.Normalized)
-        if ~isempty(strfind(TfInfo.FileName, 'relative2020'))
-            TfInfo.Normalized = 'relative2020';
-        elseif ~isempty(strfind(TfInfo.FileName, 'relative'))
-            TfInfo.Normalized = 'relative';
-        elseif ~isempty(strfind(TfInfo.FileName, 'multiply2020'))
-            TfInfo.Normalized = 'multiply2020';
-        elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
-            TfInfo.Normalized = 'multiply';
-        else
-            TfInfo.Normalized = 'none';
-        end
+    % Detect non standard measures with provided units.
+    if ~isfield(TfInfo, 'Measure') 
+        TfInfo.Measure = '';
     end
-    switch TfInfo.Normalized
-        case {'relative', 'relative2020'}
-            switch lower(TfInfo.Function)
-                % Relative is always compared to total power, then sqrt when magnitude.
-                case 'power',      strAmp = 'Relative power per bin   (no units)';
-                case 'magnitude',  strAmp = 'Sqrt relative power per bin  (no units)';
-                case 'log',        strAmp = 'Log relative power per bin  (dB)';
-                otherwise,         strAmp = 'No units';
+    if ~isfield(TfInfo, 'OrigMeasure')
+        TfInfo.OrigMeasure = '';
+    end
+    switch lower(TfInfo.Measure)
+        case {'zscore', 'ersd', 'db'}
+            strAmp = ['Baseline normalized ' TfInfo.OrigMeasure ' (' PlotHandles.DisplayUnits ')'];
+        case 'divmean'
+            strAmp = ['Baseline relative ' TfInfo.OrigMeasure ' (no units)'];
+        case 'contrast'
+            strAmp = ['Baseline contrasted ' TfInfo.OrigMeasure ' (no units)'];
+        case 'bl'
+            switch lower(TfInfo.OrigMeasure)
+                case 'power',      strAmp = ['Baseline subtracted ' TfInfo.OrigMeasure ' (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
+                case 'magnitude',  strAmp = ['Baseline subtracted ' TfInfo.OrigMeasure ' (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits ')'];
+                otherwise,         strAmp = ['Baseline subtracted ' TfInfo.OrigMeasure ' (' PlotHandles.DisplayUnits ')'];
             end
-        case 'multiply2020'
-            % Normalized by frequency.
-            switch lower(TfInfo.Function)
-                case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2)'];
-                case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits ')'];
-                case 'log',        strAmp = 'Log normalized power   (dB)';
-                otherwise,         strAmp = 'No units';
+        case {'power', 'magnitude'}
+            switch TfInfo.Normalized
+                case {'relative', 'relative2020'}
+                    switch lower(TfInfo.Function)
+                        % Relative is always compared to total power, then sqrt when magnitude.
+                        case 'power',      strAmp = 'Relative power per bin   (no units)';
+                        case 'magnitude',  strAmp = 'Sqrt relative power per bin  (no units)';
+                        case 'log',        strAmp = 'Log relative power per bin  (dB)';
+                        otherwise,         strAmp = 'No units';
+                    end
+                case 'multiply2020'
+                    % Normalized by frequency.
+                    switch lower(TfInfo.Function)
+                        case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2)'];
+                        case 'magnitude',  strAmp = ['Sqrt normalized power   (' PlotHandles.DisplayUnits ')'];
+                        case 'log',        strAmp = 'Log normalized power   (dB)';
+                        otherwise,         strAmp = 'No units';
+                    end
+                case 'multiply'
+                    % Normalized by frequency squared.
+                    switch lower(TfInfo.Function)
+                        case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2*' TfInfo.FreqUnits ')'];
+                        case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits '*sqrt(' TfInfo.FreqUnits '))'];
+                        case 'log',        strAmp = 'Log normalized power   (dB)';
+                        otherwise,         strAmp = 'No units';
+                    end
+                otherwise
+                    switch lower(TfInfo.Function)
+                        case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
+                        case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
+                        case 'log',        strAmp = 'Log power   (dB)';
+                        case 'phase',      strAmp = 'Angle';
+                        otherwise,         strAmp = 'No units';
+                    end
             end
-        case 'multiply'
-            % Normalized by frequency squared.
-            switch lower(TfInfo.Function)
-                case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2*' TfInfo.FreqUnits ')'];
-                case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '*sqrt(' TfInfo.FreqUnits '))'];
-                case 'log',        strAmp = 'Log normalized power   (dB)';
-                otherwise,         strAmp = 'No units';
-            end
+        % Unknown measure (or not yet implemented)
+        case ''
+            strAmp = [TfInfo.OrigMeasure ' (' PlotHandles.DisplayUnits ')'];
         otherwise
-            switch lower(TfInfo.Function)
-                case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
-                case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
-                case 'log',        strAmp = 'Log power   (dB)';
-                case 'phase',      strAmp = 'Angle';
-                otherwise,         strAmp = 'No units';
-            end
+            strAmp = [TfInfo.Measure ' (' PlotHandles.DisplayUnits ')'];
     end
     ylabel(hAxes, strAmp, ...
         'FontSize',    bst_get('FigFont'), ...

@@ -4369,6 +4369,17 @@ function ScaleToFitY(hFig, ev)
         end
     end
     
+    % Catch exceptions
+    if YLim(1) == YLim (2)
+        if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
+            YLim = YLimInit;
+        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
+            YLim = PlotHandles.DataMinMax;
+        else
+            YLim = [-1, 1];
+        end
+    end
+    
     % Rescale axis
     set(hAxes, 'YLim', YLim);
     % Update TimeCursor position
