@@ -158,7 +158,11 @@ TsInfo.ShowYGrid = bst_get('ShowYGrid');
 TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
 TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 TsInfo.XScale = bst_get('XScale');
-TsInfo.YScale = bst_get('YScale');
+if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, 'psd')
+    TsInfo.YScale = bst_get('YScale');
+else
+    TsInfo.YScale = 'linear';
+end
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel
