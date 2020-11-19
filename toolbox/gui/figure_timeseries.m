@@ -4368,7 +4368,6 @@ function ScaleToFitY(hFig, ev)
             YLim(2) = min(YLim(2), PlotHandles.DataMinMax(2) * PlotHandles.DisplayFactor);
         end
     end
-    
     % Catch exceptions
     if YLim(1) == YLim (2)
         if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)

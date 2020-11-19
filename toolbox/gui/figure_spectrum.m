@@ -1219,18 +1219,8 @@ function UpdateFigurePlot(hFig, isForced)
             DisplayUnits = 'signal units';
         end
     end
-    switch lower(TfInfo.Function)
-        case 'power'
-            DisplayFactor = DisplayFactor.^2;
-        case 'log'
-            % Force linear y scale for log-power dB
-            TsInfo.YScale = 'linear';
-            setappdata(hFig, 'TsInfo', TsInfo);
-    end
-    % Force linear y scale if data is all negative.
-    if all(TF(:) <= 0)
-        TsInfo.YScale = 'linear';
-        setappdata(hFig, 'TsInfo', TsInfo);
+    if isequal(TfInfo.Function, 'power')
+        DisplayFactor = DisplayFactor.^2;
     end
     
     % ===== DISPLAY =====
@@ -1244,10 +1234,6 @@ function UpdateFigurePlot(hFig, isForced)
     setappdata(hAxes, 'YLimInit', get(hAxes, 'YLim'));
     % Update figure list of handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
-    % Hide high amplitudes for very low frequencies when linear y scale.
-    if isSpectrum && isequal(TsInfo.YScale, 'linear') && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
-        figure_timeseries('ScaleToFitY', hFig);
-    end
     % X Axis legend
     xlabel(hAxes, XLegend, ...
         'FontSize',    bst_get('FigFont'), ...
@@ -1288,7 +1274,12 @@ function UpdateFigurePlot(hFig, isForced)
         set(hAxes, 'YMinorGrid', 'on');
     end
     set(hAxes, 'XScale', TsInfo.XScale);
-    set(hAxes, 'YScale', TsInfo.YScale);
+    % Hide high amplitudes for very low frequencies when linear y scale.
+    if isSpectrum && isequal(TsInfo.YScale, 'linear') && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
+        figure_timeseries('SetScaleModeY', hFig, TsInfo.YScale); % also calls ScaleToFitY
+    else
+        set(hAxes, 'YScale', TsInfo.YScale);
+    end
 
     % Create scale buttons
     if isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
