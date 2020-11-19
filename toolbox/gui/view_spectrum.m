@@ -126,7 +126,7 @@ elseif ismember(TfMethod, {'fft', 'psd'})
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end
-% Is this TF normalized? For older spectrum files, look in file name.
+% Checi if this TF is normalized. For older spectrum files, look in file name.
 if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'Normalized') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized)
     TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized;
 elseif ~isempty(strfind(TfInfo.FileName, 'relative2020'))
