@@ -26,7 +26,7 @@ function hFig = view_leadfields(HeadmodelFiles)
 % =============================================================================@
 %
 % Authors: John Mosher, Takfarinas Medani, Francois Tadel, 2020
-
+%               Juan Garcia-Prieto : add logarithmic scale for LF vectors  
 
 %% ===== PARSE INPUTS =====
 if ischar(HeadmodelFiles)
@@ -149,11 +149,16 @@ hLabel = uicontrol('Style', 'text', ...
 
 %% ===== DISPLAY LEADFIELD =====
 % Current sensor
+useLogScale = false;
+useLogScaleLegendMsg = 'Off';
 iChannel = 1;
+% initial value for the quiver display
+quiverSize = 1;
+quiverWidth = 1;
+thresholdAmplitude = 1; % ratio of the amplitude
+thresholdBalance = 0; % orientation of the threshold "<" or " >"
 DrawArrows();
 bst_progress('stop');
-
-
 
 %% =================================================================================
 %  === INTERNAL CALLBACKS ==========================================================
@@ -163,34 +168,90 @@ bst_progress('stop');
     function KeyPress_Callback(hFig, keyEvent)
         switch (keyEvent.Key)
             % === LEFT, RIGHT, PAGEUP, PAGEDOWN : Processed by TimeWindow  ===
-            case {'leftarrow', 'space', 'uparrow'}
-                iChannel = iChannel - 1;
-            case 'pagedown'
-                iChannel = iChannel - 10;
-            case {'rightarrow', 'downarrow'}
-                iChannel = iChannel + 1;
-            case 'pageup'
-                iChannel = iChannel + 10;
+            case {'leftarrow',} 
+                if ismember('shift', keyEvent.Modifier)
+                    quiverSize = quiverSize /1.2;
+                elseif ismember('control', keyEvent.Modifier)
+                    quiverWidth = quiverWidth /1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    thresholdAmplitude = thresholdAmplitude - 0.01;
+                else
+                    iChannel = iChannel - 1; 
+                end
+            case {'rightarrow'}
+                 if ismember('shift', keyEvent.Modifier)
+                    quiverSize = quiverSize * 1.2;
+                 elseif ismember('control', keyEvent.Modifier)
+                     quiverWidth = quiverWidth * 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    thresholdAmplitude = thresholdAmplitude + 0.01;
+                 else
+                     iChannel = iChannel + 1;
+                 end
+            case 'uparrow'
+                if ismember('shift', keyEvent.Modifier)
+                    quiverSize = quiverSize * 1.2;
+                elseif ismember('control', keyEvent.Modifier)
+                    quiverWidth = quiverWidth * 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    thresholdAmplitude = thresholdAmplitude + 0.01;
+                 else                   
+                    if ~isempty(iRef)
+                        iRef = iRef + 1;
+                    end
+                end
+            case 'downarrow'
+                if ismember('shift', keyEvent.Modifier)
+                    quiverSize = quiverSize / 1.2;
+                 elseif ismember('control', keyEvent.Modifier)
+                    quiverWidth = quiverWidth / 1.2;
+                elseif ismember('alt', keyEvent.Modifier)
+                    thresholdAmplitude = thresholdAmplitude - 0.01;
+                 else
+                    if ~isempty(iRef)
+                        iRef = iRef - 1;
+                    end
+                end
             case 'r' %% not for MEG
                 SelectReference();
+            case 't' %% not for MEG
+                SelectTarget();
             case 's'
                 if ~isempty(findobj(hFig, 'Tag', 'SetVertices'))
                     delete(findobj(hFig, 'Tag', 'SetVertices'))
                 else
-                    hold on;
                     plot3(HeadmodelMat{1}.GridLoc(:,1), HeadmodelMat{1}.GridLoc(:,2), HeadmodelMat{1}.GridLoc(:,3), 'r.', ...
                         'Parent', hAxes, ...
                         'Tag', 'SetVertices');
                 end
             case 'e'
-                hold on;
-                % Plot sensors
-                if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
-                    delete(findobj(hAxes, 'Tag', 'allChannel'))
+                if ~ismember('shift', keyEvent.Modifier)
+                    % Plot sensors
+                    if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
+                        delete(findobj(hAxes, 'Tag', 'allChannel'))
+                    else
+                        if length(Channels) > 10
+                            hSensors = figure_3d('PlotSensorsNet', hAxes, markersLocs, 0, 0);
+                            set(hSensors, 'LineWidth', 1, 'MarkerSize', 5,'Tag','allChannel');
+                        end
+                    end
                 else
-                    if length(Channels) > 10
-                        hSensors = figure_3d('PlotSensorsNet', hAxes, markersLocs, 0, 0);
-                        set(hSensors, 'LineWidth', 1, 'MarkerSize', 5,'Tag','allChannel');
+                    % Plot sensors name
+                    if ~isempty(findobj(hAxes, 'Tag', 'allChannelName'))
+                        delete(findobj(hAxes, 'Tag', 'allChannelName'))
+                    else
+                        if length(Channels) > 10
+                            %hSensors = figure_3d('PlotSensorsNet', hAxes, markersLocs, 0, 0);
+                            %set(hSensors,'Tag','allChannelName');
+                            channelAllName = cell(length(Channels),1);
+                            for iChan = 1 : length(Channels)
+                                channelAllName{iChan} = Channels(iChan).Name;
+                            end
+                            text(markersLocs(:,1), markersLocs(:,2), markersLocs(:,3),channelAllName,...
+                                'color','y',...
+                                'Parent', hAxes, ...
+                                'Tag', 'allChannelName');
+                        end
                     end
                 end
             case 'm'
@@ -201,18 +262,54 @@ bst_progress('stop');
                 if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
                     delete(findobj(hAxes, 'Tag', 'allChannel'))
                 end
+           
+            case 'l'
+                if ismember('shift', keyEvent.Modifier)
+                    useLogScale = ~useLogScale;
+                    if (useLogScale)
+                        useLogScaleLegendMsg = 'On';
+                    else
+                        useLogScaleLegendMsg = 'Off';
+                    end
+                end
+                
+             case 'return'
+                if ismember('shift', keyEvent.Modifier)
+                    useLogScale = ~useLogScale;
+                    if (useLogScale)
+                        useLogScaleLegendMsg = 'On';
+                    else
+                        useLogScaleLegendMsg = 'Off';
+                    end
+                elseif ismember('alt', keyEvent.Modifier)
+                     thresholdBalance = ~thresholdBalance;
+                else
+                    return;    
+                end
             case 'h'
                 java_dialog('msgbox', ['<HTML><TABLE>' ...
-                    '<TR><TD><B>Left arrow</B></TD><TD>Previous channel</TD></TR>' ....
-                    '<TR><TD><B>Right arrow</B></TD><TD>Next channel</TD></TR>'....
-                    '<TR><TD><B>Page up</B></TD><TD>Previous 10th channel</TD></TR>'....
-                    '<TR><TD><B>Page down</B></TD><TD>Next 10th channel</TD></TR>'....
+                    '<TR><TD><B>Left arrow</B></TD><TD>Previous target channel (red color)</TD></TR>' ....
+                    '<TR><TD><B>Right arrow</B></TD><TD>Next target channel (red color)</TD></TR>'....
+                    '<TR><TD><B>Up arrow</B></TD><TD>Previous ref channel (green color)</TD></TR>'....
+                    '<TR><TD><B>Down arrow</B></TD><TD>Next ref channel (green color)</TD></TR>'....
+                    '<TR><TD><B>Shift + uparrow</B></TD><TD>Increase the vector length</TD></TR>'...
+                    '<TR><TD><B>Shift + downarrow</B></TD><TD>Decrease the vector length</TD></TR>'...                   
+                    '<TR><TD><B>Shift + L</B></TD><TD>Toggle on/off logarithmic scale</TD></TR>'...
+                    '<TR><TD><B>Control + uparrow</B></TD><TD>Increase the vector width</TD></TR>'...
+                    '<TR><TD><B>Control + downarrow</B></TD><TD>Decrease the vector width</TD></TR>'... 
+                    '<TR><TD><B>Alt + Enter </B></TD><TD>Toggle to superior/inferior for LF threshold</TD></TR>'...
+                    '<TR><TD><B>Alt + uparrow </B></TD><TD>Increase Amplitude threshold</TD></TR>'...
+                    '<TR><TD><B>Alt + downarrow </B></TD><TD>Decrease Amplitude threshold</TD></TR>'...
                     '<TR><TD><B>M</B></TD><TD>Change the <B>M</B>odality (MEG, EEG, SEEG, ECOG)</TD></TR>'....
-                    '<TR><TD><B>R</B></TD><TD>Change the <B>R</B>eference electrode</TD></TR>'....
+                    '<TR><TD><B>R</B></TD><TD>Select the <B>R</B>eference channel</TD></TR>'....
+                    '<TR><TD><B>T</B></TD><TD>Select the <B>T</B>arget channel</TD></TR>'....
                     '<TR><TD><B>S</B></TD><TD>Show/hide the source grid</TR>'....
-                    '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR></TABLE>'], 'Keyboard shortcuts');
+                    '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR>'...
+                    '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>'...
+                    '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'...
+                    '</TABLE>'], 'Keyboard shortcuts');      
             otherwise
-                KeyPressFcn_bak(hQuiver, keyEvent);
+                KeyPressFcn_bak(hFig, keyEvent); 
                 return;
         end
         % Redraw arrows
@@ -222,9 +319,23 @@ bst_progress('stop');
         if (iChannel > length(Channels))
             iChannel = 1;
         end
+        % Redraw arrows
+        if (iRef <= 0)
+            iRef = length(Channels);
+        end
+        if (iRef > length(Channels))
+            iRef = 1;
+        end
+        
+        if thresholdAmplitude <= 0
+            thresholdAmplitude = 0;
+        end        
+        if thresholdAmplitude >= 1
+            thresholdAmplitude = 1;
+        end
+        
         DrawArrows();
     end
-
 
 %% ===== DRAW CURRENT CHANNEL =====
     function DrawArrows()
@@ -255,17 +366,39 @@ bst_progress('stop');
             end
             % Display arrows
             LeadField = reshape(LeadField,3,[])'; % each column is a vector
+            if(useLogScale)
+                LeadField = LogScaleLeadfield(LeadField);
+            end
+            
+            % thresholding
+            normLF = sqrt((LeadField(:,1) ).^2 +(LeadField(:,2) ).^2 + (LeadField(:,3)).^2);
+            [col1, ind] = sort(normLF, 'ascend');
+            LeadFieldReordered = LeadField(ind,:);
+            cdf = cumsum(col1); % Compute cdf
+            cdf = cdf/cdf(end); % Normalize
+            % Find index bellow or above the thresholding
+            if thresholdBalance == 0 % 0 ==> inferior and 1 is superior 
+                index = find(cdf <= thresholdAmplitude);
+                iSymbole = '<=';
+            else
+                index = find(cdf > thresholdAmplitude);   
+                iSymbole = '>';
+            end
+            dataValue = zeros(size(LeadFieldReordered));
+            dataValue(index,:) = LeadFieldReordered(index,:);
+
             hQuiver(iLF) = quiver3(...
-                HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ...
-                LeadField(:,1), LeadField(:,2), LeadField(:,3), ...
-                5, ...
+                ...HeadmodelMat{iLF}.GridLoc(:,1), HeadmodelMat{iLF}.GridLoc(:,2), HeadmodelMat{iLF}.GridLoc(:,3), ... % These two line are remaining in order to check if the thresholding display is correct
+                ...LeadField(:,1), LeadField(:,2), LeadField(:,3), ...
+                HeadmodelMat{iLF}.GridLoc(ind,1), HeadmodelMat{iLF}.GridLoc(ind,2), HeadmodelMat{iLF}.GridLoc(ind,3), ...
+                dataValue(:,1), dataValue(:,2), dataValue(:,3), ...
+                quiverSize, ...
                 'Parent',    hAxes, ...
-                'LineWidth', 1, ...
+                'LineWidth', quiverWidth, ...
                 'Color',     ColorOrder(mod(iLF-1, length(ColorOrder)) + 1, :), ...
                 'Tag',       'lfArrows');
             % Arrow legends
             strLegend{iLF} = [SubjectName{iLF} ' : ' selectedModality  ' ' HeadmodelMat{iLF}.Comment];
-            hold on
         end
 
         % Remove previous selected sensor
@@ -299,18 +432,18 @@ bst_progress('stop');
             end
             % Title bar (channel name)
             if isAvgRef
-                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = AvgRef', iChannel, length(Channels), Channels(iChannel).Name,selectedModality);
+                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = AvgRef  | Amp threshold %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality, iSymbole,  num2str(thresholdAmplitude*100),useLogScaleLegendMsg);
             else
-                strTitle = sprintf('Channel #%d/%d  (%s) | %s ref Channel = %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name);
+                strTitle = sprintf('Target channel(red) #%d/%d  (%s) | %s Ref Channel(green) = %s| Amp threshold %s %s %%| Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name,selectedModality,Channels(iRef).Name, iSymbole, num2str(thresholdAmplitude*100),useLogScaleLegendMsg);
             end
         else
-            strTitle = sprintf('Channel #%d/%d  (%s)', iChannel, length(Channels), Channels(iChannel).Name);            
+            strTitle = sprintf('Target channel (red) #%d/%d  (%s) | Amp threshold %s %s %%|Log. scale %s', iChannel, length(Channels), Channels(iChannel).Name, iSymbole,num2str(thresholdAmplitude*100),useLogScaleLegendMsg);
         end
         
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, '       [Press arrows for next/previous channel (or H for help)]'];
         end
-        set(hLabel, 'String', strTitle, 'Position', [10 1 1200 35]);
+        set(hLabel, 'String', strTitle, 'Position', [10 1 1600 35],'ForegroundColor', [1 1 1]);
         % Arrows legend
         legend(hQuiver, strLegend, ...
             'TextColor',   'w', ...
@@ -351,26 +484,32 @@ bst_progress('stop');
     function isOk = SelectReference()
         isOk = 1;
         if ~strcmp(selectedModality,'MEG')
-            [isAvgRef, isCancel] = java_dialog('confirm', ...
-                ['<HTML>Do you want to use the <B>average refence</B> for the ' selectedModality ' ?<BR>'...
-                'Otherwise you will choose one reference electrode.'], [selectedModality ' average reference'], [], ...
-                {'Yes, use average reference'}, 1);
-            if isCancel
+            % Ask for the reference electrode
+            refChan = java_dialog('combo', '<HTML>Select the reference channel (green color):<BR><BR>', [selectedModality ' reference'], [], {'Average Ref', Channels.Name});
+            if isempty(refChan)
                 isOk = 0;
                 return;
             end
-            if ~isAvgRef
-                % Ask for the reference electrode
-                refChan = java_dialog('combo', '<HTML>Select the reference channel:<BR><BR>', [selectedModality ' reference'], [], {Channels.Name});
-                if isempty(refChan)
-                    isOk = 0;
-                    return;
-                end
-                iRef = find(strcmpi({Channels.Name}, refChan));
+            iRef = find(strcmpi({Channels.Name}, refChan));
+            if isempty(iRef)
+                isAvgRef = 1;
+            else
+                isAvgRef = 0;
             end
         end
     end
 
+%% ===== SET TARGET =====
+    function isOk = SelectTarget()
+        isOk = 1;
+        % Ask for the target electrode
+        trgChan = java_dialog('combo', '<HTML>Select the target channel (red color):<BR><BR>', [selectedModality ' Target'], [], {Channels.Name});
+        if isempty(trgChan)
+            isOk = 0;
+            return;
+        end
+        iChannel = find(strcmpi({Channels.Name}, trgChan));
+    end
 
 %% ===== GET LEADFIELD =====
     function GetLeadField       
@@ -378,5 +517,17 @@ bst_progress('stop');
         for iLF = 1:length(HeadmodelFiles)
             LF_finale{iLF} = HeadmodelMat{iLF}.Gain(iChannels,:);
         end
+    end
+
+%% ===== LEADFIELD TO LOG SPACE =====
+    function lf_log = LogScaleLeadfield(lf)
+        lf_2 = lf.^2;
+        r = sqrt(sum(lf_2,2));
+        rho = sqrt(lf_2(:,1) + lf_2(:,2));
+        t = atan2(rho,lf(:,3));
+        f = atan2(lf(:,2),lf(:,1));
+        lf_log = [ log10(r) .* sin(t) .* cos(f) ...
+                   log10(r) .* sin(t) .* sin(f) ...
+                   log10(r) .* cos(t)];
     end
 end

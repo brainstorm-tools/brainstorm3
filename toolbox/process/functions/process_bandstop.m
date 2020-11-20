@@ -223,14 +223,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
         case 'fieldtrip_butter'
             FiltSpec.NumT = FiltSpec.b(1,:) ; 
             FiltSpec.DenT = FiltSpec.a(1,:) ; 
-%             if length(FreqList)>1
-%                 for ifreq = 2:length(FreqList)
-%                     FiltSpec.NumT = conv(FiltSpec.NumT,FiltSpec.b(ifreq,:)) ; 
-%                     FiltSpec.DenT = conv(FiltSpec.DenT,FiltSpec.a(ifreq,:)) ; 
-%                 end
-%             end
             FiltSpec.order = length(FiltSpec.DenT)-1 ;
-%             FiltSpec.cutoffBand = FreqBand ; 
             % Compute the cumulative energy of the impulse response
             [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
             E = h(1:end) .^ 2 ;
@@ -253,6 +246,10 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     FreqList  = sProcess.options.freqlist.Value{1};
     FreqWidth = sProcess.options.freqwidth.Value{1};
     method    = 'fieldtrip_butter';
+    if isempty(FreqList) || isempty(FreqWidth)
+        disp('BST> No frequencies selected.');
+        return;
+    end
     % Compute filter specification
     [tmp, FiltSpec, Messages] =  Compute([], sfreq, FreqList, FreqWidth, method);
     if isempty(FiltSpec)
@@ -275,10 +272,9 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     end
     XFreqLim = [Freqs(1) Freqs(end)] ; 
 
-%   % Filter description: Left panel
+    % Filter description: Left panel
     strFilter1 = ['<HTML> Filter type: <B>Butterworth IIR filter</B>' '<BR>'];
     strFilter1 = [strFilter1 'Absolute value of the largest pole: &nbsp;&nbsp;<B>' num2str(max(abs(roots(a)))) '</B><BR>'];
-%     strFilter1 = [strFilter1 '3-dB Bandstop band: &nbsp;&nbsp;<B>' num2str(FiltSpec.cutoffBand(1)) '-' num2str(FiltSpec.cutoffBand(2)) ' Hz</B><BR>'];    
 
     % Filter description: Right panel
     strFilter2 = '<HTML>';
@@ -288,5 +284,4 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     strFilter2 = [strFilter2 'Sampling frequency: &nbsp;&nbsp;<B>', num2str(sfreq), ' Hz</B><BR>'];
 
     hFig = process_bandpass('HFilterDisplay',Hf,Freqs,Ht,t,FiltSpec.transient,strFilter1,strFilter2,XFreqLim) ; 
-
 end

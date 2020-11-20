@@ -126,6 +126,12 @@ elseif ismember(TfMethod, {'fft', 'psd'})
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end
+% Is this TF normalized?
+if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'Normalized') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized)
+    TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized;
+else
+    TfInfo.Normalized = 'none';
+end
 % Frequency selection: depends on the display type
 if isStaticFreq || strcmpi(DisplayMode, 'Spectrum')
     TfInfo.iFreqs = [];
@@ -152,7 +158,11 @@ TsInfo.ShowYGrid = bst_get('ShowYGrid');
 TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
 TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 TsInfo.XScale = bst_get('XScale');
-TsInfo.YScale = bst_get('YScale');
+if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, 'psd')
+    TsInfo.YScale = bst_get('YScale');
+else
+    TsInfo.YScale = 'linear';
+end
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel

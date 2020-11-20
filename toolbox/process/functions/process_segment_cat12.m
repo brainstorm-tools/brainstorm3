@@ -69,9 +69,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sphreg.Type    = 'checkbox';
     sProcess.options.sphreg.Value   = 1;
     % Option: Import extra map
-    sProcess.options.extramaps.Comment = 'Import additonal cortical maps<BR><I><FONT color="#777777">Cortical thickness, gyrification index, sulcal depth</FONT></I>';
+    sProcess.options.extramaps.Comment = 'Import additional cortical maps<BR><I><FONT color="#777777">Cortical thickness, gyrification index, sulcal depth</FONT></I>';
     sProcess.options.extramaps.Type    = 'checkbox';
     sProcess.options.extramaps.Value   = 0;
+    % Option: Compute cerebellum surfaces
+    sProcess.options.cerebellum.Comment = '<FONT color="#777777">Compute cerebellum surfaces [Experimental]</FONT>';
+    sProcess.options.cerebellum.Type    = 'checkbox';
+    sProcess.options.cerebellum.Value   = 0;
 end
 
 
@@ -95,6 +99,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isSphReg = sProcess.options.sphreg.Value;
     else
         isSphReg = 1;
+    end
+    % Cerebellum?
+    if isfield(sProcess.options, 'cerebellum') && isfield(sProcess.options.cerebellum, 'Value') && ~isempty(sProcess.options.cerebellum.Value)
+        isCerebellum = sProcess.options.cerebellum.Value;
+    else
+        isCerebellum = 1;
     end
     % TPM atlas
     if isfield(sProcess.options, 'tpmnii') && isfield(sProcess.options.tpmnii, 'Value') && ~isempty(sProcess.options.tpmnii.Value) && ~isempty(sProcess.options.tpmnii.Value{1})
@@ -121,7 +131,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, [], nVertices, TpmNii, isSphReg, isExtraMaps, 0);
+    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0, TpmNii, isSphReg, isExtraMaps, isCerebellum);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -134,7 +144,7 @@ end
 
 
 %% ===== COMPUTE CAT12 SEGMENTATION =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphReg, isExtraMaps, isInteractive)
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isExtraMaps, isCerebellum)
     isOk = 0;
     errMsg = '';
     % Initialize SPM
@@ -149,19 +159,20 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
         errMsg = 'SPM subfolders must be in the Matlab path to use this feature (missing: spm12/toolbox/cat12).';
         return;
     end
-    % Check DARTEL template
-    SpmDir = bst_get('SpmDir');
-    dartelTpm = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_volumes', 'Template_1_IXI555_MNI152.nii');
-    if ~file_exist(dartelTpm)
-        dartelTpm = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_1.50mm', 'Template_1_IXI555_MNI152.nii');
-        if ~file_exist(dartelTpm)
-            errMsg = ['Missing CAT12 template: ' 10 dartelTpm];
-            return;
-        else
-            catVer = 12;
-        end
-    else
-        catVer = 12.7;
+    % Check CAT version
+    [catName, catVer] = cat_version;
+    if isempty(catVer)
+        errMsg = 'Cannot identify CAT12 version: please re-install it.';
+        return;
+    end
+    catVer = str2num(catVer);
+    if (catVer < 1728)
+        errMsg = [...
+            'Please update CAT12.' 10 ...
+            ' - Version of CAT installed on this computer: ' num2str(catVer) 10 ...
+            ' - Minimum version of CAT supported by Brainstorm: 1728' 10 ...
+            ' - http://www.neuro.uni-jena.de/cat/index.html#DOWNLOAD'];
+        return;
     end
     % Get default TPM.nii template
     if isempty(TpmNii)
@@ -252,61 +263,57 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     % ===== CALL CAT12 SEGMENTATION =====
     % Create SPM batch
     matlabbatch{1}.spm.tools.cat.estwrite.data = {[NiiFile ',1']};
-    matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {TpmNii};
-    matlabbatch{1}.spm.tools.cat.estwrite.opts.affreg = 'mni';
-    matlabbatch{1}.spm.tools.cat.estwrite.opts.biasstr = 0.5;
-    matlabbatch{1}.spm.tools.cat.estwrite.extopts.APP = 1070;
-    matlabbatch{1}.spm.tools.cat.estwrite.extopts.LASstr = 0.5;
-    matlabbatch{1}.spm.tools.cat.estwrite.extopts.gcutstr = 2;
-    matlabbatch{1}.spm.tools.cat.estwrite.extopts.registration.dartel.darteltpm = {dartelTpm};
-    matlabbatch{1}.spm.tools.cat.estwrite.extopts.vox = 1.5;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.labelnative = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.jacobianwarped = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];
-    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.native = 1;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native = 1;
+    matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = {''};
+    matlabbatch{1}.spm.tools.cat.estwrite.useprior = '';
+    matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;                % Blocking call to CAT12
+    matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {TpmNii};      % User-defined TPM atlas
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];     % Save deformation fields: [forward inverse]
+    matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.warps       = [0 0]; % Skip deformation fields for the moment: [forward inverse]
+    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native   = 1;   % GM tissue maps
+    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.warped   = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod      = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel   = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native   = 1;   % WM tissue maps
+    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.warped   = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod      = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel   = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.native = 1;   % Tissue classes 4-6 to create own TPMs
+    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.warped = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.mod    = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.TPMC.dartel = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.native  = 1;   % CSF tissue maps
+    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.warped  = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.mod     = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.CSF.dartel  = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.label.native = 1;  % Label: background=0, CSF=1, GM=2, WM=3, WMH=4
+    matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
+    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);   % CGaser comment: Correct syntax to disable ROI processing for volumes   
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;  % No volume atlases
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 0;
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 0;
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 0;
     % Spherical registration (much slower)
-    if isSphReg
-        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;
-    else
-        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 5;
+    if isSphReg && ~isCerebellum    % CGaser comment: Cerebellum extraction is experimental, not to be used routinely
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;   % 1: lh+rh
+    elseif isSphReg && isCerebellum
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 2;   % 2: lh+rh+cerebellum
+    elseif ~isSphReg && ~isCerebellum
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 5;   % 5: lh+rh (fast, no registration, quick review only)
+    elseif ~isSphReg && isCerebellum
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 6;   % 6: lh+rh+cerebellum  (fast, no registration, quick review only)
     end
-    % Extra cortical maps
+    % Extract additional surface parameters: Cortical thickness, Gyrification index, Sulcal depth
     if isExtraMaps
+        % matlabbatch{1}.spm.tools.cat.estwrite.output.surf_measures = 1;   % CGaser comment: Experimental flag
+        % Separate SPM process (second element in the batch)
         matlabbatch{2}.spm.tools.cat.stools.surfextract.data_surf(1) = cfg_dep('CAT12: Segmentation (current release): Left Central Surface', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','lhcentral', '()',{':'}));
-        matlabbatch{2}.spm.tools.cat.stools.surfextract.GI = 1;
-        matlabbatch{2}.spm.tools.cat.stools.surfextract.SD = 1;
-        matlabbatch{2}.spm.tools.cat.stools.surfextract.FD = 0;
-        matlabbatch{2}.spm.tools.cat.stools.surfextract.nproc = 0;
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.GI = 1;     % Gyrification index
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.SD = 1;     % Sulcal depth
+        matlabbatch{2}.spm.tools.cat.stools.surfextract.nproc = 0;  % Blocking call to CAT12
     end
-    % Switch depending on CAT12 versions
-    switch (catVer)
-        case 12
-            matlabbatch{1}.spm.tools.cat.estwrite.opts.accstr = 0.5;
-            matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.fixed = [1 0.1];
-            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40 = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 1;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 1;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 1;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 1;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 1;
-        case 12.7
-            matlabbatch{1}.spm.tools.cat.estwrite.extopts.restypes.optimal = [1 0.1];
-            matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);
-            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native = 1;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.GM.dartel = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.native = 1;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.mod = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.WM.dartel = 0;
-            matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
-    end
+    
     % Switch to CAT12 expert mode
     cat12('expert');
     % Hide CAT12 figures
@@ -319,20 +326,28 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
     % Close CAT12 figures
     close([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
            findall(0, 'Type', 'Figure', 'Tag', 'CAT')]);
-    
-    
-%     % ===== PROJECT ATLASES =====
-%         fs_central = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.central.freesurfer.gii');
-%         fs_sphere  = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'templates_surfaces', 'lh.sphere.freesurfer.gii');
-%         fs_annot   = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', 'lh.aparc_DK40.freesurfer.annot');
-% 
-%         subj_spherereg = bst_fullfile(catDir, 'surf', ['lh.sphere.reg.' subjid '.gii']);
-%         subj_annot = ['lh.aparc_DK40.' subjid '.annot'];
-% 
-%         cmd = sprintf('CAT_ResampleSurf "%s" "%s" "%s" NULL "%s" "%s"',...
-%           fs_central, fs_sphere, subj_spherereg, fs_annot, subj_annot);
-%         [ST, RS] = cat_system(cmd);
-%         cat_check_system_output(ST,RS,opt.verb-2);
+
+    % ===== PROJECT ATLASES =====
+    TessLhFile = file_find(catDir, 'lh.central.*.gii', 2);
+    if exist('cat_surf_map_atlas', 'file') && file_exist(TessLhFile)
+        % Get SPM dir
+        SpmDir = bst_get('SpmDir');
+        % List of parcellations to project
+        allAnnot = {...
+            'lh.aparc_a2009s.freesurfer.annot', ...
+            'lh.aparc_DK40.freesurfer.annot', ...
+            'lh.aparc_HCP_MMP1.freesurfer.annot', ...
+            'lh.Schaefer2018_100Parcels_17Networks_order.annot', ...
+            'lh.Schaefer2018_200Parcels_17Networks_order.annot', ...
+            'lh.Schaefer2018_400Parcels_17Networks_order.annot', ...
+            'lh.Schaefer2018_600Parcels_17Networks_order.annot'};
+        % Import atlases (cat_surf_map_atlas calls both hemispheres at once)
+        for annot = allAnnot
+            bst_progress('text', ['Interpolating atlas: ' annot{1} '...']);
+            fs_annot = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', annot{1});
+            cat_surf_map_atlas(TessLhFile, fs_annot);
+        end
+    end
     
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
@@ -342,8 +357,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphRe
         return;
     end
     % Delete temporary folder
-    file_delete(catDir, 1, 3);
-    
+    % file_delete(catDir, 1, 3);
+    % Return success
     isOk = 1;
 end
 
@@ -366,9 +381,11 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     bst_progress('setimage', 'logo_cat.gif');
     % Run CAT12
     TpmNii = bst_get('SpmTpmAtlas');
+    isInteractive = 1;
     isSphReg = 1;
     isExtraMaps = 0;
-    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, TpmNii, isSphReg, isExtraMaps, 1);
+    isCerebellum = 0;
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isExtraMaps, isCerebellum);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'CAT12 MRI segmentation', 0);

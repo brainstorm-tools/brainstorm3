@@ -913,16 +913,35 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
     % ===== GET DATA =====
     % Only if requested
     if (nargout >= 4)
-        % Override figure definition and get all rows
-        FigRowName    = TfInfo.RowName;
-        FigRefRowName = TfInfo.RefRowName;
-        % Get data
-        [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, FigRowName, TfInfo.iFreqs, iTime, TfInfo.Function, FigRefRowName);
+        % For FOOOF with overlay mode, start with first sensor.
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
+        if isFooof 
+            if isequal(TfInfo.FOOOFDisp, 'overlay') 
+                if isempty(TfInfo.RowName)
+                    TfInfo.RowName = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames(1);
+                %elseif iscell(TfInfo.RowName) && numel(TfInfo.RowName) > 1 % doesn't seem to happen
+                %    TfInfo.RowName = TfInfo.RowName(1);
+                end
+            else
+                TfInfo.RowName = [];
+            end
+            setappdata(hFig, 'Timefreq', TfInfo);
+            % Get data, providing FOOOFDisp.
+            [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName, TfInfo.FOOOFDisp);
+        else
+            % Override figure definition and get all rows
+            % Get data
+            [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName);
+        end
         % Get specific RowNames
-        if ~isempty(FigRefRowName)
+        if ~isempty(TfInfo.RefRowName)
             RowNames = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames;
-        elseif ~isempty(FigRowName)
-            RowNames = FigRowName;
+        elseif ~isempty(TfInfo.RowName)
+            if ischar(TfInfo.RowName)
+                RowNames = {TfInfo.RowName};
+            else
+                RowNames = TfInfo.RowName;
+            end
         % Else: get all the rows (regular timefreq file)
         else
             RowNames = GetRowNames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames);
@@ -934,6 +953,20 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
         % Data type
         DataType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType;
         
+        % Keep only the selected (good) channels
+        % This won't apply when displaying a single channel (e.g. FOOOF overlay mode)
+        % or when displaying connectivity matrices, or any PSD not computed directly on sensor data
+        [hFig, iFig] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) && ...
+                numel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) < numel(iRow) && ...
+                strcmpi(DataType, 'data') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
+            iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
+            TF = TF(iSelected,:,:);
+            RowNames = RowNames(iSelected);
+        end
+        if isFooof && isequal(TfInfo.FOOOFDisp, 'overlay')
+            RowNames = {RowNames{1}, 'Background fit', 'Peak fit', 'FOOOF model'};
+        end
         % Show stat clusters
         if strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq')
             % Get displayed clusters

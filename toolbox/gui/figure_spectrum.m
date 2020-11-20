@@ -131,13 +131,9 @@ end
 %% ===== DISPLAY OPTIONS CHANGED =====
 function DisplayOptionsChangedCallback(hFig) %#ok<DEFNU>
     % Restore intial view
-    ResetView(hFig);
+    %ResetView(hFig);
     % Update display
     UpdateFigurePlot(hFig, 1);
-    % Get figure
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
-    % Redraw select sensors
-    SelectedRowChangedCallback(iDS, iFig);
 end
 
 %% ===== SELECTED ROW CHANGED =====
@@ -291,28 +287,28 @@ function FigureMouseMoveCallback(hFig, ev)
             
             % Move view along X axis
             XLim = get(hAxes, 'XLim');
-            XLog = strcmpi(get(hAxes, 'XScale'), 'log');
-            if XLog
+            isXLog = strcmpi(get(hAxes, 'XScale'), 'log');
+            if isXLog
                 XLim = log10(XLim);
                 XLimInit = log10(XLimInit);
             end
             XLim = XLim - (XLim(2) - XLim(1)) * motionFigure(1);
             XLim = bst_saturate(XLim, XLimInit, 1);
-            if XLog
+            if isXLog
                 XLim = 10.^XLim;
             end
             set(hAxes, 'XLim', XLim);
             
             % Move view along Y axis
             YLim = get(hAxes, 'YLim');
-            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
-            if YLog
+            isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if isYLog
                 YLim = log10(YLim);
                 YLimInit = log10(YLimInit);
             end
             YLim = YLim - (YLim(2) - YLim(1)) * motionFigure(2);
             YLim = bst_saturate(YLim, YLimInit, 1);
-            if YLog
+            if isYLog
                 YLim = 10.^YLim;
             end
             set(hAxes, 'YLim', YLim);
@@ -345,13 +341,13 @@ function FigureMouseMoveCallback(hFig, ev)
             % Apply same limits as when panning
             YLimInit = getappdata(hAxes, 'YLimInit');
             YLim = get(hAxes, 'YLim');
-            YLog = strcmpi(get(hAxes, 'YScale'), 'log');
-            if YLog
+            isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+            if isYLog
                 YLim = log10(YLim);
                 YLimInit = log10(YLimInit);
             end
             YLim = bst_saturate(YLim, YLimInit, 1);
-            if YLog
+            if isYLog
                 YLim = 10.^YLim;
             end
             set(hAxes, 'YLim', YLim);
@@ -736,8 +732,8 @@ function AddParentBadChannels(hFig, BadChan)
         newChannelFlag(iBad) = -1;
         % Update channel flag
         panel_channel_editor('UpdateChannelFlag', GlobalData.DataSet(iDS).DataFile, newChannelFlag);
-        % Reset selection
-        bst_figures('SetSelectedRows', []);
+        % Reset selection (done in UpdateChannelFlag)
+        %bst_figures('SetSelectedRows', []);
     end
 end
 
@@ -825,6 +821,11 @@ function ResetView(hFig)
     % Set the time cursor height to the maximum of the display
     hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
     set(hCursor, 'YData', YLim);
+    % Set the selection rectangle dimensions
+    hSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'SelectionPatch');
+    if ~isempty(hSelectionPatch)
+        set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+    end
 end
 
 
@@ -866,13 +867,6 @@ function ToggleLogScaleX(hAxes, hFig, loglin)
     setappdata(hFig, 'TsInfo', TsInfo);
     RefreshLogScaleBtnDisplay(hFig, TsInfo);
     bst_set('XScale', loglin);
-end
-function ToggleLogScaleY(hAxes, hFig, loglin)
-    set(hAxes, 'YScale', loglin);
-    TsInfo = getappdata(hFig, 'TsInfo');
-    TsInfo.YScale = loglin;
-    setappdata(hFig, 'TsInfo', TsInfo);
-    bst_set('YScale', loglin);
 end
 function RefreshLogScaleBtnDisplay(hFig, TsInfo)
     % Toggle selection of associated button if possible
@@ -1026,9 +1020,9 @@ function DisplayFigurePopup(hFig, menuTitle)
         % YScale
         isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
         if isYLog
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: linear', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleY(hAxes, hFig, 'linear'));
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: linear', IconLoader.ICON_LOG, [], @(h,ev)figure_timeseries('SetScaleModeY', hFig, 'linear'));
         else
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: log', IconLoader.ICON_LOG, [], @(h,ev)ToggleLogScaleY(hAxes, hFig, 'log'));
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Y scale: log', IconLoader.ICON_LOG, [], @(h,ev)figure_timeseries('SetScaleModeY', hFig, 'log'));
         end
         jMenuFigure.addSeparator();
         
@@ -1095,32 +1089,6 @@ function UpdateFigurePlot(hFig, isForced)
     if isempty(TF)
         return;
     end
-    % FOOOF: Swap TF data for relevant FOOOF data
-    if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF) && ~strcmp(TfInfo.FOOOFDisp, 'spectrum')
-         fFreqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.freqs;
-         i_model = ismember(Freqs, fFreqs);
-         TF = NaN(size(TF));
-         for chan = 1:size(TF,1)
-             % Get requested FOOOF measure
-             switch TfInfo.FOOOFDisp
-                 case 'model'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.fooofed_spectrum;
-                 case 'aperiodic'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.ap_fit;
-                 case 'peaks'
-                     TF(chan,1,i_model) = GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.data(chan).FOOOF.peak_fit;
-                 case 'error'
-                     TF(chan,1,i_model) = 10.^(GlobalData.DataSet(iDS).Timefreq.Options.FOOOF.stats(chan).frequency_wise_error);
-             end
-             % Apply requested function to measure
-             switch TfInfo.Function
-                 case 'magnitude'
-                     TF(chan,1,i_model) = sqrt(abs(TF(chan,1,i_model)));
-                 case 'log'
-                     TF(chan,1,i_model) = 10 .* log10(abs(TF(chan,1,i_model)));
-             end
-        end
-    end
     % Row names
     if ~isempty(RowNames) && ischar(RowNames)
         RowNames = {RowNames};
@@ -1149,31 +1117,17 @@ function UpdateFigurePlot(hFig, isForced)
             LinesLabels{i} = num2str(RowNames(i));
         end
     end
-    % Remove the first frequency bin (0) : SPECTRUM ONLY
-    if isSpectrum && ~iscell(Freqs) && (size(TF,3)>1)
+    % Remove the first frequency bin (0) : SPECTRUM ONLY, EXCLUDE CONNECTIVITY
+    if isSpectrum && ~iscell(Freqs) && (size(TF,3)>1) && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)
         iZero = find(Freqs == 0);
         if ~isempty(iZero)
             Freqs(iZero) = [];
             TF(:,:,iZero) = [];
         end
     end
-    % Display units
-    DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
-    % Get figure time-freq info
-    TfInfo   = getappdata(hFig, 'Timefreq');
-    TsInfo   = getappdata(hFig, 'TsInfo');
+    % Get figure time series
+    TsInfo = getappdata(hFig, 'TsInfo');
     
-    % ===== GET GLOBAL MAXIMUM =====
-    % If maximum is not defined yet
-    if isempty(sFig.Handles.DataMinMax) || isForced
-        sFig.Handles.DataMinMax = [min(TF(:)), max(TF(:))];
-        % In case there are infinite values, due to the log10(0) operation that may happen: look only for non-empty values
-        if any(isinf(sFig.Handles.DataMinMax))
-            iNotInf = ~isinf(TF(:));
-            sFig.Handles.DataMinMax = [min(TF(iNotInf)), max(TF(iNotInf))];
-        end
-    end
-
     % ===== X AXIS =====
     switch (TfInfo.DisplayMode)
         case 'TimeSeries'
@@ -1181,7 +1135,23 @@ function UpdateFigurePlot(hFig, isForced)
             XLegend = 'Time (s)';
         case 'Spectrum'
             X = Freqs;
-            XLegend = 'Frequency (Hz)';
+            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'PowerUnits') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.PowerUnits)
+                switch GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.PowerUnits
+                    case 'physical'
+                        XLegend = 'Frequency (Hz)';
+                        TfInfo.FreqUnits = 'Hz';
+                    case 'normalized'
+                        XLegend = 'Normalized frequency (Hz⋅s)';
+                        TfInfo.FreqUnits = 'Hz⋅s';
+                    case 'old'
+                        XLegend = 'Frequency (Hz)';
+                        TfInfo.FreqUnits = '"bin"';
+                    otherwise
+                        error('Unknown power spectrum units.');
+                end
+            else
+                XLegend = 'Frequency (Hz)';
+            end
         otherwise
             error('Invalid display mode');
     end
@@ -1215,23 +1185,58 @@ function UpdateFigurePlot(hFig, isForced)
         disp('BST> Error: No data to display...');
         XLim = [0 1];
     end
-    % Auto-detect if legend should be displayed
-    if isempty(TsInfo.ShowLegend)
+    % Auto-detect if legend should be displayed, reset if changed FOOOF display.
+    if isempty(TsInfo.ShowLegend) || (isfield(TfInfo, 'isFooofDispChanged') && TfInfo.isFooofDispChanged)
         TsInfo.ShowLegend = (length(LinesLabels) <= 15);
         setappdata(hFig, 'TsInfo', TsInfo);
     end
         
+    % ===== Y AXIS =====
+    % Get global maximum if not defined yet
+    if isempty(sFig.Handles.DataMinMax) || isForced
+        sFig.Handles.DataMinMax = [min(TF(:)), max(TF(:))];
+        % In case there are infinite values, due to the log10(0) operation that may happen: look only for non-empty values
+        if any(isinf(sFig.Handles.DataMinMax))
+            iNotInf = ~isinf(TF(:));
+            sFig.Handles.DataMinMax = [min(TF(iNotInf)), max(TF(iNotInf))];
+        end
+    end
+    % Display units
+    DisplayUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
+    DisplayFactor = 1;
+    if isempty(DisplayUnits)
+        % Get signal units and display factor
+        % Check if relative or normalized spectrum
+        if ~isempty(strfind(TfInfo.FileName, 'relative'))
+            DisplayUnits = 'no units';
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality) && numel(GlobalData.DataSet(iDS).Timefreq(iTimefreq).AllModalities) == 1
+            [valScaled, DisplayFactor, DisplayUnits] = bst_getunits(mean(sFig.Handles.DataMinMax), GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality);
+        end
+    end
+    switch lower(TfInfo.Function)
+        case 'power'
+            DisplayFactor = DisplayFactor.^2;
+        case 'log'
+            % Force linear y scale for log-power dB
+            TsInfo.YScale = 'linear';
+            setappdata(hFig, 'TsInfo', TsInfo);
+    end
+    
     % ===== DISPLAY =====
     % Clear figure
-    clf(hFig);
+    % clf(hFig);   => Commented out by FT on 17-nov-2020: not sure why this is needed
     % Plot data in the axes
-    PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits);
+    PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, sFig.Handles.DataMinMax, LinesLabels, DisplayUnits, DisplayFactor);
     hAxes = PlotHandles.hAxes;
     % Store initial XLim and YLim
     setappdata(hAxes, 'XLimInit', get(hAxes, 'XLim'));
     setappdata(hAxes, 'YLimInit', get(hAxes, 'YLim'));
     % Update figure list of handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = PlotHandles;
+    % Hide high amplitudes for very low frequencies when linear y scale.
+    if isSpectrum && isequal(TsInfo.YScale, 'linear') && any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && all(TF(:)>=0)
+        figure_timeseries('ScaleToFitY', hFig);
+    end
     % X Axis legend
     xlabel(hAxes, XLegend, ...
         'FontSize',    bst_get('FigFont'), ...
@@ -1271,18 +1276,8 @@ function UpdateFigurePlot(hFig, isForced)
         set(hAxes, 'YGrid', 'on');
         set(hAxes, 'YMinorGrid', 'on');
     end
-    if ~isfield(TsInfo, 'XScale')
-        TsInfo.XScale = 'linear';
-        setappdata(hFig, 'TsInfo', TsInfo);
-    else
-        set(hAxes, 'XScale', TsInfo.XScale);
-    end
-    if ~isfield(TsInfo, 'YScale')
-        TsInfo.YScale = 'linear';
-        setappdata(hFig, 'TsInfo', TsInfo);
-    else
-        set(hAxes, 'YScale', TsInfo.YScale);
-    end
+    set(hAxes, 'XScale', TsInfo.XScale);
+    set(hAxes, 'YScale', TsInfo.YScale);
 
     % Create scale buttons
     if isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
@@ -1301,12 +1296,12 @@ function UpdateFigurePlot(hFig, isForced)
     % Set current object/axes
     set(hFig, 'CurrentAxes', hAxes, 'CurrentObject', hAxes);
     % Update selected channels 
-    figure_spectrum('SelectedRowChangedCallback', iDS, iFig);
+    SelectedRowChangedCallback(iDS, iFig);
 end
 
 
 %% ===== PLOT AXES =====
-function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, LinesLabels, DisplayUnits)
+function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, LinesLabels, DisplayUnits, DisplayFactor)
     % ===== CREATE AXES =====
     % Look for existing axes
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
@@ -1356,9 +1351,9 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
     PlotHandles.hAxes = hAxes;
     PlotHandles.DataMinMax = DataMinMax;
     PlotHandles.DisplayUnits = DisplayUnits;
+    PlotHandles.DisplayFactor = DisplayFactor;
 
     % ===== SWITCH DISPLAY MODE =====
-    TsInfo = getappdata(hFig, 'TsInfo');
     switch (lower(TsInfo.DisplayMode))
         case 'butterfly'
             PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, TF, LinesLabels);
@@ -1386,20 +1381,8 @@ end
 function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, TF, LinesLabels)
     % ===== NORMALIZE =====
     % Get data maximum
-    Fmax = PlotHandles.DataMinMax;
-    % Display power of 10 in the legend rather than in the axis
-    strPow = '';
-    if (Fmax(1) ~= Fmax(2))
-        Fpow = round(log10(max(abs(Fmax))));
-        if (Fpow < -3)
-            Fpow = -Fpow;
-            Fmax = Fmax * 10^Fpow;
-            TF   = TF * 10^Fpow;
-            strPow = sprintf(' * 10^{-%d}', Fpow);
-        end
-    else
-        Fmax = [];
-    end
+    TF = TF * PlotHandles.DisplayFactor;
+    Fmax = PlotHandles.DataMinMax * PlotHandles.DisplayFactor;
     
     % ===== PLOT TIME SERIES =====
     % Plot lines
@@ -1409,39 +1392,74 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     set(PlotHandles.hLines, 'Tag', 'DataLine');
     
     % ===== YLIM =====
-    % Set display Factor
-    PlotHandles.DisplayFactor = 1;
     % Get automatic YLim
-    if ~isempty(Fmax) && (Fmax(1) ~= Fmax(2))
-        % Use the first local maximum: ignores the huge range of high frequencies
-        if any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
-            TFmax = max(TF,[],1);
-            iStart = find(diff(TFmax)>0,1);
-            if ~isempty(iStart)
-                Fmax(2) = max(TFmax(iStart:end));
+    if (Fmax(1) ~= Fmax(2))
+        % Default YLim: range to cover all values
+        YLim = [Fmax(1), Fmax(2) + (Fmax(2) - Fmax(1)) * 0.02];
+        % For log display: avoid zero values
+        if strcmpi(TsInfo.YScale, 'log')
+            tmpMax = min(TF(TF(:)>0));
+            if (Fmax(1) <= 0) && (tmpMax < Fmax(2))
+                YLim = [tmpMax, Fmax(2)];
             end
         end
-        % Compute the scale
-        margin = (Fmax(2) - Fmax(1)) * 0.02;
-        YLim = PlotHandles.DisplayFactor * [Fmax(1), Fmax(2) + margin];
     else
         YLim = [-1, 1];
     end
     % Set axes legend for Y axis
-    if ~isempty(PlotHandles.DisplayUnits)
-        strAmp = PlotHandles.DisplayUnits;
-        % Make it more readable
-        if isequal(strAmp, 't')
-            strAmp = 't-values';
+    if ~isfield(TfInfo, 'FreqUnits') || isempty(TfInfo.FreqUnits)
+        TfInfo.FreqUnits = 'Hz';
+    end
+    if isempty(PlotHandles.DisplayUnits)
+        PlotHandles.DisplayUnits = 'signal units';
+    end
+    % For older spectrum files, look in file name if normalized.
+    if ~isfield(TfInfo, 'Normalized') || isempty(TfInfo.Normalized)
+        if ~isempty(strfind(TfInfo.FileName, 'relative2020'))
+            TfInfo.Normalized = 'relative2020';
+        elseif ~isempty(strfind(TfInfo.FileName, 'relative'))
+            TfInfo.Normalized = 'relative';
+        elseif ~isempty(strfind(TfInfo.FileName, 'multiply2020'))
+            TfInfo.Normalized = 'multiply2020';
+        elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
+            TfInfo.Normalized = 'multiply';
+        else
+            TfInfo.Normalized = 'none';
         end
-    else
-        switch lower(TfInfo.Function)
-            case 'power',      strAmp = ['Power   (signal units^2/Hz' strPow ')'];
-            case 'magnitude',  strAmp = ['Magnitude   (signal units/sqrt(Hz)' strPow ')'];
-            case 'log',        strAmp = ['Log-power   (dB/Hz' strPow ')'];
-            case 'phase',      strAmp = 'Angle';
-            otherwise,         strAmp = 'No units';
-        end
+    end
+    switch TfInfo.Normalized
+        case {'relative', 'relative2020'}
+            switch lower(TfInfo.Function)
+                % Relative is always compared to total power, then sqrt when magnitude.
+                case 'power',      strAmp = 'Relative power per bin   (no units)';
+                case 'magnitude',  strAmp = 'Sqrt relative power per bin  (no units)';
+                case 'log',        strAmp = 'Log relative power per bin  (dB)';
+                otherwise,         strAmp = 'No units';
+            end
+        case 'multiply2020'
+            % Normalized by frequency.
+            switch lower(TfInfo.Function)
+                case 'power',      strAmp = ['Normalized power   (' PlotHandles.DisplayUnits '^2)'];
+                case 'magnitude',  strAmp = ['Normalized magnitude   (' PlotHandles.DisplayUnits ')'];
+                case 'log',        strAmp = 'Log normalized power   (dB)';
+                otherwise,         strAmp = 'No units';
+            end
+        case 'multiply'
+            % Normalized by frequency squared.
+            switch lower(TfInfo.Function)
+                case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2*' TfInfo.FreqUnits ')'];
+                case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '*sqrt(' TfInfo.FreqUnits '))'];
+                case 'log',        strAmp = 'Log normalized power   (dB)';
+                otherwise,         strAmp = 'No units';
+            end
+        otherwise
+            switch lower(TfInfo.Function)
+                case 'power',      strAmp = ['Power   (' PlotHandles.DisplayUnits '^2/' TfInfo.FreqUnits ')'];
+                case 'magnitude',  strAmp = ['Magnitude   (' PlotHandles.DisplayUnits '/sqrt(' TfInfo.FreqUnits '))'];
+                case 'log',        strAmp = 'Log power   (dB)';
+                case 'phase',      strAmp = 'Angle';
+                otherwise,         strAmp = 'No units';
+            end
     end
     ylabel(hAxes, strAmp, ...
         'FontSize',    bst_get('FigFont'), ...

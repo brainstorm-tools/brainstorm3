@@ -173,6 +173,18 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuOpenmeeg.addSeparator();
             gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
+        if (GlobalData.Program.GuiLevel == 1) && ~(exist('isdeployed', 'builtin') && isdeployed)
+            jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
+            if nst_setup('status')
+                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)nst_setup('uninstall',[],1), fontSize);
+            else
+                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
+            end    
+            
+            gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
+
+        end       
         
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
@@ -1470,8 +1482,6 @@ function DownloadOpenmeeg()
     catch
     end
 end
-
-
 %% ===== DOWNLOAD FILE =====
 function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
     errMsg = [];
@@ -1481,11 +1491,25 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
     end
     % Headless mode: use Matlab base functions
     if (bst_get('GuiLevel') == -1)
-        % Matlab >= 2014b: websave
-        if (bst_get('MatlabVersion') >= 804)
-            websave(destFile, srcUrl);
+        errMsg = bst_websave(destFile, srcUrl);
+    % Github: Problem with our downloaded: use websave instead
+    elseif (length(srcUrl) > 18) && strcmpi(srcUrl(1:18), 'https://github.com')
+        % Open progress bar
+        isProgress = bst_progress('isVisible');
+        if ~isProgress
+            bst_progress('start', wndTitle, ['Downloading: ' srcUrl]);
         else
-            urlwrite(srcUrl, destFile);
+            bst_progress('text', ['Downloading: ' srcUrl]);
+        end
+        % Create folder if needed
+        if ~isdir(bst_fileparts(destFile))
+            mkdir(bst_fileparts(destFile));
+        end
+        % Download file
+        errMsg = bst_websave(destFile, srcUrl);
+        % Close progress bar
+        if ~isProgress
+            bst_progress('stop');
         end
     else
         % Get system proxy definition, if available
