@@ -123,21 +123,41 @@ MriFile = file_find(FsDir, 'T1.mgz', 2);
 if isempty(MriFile)
     errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
 end
-% Find surfaces
+% Find surface: lh.pial (or lh.pial.T1)
 TessLhFile = file_find(FsDir, 'lh.pial', 2);
+if ~isempty(TessLhFile)
+    d = dir(TessLhFile);
+    if (length(d) == 1) && (d.bytes < 256)
+        TessLhFile = [];
+    end
+end
+if isempty(TessLhFile)
+    TessLhFile = file_find(FsDir, 'lh.pial.T1', 2);
+    if isempty(TessLhFile)
+        errorMsg = [errorMsg 'Surface file was not found: lh.pial/lh.pial.T1' 10];
+    end
+end
+% Find surface: rh.pial (or rh.pial.T1)
 TessRhFile = file_find(FsDir, 'rh.pial', 2);
+if ~isempty(TessRhFile)
+    d = dir(TessRhFile);
+    if (length(d) == 1) && (d.bytes < 256)
+        TessRhFile = [];
+    end
+end
+if isempty(TessRhFile)
+    TessRhFile = file_find(FsDir, 'rh.pial.T1', 2);
+    if isempty(TessRhFile)
+        errorMsg = [errorMsg 'Surface file was not found: rh.pial/rh.pial.T1' 10];
+    end
+end
+% Find other surfaces
 TessLwFile = file_find(FsDir, 'lh.white', 2);
 TessRwFile = file_find(FsDir, 'rh.white', 2);
 TessLsphFile = file_find(FsDir, 'lh.sphere.reg', 2);
 TessRsphFile = file_find(FsDir, 'rh.sphere.reg', 2);
 TessInnerFile = file_find(FsDir, 'inner_skull-*.surf', 2);
 TessOuterFile = file_find(FsDir, 'outer_skull-*.surf', 2);
-if isempty(TessLhFile)
-    errorMsg = [errorMsg 'Surface file was not found: lh.pial' 10];
-end
-if isempty(TessRhFile)
-    errorMsg = [errorMsg 'Surface file was not found: rh.pial' 10];
-end
 % Find volume segmentation
 AsegFile = file_find(FsDir, 'aseg.mgz', 2);
 % Find labels
@@ -561,6 +581,5 @@ end
 % Close progress bar
 bst_progress('stop');
 
-
-
+end
 
