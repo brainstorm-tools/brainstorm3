@@ -128,6 +128,10 @@ for iFile = 1:length(RawFiles)
         bst_progress('stop');
         return;
     end
+    % Files not read correctly
+    if ~isfield(sFile, 'prop') || ~isfield(sFile.prop, 'sfreq') || isempty(sFile.prop.sfreq) || (sFile.prop.sfreq == 0)
+        error('Could not open file (see errors in command window).');
+    end
     % Review imported files works only for single files (not for multiple trials)
     if (length(DataMat) > 1)
         error(['Cannot open multiple trials as continuous files.' 10 'Use the menu "Import MEG/EEG" instead.']);
