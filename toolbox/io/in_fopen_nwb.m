@@ -22,7 +22,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis 2019
+% Author: Konstantinos Nasiotis 2019-2020
 
 
 %% ===== INSTALL NWB LIBRARY =====
@@ -52,99 +52,130 @@ end
 % Read header
 nwb2 = nwbRead(DataFile);
 
-try
-    all_raw_keys = keys(nwb2.acquisition);
+Map1 = nwb2.searchFor('Timeseries', 'includeSubClasses');
+Map2 = nwb2.searchFor('Timeseries');
+Map3 = nwb2.searchFor('electricalseries', 'includeSubClasses');
+a = keys(Map1)';
+b = keys(Map2)';
+c = keys(Map3)';
 
-    for iKey = 1:length(all_raw_keys)
-        if ismember(all_raw_keys{iKey}, {'ECoG','raw','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
-            iRawDataKey = iKey;
-            RawDataPresent = 1;
-            break
-        else
+all_TimeSeries_keys = keys(nwb2.searchFor('Timeseries', 'includeSubClasses'));
+all_electricalSeries_keys = keys(nwb2.searchFor('electricalseries', 'includeSubClasses'));
+
+
+if isempty(all_TimeSeries_keys)
+    error 'There are no electrophysioloy data in this .nwb - No electricalSeries modules were found'
+end
+
+RawDataKeys = {};
+RawDataPresent = 0;
+
+ii = 1;
+for iKey = 1:length(all_electricalSeries_keys)
+
+    [RawDataKeyLabelParsed, isitRaw] = checkRawSignalValidity(nwb2, all_electricalSeries_keys{iKey});
+    
+    if isitRaw
+        RawDataPresent = 1;
+        RawDataKeys{ii} = RawDataKeyLabelParsed;
+        ii = ii+1;
+
+    else
+        if ~RawDataPresent
             RawDataPresent = 0;
         end
     end
-    if isempty(all_raw_keys)
-        RawDataPresent = 0;
-    end
-catch
-    RawDataPresent = 0;
 end
 
 
-try
-    % Check if the data is in LFP format
-    all_lfp_keys = keys(nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries);
-
-    for iKey = 1:length(all_lfp_keys)
-        if ismember(all_lfp_keys{iKey}, {'lfp','bla bla bla'})   %%%%%%%% ADD MORE HERE, DON'T KNOW WHAT THE STANDARD FORMATS ARE
-            iLFPDataKey = iKey;
-            LFPDataPresent = 1;
-            break % Once you find the data don't look for other keys/trouble
-        else
+LFPDataKeys = {};
+LFPDataPresent = 0;
+ii = 1;
+for iKey = 1:length(all_TimeSeries_keys)
+    if ~isempty(strfind(all_TimeSeries_keys{iKey},'ecephys')) % Should I use ecephys here???? or nwbdatainterface or LFP?
+        LFPDataPresent = 1;
+        
+        % Parse just the first folder of the keys
+        
+        disp('this has not been tested on an LFP dataset yet')
+        [not_used, keyLabel] = fileparts(all_TimeSeries_keys{iKey});
+        LFPDataKeys{iKey} = keyLabel;
+        ii = ii+1;
+    else
+        if ~LFPDataPresent
             LFPDataPresent = 0;
         end
     end
-catch
-    LFPDataPresent = 0;
-end
-
-
-if ~RawDataPresent && ~LFPDataPresent
-    error 'There is no data in this .nwb - Maybe check if the Keys are labeled correctly'
 end
 
 
 
 %% Check for additional channels
 
-% Check if behavior fields/channels exists in the dataset
-try
-    nwb2.processing.get('behavior').nwbdatainterface;
-    
-    
-    allBehaviorKeys = keys(nwb2.processing.get('behavior').nwbdatainterface)';
-    
-    
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-    % Reject states "channel" - THIS IS HARDCODED - IMPROVE
-    allBehaviorKeys = allBehaviorKeys(~strcmp(allBehaviorKeys,'states'));
-    %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% % Check if behavior fields/channels exist in the dataset
+% try
+%     nwb2.processing.get('behavior').nwbdatainterface;
+%     
+%     
+%     allBehaviorKeys = keys(nwb2.processing.get('behavior').nwbdatainterface)';
+%     
+%     
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%     % Reject states "channel" - THIS IS HARDCODED - IMPROVE
+%     allBehaviorKeys = allBehaviorKeys(~strcmp(allBehaviorKeys,'states'));
+%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 
+% 
+%     behavior_exist_here = ~isempty(allBehaviorKeys);
+%     if ~behavior_exist_here
+%         disp('No behavior in this .nwb file')
+%     else
+%         disp(' ')
+%         disp('The following behavior types are present in this dataset')
+%         disp('------------------------------------------------')
+%         for iBehavior = 1:length(allBehaviorKeys)
+%             disp(allBehaviorKeys{iBehavior})
+%         end
+%         disp(' ')
+%     end
+%     
+%     nAdditionalChannels = 0;
+%     for iBehavior = 1:length(allBehaviorKeys)
+%         allBehaviorKeys{iBehavior,2} = keys(nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries);
+%         
+%         for jBehavior = 1:length(allBehaviorKeys{iBehavior,2})
+%             nAdditionalChannels = nAdditionalChannels + nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2);
+%         end    
+%     end
+%     
+%     additionalChannelsPresent = 1;
+% catch
+%     disp('No behavior in this .nwb file')
+%     additionalChannelsPresent = 0;
+%     nAdditionalChannels = 0;
+%     allBehaviorKeys = [];
+% end
+%     
 
 
-    behavior_exist_here = ~isempty(allBehaviorKeys);
-    if ~behavior_exist_here
-        disp('No behavior in this .nwb file')
-    else
-        disp(' ')
-        disp('The following behavior types are present in this dataset')
-        disp('------------------------------------------------')
-        for iBehavior = 1:length(allBehaviorKeys)
-            disp(allBehaviorKeys{iBehavior})
-        end
-        disp(' ')
-    end
-    
-    nAdditionalChannels = 0;
-    for iBehavior = 1:length(allBehaviorKeys)
-        allBehaviorKeys{iBehavior,2} = keys(nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries);
-        
-        for jBehavior = 1:length(allBehaviorKeys{iBehavior,2})
-            nAdditionalChannels = nAdditionalChannels + nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2);
-        end    
-    end
-    
-    additionalChannelsPresent = 1;
-catch
-    disp('No behavior in this .nwb file')
-    additionalChannelsPresent = 0;
-    nAdditionalChannels = 0;
-    allBehaviorKeys = [];
+
+nAdditionalChannels = length(all_TimeSeries_keys) - size(RawDataKeys,1) - size(LFPDataKeys,1);
+
+if nAdditionalChannels>0
+    additionalChannelsPresent = true;
+else
+    additionalChannelsPresent = false;
 end
-    
 
 
 
+allBehaviorKeys = [];
+disp('ADD ADDITIONAL CHANNELS SUPPORT')
+
+
+%% Perform a quality check that in case there are multiple RAW or multiple LFP keys present, they have the same sampling rate
+
+disp('FINISH THIS')
 
 
 
@@ -153,14 +184,35 @@ end
 % Initialize returned file structure
 sFile = db_template('sfile');
 
+sFile.header.RawKey = {};
+sFile.header.LFPKey = {};
 
 if RawDataPresent
-    sFile.prop.sfreq    = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).starting_time_rate;
-    sFile.header.RawKey = all_raw_keys{iRawDataKey};
+    nChannels = 0;
+    sFile.header.RawKey = RawDataKeys;
     sFile.header.LFPKey = [];
-    
-    nChannels = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(1);
-    nSamples  = nwb2.acquisition.get(all_raw_keys{iRawDataKey}).data.dims(2);
+    for iKey = 1:size(RawDataKeys,1)
+        sFile.prop.sfreq = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).starting_time_rate;
+        if isempty(sFile.prop.sfreq)
+            % Some recordings just save timepoints irregularly. Cant do
+            % much about this when it comes to Brainstorm that uses a fixed
+            % sampling rate - Consider perhaps taking care of that on the
+            % in_fread_nwb
+            time = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).timestamps.load;
+            
+            sFile.prop.sfreq = round(mean(1./(diff(time))));
+        end
+          
+        % Do a check if we're dealing compressed or non-compressed data
+        dataType = class(nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data);
+        if strcmp(dataType,'types.untyped.DataPipe')% Compressed data
+            nChannels = nChannels + nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.internal.dims(1);
+            nSamples  = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.internal.dims(2);
+        elseif strcmp(dataType,'types.untyped.DataStub')
+            nChannels = nChannels + nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.dims(1);
+            nSamples  = nwb2.acquisition.get(RawDataKeys{iKey}).data.dims(2);
+        end
+    end
 
 elseif LFPDataPresent
     sFile.prop.sfreq = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).starting_time_rate;
@@ -192,7 +244,7 @@ amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 
 % The following is weird - this should probably be stored differently in
 % the NWB - change how Ben stores electrode assignements to shank
-group_name      = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group').data;
+group_name = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group').data;
 try
     assignChannelsToShank = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load+1; % Python based - first entry is 0 - maybe add condition for matlab based entries
     
@@ -209,6 +261,7 @@ try
     
 catch
     assignChannelsToShank = 1:length(group_name);
+    groups = cell(1,length(group_name));
 end
     
 try
@@ -281,7 +334,7 @@ sFile.filename     = DataFile;
 sFile.device       = 'NWB'; %nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
-sFile.prop.times   = [0, nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2) - 1] ./ sFile.prop.sfreq;
+sFile.prop.times   = [time(1) time(end)];
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);
@@ -368,3 +421,53 @@ function downloadNWB()
     
     
 end
+
+
+
+
+
+
+
+
+
+function [RawDataKeyLabelParsed, isitRaw] = checkRawSignalValidity(nwb, DataKey)
+    % Parse the key for Raw signal check
+    RawDataKeyLabelParsed=regexp(DataKey,'/','split');
+    if strcmp(RawDataKeyLabelParsed{2},'acquisition') && strcmp(RawDataKeyLabelParsed{4},'electricalseries')
+        try
+            nwb.acquisition.get(RawDataKeyLabelParsed{3}).electricalseries.get(RawDataKeyLabelParsed{5}).timestamps;
+            isitRaw = 1;
+        catch
+            disp(['Couldnt load the electricalseries for: ' DataKey])
+            RawDataKeyLabelParsed = [];
+            isitRaw = 0;
+        end
+    else
+        RawDataKeyLabelParsed = [];
+        isitRaw = 0;
+    end
+end
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
