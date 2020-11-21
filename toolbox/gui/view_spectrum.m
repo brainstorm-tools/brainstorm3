@@ -166,7 +166,7 @@ TsInfo.ShowYGrid = bst_get('ShowYGrid');
 TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
 TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 TsInfo.XScale = bst_get('XScale');
-if isequal(TfInfo.Function, 'log') || any(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:) <= 0)
+if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, 'psd') || isequal(TfInfo.Function, 'log') || any(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:) <= 0)
     TsInfo.YScale = 'linear';
 else
     TsInfo.YScale = bst_get('YScale');

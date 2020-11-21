@@ -1117,8 +1117,9 @@ function UpdateFigurePlot(hFig, isForced)
             LinesLabels{i} = num2str(RowNames(i));
         end
     end
-    % Remove the first frequency bin (0) : SPECTRUM ONLY
-    if isSpectrum && ~iscell(Freqs) && (size(TF,3)>1)
+%% Check for fooof    
+% Remove the first frequency bin (0) : SPECTRUM ONLY, EXCLUDE CONNECTIVITY
+    if isSpectrum && ~iscell(Freqs) && (size(TF,3)>1) && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)
         iZero = find(Freqs == 0);
         if ~isempty(iZero)
             Freqs(iZero) = [];
@@ -1395,25 +1396,23 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     
     % ===== YLIM =====
     % Get automatic YLim
-    if (Fmax(1) ~= Fmax(2))
-        % Compute the scale
-        if strcmpi(TsInfo.YScale, 'log')
-            % Avoid 0 for log scales.
-            if Fmax(1) <= 0 
-                if any(TF(:)>0)
-                    Fmax(1) = min(TF(TF(:)>0));
-                else
-                    % All negative, just set default scale, user should turn off log scale.
-                    % Should not happen normally, as we force lin scale if all negative.
-                    Fmax = [0.1, 1];
-                end
+    % For log display: avoid zero values
+    if strcmpi(TsInfo.YScale, 'log') && Fmax(1) <= 0 
+            if Fmax(2) > 0
+                Fmax(1) = min(TF(TF(:)>0));
+            else
+                % All negative, just set default scale, user should turn off log scale.
+                % Should not happen normally, as we force lin scale if any negative.
+                Fmax = [0.1, 1];
             end
-            YLim = Fmax;
-        else
-            YLim = [Fmax(1), Fmax(2) + (Fmax(2) - Fmax(1)) * 0.02];
-        end
+
+    end
+    if (Fmax(1) ~= Fmax(2))
+        % Default YLim: range to cover all values
+        YLim = [Fmax(1), Fmax(2) + (Fmax(2) - Fmax(1)) * 0.02];
+
     else
-        YLim = [-1, 1];
+        YLim = [Fmax(1), Fmax(2) + abs(Fmax(2)) * 0.01];
     end
     % Set axes legend for Y axis
     if ~isfield(TfInfo, 'FreqUnits') || isempty(TfInfo.FreqUnits)

@@ -954,10 +954,12 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
         DataType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType;
         
         % Keep only the selected (good) channels
-        % This won't apply when displaying a single channel (e.g. FOOOF overlay mode).
+        % This won't apply when displaying a single channel (e.g. FOOOF overlay mode)
+        % or when displaying connectivity matrices, or any PSD not computed directly on sensor data
         [hFig, iFig] = bst_figures('GetFigure', hFig);
         if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) && ...
-                numel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) < numel(iRow)
+                numel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) < numel(iRow) && ...
+                strcmpi(DataType, 'data') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
             iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
             TF = TF(iSelected,:,:);
             RowNames = RowNames(iSelected);

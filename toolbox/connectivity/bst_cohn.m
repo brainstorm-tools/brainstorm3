@@ -355,7 +355,7 @@ else
             else % Lagged Coherence
                 Gxy = abs(imag(Gxy))./sqrt(1-real(Gxy).^2) ;
             end
-            pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+            % pValues = max(0, 1 - abs(Gxy)) .^ floor(nSamples / nFFT);
             
         % Imaginary Coherence ( before 2019)
         case 'icohere'  % (We only have Imaginary coherence)
@@ -377,8 +377,10 @@ else
 %     % Set the diagonals to zero
 %     Gxy(indDiag,:) = 0;
     % Reshape to have the frequencies in third dimension
-    Gxy     = reshape(Gxy,     length(indSym), 1, length(freq));
-    pValues = reshape(pValues, length(indSym), 1, length(freq));
+    Gxy = reshape(Gxy,     length(indSym), 1, length(freq));
+    if ~isempty(pValues)
+        pValues = reshape(pValues, length(indSym), 1, length(freq));
+    end
 end
 
 % Make sure that there are no residual imaginary parts due to numerical errors
