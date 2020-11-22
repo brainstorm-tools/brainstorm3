@@ -103,6 +103,7 @@ switch lower(action)
         catch
             disp('BST> Error: Cannot edit file history.');
             disp(['BST> ' lasterr]);
+            isModified = 0;
         end
         
     case 'view'
