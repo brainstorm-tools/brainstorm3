@@ -1735,11 +1735,9 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         % Butterfly: Zoom/unzoom vertically in the graph
         else
             FigureZoom(hFig, 'vertical', changeFactor);
-            % If auto-scale is disabled: Update DataMinMax to keep it hen scrolling
+            % If auto-scale is disabled: Update DataMinMax to keep it when scrolling
             if ~TsInfo.AutoScaleY
-                for iAxe = 1:length(GlobalData.DataSet(iDS).Figure(iFig).Handles)
-                    GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
-                end
+                GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
             end
         end
     end
@@ -1751,7 +1749,7 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         SetDefaultFactor(iDS, iFig, changeFactor);
     end
     % Update scale bar (not for spectrum figures)
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && strcmpi(TsInfo.DisplayMode, 'column')
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && isColumn
         UpdateScaleBar(iDS, iFig, TsInfo);
     end
 end
@@ -2617,16 +2615,18 @@ function DisplayConfigMenu(hFig, jParent)
                 jMenu.addSeparator();
             end
             % Log scale
-            switch (TsInfo.YScale)
-                case 'log'
-                    newMode = 'linear';
-                    isSel = 1;
-                case 'linear'
-                    newMode = 'log';
-                    isSel = 0;
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                switch (TsInfo.YScale)
+                    case 'log'
+                        newMode = 'linear';
+                        isSel = 1;
+                    case 'linear'
+                        newMode = 'log';
+                        isSel = 0;
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
+                jItem.setSelected(isSel);
             end
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
-            jItem.setSelected(isSel);
         end
         % Scale to fit Y
         if strcmpi(TsInfo.DisplayMode, 'butterfly')
