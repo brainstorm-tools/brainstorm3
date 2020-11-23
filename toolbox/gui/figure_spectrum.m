@@ -1196,7 +1196,7 @@ function UpdateFigurePlot(hFig, isForced)
     % Get global maximum if not defined yet
     if isempty(sFig.Handles.DataMinMax) || isForced
         sFig.Handles.DataMinMax = [min(TF(:)), max(TF(:))];
-        % In case there are infinite values, due to the log10(0) operation that may happen: look only for non-empty values
+        % In case there are infinite values, due to the log10(0) operation, look only for non-inf values
         if any(isinf(sFig.Handles.DataMinMax))
             iNotInf = ~isinf(TF(:));
             sFig.Handles.DataMinMax = [min(TF(iNotInf)), max(TF(iNotInf))];
@@ -1398,19 +1398,19 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     % Get automatic YLim
     % For log display: avoid zero values
     if strcmpi(TsInfo.YScale, 'log') && Fmax(1) <= 0 
-            if Fmax(2) > 0
-                Fmax(1) = min(TF(TF(:)>0));
-            else
-                % All negative, just set default scale, user should turn off log scale.
-                % Should not happen normally, as we force lin scale if any negative.
-                Fmax = [0.1, 1];
-            end
-
+        if Fmax(2) > 0
+            Fmax(1) = min(TF(TF(:)>0));
+        else
+            % All negative, just set default scale, user should turn off log scale.
+            % Should not happen normally, as we force lin scale if any negative.
+            Fmax = [0.1, 1];
+        end
     end
     if (Fmax(1) ~= Fmax(2))
         % Default YLim: range to cover all values
         YLim = [Fmax(1), Fmax(2) + (Fmax(2) - Fmax(1)) * 0.02];
-
+    elseif Fmax(2) == 0
+        YLim = [-1, 1];
     else
         YLim = [Fmax(1), Fmax(2) + abs(Fmax(2)) * 0.01];
     end
@@ -1420,9 +1420,6 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
     end
     if isempty(PlotHandles.DisplayUnits)
         PlotHandles.DisplayUnits = 'signal units';
-    elseif isequal(PlotHandles.DisplayUnits, 't')
-        % Make more readable.
-        PlotHandles.DisplayUnits = 't-values';
     end
     % Detect non standard measures with provided units.
     if ~isfield(TfInfo, 'Measure') 
@@ -1478,6 +1475,23 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         case 'phase',      strAmp = 'Angle';
                         otherwise,         strAmp = 'No units';
                     end
+            end
+        case 'other'
+            % Stats
+            switch PlotHandles.DisplayUnits
+                case 't'
+                    strAmp = 'Student''s t statistic';
+                case 'T'
+                    strAmp = 'Absolute mean T statistic';
+                case 'F'
+                    strAmp = 'Power F statistic';
+                % Not sure if these are used for spectra
+                case 'z'
+                    strAmp = 'z statistic';
+                case 'chi2'
+                    strAmp = 'chi^2 statistic';
+                otherwise
+                    strAmp = PlotHandles.DisplayUnits;
             end
         % Unknown measure (or not yet implemented)
         case ''

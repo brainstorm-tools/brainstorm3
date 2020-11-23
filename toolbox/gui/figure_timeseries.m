@@ -1082,12 +1082,24 @@ function FigureZoom(hFig, direction, Factor, center)
             XLimInit = getappdata(hAxes(1), 'XLimInit');
             % Get current limits
             XLim = get(hAxes(1), 'XLim');
-            % Avoid errors when Xcurrent was 0 and log scale.
-            if Xcurrent < XLimInit(1)
-                Xcurrent = XLimInit(1);
-            end
-            XLog = strcmpi(get(hAxes(1), 'XScale'), 'log');
-            if XLog
+            isXLog = strcmpi(get(hAxes(1), 'XScale'), 'log');
+            if isXLog
+                % Even in log mode, XLim(1) can be 0. This fixes it.
+                if XLim(1) == 0
+                    YLim = get(hAxes(1), 'YLim');
+                    axis(hAxes(1), 'tight')
+                    set(hAxes(1), 'YLim', YLim);
+                    XLim = get(hAxes(1), 'XLim');
+                    % Also adjust XLimInit and save
+                    if XLimInit(1) == 0
+                        XLimInit(1) = XLim(1);
+                        setappdata(hAxes(1), 'XLimInit', XLimInit);
+                    end
+                end
+                % Avoid errors when Xcurrent was 0 in log scale.
+                if Xcurrent < XLimInit(1)
+                    Xcurrent = XLimInit(1);
+                end
                 XLim = log10(XLim);
                 XLimInit = log10(XLimInit);
                 Xcurrent = log10(Xcurrent);
@@ -1096,7 +1108,7 @@ function FigureZoom(hFig, direction, Factor, center)
             Xlength = XLim(2) - XLim(1);
             XLim = [Xcurrent - Xlength/Factor/2, Xcurrent + Xlength/Factor/2];
             XLim = bst_saturate(XLim, XLimInit, 1);
-            if XLog
+            if isXLog
                 XLim = 10.^XLim;
             end
             % Apply to ALL Axes in the figure
@@ -2587,18 +2599,22 @@ function DisplayConfigMenu(hFig, jParent)
         end
         % Spectrum: power/magnitude/log
         if strcmpi(FigureId.Type, 'Spectrum')
+            TfInfo = getappdata(hFig, 'Timefreq');
             sOptions = panel_display('GetDisplayOptions');
-            jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
-            jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
-            jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
-            jButtonGroup = ButtonGroup();
-            jButtonGroup.add(jScalePow);
-            jButtonGroup.add(jScaleMag);
-            jButtonGroup.add(jScaleLog);
-            switch (sOptions.Function)
-                case 'power',      jScalePow.setSelected(1);
-                case 'magnitude',  jScaleMag.setSelected(1);
-                case 'log',        jScaleLog.setSelected(1);
+            if ismember(TfInfo.Function, {'power', 'magnitude'})
+                jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
+                jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
+                jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
+                jButtonGroup = ButtonGroup();
+                jButtonGroup.add(jScalePow);
+                jButtonGroup.add(jScaleMag);
+                jButtonGroup.add(jScaleLog);
+                switch (sOptions.Function)
+                    case 'power',      jScalePow.setSelected(1);
+                    case 'magnitude',  jScaleMag.setSelected(1);
+                    case 'log',        jScaleLog.setSelected(1);
+                end
+                jMenu.addSeparator();
             end
             % Log scale
             switch (TsInfo.YScale)
@@ -2609,7 +2625,6 @@ function DisplayConfigMenu(hFig, jParent)
                     newMode = 'log';
                     isSel = 0;
             end
-            jMenu.addSeparator();
             jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
             jItem.setSelected(isSel);
         end

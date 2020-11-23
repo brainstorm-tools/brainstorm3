@@ -1920,7 +1920,7 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                 case 'Timefreq'
                     figure_timefreq('UpdateFigurePlot', Figure.hFigure, 1);
                 case 'Spectrum'
-                    figure_spectrum('UpdateFigurePlot', Figure.hFigure);
+                    figure_spectrum('UpdateFigurePlot', Figure.hFigure, 1);
                     UpdateFigureName(Figure.hFigure);
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);
