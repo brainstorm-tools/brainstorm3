@@ -1117,7 +1117,6 @@ function UpdateFigurePlot(hFig, isForced)
             LinesLabels{i} = num2str(RowNames(i));
         end
     end
-%% Check for fooof    
     % Remove the first frequency bin (0) : SPECTRUM ONLY, EXCLUDE CONNECTIVITY
     isConnectivity = ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames); % To check, but RowNames not only connectivity
     if isSpectrum && ~iscell(Freqs) && (size(TF,3)>1) && ~isConnectivity

@@ -1737,7 +1737,7 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
             FigureZoom(hFig, 'vertical', changeFactor);
             % If auto-scale is disabled: Update DataMinMax to keep it when scrolling
             if ~TsInfo.AutoScaleY
-                GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
+                GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DataMinMax ./ changeFactor;
             end
         end
     end
