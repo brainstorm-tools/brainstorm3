@@ -1300,7 +1300,7 @@ function UpdateFigurePlot(hFig, isForced)
     else
         set(hAxes, 'YScale', TsInfo.YScale);
     end
-
+    
     % Create scale buttons
     if isempty(findobj(hFig, 'Tag', 'ButtonGainPlus'))
         figure_timeseries('CreateScaleButtons', iDS, iFig);
