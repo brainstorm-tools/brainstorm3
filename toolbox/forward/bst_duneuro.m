@@ -48,24 +48,27 @@ isMeg  = strcmpi(cfg.MEGMethod, 'duneuro')  && ~isempty(cfg.iMeg);
 isEcog = strcmpi(cfg.ECOGMethod, 'duneuro') && ~isempty(cfg.iEcog);
 isSeeg = strcmpi(cfg.SEEGMethod, 'duneuro') && ~isempty(cfg.iSeeg);
 % Error: cannot combine modalities other than MEG+EEG
-if (nnz([isEeg, isMeg, isEcog, isSeeg]) > 2) || ((nnz([isEeg, isMeg, isEcog, isSeeg]) == 2) && (isEcog || isSeeg))
-    errMsg = 'DUNEuro cannot combine modalities other than MEG+EEG.';
-    return;
-end
+% if (nnz([isEeg, isMeg, isEcog, isSeeg]) > 2) || ((nnz([isEeg, isMeg, isEcog, isSeeg]) == 2) && (isEcog || isSeeg))
+%     errMsg = 'DUNEuro cannot combine modalities other than MEG+EEG.';
+%     return;
+% end
+
 % Get the modality
-if isMeg
-    dnModality = 'meg';  
-elseif ((isEeg || isEcog || isSeeg) && isMeg)
-    dnModality = 'meeg';
-elseif  isEeg || isEcog || isSeeg
-    dnModality = 'eeg'; % from DUNEuro side, EEG, sEEG, ECOG  uses the same process
+if ((isEeg || isEcog || isSeeg) && isMeg)
+    dnModality = 'meeg';  
+elseif (isEeg || isEcog || isSeeg)
+    dnModality = 'eeg';
+elseif  isMeg
+    dnModality = 'meg'; % from DUNEuro side, EEG, sEEG, ECOG  uses the same process
 end
+
 % Get EEG positions
-if isEeg
-    EegLoc = cat(2, cfg.Channel(cfg.iEeg).Loc);
-else
-    EegLoc = [];
+% Combined modalities for EEG/sEEG/EcoG as EEG
+if (isEeg || isEcog || isSeeg)
+    cfg.iEeg = [cfg.iEeg, cfg.iSeeg, cfg.iEcog];
+    ElectrodeLocation = cat(2, cfg.Channel(cfg.iEeg).Loc);
 end
+
 % Get MEG positions/orientations
 if isMeg
     MegChannels = [];
@@ -79,25 +82,6 @@ end
 % TODO : use the real position of the sensors unstead of the integration
 % points ==> Too much memory for low accuracies advantages ==> discuss with
 % ftadel and create git discussion + PR
-
-% Get sEEG positions
-if isSeeg
-    sEegLoc = cat(2, cfg.Channel(cfg.iSeeg).Loc);
-else
-    sEegLoc = [];
-end
-% Get Ecog positions
-if isEcog
-    EcogLoc = cat(2, cfg.Channel(cfg.iEcog).Loc);
-else
-    EcogLoc = [];    
-end
-
-% Combined modalities for EEG/sEEG/EcoG
-% TODO : define the same matrix for all the location that share the same
-% modality ==> faster
-ElectrodeLocation = [EegLoc sEegLoc EcogLoc];
-
 
 %% ===== HEAD MODEL =====
 % Load FEM mesh
@@ -500,7 +484,7 @@ disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
 % EEG
-if isEeg || isEcog || isSeeg 
+if (isEeg || isEcog || isSeeg) 
     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
 end
 % MEG
@@ -553,21 +537,14 @@ Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
 if isMeg
     Gain(cfg.iMeg,:) = GainMeg; 
 end 
-if isEeg
+if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
 end
-if isEcog 
-    Gain(cfg.iEcog,:) = GainEeg; 
-end
-if isSeeg 
-    Gain(cfg.iSeeg,:) = GainEeg; 
-end
+
 % TODO : check if this is possible wiht combined sEEG/EEG and EcoG
 
 %% ===== SAVE TRANSFER MATRIX ======
 disp('DUNEURO> TODO: Save transferOut.dat to database.')
-
-
 
 end
 
