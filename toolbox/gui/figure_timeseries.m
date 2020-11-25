@@ -34,7 +34,9 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2017
+%          Marc Lalancette, 2020
 
 eval(macro_method);
 end
