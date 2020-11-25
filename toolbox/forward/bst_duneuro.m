@@ -47,11 +47,6 @@ isEeg  = strcmpi(cfg.EEGMethod, 'duneuro')  && ~isempty(cfg.iEeg);
 isMeg  = strcmpi(cfg.MEGMethod, 'duneuro')  && ~isempty(cfg.iMeg);
 isEcog = strcmpi(cfg.ECOGMethod, 'duneuro') && ~isempty(cfg.iEcog);
 isSeeg = strcmpi(cfg.SEEGMethod, 'duneuro') && ~isempty(cfg.iSeeg);
-% Error: cannot combine modalities other than MEG+EEG
-% if (nnz([isEeg, isMeg, isEcog, isSeeg]) > 2) || ((nnz([isEeg, isMeg, isEcog, isSeeg]) == 2) && (isEcog || isSeeg))
-%     errMsg = 'DUNEuro cannot combine modalities other than MEG+EEG.';
-%     return;
-% end
 
 % Get the modality
 if ((isEeg || isEcog || isSeeg) && isMeg)
@@ -60,13 +55,16 @@ elseif (isEeg || isEcog || isSeeg)
     dnModality = 'eeg';
 elseif  isMeg
     dnModality = 'meg'; % from DUNEuro side, EEG, sEEG, ECOG  uses the same process
+else
+    errMsg = 'No valid modality available.';
+    return;
 end
 
 % Get EEG positions
 % Combined modalities for EEG/sEEG/EcoG as EEG
 if (isEeg || isEcog || isSeeg)
     cfg.iEeg = [cfg.iEeg, cfg.iSeeg, cfg.iEcog];
-    ElectrodeLocation = cat(2, cfg.Channel(cfg.iEeg).Loc);
+    EegLoc = cat(2, cfg.Channel(cfg.iEeg).Loc);
 end
 
 % Get MEG positions/orientations
@@ -79,9 +77,6 @@ if isMeg
         end
     end
 end
-% TODO : MEG use the real position of the sensors unstead of the integration
-% points ==> Too much memory for low accuracies advantages ==> discuss with
-% ftadel and create git discussion + PR ==> will do it in different PR
 
 %% ===== HEAD MODEL =====
 % Load FEM mesh
@@ -323,7 +318,7 @@ fclose(fid);
 ElecFile = 'electrode_model.txt';
 if isEeg || isEcog || isSeeg 
     fid = fopen(fullfile(TmpDir, ElecFile), 'wt+');
-    fprintf(fid, '%d %d %d  \n', ElectrodeLocation);
+    fprintf(fid, '%d %d %d  \n', EegLoc);
     fclose(fid); 
 end
 % Write the MEG sensors file
@@ -382,9 +377,9 @@ fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
 fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
 % [electrodes]
 if isEcog || isSeeg 
-  % Unstead to select the electrode on the outer surface,
-  % it uses the nearest FEM node as an electrode location.
-  cfg.ElecType = 'closest_subentity_center';
+    % Instead of selecting the electrode on the outer surface,
+    % uses the nearest FEM node as the electrode location
+    cfg.ElecType = 'closest_subentity_center';
 end
 if strcmp(dnModality, 'eeg') || strcmp(dnModality, 'meeg')
     fprintf(fid, '[electrodes]\n');
