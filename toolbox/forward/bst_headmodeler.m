@@ -502,6 +502,16 @@ if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod
     bst_progress('setimage', 'logo_duneuro.png');
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
+    % Comment in history field
+    strHistory = [strHistory, ' | ', sprintf('Fem head file: %s, |  Cortex file: %s, ',...
+                                                                                OPTIONS.FemFile, OPTIONS.CortexFile) ];
+    if ~OPTIONS.UseTensor
+        strHistory = [strHistory, ' | ', sprintf('FemCond: isotropic, %s', num2str(OPTIONS.FemCond))];
+    else
+        strHistory = [strHistory, ' | ', sprintf('FemCond: anisotropic, %s', 'check the tensor field within the Fem head file')];
+    end
+    strHistory = [strHistory, ' | ', sprintf('Fem source model: %s, type : %s, %s ',...
+                                                                                OPTIONS.SrcModel, OPTIONS.FemType, OPTIONS.SolverType) ];
     % Remove logo from progress bar
     bst_progress('removeimage');
     % If process crashed
