@@ -253,9 +253,23 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Warning', sProcess, [], 'Testing |X|>0: Using a positive one-tailed test (one+) instead.');
         OPTIONS.TestTail = 'one+';
     end
+    % Time-frequency: Warning if processing power
+    isTfPower = false;
+    if strcmpi(sInputsA(1).FileType, 'timefreq')
+        TfMat = in_bst_timefreq(sInputsA(1).FileName, 0, 'Measure');
+        if isequal(TfMat.Measure, 'power')
+            isTfPower = true;
+        end
+    end    
     % Get average function
     switch (OPTIONS.TestType)
         case {'ttest_equal', 'ttest_unequal', 'ttest_onesample', 'ttest_paired', 'ttest_baseline', 'absmean', 'absmean_param'}
+            if isTfPower
+                bst_report('Warning', sProcess, [], ['You are testing power values, while a more standard analysis is to test the magnitude (ie. sqrt(power)).' 10 ...
+                    'Option #1: Recompute the time-frequency maps using the option "Measure: Magnitude".' 10 ...
+                    'Option #2: Run the process "Extract > Measure from complex values", with option "Magntiude".']);
+                isTfPower = false;
+            end
             if OPTIONS.isAbsolute
                 AvgFunction = 'norm';
                 isAvgVariance = 1;
@@ -312,7 +326,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     
     % ===== INPUT DATA =====
     % If there is nothing special done with the files: files can be handled directly by bst_avg_files
-    if isempty(OPTIONS.TimeWindow) && isempty(OPTIONS.ScoutSel) && isempty(OPTIONS.SensorTypes) && isempty(OPTIONS.Rows) && isempty(OPTIONS.FreqRange) && ~OPTIONS.isAvgTime && ~OPTIONS.isAvgRow && ~OPTIONS.isAvgFreq
+    if isempty(OPTIONS.TimeWindow) && isempty(OPTIONS.ScoutSel) && isempty(OPTIONS.SensorTypes) && isempty(OPTIONS.Rows) && isempty(OPTIONS.FreqRange) && ~OPTIONS.isAvgTime && ~OPTIONS.isAvgRow && ~OPTIONS.isAvgFreq && ~isTfPower
         InputSetA = {sInputsA.FileName};
         if ~isempty(sInputsB)
             InputSetB = {sInputsB.FileName};
@@ -338,10 +352,26 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         else
             InputSetB = [];
         end
+        % Adjust time-frequency already in 'power', for power stats.
+        if isTfPower
+            bst_report('Info', sProcess, [], 'Data is already power values, adapting power test (not squaring again).');
+            for iIn = 1:numel(InputSetA)
+                [InputSetA{iIn}.TF, isError] = process_tf_measure('Compute', InputSetA{iIn}.TF, InputSetA{iIn}.Measure, 'magnitude', true);
+                if isError
+                    bst_report('Error', sProcess, sInputsA(1), ['Error converting time-frequency measure ' InputSetA{iIn}.Measure 'to magnitude.']);
+                end
+            end
+            for iIn = 1:numel(InputSetB)
+                [InputSetB{iIn}.TF, isError] = process_tf_measure('Compute', InputSetB{iIn}.TF, InputSetB{iIn}.Measure, 'magnitude', true);
+                if isError
+                    bst_report('Error', sProcess, sInputsA(1), ['Error converting time-frequency measure ' InputSetB{iIn}.Measure 'to magnitude.']);
+                end
+            end
+        end
     end
 
     % === COMPUTE TEST ===
-    % Branch between dependend(=paired) and independent tests
+    % Branch between dependent(=paired) and independent tests
     switch (OPTIONS.TestType)
         
         % ===== INDEPENDENT TESTS =====
@@ -673,12 +703,6 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
                 tmap(iNull) = 0;
                 pmap(iNull) = 1;
             end
-    end
-    % Time-frequency: Warning if processing power
-    if strcmpi(sInputsA(1).FileType, 'timefreq') && isequal(StatA.Measure, 'power')
-        bst_report('Warning', sProcess, [], ['You are testing power values, while a more standard analysis is to test the magnitude (ie. sqrt(power)).' 10 ...
-            'Option #1: Recompute the time-frequency maps using the option "Measure: Magnitude".' 10 ...
-            'Option #2: Run the process "Extract > Measure from complex values", with option "Magntiude".']);
     end
 
     % Return full matrices
