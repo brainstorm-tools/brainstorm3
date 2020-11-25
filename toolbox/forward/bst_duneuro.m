@@ -79,9 +79,9 @@ if isMeg
         end
     end
 end
-% TODO : use the real position of the sensors unstead of the integration
+% TODO : MEG use the real position of the sensors unstead of the integration
 % points ==> Too much memory for low accuracies advantages ==> discuss with
-% ftadel and create git discussion + PR
+% ftadel and create git discussion + PR ==> will do it in different PR
 
 %% ===== HEAD MODEL =====
 % Load FEM mesh
@@ -382,9 +382,9 @@ fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
 fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
 % [electrodes]
 if isEcog || isSeeg 
-  cfg.ElecType = 'closest_subentity_center';
   % Unstead to select the electrode on the outer surface,
   % it uses the nearest FEM node as an electrode location.
+  cfg.ElecType = 'closest_subentity_center';
 end
 if strcmp(dnModality, 'eeg') || strcmp(dnModality, 'meeg')
     fprintf(fid, '[electrodes]\n');
@@ -487,9 +487,8 @@ bst_progress('text', 'DUNEuro: Reading leadfield...');
 if (isEeg || isEcog || isSeeg) 
     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
 end
-% MEG
-% TODO : add an option to use the real sensors location without the
-% integrations points.
+
+%MEG
 if isMeg
     GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
     
@@ -540,8 +539,6 @@ end
 if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
 end
-
-% TODO : check if this is possible wiht combined sEEG/EEG and EcoG
 
 %% ===== SAVE TRANSFER MATRIX ======
 disp('DUNEURO> TODO: Save transferOut.dat to database.')
