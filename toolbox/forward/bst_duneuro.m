@@ -230,14 +230,50 @@ switch (cfg.HeadModelType)
                 
                 % OPTION #2: Gradually move the vertex towards the center of the centroid, until it is located inside the element
                 % Move the vertex towards the center until it is inside the element
-                nFix = 10;
-                for iFix = 1:nFix
-                    tmpVert = (nFix - iFix)/nFix * cfg.GridLoc(iVertOut(i),:) + iFix/nFix * ElemCenter(iTarget,:);
-                    if inpolyhedron(targetFaces, gmVert, tmpVert)
-                        distMove = sqrt(sum((cfg.GridLoc(iVertOut(i),:) - tmpVert) .^ 2)) * 1000;
-                        disp(sprintf('DUNEURO> Dipole #%d moved inside the GM (%1.2fmm)', iVertOut(i), distMove));
-                        cfg.GridLoc(iVertOut(i),:) = tmpVert;
-                        break;
+                %nFix = 10;
+                %for iFix = 1:nFix
+                %    tmpVert = (nFix - iFix)/nFix * cfg.GridLoc(iVertOut(i),:) + iFix/nFix * ElemCenter(iTarget,:);
+                %   if inpolyhedron(targetFaces, gmVert, tmpVert)
+                %        distMove = sqrt(sum((cfg.GridLoc(iVertOut(i),:) - tmpVert) .^ 2)) * 1000;
+                %        disp(sprintf('DUNEURO> Dipole #%d moved inside the GM (%1.2fmm)', iVertOut(i), distMove));
+                %        cfg.GridLoc(iVertOut(i),:) = tmpVert;
+                %        break;
+                %    end
+                %end
+                
+                % OPTION #3: move the vertex towards the centroid of the element, and then place the final dipole 
+                % in the symetric point to the center, as the image of the computed vertex
+                % x-----o-----x'
+                % ^      ^      ^____ : x' the image of x, or the final dipole position 
+                % |       |_________ : o is the center of the elem, and middle of [x,x']
+                % |_____________ : the point inside the element determined by the tmpVert in the following equation                
+                nFix = 10; % divid into 10 segments
+                iFix = 7; % ratio of the distance tmpVert from the centroid
+                tmpVert = (nFix - iFix)/nFix * cfg.GridLoc(iVertOut(i),:) + iFix/nFix * ElemCenter(iTarget,:);
+                distPoint = ElemCenter(iTarget,:) - tmpVert;
+                newPoint = ElemCenter(iTarget,:) + (distPoint);
+                distMove = sqrt(sum((cfg.GridLoc(iVertOut(i),:) - newPoint) .^ 2)) * 1000;
+                % use the image/symeric point if it's inside GM
+                if inpolyhedron(targetFaces, gmVert, newPoint) 
+                    disp(sprintf('DUNEURO> iDipole %d/%d : Dipole #%d moved inside the GM (%1.2fmm) (option 3 :as image)',i,length(iVertOut), iVertOut(i), distMove));
+                    cfg.GridLoc(iVertOut(i),:) = newPoint;
+                elseif inpolyhedron(targetFaces, gmVert, tmpVert) % use the original point if it's inside GM
+                    disp(sprintf('DUNEURO> iDipole %d/%d : Warning Dipole #%d moved outside the GM (%1.2fmm) (option 3 :as image)', i,length(iVertOut),iVertOut(i), distMove));
+                    % use the original distance unstead of the image
+                    distMove = sqrt(sum((cfg.GridLoc(iVertOut(i),:) - tmpVert) .^ 2)) * 1000;
+                    disp(sprintf('DUNEURO> iDipole %d/%d : Correction 1: Dipole #%d moved inside the GM (%1.2fmm) (option 3: not image)', i,length(iVertOut),iVertOut(i), distMove));
+                    cfg.GridLoc(iVertOut(i),:) = tmpVert;               
+                else % Use the option 2 defined by Francois
+                    disp(sprintf('DUNEURO> iDipole %d/%d : Warning Dipole #%d moved outside the GM (%1.2fmm) (option 3 :as image)', i,length(iVertOut),iVertOut(i), distMove));
+                    nFix = 20; % with 10 it's not working for some extrem case, then I upgrade it to 20
+                    for iFix = 1: nFix
+                       tmpVert = (nFix - iFix)/nFix * cfg.GridLoc(iVertOut(i),:) + iFix/nFix * ElemCenter(iTarget,:);
+                      if inpolyhedron(targetFaces, gmVert, tmpVert)
+                           distMove = sqrt(sum((cfg.GridLoc(iVertOut(i),:) - tmpVert) .^ 2)) * 1000;
+                           disp(sprintf('DUNEURO> iDipole %d/%d : Correction 2: Dipole #%d moved inside the GM (%1.2fmm) (option2)', i,length(iVertOut),iVertOut(i), distMove));
+                           cfg.GridLoc(iVertOut(i),:) = tmpVert;
+                           break;
+                       end
                     end
                 end
             end
