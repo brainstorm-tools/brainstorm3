@@ -914,6 +914,10 @@ function SetDisplayOptions(sOptions)
                                 figure_spectrum('UpdateFigurePlot', hFigOthers(i), 1);
                             case 'Pac'
                                 figure_pac('UpdateFigurePlot', hFigOthers(i));
+                            case 'Connect'
+                                warning('todo');
+                            case 'ConnectViz' %@TODO: check
+                                warning('todo');
                         end
                     end
                 end
@@ -1077,32 +1081,11 @@ function SetSelectedRowName(hFig, newRowName) %#ok<DEFNU>
     if isempty(iNewRow)
         return;
     end
-<<<<<<< HEAD
-    % If row selection was modified: Update figure
-    if ~strcmpi(oldRowName, TfInfo.RowName)
-        FigureId = getappdata(hFig, 'FigureId');
-        % Redraw figure
-        switch (FigureId.Type)
-            case 'Timefreq'
-                figure_timefreq('UpdateFigurePlot', hFig);
-            case 'Spectrum'
-                figure_spectrum('UpdateFigurePlot', hFig, 1);
-            case 'Pac'
-                figure_pac('UpdateFigurePlot', hFig);
-            case 'Connect'
-                warning('todo');
-             case 'ConnectViz' %@TODO: check
-                warning('todo');
-        end
-        % Update panel
-        UpdatePanel(hFig);
-=======
     % Get new row name
     if iscell(RowNames)
         NewRowName = RowNames{iNewRow(1)};
     else
         NewRowName = RowNames(iNewRow(1));
->>>>>>> upstream/master
     end
     % Update Display panel options
     sOptions = GetDisplayOptions();
