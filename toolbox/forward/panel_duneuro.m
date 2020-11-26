@@ -227,7 +227,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     
         % ==== PANEL RIGHT: MEG COMPUTATIONS OPTIONS ====    
         jPanelMegComputationOption = gui_river([1,1], [0,6,6,6], 'MEG computation options');
-        if isMeg               
+        if isMeg
             % Use integration Points, recommended for high mesh density
             jCheckUseIntegrationPoint = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Use MEG integration points', [], '', [], []);
             % Enable MEG cache memory for high mesh density if users do not
@@ -460,13 +460,15 @@ function s = GetPanelContents() %#ok<DEFNU>
     if ~isempty(ctrl.jCheckUseIntegrationPoint)
         s.UseIntegrationPoint = ctrl.jCheckUseIntegrationPoint.isSelected();
     else
-        s.UseIntegrationPoint = 1;  
+        s.UseIntegrationPoint = 1;
     end
+    
     if ~isempty(ctrl.jCheckEnableCacheMemory)
         s.EnableCacheMemory = ctrl.jCheckEnableCacheMemory.isSelected();
     else
         s.EnableCacheMemory = 0;
     end
+
 %     if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
 %         s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
 %     else
