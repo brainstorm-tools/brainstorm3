@@ -85,8 +85,8 @@ function comment=getComment()
 end
 
 %% ===== RUN =====
-function Run(sProcess, sInputs)
-
+function OutputFiles = Run(sProcess, sInputs)
+    OutputFiles={};
     switch( sProcess.options.action.Value)
         case 'install'
             extra={};
