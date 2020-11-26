@@ -57,7 +57,7 @@ for col=[2,3,4,6]
     % Converts text in the input cell array to numbers. Replaced non-numeric
     % text with NaN.
     rawData = dataArray{col};
-    for row=1:size(rawData, 1);
+    for row=1:size(rawData, 1)
         % Create a regular expression to detect and remove non-numeric prefixes and
         % suffixes.
         regexstr = '(?<prefix>.*?)(?<numbers>([-]*(\d+[\,]*)+[\.]{0,1}\d*[eEdD]{0,1}[-+]*\d*[i]{0,1})|([-]*(\d+[\,]*)*[\.]{1,1}\d+[eEdD]{0,1}[-+]*\d*[i]{0,1}))(?<suffix>.*)';
@@ -67,7 +67,7 @@ for col=[2,3,4,6]
             
             % Detected commas in non-thousand locations.
             invalidThousandsSeparator = false;
-            if any(numbers==',');
+            if any(numbers==',')
                 thousandsRegExp = '^\d+?(\,\d{3})*\.{0,1}\d*$';
                 if isempty(regexp(numbers, thousandsRegExp, 'once'));
                     numbers = NaN;
@@ -99,7 +99,7 @@ rawNumericColumns(R) = {NaN}; % Replace non-numeric cells
 Label           = rawCellColumns(:, 1);
 frequencies     = cell2mat(rawNumericColumns(:, 1));
 times           = cell2mat(rawNumericColumns(:, 2));
-VarName13       = cell2mat(rawNumericColumns(:, 3));
+duration        = cell2mat(rawNumericColumns(:, 3));
 Electrode_label = rawCellColumns(:, 2);
 VarName15       = cell2mat(rawNumericColumns(:, 4));
 
@@ -134,7 +134,12 @@ if ~isempty(uniqueLabels)
         % Add event structure
         events(iEvt).label      = uniqueLabels{i};
         events(iEvt).epochs     = ones(1,sum(iAssignmentOnUniqueLabels == i));
-        events(iEvt).times      = times(iAssignmentOnUniqueLabels == i)';
+        % Extended events
+        if all(duration(iAssignmentOnUniqueLabels == i) == 0)
+            events(iEvt).times = times(iAssignmentOnUniqueLabels == i)';
+        else
+            events(iEvt).times = [times(iAssignmentOnUniqueLabels == i)'; duration(iAssignmentOnUniqueLabels == i)'];
+        end
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
         events(iEvt).color      = rand(1,3);

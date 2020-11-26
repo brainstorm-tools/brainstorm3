@@ -34,7 +34,9 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2017
+%          Marc Lalancette, 2020
 
 eval(macro_method);
 end
@@ -1082,12 +1084,24 @@ function FigureZoom(hFig, direction, Factor, center)
             XLimInit = getappdata(hAxes(1), 'XLimInit');
             % Get current limits
             XLim = get(hAxes(1), 'XLim');
-            % Avoid errors when Xcurrent was 0 and log scale.
-            if Xcurrent < XLimInit(1)
-                Xcurrent = XLimInit(1);
-            end
-            XLog = strcmpi(get(hAxes(1), 'XScale'), 'log');
-            if XLog
+            isXLog = strcmpi(get(hAxes(1), 'XScale'), 'log');
+            if isXLog
+                % Even in log mode, XLim(1) can be 0. This fixes it.
+                if XLim(1) == 0
+                    YLim = get(hAxes(1), 'YLim');
+                    axis(hAxes(1), 'tight')
+                    set(hAxes(1), 'YLim', YLim);
+                    XLim = get(hAxes(1), 'XLim');
+                    % Also adjust XLimInit and save
+                    if XLimInit(1) == 0
+                        XLimInit(1) = XLim(1);
+                        setappdata(hAxes(1), 'XLimInit', XLimInit);
+                    end
+                end
+                % Avoid errors when Xcurrent was 0 in log scale.
+                if Xcurrent < XLimInit(1)
+                    Xcurrent = XLimInit(1);
+                end
                 XLim = log10(XLim);
                 XLimInit = log10(XLimInit);
                 Xcurrent = log10(Xcurrent);
@@ -1096,7 +1110,7 @@ function FigureZoom(hFig, direction, Factor, center)
             Xlength = XLim(2) - XLim(1);
             XLim = [Xcurrent - Xlength/Factor/2, Xcurrent + Xlength/Factor/2];
             XLim = bst_saturate(XLim, XLimInit, 1);
-            if XLog
+            if isXLog
                 XLim = 10.^XLim;
             end
             % Apply to ALL Axes in the figure
@@ -1723,11 +1737,9 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         % Butterfly: Zoom/unzoom vertically in the graph
         else
             FigureZoom(hFig, 'vertical', changeFactor);
-            % If auto-scale is disabled: Update DataMinMax to keep it hen scrolling
+            % If auto-scale is disabled: Update DataMinMax to keep it when scrolling
             if ~TsInfo.AutoScaleY
-                for iAxe = 1:length(GlobalData.DataSet(iDS).Figure(iFig).Handles)
-                    GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
-                end
+                GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DataMinMax ./ changeFactor;
             end
         end
     end
@@ -1739,7 +1751,7 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         SetDefaultFactor(iDS, iFig, changeFactor);
     end
     % Update scale bar (not for spectrum figures)
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && strcmpi(TsInfo.DisplayMode, 'column')
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && isColumn
         UpdateScaleBar(iDS, iFig, TsInfo);
     end
 end
@@ -2587,31 +2599,36 @@ function DisplayConfigMenu(hFig, jParent)
         end
         % Spectrum: power/magnitude/log
         if strcmpi(FigureId.Type, 'Spectrum')
+            TfInfo = getappdata(hFig, 'Timefreq');
             sOptions = panel_display('GetDisplayOptions');
-            jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
-            jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
-            jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
-            jButtonGroup = ButtonGroup();
-            jButtonGroup.add(jScalePow);
-            jButtonGroup.add(jScaleMag);
-            jButtonGroup.add(jScaleLog);
-            switch (sOptions.Function)
-                case 'power',      jScalePow.setSelected(1);
-                case 'magnitude',  jScaleMag.setSelected(1);
-                case 'log',        jScaleLog.setSelected(1);
+            if ismember(TfInfo.Function, {'power', 'magnitude'})
+                jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
+                jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
+                jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
+                jButtonGroup = ButtonGroup();
+                jButtonGroup.add(jScalePow);
+                jButtonGroup.add(jScaleMag);
+                jButtonGroup.add(jScaleLog);
+                switch (sOptions.Function)
+                    case 'power',      jScalePow.setSelected(1);
+                    case 'magnitude',  jScaleMag.setSelected(1);
+                    case 'log',        jScaleLog.setSelected(1);
+                end
+                jMenu.addSeparator();
             end
             % Log scale
-            switch (TsInfo.YScale)
-                case 'log'
-                    newMode = 'linear';
-                    isSel = 1;
-                case 'linear'
-                    newMode = 'log';
-                    isSel = 0;
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                switch (TsInfo.YScale)
+                    case 'log'
+                        newMode = 'linear';
+                        isSel = 1;
+                    case 'linear'
+                        newMode = 'log';
+                        isSel = 0;
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
+                jItem.setSelected(isSel);
             end
-            jMenu.addSeparator();
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
-            jItem.setSelected(isSel);
         end
         % Scale to fit Y
         if strcmpi(TsInfo.DisplayMode, 'butterfly')
@@ -4288,6 +4305,7 @@ function ScaleToFitY(hFig, ev)
 
     % ===== GET DATA =====
     if isSpectrum
+        isBands = false;
         % Get data to plot
         switch lower(FigureId.SubType)
             case 'timeseries'
@@ -4296,6 +4314,7 @@ function ScaleToFitY(hFig, ev)
                 [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
                 % Frequency bands (cell array of named bands): Compute center of each band
                 if iscell(XVector)
+                    isBands = true;
                     % Multiple frequency bands
                     if (size(XVector,1) > 1)
                         XVector = mean(process_tf_bands('GetBounds', XVector), 2)';
@@ -4325,7 +4344,7 @@ function ScaleToFitY(hFig, ev)
     % Get limits of currently plotted data
     XLim = get(hAxes, 'XLim');    
     % For linear y axis spectrum, ignore very low frequencies with high amplitudes. Use the first local maximum
-    if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ...
+    if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ~isBands && ...
             any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
         TFmax = max(TF,[],1);
         iStartMin = find(diff(TFmax)>0,1);
@@ -4364,6 +4383,16 @@ function ScaleToFitY(hFig, ev)
         elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
             YLim(1) = max(YLim(1), PlotHandles.DataMinMax(1) * PlotHandles.DisplayFactor);
             YLim(2) = min(YLim(2), PlotHandles.DataMinMax(2) * PlotHandles.DisplayFactor);
+        end
+    end
+    % Catch exceptions
+    if YLim(1) == YLim (2)
+        if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
+            YLim = YLimInit;
+        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
+            YLim = PlotHandles.DataMinMax;
+        else
+            YLim = [-1, 1];
         end
     end
     
