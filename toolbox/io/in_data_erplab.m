@@ -48,7 +48,7 @@ for i = 1:nBins
         DataMat(i).Std = ErpMat.ERP.binerror(:,:,i) * 1e-6;
     end
     % History
-    DataMat(i) = bst_history('add', DataMat(i), 'erplab', ErpMat.ERP.history);
+    DataMat(i) = bst_history('add', DataMat(i), 'erplab', ErpMat.ERP.history(:)');
 end
 
 % ===== CHANNEL FILE =====

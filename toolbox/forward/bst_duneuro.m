@@ -47,27 +47,26 @@ isEeg  = strcmpi(cfg.EEGMethod, 'duneuro')  && ~isempty(cfg.iEeg);
 isMeg  = strcmpi(cfg.MEGMethod, 'duneuro')  && ~isempty(cfg.iMeg);
 isEcog = strcmpi(cfg.ECOGMethod, 'duneuro') && ~isempty(cfg.iEcog);
 isSeeg = strcmpi(cfg.SEEGMethod, 'duneuro') && ~isempty(cfg.iSeeg);
-% Error: cannot combine modalities other than MEG+EEG
-if (nnz([isEeg, isMeg, isEcog, isSeeg]) > 2) || ((nnz([isEeg, isMeg, isEcog, isSeeg]) == 2) && (isEcog || isSeeg))
-    errMsg = 'DUNEuro cannot combine modalities other than MEG+EEG.';
+
+% Get the modality
+if ((isEeg || isEcog || isSeeg) && isMeg)
+    dnModality = 'meeg';  
+elseif (isEeg || isEcog || isSeeg)
+    dnModality = 'eeg';
+elseif  isMeg
+    dnModality = 'meg'; % from DUNEuro side, EEG, sEEG, ECOG  uses the same process
+else
+    errMsg = 'No valid modality available.';
     return;
 end
-% Get the modality
-if isEeg && isMeg
-    dnModality = 'meeg';
-elseif isEeg
-    dnModality = 'eeg';
-elseif isMeg
-    dnModality = 'meg';
-elseif isEcog
-    dnModality = 'ecog';
-elseif isSeeg
-    dnModality = 'seeg';
-end
+
 % Get EEG positions
-if isEeg
+% Combined modalities for EEG/sEEG/EcoG as EEG
+if (isEeg || isEcog || isSeeg)
+    cfg.iEeg = [cfg.iEeg, cfg.iSeeg, cfg.iEcog];
     EegLoc = cat(2, cfg.Channel(cfg.iEeg).Loc);
 end
+
 % Get MEG positions/orientations
 if isMeg
     MegChannels = [];
@@ -78,7 +77,6 @@ if isMeg
         end
     end
 end
-
 
 %% ===== HEAD MODEL =====
 % Load FEM mesh
@@ -155,7 +153,6 @@ end
 % Write mesh model
 MeshFile = fullfile(TmpDir, MeshFile);
 out_fem(FemMat, MeshFile);
-
 
 %% ====== SOURCE SPACE =====
 % Source space type
@@ -319,7 +316,7 @@ fclose(fid);
 %% ===== SENSOR MODEL =====
 % Write the EEG electrode file
 ElecFile = 'electrode_model.txt';
-if isEeg
+if isEeg || isEcog || isSeeg 
     fid = fopen(fullfile(TmpDir, ElecFile), 'wt+');
     fprintf(fid, '%d %d %d  \n', EegLoc);
     fclose(fid); 
@@ -379,10 +376,16 @@ fprintf(fid, 'solver_type = %s\n', cfg.SolverType);
 fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
 fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
 % [electrodes]
+if isEcog || isSeeg 
+    % Instead of selecting the electrode on the outer surface,
+    % uses the nearest FEM node as the electrode location
+    cfg.ElecType = 'closest_subentity_center';
+end
 if strcmp(dnModality, 'eeg') || strcmp(dnModality, 'meeg')
     fprintf(fid, '[electrodes]\n');
     fprintf(fid, 'filename = %s\n', fullfile(TmpDir, ElecFile));
     fprintf(fid, 'type = %s\n', cfg.ElecType);
+    fprintf(fid, 'codims = %s\n', '3');
 end
 % [meg]
 if strcmp(dnModality, 'meg') || strcmp(dnModality, 'meeg')
@@ -476,10 +479,11 @@ disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
 % EEG
-if isEeg
+if (isEeg || isEcog || isSeeg) 
     GainEeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstEegLfFile))';
 end
-% MEG
+
+%MEG
 if isMeg
     GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
     
@@ -527,15 +531,12 @@ Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
 if isMeg
     Gain(cfg.iMeg,:) = GainMeg; 
 end 
-if isEeg
+if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
 end
 
-
 %% ===== SAVE TRANSFER MATRIX ======
 disp('DUNEURO> TODO: Save transferOut.dat to database.')
-
-
 
 end
 

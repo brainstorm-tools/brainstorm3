@@ -66,11 +66,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: ECOG headmodel
     sProcess.options.ecog.Comment = '   - ECOG method:';
     sProcess.options.ecog.Type    = 'combobox';
-    sProcess.options.ecog.Value   = {2, {'<none>', 'OpenMEEG BEM'}};
+    sProcess.options.ecog.Value   = {2, {'<none>', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Option: SEEG headmodel
     sProcess.options.seeg.Comment = '   - SEEG method:';
     sProcess.options.seeg.Type    = 'combobox';
-    sProcess.options.seeg.Value   = {2, {'<none>', 'OpenMEEG BEM'}};
+    sProcess.options.seeg.Value   = {2, {'<none>', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Options: OpenMEEG Options
     sProcess.options.openmeeg.Comment = {'panel_openmeeg', 'OpenMEEG options: '};
     sProcess.options.openmeeg.Type    = 'editpref';
@@ -126,6 +126,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         switch (sProcess.options.ecog.Value{1})
             case 1,  sMethod.ECOGMethod = '';
             case 2,  sMethod.ECOGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 3,  sMethod.ECOGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.ECOGMethod = '';
@@ -135,6 +136,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         switch (sProcess.options.seeg.Value{1})
             case 1,  sMethod.SEEGMethod = '';
             case 2,  sMethod.SEEGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 3,  sMethod.SEEGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.SEEGMethod = '';
