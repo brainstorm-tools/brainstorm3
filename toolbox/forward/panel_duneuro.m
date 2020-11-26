@@ -40,6 +40,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     if (nargin == 1)
         OPTIONS = sProcess;
         % Check if there is only MEG, for simplified model by default
+        isMeg = isequal(OPTIONS.MEGMethod, 'duneuro');
         isMegOnly = ~ismember('duneuro', {OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod});
     % PROCESS CALL:  panel_duneuro('CreatePanel', sProcess, sFiles)
     else
@@ -52,6 +53,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                 Modalities = setdiff(Modalities, 'MEG');
             end
         end
+        isMeg = any(ismember({'MEG', 'MEG MAG', 'MEG GRAD'}, Modalities));
         isMegOnly = all(ismember(Modalities, {'MEG', 'MEG MAG', 'MEG GRAD'}));
         % Get FEM files
         sSubject = bst_get('Subject', sFiles(1).SubjectFile);
@@ -225,15 +227,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     
         % ==== PANEL RIGHT: MEG COMPUTATIONS OPTIONS ====    
         jPanelMegComputationOption = gui_river([1,1], [0,6,6,6], 'MEG computation options');
-        % These option are only for MEG at this time
-        if exist('Modalities','var')
-            isMEG = sum(ismember(Modalities,'MEG'));
-        elseif isfield(OPTIONS, 'MEGMethod')
-            isMEG = ismember('duneuro', {OPTIONS.MEGMethod});
-        else % in worse case we set it to one, it will not affect the computation. 
-            isMEG = 1; 
-        end
-        if isMEG               
+        if isMeg
             % Use integration Points, recommended for high mesh density
             jCheckUseIntegrationPoint = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Use MEG integration points', [], '', [], []);
             % Enable MEG cache memory for high mesh density if users do not
@@ -464,9 +458,21 @@ function s = GetPanelContents() %#ok<DEFNU>
     % Output options
     s.BstSaveTransfer = ctrl.jCheckSaveTransfer.isSelected();
     % MEG Computation options
-    s.UseIntegrationPoint = ctrl.jCheckUseIntegrationPoint.isSelected();
-    s.EnableCacheMemory = ctrl.jCheckEnableCacheMemory.isSelected();
-    s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected(); 
+    if ~isempty(ctrl.jCheckUseIntegrationPoint)
+        s.UseIntegrationPoint = ctrl.jCheckUseIntegrationPoint.isSelected();
+    else
+        s.UseIntegrationPoint = 1;
+    end
+    if ~isempty(ctrl.jCheckEnableCacheMemory)
+        s.EnableCacheMemory = ctrl.jCheckEnableCacheMemory.isSelected();
+    else
+        s.EnableCacheMemory = 1;
+    end
+    if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
+        s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
+    else
+        s.MegPerBlockOfSensor = 0;
+    end
 end
 
 
