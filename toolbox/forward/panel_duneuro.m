@@ -221,7 +221,38 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             jCheckSrcForceInGM = [];
         end
         c.gridy = 3;
-    jPanelRight.add(jPanelInput, c);
+        jPanelRight.add(jPanelInput, c);    
+    
+        % ==== PANEL RIGHT: MEG COMPUTATIONS OPTIONS ====    
+        jPanelMegComputationOption = gui_river([1,1], [0,6,6,6], 'MEG computation options');
+        % These option are only for MEG at this time
+        if exist('Modalities','var')
+            isMEG = sum(ismember(Modalities,'MEG'));
+        elseif isfield(OPTIONS, 'MEGMethod')
+            isMEG = ismember('duneuro', {OPTIONS.MEGMethod});
+        else % in worse case we set it to one, it will not affect the computation. 
+            isMEG = 1; 
+        end
+        if isMEG               
+            % Use integration Points, recommended for high mesh density
+            jCheckUseIntegrationPoint = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Use MEG integration points', [], '', [], []);
+            % Enable MEG cache memory for high mesh density if users do not
+            % high memory, or want to use the integration points 
+            jCheckEnableCacheMemory = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Enable cache memory', [], '', [], []);
+            % Enable the MEG Computation per block of sensors
+            jCheckMegPerBlockOfSensor = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Compute per block of sensors [Todo]', [], '', [], []);
+                 
+            % Set jCheckUseIntegrationPoint to 1 as default option
+            if (OPTIONS.UseIntegrationPoint)
+                jCheckUseIntegrationPoint.setSelected(1);
+            end
+            c.gridy = 4;
+            jPanelRight.add(jPanelMegComputationOption, c);    
+        else
+            jCheckUseIntegrationPoint = [];
+            jCheckEnableCacheMemory = [];
+            jCheckMegPerBlockOfSensor = [];
+        end
     
     % ==== PANEL RIGHT: OUTPUT OPTIONS ====
     jPanelOutput = gui_river([1,1], [0,6,6,6], 'Output options');
@@ -230,7 +261,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         if (OPTIONS.BstSaveTransfer)
             jCheckSaveTransfer.setSelected(1);
         end
-    c.gridy = 4;
+    c.gridy = 5;
     jPanelRight.add(jPanelOutput, c);
     
     % ===== GLUE =====
@@ -287,6 +318,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jTextSrcShrink',        jTextSrcShrink, ...
                   'jCheckSrcForceInGM',   jCheckSrcForceInGM, ...
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
+                  'jCheckUseIntegrationPoint', jCheckUseIntegrationPoint,...
+                  'jCheckEnableCacheMemory', jCheckEnableCacheMemory,...
+                  'jCheckMegPerBlockOfSensor', jCheckMegPerBlockOfSensor,...
                   'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
     % Create the BstPanel object that is returned by the function
@@ -339,6 +373,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             jPanelOptSub.setVisible(ExpertMode && jRadioSrcModelSub.isSelected());
             jPanelInput.setVisible(ExpertMode);
             jPanelOutput.setVisible(ExpertMode);
+            jPanelMegComputationOption.setVisible(ExpertMode);
             % Update expert button 
             if ExpertMode
                 jButtonExpert.setText('Hide details');
@@ -428,6 +463,10 @@ function s = GetPanelContents() %#ok<DEFNU>
     end
     % Output options
     s.BstSaveTransfer = ctrl.jCheckSaveTransfer.isSelected();
+    % MEG Computation options
+    s.UseIntegrationPoint = ctrl.jCheckUseIntegrationPoint.isSelected();
+    s.EnableCacheMemory = ctrl.jCheckEnableCacheMemory.isSelected();
+    s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected(); 
 end
 
 
