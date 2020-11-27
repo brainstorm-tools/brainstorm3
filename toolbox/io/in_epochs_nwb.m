@@ -19,7 +19,7 @@ function [sFile, nEpochs] = in_epochs_nwb(sFile, nwb2)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2019
+% Authors: Konstantinos Nasiotis, 2019,2020
 
 % Check if there are trials present
 if isempty(nwb2.intervals_epochs)
@@ -41,7 +41,7 @@ else
         epochLabel = nwb2.intervals_epochs.tags.data.load(iEpoch);
         sFile.epochs(iEpoch).label       = ['Epoch #(' num2str(iEpoch) ') - ' epochLabel{1}];
         sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
-        sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
+%         sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
         sFile.epochs(iEpoch).nAvg        = 1;
         sFile.epochs(iEpoch).select      = 1;
         sFile.epochs(iEpoch).bad         = 0;

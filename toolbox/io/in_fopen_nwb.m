@@ -81,8 +81,10 @@ ChannelsModuleStructure.path = [];
 ChannelsModuleStructure.module = [];
 ChannelsModuleStructure.Fs = [];
 ChannelsModuleStructure.nChannels = [];
+ChannelsModuleStructure.nSamples  = [];
 ChannelsModuleStructure.FlipMatrix = [];
 ChannelsModuleStructure.timeBounds = [];
+ChannelsModuleStructure.time_discontinuities = [];
 
 for iKey = 1:length(allChannels_keys)
     ChannelsModuleStructure(iKey) = getDeeperModule(nwb2, allChannels_keys{iKey});
@@ -322,45 +324,49 @@ function moduleStructure = getDeeperModule(nwb, DataKey)
     % Parse the key for processing signal check
     BehaviorDataKeyLabelParsed=regexp(DataKey,'/','split');      
         
-    [obj, Fs, nChannels, FlipMatrix, timeBounds] = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2); % Don't change the number
+    [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2); % Don't change the number
     
-    moduleStructure.path       = DataKey;
-    moduleStructure.module     = obj;
-    moduleStructure.Fs         = Fs;
-    moduleStructure.nChannels  = nChannels;
-    moduleStructure.FlipMatrix = FlipMatrix;
-    moduleStructure.timeBounds = timeBounds;
+    moduleStructure.path            = DataKey;
+    moduleStructure.module          = obj;
+    moduleStructure.Fs              = Fs;
+    moduleStructure.nChannels       = nChannels;
+    moduleStructure.nSamples        = nSamples;
+    moduleStructure.FlipMatrix      = FlipMatrix;
+    moduleStructure.timeBounds      = timeBounds;
+    moduleStructure.time_discontinuities = time_discontinuities;
     
 end
 
 
 
-function [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj, DataKey, index)
+function [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj, DataKey, index)
     LabelParsed=regexp(DataKey,'/','split');
     index = index + 1;
 
     if strcmp(class(obj),'types.core.LFP')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.electricalseries, DataKey, index);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.electricalseries, DataKey, index);
     elseif strcmp(class(obj),'types.core.ElectricalSeries')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = getFsnChannels(obj);
     elseif strcmp(class(obj),'types.core.Position')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.spatialseries, DataKey, index);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.spatialseries, DataKey, index);
     elseif strcmp(class(obj), 'types.core.ProcessingModule')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.nwbdatainterface, DataKey, index);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.nwbdatainterface, DataKey, index);
     elseif strcmp(class(obj), 'types.core.SpatialSeries')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.core.BehavioralTimeSeries')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.timeseries, DataKey, index);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.timeseries, DataKey, index);
     elseif strcmp(class(obj), 'types.core.TimeSeries')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.untyped.Set')
-        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.get(LabelParsed(index)), DataKey, index);
+        [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.get(LabelParsed(index)), DataKey, index);
     elseif strcmp(class(obj), 'types.ndx_aibs_ecephys.EcephysCSD')
         obj_return = []; % Dont really care using this - Confirm with the developers
         Fs = 0;
         nChannels = 0;
+        nSamples = 0;
         FlipMatrix = 0;
         timeBounds = [0,0];
+        time_discontinuities = [];
     else
         error('take care of this input type')
     end
@@ -370,7 +376,7 @@ function [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj, D
     
 end
 
-function [obj, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj)
+function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = getFsnChannels(obj)
     % This is an assumption that we will have more samples than channels
     % NWB files allow users to save the data however they want
     % The FlipMatrix flag would indicate to in_fopen_NWB to flip the
@@ -405,21 +411,34 @@ function [obj, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj)
         end
     end
     
-    
+    % Compute Fs, timebounds and time_discontinuities (hopefully loading the entire time vector won't lead to time_discontinuities)
+    % Is it does, a potential workaround would be to get intuition from the
+    % epochs' timebounds.
+    % I do this here so I don't have to search for them during in_fread_nwb
+    % to avoid lagging
     if ~isempty(obj.starting_time_rate)
         Fs = obj.starting_time_rate;
-        timeBounds = [obj.starting_time, obj.starting_time_rate*nSamples];
+        timeBounds = [obj.starting_time, obj.starting_time + nSamples/Fs];
+        time_discontinuities = [];
     elseif ~isempty(obj.timestamps)
         % Some recordings save timepoints irregularly. Cant do
         % much about this when it comes to Brainstorm that uses a fixed
-        % sampling rate - Consider perhaps taking care of that on the
-        % in_fread_nwb.
+        % sampling rate
         Fs = round(mean(1./(diff(obj.timestamps.load(1,10))))); % Just load first 10 samples (consider a different approach here - there might be non-continuous segments)
         timeBounds = [obj.timestamps.load(1),obj.timestamps.load(end)];
+        
+        time = obj.timestamps.load;
+        time_discontinuities = find(diff(time)>10/Fs); % 10 samples threshold is abstract
+        time_discontinuities = [time(time_discontinuities) time(time_discontinuities+1)];
+        
+        % Remove the artificial discontinuity if the recording doesn't start from 0
+        time_discontinuities = time_discontinuities(~ismember(time_discontinuities,[0 0],'rows'),:);
+        
     else
         obj = [];
         Fs = 0;
         timeBounds = [0,0];
+        time_discontinuities = [];
         error('Cant determine sampling rate for this module - Ignoring it')
     end
 end
