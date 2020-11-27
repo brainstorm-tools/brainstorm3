@@ -177,7 +177,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
             if process_nst_install('status')
                 gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)process_nst_install('install',[],1), fontSize);
-                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)process_nst_install('uninstall',1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)process_nst_install('uninstall'), fontSize);
             else
                 gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)process_nst_install('install',[],1), fontSize);
             end    

@@ -96,11 +96,20 @@ function OutputFiles = Run(sProcess, sInputs)
             if sProcess.options.option_wip.Value
                 extra{end+1}='wip';
             end
-            [status,err] = install(extra,1,1);
-            
-        case 'uninstall'    
-             uninstall(1);
-    end
+            errMsg = install(extra,1,1);
+            if ~isempty(errMsg)
+                 bst_report('Error',   sProcess, sInputs, errMsg)
+            else
+                bst_report('Info', sProcess, sInputs, 'NIRSTORM was installed successfully');
+            end                
+        case 'uninstall'
+            if ~status()
+                bst_report('Error',   sProcess, sInputs, 'NIRSTORM software is not installed on your computer.')
+                return;
+            end    
+            uninstall();
+            bst_report('Info',  sProcess, sInputs, 'NIRSTORM was installed successfully');
+    end    
 end
 
 function status=status()
@@ -109,7 +118,7 @@ function status=status()
     status =  exist('uninstall_nirstorm')==2 && strcmp(fileparts(which('uninstall_nirstorm')),bst_get('UserProcessDir')); 
 end  
 
-function [status,err] = install(extra,isInteractive,fromProcess)
+function errMsg = install(extra,isInteractive,fromProcess)
     % process_nst_install('install',extra,isInteractive)
     % 'install': download and install nirstorm
     % INPUTS:
@@ -141,23 +150,19 @@ function [status,err] = install(extra,isInteractive,fromProcess)
     
     nistorm_url = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
     
-    err = gui_brainstorm('DownloadFile',nistorm_url, tmp_file, 'Download NIRSTORM');
-    if ~isempty(err)
-        status=0;
-        if isInteractive 
-            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
-        end
+    errMsg = gui_brainstorm('DownloadFile',nistorm_url, tmp_file, 'Download NIRSTORM');
+    if ~isempty(errMsg)
+        errMsg = ['Impossible to download NIRSTORM: ' 10 errMsg];
         return;
-    end   
-        
+    end    
+    
+    bst_progress('start', 'NIRSTORM', 'Installing NIRSTORM...');
+    
     % Unzip nirstorm
     try 
         unzip(tmp_file,tmp_folder);
     catch
-        err = 'Unable to unzip nirstorm'; status=0;
-        if isInteractive 
-            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
-        end
+        errMsg = 'Unable to unzip nirstorm';
         delete(tmp_file);
         return;
     end
@@ -168,10 +173,7 @@ function [status,err] = install(extra,isInteractive,fromProcess)
     try 
         nst_install(mode,extra,nistorm_folder);
     catch ME
-        err = ME.message; status=0;
-        if isInteractive
-            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
-        end
+        errMsg = 'Unable to install nirstorm';
         return;
     end
     
@@ -181,37 +183,24 @@ function [status,err] = install(extra,isInteractive,fromProcess)
         rmpath(fullfile(nistorm_folder, 'dist_tools'));
         
         delete(tmp_file);
-        [status,err] = rmdir(nistorm_folder, 's');
-         if ~status && isInteractive
-            java_dialog('error', sprintf('Nirstorm installation failed :\n%s', err), 'NIRSTORM installation');
-            return;
-         end
+        [status,errMsg] = rmdir(nistorm_folder, 's');
     end
-    
-    err='NIRSTORM was installed successfully';
-    if isInteractive
-        java_dialog('msgbox', err, 'NIRSTORM installation ');
-    end    
+    bst_progress('stop');
 end
 
-function uninstall(isInteractive)
-    % process_nst_install('uninstall',isInteractive)
+function uninstall()
+    % process_nst_install('uninstall')
     % 'uninstall': uninstall nirstorm   
-    % INPUTS:
-    % - isInteractive: bool. 1 if the script is called interactively 
-    if nargin < 1
-       isInteractive=0;
-    end
-
+    bst_progress('start', 'NIRSTORM', 'Uninstalling NIRSTORM...');
+    
     cur_dir=pwd;
     cd(bst_get('UserProcessDir'));
     uninstall_nirstorm();
     delete( which('uninstall_nirstorm'));
     cd(cur_dir);
     
-    if isInteractive
-        java_dialog('msgbox', 'NIRSTORM was uninstalled successfully.', 'NIRSTORM installation ');
-    end    
+    bst_progress('stop');
+
 end
 
 
