@@ -76,6 +76,26 @@ if isMeg
             MegChannels = [MegChannels; iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg)];
         end
     end
+    % In the case where the MEG integration points are used
+    if cfg.UseIntegrationPoint == 0
+        % loop over the integration Points
+        % chan_loc = figure_3d('GetChannelPositions', cfg, cfg.iMeg); % <= this function is not sufficient, we need also the weights. 
+        MegChannelsTemp = [];
+        for iChan = 1 : length(cfg.iMeg)
+            group = MegChannels(MegChannels(:,1) == iChan,:);
+            groupPositive = group(group(:,end)>0,:);
+            groupNegative = group(group(:,end)<0,:);
+            if ~isempty(groupPositive)
+                equivalentPositionPostive = sum(repmat(abs(groupPositive(:,end)),[1 3])  .* groupPositive(:,2:4));
+                MegChannelsTemp = [MegChannelsTemp; iChan  equivalentPositionPostive groupPositive(1,5:7)  sum(groupPositive(:,end))];
+            end
+            if ~isempty(groupNegative)
+                equivalentPositionNegative = sum(repmat(abs(groupNegative(:,end)),[1 3])  .* groupNegative(:,2:4));
+                MegChannelsTemp = [MegChannelsTemp; iChan  equivalentPositionNegative groupNegative(1,5:7)  sum(groupNegative(:,end))];
+            end 
+        end
+        MegChannels = MegChannelsTemp;
+    end
 end
 
 %% ===== HEAD MODEL =====
@@ -428,6 +448,7 @@ if strcmp(dnModality, 'meg') || strcmp(dnModality, 'meeg')
     fprintf(fid, '[meg]\n');
     fprintf(fid, 'intorderadd = %d\n', cfg.MegIntorderadd);
     fprintf(fid, 'type = %s\n', cfg.MegType);
+    fprintf(fid, 'cache.enable = %s\n',bool2str(cfg.EnableCacheMemory) );
     % [coils]
     fprintf(fid, '[coils]\n');
     fprintf(fid, 'filename = %s\n', CoilFile);
@@ -554,7 +575,7 @@ if isMeg
     nbChannel = length(channelIndex);
     weighted_B = zeros(nbChannel,size(Bfull,2));
     for iCh = 1 : nbChannel
-        communChannel = find(iCh==MegChannels);
+        communChannel = find(iCh==MegChannels(:,1));
         BcommunChannel = Bfull(communChannel(:),:);
         WcommunChannel =  MegChannels(communChannel(:), 8: end);
         weighted_B(iCh,:) = sum (BcommunChannel.*WcommunChannel,1);
