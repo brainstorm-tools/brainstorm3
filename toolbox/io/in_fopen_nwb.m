@@ -101,11 +101,19 @@ for iModule = 1:length(ChannelsModuleStructure)
     if strcmp(class(ChannelsModuleStructure(iModule).module),'types.core.ElectricalSeries')
         electrophysiologicalFs = [electrophysiologicalFs ChannelsModuleStructure(iModule).Fs];
         electrophysiologicalTimeBounds = [electrophysiologicalTimeBounds ; ChannelsModuleStructure(iModule).timeBounds];
-        ChannelsModuleStructure(iModule).isElectrophysiology = 1;
+        ChannelsModuleStructure(iModule).isElectrophysiology = true;
     else
-        ChannelsModuleStructure(iModule).isElectrophysiology = 0;
+        ChannelsModuleStructure(iModule).isElectrophysiology = false;
     end
 end
+
+
+% I reorder the structure - I prefer to have the electrophysiological
+% signals first since in_fread_nwb will follow that order as well
+putOnTop = ChannelsModuleStructure([ChannelsModuleStructure.isElectrophysiology]);
+ChannelsModuleStructure([ChannelsModuleStructure.isElectrophysiology]) = [];
+ChannelsModuleStructure = [putOnTop ChannelsModuleStructure];
+
 
 if length(unique(electrophysiologicalFs))>1
     error('There are electrophysiological signals with different sampling rates on this file - Aborting')
@@ -148,19 +156,15 @@ amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 
 % The following is weird - this should probably be stored differently in
 % the NWB - change how Ben stores electrode assignements to shank
-group_name = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
+group_name = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data.load;
 try
     assignChannelsToShank = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load+1; % Python based - first entry is 0 - maybe add condition for matlab based entries
     
+    group_name = cellstr(group_name);
     groups = cell(1,length(group_name));
     for iChannel = 1:length(group_name)
-        
         ii = find(assignChannelsToShank==iChannel);
-        
-        temp = split(group_name(ii).path,'/');
-        temp = temp{end};
-        
-        groups{iChannel} = temp;
+        groups{iChannel} = group_name{ii};
     end
     
 catch
@@ -384,14 +388,20 @@ function [obj, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj)
             FlipMatrix = 1;
         end
     elseif strcmp(class(obj.data),'types.untyped.DataStub') % Uncompressed
-        if obj.data.dims(1)<obj.data.dims(2)
-            nChannels = obj.data.dims(1);
-            nSamples = obj.data.dims(2);
+        if length(obj.data.dims)==1 % One dimensional signal
+            nChannels = 1;
+            nSamples = obj.data.dims(1);
             FlipMatrix = 0;
         else
-            nChannels = obj.data.dims(2);
-            nSamples = obj.data.dims(1);
-            FlipMatrix = 1;
+            if obj.data.dims(1)<obj.data.dims(2)
+                nChannels = obj.data.dims(1);
+                nSamples = obj.data.dims(2);
+                FlipMatrix = 0;
+            else
+                nChannels = obj.data.dims(2);
+                nSamples = obj.data.dims(1);
+                FlipMatrix = 1;
+            end
         end
     end
     
