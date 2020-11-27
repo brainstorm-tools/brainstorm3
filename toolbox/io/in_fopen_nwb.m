@@ -50,132 +50,60 @@ end
 
 %% ===== READ DATA HEADERS =====
 % Read header
+disp(['NWB file schema version: ' util.getSchemaVersion(DataFile)])
 nwb2 = nwbRead(DataFile);
-
-Map1 = nwb2.searchFor('Timeseries', 'includeSubClasses');
-Map2 = nwb2.searchFor('Timeseries');
-Map3 = nwb2.searchFor('electricalseries', 'includeSubClasses');
-a = keys(Map1)';
-b = keys(Map2)';
-c = keys(Map3)';
 
 all_TimeSeries_keys = keys(nwb2.searchFor('Timeseries', 'includeSubClasses'));
 all_electricalSeries_keys = keys(nwb2.searchFor('electricalseries', 'includeSubClasses'));
 
 
-if isempty(all_TimeSeries_keys)
-    error 'There are no electrophysioloy data in this .nwb - No electricalSeries modules were found'
-end
+disp('Add a check here if there are both RAW and LFP signals present - MAYBE POPUP FOR USER TO SELECT')
 
-RawDataKeys = {};
-RawDataPresent = 0;
+%% Check for channels
 
-ii = 1;
-for iKey = 1:length(all_electricalSeries_keys)
+allChannels_keys = all_TimeSeries_keys;
 
-    [RawDataKeyLabelParsed, isitRaw] = checkRawSignalValidity(nwb2, all_electricalSeries_keys{iKey});
-    
-    if isitRaw
-        RawDataPresent = 1;
-        RawDataKeys{ii} = RawDataKeyLabelParsed;
-        ii = ii+1;
-
-    else
-        if ~RawDataPresent
-            RawDataPresent = 0;
+% Make sure that a path is not the parent of another path
+keep_module = true(1, length(allChannels_keys));
+for iKey = 1:length(allChannels_keys)
+    for jKey = iKey+1:length(allChannels_keys)
+        if ~isempty(strfind(allChannels_keys{jKey}, allChannels_keys{iKey}))
+            keep_module(iKey) = 0;
+            break
         end
     end
 end
+allChannels_keys = allChannels_keys(keep_module);
 
 
-LFPDataKeys = {};
-LFPDataPresent = 0;
-ii = 1;
-for iKey = 1:length(all_TimeSeries_keys)
-    if ~isempty(strfind(all_TimeSeries_keys{iKey},'ecephys')) % Should I use ecephys here???? or nwbdatainterface or LFP?
-        LFPDataPresent = 1;
-        
-        % Parse just the first folder of the keys
-        
-        disp('this has not been tested on an LFP dataset yet')
-        [not_used, keyLabel] = fileparts(all_TimeSeries_keys{iKey});
-        LFPDataKeys{iKey} = keyLabel;
-        ii = ii+1;
-    else
-        if ~LFPDataPresent
-            LFPDataPresent = 0;
-        end
-    end
+ChannelsModuleStructure = struct;
+ChannelsModuleStructure.path = [];
+ChannelsModuleStructure.module = [];
+
+for iKey = 1:length(allChannels_keys)
+    ChannelsModuleStructure(iKey) = checkBehaviorSignalValidity(nwb2, allChannels_keys{iKey});
 end
 
-
-
-%% Check for additional channels
-
-% % Check if behavior fields/channels exist in the dataset
-% try
-%     nwb2.processing.get('behavior').nwbdatainterface;
-%     
-%     
-%     allBehaviorKeys = keys(nwb2.processing.get('behavior').nwbdatainterface)';
-%     
-%     
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-%     % Reject states "channel" - THIS IS HARDCODED - IMPROVE
-%     allBehaviorKeys = allBehaviorKeys(~strcmp(allBehaviorKeys,'states'));
-%     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% 
-% 
-%     behavior_exist_here = ~isempty(allBehaviorKeys);
-%     if ~behavior_exist_here
-%         disp('No behavior in this .nwb file')
-%     else
-%         disp(' ')
-%         disp('The following behavior types are present in this dataset')
-%         disp('------------------------------------------------')
-%         for iBehavior = 1:length(allBehaviorKeys)
-%             disp(allBehaviorKeys{iBehavior})
-%         end
-%         disp(' ')
-%     end
-%     
-%     nAdditionalChannels = 0;
-%     for iBehavior = 1:length(allBehaviorKeys)
-%         allBehaviorKeys{iBehavior,2} = keys(nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries);
-%         
-%         for jBehavior = 1:length(allBehaviorKeys{iBehavior,2})
-%             nAdditionalChannels = nAdditionalChannels + nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2);
-%         end    
-%     end
-%     
-%     additionalChannelsPresent = 1;
-% catch
-%     disp('No behavior in this .nwb file')
-%     additionalChannelsPresent = 0;
-%     nAdditionalChannels = 0;
-%     allBehaviorKeys = [];
-% end
-%     
+% Get rid of channels that should not be used
+ChannelsModuleStructure = ChannelsModuleStructure(~cellfun(@isempty,{ChannelsModuleStructure.module}));
 
 
 
-nAdditionalChannels = length(all_TimeSeries_keys) - size(RawDataKeys,1) - size(LFPDataKeys,1);
-
-if nAdditionalChannels>0
-    additionalChannelsPresent = true;
-else
-    additionalChannelsPresent = false;
-end
-
-
-
-allBehaviorKeys = [];
-disp('ADD ADDITIONAL CHANNELS SUPPORT')
 
 
 %% Perform a quality check that in case there are multiple RAW or multiple LFP keys present, they have the same sampling rate
 
 disp('FINISH THIS')
+
+CONTINUE BELOW
+
+
+
+
+
+
+
+
 
 
 
@@ -197,13 +125,13 @@ if RawDataPresent
             % Some recordings just save timepoints irregularly. Cant do
             % much about this when it comes to Brainstorm that uses a fixed
             % sampling rate - Consider perhaps taking care of that on the
-            % in_fread_nwb
+            % in_fread_nwb.
             time = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).timestamps.load;
             
             sFile.prop.sfreq = round(mean(1./(diff(time))));
         end
           
-        % Do a check if we're dealing compressed or non-compressed data
+        % Do a check if we're dealing with compressed or non-compressed data
         dataType = class(nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data);
         if strcmp(dataType,'types.untyped.DataPipe')% Compressed data
             nChannels = nChannels + nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.internal.dims(1);
@@ -215,12 +143,20 @@ if RawDataPresent
     end
 
 elseif LFPDataPresent
-    sFile.prop.sfreq = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).starting_time_rate;
-    sFile.header.LFPKey = all_lfp_keys{iLFPDataKey};
-    sFile.header.RawKey = [];
+    LFPModule = nwb2.processing.get(LFPDataKeys{1}{3}).nwbdatainterface.get(LFPDataKeys{1}{5}).electricalseries.get(LFPDataKeys{1}{7});
+    % Try to get the sampling rate
+    sFile.prop.sfreq = LFPModule.starting_time_rate;
+    % If it's not saved as rate, compute the frequency from the timestamps
+    if isempty(sFile.prop.sfreq)
+        time = LFPModule.timestamps.load;
+        sFile.prop.sfreq = round(mean(1./(diff(time))));
+    end
     
-    nChannels = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(1);
-    nSamples  = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(all_lfp_keys{iLFPDataKey}).data.dims(2);
+    sFile.header.LFPKey = LFPDataKeys;
+    
+    % Consider assigning them the opposite way
+    nChannels = LFPModule.data.dims(1);
+    nSamples  = LFPModule.data.dims(2);
 
 end
 
@@ -298,29 +234,25 @@ for iChannel = 1:nChannels
 end
 
 
+
 if additionalChannelsPresent
-    
     iChannel = 0;
-    for iBehavior = 1:size(allBehaviorKeys,1)
-        
-        for jBehavior = 1:size(allBehaviorKeys{iBehavior,2},2)
-            
-            for zChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2)
-                iChannel = iChannel+1;
+    for iBehavior = 1:size(allBehaviorKeys,1)            
+        for zChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2)
+            iChannel = iChannel+1;
 
-                ChannelMat.Channel(nChannels + iChannel).Name    = [allBehaviorKeys{iBehavior,2}{jBehavior} '_' num2str(zChannel)];
-                ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
+            ChannelMat.Channel(nChannels + iChannel).Name    = [allBehaviorKeys{iBehavior,2}{jBehavior} '_' num2str(zChannel)];
+            ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
 
-                ChannelMat.Channel(nChannels + iChannel).Group   = allBehaviorKeys{iBehavior,1};
-                ChannelMat.Channel(nChannels + iChannel).Type    = 'Behavior';
+            ChannelMat.Channel(nChannels + iChannel).Group   = allBehaviorKeys{iBehavior,1};
+            ChannelMat.Channel(nChannels + iChannel).Type    = 'Behavior';
 
-                ChannelMat.Channel(nChannels + iChannel).Orient  = [];
-                ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
-                ChannelMat.Channel(nChannels + iChannel).Comment = [];
+            ChannelMat.Channel(nChannels + iChannel).Orient  = [];
+            ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
+            ChannelMat.Channel(nChannels + iChannel).Comment = [];
 
-                ChannelType{nChannels + iChannel,1} = allBehaviorKeys{iBehavior,1}; 
-                ChannelType{nChannels + iChannel,2} = allBehaviorKeys{iBehavior,2}{jBehavior};
-            end
+            ChannelType{nChannels + iChannel,1} = allBehaviorKeys{iBehavior,1}; 
+            ChannelType{nChannels + iChannel,2} = allBehaviorKeys{iBehavior,2}{jBehavior};
         end
     end
 end
@@ -435,7 +367,7 @@ function [RawDataKeyLabelParsed, isitRaw] = checkRawSignalValidity(nwb, DataKey)
     RawDataKeyLabelParsed=regexp(DataKey,'/','split');
     if strcmp(RawDataKeyLabelParsed{2},'acquisition') && strcmp(RawDataKeyLabelParsed{4},'electricalseries')
         try
-            nwb.acquisition.get(RawDataKeyLabelParsed{3}).electricalseries.get(RawDataKeyLabelParsed{5}).timestamps;
+            nwb.acquisition.get(RawDataKeyLabelParsed{3}).electricalseries.get(RawDataKeyLabelParsed{5}).data(1,1);
             isitRaw = 1;
         catch
             disp(['Couldnt load the electricalseries for: ' DataKey])
@@ -448,20 +380,71 @@ function [RawDataKeyLabelParsed, isitRaw] = checkRawSignalValidity(nwb, DataKey)
     end
 end
 
+function [LFPDataKeyLabelParsed, isitLFP] = checkLFPSignalValidity(nwb, DataKey)
+    % Parse the key for LFP signal check
+    LFPDataKeyLabelParsed=regexp(DataKey,'/','split');
+    if strcmp(LFPDataKeyLabelParsed{3},'ecephys') && strcmp(LFPDataKeyLabelParsed{6},'electricalseries')
+        try
+            nwb.processing.get(LFPDataKeyLabelParsed{3}).nwbdatainterface.get(LFPDataKeyLabelParsed{5}).electricalseries.get(LFPDataKeyLabelParsed{7}).data(1,1);
+            isitLFP = 1;
+        catch e
+            disp(['Couldnt load the electricalseries for: ' DataKey])
+            disp(e)
+            LFPDataKeyLabelParsed = [];
+            isitLFP = 0;
+        end
+    else
+        LFPDataKeyLabelParsed = [];
+        isitLFP = 0;
+    end
+end
 
 
 
 
+function moduleStructure = checkBehaviorSignalValidity(nwb, DataKey)
+    % Parse the key for processing signal check
+    BehaviorDataKeyLabelParsed=regexp(DataKey,'/','split');      
+        
+    obj = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2);
+    
+    moduleStructure.path   = DataKey;
+    moduleStructure.module = obj;
+    
+end
 
 
 
+function obj_return = get_module(obj, DataKey, index)
+    LabelParsed=regexp(DataKey,'/','split');
+    index = index + 1;
 
-
-
-
-
-
-
+    if strcmp(class(obj),'types.core.LFP')
+        obj_return = get_module(obj.electricalseries, DataKey, index);
+    elseif strcmp(class(obj),'types.core.ElectricalSeries')
+        obj_return = obj;
+    elseif strcmp(class(obj),'types.core.Position')
+        obj_return = get_module(obj.spatialseries, DataKey, index);
+    elseif strcmp(class(obj), 'types.core.ProcessingModule')
+        obj_return = get_module(obj.nwbdatainterface, DataKey, index);
+    elseif strcmp(class(obj), 'types.core.SpatialSeries')
+        obj_return = obj;
+    elseif strcmp(class(obj), 'types.core.BehavioralTimeSeries')
+        obj_return = get_module(obj.timeseries, DataKey, index);
+    elseif strcmp(class(obj), 'types.core.TimeSeries')
+        obj_return = obj;
+    elseif strcmp(class(obj), 'types.untyped.Set')
+        obj_return = get_module(obj.get(LabelParsed(index)), DataKey, index);
+    elseif strcmp(class(obj), 'types.ndx_aibs_ecephys.EcephysCSD')
+        obj_return = []; % Dont really care using this - Confirm with the developers      
+    else
+        error('take care of this input type')
+    end
+%     if strcmp(class(obj), 'types.untyped.Anon')
+%         obj_return = obj;
+%     end
+    
+end
 
 
 
