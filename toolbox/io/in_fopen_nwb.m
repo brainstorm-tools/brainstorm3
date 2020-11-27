@@ -79,9 +79,12 @@ allChannels_keys = allChannels_keys(keep_module);
 ChannelsModuleStructure = struct;
 ChannelsModuleStructure.path = [];
 ChannelsModuleStructure.module = [];
+ChannelsModuleStructure.Fs = [];
+ChannelsModuleStructure.nChannels = [];
+ChannelsModuleStructure.FlipMatrix = [];
 
 for iKey = 1:length(allChannels_keys)
-    ChannelsModuleStructure(iKey) = checkBehaviorSignalValidity(nwb2, allChannels_keys{iKey});
+    ChannelsModuleStructure(iKey) = getDeeperModule(nwb2, allChannels_keys{iKey});
 end
 
 % Get rid of channels that should not be used
@@ -90,21 +93,19 @@ ChannelsModuleStructure = ChannelsModuleStructure(~cellfun(@isempty,{ChannelsMod
 
 
 
-
 %% Perform a quality check that in case there are multiple RAW or multiple LFP keys present, they have the same sampling rate
+electrophysiologicalFs = [];
+for iModule = 1:length(ChannelsModuleStructure)
+    if strcmp(class(ChannelsModuleStructure(iModule).module),'types.core.ElectricalSeries')
+        electrophysiologicalFs = [electrophysiologicalFs ChannelsModuleStructure(iModule).Fs];
+    end
+end
 
-disp('FINISH THIS')
-
-CONTINUE BELOW
-
-
-
-
-
-
-
-
-
+if length(unique(electrophysiologicalFs))>1
+    error('There are electrophysiological signals with different sampling rates on this file - Aborting')
+else
+    Fs = unique(electrophysiologicalFs);
+end
 
 
 
@@ -112,54 +113,9 @@ CONTINUE BELOW
 % Initialize returned file structure
 sFile = db_template('sfile');
 
-sFile.header.RawKey = {};
-sFile.header.LFPKey = {};
-
-if RawDataPresent
-    nChannels = 0;
-    sFile.header.RawKey = RawDataKeys;
-    sFile.header.LFPKey = [];
-    for iKey = 1:size(RawDataKeys,1)
-        sFile.prop.sfreq = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).starting_time_rate;
-        if isempty(sFile.prop.sfreq)
-            % Some recordings just save timepoints irregularly. Cant do
-            % much about this when it comes to Brainstorm that uses a fixed
-            % sampling rate - Consider perhaps taking care of that on the
-            % in_fread_nwb.
-            time = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).timestamps.load;
-            
-            sFile.prop.sfreq = round(mean(1./(diff(time))));
-        end
-          
-        % Do a check if we're dealing with compressed or non-compressed data
-        dataType = class(nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data);
-        if strcmp(dataType,'types.untyped.DataPipe')% Compressed data
-            nChannels = nChannels + nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.internal.dims(1);
-            nSamples  = nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.internal.dims(2);
-        elseif strcmp(dataType,'types.untyped.DataStub')
-            nChannels = nChannels + nwb2.acquisition.get(RawDataKeys{iKey}{3}).electricalseries.get(RawDataKeys{iKey}{5}).data.dims(1);
-            nSamples  = nwb2.acquisition.get(RawDataKeys{iKey}).data.dims(2);
-        end
-    end
-
-elseif LFPDataPresent
-    LFPModule = nwb2.processing.get(LFPDataKeys{1}{3}).nwbdatainterface.get(LFPDataKeys{1}{5}).electricalseries.get(LFPDataKeys{1}{7});
-    % Try to get the sampling rate
-    sFile.prop.sfreq = LFPModule.starting_time_rate;
-    % If it's not saved as rate, compute the frequency from the timestamps
-    if isempty(sFile.prop.sfreq)
-        time = LFPModule.timestamps.load;
-        sFile.prop.sfreq = round(mean(1./(diff(time))));
-    end
-    
-    sFile.header.LFPKey = LFPDataKeys;
-    
-    % Consider assigning them the opposite way
-    nChannels = LFPModule.data.dims(1);
-    nSamples  = LFPModule.data.dims(2);
-
-end
-
+nChannels = 0;
+sFile.header.ChannelsModuleStructure = ChannelsModuleStructure;
+sFile.prop.sfreq = Fs;
 
 %% Check for epochs/trials
 % [sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
@@ -169,7 +125,7 @@ end
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NWB channels';
-ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels + nAdditionalChannels]);
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, sum(([ChannelsModuleStructure.nChannels]))]);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -357,86 +313,47 @@ end
 
 
 
-
-
-
-
-
-function [RawDataKeyLabelParsed, isitRaw] = checkRawSignalValidity(nwb, DataKey)
-    % Parse the key for Raw signal check
-    RawDataKeyLabelParsed=regexp(DataKey,'/','split');
-    if strcmp(RawDataKeyLabelParsed{2},'acquisition') && strcmp(RawDataKeyLabelParsed{4},'electricalseries')
-        try
-            nwb.acquisition.get(RawDataKeyLabelParsed{3}).electricalseries.get(RawDataKeyLabelParsed{5}).data(1,1);
-            isitRaw = 1;
-        catch
-            disp(['Couldnt load the electricalseries for: ' DataKey])
-            RawDataKeyLabelParsed = [];
-            isitRaw = 0;
-        end
-    else
-        RawDataKeyLabelParsed = [];
-        isitRaw = 0;
-    end
-end
-
-function [LFPDataKeyLabelParsed, isitLFP] = checkLFPSignalValidity(nwb, DataKey)
-    % Parse the key for LFP signal check
-    LFPDataKeyLabelParsed=regexp(DataKey,'/','split');
-    if strcmp(LFPDataKeyLabelParsed{3},'ecephys') && strcmp(LFPDataKeyLabelParsed{6},'electricalseries')
-        try
-            nwb.processing.get(LFPDataKeyLabelParsed{3}).nwbdatainterface.get(LFPDataKeyLabelParsed{5}).electricalseries.get(LFPDataKeyLabelParsed{7}).data(1,1);
-            isitLFP = 1;
-        catch e
-            disp(['Couldnt load the electricalseries for: ' DataKey])
-            disp(e)
-            LFPDataKeyLabelParsed = [];
-            isitLFP = 0;
-        end
-    else
-        LFPDataKeyLabelParsed = [];
-        isitLFP = 0;
-    end
-end
-
-
-
-
-function moduleStructure = checkBehaviorSignalValidity(nwb, DataKey)
+function moduleStructure = getDeeperModule(nwb, DataKey)
     % Parse the key for processing signal check
     BehaviorDataKeyLabelParsed=regexp(DataKey,'/','split');      
         
-    obj = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2);
+    [obj, Fs, nChannels, FlipMatrix] = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2); % Don't change the number
     
-    moduleStructure.path   = DataKey;
-    moduleStructure.module = obj;
+    moduleStructure.path       = DataKey;
+    moduleStructure.module     = obj;
+    moduleStructure.Fs         = Fs;
+    moduleStructure.nChannels  = nChannels;
+    moduleStructure.FlipMatrix = FlipMatrix;
     
 end
 
 
 
-function obj_return = get_module(obj, DataKey, index)
+function [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj, DataKey, index)
     LabelParsed=regexp(DataKey,'/','split');
     index = index + 1;
 
     if strcmp(class(obj),'types.core.LFP')
-        obj_return = get_module(obj.electricalseries, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.electricalseries, DataKey, index);
     elseif strcmp(class(obj),'types.core.ElectricalSeries')
-        obj_return = obj;
+        [obj_return, Fs, nChannels, FlipMatrix] = getFsnChannels(obj);
     elseif strcmp(class(obj),'types.core.Position')
-        obj_return = get_module(obj.spatialseries, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.spatialseries, DataKey, index);
     elseif strcmp(class(obj), 'types.core.ProcessingModule')
-        obj_return = get_module(obj.nwbdatainterface, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.nwbdatainterface, DataKey, index);
     elseif strcmp(class(obj), 'types.core.SpatialSeries')
-        obj_return = obj;
+        [obj_return, Fs, nChannels, FlipMatrix] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.core.BehavioralTimeSeries')
-        obj_return = get_module(obj.timeseries, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.timeseries, DataKey, index);
     elseif strcmp(class(obj), 'types.core.TimeSeries')
-        obj_return = obj;
+        [obj_return, Fs, nChannels, FlipMatrix] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.untyped.Set')
-        obj_return = get_module(obj.get(LabelParsed(index)), DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.get(LabelParsed(index)), DataKey, index);
     elseif strcmp(class(obj), 'types.ndx_aibs_ecephys.EcephysCSD')
-        obj_return = []; % Dont really care using this - Confirm with the developers      
+        obj_return = []; % Dont really care using this - Confirm with the developers
+        Fs = 0;
+        nChannels = 0;
+        FlipMatrix = 0;
     else
         error('take care of this input type')
     end
@@ -444,6 +361,47 @@ function obj_return = get_module(obj, DataKey, index)
 %         obj_return = obj;
 %     end
     
+end
+
+function [obj, Fs, nChannels, FlipMatrix] = getFsnChannels(obj)
+    % This is an assumption that we will have more samples than channels
+    % NWB files allow users to save the data however they want
+    % The FlipMatrix flag would indicate to in_fopen_NWB to flip the
+    % dimensions
+    
+    % Do a check if we're dealing with compressed or non-compressed data
+    if strcmp(class(obj.data),'types.untyped.DataPipe') % Compressed data
+        if obj.data.internal.dims(1)<obj.data.internal.dims(2)
+            nChannels = obj.data.internal.dims(1);
+            FlipMatrix = 0;
+        else
+            nChannels = obj.data.internal.dims(2);
+            FlipMatrix = 1;
+        end
+    elseif strcmp(class(obj.data),'types.untyped.DataStub') % Uncompressed
+        if obj.data.dims(1)<obj.data.dims(2)
+            nChannels = obj.data.dims(1);
+            FlipMatrix = 0;
+        else
+            nChannels = obj.data.dims(2);
+            FlipMatrix = 1;
+        end
+    end
+    
+    
+    if ~isempty(obj.starting_time_rate)
+        Fs = obj.starting_time_rate;
+    elseif ~isempty(obj.timestamps)
+        % Some recordings save timepoints irregularly. Cant do
+        % much about this when it comes to Brainstorm that uses a fixed
+        % sampling rate - Consider perhaps taking care of that on the
+        % in_fread_nwb.
+        Fs = round(mean(1./(diff(obj.timestamps.load(1,10))))); % Just load first 10 samples (consider a different approach here - there might be non-continuous segments)
+    else
+        obj = [];
+        Fs = 0;
+        error('Cant determine sampling rate for this module - Ignoring it')
+    end
 end
 
 
