@@ -82,6 +82,7 @@ ChannelsModuleStructure.module = [];
 ChannelsModuleStructure.Fs = [];
 ChannelsModuleStructure.nChannels = [];
 ChannelsModuleStructure.FlipMatrix = [];
+ChannelsModuleStructure.timeBounds = [];
 
 for iKey = 1:length(allChannels_keys)
     ChannelsModuleStructure(iKey) = getDeeperModule(nwb2, allChannels_keys{iKey});
@@ -95,9 +96,14 @@ ChannelsModuleStructure = ChannelsModuleStructure(~cellfun(@isempty,{ChannelsMod
 
 %% Perform a quality check that in case there are multiple RAW or multiple LFP keys present, they have the same sampling rate
 electrophysiologicalFs = [];
+electrophysiologicalTimeBounds = [];
 for iModule = 1:length(ChannelsModuleStructure)
     if strcmp(class(ChannelsModuleStructure(iModule).module),'types.core.ElectricalSeries')
         electrophysiologicalFs = [electrophysiologicalFs ChannelsModuleStructure(iModule).Fs];
+        electrophysiologicalTimeBounds = [electrophysiologicalTimeBounds ; ChannelsModuleStructure(iModule).timeBounds];
+        ChannelsModuleStructure(iModule).isElectrophysiology = 1;
+    else
+        ChannelsModuleStructure(iModule).isElectrophysiology = 0;
     end
 end
 
@@ -107,15 +113,21 @@ else
     Fs = unique(electrophysiologicalFs);
 end
 
+if size(unique(electrophysiologicalTimeBounds,'rows'),1)>1
+    disp('There are electrophysiological signals with different timeBounds - PAY ATTENTION TO THIS')
+else
+    time = unique(electrophysiologicalTimeBounds,'rows');
+end
 
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
 sFile = db_template('sfile');
 
-nChannels = 0;
 sFile.header.ChannelsModuleStructure = ChannelsModuleStructure;
 sFile.prop.sfreq = Fs;
+
+nChannels = sum([ChannelsModuleStructure.nChannels]);
 
 %% Check for epochs/trials
 % [sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
@@ -125,7 +137,7 @@ sFile.prop.sfreq = Fs;
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NWB channels';
-ChannelMat.Channel = repmat(db_template('channeldesc'), [1, sum(([ChannelsModuleStructure.nChannels]))]);
+ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -136,7 +148,7 @@ amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
 
 % The following is weird - this should probably be stored differently in
 % the NWB - change how Ben stores electrode assignements to shank
-group_name = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group').data;
+group_name = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data;
 try
     assignChannelsToShank = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load+1; % Python based - first entry is 0 - maybe add condition for matlab based entries
     
@@ -152,8 +164,11 @@ try
     end
     
 catch
-    assignChannelsToShank = 1:length(group_name);
-    groups = cell(1,length(group_name));
+    try
+        groups = cellstr(nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data.load);
+    catch
+        groups = cell(1,length(group_name));
+    end
 end
     
 try
@@ -174,46 +189,36 @@ end
 
 
 
-ChannelType = cell(nChannels + nAdditionalChannels, 1);
+ChannelType = cell(sum([ChannelsModuleStructure.nChannels]), 1);
+ii = 0;
 
-for iChannel = 1:nChannels
-    ChannelMat.Channel(iChannel).Name    = ['amp' num2str(amp_channel_IDs(iChannel))];
-    ChannelMat.Channel(iChannel).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
-    ChannelMat.Channel(iChannel).Group   = groups{iChannel};
-    ChannelMat.Channel(iChannel).Type    = 'SEEG';
-    
-    ChannelMat.Channel(iChannel).Orient  = [];
-    ChannelMat.Channel(iChannel).Weight  = 1;
-    ChannelMat.Channel(iChannel).Comment = [];
-    
-    ChannelType{iChannel} = 'EEG';
-end
+for iModule = 1:length(ChannelsModuleStructure)
+    zz = 0;
+    for iChannel = 1:ChannelsModuleStructure(iModule).nChannels
+        ii = ii + 1;
+        zz = zz + 1;
+        if ChannelsModuleStructure(iModule).isElectrophysiology
+            ChannelMat.Channel(ii).Name    = ['amp' num2str(amp_channel_IDs(iChannel))];
+            ChannelMat.Channel(ii).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
+            ChannelMat.Channel(ii).Group   = groups{iChannel};
+            ChannelMat.Channel(ii).Type    = 'SEEG';
 
+            ChannelType{ii} = 'EEG';
+        else
+            LabelParsed=regexp(ChannelsModuleStructure(iModule).path,'/','split');
 
+            ChannelMat.Channel(ii).Name    = [LabelParsed{end} '_' num2str(zz)];
+            ChannelMat.Channel(ii).Loc     = [0;0;0];
+            ChannelMat.Channel(ii).Group   = LabelParsed{end};
+            ChannelMat.Channel(ii).Type    = 'Extra';
 
-if additionalChannelsPresent
-    iChannel = 0;
-    for iBehavior = 1:size(allBehaviorKeys,1)            
-        for zChannel = 1:nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{iBehavior}).spatialseries.get(allBehaviorKeys{iBehavior,2}(jBehavior)).data.dims(2)
-            iChannel = iChannel+1;
-
-            ChannelMat.Channel(nChannels + iChannel).Name    = [allBehaviorKeys{iBehavior,2}{jBehavior} '_' num2str(zChannel)];
-            ChannelMat.Channel(nChannels + iChannel).Loc     = [0;0;0];
-
-            ChannelMat.Channel(nChannels + iChannel).Group   = allBehaviorKeys{iBehavior,1};
-            ChannelMat.Channel(nChannels + iChannel).Type    = 'Behavior';
-
-            ChannelMat.Channel(nChannels + iChannel).Orient  = [];
-            ChannelMat.Channel(nChannels + iChannel).Weight  = 1;
-            ChannelMat.Channel(nChannels + iChannel).Comment = [];
-
-            ChannelType{nChannels + iChannel,1} = allBehaviorKeys{iBehavior,1}; 
-            ChannelType{nChannels + iChannel,2} = allBehaviorKeys{iBehavior,2}{jBehavior};
         end
+        ChannelMat.Channel(ii).Orient  = [];
+        ChannelMat.Channel(ii).Weight  = 1;
+        ChannelMat.Channel(ii).Comment = [];
     end
 end
-    
-    
+
 
 
 %% Add information read from header
@@ -222,16 +227,12 @@ sFile.filename     = DataFile;
 sFile.device       = 'NWB'; %nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
-sFile.prop.times   = [time(1) time(end)];
+sFile.prop.times   = [time(1), time(end)];
 sFile.prop.nAvg    = 1;
 % No info on bad channels
-sFile.channelflag  = ones(nChannels + nAdditionalChannels, 1);
+sFile.channelflag  = ones(nChannels, 1);
 
-sFile.header.LFPDataPresent            = LFPDataPresent;
-sFile.header.RawDataPresent            = RawDataPresent;
-sFile.header.additionalChannelsPresent = additionalChannelsPresent;
-sFile.header.ChannelType               = ChannelType;
-sFile.header.allBehaviorKeys           = allBehaviorKeys;
+sFile.header.ChannelType = ChannelType;
 
 
 %% ===== READ EVENTS =====
@@ -317,43 +318,45 @@ function moduleStructure = getDeeperModule(nwb, DataKey)
     % Parse the key for processing signal check
     BehaviorDataKeyLabelParsed=regexp(DataKey,'/','split');      
         
-    [obj, Fs, nChannels, FlipMatrix] = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2); % Don't change the number
+    [obj, Fs, nChannels, FlipMatrix, timeBounds] = get_module(nwb.(BehaviorDataKeyLabelParsed{2}), DataKey, 2); % Don't change the number
     
     moduleStructure.path       = DataKey;
     moduleStructure.module     = obj;
     moduleStructure.Fs         = Fs;
     moduleStructure.nChannels  = nChannels;
     moduleStructure.FlipMatrix = FlipMatrix;
+    moduleStructure.timeBounds = timeBounds;
     
 end
 
 
 
-function [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj, DataKey, index)
+function [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj, DataKey, index)
     LabelParsed=regexp(DataKey,'/','split');
     index = index + 1;
 
     if strcmp(class(obj),'types.core.LFP')
-        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.electricalseries, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.electricalseries, DataKey, index);
     elseif strcmp(class(obj),'types.core.ElectricalSeries')
-        [obj_return, Fs, nChannels, FlipMatrix] = getFsnChannels(obj);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj);
     elseif strcmp(class(obj),'types.core.Position')
-        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.spatialseries, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.spatialseries, DataKey, index);
     elseif strcmp(class(obj), 'types.core.ProcessingModule')
-        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.nwbdatainterface, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.nwbdatainterface, DataKey, index);
     elseif strcmp(class(obj), 'types.core.SpatialSeries')
-        [obj_return, Fs, nChannels, FlipMatrix] = getFsnChannels(obj);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.core.BehavioralTimeSeries')
-        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.timeseries, DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.timeseries, DataKey, index);
     elseif strcmp(class(obj), 'types.core.TimeSeries')
-        [obj_return, Fs, nChannels, FlipMatrix] = getFsnChannels(obj);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.untyped.Set')
-        [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj.get(LabelParsed(index)), DataKey, index);
+        [obj_return, Fs, nChannels, FlipMatrix, timeBounds] = get_module(obj.get(LabelParsed(index)), DataKey, index);
     elseif strcmp(class(obj), 'types.ndx_aibs_ecephys.EcephysCSD')
         obj_return = []; % Dont really care using this - Confirm with the developers
         Fs = 0;
         nChannels = 0;
         FlipMatrix = 0;
+        timeBounds = [0,0];
     else
         error('take care of this input type')
     end
@@ -363,7 +366,7 @@ function [obj_return, Fs, nChannels, FlipMatrix] = get_module(obj, DataKey, inde
     
 end
 
-function [obj, Fs, nChannels, FlipMatrix] = getFsnChannels(obj)
+function [obj, Fs, nChannels, FlipMatrix, timeBounds] = getFsnChannels(obj)
     % This is an assumption that we will have more samples than channels
     % NWB files allow users to save the data however they want
     % The FlipMatrix flag would indicate to in_fopen_NWB to flip the
@@ -373,17 +376,21 @@ function [obj, Fs, nChannels, FlipMatrix] = getFsnChannels(obj)
     if strcmp(class(obj.data),'types.untyped.DataPipe') % Compressed data
         if obj.data.internal.dims(1)<obj.data.internal.dims(2)
             nChannels = obj.data.internal.dims(1);
+            nSamples = obj.data.internal.dims(2);
             FlipMatrix = 0;
         else
             nChannels = obj.data.internal.dims(2);
+            nSamples = obj.data.internal.dims(1);
             FlipMatrix = 1;
         end
     elseif strcmp(class(obj.data),'types.untyped.DataStub') % Uncompressed
         if obj.data.dims(1)<obj.data.dims(2)
             nChannels = obj.data.dims(1);
+            nSamples = obj.data.dims(2);
             FlipMatrix = 0;
         else
             nChannels = obj.data.dims(2);
+            nSamples = obj.data.dims(1);
             FlipMatrix = 1;
         end
     end
@@ -391,15 +398,18 @@ function [obj, Fs, nChannels, FlipMatrix] = getFsnChannels(obj)
     
     if ~isempty(obj.starting_time_rate)
         Fs = obj.starting_time_rate;
+        timeBounds = [obj.starting_time, obj.starting_time_rate*nSamples];
     elseif ~isempty(obj.timestamps)
         % Some recordings save timepoints irregularly. Cant do
         % much about this when it comes to Brainstorm that uses a fixed
         % sampling rate - Consider perhaps taking care of that on the
         % in_fread_nwb.
         Fs = round(mean(1./(diff(obj.timestamps.load(1,10))))); % Just load first 10 samples (consider a different approach here - there might be non-continuous segments)
+        timeBounds = [obj.timestamps.load(1),obj.timestamps.load(end)];
     else
         obj = [];
         Fs = 0;
+        timeBounds = [0,0];
         error('Cant determine sampling rate for this module - Ignoring it')
     end
 end
