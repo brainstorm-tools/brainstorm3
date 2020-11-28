@@ -49,6 +49,24 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.action.Value   = 'installation';
     sProcess.options.action.Controller   = struct('install','installation','uninstall','uninstallation' );
     
+    sProcess.options.text1.Comment = [ '<b>Download Nirstorm anatomical template:</b> '];    
+    sProcess.options.text1.Type='label';
+
+    sProcess.options.option_colin27_2019.Comment = 'Colin27 (2019)' ;
+    sProcess.options.option_colin27_2019.Type    = 'checkbox';
+    sProcess.options.option_colin27_2019.Value   = 0;
+    sProcess.options.option_colin27_2019.Class   = 'installation';
+    
+    sProcess.options.option_colin27_2019_low.Comment = 'Colin27 - low resolution (2019)' ;
+    sProcess.options.option_colin27_2019_low.Type    = 'checkbox';
+    sProcess.options.option_colin27_2019_low.Value   = 0;
+    sProcess.options.option_colin27_2019_low.Class   = 'installation';
+    
+    sProcess.options.option_colin27.Comment = 'Colin27 (deprecaded)' ;
+    sProcess.options.option_colin27.Type    = 'checkbox';
+    sProcess.options.option_colin27.Value   = 0;
+    sProcess.options.option_colin27.Class   = 'installation';
+        
     sProcess.options.text2.Comment = [ '<b>Install additional features:</b> ', ...
                                         '<p>wip : install work in progress features <br/>',...
                                             'debug: install developping tool <br />', ...
@@ -96,7 +114,12 @@ function OutputFiles = Run(sProcess, sInputs)
             if sProcess.options.option_wip.Value
                 extra{end+1}='wip';
             end
-            errMsg = install(extra,1,1);
+            template = [sProcess.options.option_colin27_2019.Value , ... 
+                        sProcess.options.option_colin27_2019_low.Value, ... 
+                        sProcess.options.option_colin27.Value];
+                    
+            errMsg = install(extra,template,1,1);
+            
             if ~isempty(errMsg)
                  bst_report('Error',   sProcess, sInputs, errMsg)
             else
@@ -118,7 +141,7 @@ function status=status()
     status =  exist('uninstall_nirstorm')==2 && strcmp(fileparts(which('uninstall_nirstorm')),bst_get('UserProcessDir')); 
 end  
 
-function errMsg = install(extra,isInteractive,fromProcess)
+function errMsg = install(extra,template,isInteractive,fromProcess)
     % process_nst_install('install',extra,isInteractive)
     % 'install': download and install nirstorm
     % INPUTS:
@@ -126,12 +149,16 @@ function errMsg = install(extra,isInteractive,fromProcess)
     %       - 'debug': install developping tool
     %       - 'wip': install work in progress features
     %    - isInteractive: bool. 1 if the script is called interactively 
-    if (nargin < 3)
+    if (nargin < 4)
         fromProcess = 0;
     end    
-    if (nargin < 2)
+    if (nargin < 3)
         isInteractive = 0;
     end    
+    if (nargin < 2 || isempty(template))
+        template = [ 0 0 0];
+    end 
+    
     if (nargin < 1)
         extra = {};
     end    
@@ -185,7 +212,38 @@ function errMsg = install(extra,isInteractive,fromProcess)
         delete(tmp_file);
         [status,errMsg] = rmdir(nistorm_folder, 's');
     end
-    bst_progress('stop');
+    
+    
+    
+    if any(template)
+        bst_progress('start', 'NIRSTORM', 'Downloading templates...', 0, sum(template));
+        template_names = {'Colin27_4NIRS_Jan19', ...
+                          'Colin27_4NIRS_lowres', ... 
+                            'Colin27_4NIRS'};
+                        
+        for i_template = 1:length(template_names)
+            if ~template(i_template)
+                continue;
+            end    
+            
+            template_bfn = [template_names{i_template} '.zip'];
+            template_tmp_fn = nst_request_files({{'template', template_bfn}}, 0, ...
+                                        nst_get_repository_url(), 18e6);
+                                    
+                                    
+            % Copy to .brainstorm/defaults/anatomy
+            copyfile(template_tmp_fn{1}, fullfile(bst_get('BrainstormUserDir'), 'defaults', 'anatomy'));
+            % Remove temporary file
+            delete(template_tmp_fn{1});
+            
+            bst_progress('inc', 1);
+        end   
+        bst_progress('stop');
+    end    
+    
+    
+    
+    
 end
 
 function uninstall()
@@ -203,4 +261,10 @@ function uninstall()
 
 end
 
+function template_names = nst_core_get_available_templates()
+%TODO: add descriptions
+template_names = {'Colin27_4NIRS', ...
+                  'Colin27_4NIRS_lowres', ...
+                  'Colin27_4NIRS_Jan19'};
+end
 
