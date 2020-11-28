@@ -42,7 +42,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     if status()
         sProcess.options.action.Comment = {'Update','Uninstall',' Action:';'install','uninstall',''} ;
     else
-        sProcess.options.action.Comment = {'Install','Uninstall',' Action:';'install','uninstall',''} ;
+        sProcess.options.action.Comment = {'Install',' Action:';'install',''} ;
     end
     
     sProcess.options.action.Type    = 'radio_linelabel';
@@ -62,7 +62,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.option_colin27_2019_low.Value   = 0;
     sProcess.options.option_colin27_2019_low.Class   = 'installation';
     
-    sProcess.options.option_colin27.Comment = 'Colin27 (deprecaded)' ;
+    sProcess.options.option_colin27.Comment = 'Colin27 (2016)' ;
     sProcess.options.option_colin27.Type    = 'checkbox';
     sProcess.options.option_colin27.Value   = 0;
     sProcess.options.option_colin27.Class   = 'installation';
@@ -114,11 +114,11 @@ function OutputFiles = Run(sProcess, sInputs)
             if sProcess.options.option_wip.Value
                 extra{end+1}='wip';
             end
-            template = [sProcess.options.option_colin27_2019.Value , ... 
+            templates = [sProcess.options.option_colin27_2019.Value , ... 
                         sProcess.options.option_colin27_2019_low.Value, ... 
                         sProcess.options.option_colin27.Value];
                     
-            errMsg = install(extra,template,1,1);
+            errMsg = install(extra,templates,1,1);
             
             if ~isempty(errMsg)
                  bst_report('Error',   sProcess, sInputs, errMsg)
@@ -148,6 +148,9 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
     %    - extra: cell array, list of extra features to install from nirstorm ('debug', 'wip')
     %       - 'debug': install developping tool
     %       - 'wip': install work in progress features
+    %   - template: list of template to download. template(k)=1 to download
+    %   template number k. 
+    %   1: Colin27 (2019), 2:Colin27 low resolution(2019),3: Colin27 (2016)
     %    - isInteractive: bool. 1 if the script is called interactively 
     if (nargin < 4)
         fromProcess = 0;
@@ -156,7 +159,13 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
         isInteractive = 0;
     end    
     if (nargin < 2 || isempty(template))
-        template = [ 0 0 0];
+        if isInteractive 
+            % In the interactive version, propose to download Colin27(2019)
+            %and Colin27(2019) low resolution
+            template = [ 1 1 0]; 
+        else 
+            template = [ 0 0 0];
+        end   
     end 
     
     if (nargin < 1)
@@ -196,9 +205,8 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
     
     % Install nistorm
     addpath(nistorm_folder);
-
     try 
-        nst_install(mode,extra,nistorm_folder);
+        nst_install(mode,extra);
     catch ME
         errMsg = 'Unable to install nirstorm';
         return;
@@ -206,15 +214,12 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
     
     % Remove temporary files
     if strcmp(mode,'copy')
-        rmpath(nistorm_folder)
-        rmpath(fullfile(nistorm_folder, 'dist_tools'));
-        
+        rmpath(nistorm_folder)        
         delete(tmp_file);
         [status,errMsg] = rmdir(nistorm_folder, 's');
     end
     
-    
-    
+    % install nirstorm templates
     if any(template)
         bst_progress('start', 'NIRSTORM', 'Downloading templates...', 0, sum(template));
         template_names = {'Colin27_4NIRS_Jan19', ...
@@ -227,7 +232,8 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
             end    
             
             template_bfn = [template_names{i_template} '.zip'];
-            template_tmp_fn = nst_request_files({{'template', template_bfn}}, 0, ...
+            template_tmp_fn = nst_request_files({{'template', template_bfn}}, ...
+                                        isInteractive && ~fromProcess, ...
                                         nst_get_repository_url(), 18e6);
                                     
                                     
@@ -239,11 +245,7 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
             bst_progress('inc', 1);
         end   
         bst_progress('stop');
-    end    
-    
-    
-    
-    
+    end     
 end
 
 function uninstall()
@@ -257,14 +259,21 @@ function uninstall()
     delete( which('uninstall_nirstorm'));
     cd(cur_dir);
     
-    bst_progress('stop');
+    % delete nirstorm functions
+    function_folder=fullfile(bst_get('BrainstormUserDir'), 'nirstorm');
+    if exist(function_folder,'dir')
+        rmpath(function_folder)
+        rmdir(function_folder, 's');
+    end    
+    
+    % delete nirstorm mex
+     mex_folder= bst_get('UserMexDir');
+     mex_files = {'dg_voronoi.mexa64','dg_voronoi.mexglx'};
+     for i_mex = 1:length(mex_files)
+            if exist( fullfile(mex_folder,mex_files{i_mex})  ,'file')
+                delete(fullfile(mex_folder,mex_files{i_mex}));
+            end
+     end       
+     bst_progress('stop');
 
 end
-
-function template_names = nst_core_get_available_templates()
-%TODO: add descriptions
-template_names = {'Colin27_4NIRS', ...
-                  'Colin27_4NIRS_lowres', ...
-                  'Colin27_4NIRS_Jan19'};
-end
-
