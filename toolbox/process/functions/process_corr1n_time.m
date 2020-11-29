@@ -111,8 +111,12 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     sfreq        = round(1/(TimeVector(2) - TimeVector(1)));
     winLen       = round(sfreq * EstTimeWinLen);
     overlapSamps = round(Overlap * winLen);
-    SampTimeWin  = bst_closest(OPTIONS.TimeWindow, TimeVector); % number of baseline sample to ignore
-    timeSamps    = [SampTimeWin(1),winLen+SampTimeWin(1)];  
+    if ~isempty(OPTIONS.TimeWindow)
+        SampTimeWin = bst_closest(OPTIONS.TimeWindow, TimeVector); % number of baseline sample to ignore
+    else
+        SampTimeWin = [1, length(TimeVector)];
+    end
+    timeSamps = [SampTimeWin(1),winLen+SampTimeWin(1)];  
     iTime = 1;
     % Error management
     if (timeSamps(2) >= SampTimeWin(2))
