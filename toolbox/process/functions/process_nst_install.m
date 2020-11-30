@@ -26,10 +26,13 @@ end
 
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = getComment();
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'NIRS';
-    sProcess.Index       =  2000 * isnotdeployed(); % Hide in the deployed versiom   
+    if ~(exist('isdeployed', 'builtin') && isdeployed)
+        sProcess.Index       =  2000;
+    else % Hide in the deployed versiom
+        sProcess.Index       =  0;
+    end    
     sProcess.Description =  'https://github.com/Nirstorm/nirstorm';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
@@ -40,8 +43,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.isSeparator = 0;
     
     if status()
+        sProcess.Comment     = 'Update NIRSTORM';
         sProcess.options.action.Comment = {'Update','Uninstall',' Action:';'install','uninstall',''} ;
     else
+        sProcess.Comment     = 'Install NIRSTORM';
         sProcess.options.action.Comment = {'Install',' Action:';'install',''} ;
     end
     
@@ -88,18 +93,6 @@ end
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     Comment = sProcess.Comment;
-end
-
-function status = isnotdeployed() 
-    status = ~(exist('isdeployed', 'builtin') && isdeployed);
-end
-
-function comment=getComment()
-    if status()
-        comment='Update NIRSTORM';
-    else
-        comment='Install NIRSTORM';
-    end     
 end
 
 %% ===== RUN =====
@@ -199,7 +192,7 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
         unzip(tmp_file,tmp_folder);
     catch
         errMsg = 'Unable to unzip nirstorm';
-        delete(tmp_file);
+        file_delete(tmp_file, 1);
         return;
     end
     
@@ -208,15 +201,15 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
     try 
         nst_install(mode,extra);
     catch ME
-        errMsg = 'Unable to install nirstorm';
+        errMsg = ['Unable to install nirstorm: ' ME.message];
         return;
     end
     
     % Remove temporary files
     if strcmp(mode,'copy')
         rmpath(nistorm_folder)        
-        delete(tmp_file);
-        [status,errMsg] = rmdir(nistorm_folder, 's');
+        file_delete(tmp_file, 1);
+        file_delete(nistorm_folder, 1, 3);
     end
     
     % install nirstorm templates
@@ -238,10 +231,9 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
                                     
                                     
             % Copy to .brainstorm/defaults/anatomy
-            copyfile(template_tmp_fn{1}, fullfile(bst_get('BrainstormUserDir'), 'defaults', 'anatomy'));
+            file_copy(template_tmp_fn{1}, fullfile(bst_get('BrainstormUserDir'), 'defaults', 'anatomy'));
             % Remove temporary file
-            delete(template_tmp_fn{1});
-            
+            file_delete(template_tmp_fn{1}, 1);            
             bst_progress('inc', 1);
         end   
         bst_progress('stop');
@@ -256,14 +248,14 @@ function uninstall()
     cur_dir=pwd;
     cd(bst_get('UserProcessDir'));
     uninstall_nirstorm();
-    delete( which('uninstall_nirstorm'));
+    file_delete( which('uninstall_nirstorm'),1);
     cd(cur_dir);
     
     % delete nirstorm functions
     function_folder=fullfile(bst_get('BrainstormUserDir'), 'nirstorm');
     if exist(function_folder,'dir')
         rmpath(function_folder)
-        rmdir(function_folder, 's');
+        file_delete(function_folder, 1,3);
     end    
     
     % delete nirstorm mex
@@ -271,7 +263,7 @@ function uninstall()
      mex_files = {'dg_voronoi.mexa64','dg_voronoi.mexglx'};
      for i_mex = 1:length(mex_files)
             if exist( fullfile(mex_folder,mex_files{i_mex})  ,'file')
-                delete(fullfile(mex_folder,mex_files{i_mex}));
+                file_delete(fullfile(mex_folder,mex_files{i_mex}),1,3);
             end
      end       
      bst_progress('stop');
