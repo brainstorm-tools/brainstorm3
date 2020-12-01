@@ -523,7 +523,47 @@ bst_progress('text', 'DUNEuro: Computing leadfield...');
 disp(['DUNEURO> System call: ' callStr]);
 tic;
 % Call DUNEuro
-[status,cmdout] = system(callStr);
+cfg.SizeOfBlockOfSensor = 250; % we may ask the user to change this value from the panel? Q for Francois
+if isMeg && cfg.MegPerBlockOfSensor
+    % Define the group of channles
+    megNbOfBlock = 1: cfg.SizeOfBlockOfSensor : length(MegChannels);
+    groupOfSensors = cell( length(megNbOfBlock)  ,1);
+    for iBlock = 1 : length(megNbOfBlock)
+        if ~(iBlock == length(megNbOfBlock))
+            groupOfSensors{iBlock}  = megNbOfBlock(iBlock) : megNbOfBlock(iBlock+1) - 1;
+        else
+            groupOfSensors{iBlock} = megNbOfBlock(iBlock) :  length(MegChannels);
+        end
+    end    
+    % Update the sensor file
+   GainMeg = [];
+    for iBlock =1 : length(megNbOfBlock)
+        disp(['block ' num2str(iBlock) '/' num2str(length(megNbOfBlock)) ': sensors '  ])
+        % Update the channels file
+        % Write coil file
+        CoilsLocTemp = MegChannels(groupOfSensors{iBlock},2:4);
+        fid = fopen(CoilFile, 'wt+');
+        fprintf(fid, '%d %d %d  \n', CoilsLocTemp');
+        fclose(fid);
+        % Write projection file
+        CoilsOrientTemp = MegChannels(groupOfSensors{iBlock},5:7);
+        fid = fopen(ProjFile, 'wt+');
+        fprintf(fid, '%d %d %d  \n', CoilsOrientTemp');
+        fclose(fid);        
+        % call the DUNEuro
+        [status,cmdout] = system(callStr);
+        GainTmp = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
+        GainMeg = [GainMeg; GainTmp];
+        % TODO cfg.BstSaveTransfer % not possible with this version
+        % solution : concatenate and saveback the transfer matrix?, or
+        % disable this option in this case, ask Francois how to do it from the GUI?
+        % when the option "use meg block sensor" is set to 1, disable the save of the
+        % transfer matrix.? Q for Francois
+    end    
+else
+     [status,cmdout] =  system(callStr);
+end
+
 if (status ~= 0)
     disp('DUNEURO> Error log:');
     disp(cmdout);
@@ -531,7 +571,6 @@ if (status ~= 0)
     return;
 end
 disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
-
 
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
@@ -542,8 +581,9 @@ end
 
 %MEG
 if isMeg
-    GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
-    
+    if ~cfg.MegPerBlockOfSensor
+        GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
+    end
     % === POST-PROCESS MEG LEADFIELD ===
     % Compute the total magnetic field 
     dipoles_pos_orie = [kron(cfg.GridLoc,ones(3,1)), kron(ones(length(cfg.GridLoc),1), eye(3))];

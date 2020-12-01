@@ -234,7 +234,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             % high memory, or want to use the integration points 
             jCheckEnableCacheMemory = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Enable cache memory', [], '', [], []);
             % Enable the MEG Computation per block of sensors
-            ... jCheckMegPerBlockOfSensor = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Compute per block of sensors [Todo]', [], '', [], []);                 
+            jCheckMegPerBlockOfSensor = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Compute per block of sensor ', [], '', [], []);                 
             % Set jCheckUseIntegrationPoint to 1 as default option
             if (OPTIONS.UseIntegrationPoint)
                 jCheckUseIntegrationPoint.setSelected(1);
@@ -253,6 +253,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         jCheckSaveTransfer = gui_component('checkbox', jPanelOutput, '', 'Save transfer matrix', [], '', [], []);
         if (OPTIONS.BstSaveTransfer)
             jCheckSaveTransfer.setSelected(1);
+        end
+        % disable the save transfer option if the option per block is
+        % activated, ask Francois for help to be interactive from the gui
+        % disable this option only if the MegPerBlockOfSensor is checked
+        if ~isempty(jCheckMegPerBlockOfSensor)
+            isMegPerBlockOfSensor = jCheckMegPerBlockOfSensor.isSelected();
+            jCheckSaveTransfer.setEnabled(isMegPerBlockOfSensor); 
         end
     c.gridy = 5;
     jPanelRight.add(jPanelOutput, c);
@@ -313,7 +320,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
                   'jCheckUseIntegrationPoint', jCheckUseIntegrationPoint,...
                   'jCheckEnableCacheMemory', jCheckEnableCacheMemory,...
-                  ...'jCheckMegPerBlockOfSensor', jCheckMegPerBlockOfSensor,...
+                  'jCheckMegPerBlockOfSensor', jCheckMegPerBlockOfSensor,...
                   'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
     % Create the BstPanel object that is returned by the function
@@ -469,11 +476,11 @@ function s = GetPanelContents() %#ok<DEFNU>
         s.EnableCacheMemory = 0;
     end
 
-%     if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
-%         s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
-%     else
-%         s.MegPerBlockOfSensor = 0;
-%     end
+    if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
+        s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
+    else
+        s.MegPerBlockOfSensor = 0;
+    end
 end
 
 
