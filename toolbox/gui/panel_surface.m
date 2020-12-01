@@ -1118,9 +1118,9 @@ end
 
 %% ===== ADD A SURFACE =====
 % Add a surface to a given 3DViz figure
-% USAGE : iTess = panel_surface('AddSurface', hFig, surfaceFile)
+% USAGE : [iTess, TessInfo] = panel_surface('AddSurface', hFig, surfaceFile)
 % OUTPUT: Indice of the surface in the figure's surface array
-function iTess = AddSurface(hFig, surfaceFile)
+function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     % ===== CHECK EXISTENCE =====
     % Check whether filename is an absolute or relative path
     surfaceFile = file_short(surfaceFile);

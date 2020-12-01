@@ -177,6 +177,7 @@ for iFile = 1:length(SurfaceFiles)
         [Tess(:).Atlas] = deal(db_template('Atlas'));
         NewTess = tess_concatenate(Tess);
         NewTess.iAtlas  = find(strcmpi({NewTess.Atlas.Name}, 'Structures'));
+        NewTess.Comment = importedBaseName;
     end
     % Comment
     if ~isempty(Comment)
