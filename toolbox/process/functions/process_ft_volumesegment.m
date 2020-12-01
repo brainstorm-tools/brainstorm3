@@ -314,6 +314,8 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     end
 
     % ===== SAVE TISSUE ATLAS =====
+    % Add basic labels
+    sMriTissue.Labels = mri_getlabels('tissues5');
     % Set comment
     sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
     % Copy some fields from the original MRI

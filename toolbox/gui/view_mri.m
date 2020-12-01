@@ -181,17 +181,20 @@ elseif isempty(hFig)
 end
 
 
-
 %% ===== DISPLAY MRI =====
 % Add data on the MRI slices 
-if ~isempty(OverlayFile)
-    isOk = panel_surface('SetSurfaceData', hFig, iSurface, OverlayType, OverlayFile, isStat);
+isOverlay = ~isempty(OverlayFile);
+if isOverlay
+    [isOk, TessInfo] = panel_surface('SetSurfaceData', hFig, iSurface, OverlayType, OverlayFile, isStat);
     if ~isOk
         close(hFig);
         return;
     end
 end
-isOverlay = ~isempty(OverlayFile);
+% Try load load an anatomical atlas (if the overlay is not already an atlas)
+if ~isOverlay || isempty(TessInfo.OverlayLabels)
+    figure_mri('SetVolumeAtlas', hFig);
+end
 % Configure the operations that are allowed
 figure_mri('SetFigureStatus', hFig, isEditFiducials, isEditVolume, isOverlay, 0, 1);
 

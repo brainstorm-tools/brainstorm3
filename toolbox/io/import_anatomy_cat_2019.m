@@ -127,10 +127,10 @@ nVertHemi = round(nVertices / 2);
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'Import CAT12 folder', 'Parsing folder...');
 % Find MRI
-MriFile = file_find(CatDir, '*.nii', 1, 0);
-if isempty(MriFile)
+T1File = file_find(CatDir, '*.nii', 1, 0);
+if isempty(T1File)
     errorMsg = [errorMsg 'Original MRI file was not found: *.nii in top folder' 10];
-elseif (length(MriFile) > 1)
+elseif (length(T1File) > 1)
     errorMsg = [errorMsg 'Multiple .nii found in top folder' 10];
 end
 % Find surfaces
@@ -235,11 +235,11 @@ end
 
 %% ===== IMPORT MRI =====
 if isKeepMri && ~isempty(sSubject.Anatomy)
-    BstMriFile = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 else
     % Read MRI
-    [BstMriFile, sMri] = import_mri(iSubject, MriFile);
-    if isempty(BstMriFile)
+    [BstT1File, sMri] = import_mri(iSubject, T1File);
+    if isempty(BstT1File)
         errorMsg = 'Could not import CAT12 folder: MRI was not imported properly';
         if isInteractive
             bst_error(errorMsg, 'Import CAT12 folder', 0);
@@ -289,7 +289,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -309,14 +309,14 @@ if ~isInteractive || ~isempty(FidFile)
 % Define with the MRI Viewer
 elseif ~isKeepMri
     % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
 end
 % Load SCS and NCS field to make sure that all the points were defined
-sMri = in_mri_bst(BstMriFile);
+sMri = in_mri_bst(BstT1File);
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import CAT12 folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -328,7 +328,7 @@ end
 %% ===== MNI NORMALIZATION =====
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     % Error handling
     errorMsg = [errorMsg errCall];
 end
@@ -569,6 +569,8 @@ if isTissues && ~isempty(TpmFiles)
         sSubject = bst_get('Subject', iSubject);
         % Replace background with zeros
         sMriTissue.Cube(sMriTissue.Cube == 6) = 0;
+        % Add basic labels
+        sMriTissue.Labels = mri_getlabels('tissues5');
         % Set comment
         sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
         % Copy some fields from the original MRI
@@ -584,7 +586,7 @@ if isTissues && ~isempty(TpmFiles)
         % Add history tag
         sMriTissue = bst_history('add', sMriTissue, 'segment', 'Tissues segmentation generated with CAT12.');
         % Output file name
-        TissueFile = file_unique(strrep(file_fullpath(BstMriFile), '.mat', '_tissues.mat'));
+        TissueFile = file_unique(strrep(file_fullpath(BstT1File), '.mat', '_tissues.mat'));
         % Save new MRI in Brainstorm format
         sMriTissue = out_mri_bst(sMriTissue, TissueFile);
         % Add to subject

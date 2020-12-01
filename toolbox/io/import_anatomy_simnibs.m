@@ -218,7 +218,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;

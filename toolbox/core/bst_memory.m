@@ -67,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end

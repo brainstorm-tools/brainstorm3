@@ -21,7 +21,7 @@ function [ template ] = db_template(structureName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 
 switch lower(structureName)
@@ -94,6 +94,7 @@ switch lower(structureName)
             'Header',      [], ...
             'Histogram',   [], ...
             'InitTransf',  [], ...
+            'Labels',      [], ...
             'History',     []);
 
     case 'surfacemat'
@@ -691,6 +692,7 @@ switch lower(structureName)
             'Header',     [], ...
             'Histogram',  [], ...
             'InitTransf', [], ...
+            'Labels',     [], ...
             'History',    []);  
 
     case 'figureid'
@@ -1026,6 +1028,9 @@ switch lower(structureName)
             'DataMinMax',              [], ...   % Minimum and maximum of the DataSource.FileName file
             'DataWmat',                [], ...   % Interpolation matrix (transformation to map Data on hPatch surface) 
             'OverlayCube',             [], ...   % Interpolated results in a MRI volume
+            'OverlayCubeLabels',       [], ...   % Map of labels (volume of indices)
+            'OverlayLabels',           [], ...   % Labels (cell-array of indices/strings)
+            'isOverlayAtlas',          0, ...    % Is the loaded overlay the atlas described in the OverlayLabels
             'DataAlpha',               0, ...    % Alpha for blending of anatomy and surface data
             'DataThreshold',           0.5, ...  % Threshold to apply to color coding of data values  
             'SizeThreshold',           1, ...    % Threshold to apply to color coding of data values  

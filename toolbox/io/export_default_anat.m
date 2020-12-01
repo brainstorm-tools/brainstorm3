@@ -93,7 +93,7 @@ for i = 1:length(sSubject.Surface)
         sTessNew.Atlas = sTess.Atlas;
     end
     % Select "user scouts" (for cortex) or "structures" (for aseg)
-    if ~isempty(strfind(sTessNew.Comment, 'aseg'))
+    if ~isempty(strfind(sTessNew.Comment, 'aseg')) || ~isempty(strfind(sTessNew.Comment, 'subcortical'))
         sTessNew.iAtlas = find(strcmpi({sTessNew.Atlas.Name}, 'Structures'));
     else
         sTessNew.iAtlas = 1;

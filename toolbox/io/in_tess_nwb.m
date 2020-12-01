@@ -144,7 +144,7 @@ for iStructure = 1 % Just do the cortex surface          1:2
          if iStructure == 1
             TessMat(currentStructure).Comment = ['cortex_' num2str(size(TessMat(currentStructure).Vertices,1)) 'V']; % cortex surface
         else
-            TessMat(currentStructure).Comment = 'aseg atlas';
+            TessMat(currentStructure).Comment = 'subcortical';
         end
 
         %% Fill the rest of the fields

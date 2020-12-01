@@ -68,6 +68,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sphreg.Comment = 'Use spherical registration<BR><I><FONT color="#777777">Required for atlases, group analysis and thickness maps</FONT></I>';
     sProcess.options.sphreg.Type    = 'checkbox';
     sProcess.options.sphreg.Value   = 1;
+    % Option: Volume atlases
+    sProcess.options.vol.Comment = 'Compute volume atlases';
+    sProcess.options.vol.Type    = 'checkbox';
+    sProcess.options.vol.Value   = 1;
     % Option: Import extra map
     sProcess.options.extramaps.Comment = 'Import additional cortical maps<BR><I><FONT color="#777777">Cortical thickness, gyrification index, sulcal depth</FONT></I>';
     sProcess.options.extramaps.Type    = 'checkbox';
@@ -100,6 +104,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         isSphReg = 1;
     end
+    % Volume atlases?
+    if isfield(sProcess.options, 'vol') && isfield(sProcess.options.vol, 'Value') && ~isempty(sProcess.options.vol.Value)
+        isVolumeAtlases = sProcess.options.vol.Value;
+    else
+        isVolumeAtlases = 0;
+    end
     % Cerebellum?
     if isfield(sProcess.options, 'cerebellum') && isfield(sProcess.options.cerebellum, 'Value') && ~isempty(sProcess.options.cerebellum.Value)
         isCerebellum = sProcess.options.cerebellum.Value;
@@ -131,7 +141,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0, TpmNii, isSphReg, isExtraMaps, isCerebellum);
+    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0, TpmNii, isSphReg, isVolumeAtlases, isExtraMaps, isCerebellum);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -144,7 +154,7 @@ end
 
 
 %% ===== COMPUTE CAT12 SEGMENTATION =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isExtraMaps, isCerebellum)
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isVolumeAtlases, isExtraMaps, isCerebellum)
     isOk = 0;
     errMsg = '';
     % Initialize SPM
@@ -220,14 +230,14 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     
     % ===== VERIFY FIDUCIALS IN MRI =====
     % Load MRI file
-    MriFileBst = sSubject.Anatomy(iAnatomy).FileName;
-    sMri = in_mri_bst(MriFileBst);
+    T1FileBst = sSubject.Anatomy(iAnatomy).FileName;
+    sMri = in_mri_bst(T1FileBst);
     % If the SCS transformation is not defined: compute MNI transformation to get a default one
     if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || (length(sMri.SCS.NAS)~=3) || (length(sMri.SCS.LPA)~=3) || (length(sMri.SCS.RPA)~=3) || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'T') || isempty(sMri.SCS.T)
         % Issue warning
         errMsg = 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.'; 
         % Compute MNI transformation
-        [sMri, errNorm] = bst_normalize_mni(MriFileBst);
+        [sMri, errNorm] = bst_normalize_mni(T1FileBst);
         % Handle errors
         if ~isempty(errNorm)
             errMsg = [errMsg 10 'Error trying to compute the MNI transformation: ' 10 errNorm 10 ...
@@ -257,7 +267,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         % Add this transformation in the MRI
         sMri.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
         % Save modification on hard drive
-        bst_save(file_fullpath(MriFileBst), sMri, 'v7');
+        bst_save(file_fullpath(T1FileBst), sMri, 'v7');
     end
 
     % ===== CALL CAT12 SEGMENTATION =====
@@ -267,7 +277,6 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     matlabbatch{1}.spm.tools.cat.estwrite.useprior = '';
     matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;                % Blocking call to CAT12
     matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {TpmNii};      % User-defined TPM atlas
-    % matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];     % Save deformation fields: [forward inverse]
     matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.warps       = [0 0]; % Skip deformation fields for the moment: [forward inverse]
     matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native   = 1;   % GM tissue maps
@@ -289,11 +298,24 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.native = 1;  % Label: background=0, CSF=1, GM=2, WM=3, WMH=4
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);   % CGaser comment: Correct syntax to disable ROI processing for volumes   
-    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;  % No volume atlases
-    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 0;
-    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 0;
-    % matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 0;
+    % Volume atlases
+    if isVolumeAtlases
+        matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];     % Save non-linear MNI normalization deformation fields: [forward inverse]
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROI = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.atlas.native = 1;  % Save atlases in native space
+    else
+        % No ROIs
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROI = 0;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);   % CGaser comment: Correct syntax to disable ROI processing for volumes   
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 0;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 0;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 0;
+    end
     % Spherical registration (much slower)
     if isSphReg && ~isCerebellum    % CGaser comment: Cerebellum extraction is experimental, not to be used routinely
         matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 1;   % 1: lh+rh
@@ -313,7 +335,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         matlabbatch{2}.spm.tools.cat.stools.surfextract.SD = 1;     % Sulcal depth
         matlabbatch{2}.spm.tools.cat.stools.surfextract.nproc = 0;  % Blocking call to CAT12
     end
-    
+
     % Switch to CAT12 expert mode
     cat12('expert');
     % Hide CAT12 figures
@@ -333,19 +355,12 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         % Get SPM dir
         SpmDir = bst_get('SpmDir');
         % List of parcellations to project
-        allAnnot = {...
-            'lh.aparc_a2009s.freesurfer.annot', ...
-            'lh.aparc_DK40.freesurfer.annot', ...
-            'lh.aparc_HCP_MMP1.freesurfer.annot', ...
-            'lh.Schaefer2018_100Parcels_17Networks_order.annot', ...
-            'lh.Schaefer2018_200Parcels_17Networks_order.annot', ...
-            'lh.Schaefer2018_400Parcels_17Networks_order.annot', ...
-            'lh.Schaefer2018_600Parcels_17Networks_order.annot'};
+        AnnotLhFiles = file_find(bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces'), 'lh.*.annot', 2, 0);
         % Import atlases (cat_surf_map_atlas calls both hemispheres at once)
-        for annot = allAnnot
-            bst_progress('text', ['Interpolating atlas: ' annot{1} '...']);
-            fs_annot = bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces', annot{1});
-            cat_surf_map_atlas(TessLhFile, fs_annot);
+        for iAnnot = 1:length(AnnotLhFiles)
+            [fAnnotPath, fAnnotName] = bst_fileparts(AnnotLhFiles{iAnnot});
+            bst_progress('text', ['Interpolating atlas: ' fAnnotName '...']);
+            cat_surf_map_atlas(TessLhFile, AnnotLhFiles{iAnnot});
         end
     end
     
@@ -376,6 +391,13 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
         return
     end
     nVertices = str2double(nVertices);
+    % Ask for volume atlases
+    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Compute anatomical atlases?' 10 ...
+        '- CAT atlases: neuromorphometrics, lpba40, cobra, hammers' 10 ...
+        '- SPM non-linear MNI normalization'], 'Anatomical atlases');
+    if isCancel
+        return
+    end
     % Open progress bar
     bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
     bst_progress('setimage', 'logo_cat.gif');
@@ -385,7 +407,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     isSphReg = 1;
     isExtraMaps = 0;
     isCerebellum = 0;
-    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isExtraMaps, isCerebellum);
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isVolumeAtlases, isExtraMaps, isCerebellum);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'CAT12 MRI segmentation', 0);

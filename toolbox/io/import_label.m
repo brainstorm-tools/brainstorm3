@@ -253,6 +253,8 @@ for iFile = 1:length(LabelFiles)
             AtlasName = sAtlas.Name;
             AtlasName = strrep(AtlasName, 'R', '');
             AtlasName = strrep(AtlasName, 'L', '');
+            % Get labels
+            LabelsTable = mri_getlabels(LabelFiles{iFile});
             % Read .gii file
             [sXml, Values] = in_gii(LabelFiles{iFile});
             % If there is more than one entry: force adding
@@ -372,7 +374,7 @@ for iFile = 1:length(LabelFiles)
                         bst_saturate(vertMri(:,2), [1, size(sMriMask.Cube,2)]), ...
                         bst_saturate(vertMri(:,3), [1, size(sMriMask.Cube,3)]));
             % Try to get volume labels for this atlas
-            VolumeLabels = panel_scout('GetVolumeLabels', LabelFiles{iFile});
+            VolumeLabels = mri_getlabels(LabelFiles{iFile});
             % Create one scout for each value in the volume
             for i = 1:length(allValues)
                 bst_progress('text', sprintf('Creating scouts... [%d/%d]', i, length(allValues)));
@@ -645,6 +647,8 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Braintomme';
         case {'lh.oasis.chubs', 'rh.oasis.chubs'}
             AtlasName = 'OASIS cortical hubs';
+        case {'lh.mpm.vpnl', 'rh.mpm.vpnl'}
+            AtlasName = 'vcAtlas';
         otherwise
             % FreeSurfer left/right
             if (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
@@ -652,7 +656,6 @@ function AtlasName = GetAtlasName(fBase)
             % BrainVISA/MarsAtlas
             elseif (~isempty(strfind(fBase, '_Lwhite_parcels_marsAtlas')) || ~isempty(strfind(fBase, '_Rwhite_parcels_marsAtlas')))
                 AtlasName = 'MarsAtlas';
-                LabelsTable = panel_scout('GetMarsAtlasLabels');
             elseif (~isempty(strfind(fBase, '_Lwhite_parcels_model')) || ~isempty(strfind(fBase, '_Rwhite_parcels_model')))
                 AtlasName = 'MarsAtlas model';
             elseif (~isempty(strfind(fBase, '_Lwhite_pole_cingular')) || ~isempty(strfind(fBase, '_Rwhite_pole_cingular')))

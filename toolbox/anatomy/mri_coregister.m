@@ -206,17 +206,18 @@ switch lower(Method)
         if isReslice
             % Reslice the volume
             [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras');
+            % Output file tag
+            if ~isempty(strfind(sMriSrc.Comment, '_spm'))
+                fileTag = '';
+            else
+                fileTag = '_vox2ras';
+            end
         else
             % Save the original input volume
             sMriReg = sMriSrc;
             isUpdateScs = 1;
             isUpdateNcs = 1;
-        end
-        % Output file tag
-        if ~isempty(strfind(sMriSrc.Comment, '_spm'))
             fileTag = '';
-        else
-            fileTag = '_vox2ras';
         end
 end
 % Handle errors

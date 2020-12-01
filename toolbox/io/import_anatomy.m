@@ -1,7 +1,7 @@
-function import_anatomy(iSubject)
+function import_anatomy(iSubject, isAuto)
 % IMPORT_ANATOMY: Import a full anatomy folder in interactive mode (BrainVISA, BrainSuite, FreeSurfer, CIVET, SimNIBS)
 %
-% USAGE:  import_anatomy(iSubject)
+% USAGE:  import_anatomy(iSubject, isAuto=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -23,6 +23,11 @@ function import_anatomy(iSubject)
 %
 % Authors: Francois Tadel, 2013-2020
 
+% Parse inputs
+if (nargin < 2) || isempty(isAuto)
+    isAuto = 0;
+end
+
 % Get default import directory and formats
 LastUsedDirs = bst_get('LastUsedDirs');
 DefaultFormats = bst_get('DefaultFormats');
@@ -43,29 +48,46 @@ bst_set('LastUsedDirs', LastUsedDirs);
 DefaultFormats.AnatIn = FileFormat;
 bst_set('DefaultFormats',  DefaultFormats);
 
+% Auto-import: 15000 vertices, MNI registration
+if isAuto
+    isInteractive = 0;
+    nVertices = 15000;
+else
+    isInteractive = 1;
+    nVertices = [];
+end
+sFid = [];
 
 % Import folder
 switch (FileFormat)
+    case 'FreeSurfer-fast'
+        errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, isInteractive, sFid, 0, 0);
     case 'FreeSurfer'
-        import_anatomy_fs(iSubject, AnatDir, [], 1, [], 0);
+        errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, isInteractive, sFid, 0, 1);
     case 'FreeSurfer+Thick'
-        import_anatomy_fs(iSubject, AnatDir, [], 1, [], 1);
+        errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, isInteractive, sFid, 1, 1);
+    case 'BrainSuite-fast'
+        errorMsg = import_anatomy_bs(iSubject, AnatDir, nVertices, isInteractive, sFid, 0);
     case 'BrainSuite'
-        import_anatomy_bs(iSubject, AnatDir, [], 1, [], 0);
+        errorMsg = import_anatomy_bs(iSubject, AnatDir, nVertices, isInteractive, sFid, 1);
     case 'BrainVISA'
-        import_anatomy_bv(iSubject, AnatDir, [], 1);
+        errorMsg = import_anatomy_bv(iSubject, AnatDir, nVertices, isInteractive);
     case 'CAT12'
-        import_anatomy_cat(iSubject, AnatDir, [], 1, [], 0);
+        errorMsg = import_anatomy_cat(iSubject, AnatDir, nVertices, isInteractive, sFid, 0);
     case 'CAT12+Thick'
-        import_anatomy_cat(iSubject, AnatDir, [], 1, [], 1);
+        errorMsg = import_anatomy_cat(iSubject, AnatDir, nVertices, isInteractive, sFid, 1);
     case 'CIVET'
-        import_anatomy_civet(iSubject, AnatDir, [], 1, [], 0);
+        errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, isInteractive, sFid, 0);
     case 'CIVET+Thick'
-        import_anatomy_civet(iSubject, AnatDir, [], 1, [], 1);
+        errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, isInteractive, sFid, 1);
     case 'HCPv3'
-        import_anatomy_hcp_v3(iSubject, AnatDir, 1);
+        errorMsg = import_anatomy_hcp_v3(iSubject, AnatDir, isInteractive);
     case 'SimNIBS'
-        import_anatomy_simnibs(iSubject, AnatDir, [], 1, [], 0);
+        errorMsg = import_anatomy_simnibs(iSubject, AnatDir, nVertices, isInteractive, sFid, 0);
+end
+% Handling errors in automatic mode
+if isAuto && ~isempty(errorMsg)
+    bst_error(['Could not import anatomy folder (' FileFormat '): ' 10 10 errorMsg], 'Import anatomy folder', 0);   
 end
 
 

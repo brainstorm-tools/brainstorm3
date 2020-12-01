@@ -9,6 +9,7 @@ function varargout = process_fem_mesh( varargin )
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
 %                 errMsg = process_fem_mesh('InstallIso2mesh', isInteractive)
 %                 errMsg = process_fem_mesh('InstallBrain2mesh', isInteractive)
+%                 errMsg = process_fem_mesh('InstallRoast', isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

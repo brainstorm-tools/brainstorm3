@@ -1,18 +1,18 @@
-function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
+function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isVolumeAtlas)
 % IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isAseg=1)
+% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isExtraMaps=0, isVolumeAtlas=1)
 %
 % INPUT:
-%    - iSubject     : Indice of the subject where to import the MRI
-%                     If iSubject=0 : import MRI in default subject
-%    - FsDir        : Full filename of the FreeSurfer folder to import
-%    - nVertices    : Number of vertices in the file cortex surface
-%    - isInteractive: If 0, no input or user interaction
-%    - sFid         : Structure with the fiducials coordinates
-%    - isExtraMaps  : If 1, create an extra folder "FreeSurfer" to save some of the
-%                     FreeSurfer cortical maps (thickness, ...)
-%    - isAseg       : If 1, imports the aseg atlas as a set of surfaces
+%    - iSubject      : Indice of the subject where to import the MRI
+%                      If iSubject=0 : import MRI in default subject
+%    - FsDir         : Full filename of the FreeSurfer folder to import
+%    - nVertices     : Number of vertices in the file cortex surface
+%    - isInteractive : If 0, no input or user interaction
+%    - sFid          : Structure with the fiducials coordinates
+%    - isExtraMaps   : If 1, create an extra folder "FreeSurfer" to save some of the
+%                      FreeSurfer cortical maps (thickness, ...)
+%    - isVolumeAtlas : If 1, imports all the volume atlases available
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -34,12 +34,12 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2020
 
 %% ===== PARSE INPUTS =====
-% Import ASEG atlas
-if (nargin < 7) || isempty(isAseg)
-    isAseg = 1;
+% Import ASEG atlases
+if (nargin < 7) || isempty(isVolumeAtlas)
+    isVolumeAtlas = 1;
 end
 % Extract cortical maps
 if (nargin < 6) || isempty(isExtraMaps)
@@ -119,9 +119,15 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE FREESURFER FOLDER =====
 bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
 % Find MRI
-MriFile = file_find(FsDir, 'T1.mgz', 2);
-if isempty(MriFile)
+T1File = file_find(FsDir, 'T1.mgz', 2);
+T2File = file_find(FsDir, 'T2.mgz', 2);
+if isempty(T1File)
     errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+elseif ~isempty(T1File) && ~isempty(T2File)
+    T1Comment = 'MRI T1';
+    T2Comment = 'MRI T2';
+else
+    T1Comment = 'MRI';
 end
 % Find surface: lh.pial (or lh.pial.T1)
 TessLhFile = file_find(FsDir, 'lh.pial', 2);
@@ -160,6 +166,7 @@ TessInnerFile = file_find(FsDir, 'inner_skull-*.surf', 2);
 TessOuterFile = file_find(FsDir, 'outer_skull-*.surf', 2);
 % Find volume segmentation
 AsegFile = file_find(FsDir, 'aseg.mgz', 2);
+OtherAsegFiles = file_find(FsDir, '*+aseg.mgz', 2, 0);
 % Find labels
 AnnotLhFiles = file_find(FsDir, 'lh.*.annot', 2, 0);
 AnnotRhFiles = file_find(FsDir, 'rh.*.annot', 2, 0);
@@ -196,23 +203,19 @@ if ~isempty(errorMsg)
 end
 
 
-%% ===== IMPORT MRI =====
-% Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile);
-if isempty(BstMriFile)
+%% ===== IMPORT T1 =====
+% Read T1 MRI
+[BstT1File, sMri] = import_mri(iSubject, T1File, [], 0, [], T1Comment);
+if isempty(BstT1File)
     errorMsg = 'Could not import FreeSurfer folder: MRI was not imported properly';
     if isInteractive
         bst_error(errorMsg, 'Import FreeSurfer folder', 0);
     end
     return;
 end
-% Size of the volume
-cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
-
 
 %% ===== DEFINE FIDUCIALS =====
 % If fiducials file exist: read it
-OffsetMri = [];
 isComputeMni = 0;
 if ~isempty(FidFile)
     % Execute script
@@ -244,20 +247,10 @@ if ~isInteractive || ~isempty(FidFile)
         % Already loaded
     % Compute them from MNI transformation
     elseif isempty(sFid)
-%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-%         AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-%         PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-%         IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
-        NAS = [];
-        LPA = [];
-        RPA = [];
-        AC  = [];
-        PC  = [];
-        IH  = [];
+        NAS = [];  LPA = [];  RPA = [];
+        AC  = [];  PC  = [];  IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -276,20 +269,16 @@ if ~isInteractive || ~isempty(FidFile)
     end
 % Define with the MRI Viewer
 else
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
-    % Display help message: ask user to select fiducial points
-    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
-    % Close help window
-    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
 warning('off','MATLAB:load:variableNotFound');
-sMri = load(BstMriFile, 'SCS', 'NCS');
+sMri = load(BstT1File, 'SCS', 'NCS');
 warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import FreeSurfer folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
@@ -302,10 +291,20 @@ end
 %% ===== MNI NORMALIZATION =====
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     % Error handling
     errorMsg = [errorMsg errCall];
 end
+
+%% ===== IMPORT T2 =====
+% Read T2 MRI (optional)
+if ~isempty(T2File)
+    [BstT2File, sMri] = import_mri(iSubject, T2File, [], 0, [], T2Comment);
+    if isempty(BstT2File)
+        disp('BST> Could not import T2.mgz.');
+    end
+end
+
 
 %% ===== IMPORT SURFACES =====
 % Left pial
@@ -431,7 +430,8 @@ end
 
 
 %% ===== GENERATE MID-SURFACE =====
-if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
+% Do not compute without volume atlases, to make a very light default import
+if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
     bst_progress('start', 'Import FreeSurfer folder', 'Generating mid-surface...');
     % Average pial and white surfaces
     BstTessLmFile = tess_average({BstTessLhFile, BstTessLwFile});
@@ -440,8 +440,6 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: mid-surface...');
     [BstTessLmLowFile, iLmLow, xLmLow] = tess_downsize(BstTessLmFile, nVertHemi, 'reducepatch');
     [BstTessRmLowFile, iRmLow, xRmLow] = tess_downsize(BstTessRmFile, nVertHemi, 'reducepatch');
-else
-    MidHiFile = [];
 end
 
 
@@ -484,8 +482,8 @@ if ~isempty(TessLwFile) && ~isempty(TessRwFile)
     WhiteLowFile    = bst_fullfile(bst_fileparts(oldWhiteLowFile), 'tess_cortex_white_low.mat');
     file_move(oldWhiteLowFile, WhiteLowFile);
 end
-% Merge hemispheres: mid-surface
-if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
+% Merge hemispheres: mid-surface (do not compute without volume atlases, to make a very light default import)
+if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
     % Hi-resolution surface
     MidHiFile  = tess_concatenate({BstTessLmFile,    BstTessRmFile},    sprintf('mid_%dV', nVertOrigL + nVertOrigR), 'Cortex');
     MidLowFile = tess_concatenate({BstTessLmLowFile, BstTessRmLowFile}, sprintf('mid_%dV', length(xLmLow) + length(xRmLow)), 'Cortex');
@@ -499,9 +497,6 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
     oldMidLowFile = file_fullpath(MidLowFile);
     MidLowFile    = bst_fullfile(bst_fileparts(oldMidLowFile), 'tess_cortex_mid_low.mat');
     file_move(oldMidLowFile, MidLowFile);
-%     % Use by default instead of the cortex surface
-%     CortexHiFile  = MidHiFile;
-%     CortexLowFile = MidLowFile;
 end
 
 %% ===== DELETE INTERMEDIATE FILES =====
@@ -516,10 +511,20 @@ end
 % Generate head surface
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
-%% ===== LOAD ASEG.MGZ =====
-if isAseg && ~isempty(AsegFile)
-    % Import atlas
-    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
+%% ===== LOAD ASEG ATLAS =====
+if isVolumeAtlas && ~isempty(AsegFile)
+    % Import atlas as volume
+    import_mri(iSubject, AsegFile);
+    % Import other ASEG volumes
+    for iFile = 1:length(OtherAsegFiles)
+        import_mri(iSubject, OtherAsegFiles{iFile});
+    end
+    % Import atlas as surfaces
+    SelLabels = {...
+        'Cerebellum L', 'Accumbens L', 'Amygdala L', 'Caudate L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', 'Thalamus R', ...
+        'Cerebellum R', 'Accumbens R', 'Amygdala R', 'Caudate R', 'Hippocampus R', 'Pallidum R', 'Putamen R', 'Thalamus L', 'Thalamus R', ...
+        'Brainstem'};
+    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, [], SelLabels, 'subcortical');
     % Extract cerebellum only
     try
         BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
@@ -540,8 +545,6 @@ if isAseg && ~isempty(AsegFile)
         file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
         db_reload_subjects(iSubject);
     end
-else
-    BstAsegFile = [];
 end
 
 
@@ -581,5 +584,5 @@ end
 % Close progress bar
 bst_progress('stop');
 
-end
+
 

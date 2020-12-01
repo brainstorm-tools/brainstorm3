@@ -3,6 +3,9 @@ November 2020
 - Python: New integration with Python and MNE-Python based on CPython
 - Distrib: Compiled version now includes NIRSTORM, Brain2Mesh and Iso2Mesh
 - Anatomy: Updated CAT12 to version r1733
+- Anatomy: Support for volume atlases in the database and the MRI viewer
+- Anatomy: Import all atlases from FreeSurfer, CAT, BrainVISA, BrainSuite
+- Anatomy: New automated import (15000 vertices, MNI fiducials)
 ---------------------------------------------------------------
 October 2020
 - Major bug fix: Changed units in PSD computation

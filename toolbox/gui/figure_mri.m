@@ -100,8 +100,8 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'isStatic',    1);
     setappdata(hFig, 'isStaticFreq',1);
     setappdata(hFig, 'Colormap',    db_template('ColormapInfo'));
-%     setappdata(hFig, 'ElectrodeDisplay', struct('DisplayMode', 'sphere'));
     setappdata(hFig, 'ElectrodeDisplay', struct('DisplayMode', 'depth'));
+    setappdata(hFig, 'AnatAtlas', []);
     
     % ===== AXES =====
     % Sagittal
@@ -915,6 +915,18 @@ function DisplayFigurePopup(hFig)
 %         jItem2.setSelected(MriOptions.InterpDownsample == 2);
 %         jItem3.setSelected(MriOptions.InterpDownsample == 3);
     end
+    % Anatomical atlas
+    AnatAtlas = getappdata(hFig, 'AnatAtlas');
+    if ~isempty(AnatAtlas)
+        [AtlasNames, AtlasFiles, iAtlas] = GetVolumeAtlases(hFig);
+        jMenuAtlas = gui_component('Menu', jPopup, [], 'Anatomical atlas', IconLoader.ICON_ANATOMY, [], []);
+        for i = 1:length(AtlasNames)
+            jCheck = gui_component('checkboxmenuitem', jMenuAtlas, [], AtlasNames{i}, [], [], @(h,ev)SetVolumeAtlas(hFig, AtlasNames{i}));
+            if (i == iAtlas)
+                jCheck.setSelected(1);
+            end
+        end
+    end
     jPopup.addSeparator();
     % Set fiducials
     if Handles.isEditFiducials
@@ -1343,12 +1355,26 @@ function UpdateCoordinates(sMri, Handles)
     if (all(voxXYZ >= 1) && all(voxXYZ <= mriSize))
         % Try to get the values from the overlay mask
         TessInfo = getappdata(Handles.hFig, 'Surface');
-        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && all(size(TessInfo.OverlayCube) == mriSize)
+        if ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCubeLabels) && isequal(size(TessInfo.OverlayCubeLabels), mriSize) && ~isempty(TessInfo.OverlayLabels)
+            value = TessInfo.OverlayCubeLabels(voxXYZ(1), voxXYZ(2), voxXYZ(3));
+            iLabel = find([TessInfo.OverlayLabels{:,1}] == value);
+            if ~isempty(iLabel)
+                if TessInfo.isOverlayAtlas
+                    strValue = sprintf('%g: %s', value, TessInfo.OverlayLabels{iLabel,2});
+                else
+                    mriValue = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3), 1);
+                    strValue = sprintf('%s  |  value=%g', TessInfo.OverlayLabels{iLabel,2}, mriValue);
+                end
+            else
+                strValue = sprintf('value=%g', value);
+            end
+        elseif ~isempty(TessInfo) && ~isempty(TessInfo.OverlayCube) && isequal(size(TessInfo.OverlayCube), mriSize)
             value = TessInfo.OverlayCube(voxXYZ(1), voxXYZ(2), voxXYZ(3));
+            strValue = sprintf('value=%g', value);
         else
             value = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3), 1);
+            strValue = sprintf('value=%g', value);
         end
-        strValue = sprintf('value=%g', value);
     else
         strValue = '';
     end
@@ -2961,5 +2987,98 @@ function Add3DView(hFig)
     end
 end
 
+
+%% ===== GET VOLUME ATLASES =====
+function [AtlasNames, AtlasFiles, iAtlas] = GetVolumeAtlases(hFig)
+    % Initialize returned variables
+    AtlasNames = [];
+    AtlasFiles = [];
+    iAtlas = [];
+    % Get subject info
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    sSubject = bst_get('Subject', SubjectFile);
+    % Find atlases based on the volume names
+    iAllAtlases = [];
+    for iAnat = 1:length(sSubject.Anatomy)
+        if any(~cellfun(@(c)isempty(strfind(sSubject.Anatomy(iAnat).Comment, c)), {'aseg', 'svreg', 'tissues'}))
+            iAllAtlases(end+1) = iAnat;
+        end
+    end
+    if isempty(iAllAtlases)
+        return;
+    end
+    AtlasNames = {sSubject.Anatomy(iAllAtlases).Comment};
+    AtlasFiles = {sSubject.Anatomy(iAllAtlases).FileName};
+    % Look for the atlas selected for this figure
+    AnatAtlas = getappdata(hFig, 'AnatAtlas');
+    if ~isempty(AnatAtlas)
+        iAtlas = find(strcmpi(AtlasNames, AnatAtlas));
+    end
+end
+
+%% ===== SET VOLUME ATLAS =====
+% USAGE:  SetVolumeAtlas(hFig, AnatAtlas)   % Set to a specific atlas
+%         SetVolumeAtlas(hFig)              % Set to default atlas
+function SetVolumeAtlas(hFig, AnatAtlas)
+    % Parse inputs
+    if (nargin < 2) || isempty(AnatAtlas)
+        AnatAtlas = [];
+    end
+    % Get available atlases for this figure
+    [AtlasNames, AtlasFiles] = GetVolumeAtlases(hFig);
+    if isempty(AtlasNames)
+        return;
+    end
+    % Get default MRI display options
+    MriOptions = bst_get('MriOptions');
+    % If atlas is not specified: pick the saved one, or Desikan-Killiany, or the first one
+    if isempty(AnatAtlas)
+        if ~isempty(MriOptions.DefaultAtlas) && ismember(MriOptions.DefaultAtlas, AtlasNames)
+            AnatAtlas = MriOptions.DefaultAtlas;
+        elseif ismember('aparc.DKTatlas+aseg', AtlasNames)
+            AnatAtlas = 'aparc.DKTatlas+aseg';
+        elseif ismember('aparc.a2009s+aseg.mgz', AtlasNames)
+            AnatAtlas = 'aparc.a2009s+aseg.mgz';
+        else
+            AnatAtlas = AtlasNames{1};
+        end
+    end
+    % Select atlas
+    iAtlas = find(strcmpi(AnatAtlas, AtlasNames));
+    if isempty(iAtlas)
+        disp(['BST> Error: Atlas "' AnatAtlas '" not available for this figure.']);
+        return;
+    end
+
+    % Save atlas for figure
+    setappdata(hFig, 'AnatAtlas', AnatAtlas);
+    % Save default value for future use
+    MriOptions.DefaultAtlas = AnatAtlas;
+    bst_set('MriOptions', MriOptions);
+    
+    % Load atlas volume
+    sMriAtlas = bst_memory('LoadMri', AtlasFiles{iAtlas});
+    if isempty(sMriAtlas)
+        return;
+    elseif isempty(sMriAtlas.Labels)
+        disp(['BST> Invalid atlas "' AnatAtlas '": does not contain any labels.']);
+        return;
+    end
+    % Get surfaces list 
+    TessInfo = getappdata(hFig, 'Surface');
+    % Find the first anatomy entry
+    iTess = find(~isempty(strcmpi(TessInfo.Name, 'Anatomy')));
+    % Save label information
+    TessInfo(iTess).OverlayCubeLabels = sMriAtlas.Cube;
+    TessInfo(iTess).OverlayLabels = sMriAtlas.Labels;
+    TessInfo(iTess).isOverlayAtlas = 0;
+    % Save surface info
+    setappdata(hFig, 'Surface', TessInfo);
+    % Update coordinates display
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    Handles = bst_figures('GetFigureHandles', hFig);
+    UpdateCoordinates(sMri, Handles);
+    drawnow;
+end
 
 

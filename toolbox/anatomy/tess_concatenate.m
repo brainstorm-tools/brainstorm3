@@ -48,7 +48,7 @@ isLeft = 0;
 isRight = 0;
 isWhite = 0;
 isCortex = 0;
-isAseg = 0;
+isVolAtlas = 0;
 isSave = 1;
 
 % Progress bar
@@ -107,8 +107,8 @@ for iFile = 1:length(TessFiles)
     if ~isempty(strfind(oldTess.Comment, 'cortex_'))
         isCortex = 1;
     end
-    if ~isempty(strfind(oldTess.Comment, 'aseg'))
-        isAseg = 1;
+    if ~isempty(strfind(oldTess.Comment, 'aseg')) || ~isempty(strfind(oldTess.Comment, 'subcortical'))
+        isVolAtlas = 1;
     end
     % Concatenate current sub-tess to final tesselation structure
     offsetVertices   = size(NewTess.Vertices,1);
@@ -229,7 +229,7 @@ if isLeft && isRight
             NewComment = sprintf('cortex_%dV', length(NewTess.Vertices));
         end
     end
-elseif isCortex && isAseg
+elseif isCortex && isVolAtlas
     fileTag = 'cortex_mixed';
     if isempty(fileType)
         fileType = 'Cortex';

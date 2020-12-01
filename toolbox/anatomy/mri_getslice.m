@@ -53,9 +53,9 @@ if doMIP==0
     if (nmean == 0)
         % Get the slice of interest
         switch orien
-            case 1,  s = squeeze(vol(n,:,:));
-            case 2,  s = squeeze(vol(:,n,:));
-            case 3,  s = squeeze(vol(:,:,n));
+            case 1,  s = squeeze(vol(n,:,:,:));
+            case 2,  s = squeeze(vol(:,n,:,:));
+            case 3,  s = squeeze(vol(:,:,n,:));
         end
     % Smoothing
     else        
