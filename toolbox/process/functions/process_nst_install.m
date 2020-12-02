@@ -74,7 +74,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
         
     sProcess.options.text2.Comment = [ '<b>Install additional features:</b> ', ...
                                         '<p>wip : install work in progress features <br/>',...
-                                            'debug: install developping tool <br />', ...
                                             'For more information about the work in progress features, please contact us on our Github page : <a href="https://github.com/Nirstorm/nirstorm">https://github.com/Nirstorm/nirstorm</a></p>'];
     sProcess.options.text2.Type='label';
     
@@ -82,11 +81,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.option_wip.Type    = 'checkbox';
     sProcess.options.option_wip.Value   = 0;
     sProcess.options.option_wip.Class   = 'installation';
-    
-    sProcess.options.option_debug.Comment = 'Debug (not recommended)' ;
-    sProcess.options.option_debug.Type    = 'checkbox';
-    sProcess.options.option_debug.Value   = 0;
-    sProcess.options.option_debug.Class   = 'installation';
     
 end
 
@@ -101,17 +95,15 @@ function OutputFiles = Run(sProcess, sInputs)
     switch( sProcess.options.action.Value)
         case 'install'
             extra={};
-            if sProcess.options.option_debug.Value
-                extra{end+1}='debug';
-            end
             if sProcess.options.option_wip.Value
-                extra{end+1}='wip';
+                extra{1}='wip';
             end
+
             templates = [sProcess.options.option_colin27_2019.Value , ... 
                         sProcess.options.option_colin27_2019_low.Value, ... 
                         sProcess.options.option_colin27.Value];
                     
-            errMsg = install(extra,templates,1,1);
+            errMsg = install(extra,templates,0);
             
             if ~isempty(errMsg)
                  bst_report('Error',   sProcess, sInputs, errMsg)
@@ -131,10 +123,10 @@ end
 function status=status()
     % process_nst_install('status')
     % return if nirstorm is installed
-    status =  exist('uninstall_nirstorm')==2 && strcmp(fileparts(which('uninstall_nirstorm')),bst_get('UserProcessDir')); 
+    status =  exist('process_nst_mbll')==2 && strcmp(fileparts(which('process_nst_mbll')),bst_get('UserProcessDir')); 
 end  
 
-function errMsg = install(extra,template,isInteractive,fromProcess)
+function errMsg = install(extra,template,isInteractive)
     % process_nst_install('install',extra,isInteractive)
     % 'install': download and install nirstorm
     % INPUTS:
@@ -145,9 +137,7 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
     %   template number k. 
     %   1: Colin27 (2019), 2:Colin27 low resolution(2019),3: Colin27 (2016)
     %    - isInteractive: bool. 1 if the script is called interactively 
-    if (nargin < 4)
-        fromProcess = 0;
-    end    
+  
     if (nargin < 3)
         isInteractive = 0;
     end    
@@ -165,7 +155,7 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
         extra = {};
     end    
     
-    if  isempty(extra) && isInteractive && ~fromProcess
+    if  isempty(extra) && isInteractive
         isOk = java_dialog('confirm','Would you like to download work in progress features?', 'NIRSTORM installation');
         if isOk
             extra={'wip'};
@@ -226,7 +216,7 @@ function errMsg = install(extra,template,isInteractive,fromProcess)
             
             template_bfn = [template_names{i_template} '.zip'];
             template_tmp_fn = nst_request_files({{'template', template_bfn}}, ...
-                                        isInteractive && ~fromProcess, ...
+                                        isInteractive, ...
                                         nst_get_repository_url(), 18e6);
                                     
                                     
@@ -247,8 +237,15 @@ function uninstall()
     
     cur_dir=pwd;
     cd(bst_get('UserProcessDir'));
-    uninstall_nirstorm();
-    file_delete( which('uninstall_nirstorm'),1);
+    
+    if exist('uninstall_nirstorm')
+        uninstall_nirstorm();
+        file_delete(fullfile(bst_get('UserProcessDir'),'uninstall_nirstorm.m'),1)
+    elseif exist('nst_uninstall_nirstorm')
+        nst_uninstall_nirstorm();
+        file_delete(fullfile(bst_get('UserProcessDir'),'nst_uninstall_nirstorm.m'),1)
+    end
+    
     cd(cur_dir);
     
     % delete nirstorm functions
