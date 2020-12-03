@@ -638,13 +638,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             else % call the default option, where VertexDensity is fixed to 0.5
                 strCall = ['headreco all --noclean  ' subjid ' ' T1Nii ' ' T2Nii];
             end
-            [status, result] = system(strCall);
+            status = system(strCall)
             % Restore working directory
             cd(curDir);
             % If SimNIBS returned an error
             if (status ~= 0)
                 errMsg = ['SimNIBS call: ', strrep(strCall, ' "', [10 '      "']),  10 10 ...
-                          'SimNIBS error #' num2str(status) ': ' 10 result];
+                          'SimNIBS error #' num2str(status) ': See command window.'];
                 return;
             end
                   

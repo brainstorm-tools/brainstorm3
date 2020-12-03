@@ -523,10 +523,8 @@ bst_progress('text', 'DUNEuro: Computing leadfield...');
 disp(['DUNEURO> System call: ' callStr]);
 tic;
 % Call DUNEuro
-[status,cmdout] = system(callStr);
+status = system(callStr)
 if (status ~= 0)
-    disp('DUNEURO> Error log:');
-    disp(cmdout);
     errMsg = 'Error during the DUNEuro computation, see logs in the command window.';
     return;
 end

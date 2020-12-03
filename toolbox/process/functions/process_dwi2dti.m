@@ -239,7 +239,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' --hires "' fullfile(tmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
         ' --cortex "' fullfile(tmpDir, 'bse_cortex_file.nii.gz"')];
     disp(['BST> System call: ' strCall]);
-    status = system(strCall);
+    status = system(strCall)
     % Error handling
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 1/3 (BSE).', 10, 'Check the Matlab command window for more information.'];
@@ -253,7 +253,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' -o "' fullfile(tmpDir, 'output_mri.bfc.nii.gz"') ...
         ' -L 0.5 -U 1.5'];
     disp(['BST> System call: ' strCall]);
-    status = system(strCall);
+    status = system(strCall)
     % Error handling
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 2/3 (BFC).', 10, 'Check the Matlab command window for more information.'];
@@ -269,7 +269,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' -g "' BvecFile '" -b "' BvalFile '"'];
     disp(['BST> System call: ' strCall]);
     % Error handling
-    status = system(strCall);
+    status = system(strCall)
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 3/3 (BDP).', 10, 'Check the Matlab command window for more information.'];
         return
