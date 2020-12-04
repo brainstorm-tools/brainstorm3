@@ -605,33 +605,33 @@ end
     
 %% ===== GET ATLAS NAME =====
 function AtlasName = GetAtlasName(fBase)
-    % FreeSurfer Atlas names
+    fBase = lower(fBase);
     switch (fBase)
-        case {'lh.aparc.a2009s', 'rh.aparc.a2009s', 'lh.aparc_a2009s.freesurfer', 'rh.aparc_a2009s.freesurfer'}
+        case {'lh.aparc.a2009s', 'rh.aparc.a2009s'}
             AtlasName = 'Destrieux';
-        case {'lh.aparc', 'rh.aparc', 'lh.aparc_DK40.freesurfer', 'rh.aparc_DK40.freesurfer'}
+        case {'lh.aparc', 'rh.aparc'}
             AtlasName = 'Desikan-Killiany';
         case {'lh.BA', 'rh.BA', 'lh.BA_exvivo', 'rh.BA_exvivo'}
             AtlasName = 'Brodmann';
-        case {'lh.BA.thresh', 'rh.BA.thresh', 'lh.BA_exvivo.thresh', 'rh.BA_exvivo.thresh'}
+        case {'lh.ba.thresh', 'rh.ba.thresh', 'lh.ba_exvivo.thresh', 'rh.ba_exvivo.thresh'}
             AtlasName = 'Brodmann-thresh';
-        case {'lh.aparc.DKTatlas40', 'rh.aparc.DKTatlas40'}
+        case {'lh.aparc.dktatlas40', 'rh.aparc.dktatlas40'}
             AtlasName = 'Mindboggle';
-        case {'lh.aparc.DKTatlas', 'rh.aparc.DKTatlas'}
+        case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas'}
             AtlasName = 'Mindboggle6';
-        case {'lh.PALS_B12_Brodmann', 'rh.PALS_B12_Brodmann'}
+        case {'lh.pals_b12_brodmann', 'rh.pals_b12_brodmann'}
             AtlasName = 'PALS-B12 Brodmann';
-        case {'lh.PALS_B12_Lobes', 'rh.PALS_B12_Lobes'}
+        case {'lh.pals_b12_Lobes', 'rh.pals_b12_lobes'}
             AtlasName = 'PALS-B12 Lobes';
-        case {'lh.PALS_B12_OrbitoFrontal', 'rh.PALS_B12_OrbitoFrontal'}
+        case {'lh.pals_b12_orbitofrontal', 'rh.pals_b12_orbitofrontal'}
             AtlasName = 'PALS-B12 Orbito-frontal';
-        case {'lh.PALS_B12_Visuotopic', 'rh.PALS_B12_Visuotopic'}
+        case {'lh.pals_b12_visuotopic', 'rh.pals_b12_visuotopic'}
             AtlasName = 'PALS-B12 Visuotopic';
-        case {'lh.Yeo2011_7Networks_N1000', 'rh.Yeo2011_7Networks_N1000'}
+        case {'lh.yeo2011_7networks_n1000', 'rh.yeo2011_7networks_n1000'}
             AtlasName = 'Yeo 7 Networks';
-        case {'lh.Yeo2011_17Networks_N1000', 'rh.Yeo2011_17Networks_N1000'}
+        case {'lh.yeo2011_17networks_n1000', 'rh.yeo2011_17networks_n1000'}
             AtlasName = 'Yeo 17 Networks';
-        case {'lh.pRF', 'rh.pRF'}
+        case {'lh.prf', 'rh.prf'}
             AtlasName = 'Retinotopy';
         case {'lh.myaparc_36', 'rh.myaparc_36'}
             AtlasName = 'Lausanne-S33';
@@ -641,28 +641,41 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Lausanne-S125';
         case {'lh.myaparc_250', 'rh.myaparc_250'}
             AtlasName = 'Lausanne-S250';
-        case {'lh.aparc_HCP_MMP1.freesurfer', 'rh.aparc_HCP_MMP1.freesurfer'}
-            AtlasName = 'HCP_MMP1';
-        case {'lh.BN_Atlas', 'rh.BN_Atlas'}
+        case {'lh.bn_atlas', 'rh.bn_atlas'}
             AtlasName = 'Braintomme';
         case {'lh.oasis.chubs', 'rh.oasis.chubs'}
             AtlasName = 'OASIS cortical hubs';
         case {'lh.mpm.vpnl', 'rh.mpm.vpnl'}
             AtlasName = 'vcAtlas';
         otherwise
+            % CAT12 / FreeSurfer
+            if ~isempty(strfind(fBase, 'aparc_a2009s'))
+                AtlasName = 'Destrieux';
+            elseif ~isempty(strfind(fBase, 'dk40'))
+                AtlasName = 'Desikan-Killiany';
+            elseif ~isempty(strfind(fBase, 'hcp_mmp'))
+                AtlasName = 'HCP_MMP1';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_100parcels_17'))
+                AtlasName = 'Schaefer_100_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_200parcels_17'))
+                AtlasName = 'Schaefer_200_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_400parcels_17'))
+                AtlasName = 'Schaefer_400_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_600parcels_17'))
+                AtlasName = 'Schaefer_600_17net';
             % FreeSurfer left/right
-            if (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
+            elseif (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
                 AtlasName = fBase(4:end);
             % BrainVISA/MarsAtlas
-            elseif (~isempty(strfind(fBase, '_Lwhite_parcels_marsAtlas')) || ~isempty(strfind(fBase, '_Rwhite_parcels_marsAtlas')))
+            elseif (~isempty(strfind(fBase, '_lwhite_parcels_marsatlas')) || ~isempty(strfind(fBase, '_rwhite_parcels_marsatlas')))
                 AtlasName = 'MarsAtlas';
-            elseif (~isempty(strfind(fBase, '_Lwhite_parcels_model')) || ~isempty(strfind(fBase, '_Rwhite_parcels_model')))
+            elseif (~isempty(strfind(fBase, '_lwhite_parcels_model')) || ~isempty(strfind(fBase, '_rwhite_parcels_model')))
                 AtlasName = 'MarsAtlas model';
-            elseif (~isempty(strfind(fBase, '_Lwhite_pole_cingular')) || ~isempty(strfind(fBase, '_Rwhite_pole_cingular')))
+            elseif (~isempty(strfind(fBase, '_lwhite_pole_cingular')) || ~isempty(strfind(fBase, '_rwhite_pole_cingular')))
                 AtlasName = 'MarsAtlas pole cingular';
-            elseif (~isempty(strfind(fBase, '_Lwhite_pole_insula')) || ~isempty(strfind(fBase, '_Rwhite_pole_insula')))
+            elseif (~isempty(strfind(fBase, '_lwhite_pole_insula')) || ~isempty(strfind(fBase, '_rwhite_pole_insula')))
                 AtlasName = 'MarsAtlas pole insula';
-            elseif (~isempty(strfind(fBase, '_Lwhite_sulcalines')) || ~isempty(strfind(fBase, '_Rwhite_sulcalines')))
+            elseif (~isempty(strfind(fBase, '_lwhite_sulcalines')) || ~isempty(strfind(fBase, '_rwhite_sulcalines')))
                 AtlasName = 'MarsAtlas sulcal lines';
             else
                 AtlasName = fBase;
