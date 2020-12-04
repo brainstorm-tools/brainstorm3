@@ -87,8 +87,9 @@ end
 
                 
 %% ===== DETECT FILE FORMAT =====
-isMni = strcmpi(FileFormat, 'ALL-MNI');
-if ismember(FileFormat, {'ALL', 'ALL-MNI'})
+isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
+isAtlas = strcmp(FileFormat, 'ALL-MNI-ATLAS');
+if ismember(FileFormat, {'ALL', 'ALL-MNI', 'ALL-MNI-ATLAS'})
     % Switch between file extensions
     switch (lower(fileExt))
         case '.mri',                  FileFormat = 'CTF';
@@ -159,7 +160,7 @@ if any(isnan(MRI.Cube(:)))
     MRI.Cube(isnan(MRI.Cube)) = 0;
 end
 % Simplify data type
-if ~isa(MRI.Cube, 'uint8')
+if ~isa(MRI.Cube, 'uint8') && ~isAtlas
     % If only int values between 0 and 255: Reduce storage size by forcing to uint8 
     if (max(MRI.Cube(:)) <= 255) && (min(MRI.Cube(:)) >= 0) && (max(abs(MRI.Cube(:) - round(MRI.Cube(:)))) < 1e-10)
         MRI.Cube = uint8(MRI.Cube);

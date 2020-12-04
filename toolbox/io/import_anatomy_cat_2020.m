@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri, isTissues)
+function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri, isVolumeAtlas)
 % IMPORT_ANATOMY_CAT_2020: Import a full CAT12 folder as the subject's anatomy (Version >= CAT12.7-RC2)
 %
-% USAGE:  errorMsg = import_anatomy_cat_2020(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0, isTissues=1)
+% USAGE:  errorMsg = import_anatomy_cat_2020(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0, isVolumeAtlas=1)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
@@ -14,7 +14,9 @@ function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInter
 %    - isKeepMri    : 0=Delete all existing anatomy files
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
 %                     2=Keep existing MRI and surfaces
-%    - isTissues     : If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
+%    - isVolumeAtlas: If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
+%                     and import all the volume atlases in folder mri_atlas
+%                     
 %
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
@@ -41,8 +43,8 @@ function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInter
 
 %% ===== PARSE INPUTS =====
 % Import tissues
-if (nargin < 8) || isempty(isTissues)
-    isTissues = 1;
+if (nargin < 8) || isempty(isVolumeAtlas)
+    isVolumeAtlas = 1;
 end
 % Keep MRI
 if (nargin < 7) || isempty(isKeepMri)
@@ -151,13 +153,14 @@ AnnotLhFiles = file_find(CatDir, 'lh.*.annot', 2, 0);
 AnnotRhFiles = file_find(CatDir, 'rh.*.annot', 2, 0);
 
 % Find tissue probability maps
-if isTissues
+if isVolumeAtlas
     TpmFiles = {file_find(CatDir, 'p2*.nii', 2), ...  % White matter
                 file_find(CatDir, 'p1*.nii', 2), ...  % Gray matter
                 file_find(CatDir, 'p3*.nii', 2), ...  % CSF
                 file_find(CatDir, 'p4*.nii', 2), ...  % Skull
                 file_find(CatDir, 'p5*.nii', 2), ...  % Scalp
                 file_find(CatDir, 'p6*.nii', 2)};     % Background
+    VolAtlasFiles = file_find(bst_fullfile(CatDir, 'mri_atlas'), '*.nii', 1, 0);
 end
 % Find extra cortical maps
 if isExtraMaps
@@ -424,6 +427,20 @@ db_reload_subjects(iSubject);
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
 
+%% ===== IMPORT VOLUME ATLASES =====
+if isVolumeAtlas && ~isempty(VolAtlasFiles)
+    % Get subject tag
+    [fPath, SubjectTag] = bst_fileparts(T1File);
+    % Import all the volumes
+    for iFile = 1:length(VolAtlasFiles)
+        % Strip the subject tag from the atlas name
+        [fPath, AtlasName] = bst_fileparts(VolAtlasFiles{iFile});
+        AtlasName = strrep(AtlasName, ['_' SubjectTag], '');
+        % Import volume
+        import_mri(iSubject, VolAtlasFiles{iFile}, [], [], [], AtlasName);
+    end
+end
+
 %% ===== IMPORT THICKNESS MAPS =====
 if isExtraMaps && ~isempty(CortexHiFile)
     % Create a condition "CAT12"
@@ -448,7 +465,7 @@ end
 
 
 %% ===== IMPORT TISSUE LABELS =====
-if isTissues && ~isempty(TpmFiles)
+if isVolumeAtlas && ~isempty(TpmFiles)
     bst_progress('start', 'Import CAT12 folder', 'Importing tissue probability maps...');
     sMriTissue = [];
     pCube = [];

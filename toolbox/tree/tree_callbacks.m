@@ -165,7 +165,7 @@ switch (lower(action))
                 sSubject = bst_get('Subject', iSubject);
                 % Atlas: display as overlay on the default MRI
                 anatComment = lower(bstNodes(1).getComment());
-                if (iAnatomy > 1) && (~isempty(strfind(anatComment, 'aseg')) || ~isempty(strfind(anatComment, 'svreg')) || ~isempty(strfind(anatComment, 'tissues')))
+                if (iAnatomy > 1) && (~isempty(strfind(filenameRelative, '_volatlas')) || ~isempty(strfind(anatComment, 'aseg')) || ~isempty(strfind(anatComment, 'svreg')) || ~isempty(strfind(anatComment, 'tissues')))
                     view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative);
                 % MRI: Display in MRI viewer
                 else

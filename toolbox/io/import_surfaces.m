@@ -125,7 +125,8 @@ else
     sMri = [];
 end
 % If user transformation on MRI: ask to apply transformations on surfaces
-if isempty(isApplyMriOrient) && ~isempty(sMri) && isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
+isMni = isequal(FileFormat, 'MRI-MASK-MNI');
+if ~isMni && isempty(isApplyMriOrient) && ~isempty(sMri) && isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
     isApplyMriOrient = java_dialog('confirm', ['MRI orientation was non-standard and had to be reoriented.' 10 10 ...
                                    'Apply the same transformation to the surfaces ?' 10 ...
                                    'Default answer is: NO', 10 10], 'Import surfaces');

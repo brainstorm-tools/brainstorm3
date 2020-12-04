@@ -39,7 +39,7 @@ if ischar(MriFile)
     % Read volume
     isInteractive = ~isempty(AtlasName) && ~ismember(AtlasName, {'aseg', 'svreg'});
     if isMni
-        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive, 0);
+        sMri = in_mri(MriFile, 'ALL-MNI', 0, 0);
     else
         sMri = in_mri(MriFile, 'ALL', isInteractive, 0);
         if strcmp(AtlasName, 'svreg')

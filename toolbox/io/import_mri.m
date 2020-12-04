@@ -130,6 +130,12 @@ end
 
 %% ===== LOAD MRI FILE =====
 bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
+% MNI / Atlas?
+isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
+isAtlas = strcmp(FileFormat, 'ALL-MNI-ATLAS');
+if isMni
+    isInteractive = 0;
+end
 % Load MRI
 isNormalize = 0;
 sMri = in_mri(MriFile, FileFormat, isInteractive, isNormalize);
@@ -139,6 +145,19 @@ if isempty(sMri)
 end
 % History: File name
 sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
+
+%% ===== GET ATLAS LABELS =====
+% Try to get associated labels
+[Labels, AtlasName] = mri_getlabels(MriFile, sMri);
+% Save labels in the file structure
+if ~isempty(Labels)
+    sMri.Labels = Labels;
+    tagAtlas = '_volatlas';
+    isAtlas = 1;
+else
+    tagAtlas = '';
+end
+
 
 %% ===== MANAGE MULTIPLE MRI =====
 fileTag = '';
@@ -178,8 +197,11 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     refSize = size(sMriRef.Cube(:,:,:,1));
     newSize = size(sMri.Cube(:,:,:,1));
     isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize(1:3) == sMri.Voxsize(1:3));
+    % If importing explicitly a MNI volume / MNI atlas
+    if isMni
+        RegMethod = 'MNI';
     % Ask what operation to perform with this MRI
-    if isInteractive
+    elseif isInteractive
         % Initialize list of options to register this new MRI with the existing one
         strOptions = '<HTML>How to register the new volume with the reference image?<BR>';
         cellOptions = {};
@@ -206,7 +228,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     end
     
     % === ASK RESLICE ===
-    if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
+    if isMni
+        isReslice = 1;
+    elseif isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
         (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), 'vox2ras')) && ...
          isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && any(ismember(sMri.InitTransf(:,1),    'vox2ras')) && ...
          ~isResliceDisabled))
@@ -231,17 +255,17 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     switch (RegMethod)
         case 'MNI'
             % Register the new MRI on the existing one using the MNI transformation (+ RESLICE)
-            [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice);
+            [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'mni', isReslice, isAtlas);
         case 'SPM'
             % Register the new MRI on the existing one using SPM + RESLICE
-            [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice);
+            [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'spm', isReslice, isAtlas);
         case 'Ignore'
             if isReslice
                 % Register the new MRI on the existing one using the transformation in the input files (files already registered)
-                [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras');
+                [sMri, errMsg, fileTag] = mri_reslice(sMri, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
             else
                 % Just copy the fiducials from the reference MRI
-                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice);
+                [sMri, errMsg, fileTag] = mri_coregister(sMri, sMriRef, 'vox2ras', isReslice, isAtlas);
                 % Transform error in warning
                 if ~isempty(errMsg) && ~isempty(sMri) && isSameSize && ~isReslice
                     disp(['BST> Warning: ' errMsg]);
@@ -277,10 +301,14 @@ else
     if (iAnatomy > 1) || isInteractive || ~isAutoAdjust
         [fPath, fBase, fExt] = bst_fileparts(MriFile);
         fBase = strrep(fBase, '.nii', '');
-        sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+        if isMni
+            sMri.Comment = file_unique(fBase, {sSubject.Anatomy.Comment});
+        else
+            sMri.Comment = file_unique([fBase, fileTag], {sSubject.Anatomy.Comment});
+        end
     end
     % Add MNI tag
-    if strcmpi(FileFormat, 'ALL-MNI')
+    if isMni
         sMri.Comment = [sMri.Comment ' (MNI)'];
     end
     % Get imported base name
@@ -290,20 +318,12 @@ else
     importedBaseName = strrep(importedBaseName, '.nii', '');
 end
 
-%% ===== GET ATLAS LABELS =====
-% Try to get associated labels
-[Labels, AtlasName] = mri_getlabels(MriFile, sMri);
-% Save labels in the file structure
-if ~isempty(Labels)
-    sMri.Labels = Labels;
-    isInteractive = 0;
-end
 
 %% ===== SAVE FILE =====
 % Get subject subdirectory
 subjectSubDir = bst_fileparts(sSubject.FileName);
 % Produce a default anatomy filename
-BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag '.mat']);
+BstMriFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['subjectimage_' importedBaseName fileTag tagAtlas '.mat']);
 % Make this filename unique
 BstMriFile = file_unique(BstMriFile);
 % Save new MRI in Brainstorm format

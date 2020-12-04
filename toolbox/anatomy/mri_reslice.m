@@ -1,7 +1,7 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef, isAtlas)
 % MRI_RESLICE: Relice a volume based on a reference volume.
 %
-% USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+% USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef, isAtlas=0)
 %            [sMriReg, errMsg, fileTag] = mri_reslice(sMriSrc,    sMriRef, ...)
 %
 % INPUTS:
@@ -11,6 +11,8 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 %    - sMriRef    : Brainstorm MRI structure used as a reference
 %    - TransfSrc  : Transformation for the MRI to register, or 'ncs'/'scs'/'vox2ras'
 %    - TransfRef  : Transformation for the reference MRI, or 'ncs'/'scs'/'vox2ras'
+%    - isAtlas    : If 0, interpolate using single values (cubic intepolation)
+%                   If 1, interpolate using integer values only (nearest neighbor)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -160,11 +162,19 @@ Zgrid2 = reshape(allGrid(3,:), size(Zgrid2));
 n4 = size(sMriSrc.Cube,4);
 newCube = cell(1,n4);
 for i4 = 1:n4
-    newCube{i4} = single(interp3(...
-        Y1 .* sMriSrc.Voxsize(2), ...
-        X1 .* sMriSrc.Voxsize(1), ...
-        Z1 .* sMriSrc.Voxsize(3), ...
-        double(sMriSrc.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+    if isAtlas
+        newCube{i4} = interp3(...
+            Y1 .* sMriSrc.Voxsize(2), ...
+            X1 .* sMriSrc.Voxsize(1), ...
+            Z1 .* sMriSrc.Voxsize(3), ...
+            sMriSrc.Cube(:,:,:,i4), Xgrid2, Ygrid2, Zgrid2, 'nearest', 0);
+    else
+        newCube{i4} = single(interp3(...
+            Y1 .* sMriSrc.Voxsize(2), ...
+            X1 .* sMriSrc.Voxsize(1), ...
+            Z1 .* sMriSrc.Voxsize(3), ...
+            double(sMriSrc.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+    end
 end
 newCube = cat(4, newCube{:});
 
