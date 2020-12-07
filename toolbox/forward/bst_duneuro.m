@@ -477,13 +477,15 @@ if isMeg && cfg.MegBlock
         % call the DUNEuro
         tic;
         [status,cmdout] = system(callStr);
-        disp(['         FEM computation completed in: ' num2str(toc) 's']);
+        femTime(iBlock) = toc;
+        disp(['         FEM computation completed in: ' num2str(femTime(iBlock)) 's']);
         GainTmp = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
         GainMeg = [GainMeg; GainTmp];
         % TODO cfg.BstSaveTransfer % not possible with this version
         % solution : concatenate and saveback the transfer matrix? or
         % change the cpp binaries in the future. 
     end    
+    disp(['DUNEURO> Total FEM computation completed in: ' num2str(sum(femTime)) 's']);
 else
      tic;
      [status,cmdout] =  system(callStr);

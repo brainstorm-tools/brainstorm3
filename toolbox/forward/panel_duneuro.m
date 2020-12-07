@@ -249,6 +249,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             jCheckUseIntegrationPoint = [];
             jCheckEnableCacheMemory = [];
             jCheckMegBlock = [];
+            jTextMegDivider = [];
         end
     
     % ==== PANEL RIGHT: OUTPUT OPTIONS ====
@@ -315,7 +316,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jCheckUseIntegrationPoint', jCheckUseIntegrationPoint,...
                   'jCheckEnableCacheMemory', jCheckEnableCacheMemory,...
                   'jCheckMegBlock', jCheckMegBlock,...
-                  'jTextMegDivider',jTextMegDivider,...
+                  'jTextMegDivider', jTextMegDivider,...
                   'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
     % Create the BstPanel object that is returned by the function
@@ -385,10 +386,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                     jFrame.pack();
                 end
             end
-            % Enable/disable the input text Meg divider
-            jTextMegDivider.setEnabled(jCheckMegBlock.isSelected())            
-            % Disable the save transfer if the option MegBlock is set
-            jCheckSaveTransfer.setEnabled(~jCheckMegBlock.isSelected()); 
+            if ~isempty(jCheckMegBlock)
+                % Enable/disable the input text Meg divider
+                jTextMegDivider.setEnabled(jCheckMegBlock.isSelected())            
+                % Disable the save transfer if the option MegBlock is set
+                jCheckSaveTransfer.setEnabled(~jCheckMegBlock.isSelected()); 
+            end
         end
         % FEM Layers
         for j = 1:nLayers
