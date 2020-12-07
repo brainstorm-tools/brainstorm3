@@ -229,38 +229,32 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         jPanelMegComputationOption = gui_river([1,1], [0,6,6,6], 'MEG computation options');
         if isMeg
             % Use integration Points, recommended for high mesh density
-            jCheckUseIntegrationPoint = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Use MEG integration points', [], '', [], []);
-            % Enable MEG cache memory for high mesh density if users do not
-            % high memory, or want to use the integration points 
-            jCheckEnableCacheMemory = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Enable cache memory', [], '', [], []);
-            % Enable the MEG Computation per block of sensors
-            jCheckMegPerBlockOfSensor = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Compute per block of sensor ', [], '', [], []);                 
+            jCheckUseIntegrationPoint = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Use integration points', [], '', [], []);
             % Set jCheckUseIntegrationPoint to 1 as default option
             if (OPTIONS.UseIntegrationPoint)
                 jCheckUseIntegrationPoint.setSelected(1);
             end
+            % Enable MEG cache memory for high mesh density 
+            jCheckEnableCacheMemory = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Enable cache memory', [], '', [], []);
+            % Enable the MEG Computation per block of sensors
+            jCheckMegBlock = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Compute per block of sensor ', [], '', @(h,ev)UpdatePanel(1), []);  
+            % Set the value of the divider for sensors into blocks
+            gui_component('label', jPanelMegComputationOption, 'br', 'divide the number of sensors into : ', [], '', [], []);
+            jTextMegDivider = gui_component('texttime', jPanelMegComputationOption, '', '', [], '', [], []);
+            gui_validate_text(jTextMegDivider, [], [], 2:10, '', 0, OPTIONS.MegDivider, []);
+            gui_component('label', jPanelMegComputationOption, '', '  blocks');   
             c.gridy = 4;
             jPanelRight.add(jPanelMegComputationOption, c);    
         else
             jCheckUseIntegrationPoint = [];
             jCheckEnableCacheMemory = [];
-            jCheckMegPerBlockOfSensor = [];
+            jCheckMegBlock = [];
         end
     
     % ==== PANEL RIGHT: OUTPUT OPTIONS ====
     jPanelOutput = gui_river([1,1], [0,6,6,6], 'Output options');
         % Save transfer matrix
         jCheckSaveTransfer = gui_component('checkbox', jPanelOutput, '', 'Save transfer matrix', [], '', [], []);
-        if (OPTIONS.BstSaveTransfer)
-            jCheckSaveTransfer.setSelected(1);
-        end
-        % disable the save transfer option if the option per block is
-        % activated, ask Francois for help to be interactive from the gui
-        % disable this option only if the MegPerBlockOfSensor is checked
-        if ~isempty(jCheckMegPerBlockOfSensor)
-            isMegPerBlockOfSensor = jCheckMegPerBlockOfSensor.isSelected();
-            jCheckSaveTransfer.setEnabled(isMegPerBlockOfSensor); 
-        end
     c.gridy = 5;
     jPanelRight.add(jPanelOutput, c);
     
@@ -320,7 +314,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
                   'jCheckUseIntegrationPoint', jCheckUseIntegrationPoint,...
                   'jCheckEnableCacheMemory', jCheckEnableCacheMemory,...
-                  'jCheckMegPerBlockOfSensor', jCheckMegPerBlockOfSensor,...
+                  'jCheckMegBlock', jCheckMegBlock,...
+                  'jTextMegDivider',jTextMegDivider,...
                   'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
     % Create the BstPanel object that is returned by the function
@@ -390,11 +385,17 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                     jFrame.pack();
                 end
             end
+            % Enable/disable the input text Meg divider
+            jTextMegDivider.setEnabled(jCheckMegBlock.isSelected())            
+            % Disable the save transfer if the option MegBlock is set
+            jCheckSaveTransfer.setEnabled(~jCheckMegBlock.isSelected()); 
         end
         % FEM Layers
         for j = 1:nLayers
             jTextCond(j).setEnabled(jCheckLayer(j).isSelected());
         end
+        
+
     end
 end
 
@@ -476,10 +477,11 @@ function s = GetPanelContents() %#ok<DEFNU>
         s.EnableCacheMemory = 0;
     end
 
-    if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
-        s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
+    s.MegDivider = str2double(ctrl.jTextMegDivider.getText());
+    if ~isempty(ctrl.jCheckMegBlock)
+        s.MegBlock = ctrl.jCheckMegBlock.isSelected();
     else
-        s.MegPerBlockOfSensor = 0;
+        s.MegBlock = 0;
     end
 end
 
