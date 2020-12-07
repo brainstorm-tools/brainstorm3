@@ -79,7 +79,8 @@ cfgDef.BstMegLfFile       = 'meg_lf.dat';
 % [MEG computation Options]
 cfgDef.UseIntegrationPoint = 1; 
 cfgDef.EnableCacheMemory = 0;
-cfgDef.MegPerBlockOfSensor = 0; % ToDo
+cfgDef.MegMegBlock = 0; 
+cfgDef.MegDivider = 4;
 % Use default values if not set
 if (nargin == 0) || isempty(cfg)
     cfg = cfgDef;
