@@ -523,10 +523,11 @@ bst_progress('text', 'DUNEuro: Computing leadfield...');
 disp(['DUNEURO> System call: ' callStr]);
 tic;
 % Call DUNEuro
-cfg.SizeOfBlockOfSensor = 250; % we may ask the user to change this value from the panel? Q for Francois
-if isMeg && cfg.MegPerBlockOfSensor
+if isMeg && cfg.MegBlock
+    % compute the size of the blocks
+    SizeOfBlockOfSensor = round(length(MegChannels)/cfg.MegDivider);
     % Define the group of channles
-    megNbOfBlock = 1: cfg.SizeOfBlockOfSensor : length(MegChannels);
+    megNbOfBlock = 1: SizeOfBlockOfSensor : length(MegChannels);
     groupOfSensors = cell( length(megNbOfBlock)  ,1);
     for iBlock = 1 : length(megNbOfBlock)
         if ~(iBlock == length(megNbOfBlock))
@@ -555,10 +556,8 @@ if isMeg && cfg.MegPerBlockOfSensor
         GainTmp = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
         GainMeg = [GainMeg; GainTmp];
         % TODO cfg.BstSaveTransfer % not possible with this version
-        % solution : concatenate and saveback the transfer matrix?, or
-        % disable this option in this case, ask Francois how to do it from the GUI?
-        % when the option "use meg block sensor" is set to 1, disable the save of the
-        % transfer matrix.? Q for Francois
+        % solution : concatenate and saveback the transfer matrix? or
+        % change the cpp binaries in the future. 
     end    
 else
      [status,cmdout] =  system(callStr);
@@ -581,7 +580,7 @@ end
 
 %MEG
 if isMeg
-    if ~cfg.MegPerBlockOfSensor
+    if ~cfg.MegBlock
         GainMeg = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
     end
     % === POST-PROCESS MEG LEADFIELD ===
