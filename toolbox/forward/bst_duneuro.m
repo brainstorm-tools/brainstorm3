@@ -419,109 +419,26 @@ end
 
 
 %% ===== WRITE MINI FILE =====
-% Open the mini file
-IniFile = fullfile(TmpDir, 'duneuro_minifile.mini');
-fid = fopen(IniFile, 'wt+');
-% General setting
-fprintf(fid, '__name = %s\n\n', IniFile);
-if strcmp(cfg.SolverType, 'cg')
-    fprintf(fid, 'type = %s\n', cfg.FemType);
-end
-fprintf(fid, 'element_type = %s\n', ElementType);
-fprintf(fid, 'solver_type = %s\n', cfg.SolverType);
-fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
-fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
-% [electrodes]
-if isEcog || isSeeg 
-    % Instead of selecting the electrode on the outer surface,
-    % uses the nearest FEM node as the electrode location
-    cfg.ElecType = 'closest_subentity_center';
-end
-if strcmp(dnModality, 'eeg') || strcmp(dnModality, 'meeg')
-    fprintf(fid, '[electrodes]\n');
-    fprintf(fid, 'filename = %s\n', fullfile(TmpDir, ElecFile));
-    fprintf(fid, 'type = %s\n', cfg.ElecType);
-    fprintf(fid, 'codims = %s\n', '3');
-end
-% [meg]
-if strcmp(dnModality, 'meg') || strcmp(dnModality, 'meeg')
-    fprintf(fid, '[meg]\n');
-    fprintf(fid, 'intorderadd = %d\n', cfg.MegIntorderadd);
-    fprintf(fid, 'type = %s\n', cfg.MegType);
-    fprintf(fid, 'cache.enable = %s\n',bool2str(cfg.EnableCacheMemory) );
-    % [coils]
-    fprintf(fid, '[coils]\n');
-    fprintf(fid, 'filename = %s\n', CoilFile);
-    % [projections]
-    fprintf(fid, '[projections]\n');
-    fprintf(fid, 'filename = %s\n', ProjFile);
-end
-% [dipoles]
-fprintf(fid, '[dipoles]\n');
-fprintf(fid, 'filename = %s\n', DipoleFile);
-% [volume_conductor.grid]
-fprintf(fid, '[volume_conductor.grid]\n');
-fprintf(fid, 'filename = %s\n', MeshFile);
-% [volume_conductor.tensors]
-fprintf(fid, '[volume_conductor.tensors]\n');
-fprintf(fid, 'filename = %s\n', CondFile);
-% [solver]
-fprintf(fid, '[solver]\n');
-fprintf(fid, 'solver_type = %s\n', cfg.SolvSolverType);
-fprintf(fid, 'preconditioner_type = %s\n', cfg.SolvPrecond);
-if strcmp(cfg.SolverType, 'cg')
-    fprintf(fid, 'cg_smoother_type = %s\n', cfg.SolvSmootherType);
-end
-fprintf(fid, 'intorderadd = %d\n', cfg.SolvIntorderadd);
-% Discontinuous Galerkin
-if strcmp(cfg.SolverType, 'dg')
-    fprintf(fid, 'dg_smoother_type = %s\n', cfg.DgSmootherType);
-    fprintf(fid, 'scheme = %s\n', cfg.DgScheme);
-    fprintf(fid, 'penalty = %d\n', cfg.DgPenalty);
-    fprintf(fid, 'edge_norm_type = %s\n', cfg.DgEdgeNormType);
-    fprintf(fid, 'weights = %s\n', bool2str(cfg.DgWeights));
-    fprintf(fid, 'reduction = %s\n', bool2str(cfg.DgReduction));
-end
-% [solution]
-fprintf(fid, '[solution]\n');
-fprintf(fid, 'post_process = %s\n', bool2str(cfg.SolPostProcess)); % true/false
-fprintf(fid, 'subtract_mean = %s\n', bool2str(cfg.SolSubstractMean)); % boolean
-% [solution.solver]
-fprintf(fid, '[solution.solver]\n');
-fprintf(fid, 'reduction = %d\n', cfg.SolSolverReduction);
-% [solution.source_model]
-fprintf(fid, '[solution.source_model]\n');
-fprintf(fid, 'type = %s\n', cfg.SrcModel);
-fprintf(fid, 'intorderadd = %d\n', cfg.SrcIntorderadd);
-fprintf(fid, 'intorderadd_lb = %d\n', cfg.SrcIntorderadd_lb);
-fprintf(fid, 'numberOfMoments = %d\n', cfg.SrcNbMoments);
-fprintf(fid, 'referenceLength = %d\n', cfg.SrcRefLen);
-fprintf(fid, 'weightingExponent = %d\n', cfg.SrcWeightExp);
-fprintf(fid, 'relaxationFactor = %e\n', 10^(-cfg.SrcRelaxFactor));
-fprintf(fid, 'mixedMoments = %s\n', bool2str(cfg.SrcMixedMoments));
-fprintf(fid, 'restrict = %s\n', bool2str(cfg.SrcRestrict));
-fprintf(fid, 'initialization = %s\n', cfg.SrcInit);
-% [brainstorm]
-fprintf(fid, '[brainstorm]\n');
-fprintf(fid, 'modality = %s\n', dnModality);
-fprintf(fid, 'output_folder = %s\n', [TmpDir, filesep]);
-fprintf(fid, 'save_eeg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
-fprintf(fid, 'save_meg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
-fprintf(fid, 'save_meeg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
-fprintf(fid, 'eeg_transfer_filename = %s\n', cfg.BstEegTransferFile);
-fprintf(fid, 'meg_transfer_filename = %s\n', cfg.BstMegTransferFile);
-fprintf(fid, 'eeg_leadfield_filename = %s\n', cfg.BstEegLfFile);
-fprintf(fid, 'meg_leadfield_filename = %s\n', cfg.BstMegLfFile);
-% Close file
-fclose(fid);
-
+% pass all the parameter to cfg and use the function to write the mini file.
+cfg.ElementType = ElementType;
+cfg.isEcog = isEcog; 
+cfg.isSeeg = isSeeg;
+cfg.dnModality = dnModality;
+cfg.TmpDir = TmpDir;
+cfg.ElecFile = ElecFile;
+cfg.CoilFile = CoilFile;
+cfg.ProjFile = ProjFile;
+cfg.DipoleFile = DipoleFile;
+cfg.MeshFile = MeshFile;
+cfg.CondFile = CondFile;
+% call the function
+IniFile = WriteMiniFile(cfg);
 
 %% ===== RUN DUNEURO ======
 % Assemble command line
 callStr = ['"' DuneuroExe '"' ' ' '"' IniFile '"'];
 bst_progress('text', 'DUNEuro: Computing leadfield...');
 disp(['DUNEURO> System call: ' callStr]);
-tic;
 % Call DUNEuro
 if isMeg && cfg.MegBlock
     % compute the size of the blocks
@@ -538,21 +455,29 @@ if isMeg && cfg.MegBlock
     end    
     % Update the sensor file
    GainMeg = [];
-    for iBlock =1 : length(megNbOfBlock)
-        disp(['block ' num2str(iBlock) '/' num2str(length(megNbOfBlock)) ': sensors '  ])
+    for iBlock = 1 : length(megNbOfBlock)
+        % compute only one time for the eeg if the combined meeg is used,
+        if ((iBlock > 1) && (strcmp(cfg.dnModality,'meeg'))) 
+            cfg.dnModality = 'meg'; % for the next block only meg
+            WriteMiniFile(cfg); % update the mini file
+        end        
+        disp(['DUNEURO> block ' num2str(iBlock) '/' num2str(length(megNbOfBlock)) '(' cfg.dnModality ')' ...
+                '; sensors: ' num2str(groupOfSensors{iBlock}(1)) ' to ' num2str(groupOfSensors{iBlock}(end))]);
         % Update the channels file
-        % Write coil file
+        % Write new blck coil file
         CoilsLocTemp = MegChannels(groupOfSensors{iBlock},2:4);
         fid = fopen(CoilFile, 'wt+');
         fprintf(fid, '%d %d %d  \n', CoilsLocTemp');
         fclose(fid);
-        % Write projection file
+        % Write new blck projection file
         CoilsOrientTemp = MegChannels(groupOfSensors{iBlock},5:7);
         fid = fopen(ProjFile, 'wt+');
         fprintf(fid, '%d %d %d  \n', CoilsOrientTemp');
         fclose(fid);        
         % call the DUNEuro
+        tic;
         [status,cmdout] = system(callStr);
+        disp(['         FEM computation completed in: ' num2str(toc) 's']);
         GainTmp = in_duneuro_bin(fullfile(TmpDir, cfg.BstMegLfFile))';
         GainMeg = [GainMeg; GainTmp];
         % TODO cfg.BstSaveTransfer % not possible with this version
@@ -560,7 +485,9 @@ if isMeg && cfg.MegBlock
         % change the cpp binaries in the future. 
     end    
 else
+     tic;
      [status,cmdout] =  system(callStr);
+     disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 end
 
 if (status ~= 0)
@@ -569,7 +496,6 @@ if (status ~= 0)
     errMsg = 'Error during the DUNEuro computation, see logs in the command window.';
     return;
 end
-disp(['DUNEURO> FEM computation completed in: ' num2str(toc) 's']);
 
 %% ===== READ LEADFIELD ======
 bst_progress('text', 'DUNEuro: Reading leadfield...');
@@ -652,4 +578,102 @@ function str = bool2str(bool)
     end
 end
 
+%% ===== Write the Duneuro configuration file =====
+function IniFile = WriteMiniFile(cfg)
+    IniFile = fullfile(cfg.TmpDir, 'duneuro_minifile.mini');
+    % open the ini file
+    fid = fopen(IniFile, 'wt+');
+    % General setting
+    fprintf(fid, '__name = %s\n\n', IniFile);
+    if strcmp(cfg.SolverType, 'cg')
+        fprintf(fid, 'type = %s\n', cfg.FemType);
+    end
+    fprintf(fid, 'element_type = %s\n', cfg.ElementType);
+    fprintf(fid, 'solver_type = %s\n', cfg.SolverType);
+    fprintf(fid, 'geometry_adapted = %s\n', bool2str(cfg.GeometryAdapted));
+    fprintf(fid, 'tolerance = %d\n', cfg.Tolerance);
+    % [electrodes]
+    if cfg.isEcog || cfg.isSeeg
+        % Instead of selecting the electrode on the outer surface,
+        % uses the nearest FEM node as the electrode location
+        cfg.ElecType = 'closest_subentity_center';
+    end
+    if strcmp(cfg.dnModality, 'eeg') || strcmp(cfg.dnModality, 'meeg')
+        fprintf(fid, '[electrodes]\n');
+        fprintf(fid, 'filename = %s\n', fullfile(cfg.TmpDir, cfg.ElecFile));
+        fprintf(fid, 'type = %s\n', cfg.ElecType);
+        fprintf(fid, 'codims = %s\n', '3');
+    end
+    % [meg]
+    if strcmp( cfg.dnModality, 'meg') || strcmp( cfg.dnModality, 'meeg')
+        fprintf(fid, '[meg]\n');
+        fprintf(fid, 'intorderadd = %d\n', cfg.MegIntorderadd);
+        fprintf(fid, 'type = %s\n', cfg.MegType);
+        fprintf(fid, 'cache.enable = %s\n',bool2str(cfg.EnableCacheMemory) );
+        % [coils]
+        fprintf(fid, '[coils]\n');
+        fprintf(fid, 'filename = %s\n',  cfg.CoilFile);
+        % [projections]
+        fprintf(fid, '[projections]\n');
+        fprintf(fid, 'filename = %s\n',  cfg.ProjFile);
+    end
+    % [dipoles]
+    fprintf(fid, '[dipoles]\n');
+    fprintf(fid, 'filename = %s\n',  cfg.DipoleFile);
+    % [volume_conductor.grid]
+    fprintf(fid, '[volume_conductor.grid]\n');
+    fprintf(fid, 'filename = %s\n',  cfg.MeshFile);
+    % [volume_conductor.tensors]
+    fprintf(fid, '[volume_conductor.tensors]\n');
+    fprintf(fid, 'filename = %s\n',  cfg.CondFile);
+    % [solver]
+    fprintf(fid, '[solver]\n');
+    fprintf(fid, 'solver_type = %s\n', cfg.SolvSolverType);
+    fprintf(fid, 'preconditioner_type = %s\n', cfg.SolvPrecond);
+    if strcmp(cfg.SolverType, 'cg')
+        fprintf(fid, 'cg_smoother_type = %s\n', cfg.SolvSmootherType);
+    end
+    fprintf(fid, 'intorderadd = %d\n', cfg.SolvIntorderadd);
+    % Discontinuous Galerkin
+    if strcmp(cfg.SolverType, 'dg')
+        fprintf(fid, 'dg_smoother_type = %s\n', cfg.DgSmootherType);
+        fprintf(fid, 'scheme = %s\n', cfg.DgScheme);
+        fprintf(fid, 'penalty = %d\n', cfg.DgPenalty);
+        fprintf(fid, 'edge_norm_type = %s\n', cfg.DgEdgeNormType);
+        fprintf(fid, 'weights = %s\n', bool2str(cfg.DgWeights));
+        fprintf(fid, 'reduction = %s\n', bool2str(cfg.DgReduction));
+    end
+    % [solution]
+    fprintf(fid, '[solution]\n');
+    fprintf(fid, 'post_process = %s\n', bool2str(cfg.SolPostProcess)); % true/false
+    fprintf(fid, 'subtract_mean = %s\n', bool2str(cfg.SolSubstractMean)); % boolean
+    % [solution.solver]
+    fprintf(fid, '[solution.solver]\n');
+    fprintf(fid, 'reduction = %d\n', cfg.SolSolverReduction);
+    % [solution.source_model]
+    fprintf(fid, '[solution.source_model]\n');
+    fprintf(fid, 'type = %s\n', cfg.SrcModel);
+    fprintf(fid, 'intorderadd = %d\n', cfg.SrcIntorderadd);
+    fprintf(fid, 'intorderadd_lb = %d\n', cfg.SrcIntorderadd_lb);
+    fprintf(fid, 'numberOfMoments = %d\n', cfg.SrcNbMoments);
+    fprintf(fid, 'referenceLength = %d\n', cfg.SrcRefLen);
+    fprintf(fid, 'weightingExponent = %d\n', cfg.SrcWeightExp);
+    fprintf(fid, 'relaxationFactor = %e\n', 10^(-cfg.SrcRelaxFactor));
+    fprintf(fid, 'mixedMoments = %s\n', bool2str(cfg.SrcMixedMoments));
+    fprintf(fid, 'restrict = %s\n', bool2str(cfg.SrcRestrict));
+    fprintf(fid, 'initialization = %s\n', cfg.SrcInit);
+    % [brainstorm]
+    fprintf(fid, '[brainstorm]\n');
+    fprintf(fid, 'modality = %s\n',  cfg.dnModality);
+    fprintf(fid, 'output_folder = %s\n', [ cfg.TmpDir, filesep]);
+    fprintf(fid, 'save_eeg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
+    fprintf(fid, 'save_meg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
+    fprintf(fid, 'save_meeg_transfer_file = %s\n', bool2str(cfg.BstSaveTransfer));
+    fprintf(fid, 'eeg_transfer_filename = %s\n', cfg.BstEegTransferFile);
+    fprintf(fid, 'meg_transfer_filename = %s\n', cfg.BstMegTransferFile);
+    fprintf(fid, 'eeg_leadfield_filename = %s\n', cfg.BstEegLfFile);
+    fprintf(fid, 'meg_leadfield_filename = %s\n', cfg.BstMegLfFile);
+    % Close file
+    fclose(fid);
+end
 
