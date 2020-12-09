@@ -357,8 +357,10 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
     % Read EDF annotations
     if strcmpi(sFile.format, 'EEG-EDF')
         evtList = {};
-        % By default: the file starts at 0s
+        % By default: the file starts at 0s (definitions useful in case the first records are missing)
         t0_file = 0;
+        prev_rec = 0;
+        prev_irec = 1;
         % In EDF+, the first annotation channel has epoch time stamps (EDF
         % calls epochs records).  So read all annotation channels per epoch.
         for irec = 1:hdr.nrec
