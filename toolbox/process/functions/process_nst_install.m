@@ -103,12 +103,14 @@ function OutputFiles = Run(sProcess, sInputs)
                         sProcess.options.option_colin27_2019_low.Value, ... 
                         sProcess.options.option_colin27.Value];
                     
-            errMsg = install(extra,templates,0);
+            [errMsg,updateMsg] = install(extra,templates,0);
             
             if ~isempty(errMsg)
                  bst_report('Error',   sProcess, sInputs, errMsg)
             else
                 bst_report('Info', sProcess, sInputs, 'NIRSTORM was installed successfully');
+                bst_report('Info', sProcess, sInputs,  updateMsg);
+                bst_report('Open', 'current');
             end                
         case 'uninstall'
             if ~status()
@@ -126,7 +128,7 @@ function status=status()
     status =  exist('process_nst_mbll')==2 && strcmp(fileparts(which('process_nst_mbll')),bst_get('UserProcessDir')); 
 end  
 
-function errMsg = install(extra,template,isInteractive)
+function [errMsg,updateMsg] = install(extra,template,isInteractive)
     % process_nst_install('install',extra,isInteractive)
     % 'install': download and install nirstorm
     % INPUTS:
@@ -194,7 +196,8 @@ function errMsg = install(extra,template,isInteractive)
         errMsg = ['Unable to install nirstorm: ' ME.message];
         return;
     end
-    
+    updateMsg = fileread(fullfile(nistorm_folder,'updates.txt'));
+        
     % Remove temporary files
     if strcmp(mode,'copy')
         rmpath(nistorm_folder)        
