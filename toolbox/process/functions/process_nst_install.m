@@ -238,31 +238,26 @@ function uninstall()
     cur_dir=pwd;
     cd(bst_get('UserProcessDir'));
     
-    if exist('uninstall_nirstorm')
+    if exist('uninstall_nirstorm')  && strcmp(fileparts(which('uninstall_nirstorm')),bst_get('UserProcessDir'))
         uninstall_nirstorm();
         file_delete(fullfile(bst_get('UserProcessDir'),'uninstall_nirstorm.m'),1)
-    elseif exist('nst_uninstall_nirstorm')
-        nst_uninstall_nirstorm();
-        file_delete(fullfile(bst_get('UserProcessDir'),'nst_uninstall_nirstorm.m'),1)
-    end
-    
-    cd(cur_dir);
-    
-    % delete nirstorm functions
-    function_folder=fullfile(bst_get('BrainstormUserDir'), 'nirstorm');
-    if exist(function_folder,'dir')
-        rmpath(function_folder)
-        file_delete(function_folder, 1,3);
-    end    
-    
-    % delete nirstorm mex
-     mex_folder= bst_get('UserMexDir');
-     mex_files = {'dg_voronoi.mexa64','dg_voronoi.mexglx'};
-     for i_mex = 1:length(mex_files)
-            if exist( fullfile(mex_folder,mex_files{i_mex})  ,'file')
-                file_delete(fullfile(mex_folder,mex_files{i_mex}),1,3);
-            end
-     end       
-     bst_progress('stop');
 
+        % delete nirstorm functions
+        function_folder=fullfile(bst_get('BrainstormUserDir'), 'nirstorm');
+        if exist(function_folder,'dir')
+            rmpath(function_folder)
+            file_delete(function_folder, 1,3);
+        end    
+
+        % delete nirstorm mex
+         mex_folder= bst_get('UserMexDir');
+         mex_files = {'dg_voronoi.mexa64','dg_voronoi.mexglx'};
+         for i_mex = 1:length(mex_files)
+                if exist( fullfile(mex_folder,mex_files{i_mex})  ,'file')
+                    file_delete(fullfile(mex_folder,mex_files{i_mex}),1,3);
+                end
+         end     
+    end
+    cd(cur_dir);
+    bst_progress('stop');
 end
