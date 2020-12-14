@@ -175,11 +175,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
         end
         if (GlobalData.Program.GuiLevel == 1) && ~(exist('isdeployed', 'builtin') && isdeployed)
             jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
-            if nst_setup('status')
-                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
-                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)nst_setup('uninstall',[],1), fontSize);
+            if process_nst_install('status')
+                % Add nirstorm function folder in matlab path
+                addpath(bst_fullfile( bst_get('BrainstormUserDir'), 'nirstorm' ));
+                
+                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)process_nst_install('uninstall'), fontSize);
             else
-                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
             end    
             
             gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
