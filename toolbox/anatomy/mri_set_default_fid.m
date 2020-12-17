@@ -25,7 +25,12 @@ function sMri = mri_set_default_fid(sMri, Method)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2020
+
+% Parse inputs
+if (nargin < 2) || isempty(Method)
+    Method = 'maff8';
+end
 
 % ===== NCS FIDUCIALS =====
 % MNI coordinates for all the fiducials
