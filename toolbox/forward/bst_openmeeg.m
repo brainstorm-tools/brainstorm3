@@ -279,16 +279,33 @@ for i = 1:length(OPTIONS.BemFiles)
     % Center all the points on the center of the envelope
     bfs_center = bst_bfs(TessMat.Vertices);
     vDipoles = bst_bsxfun(@minus, OPTIONS.GridLoc, bfs_center(:)');
-    vInner = bst_bsxfun(@minus, TessMat.Vertices, bfs_center(:)');
-    % Check if any dipole is outside of the innermost layer
-    iDipInside = find(~inpolyhd(vDipoles, vInner, TessMat.Faces));
-    if ~isempty(iDipInside)
-        errMsg = sprintf(['Some dipoles are outside the BEM layers (%d dipoles).\n' ...
-                          'The leadfield for these dipoles could be incorrect.\n\n'], length(iDipInside));
+    vLayer = bst_bsxfun(@minus, TessMat.Vertices, bfs_center(:)');
+    % Check if any dipole is outside this BEM layer
+    iDipOutside = find(~inpolyhd(vDipoles, vLayer, TessMat.Faces));
+    if ~isempty(iDipOutside)
+        errMsg = sprintf(['WARNING: %d dipole(s) outside the BEM layer "%s".\n' ...
+                          'The leadfield for these dipoles could be incorrect.\n\n'], length(iDipOutside), OPTIONS.BemNames{i});
         if strcmpi(OPTIONS.HeadModelType, 'surface')
             errMsg = [errMsg, 'To fix the cortex surface:', 10, 'Right-click on the surface file > Force inside skull.'];
         end
-        disp([10 'WARNING: ' errMsg 10]);
+        disp([10 errMsg 10]);
+        if OPTIONS.Interactive
+            isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
+            if ~isConfirm
+                errMsg = [];
+                return;
+            end
+        end
+    end
+    % Check if any sensor is outside this BEM layer
+    chLoc = bst_bsxfun(@minus, [OPTIONS.Channel([OPTIONS.iEeg, OPTIONS.iMeg, OPTIONS.iSeeg, OPTIONS.iEcog]).Loc]', bfs_center(:)');
+    iChanOutside = find(~inpolyhd(chLoc, vLayer, TessMat.Faces));
+    if ~isempty(iChanOutside)
+        errMsg = sprintf(['WARNING: %d sensor(s) outside the BEM layer "%s" (see list in command window).\n' ...
+                          'The leadfield for these sensors could be incorrect, or OpenMEEG could crash.\n' ...
+                          'Edit the channel file and change their type to exclude them.'], length(iChanOutside), OPTIONS.BemNames{i});
+        disp([10 errMsg 10]);
+        disp(['Sensors outside "' OPTIONS.BemNames{i} '": ' sprintf('%s ', OPTIONS.Channel(iChanOutside).Name), 10]);
         if OPTIONS.Interactive
             isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
             if ~isConfirm
