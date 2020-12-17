@@ -132,8 +132,6 @@ end
 
 % Find volume segmentation file
 SvregFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
-% Find skull segmentation file
-SkullFile = file_find(BsDir, [FilePrefix '.skull.label.nii.gz']);
 
 % Find surfaces
 HeadFile        = file_find(BsDir, [FilePrefix '.scalp.dfs']);

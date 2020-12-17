@@ -511,7 +511,7 @@ end
 % Generate head surface
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
-%% ===== LOAD ASEG ATLAS =====
+%% ===== IMPORT ASEG ATLAS =====
 if isVolumeAtlas && ~isempty(AsegFile)
     % Import atlas as volume
     import_mri(iSubject, AsegFile);

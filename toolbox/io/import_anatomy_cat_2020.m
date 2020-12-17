@@ -162,6 +162,10 @@ if isVolumeAtlas
                 file_find(CatDir, 'p6*.nii', 2)};     % Background
     VolAtlasFiles = file_find(bst_fullfile(CatDir, 'mri_atlas'), '*.nii', 1, 0);
 end
+% Find MNI registration volumes
+RegFile = file_find(CatDir, 'y_*.nii', 2);
+RegInvFile = file_find(CatDir, 'iy_*.nii', 2);
+
 % Find extra cortical maps
 if isExtraMaps
     % Cortical thickness
@@ -192,6 +196,7 @@ end
 if isKeepMri && ~isempty(sSubject.Anatomy)
     BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 else
+    bst_progress('text', 'Loading MRI...');
     % Read MRI
     [BstT1File, sMri] = import_mri(iSubject, T1File);
     if isempty(BstT1File)
@@ -281,10 +286,14 @@ if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.
 end
 
 %% ===== MNI NORMALIZATION =====
-if isComputeMni
+% Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
+if ~isempty(RegFile) && ~isempty(RegInvFile)
+    bst_progress('text', 'Loading non-linear MNI transformation...');
+    sMri = import_mnireg(BstT1File, RegFile, RegInvFile);
+% Compute linear MNI registration (spm_maff8)
+elseif isComputeMni
     % Call normalize function
     [sMri, errCall] = bst_normalize_mni(BstT1File);
-    % Error handling
     errorMsg = [errorMsg errCall];
 end
 
@@ -430,7 +439,7 @@ HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 %% ===== IMPORT VOLUME ATLASES =====
 if isVolumeAtlas && ~isempty(VolAtlasFiles)
     % Get subject tag
-    [fPath, SubjectTag] = bst_fileparts(T1File);
+    [fPath, SubjectTag] = bst_fileparts(T1File{1});
     % Import all the volumes
     for iFile = 1:length(VolAtlasFiles)
         % Strip the subject tag from the atlas name

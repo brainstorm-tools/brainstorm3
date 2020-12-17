@@ -1,7 +1,7 @@
 function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
 % IN_MRI: Detect file format and load MRI file.
 % 
-% USAGE:  in_mri(MriFile, FileFormat='ALL')
+% USAGE:  in_mri(MriFile, FileFormat='ALL', isInteractive=1, isNormalize=0)
 % INPUT:
 %     - MriFile       : full path to a MRI file
 %     - FileFormat    : Format of the input file (default = 'ALL')

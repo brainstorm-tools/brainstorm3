@@ -72,11 +72,11 @@ elseif ischar(MriFileSrc)
 else
     error('Invalid call.');
 end
-% Not available for multiple volumes
-if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
-    errMsg = 'The input files cannot contain multiple volumes.';
-    return;
-end
+% % Not available for multiple volumes
+% if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
+%     errMsg = 'The input files cannot contain multiple volumes.';
+%     return;
+% end
 % Inialize various variables
 isUpdateScs = 0;
 isUpdateNcs = 0;

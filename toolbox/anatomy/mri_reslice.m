@@ -41,6 +41,10 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 % Authors: Francois Tadel, 2016-2020
 
 % ===== PARSE INPUTS =====
+% Parse inputs
+if (nargin < 5) || isempty(isAtlas)
+    isAtlas = 0;
+end
 % Initialize returned values
 MriFileReg = [];
 errMsg = [];

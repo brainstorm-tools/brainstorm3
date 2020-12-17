@@ -129,7 +129,10 @@ elseif iscell(MriFile)
 end
 
 %% ===== LOAD MRI FILE =====
-bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
+end
 % MNI / Atlas?
 isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = strcmp(FileFormat, 'ALL-MNI-ATLAS');
@@ -386,7 +389,9 @@ if isInteractive
         end
     end
 else
-    bst_progress('stop');
+    if ~isProgress
+        bst_progress('stop');
+    end
 end
 
 

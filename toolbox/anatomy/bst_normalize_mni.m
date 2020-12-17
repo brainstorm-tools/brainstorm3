@@ -140,7 +140,7 @@ bst_progress('text', 'Saving normalization...');
 sMri.NCS.R = Tmni(1:3,1:3);
 sMri.NCS.T = Tmni(1:3,4);
 % Compute default fiducials positions based on MNI coordinates
-sMri = mri_set_default_fid(sMri);
+sMri = mri_set_default_fid(sMri, 'maff8');
 % Save modifications in the MRI file
 if ~isempty(MriFile)
     bst_save(file_fullpath(MriFile), sMri, 'v6');

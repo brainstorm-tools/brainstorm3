@@ -1175,10 +1175,20 @@ function SetLocation(cs, sMri, Handles, XYZ)
     XYZ(3) = bst_saturate(XYZ(3), [1, size(sMri.Cube,3)]);
     % Round coordinates
     XYZ = round(XYZ);
-    % Set sliders values
-    Handles.jSliderSagittal.setValue(XYZ(1));
-    Handles.jSliderCoronal.setValue(XYZ(2));
-    Handles.jSliderAxial.setValue(XYZ(3));
+    % Update sliders positions, with the callbacks disabled
+    jSliders = [Handles.jSliderSagittal, Handles.jSliderCoronal, Handles.jSliderAxial];
+    dimUpdate = [];
+    for i = 1:3
+        if (jSliders(i).getValue() ~= XYZ(i))
+            dimUpdate(end+1) = i;
+            bakCb = get(jSliders(i), 'StateChangedCallback');
+            set(jSliders(i), 'StateChangedCallback', []);
+            jSliders(i).setValue(double(XYZ(i)));
+            set(jSliders(i), 'StateChangedCallback', bakCb);
+        end
+    end
+    % Update figure
+    UpdateMriDisplay(Handles.hFig, dimUpdate);
 end
 
 
