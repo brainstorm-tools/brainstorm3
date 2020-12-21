@@ -1595,6 +1595,7 @@ function BuildLinks(hFig, DataPair)
         % add as link to node1
         
         % use thresh as ABS value
+        % default colour for now, will be updated in updateColormap
         l = line(...
             x,...
             y,...
@@ -1623,8 +1624,10 @@ end
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
     if ~isempty(Atlas)
+        disp('In ~isempty(Atlas');
         NodeColors = reshape([Atlas.Scouts.Color], 3, length(Atlas.Scouts))';
     else
+        disp('In default isempty(Atlas');
         % Default neutral color
         NodeColors = 0.5 * ones(length(RowNames),3);
     end
@@ -2245,7 +2248,7 @@ function UpdateColormap(hFig)
     
     % === UPDATE DISPLAY ===
     CMap = sColormap.CMap;
-    OGL = getappdata(hFig, 'OpenGLDisplay');
+    % OGL = getappdata(hFig, 'OpenGLDisplay');
     
     if (sum(DataMask) > 0)
         % Normalize DataPair for Offset
@@ -2259,8 +2262,30 @@ function UpdateColormap(hFig)
         end
         % Interpolate
         [StartColor, EndColor] = InterpolateColorMap(hFig, DataPair(DataMask,:), CMap, CLim);
-       
-        %TODO: update colour of link
+        
+        % added on Dec 20
+        color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
+        
+        iData = find(DataMask == 1);
+        VisibleLinks = hFig.UserData.AllLinks(iData).';
+        
+        % set desired colors to each link
+        for i=1:size(VisibleLinks,1)
+            set(VisibleLinks(i), 'Color', color_viz(i,:));
+        end
+        
+        % idea: add colour to the nodes that have visible links connected to them
+        % a node has the same colour as the first link connected to it (for
+        % now, can discuss later)
+        %nodes = hFig.UserData.Nodes;
+        
+        %for i = 1:size(VisibleLinks,1) % for each link shown on the canvas
+            %node1 = VisibleLinks(i,1);
+            %node2 = VisibleLinks(i,2);
+        %end
+        
+        
+        % old code
         % Update color
 %         OGL.setMeasureLinkColorGradient( ...
 %             find(DataMask) - 1, ...
@@ -2285,7 +2310,18 @@ function UpdateColormap(hFig)
         % Normalize within the colormap range 
         [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
         
-        % TODO: Update display
+        % added on Dec 20
+        color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
+        
+        iData = find(RegionDataMask == 1);
+        VisibleLinks_region = hFig.UserData.AllLinks(iData).';
+        
+        % set desired colors to each link
+        for i=1:size(VisibleLinks_region,1)
+            set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
+        end
+        
+        % old code
 %         OGL.setRegionLinkColorGradient( ...
 %             find(RegionDataMask) - 1, ...
 %             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...

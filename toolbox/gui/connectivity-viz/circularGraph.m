@@ -31,6 +31,7 @@ classdef circularGraph < handle
         ShowButton;       % Turn all nodes on
         HideButton;       % Turn all nodes off
         AllLinks;
+        %VisibleLinks; % added Dec 20
     end
     
     methods

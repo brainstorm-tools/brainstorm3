@@ -94,9 +94,12 @@ classdef node < handle
         function updateVisible(this)
             if this.Visible
                 this.NodeMarker.Marker = 'o';
+                this.NodeMarker.MarkerFaceColor = 'red'
                % this.NodeMarker.MarkerSize = 5;
               %  this.NodeMarker.MarkerFaceColor = this.Color;
               %  set(this.Links,'Color',this.Color);
+              
+                nodes = hFig.UserData.Nodes;
                 
              %   for i = 1:length(this.Links)
                  %   this.Links(i).ZData = ones(size(this.Links(i).XData));
@@ -104,7 +107,7 @@ classdef node < handle
             else
                 this.NodeMarker.Marker = 'x'; % changed on Oct 25
                 %this.NodeMarker.MarkerSize = 8; % changed on Oct 25
-               % this.NodeMarker.MarkerFaceColor = 'red'; % changed on Oct 25
+                %this.NodeMarker.MarkerFaceColor = 'red'; % changed on Oct 25
               %  set(this.Links,'Color',[1 1 1]);
                 
                % for i = 1:length(this.Links)
@@ -121,10 +124,11 @@ classdef node < handle
             end
         end
         
-        function updateColor(this)
+        function updateColor(this) % when is this called?
+            disp('Entered updateColor in node.m');
             this.NodeMarker.Color = this.Color;
             this.NodeMarker.MarkerFaceColor = this.Color; % set marker fill color
-            set(this.Links,'Color',this.Color); % set links color %todo: this will be replaced by color map for connectivity intensity
+            %set(this.Links,'Color',this.Color); % set links color %todo: this will be replaced by color map for connectivity intensity
         end
         
         function updateTextLabelColor(this)
