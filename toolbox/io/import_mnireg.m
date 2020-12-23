@@ -52,12 +52,14 @@ end
 if ~isempty(RegInvFile)
     sReg = in_mri(RegInvFile, 'ALL', 0, 0);
     sMri.NCS.iy = sReg.Cube;
+    sMri.NCS.iy(sMri.NCS.iy == 0) = NaN;
 else
     sMri.NCS.iy = [];
 end
 if ~isempty(RegFile)
     [sReg, vox2ras] = in_mri(RegFile, 'ALL', 0, 0);
     sMri.NCS.y = sReg.Cube;
+    sMri.NCS.y(sMri.NCS.y == 0) = NaN;
     sMri.NCS.y_vox2ras = vox2ras;
 else
     sMri.NCS.y = [];

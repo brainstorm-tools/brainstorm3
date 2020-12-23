@@ -1,11 +1,17 @@
 ---------------------------------------------------------------
+December 2020
+- Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)
+- Anatomy: Import and reslices MNI atlases using linear/nonlinear reg
+- Distrib: Updated NIRSTORM installation scripts
+---------------------------------------------------------------
 November 2020
 - Python: New integration with Python and MNE-Python based on CPython
 - Distrib: Compiled version now includes NIRSTORM, Brain2Mesh and Iso2Mesh
 - Anatomy: Updated CAT12 to version r1733
 - Anatomy: Support for volume atlases in the database and the MRI viewer
-- Anatomy: Import all atlases from FreeSurfer, CAT, BrainVISA, BrainSuite
+- Anatomy: Import all volume atlases from FreeSurfer, CAT, BrainVISA, BrainSuite
 - Anatomy: New automated import (15000 vertices, MNI fiducials)
+- FEM: Add SEEG/ECOG support in DUNEuro & other improvements
 ---------------------------------------------------------------
 October 2020
 - Major bug fix: Changed units in PSD computation

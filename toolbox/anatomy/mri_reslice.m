@@ -139,14 +139,14 @@ end
 
 
 % ===== INTERPOLATE MRI VOLUME =====
-% Original position vectors (WHATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
-X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5);
-Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5);
-Z1 = ((0:size(sMriSrc.Cube,3)-1) + 0.5);
+% Original position vectors (WATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
+X1 = (0:size(sMriSrc.Cube,1)-1) + 0.5;
+Y1 = (0:size(sMriSrc.Cube,2)-1) + 0.5;
+Z1 = (0:size(sMriSrc.Cube,3)-1) + 0.5;
 % Reference position vectors
-X2 = ((0:size(sMriRef.Cube,1)-1) + 0.5);
-Y2 = ((0:size(sMriRef.Cube,2)-1) + 0.5);
-Z2 = ((0:size(sMriRef.Cube,3)-1) + 0.5);
+X2 = (0:size(sMriRef.Cube,1)-1) + 0.5;
+Y2 = (0:size(sMriRef.Cube,2)-1) + 0.5;
+Z2 = (0:size(sMriRef.Cube,3)-1) + 0.5;
 % Mesh grids
 [Xgrid2, Ygrid2, Zgrid2] = meshgrid(Y2, X2, Z2);
 % Apply final transformation: reference MRI => common space => original MRI

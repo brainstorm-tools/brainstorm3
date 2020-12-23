@@ -1394,9 +1394,15 @@ function UpdateCoordinates(sMri, Handles)
     end
     % === MNI coordinates system ===
     if ~isempty(mniXYZ)
-        Handles.jTextCoordMniX.setText(sprintf('x: %3.2f', mniXYZ(1) * 1000));
-        Handles.jTextCoordMniY.setText(sprintf('y: %3.2f', mniXYZ(2) * 1000));
-        Handles.jTextCoordMniZ.setText(sprintf('z: %3.2f', mniXYZ(3) * 1000));
+        if any(isnan(mniXYZ))
+            Handles.jTextCoordMniX.setText('-');
+            Handles.jTextCoordMniY.setText('-');
+            Handles.jTextCoordMniZ.setText('-');
+        else
+            Handles.jTextCoordMniX.setText(sprintf('x: %3.2f', mniXYZ(1) * 1000));
+            Handles.jTextCoordMniY.setText(sprintf('y: %3.2f', mniXYZ(2) * 1000));
+            Handles.jTextCoordMniZ.setText(sprintf('z: %3.2f', mniXYZ(3) * 1000));
+        end
         isMni = 1;
     else
         isMni = 0;

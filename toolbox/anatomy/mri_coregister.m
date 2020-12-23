@@ -1,5 +1,5 @@
 function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
-% MRI_COREGISTER: Compute the MNI transformation on both input volumes, then register the first on the second.
+% MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
 %            [sMriReg, errMsg, fileTag] = mri_coregister(sMriSrc,    sMriRef, ...)

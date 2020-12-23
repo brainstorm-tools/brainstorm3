@@ -88,8 +88,8 @@ end
                 
 %% ===== DETECT FILE FORMAT =====
 isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
-isAtlas = strcmp(FileFormat, 'ALL-MNI-ATLAS');
-if ismember(FileFormat, {'ALL', 'ALL-MNI', 'ALL-MNI-ATLAS'})
+isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS'});
+if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
     % Switch between file extensions
     switch (lower(fileExt))
         case '.mri',                  FileFormat = 'CTF';
