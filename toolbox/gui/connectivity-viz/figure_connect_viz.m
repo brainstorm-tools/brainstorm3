@@ -396,8 +396,8 @@ function FigureMouseDownCallback(hFig, ev)
     % Record mouse location in the figure coordinates system
     setappdata(hFig, 'clickPositionFigure', clickPos);
     
-    
-    JavaClickCallback(hFig, ev)
+    % not ready yet
+    %JavaClickCallback(hFig, ev)
 end
  
  
@@ -1490,7 +1490,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         % Set link width
         %SetLinkSize(hFig, LinkSize);
         % Set link transparency (if 3DDisplay, set to 0.75)
-        SetLinkTransparency(hFig, 0.00);
+        %SetLinkTransparency(hFig, 0.00);
     end
     
     %NEW Nov 10: create links from computed DataPair
@@ -1498,6 +1498,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     LinkSize = getappdata(hFig, 'LinkSize');
     %disp(LinkSize);
     SetLinkSize(hFig, LinkSize);
+    SetLinkTransparency(hFig, 0.00);
         
     %% ===== Init Filters =====
     % 
@@ -1661,7 +1662,7 @@ function BuildLinks(hFig, DataPair)
             x,...
             y,...
             'LineWidth', 2,...
-            'Color', testNodes(node1).Color,...
+            'Color', [testNodes(node1).Color 0.00],...
             'PickableParts','none',...
             'Visible','off'); %not visible as default;
         testNodes(node1).Links(end+1) = l;
@@ -2378,9 +2379,14 @@ function UpdateColormap(hFig)
         iData = find(DataMask == 1);
         VisibleLinks = hFig.UserData.AllLinks(iData).';
         
+        % Added Dec 23: get the transparency
+        LinkTransparency = getappdata(hFig, 'LinkTransparency');
+        LinkIntensity = 1.00 - LinkTransparency;
+        
         % set desired colors to each link
+        % 4th column of Color is transparency
         for i=1:size(VisibleLinks,1)
-            set(VisibleLinks(i), 'Color', color_viz(i,:));
+            set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
         end
         
         % idea: add colour to the nodes that have visible links connected to them
@@ -2427,7 +2433,7 @@ function UpdateColormap(hFig)
         
         % set desired colors to each link
         for i=1:size(VisibleLinks_region,1)
-            set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
+            set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
         end
         
         % old code
@@ -2929,7 +2935,7 @@ end
 function LinkSize = GetLinkSize(hFig)
     LinkSize = getappdata(hFig, 'LinkSize');
     if isempty(LinkSize)
-        LinkSize = 1;
+        LinkSize = 2;
     end
 end
  
@@ -2948,17 +2954,27 @@ function SetLinkSize(hFig, LinkSize)
 end
  
 %% ===== LINK TRANSPARENCY =====
-% TODO: set link / line transparency
+% DONE: Dec 23
 function SetLinkTransparency(hFig, LinkTransparency)
     disp('Entered SetLinkTransparency');
-    % Get display
-   % OGL = getappdata(hFig,'OpenGLDisplay');
-    % 
-    nLinks = size(bst_figures('GetFigureHandleField', hFig, 'DataPair'),1);
-    % 
-    %OGL.setMeasureLinkTransparency(0:(nLinks - 1), LinkTransparency);
-    %OGL.repaint();
-    % 
+   
+    %Links = hFig.UserData.AllLinks;
+    [DataPair, DataMask] = GetPairs(hFig);
+    iData = find(DataMask == 1);
+    VisibleLinks = hFig.UserData.AllLinks(iData).';
+    
+    %current_color = Links.Color;
+    %disp(current_color);
+    %current_color(:,4) = LinkTransparency;
+    
+    % set desired colors to each link
+    for i=1:length(VisibleLinks)
+        current_color = VisibleLinks(i).Color;
+        
+        current_color(4) = 1.00 - LinkTransparency;
+        set(VisibleLinks(i), 'Color', current_color);
+    end
+
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
 end
  
