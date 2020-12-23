@@ -1,4 +1,4 @@
-classdef node < handle
+classdef   node < handle
     % NODE Helper class for circularGraph. Not intended for direct user manipulation.
     %%
     % Copyright 2016 The MathWorks, Inc.
@@ -94,21 +94,22 @@ classdef node < handle
         function updateVisible(this)
             if this.Visible
                 this.NodeMarker.Marker = 'o';
-                this.NodeMarker.MarkerFaceColor = 'red'
+                this.NodeMarker.MarkerFaceColor = [0.7 0.7 0.7];
+                this.NodeMarker.Color = [0.7 0.7 0.7];
                % this.NodeMarker.MarkerSize = 5;
               %  this.NodeMarker.MarkerFaceColor = this.Color;
               %  set(this.Links,'Color',this.Color);
               
-                nodes = hFig.UserData.Nodes;
+                %nodes = hFig.UserData.Nodes;
                 
              %   for i = 1:length(this.Links)
                  %   this.Links(i).ZData = ones(size(this.Links(i).XData));
                % end
-            else
+               
+            else % node is red when clicked on
                 this.NodeMarker.Marker = 'x'; % changed on Oct 25
+                this.NodeMarker.Color = 'red'; % changed on Dec 21
                 %this.NodeMarker.MarkerSize = 8; % changed on Oct 25
-                %this.NodeMarker.MarkerFaceColor = 'red'; % changed on Oct 25
-              %  set(this.Links,'Color',[1 1 1]);
                 
                % for i = 1:length(this.Links)
                   %  this.Links(i).ZData = zeros(size(this.Links(i).XData));
@@ -141,6 +142,8 @@ classdef node < handle
             x = this.Position(1);
             y = this.Position(2);
             t = atan2(y,x);
+            disp(x);
+            disp(y);
             
             this.TextLabel = text(0,0,this.Label, 'Interpreter', 'none'); % display with '_'
             this.TextLabel.Position = node.labelOffsetFactor*this.Position;
@@ -195,3 +198,4 @@ classdef node < handle
         end
     end
 end
+

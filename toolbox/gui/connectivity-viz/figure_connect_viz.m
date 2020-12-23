@@ -2,7 +2,7 @@ function varargout = figure_connect_viz( varargin )
 % FIGURE_CONNECT_VIZ: Creation and callbacks for connectivity figures.
 %
 % USAGE:  hFig = figure_connect_viz('CreateFigure', FigureId)
-
+ 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -23,16 +23,16 @@ function varargout = figure_connect_viz( varargin )
 %
 % Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin
 % Cousineau, 2019; Helen Lin & Yaqi Li, 2020
-
+ 
 disp('figure_connect_viz.m : ' + string(varargin(1))) % @TODO: remove test
-
+ 
 eval(macro_method);
 end
-
+ 
 %% ===== CREATE FIGURE =====
 % NOTE: updated remove ogl
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
-	% Create new figure
+    % Create new figure
     %TODO: replace renderer 'Renderer',              'opengl', ...
     hFig = figure('Visible',               'off', ...
                   'NumberTitle',           'off', ...
@@ -55,9 +55,9 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowButtonUpFcn',     @FigureMouseUpCallback, ...
                   'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
                   bst_get('ResizeFunction'), @(h,ev)ResizeCallback(h,ev));
-	
+    
      % OGL SECTION -- TODO: REPLACE/REMOVE
-	% Create rendering panel
+    % Create rendering panel
    % [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
     
     % Resize callback
@@ -101,10 +101,10 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'CameraPosition', [0 0 36]); % %TODO: remove
     setappdata(hFig, 'CameraTarget', [0 0 -0.5]); % %TODO: remove 
     
-	% Add colormap
+    % Add colormap
     bst_colormaps('AddColormapToFigure', hFig, 'connectn');
 end
-
+ 
 %% ===========================================================================
 %  ===== FIGURE CALLBACKS ====================================================
 %  ===========================================================================
@@ -112,7 +112,7 @@ end
 function ColormapChangedCallback(hFig) %#ok<DEFNU>
     UpdateColormap(hFig);
 end
-
+ 
 %% ===== CURRENT TIME CHANGED =====
 function CurrentTimeChangedCallback(hFig)   %#ok<DEFNU>
     % If no time in this figure
@@ -122,7 +122,7 @@ function CurrentTimeChangedCallback(hFig)   %#ok<DEFNU>
     % If there is time in this figure
     UpdateFigurePlot(hFig);
 end
-
+ 
 %% ===== CURRENT FREQ CHANGED =====
 function CurrentFreqChangedCallback(hFig)   %#ok<DEFNU>
     % If no frequencies in this figure
@@ -132,8 +132,8 @@ function CurrentFreqChangedCallback(hFig)   %#ok<DEFNU>
     % Update figure
     UpdateFigurePlot(hFig);
 end
-
-
+ 
+ 
 %% ===== DISPOSE FIGURE =====
 % NOTE: updated remove ogl
 function Dispose(hFig) %#ok<DEFNU>
@@ -150,7 +150,7 @@ function Dispose(hFig) %#ok<DEFNU>
             delete(c.testNodes(i));
         end
     end
-
+ 
     
     %===old===
     SetBackgroundColor(hFig, [1 1 1]); %[1 1 1]= white [0 0 0]= black
@@ -167,8 +167,8 @@ function Dispose(hFig) %#ok<DEFNU>
 %     delete(OGL);
 %     setappdata(hFig, 'OpenGLDisplay', []);
 end
-
-
+ 
+ 
 %% ===== RESET DISPLAY =====
 % NOTE: ready, updated remove ogl
 function ResetDisplay(hFig)
@@ -201,7 +201,7 @@ function ResetDisplay(hFig)
         rmappdata(hFig, 'DataMinMax');
     end
 end
-
+ 
 %% ===== GET BACKGROUND COLOR =====
 function backgroundColor = GetBackgroundColor(hFig)
     backgroundColor = getappdata(hFig, 'BgColor');
@@ -209,7 +209,7 @@ function backgroundColor = GetBackgroundColor(hFig)
         backgroundColor = [0 0 0]; %default bg color is black
     end
 end
-
+ 
 %% ===== RESIZE CALLBACK =====
 function ResizeCallback(hFig, container)
     % Update Title     
@@ -217,7 +217,7 @@ function ResizeCallback(hFig, container)
     % Update OpenGL container size
     UpdateContainer(hFig, container);
 end
-
+ 
 %TODO: remove jogl container
 function UpdateContainer(hFig, container)
     % Get figure position
@@ -264,7 +264,7 @@ function UpdateContainer(hFig, container)
         end
     end
 end
-
+ 
 function HasTitle = RefreshTitle(hFig)
     Title = [];
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
@@ -335,15 +335,15 @@ function HasTitle = RefreshTitle(hFig)
     end    
     HasTitle = size(Title,2) > 0;
 end
-
+ 
 %% ===========================================================================
 %  ===== KEYBOARD AND MOUSE CALLBACKS ========================================
 %  ===========================================================================
-
+ 
 % TODO: remove java canvas, use key events in MATLAB
 % Can use WindowKeyPressFcn, KeyPressFcn 
 % getkey
-
+ 
 %% ===== FIGURE MOUSE CLICK CALLBACK =====
     % TODO: remove java canvas once prototype complete
     % Mouse click callbacks include:
@@ -352,7 +352,8 @@ end
         % SHIFT+CLICK to move/pan camera (NOTE: DONE)
         % CLICK colorbar to change colormap, double-click colorbar to reset
         % (NOTE: DONE)
-function FigureMouseDownCallback(hFig, ev)   
+function FigureMouseDownCallback(hFig, ev)
+    disp('Entered FigureMouseDownCallback');
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
         return;
@@ -394,11 +395,15 @@ function FigureMouseDownCallback(hFig, ev)
     setappdata(hFig, 'hasMoved', 0);
     % Record mouse location in the figure coordinates system
     setappdata(hFig, 'clickPositionFigure', clickPos);
+    
+    
+    JavaClickCallback(hFig, ev)
 end
-
-
+ 
+ 
 %% ===== FIGURE MOUSE MOVE CALLBACK =====
 function FigureMouseMoveCallback(hFig, ev)
+    disp('Entered FigureMouseMoveCallback');
     % Get current mouse action
     clickAction = getappdata(hFig, 'clickAction');   
     clickSource = getappdata(hFig, 'clickSource');
@@ -448,10 +453,11 @@ function FigureMouseMoveCallback(hFig, ev)
              end
     end
 end
-
-
+ 
+ 
 %% ===== FIGURE MOUSE UP CALLBACK =====
 function FigureMouseUpCallback(hFig, varargin)
+    disp('Entered FigureMouseUpCallback');
     % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
     hasMoved = getappdata(hFig, 'hasMoved');
@@ -465,7 +471,7 @@ function FigureMouseUpCallback(hFig, varargin)
     else
         setappdata(hFig, 'clickAction', 'MouseDownNotConsumed');
     end
-
+ 
     % Update display panel
     bst_figures('SetCurrentFigure', hFig, 'TF');
     
@@ -484,9 +490,10 @@ function FigureMouseUpCallback(hFig, varargin)
             bst_colormaps('FireColormapChanged', ColormapInfo.Type);
         end
     end
+    %JavaClickCallback(hFig, ev)
 end
-
-
+ 
+ 
 %% ===== FIGURE KEY PRESSED CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)
     global ConnectKeyboardMutex;
@@ -553,7 +560,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         end
     end
 end
-
+ 
 %Note: ready
 function FigureKeyReleasedCallback(hFig, keyEvent)
     % Convert to Matlab key event
@@ -567,7 +574,7 @@ function FigureKeyReleasedCallback(hFig, keyEvent)
             setappdata(hFig, 'MouseMoveCamera', 0);
     end
 end
-
+ 
 function SetExplorationLevelTo(hFig, Level)
     % Last reorganisation
     OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
@@ -582,7 +589,7 @@ function SetExplorationLevelTo(hFig, Level)
         UpdateFigurePlot(hFig);
     end
 end
-
+ 
 function NextNode = getNextCircularRegion(hFig, Node, Inc)
     % Construct Spiral Index
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
@@ -607,7 +614,7 @@ function NextNode = getNextCircularRegion(hFig, Node, Inc)
     % 
     NextNode = CircularIndex(NextIndex);
 end
-
+ 
 function ToggleRegionSelection(hFig, Inc)
     % Get selected nodes
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
@@ -638,21 +645,44 @@ function ToggleRegionSelection(hFig, Inc)
     % Select node
     SetSelectedNodes(hFig, NextNode, 1, 1);
 end
-
-
+ 
+ 
 %% ===== JAVA MOUSE CLICK CALLBACK =====
 % TODO: convert to matlab callbacks
 function JavaClickCallback(hFig, ev)
     % Retrieve button
-    ButtonClicked = ev.get('Button');
-    ClickCount = ev.get('ClickCount');
-    if (ButtonClicked == 1)
+    %ButtonClicked = ev.get('Button');
+    %ClickCount = ev.get('ClickCount');
+    curPos = get(hFig, 'CurrentPoint');
+    %ClickCount = get(hFig, '');
+    %Counter = getappdata(hObject,'Counter');
+    
+    button = convertCharsToStrings(get(hFig,'SelectionType'));
+ 
+    %set(gcf,'WindowButtonDownFcn', 'disp(get(gcf,''SelectionType''));');
+    if (button == 'normal') | (button == 'open') % left click
+    %if (ButtonClicked == 1)
         % OpenGL handle
-        OGL = getappdata(hFig,'OpenGLDisplay');
+        %OGL = getappdata(hFig,'OpenGLDisplay');
         % Minimum distance. 1 is difference between level order of distance
-        minimumDistanceThreshold = 0.2;
+        % minimumDistanceThreshold = 0.2;
         % '+1' is to account for the different indexing in Java and Matlab
-        nodeIndex = OGL.raypickNearestNode(ev.getX(), ev.getY(), minimumDistanceThreshold) + 1;
+        % TODO:find index of node that is nearest the point being clicked
+        %nodeIndex = OGL.raypickNearestNode(ev.getX(), ev.getY(), minimumDistanceThreshold) + 1;
+        
+        % Added Dec 21-22, still need to edit SetSelectedNodes for this to
+        % work
+        global lastClick; 
+        global doubleClick_flag;
+   
+        clickTime = now;    
+        xpos_mouse = curPos(1,1);
+        ypos_mouse = curPos(1,2);
+        
+        % get index of the node that is closest to the point where user clicked
+        nodeIndex = getNodeIndex(hFig, xpos_mouse, ypos_mouse);
+        %disp(nodeIndex);
+        
         % If a visible node is clicked on
         if (nodeIndex > 0)
             DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
@@ -666,96 +696,111 @@ function JavaClickCallback(hFig, ev)
                 AlreadySelected = any(selNodes == nodeIndex);
                 % Is the node an agregating node ?
                 IsAgregatingNode = any(AgregatingNodes == nodeIndex);
-
-                if (ClickCount == 1)
-                    % If node is already select
-                    if AlreadySelected
-                        % If all the nodes are selected, then select only this one
-                        if all(ismember(MeasureNodes, selNodes))
-                            SetSelectedNodes(hFig, [], 0);
-                            AlreadySelected = 0;
-                        % If it's the only selected node, then select all
-                        elseif (length(selNodes) == 1)
-                            SetSelectedNodes(hFig, [], 1);
-                            return;
-                        end
-                        % Aggragtive nodes: select blocks of nodes
-                        if IsAgregatingNode
-                            % Get agregated nodes
-                            AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                            % How many are already selected
-                            NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
-                            % Get selected agregated nodes
-%                             AgregatingNodeAlreadySelected = ismember(AgregatingNodes, selNodes);
-                            % If the agregating node and his measure node are the only selected nodes, then select all
-                            if (sum(NodeAlreadySelected) == size(selNodes,1))
+ 
+                %if ((clickTime - lastClick) > 500.0)
+                %if (ClickCount == 1)
+                if (button == 'normal')
+                    % only run if no double click was detected
+                    pause(1);
+                    %if ~doubleClick_flag
+                        % If node is already select
+                        if AlreadySelected
+                            % If all the nodes are selected, then select only this one
+                            if all(ismember(MeasureNodes, selNodes))
+                                SetSelectedNodes(hFig, [], 0);
+                                AlreadySelected = 0;
+                            % If it's the only selected node, then select all
+                            elseif (length(selNodes) == 1)
                                 SetSelectedNodes(hFig, [], 1);
                                 return;
                             end
+                            % Aggragtive nodes: select blocks of nodes
+                            if IsAgregatingNode
+                                % Get agregated nodes
+                                AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
+                                % How many are already selected
+                                NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
+                                % Get selected agregated nodes
+%                               AgregatingNodeAlreadySelected = ismember(AgregatingNodes, selNodes);
+                                % If the agregating node and his measure node are the only selected nodes, then select all
+                                if (sum(NodeAlreadySelected) == size(selNodes,1))
+                                    SetSelectedNodes(hFig, [], 1);
+                                    return;
+                                end
+                            end
                         end
-                    end
                     
-                    % Select picked node
-                    Select = 1;
-                    if (AlreadySelected)
-                        % Deselect picked node
-                        Select = 0;
-                    end
-
-                    % If shift is not pressed, deselect all node
-                    isShiftDown = ev.get('ShiftDown');
-                    if (strcmp(isShiftDown,'off'))
-                        % Deselect
-                        SetSelectedNodes(hFig, selNodes, 0, 1);
-                        % Deselect picked node
+                        % Select picked node
                         Select = 1;
-                    end
+                        if (AlreadySelected)
+                            % Deselect picked node
+                            Select = 0;
+                        end
+ 
+                        % If shift is not pressed, deselect all node
+                        isShiftDown = ev.get('ShiftDown');
+                        if (strcmp(isShiftDown,'off'))
+                            % Deselect
+                            SetSelectedNodes(hFig, selNodes, 0, 1);
+                            % Deselect picked node
+                            Select = 1;
+                        end
                 
-                    if (IsAgregatingNode)
-                        % Get agregated nodes
-                        SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                        % Select
-                        SetSelectedNodes(hFig, [SelectNodeIndex(:); nodeIndex], Select);
-                        % Go up the hierarchy
-                        UpdateHierarchySelection(hFig, nodeIndex, Select);
-                    else
-                        SetSelectedNodes(hFig, nodeIndex, Select);
-                    end
-                else
-                    disp('BST> Zoom into a region: Feature disabled until fixed.');
-                    return;
+                        if (IsAgregatingNode)
+                            % Get agregated nodes
+                            SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
+                            % Select
+                            SetSelectedNodes(hFig, [SelectNodeIndex(:); nodeIndex], Select);
+                            % Go up the hierarchy
+                            UpdateHierarchySelection(hFig, nodeIndex, Select);
+                        else
+                            SetSelectedNodes(hFig, nodeIndex, Select);
+                        end
+                    else % more than a single click
+                        %doubleClick_flag = true;
+                        disp('BST> Zoom into a region: Feature disabled until fixed.');
+                        return;
                     
-                    if (IsAgregatingNode)
-                        OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
-                        if isempty(OrganiseNode)
-                            OrganiseNode = 1;
+                        if (IsAgregatingNode)
+                            OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
+                            if isempty(OrganiseNode)
+                                OrganiseNode = 1;
+                            end
+                            % If it's the same, don't reload for nothing..
+                            if (OrganiseNode == nodeIndex)
+                                return;
+                            end
+                            % If there's only one node, useless update
+                            AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
+                            Invalid = ismember(AgregatedNodeIndex, AgregatingNodes);
+                            Invalid = Invalid | ismember(AgregatedNodeIndex, OrganiseNode);
+                            if (size(AgregatedNodeIndex(~Invalid),1) == 1)
+                                return;
+                            end
+                            % There's no exploration in 3D
+                            % There's no exploration in 3D
+                            is3DDisplay = getappdata(hFig, 'is3DDisplay');
+                            if (~is3DDisplay)
+                                bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', nodeIndex);
+                                UpdateFigurePlot(hFig);
+                            end
                         end
-                        % If it's the same, don't reload for nothing..
-                        if (OrganiseNode == nodeIndex)
-                            return;
-                        end
-                        % If there's only one node, useless update
-                        AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                        Invalid = ismember(AgregatedNodeIndex, AgregatingNodes);
-                        Invalid = Invalid | ismember(AgregatedNodeIndex, OrganiseNode);
-                        if (size(AgregatedNodeIndex(~Invalid),1) == 1)
-                            return;
-                        end
-                        % There's no exploration in 3D
-                        bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', nodeIndex);
-                        UpdateFigurePlot(hFig);
-                    end
+                    %end
                 end
             end
         else
-            if (ClickCount == 2)
+            %if (ClickCount == 2)
+            %if ((clickTime - lastClick) <= 500.0)
+            if (button == 'open')
                 % double click resets display
                 DefaultCamera(hFig);
             end
         end
+        % update time of last click
+        %lastclick = clickTime;
     end
 end
-
+ 
 %%
 function UpdateHierarchySelection(hFig, NodeIndex, Select)
     % Incorrect data
@@ -781,7 +826,7 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
         UpdateHierarchySelection(hFig, AgregatingNode, Select);
     end
 end
-
+ 
 %% =====  ZOOM CALLBACK USING MOUSEWHEEL =========
     % Note: Done Oct 20, 2020
 function FigureMouseWheelCallback(hFig, ev)
@@ -801,8 +846,8 @@ function FigureMouseWheelCallback(hFig, ev)
     ZoomCamera(hFig, Factor);
     
 end
-
-
+ 
+ 
 %% ===== POPUP MENU =====
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
@@ -865,14 +910,14 @@ function DisplayFigurePopup(hFig)
             % java_setcb(jSliderContrast, 'MouseReleasedCallback', @(h,ev)SliderModifiersValidate_Callback(h, ev, ColormapType, 'Contrast', jLabelContrast));
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)TransparencySliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
             jGraphMenu.add(jPanelModifiers);
-
+ 
             % == MODIFY LINK SIZE ==
             jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
             LinkSize = GetLinkSize(hFig);
             % Label
             gui_component('label', jPanelModifiers, '', 'Link size');
             % Slider
-            jSliderContrast = JSlider(0,5,5);
+            jSliderContrast = JSlider(1,5,2); % changed Dec 23
             jSliderContrast.setValue(LinkSize);
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -916,7 +961,7 @@ function DisplayFigurePopup(hFig)
             end
             jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
             jItem.setSelected(ismember(3,TextDisplayMode));
-
+ 
         % === TOGGLE HIERARCHY NODE VISIBILITY ===
         if (DisplayInRegion)
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
@@ -933,7 +978,7 @@ function DisplayFigurePopup(hFig)
             jItem.setSelected(IsBinaryData);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
         end
-
+ 
     % ==== MENU: GRAPH DISPLAY ====
     jGraphMenu = gui_component('Menu', jPopup, [], 'Graph options', IconLoader.ICON_CONNECTN);
         % === SELECT ALL THE NODES ===
@@ -946,7 +991,7 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
         jGraphMenu.addSeparator();
-
+ 
         if (DisplayInRegion)
 %             % === UP ONE LEVEL IN HIERARCHY ===
 %             jItem = gui_component('MenuItem', jGraphMenu, [], 'One Level Up', [], [], @(h, ev)SetExplorationLevelTo(hFig, 1), []);
@@ -972,7 +1017,7 @@ function DisplayFigurePopup(hFig)
     % Display Popup menu
     gui_popup(jPopup, hFig);
 end
-
+ 
 % Cortex transparency slider
 function CortexTransparencySliderModifying_Callback(hFig, ev, jLabel)
     % Update Modifier value
@@ -986,9 +1031,10 @@ function CortexTransparencySliderModifying_Callback(hFig, ev, jLabel)
     %
     SetCortexTransparency(hFig, newValue);
 end
-
+ 
 % Link transparency slider
 function TransparencySliderModifiersModifying_Callback(hFig, ev, jLabel)
+    disp('Entered TransparencySliderModifiersModifying_Callback');
     % Update Modifier value
     newValue = double(ev.getSource().getValue()) / 100;
     % Update text value
@@ -996,9 +1042,10 @@ function TransparencySliderModifiersModifying_Callback(hFig, ev, jLabel)
     %
     SetLinkTransparency(hFig, newValue);
 end
-
+ 
 % Link size slider
 function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+    disp('Entered SizeSliderModifiersModifying_Callback');
     % Update Modifier value
     newValue = ev.getSource().getValue();
     % Update text value
@@ -1006,12 +1053,12 @@ function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
     %
     SetLinkSize(hFig, newValue);
 end
-
-
+ 
+ 
 %% ===========================================================================
 %  ===== PLOT FUNCTIONS ======================================================
 %  ===========================================================================
-
+ 
 %% ===== GET FIGURE DATA =====
 % NOTE: ready, no changes needed
 function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig)
@@ -1075,7 +1122,7 @@ function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] =
         Method = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method;
     end
 end
-
+ 
 function IsDirectional = IsDirectionalData(hFig)
     % If directional data
     IsDirectional = getappdata(hFig, 'IsDirectionalData');
@@ -1084,7 +1131,7 @@ function IsDirectional = IsDirectionalData(hFig)
         IsDirectional = 0;
     end
 end
-
+ 
 % @NOTE: ready, no change required
 function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     % Parse input
@@ -1142,12 +1189,12 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
         % 
         M(~Valid) = 0;
     end
-
+ 
     % Convert matrixu to data pair 
     DataPair = MatrixToDataPair(hFig, M);
     
     fprintf('%.0f Connectivity measure loaded\n', size(DataPair,1));
-
+ 
     % ===== MATRIX STATISTICS ===== 
     DataMinMax = [min(DataPair(:,3)), max(DataPair(:,3))];
     if isempty(DataMinMax)
@@ -1167,8 +1214,8 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     % Clear memory
     clear M;
 end
-
-
+ 
+ 
 function aDataPair = MatrixToDataPair(hFig, mMatrix)
     % Reshape
     [i,j,s] = find(mMatrix);
@@ -1184,14 +1231,17 @@ function aDataPair = MatrixToDataPair(hFig, mMatrix)
     nAgregatingNode = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
     aDataPair(:,1:2) = aDataPair(:,1:2) + nAgregatingNode;
 end
-
-
+ 
+ 
 %% ===== UPDATE FIGURE PLOT =====
 function LoadFigurePlot(hFig) %#ok<DEFNU>
-
+ 
 % Currently using a "test" plot with defined threshold
 % for testing purposes only
     testPlot(hFig)
+    
+    % get the nodes
+   
     
     global GlobalData;
     %% === Initialize data @NOTE: DONE ===
@@ -1292,7 +1342,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
                 selChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
             end
             RowLocs = figure_3d('GetChannelPositions', iDS, selChan);
-
+ 
         case {'results', 'matrix'}
             % Get the file information file
             SurfaceFile = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SurfaceFile;
@@ -1311,7 +1361,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
             elseif ~isempty(Vertices)
                 RowLocs = Vertices;
             end
-
+ 
         otherwise
             error('Unsupported');
     end
@@ -1363,7 +1413,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     end
     setappdata(hFig, 'DisplayInCircle', DisplayInCircle);
     setappdata(hFig, 'DisplayInRegion', DisplayInRegion);
-
+ 
     % IsBinaryData -> Granger
     % IsDirectionalData -> Granger
     setappdata(hFig, 'DefaultRegionFunction', 'max');
@@ -1408,7 +1458,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %   Black for visualization (default)
     BackgroundColor = GetBackgroundColor(hFig);
     SetBackgroundColor(hFig, BackgroundColor);
-
+ 
     
     %% ===== Compute Links =====
     % Data cleaning options
@@ -1435,15 +1485,19 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     if ~isempty(aSplines)
         %OGL.addPrecomputedMeasureLinks(aSplines);
         % Get link size (type double)
-        LinkSize = getappdata(hFig, 'LinkSize');
+        %LinkSize = getappdata(hFig, 'LinkSize');
+        %disp(LinkSize);
         % Set link width
-        SetLinkSize(hFig, LinkSize);
+        %SetLinkSize(hFig, LinkSize);
         % Set link transparency (if 3DDisplay, set to 0.75)
         SetLinkTransparency(hFig, 0.00);
     end
     
     %NEW Nov 10: create links from computed DataPair
     BuildLinks(hFig, DataPair);
+    LinkSize = getappdata(hFig, 'LinkSize');
+    %disp(LinkSize);
+    SetLinkSize(hFig, LinkSize);
         
     %% ===== Init Filters =====
     % 
@@ -1485,7 +1539,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'ThresholdMinMax', ThresholdMinMax);
     % Minimum measure filter
     SetMeasureThreshold(hFig, ThresholdMinMax(1) + MinThreshold * (ThresholdMinMax(2) - ThresholdMinMax(1)), Refresh);
-
+ 
     % Region links
     SetRegionFunction(hFig, getappdata(hFig, 'DefaultRegionFunction'));
     
@@ -1524,7 +1578,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     
 end
-
+ 
 % calls circularGraph in MATLAB
 function testPlot(hFig)
     test_thresh = 0.75; % temporary value used for now
@@ -1533,6 +1587,12 @@ function testPlot(hFig)
     M(M<test_thresh) = 0;
     circularGraph(M, 'Label', RowNames);
     
+    % Added for testing Dec 22 to distinguish single vs double clicks
+    %global lastClick; 
+    %lastClick = 0.0;
+    
+    %global doubleClick_flag;
+    %doubleClick_flag = false;
     
     %hide test nodes
     delete(hFig.UserData.Nodes);
@@ -1540,14 +1600,14 @@ function testPlot(hFig)
     %test display
    % shg %force show current figure
 end
-
+ 
 %% ======== Create all links as Matlab Lines =====
     %@todo: color for strength (current TEMP color is using the
-     %node's scout color)
+     %node's scout color) -> DONE
     % TODO: directional arcs
 function BuildLinks(hFig, DataPair)
     testNodes = hFig.UserData.testNodes;
-    
+  
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs
     
@@ -1572,14 +1632,14 @@ function BuildLinks(hFig, DataPair)
         node2 = DataPair(i,2);
         u  = [testNodes(node1).Position(1);testNodes(node1).Position(2)]/0.6/4;
         v  = [testNodes(node2).Position(1);testNodes(node2).Position(2)]/0.6/4;
-
+ 
         % poincare hyperbolic disc
         x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
         y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
         r  = sqrt(x0^2 + y0^2 - 1);
         thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
         thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
-
+ 
         if (u(1) >= 0 && v(1) >= 0)
             % ensure the arc is within the unit disk
             theta = [linspace(max(thetaLim),pi,50),...
@@ -1596,6 +1656,7 @@ function BuildLinks(hFig, DataPair)
         
         % use thresh as ABS value
         % default colour for now, will be updated in updateColormap
+        % LineWidth set to 2 by default
         l = line(...
             x,...
             y,...
@@ -1620,19 +1681,66 @@ function test(hFig)
 %            
 %         
 end
-
+ 
+% Added Dec 21: function that retrieves the x and y coordinates of all the
+% nodes in the graph
+% used to determine nearest node in JavaClickCallback
+function nodeIndex = getNodeIndex(hFig, xpos_mouse, ypos_mouse)
+ 
+    testNodes = hFig.UserData.testNodes;
+    % get x and y coordinates of the mouse click
+    for i=1:length(testNodes)      
+        if(i==1)
+            xpos_nodes = testNodes(i).Position(1);
+            ypos_nodes = testNodes(i).Position(2);
+        else
+            xpos_nodes(end+1) = testNodes(i).Position(1);
+            ypos_nodes(end+1) = testNodes(i).Position(2);
+        end
+    end
+    
+    % rescale onto our graph circle
+    %x = 4*0.6*r*cos(theta)+4*0.6*x0;
+    %y = 4*0.6*r*sin(theta)+4*0.6*y0;
+    
+    %disp(xpos_nodes(10));
+    %disp(ypos_nodes);
+    %disp(ypos_mouse);
+    
+    % take Euclidean distance
+    % compare with each node and take the minimum distance
+    min_distance = sqrt((xpos_mouse - xpos_nodes(1))^2 + (ypos_mouse - ypos_nodes(1))^2);
+    nodeIndex = 1;
+    for i=2:length(xpos_nodes)
+        distance = sqrt((xpos_mouse - xpos_nodes(i))^2 + (ypos_mouse - ypos_nodes(i))^2);
+ 
+        if distance < min_distance
+            min_distance = distance;
+            nodeIndex = i;
+        end
+    end
+    
+    
+    % set index to 0 when distance is too large
+    %getNodeIndex
+    
+    
+    %disp(testNodes(10).Position(1));
+    %disp(min_distance);
+end
+ 
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
     if ~isempty(Atlas)
         disp('In ~isempty(Atlas');
         NodeColors = reshape([Atlas.Scouts.Color], 3, length(Atlas.Scouts))';
     else
-        disp('In default isempty(Atlas');
+        disp('In default isempty(Atlas)');
         % Default neutral color
         NodeColors = 0.5 * ones(length(RowNames),3);
     end
 end
-
+ 
 function sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, Surface)
     % Compute centroid
     Centroid = sum(Surface.Vertices,1) / size(Surface.Vertices,1);
@@ -1662,9 +1770,10 @@ function sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, Surfac
         sGroups(i+2).Region = [sGroups(i).Region(1) 'A'];
     end
 end
-
+ 
 %TODO: update to same logic as loadFigurePlot
 function UpdateFigurePlot(hFig)
+    disp('Entered UpdateFigurePlot');
     % Progress bar
     bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected rows
@@ -1673,10 +1782,10 @@ function UpdateFigurePlot(hFig)
     OGL = getappdata(hFig, 'OpenGLDisplay');
     % Clear links
     OGL.clearLinks();
-
+ 
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
-
+ 
     OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
     if ~isempty(OrganiseNode)
         % Reset display
@@ -1793,7 +1902,7 @@ function UpdateFigurePlot(hFig)
         end
     end
     bst_figures('SetFigureHandleField', hFig, 'ThresholdMinMax', ThresholdMinMax);
-
+ 
     % Reset filters using the same thresholds
     SetMeasureDisplayFilter(hFig, ones(size(DataPair,1),1), Refresh);
     SetMeasureDistanceFilter(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter'), ...
@@ -1808,7 +1917,7 @@ function UpdateFigurePlot(hFig)
         RegionFunction = getappdata(hFig, 'DefaultRegionFunction');
     end
     SetRegionFunction(hFig, RegionFunction);
-
+ 
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
     
@@ -1828,11 +1937,11 @@ function UpdateFigurePlot(hFig)
     % 
     bst_progress('stop');
 end
-
+ 
 %TODO: update OGL
 function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     % Get OpenGL handle
-%	OGL = getappdata(hFig, 'OpenGLDisplay');
+%   OGL = getappdata(hFig, 'OpenGLDisplay');
     % Update variable
     if (IsVisible == 0)
         IsVisible = -1;
@@ -1852,7 +1961,7 @@ function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     % Redraw
     %OGL.repaint();
 end
-
+ 
 function HideLonelyRegionNode(hFig)
     %
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
@@ -1885,8 +1994,8 @@ function HideLonelyRegionNode(hFig)
         end
     end
 end
-
-
+ 
+ 
 %% ===== FILTERS =====
 %@NOTE: inprogress
 function SetMeasureDisplayFilter(hFig, NewMeasureDisplayMask, Refresh)
@@ -1907,7 +2016,7 @@ function SetMeasureDisplayFilter(hFig, NewMeasureDisplayMask, Refresh)
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
     end
 end
-
+ 
 function SetMeasureThreshold(hFig, NewMeasureThreshold, Refresh)
     % Refresh by default
     if (nargin < 3)
@@ -1936,7 +2045,7 @@ function SetMeasureThreshold(hFig, NewMeasureThreshold, Refresh)
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
     end
 end
-
+ 
 function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
     % Refresh by default
     if (nargin < 3)
@@ -1959,7 +2068,7 @@ function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
     end
 end
-
+ 
 function SetMeasureFiberFilterTo(hFig, NewMeasureFiberFilter, Refresh)
     % Refresh by default
     if (nargin < 3)
@@ -1982,7 +2091,7 @@ function SetMeasureFiberFilterTo(hFig, NewMeasureFiberFilter, Refresh)
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
     end
 end
-
+ 
 function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, MeasureAnatomicalFilter)
     ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
     MeasureAnatomicalMask = zeros(size(DataPair,1),1);
@@ -1995,14 +2104,14 @@ function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, Measur
             MeasureAnatomicalMask = ChannelData(DataPair(:,1),1) ~= ChannelData(DataPair(:,2),1);
     end
 end
-
+ 
 %TODO: remove if not needed
 function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilter)
     MeasureFiberMask = zeros(size(DataPair,1),1);
     MeasureFiberMask(:) = 1;
     return;
 end
-
+ 
 function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureMaxDistanceFilter, Refresh)
     % Refresh by default
     if (nargin < 4)
@@ -2032,7 +2141,7 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
     end
 end
-
+ 
 function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
@@ -2055,7 +2164,7 @@ function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
     end
     mMeanDataPair(mMeanDataPair(:,3) == 0,:) = [];
 end
-
+ 
 function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
@@ -2084,8 +2193,8 @@ function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
     % Eliminate empty data
     mMaxDataPair(mMaxDataPair(:,3) == 0,:) = [];
 end
-
-
+ 
+ 
 %@Note: ready, no changes needed
 function MeasureDistance = ComputeEuclideanMeasureDistance(hFig, aDataPair, mLoc)
     % Correct offset
@@ -2101,8 +2210,8 @@ function MeasureDistance = ComputeEuclideanMeasureDistance(hFig, aDataPair, mLoc
     end
     MeasureDistance = MeasureDistance * MeasureDistanceFactor;
 end
-
-
+ 
+ 
 %% ===== GET DATA MASK =====
 function [DataPair, DataMask] = GetPairs(hFig)
     % Get figure data
@@ -2138,7 +2247,7 @@ function [DataPair, DataMask] = GetPairs(hFig)
         end
     end
 end
-
+ 
 function [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig)
     % Get figure data
     RegionDataPair = bst_figures('GetFigureHandleField', hFig, 'RegionDataPair');
@@ -2174,8 +2283,8 @@ function [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig)
         end
     end
 end
-
-
+ 
+ 
 %% ===== UPDATE COLORMAP =====
 %TODO: update ogl
 function UpdateColormap(hFig)
@@ -2291,7 +2400,7 @@ function UpdateColormap(hFig)
 %             find(DataMask) - 1, ...
 %             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
 %             EndColor(:,1), EndColor(:,2), EndColor(:,3));
-
+ 
         % TODO: Offset is always in absolute
         % OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
     end
@@ -2329,13 +2438,13 @@ function UpdateColormap(hFig)
        
         % TODO: Offset is always in absolute
 %       OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
-
+ 
     end
     
 %     OGL.repaint();
 end
-
-
+ 
+ 
 function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, Limit)
     IsBinaryData = getappdata(hFig, 'IsBinaryData');
     if (~isempty(IsBinaryData) && IsBinaryData == 1)
@@ -2374,8 +2483,8 @@ function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, L
         EndColor = ColorMap(id+(it-1).*(iu-id),:);
     end
 end
-
-
+ 
+ 
 %% ======== RESET CAMERA DISPLAY ================
     % NOTE: DONE Oct 20 2020
     % Resets camera position, target and view angle of the figure
@@ -2393,7 +2502,7 @@ function DefaultCamera(hFig)
     hFig.CurrentAxes.CameraTarget = [0 0 -0.5];
    
 end
-
+ 
 %% ======= ZOOM CAMERA =================
     % Note: Done Oct 20, 2020
     % Zoom in/out by changing CameraViewAngle of default z-axis
@@ -2409,7 +2518,7 @@ function ZoomCamera(hFig, factor)
     end
     hFig.CurrentAxes.CameraViewAngle = angle;
 end
-
+ 
 %% ====== MOVE CAMERA HORIZONTALLY/ VERTIVALLY ===============
     % NOTE: Oct 20, 2020. Needs accuracy improvement.
     % Move camera horizontally/vertically (from SHIFT+MOUSEMOVE) 
@@ -2429,7 +2538,7 @@ function MoveCamera(hFig, Translation)
     hFig.CurrentAxes.CameraPosition = position;
     hFig.CurrentAxes.CameraTarget = target;
 end
-
+ 
 %% ===== UPDATE CAMERA =====
 % TODO: REMOVE
 function UpdateCamera(hFig)
@@ -2442,12 +2551,12 @@ function UpdateCamera(hFig)
    % OGL.lookAt(Pos(1), Pos(2), Pos(3), CameraTarget(1), CameraTarget(2), CameraTarget(3), 0, 1, 0);
   %  OGL.repaint();
 end
-
+ 
 %% ===== ROTATE CAMERA =====
 % TODO: REMOVE
 function RotateCameraAlongAxis(hFig, theta, phi)
 %     disp('RotateCamera reached') %TODO: remove test
-% 	Pos = getappdata(hFig, 'CameraPosition');
+%   Pos = getappdata(hFig, 'CameraPosition');
 %     Target = getappdata(hFig, 'CameraTarget');
 %     Zoom = getappdata(hFig, 'CameraZoom');
 %     Pitch = getappdata(hFig, 'CamPitch');
@@ -2463,7 +2572,7 @@ function RotateCameraAlongAxis(hFig, theta, phi)
 %     
 %     % Projection 
 %     Pos(1) = cos(Yaw) * cos(Pitch);
-% 	Pos(2) = sin(Yaw) * cos(Pitch);
+%   Pos(2) = sin(Yaw) * cos(Pitch);
 %     Pos(3) = sin(Pitch);
 %     Pos = Target + Zoom * Pos;
 %     
@@ -2471,15 +2580,15 @@ function RotateCameraAlongAxis(hFig, theta, phi)
 %     setappdata(hFig, 'CamYaw', Yaw);
 %     setappdata(hFig, 'CameraPosition', Pos);
 % 
-% 	UpdateCamera(hFig);
+%   UpdateCamera(hFig);
 end
-
-
-
+ 
+ 
+ 
 %% ===========================================================================
 %  ===== NODE DISPLAY AND SELECTION ==========================================
 %  ===========================================================================
-
+ 
 %% ===== SET SELECTED NODES =====
 % USAGE:  SetSelectedNodes(hFig, iNodes=[], isSelected=1, isRedraw=1) : Add or remove nodes from the current selection
 %         If node selection is empty: select/unselect all the nodes
@@ -2534,7 +2643,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         %sets current visibility type and updates display marker
        % allIdx = iNodes(~NoColorNodes);  
        % for i = 1:length(allIdx)
-
+ 
          %  testNodes(allIdx(i)).Visible = true;
           % testNodes(allIdx(i)).isAgregatingNode = true;
        % end
@@ -2596,9 +2705,9 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode') > 0);
     ValidDataForDisplay = sum(ismember(DataToFilter(:,1:2), ValidNode),2);
     DataMask = DataMask == 1 & ValidDataForDisplay == 2;
-
+ 
     iData = find(DataMask == 1); % - 1;
-
+ 
     if (~isempty(iData))
         % Update link visibility
         if (MeasureLinksIsVisible)
@@ -2607,7 +2716,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             else
                 set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
             end
-
+ 
          %   OGL.setMeasureLinkVisibility(iData, isSelected);
         else
           %  OGL.setRegionLinkVisibility(iData, isSelected);
@@ -2637,8 +2746,8 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         panel_scout('SetSelectedScoutLabels', []);
     end
 end
-
-
+ 
+ 
 %%
 function SetHierarchyNodeIsVisible(hFig, isVisible)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
@@ -2655,8 +2764,8 @@ function SetHierarchyNodeIsVisible(hFig, isVisible)
     % Make sure they are invisible
     HideLonelyRegionNode(hFig);
 end
-
-
+ 
+ 
 %% 
 %TODO: update no ogl
 function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
@@ -2702,8 +2811,8 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         UpdateColormap(hFig);
     end
 end
-
-
+ 
+ 
 function ToggleMeasureToRegionDisplay(hFig)
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
     if (DisplayInRegion)
@@ -2729,8 +2838,8 @@ function ToggleMeasureToRegionDisplay(hFig)
         disp('Current data does not support region display.');
     end
 end
-
-
+ 
+ 
 %% ===== DISPLAY MODE =====
 function SetTextDisplayMode(hFig, DisplayMode)
     % Get current display
@@ -2757,7 +2866,7 @@ function SetTextDisplayMode(hFig, DisplayMode)
     % Refresh
     RefreshTextDisplay(hFig);
 end
-
+ 
 %% == Toggle label displays for lobes === 
 function ToggleTextDisplayMode(hFig)
     % Get display mode
@@ -2772,7 +2881,7 @@ function ToggleTextDisplayMode(hFig)
     % Refresh
     RefreshTextDisplay(hFig);
 end
-
+ 
 %% ===== BLENDING =====
 % Blending functions has defined by OpenGL
 % GL_SRC_COLOR = 768;
@@ -2782,7 +2891,7 @@ end
 % GL_ONE_MINUS_DST_COLOR = 775;
 % GL_ONE = 1;
 % GL_ZERO = 0;
-
+ 
 %TODO: update ogl
 function SetBlendingMode(hFig, BlendingEnabled)
     % Update figure variable
@@ -2807,7 +2916,7 @@ function SetBlendingMode(hFig, BlendingEnabled)
     % Request redraw
    % OGL.repaint();
 end
-
+ 
 function ToggleBlendingMode(hFig)
     BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
     if isempty(BlendingEnabled)
@@ -2815,7 +2924,7 @@ function ToggleBlendingMode(hFig)
     end
     SetBlendingMode(hFig, 1 - BlendingEnabled);
 end
-
+ 
 %% ===== LINK SIZE =====
 function LinkSize = GetLinkSize(hFig)
     LinkSize = getappdata(hFig, 'LinkSize');
@@ -2823,23 +2932,25 @@ function LinkSize = GetLinkSize(hFig)
         LinkSize = 1;
     end
 end
-
-% TODO: set link size (line size)
+ 
+% DONE Dec 23
 function SetLinkSize(hFig, LinkSize)
-    % Get display
-   % OGL = getappdata(hFig,'OpenGLDisplay');
-    % Get # of data to update (test # 4513 links)
-    nLinks = size(bst_figures('GetFigureHandleField', hFig, 'DataPair'), 1);
-    % Update size
-  %  OGL.setMeasureLinkWidth(0:(nLinks - 1), LinkSize);
-  %  OGL.repaint();
-    % 
+    disp('Entered SetLinkSize');
+    % default = 2
+    if isempty(LinkSize)
+        LinkSize = 2;
+    end
+    
+    Links = hFig.UserData.AllLinks;
+    set(Links, 'LineWidth', LinkSize);
+    
     setappdata(hFig, 'LinkSize', LinkSize);
 end
-
+ 
 %% ===== LINK TRANSPARENCY =====
 % TODO: set link / line transparency
 function SetLinkTransparency(hFig, LinkTransparency)
+    disp('Entered SetLinkTransparency');
     % Get display
    % OGL = getappdata(hFig,'OpenGLDisplay');
     % 
@@ -2850,7 +2961,7 @@ function SetLinkTransparency(hFig, LinkTransparency)
     % 
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
 end
-
+ 
 %% ===== CORTEX TRANSPARENCY =====
 % TODO: was this only for 3d link?
 function CortexTransparency = GetCortexTransparency(hFig)
@@ -2859,12 +2970,12 @@ function CortexTransparency = GetCortexTransparency(hFig)
         CortexTransparency = 0.025;
     end
 end
-
+ 
 function SetCortexTransparency(hFig, CortexTransparency)
     %only for 3d display
     setappdata(hFig, 'CortexTransparency', CortexTransparency);
 end
-
+ 
 %% ===== BACKGROUND COLOR =====
 % @TODO: BLENDING
 % @TODO: Agregating node text (region node - lobe label)
@@ -2873,7 +2984,7 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     if nargin < 3
         TextColor = ~BackgroundColor;
     end
-
+ 
     % Update Matlab background color
     set(hFig, 'Color', BackgroundColor)
     
@@ -2916,7 +3027,7 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     setappdata(hFig, 'BgColor', BackgroundColor); %set app data for toggle
     UpdateContainer(hFig, []);
 end
-
+ 
 % @NOTE: DONE
 function ToggleBackground(hFig)
     BackgroundColor = getappdata(hFig, 'BgColor');
@@ -2928,7 +3039,7 @@ function ToggleBackground(hFig)
     TextColor = ~BackgroundColor;
     SetBackgroundColor(hFig, BackgroundColor, TextColor)
 end
-
+ 
 %%
 function SetIsBinaryData(hFig, IsBinaryData)
     % Update variable
@@ -2937,7 +3048,7 @@ function SetIsBinaryData(hFig, IsBinaryData)
     % Update colormap
     UpdateColormap(hFig);
 end
-
+ 
 function ToggleDisplayMode(hFig)
     % Get display mode
     DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
@@ -2965,7 +3076,7 @@ function ToggleDisplayMode(hFig)
     % UI refresh candy
     RefreshBinaryStatus(hFig);
 end
-
+ 
 function setDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure, Refresh)
     if (nargin < 5)
         Refresh = 1;
@@ -2987,7 +3098,7 @@ function setDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure
         SetSelectedNodes(hFig, selNodes, 1, 1);
     end
 end
-
+ 
 function RefreshBinaryStatus(hFig)
     IsBinaryData = getappdata(hFig, 'IsBinaryData');
     DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
@@ -3014,7 +3125,7 @@ function RefreshBinaryStatus(hFig)
     end
     setappdata(hFig, 'UserSpecifiedBinaryData', 0);
 end
-
+ 
 % ===== REFRESH TEXT VISIBILITY =====
 %TODO: Check text display modes 1,2,3
 function RefreshTextDisplay(hFig, isRedraw)
@@ -3056,11 +3167,11 @@ function RefreshTextDisplay(hFig, isRedraw)
                 testNodes(i).LabelVisible = false;
             end
         end
-
+ 
     end
 end
-
-
+ 
+ 
 %% ===== SET DATA THRESHOLD =====
 function SetDataThreshold(hFig, DataThreshold) %#ok<DEFNU>
     % Get selected rows
@@ -3072,8 +3183,8 @@ function SetDataThreshold(hFig, DataThreshold) %#ok<DEFNU>
     % Redraw selected nodes
     SetSelectedNodes(hFig, selNodes, 1, 1);
 end
-
-
+ 
+ 
 %% ===== UTILITY FUNCTIONS =====
 function NodeIndex = getAgregatedNodesFrom(hFig, AgregatingNodeIndex)
     NodeIndex = [];
@@ -3084,8 +3195,8 @@ function NodeIndex = getAgregatedNodesFrom(hFig, AgregatingNodeIndex)
         NodeIndex = find(member == 1);
     end
 end
-
-
+ 
+ 
 %% ===== COMPUTING LINK PATH =====
 % @note: ready, no changes needed
 function MeasureLinks = BuildRegionPath(hFig, mPaths, mDataPair)
@@ -3127,7 +3238,7 @@ function MeasureLinks = BuildRegionPath(hFig, mPaths, mDataPair)
         end
     end
 end
-
+ 
 % @TODO: remove once not needed anymore
 function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
     %
@@ -3267,7 +3378,7 @@ function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
         aSplines = aSplines(1:Index-1);
     end
 end
-
+ 
 function [B,x] = bspline_basismatrix(n,t,x)
     if nargin > 2
         B = zeros(numel(x),numel(t)-n);
@@ -3283,8 +3394,8 @@ function [B,x] = bspline_basismatrix(n,t,x)
         end
     end
 end
-
-
+ 
+ 
 %% ===== ADD NODES TO DISPLAY =====
 %@Note: new display prototype (working)
 %@TODO: default link and node size (user adjustable)
@@ -3365,7 +3476,7 @@ function ClearAndAddNodes(hFig, V, Names)
     end
     
 end
-
+ 
 %%
 function Index = HemisphereTagToIndex(Region)
     Tag = Region(1);
@@ -3379,7 +3490,7 @@ function Index = HemisphereTagToIndex(Region)
             Index = 3;
     end
 end
-
+ 
 function Index = LobeTagToIndex(Region)
     Tag = Region(2);
     Index = 7; % Unknown
@@ -3401,7 +3512,7 @@ function Index = LobeTagToIndex(Region)
             Index = 6;
     end
 end
-
+ 
 function Tag = ExtractSubRegion(Region)
     Index = LobeTagToIndex(Region);
     if (Index == 1)
@@ -3410,7 +3521,7 @@ function Tag = ExtractSubRegion(Region)
         Tag = Region(3:end);
     end
 end
-
+ 
 function Tag = HemisphereIndexToTag(Index)
     Tag = 'U';
     switch (Index)
@@ -3422,7 +3533,7 @@ function Tag = HemisphereIndexToTag(Index)
             Tag = 'C';
     end
 end
-
+ 
 function Tag = LobeIndexToTag(Index)
     Tag = 'U';
     switch (Index)
@@ -3440,7 +3551,7 @@ function Tag = LobeIndexToTag(Index)
             Tag = 'O';
     end
 end
-
+ 
 function PathNames = VerticeToFullName(hFig, Index)
     if (Index == 1)
         return
@@ -3488,8 +3599,8 @@ function PathNames = VerticeToFullName(hFig, Index)
         end
     end 
 end
-
-
+ 
+ 
 function [sGroups] = GroupScouts(Atlas)
     % 
     NumberOfGroups = 0;
@@ -3536,18 +3647,18 @@ function [sGroups] = GroupScouts(Atlas)
         sGroups(j) = sTemp;
     end
 end
-
-
+ 
+ 
 % @NOTE: ready, no changed needed
 function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sGroups, RowLocs, UpdateStructureStatistics)
-
+ 
     % Display options
     MeasureLevel = 4;
     RegionLevel = 3.5;
     LobeLevel = 2.5;
     HemisphereLevel = 1.0;
     setappdata(hFig, 'MeasureLevelDistance', MeasureLevel);
-
+ 
     % Some values are Hardcoded for Display consistency
     NumberOfMeasureNodes = size(aNames,1);
     NumberOfGroups = size(sGroups,2);
@@ -3883,13 +3994,13 @@ function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sG
         bst_figures('SetFigureHandleField', hFig, 'ChannelData', ChannelData);
     end
 end
-
-
+ 
+ 
 function [Vertices Paths Names] = OrganiseNodeInCircle(hFig, aNames, sGroups)
     % Display options
     MeasureLevel = 4;
     RegionLevel = 2;
-
+ 
     NumberOfMeasureNodes = size(aNames,1);
     NumberOfGroups = size(sGroups,2);
     NumberOfAgregatingNodes = 1;
@@ -3968,10 +4079,10 @@ function [Vertices Paths Names] = OrganiseNodeInCircle(hFig, aNames, sGroups)
     %
     bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
 end
-
-
+ 
+ 
 function Vertices = ReorganiseNodeAroundInCircle(hFig, sGroups, aNames, Level)
-
+ 
     Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
     nVertices = size(bst_figures('GetFigureHandleField', hFig, 'Vertices'), 1);
     Vertices = zeros(nVertices,3);
@@ -4021,3 +4132,5 @@ function Vertices = ReorganiseNodeAroundInCircle(hFig, sGroups, aNames, Level)
         end
     end
 end
+
+
