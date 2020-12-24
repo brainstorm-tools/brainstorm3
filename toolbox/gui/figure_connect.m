@@ -2344,6 +2344,7 @@ end
 
 %% ===== UPDATE COLORMAP =====
 function UpdateColormap(hFig)
+    disp('Entered UpdateColormap');
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)

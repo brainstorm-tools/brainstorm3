@@ -11,6 +11,7 @@ classdef   node < handle
         Visible = true;         % Logical true or false
         isAgregatingNode = false; % if this node is a grouped node/scout /lobe
         LabelVisible = true;    % logical true or false if label is visible or not
+        isClicked  % added Dec 23 to identify a node that has been selected by user
     end
     
     properties (Access = public, Dependent = true)
@@ -113,7 +114,7 @@ classdef   node < handle
                 
                % for i = 1:length(this.Links)
                   %  this.Links(i).ZData = zeros(size(this.Links(i).XData));
-               % end
+               % end            
             end
         end
         
@@ -126,7 +127,6 @@ classdef   node < handle
         end
         
         function updateColor(this) % when is this called?
-            disp('Entered updateColor in node.m');
             this.NodeMarker.Color = this.Color;
             this.NodeMarker.MarkerFaceColor = this.Color; % set marker fill color
             %set(this.Links,'Color',this.Color); % set links color %todo: this will be replaced by color map for connectivity intensity
@@ -142,8 +142,6 @@ classdef   node < handle
             x = this.Position(1);
             y = this.Position(2);
             t = atan2(y,x);
-            disp(x);
-            disp(y);
             
             this.TextLabel = text(0,0,this.Label, 'Interpreter', 'none'); % display with '_'
             this.TextLabel.Position = node.labelOffsetFactor*this.Position;
@@ -187,13 +185,21 @@ classdef   node < handle
           
             if n.Visible % can just change to n.Visible = ~n.Visible? 
                 n.Visible = false;
+                % if n.Visible == false, this means the node has been selected
+                % and marked by a red x
+                %global nodeSelectionFlag;
+                %nodeSelectionFlag = true;
             else
                 n.Visible = true;
+                %nodeSelectionFlag = false;
             end
-            
+
             % TODO: Implement function similar to JavaClickCallback +
             % SetSelectedNodes to form aggregates
             % SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
+            
+            % identify node that was selected
+            %nodeIndex = getNodeIndex(hFig, xpos_mouse, ypos_mouse);
             
         end
     end
