@@ -47,6 +47,9 @@ elseif isempty(strfind(NWBDir, path))
     addpath(genpath(NWBDir));
 end
 
+%% Remove cached Schemas from the path - Use only the needed version on demand
+rmpath(genpath(bst_fullfile(bst_get('BrainstormHomeDir'), 'external', 'nwb')));
+
 
 %% ===== READ DATA HEADERS =====
 % Read header
@@ -60,14 +63,24 @@ if isempty(associated_folder_string)
 	error('This version of NWB is not supported within Brainstorm.');
 end
 
+% % Add to the path the specific schema's version and enter the directory
+% schemaDirectory = bst_fullfile(bst_get('BrainstormHomeDir'), 'external', 'nwb',['matnwb-' associated_folder_string]);
+% previous_directory = pwd;
+% cd(schemaDirectory);
+% addpath(genpath(schemaDirectory));
+% % generateCore();
+
+% Go in the tmp folder so the +types can be dumped
+cd(bst_get(BrainstormTmpDir))
+
 % Do everything in the NWB directory - With every call of nwbRead a +types
 % folder is created in the pwd for some reason
 
-previous_directory = pwd;
-cd(bst_fullfile(bst_get('BrainstormUserDir'),'NWB'));
+% previous_directory = pwd;
+% cd(bst_fullfile(bst_get('BrainstormUserDir'),'NWB'));
 
 % Load the metadata
-nwb2 = nwbRead(DataFile);
+nwb2 = nwbRead(DataFile,'ignorecache');
 
 cd(previous_directory)
 
@@ -470,11 +483,13 @@ function associated_folder_string = associateSchemaVersionToRelease(schemaVersio
     % Add future releases 
     % Unless they fix it from the NWB side, we might need to cache each
     % version locally. So far it was not needed: worked seamlessly between
-    % 2.2.2 and 2.2.5
+    % NWB files: 2.2.1, 2.2.2 and 2.2.5
+    % WARNING: THE RELEASE VERSIONS DONT NECESSARILY MATCH THE SCHEMA
+    % VERSIONS
     
-    if schemaVersion == '2.2.2' %#ok<*BDSCA>
+    if schemaVersion == '2.2.1' %#ok<*BDSCA>
         associated_folder_string = '0.2.2';
-    elseif schemaVersion == '2.2.3'
+    elseif schemaVersion == '2.2.2'
         associated_folder_string = '0.2.3';
     elseif schemaVersion == '2.2.4'
         associated_folder_string = '2.2.4.0';
