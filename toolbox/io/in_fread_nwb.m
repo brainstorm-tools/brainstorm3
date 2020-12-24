@@ -31,6 +31,10 @@ end
 
 nTotalChannels = length(selectedChannels);
 
+%% Load everything from the NWB directory
+previous_directory = pwd;
+cd(bst_fullfile(bst_get('BrainstormUserDir'),'NWB'));
+
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
 
@@ -118,7 +122,11 @@ for iModule = 1:length(ChannelsModuleStructure)
         end
 
         selectedTimestampsIndices = find(actual_timestamps>=timeBounds(1) & actual_timestamps<=timeBounds(2));
-        SampleBoundsModule = [selectedTimestampsIndices(1) selectedTimestampsIndices(end)];
+        if ~isempty(selectedTimestampsIndices)
+            SampleBoundsModule = [selectedTimestampsIndices(1) selectedTimestampsIndices(end)];
+        else
+            SampleBoundsModule = [0, 0];
+        end
         
         % In case I reach the edge of the recording - adjust
         reached_edge = false;
@@ -129,7 +137,7 @@ for iModule = 1:length(ChannelsModuleStructure)
                 
         
         % Assign the Electrophysiological signals - these will not be resampled
-        if ChannelsModuleStructure(iModule).isElectrophysiology
+        if ChannelsModuleStructure(iModule).isElectrophysiology && sum(SampleBoundsModule)~=0
 
             % Do a check if we're dealing with compressed or non-compressed data
             if strcmp(class(ChannelsModuleStructure(iModule).module.data),'types.untyped.DataPipe') % Compressed data
@@ -153,10 +161,15 @@ for iModule = 1:length(ChannelsModuleStructure)
                 F(iiCh+1:iiCh + nModuleChannels,:) = loadedSignal;
             end
             
-        else
+        elseif sum(SampleBoundsModule)~=0 % Take care of the other signals
+            
             % Load the corresponding signal to the requested timebounds
             if ~ChannelsModuleStructure(iModule).FlipMatrix
-                loadedSignal = ChannelsModuleStructure(iModule).module.data.load([1, SampleBoundsModule(1)+1], [ChannelsModuleStructure(iModule).nChannels, SampleBoundsModule(2)+1]);
+                if ChannelsModuleStructure(iModule).nChannels>1
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.load([1, SampleBoundsModule(1)+1], [ChannelsModuleStructure(iModule).nChannels, SampleBoundsModule(2)+1]);
+                else
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.load(SampleBoundsModule(1)+1, SampleBoundsModule(2)+1)';
+                end
             else
                 loadedSignal = ChannelsModuleStructure(iModule).module.data.load([SampleBoundsModule(1)+1, 1], [SampleBoundsModule(2)+1, ChannelsModuleStructure(iModule).nChannels])';
             end
@@ -174,10 +187,12 @@ for iModule = 1:length(ChannelsModuleStructure)
                     %1. UPSAMPLE AND DROP RANDOM ENTRIES
                     % Upsampling the lower sampled behavioral signals
                     upsampled_signal = repelem(low_sampled_signal(iChannel,:),ceil(nSamples/size(low_sampled_signal,2)));
-                    logical_keep = true(1,length(upsampled_signal));
-                    random_points_to_remove = randperm(length(upsampled_signal),length(upsampled_signal)-nSamples-1);
-                    logical_keep(random_points_to_remove) = false;
-                    temp(iChannel,:) = upsampled_signal(logical_keep);
+                    nSamplesToDrop = size(upsampled_signal,2) - nSamples-1;
+                    keep_these_samples = true(1,length(upsampled_signal));
+                    remove_these_samples = round(linspace(2, size(upsampled_signal,2)-1, nSamplesToDrop)); % Keeping the edges
+
+                    keep_these_samples(remove_these_samples) = false;
+                    temp(iChannel,:) = upsampled_signal(keep_these_samples);
 
     %             %2. INTERPOLATION
     %             temp(iChannel,:) = interp(double(data.streams.(stream_info(iStream).label).data),round(Fs/stream_info(iStream).fs));
@@ -185,19 +200,11 @@ for iModule = 1:length(ChannelsModuleStructure)
                 F(iiCh+1:iiCh + nModuleChannels,:) = temp;
 
 
-            else % Higher sampled signals - Same code is used in TDT importer
+            elseif ChannelsModuleStructure(iModule).Fs > Fs % Higher sampled signals - Similar code is used in TDT importer
                 % Make sure the signal has all the samples we expect
                 high_sampled_signal = loadedSignal;
 
-% % % % % %                 % Make sure the signal has all the samples we expect
-% % % % % %                 nExpectedSamples = floor(nSamples / Fs * ChannelsModuleStructure(iModule).Fs);
-% % % % % %                 nGottenSamples = size(high_sampled_signal,2);
-% % % % % %                 high_sampled_signal2 = zeros(size(high_sampled_signal,1), nExpectedSamples);
-% % % % % %                 high_sampled_signal2(:,1:min(nGottenSamples,nExpectedSamples)) = high_sampled_signal;
-% % % % % %                 high_sampled_signal = high_sampled_signal2;
-
                 nSamplesToDrop = size(high_sampled_signal,2) - nSamples-1;
-
                 keep_these_samples = true(1,size(high_sampled_signal,2));
                 remove_these_samples = round(linspace(2, size(high_sampled_signal,2)-1, nSamplesToDrop)); % Keeping the edges
 
@@ -206,10 +213,13 @@ for iModule = 1:length(ChannelsModuleStructure)
 
                 F(iiCh+1:iiCh + nModuleChannels,:) = temp;
             end
+        else % In case there are no signals within the selected timebounds, assign NaNs to it
+            F(iiCh+1:iiCh + nModuleChannels,:) = NaN(size(F(iiCh+1:iiCh + nModuleChannels,:)));
         end
     end
     iiCh = iiCh + nModuleChannels;
 end
 
+cd(previous_directory)
 
 end

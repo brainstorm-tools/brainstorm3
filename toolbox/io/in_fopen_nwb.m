@@ -50,12 +50,30 @@ end
 
 %% ===== READ DATA HEADERS =====
 % Read header
-disp(['NWB file schema version: ' util.getSchemaVersion(DataFile)])
+schemaVersion = util.getSchemaVersion(DataFile);
+disp(['NWB file schema version: ' schemaVersion])
+
+% Get the schema release version it corresponds to
+associated_folder_string = associateSchemaVersionToRelease(schemaVersion);
+
+if isempty(associated_folder_string)
+	error('This version of NWB is not supported within Brainstorm.');
+end
+
+% Do everything in the NWB directory - With every call of nwbRead a +types
+% folder is created in the pwd for some reason
+
+previous_directory = pwd;
+cd(bst_fullfile(bst_get('BrainstormUserDir'),'NWB'));
+
+% Load the metadata
 nwb2 = nwbRead(DataFile);
 
+cd(previous_directory)
+
+% Get the keys of every time-series that is saved within NWB
 all_TimeSeries_keys = keys(nwb2.searchFor('Timeseries', 'includeSubClasses'));
 all_electricalSeries_keys = keys(nwb2.searchFor('electricalseries', 'includeSubClasses'));
-
 
 disp('Add a check here if there are both RAW and LFP signals present - MAYBE POPUP FOR USER TO SELECT')
 
@@ -444,7 +462,28 @@ function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinui
 end
 
 
-
+function associated_folder_string = associateSchemaVersionToRelease(schemaVersion)
+    % This is used in order to find the correct association of Schema and
+    % release. No Schemas before 2.2.2 are supported in Brainstorm
+    % These are taken from:
+    % https://github.com/NeurodataWithoutBorders/matnwb/releases
+    % Add future releases 
+    % Unless they fix it from the NWB side, we might need to cache each
+    % version locally. So far it was not needed: worked seamlessly between
+    % 2.2.2 and 2.2.5
+    
+    if schemaVersion == '2.2.2' %#ok<*BDSCA>
+        associated_folder_string = '0.2.2';
+    elseif schemaVersion == '2.2.3'
+        associated_folder_string = '0.2.3';
+    elseif schemaVersion == '2.2.4'
+        associated_folder_string = '2.2.4.0';
+    elseif schemaVersion == '2.2.5'
+        associated_folder_string = '2.2.5.0';
+    else
+        associated_folder_string = [];
+    end
+end
 
 
 

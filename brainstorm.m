@@ -123,26 +123,38 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     end
     
     % === INITIALIZE NWB LIBRARY ===
-    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');        
-    initialization_flag_file = bst_fullfile(NWBDir,'NWB_initialized.mat');
-    if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file);
-        if ~NWB_initialized
-            disp('Installing NWB library...');
-            % The generateCore needs to run from a specific folder
-            current_path = pwd;
-            cd(NWBDir);
-            % Add NWB to Matlab path
-            addpath(genpath(NWBDir));
-            % Generate the NWB Schema (First time run)
-%             generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-            generateCore()
-            % Update Initialization flag
-            NWB_initialized = 1;
-            save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
-            cd(current_path);
-        end
+    % This JAVA object needs to be initialized every time before Brainstorm
+    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');  
+    if exist(NWBDir, 'dir')
+        disp('Initializing NWB library...');
+        % The generateCore needs to run from the NWB folder
+        current_path = pwd;
+        cd(NWBDir);
+        % Add NWB to Matlab path
+        addpath(genpath(NWBDir));
+        % Generate the NWB Schema
+        generateCore()
+        cd(current_path);
     end
+    
+%     initialization_flag_file = bst_fullfile(NWBDir,'NWB_initialized.mat');
+%     if exist(initialization_flag_file,'file') == 2
+%         load(initialization_flag_file);
+%         if ~NWB_initialized
+%             disp('Installing NWB library...');
+%             % The generateCore needs to run from a specific folder
+%             current_path = pwd;
+%             cd(NWBDir);
+%             % Add NWB to Matlab path
+%             addpath(genpath(NWBDir));
+%             % Generate the NWB Schema (First time run)
+%             generateCore()
+%             % Update Initialization flag
+%             NWB_initialized = 1;
+%             save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
+%             cd(current_path);
+%         end
+%     end
     
     % === INITIALIZE NWB-ECoG LIBRARY ===
     NWB_ECoGDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB', 'ECoG');        
