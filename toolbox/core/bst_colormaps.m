@@ -1638,11 +1638,6 @@ end
 function sColormap = ApplyColormapModifiers(sColormap)
     disp('Entered ApplyColormapModifiers');
     
-    global contrastSlider_value;
-    contrastSlider_value = sColormap.Contrast;
-    global brightnessSlider_value;
-    brightnessSlider_value = -sColormap.Brightness;
-    
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps
     if ~isempty(sColormap.Name)

@@ -2392,23 +2392,6 @@ function UpdateColormap(hFig)
         LinkTransparency = getappdata(hFig, 'LinkTransparency');
         LinkIntensity = 1.00 - LinkTransparency;
         
-        % Added Dec 24: Adjust contrast and brightness
-        % get these values from bst_colornaps
-        global contrastSlider_value;
-        global brightnessSlider_value;
-    
-        if (contrastSlider_value ~= 0)
-            disp(contrastSlider_value);
-        
-        end    
-
-        % brightness is set to 0 when first loading the figure (default)
-        if (brightnessSlider_value ~= 0)
-            %disp(brightnessSlider_value);
-            color_viz(:,:) = brighten(color_viz(:,:), brightnessSlider_value);
-        end
-        
-        
         % set desired colors to each link
         % 4th column of Color is transparency
         for i=1:size(VisibleLinks,1)
@@ -2456,18 +2439,6 @@ function UpdateColormap(hFig)
         
         iData = find(RegionDataMask == 1);
         VisibleLinks_region = hFig.UserData.AllLinks(iData).';
-        
-        % Added Dec 24: Adjust contrast and brightness 
-        if (contrastSlider_value ~= 0)
-            disp(contrastSlider_value);
-        
-        end    
-
-        % brightness is set to 0 when first loading the figure (default)
-        if (brightnessSlider_value ~= 0)
-            %disp(brightnessSlider_value);
-            color_viz_region(:,:) = brighten(color_viz_region(:,:), brightnessSlider_value);
-        end
         
         % set desired colors to each link
         for i=1:size(VisibleLinks_region,1)
