@@ -1,0 +1,156 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of nwbRead</title>
+  <meta name="keywords" content="nwbRead">
+  <meta name="description" content="NWBREAD Reads an NWB file.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="index.html">Home</a> &gt;  <a href="index.html">.</a> &gt; nwbRead.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="index.html"><img alt="<" border="0" src="left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for .&nbsp;<img alt=">" border="0" src="right.png"></a></td></tr></table>-->
+
+<h1>nwbRead
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="box"><strong>NWBREAD Reads an NWB file.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="box"><strong>function nwb = nwbRead(filename, varargin) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="fragment"><pre class="comment">NWBREAD Reads an NWB file.
+  nwb = nwbRead(filename) Reads the nwb file at filename and returns an
+  NWBFile object representing its contents.
+
+  Requires that core and extension NWB types have been generated
+  and reside in a 'types' package on the matlab path.
+
+  Example:
+    %Generate Matlab code for the NWB objects from the core schema.
+    %This only needs to be done once.
+    generateCore('schema\core\nwb.namespace.yaml');
+    %Now we can read nwb files!
+    nwb=nwbRead('data.nwb');
+
+  See also <a href="generateCore.html" class="code" title="function generateCore(varargin)">GENERATECORE</a>, <a href="generateExtension.html" class="code" title="function generateExtension(source)">GENERATEEXTENSION</a>, NWBFILE, <a href="nwbExport.html" class="code" title="function nwbExport(nwb, filenames)">NWBEXPORT</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+<h2><a name="_subfunctions"></a>SUBFUNCTIONS <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<ul style="list-style-image:url(matlabicon.gif)">
+<li><a href="#_sub1" class="code">function generateSpec(fid, specinfo)</a></li></ul>
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function nwb = nwbRead(filename, varargin)</a>
+0002 <span class="comment">%NWBREAD Reads an NWB file.</span>
+0003 <span class="comment">%  nwb = nwbRead(filename) Reads the nwb file at filename and returns an</span>
+0004 <span class="comment">%  NWBFile object representing its contents.</span>
+0005 <span class="comment">%</span>
+0006 <span class="comment">%  Requires that core and extension NWB types have been generated</span>
+0007 <span class="comment">%  and reside in a 'types' package on the matlab path.</span>
+0008 <span class="comment">%</span>
+0009 <span class="comment">%  Example:</span>
+0010 <span class="comment">%    %Generate Matlab code for the NWB objects from the core schema.</span>
+0011 <span class="comment">%    %This only needs to be done once.</span>
+0012 <span class="comment">%    generateCore('schema\core\nwb.namespace.yaml');</span>
+0013 <span class="comment">%    %Now we can read nwb files!</span>
+0014 <span class="comment">%    nwb=nwbRead('data.nwb');</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">%  See also GENERATECORE, GENERATEEXTENSION, NWBFILE, NWBEXPORT</span>
+0017 ignorecache = ~isempty(varargin) &amp;&amp; ischar(varargin{1}) &amp;&amp;<span class="keyword">...</span>
+0018     strcmp(<span class="string">'ignorecache'</span>, varargin{1});
+0019 <span class="keyword">if</span> ischar(filename)
+0020     validateattributes(filename, {<span class="string">'char'</span>}, {<span class="string">'scalartext'</span>, <span class="string">'nonempty'</span>});
+0021     info = h5info(filename);
+0022     <span class="keyword">try</span>
+0023         <span class="comment">%check for .specloc</span>
+0024         fid = H5F.open(filename);
+0025         attr_id = H5A.open(fid, <span class="string">'.specloc'</span>);
+0026         ref_data = H5A.read(attr_id);
+0027         blacklist = H5R.get_name(attr_id, <span class="string">'H5R_OBJECT'</span>, ref_data);
+0028         <span class="keyword">if</span> ~ignorecache
+0029             <a href="#_sub1" class="code" title="subfunction generateSpec(fid, specinfo)">generateSpec</a>(fid, h5info(filename, blacklist));
+0030             rehash(); <span class="comment">%required if we want parseGroup to read the right files.</span>
+0031         <span class="keyword">end</span>
+0032         info.Attributes(strcmp(<span class="string">'.specloc'</span>, {info.Attributes.Name})) = [];
+0033         H5A.close(attr_id);
+0034         H5F.close(fid);
+0035     <span class="keyword">catch</span> ME
+0036         <span class="keyword">if</span> ~strcmp(ME.identifier, <span class="string">'MATLAB:imagesci:hdf5lib:libraryError'</span>)
+0037             rethrow(ME);
+0038         <span class="keyword">end</span>
+0039         blacklist = <span class="string">''</span>;
+0040     <span class="keyword">end</span>
+0041     nwb = io.parseGroup(filename, info, blacklist);
+0042     <span class="keyword">return</span>;
+0043 <span class="keyword">elseif</span> isstring(filename)
+0044     validateattributes(filename, {<span class="string">'string'</span>}, {<span class="string">'nonempty'</span>});
+0045 <span class="keyword">else</span>
+0046     validateattributes(filename, {<span class="string">'cell'</span>}, {<span class="string">'nonempty'</span>});
+0047     assert(iscellstr(filename));
+0048 <span class="keyword">end</span>
+0049 nwb = NwbFile.empty(length(filename), 0);
+0050 isStringArray = isstring(filename);
+0051 <span class="keyword">for</span> i=1:length(filename)
+0052     <span class="keyword">if</span> isStringArray
+0053         fnm = filename(i);
+0054     <span class="keyword">else</span>
+0055         fnm = filename{i};
+0056     <span class="keyword">end</span>
+0057     info = h5info(fnm);
+0058     nwb(i) = io.parseGroup(fnm, info);
+0059 <span class="keyword">end</span>
+0060 <span class="keyword">end</span>
+0061 
+0062 <a name="_sub1" href="#_subfunctions" class="code">function generateSpec(fid, specinfo)</a>
+0063 schema = spec.loadSchema();
+0064 
+0065 <span class="keyword">for</span> i=1:length(specinfo.Groups)
+0066     location = specinfo.Groups(i).Groups(1);
+0067     
+0068     namespace_name = split(specinfo.Groups(i).Name, <span class="string">'/'</span>);
+0069     namespace_name = namespace_name{end};
+0070     
+0071     filenames = {location.Datasets.Name};
+0072     <span class="keyword">if</span> ~any(strcmp(<span class="string">'namespace'</span>, filenames))
+0073         warning(<span class="string">'MATNWB:INVALIDCACHE'</span>,<span class="keyword">...</span>
+0074         <span class="string">'Couldn''t find a `namespace` in namespace `%s`.  Skipping cache generation.'</span>,<span class="keyword">...</span>
+0075         namespace_name);
+0076         <span class="keyword">return</span>;
+0077     <span class="keyword">end</span>
+0078     source_names = {location.Datasets.Name};
+0079     file_loc = strcat(location.Name, <span class="string">'/'</span>, source_names);
+0080     schema_map = containers.Map;
+0081     <span class="keyword">for</span> j=1:length(file_loc)
+0082         did = H5D.open(fid, file_loc{j});
+0083         <span class="keyword">if</span> strcmp(<span class="string">'namespace'</span>, source_names{j})
+0084             namespace_map = schema.read(H5D.read(did));
+0085         <span class="keyword">else</span>
+0086             schema_map(source_names{j}) = H5D.read(did);    
+0087         <span class="keyword">end</span>
+0088         H5D.close(did);
+0089     <span class="keyword">end</span>
+0090     
+0091     spec.generate(namespace_map, schema_map);
+0092 <span class="keyword">end</span>
+0093 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Fri 09-Aug-2019 14:27:49 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

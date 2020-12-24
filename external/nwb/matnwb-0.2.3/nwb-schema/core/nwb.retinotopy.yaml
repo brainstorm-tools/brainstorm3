@@ -1,0 +1,234 @@
+groups:
+- neurodata_type_def: ImagingRetinotopy
+  neurodata_type_inc: NWBDataInterface
+  default_name: ImagingRetinotopy
+  doc: 'Intrinsic signal optical imaging or widefield imaging for measuring retinotopy.
+    Stores orthogonal maps (e.g., altitude/azimuth; radius/theta) of responses to
+    specific stimuli and a combined polarity map from which to identify visual areas.
+    This group does not store the raw responses imaged during retinotopic mapping or the
+    stimuli presented, but rather the resulting phase and power maps after applying a Fourier
+    transform on the averaged responses.
+    Note: for data consistency, all images and arrays are stored in the format [row][column]
+    and [row, col], which equates to [y][x]. Field of view and dimension arrays may
+    appear backward (i.e., y before x).'
+  datasets:
+  - name: axis_1_phase_map
+    dtype: float32
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: Phase response to stimulus on the first measured axis.
+    attributes:
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+    - name: unit
+      dtype: text
+      doc: Unit that axis data is stored in (e.g., degrees).
+  - name: axis_1_power_map
+    dtype: float32
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: Power response on the first measured axis. Response is scaled so 0.0 is no
+      power in the response and 1.0 is maximum relative power.
+    quantity: '?'
+    attributes:
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+    - name: unit
+      dtype: text
+      doc: Unit that axis data is stored in (e.g., degrees).
+  - name: axis_2_phase_map
+    dtype: float32
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: Phase response to stimulus on the second measured axis.
+    attributes:
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+    - name: unit
+      dtype: text
+      doc: Unit that axis data is stored in (e.g., degrees).
+  - name: axis_2_power_map
+    dtype: float32
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: Power response on the second measured axis. Response is scaled so 0.0 is
+      no power in the response and 1.0 is maximum relative power.
+    quantity: '?'
+    attributes:
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+    - name: unit
+      dtype: text
+      doc: Unit that axis data is stored in (e.g., degrees).
+  - name: axis_descriptions
+    dtype: text
+    dims:
+    - axis_1, axis_2
+    shape:
+    - 2
+    doc: Two-element array describing the contents of the two response axis fields.
+      Description should be something like ['altitude', 'azimuth'] or '['radius',
+      'theta'].
+  - name: focal_depth_image
+    dtype: uint16
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: 'Gray-scale image taken with same settings/parameters (e.g., focal depth,
+      wavelength) as data collection. Array format: [rows][columns].'
+    quantity: '?'
+    attributes:
+    - name: bits_per_pixel
+      dtype: int32
+      doc: Number of bits used to represent each value. This is necessary to determine
+        maximum (white) pixel value.
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+    - name: focal_depth
+      dtype: float32
+      doc: Focal depth offset, in meters.
+    - name: format
+      dtype: text
+      doc: Format of image. Right now only 'raw' is supported.
+  - name: sign_map
+    dtype: float32
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: Sine of the angle between the direction of the gradient in axis_1 and axis_2.
+    quantity: '?'
+    attributes:
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+  - name: vasculature_image
+    dtype: uint16
+    dims:
+    - num_rows
+    - num_cols
+    shape:
+    - null
+    - null
+    doc: 'Gray-scale anatomical image of cortical surface. Array structure: [rows][columns]'
+    attributes:
+    - name: bits_per_pixel
+      dtype: int32
+      doc: Number of bits used to represent each value. This is necessary to determine
+        maximum (white) pixel value
+    - name: dimension
+      dtype: int32
+      dims:
+      - num_rows, num_cols
+      shape:
+      - 2
+      doc: 'Number of rows and columns in the image. NOTE: row, column representation
+        is equivalent to height, width.'
+    - name: field_of_view
+      dtype: float32
+      dims:
+      - height, width
+      shape:
+      - 2
+      doc: Size of viewing area, in meters.
+    - name: format
+      dtype: text
+      doc: Format of image. Right now only 'raw' is supported.

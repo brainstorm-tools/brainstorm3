@@ -1,0 +1,383 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <link rel="stylesheet" href="../../helpwin.css">
+      <title>types.core.ImagingPlane - MATLAB File Help</title>
+   </head>
+   <body>
+      <!--Single-page help-->
+      <table border="0" cellspacing="0" width="100%">
+         <tr class="subheader">
+            <td class="headertitle">types.core.ImagingPlane - MATLAB File Help</td>
+            
+            
+            
+         </tr>
+      </table>
+      <div class="title">types.core.ImagingPlane</div>
+      <div class="helptext"><pre><!--helptext -->  <span class="helptopic">ImagingPlane</span> An imaging plane and its metadata.</pre></div><!--after help -->
+      <!--Class-->
+      <div class="sectiontitle">Class Details</div>
+      <table class="class-details">
+         <tr>
+            <td class="class-detail-label">Superclasses</td>
+            <td><a href="NWBContainer.html">types.core.NWBContainer</a>, <a href="matlab:helpwin('types.untyped.GroupClass')">types.untyped.GroupClass</a></td>
+         </tr>
+         <tr>
+            <td class="class-detail-label">Sealed</td>
+            <td>false</td>
+         </tr>
+         <tr>
+            <td class="class-detail-label">Construct on load</td>
+            <td>false</td>
+         </tr>
+      </table>
+      <!--Constructors-->
+      <div class="sectiontitle"><a name="constructors"></a>Constructor Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="name">ImagingPlane</td>
+            <td class="m-help">Constructor for ImagingPlane&nbsp;</td>
+         </tr>
+      </table>
+      <!--Properties-->
+      <div class="sectiontitle"><a name="properties"></a>Property Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="name">description</td>
+            <td class="m-help">Description of the imaging plane.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">device</td>
+            <td class="m-help">Link to the Device object that was used to record from this electrode.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">excitation_lambda</td>
+            <td class="m-help">Excitation wavelength, in nm.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">grid_spacing</td>
+            <td class="m-help">Space between pixels in (x, y) or voxels in (x, y, z) directions, in the specified unit. Assumes imaging plane is a regular
+               grid. See also reference_frame to interpret the grid.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">grid_spacing_unit</td>
+            <td class="m-help">Measurement units for grid_spacing. The default value is 'meters'.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">imaging_rate</td>
+            <td class="m-help">Rate that images are acquired, in Hz. If the corresponding TimeSeries is present, the rate should be stored there instead.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">indicator</td>
+            <td class="m-help">Calcium indicator.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">location</td>
+            <td class="m-help">Location of the imaging plane. Specify the area, layer, comments on estimation of area/layer, stereotaxic coordinates if in
+               vivo, etc. Use standard atlas names for anatomical regions when possible.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">manifold</td>
+            <td class="m-help">DEPRECATED Physical position of each pixel. 'xyz' represents the position of the pixel relative to the defined coordinate
+               space. Deprecated in favor of origin_coords and grid_spacing.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">manifold_conversion</td>
+            <td class="m-help">Scalar to multiply each element in data to convert it to the specified 'unit'. If the data are stored in acquisition system
+               units or other units that require a conversion to be interpretable, multiply the data by 'conversion' to convert the data
+               to the specified 'unit'. e.g. if the data acquisition system stores values in this object as pixels from x = -500 to 499,
+               y = -500 to 499 that correspond to a 2 m x 2 m range, then the 'conversion' multiplier to get from raw data acquisition pixel
+               units to meters is 2/1000.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">manifold_unit</td>
+            <td class="m-help">Base unit of measurement for working with the data. The default value is 'meters'.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">opticalchannel</td>
+            <td class="m-help">An optical channel used to record from an imaging plane.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">origin_coords</td>
+            <td class="m-help">Physical location of the first element of the imaging plane (0, 0) for 2-D data or (0, 0, 0) for 3-D data. See also reference_frame
+               for what the physical location is relative to (e.g., bregma).&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">origin_coords_unit</td>
+            <td class="m-help">Measurement units for origin_coords. The default value is 'meters'.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">reference_frame</td>
+            <td class="m-help">Describes reference frame of origin_coords and grid_spacing. For example, this can be a text description of the anatomical
+               location and orientation of the grid defined by origin_coords and grid_spacing or the vectors needed to transform or rotate
+               the grid to a common anatomical axis (e.g., AP/DV/ML). This field is necessary to interpret origin_coords and grid_spacing.
+               If origin_coords and grid_spacing are not present, then this field is not required. For example, if the microscope takes 10
+               x 10 x 2 images, where the first value of the data matrix (index (0, 0, 0)) corresponds to (-1.2, -0.6, -2) mm relative to
+               bregma, the spacing between pixels is 0.2 mm in x, 0.2 mm in y and 0.5 mm in z, and larger numbers in x means more anterior,
+               larger numbers in y means more rightward, and larger numbers in z means more ventral, then enter the following -- origin_coords
+               = (-1.2, -0.6, -2) grid_spacing = (0.2, 0.2, 0.5) reference_frame = "Origin coordinates are relative to bregma. First dimension
+               corresponds to anterior-posterior axis (larger index = more anterior). Second dimension corresponds to medial-lateral axis
+               (larger index = more rightward). Third dimension corresponds to dorsal-ventral axis (larger index = more ventral)."&nbsp;
+            </td>
+         </tr>
+      </table>
+      <!--Methods-->
+      <div class="sectiontitle"><a name="methods"></a>Method Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">addlistener</td>
+            <td class="m-help">Add listener for event.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">delete</td>
+            <td class="m-help">Delete a handle object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">eq</td>
+            <td class="m-help">== (EQ)   Test handle equality.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">export</td>
+            <td class="m-help">find reference properties&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">findobj</td>
+            <td class="m-help">Find objects matching specified conditions.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">findprop</td>
+            <td class="m-help">Find property of MATLAB handle object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">ge</td>
+            <td class="m-help">>= (GE)   Greater than or equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">gt</td>
+            <td class="m-help">> (GT)   Greater than relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">Sealed 
+               &nbsp;
+               
+            </td>
+            <td class="name">isvalid</td>
+            <td class="m-help">Test handle validity.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">le</td>
+            <td class="m-help"><= (LE)   Less than or equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">listener</td>
+            <td class="m-help">Add listener for event without binding the listener to the source object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">loadAll</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">lt</td>
+            <td class="m-help">< (LT)   Less than relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">ne</td>
+            <td class="m-help">~= (NE)   Not equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">notify</td>
+            <td class="m-help">Notify listeners of event.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_description</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_device</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_excitation_lambda</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_grid_spacing</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_grid_spacing_unit</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_imaging_rate</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_indicator</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_location</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_manifold</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_manifold_conversion</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_manifold_unit</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_opticalchannel</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_origin_coords</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_origin_coords_unit</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_reference_frame</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+      </table>
+      <!--Events-->
+      <div class="sectiontitle"><a name="events"></a>Event Summary
+      </div>
+      <table class="summary-list"></table>
+   </body>
+</html>

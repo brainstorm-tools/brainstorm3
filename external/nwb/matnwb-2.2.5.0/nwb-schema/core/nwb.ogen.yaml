@@ -1,0 +1,43 @@
+groups:
+- neurodata_type_def: OptogeneticSeries
+  neurodata_type_inc: TimeSeries
+  doc: An optogenetic stimulus.
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Applied power for optogenetic stimulus, in watts.
+    attributes:
+    - name: unit
+      dtype: text
+      value: watts
+      doc: Unit of measurement for data, which is fixed to 'watts'.
+  links:
+  - name: site
+    target_type: OptogeneticStimulusSite
+    doc: Link to OptogeneticStimulusSite object that describes the site to which this
+      stimulus was applied.
+
+- neurodata_type_def: OptogeneticStimulusSite
+  neurodata_type_inc: NWBContainer
+  doc: A site of optogenetic stimulation.
+  quantity: '*'
+  datasets:
+  - name: description
+    dtype: text
+    doc: Description of stimulation site.
+  - name: excitation_lambda
+    dtype: float32
+    doc: Excitation wavelength, in nm.
+  - name: location
+    dtype: text
+    doc: Location of the stimulation site. Specify the area, layer, comments on estimation
+      of area/layer, stereotaxic coordinates if in vivo, etc. Use standard atlas
+      names for anatomical regions when possible.
+  links:
+  - name: device
+    target_type: Device
+    doc: Device that generated the stimulus.

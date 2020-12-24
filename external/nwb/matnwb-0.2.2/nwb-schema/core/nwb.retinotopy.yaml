@@ -1,0 +1,118 @@
+groups:
+- neurodata_type_def: ImagingRetinotopy
+  neurodata_type_inc: NWBDataInterface
+  default_name: ImagingRetinotopy
+  doc: 'Intrinsic signal optical imaging or widefield imaging for measuring retinotopy.
+    Stores orthogonal maps (e.g., altitude/azimuth; radius/theta) of responses to
+    specific stimuli and a combined polarity map from which to identify visual areas.
+    NOTE: for data consistency, all images and arrays are stored in the format [row][column]
+    and [row, col], which equates to [y][x]. Field of view and dimension arrays may
+    appear backward (i.e., y before x).'
+  datasets:
+  - name: axis_1_phase_map
+    neurodata_type_inc: AxisMap
+    doc: Phase response to stimulus on the first measured axis.
+  - name: axis_1_power_map
+    neurodata_type_inc: AxisMap
+    doc: Power response on the first measured axis. Response is scaled so 0.0 is no
+      power in the response and 1.0 is maximum relative power.
+    quantity: '?'
+  - name: axis_2_phase_map
+    neurodata_type_inc: AxisMap
+    doc: Phase response to stimulus on the second measured axis.
+  - name: axis_2_power_map
+    neurodata_type_inc: AxisMap
+    quantity: '?'
+    doc: Power response to stimulus on the second measured axis.
+  - name: sign_map
+    neurodata_type_inc: RetinotopyMap
+    doc: Sine of the angle between the direction of the gradient in axis_1 and axis_2.
+  - name: axis_descriptions
+    dtype: text
+    dims:
+    - num_axes
+    shape:
+    - 2
+    doc: Two-element array describing the contents of the two response axis fields.
+      Description should be something like ['altitude', 'azimuth'] or '['radius', 'theta'].
+  - name: focal_depth_image
+    neurodata_type_inc: RetinotopyImage
+    doc: 'Gray-scale image taken with same settings/parameters (e.g., focal depth,
+      wavelength) as data collection. Array format: [rows][columns].'
+    attributes:
+    - name: focal_depth
+      dtype: float32
+      doc: Focal depth offset, in meters.
+  - name: vasculature_image
+    neurodata_type_inc: RetinotopyImage
+    doc: 'Gray-scale anatomical image of cortical surface. Array structure: [rows][columns]'
+
+datasets:
+- neurodata_type_def: RetinotopyMap
+  neurodata_type_inc: NWBData
+  dtype: float32
+  dims:
+  - num_rows
+  - num_cols
+  shape:
+  - null
+  - null
+  doc: 'Abstract two-dimensional map of responses. Array structure: [num_rows][num_columns]'
+  attributes:
+  - name: dimension
+    dtype: int32
+    dims:
+    - row_col
+    shape:
+    - 2
+    doc: 'Number of rows and columns in the image. NOTE: row, column representation
+      is equivalent to height, width.'
+  - name: field_of_view
+    dtype: float32
+    dims:
+    - row_col
+    shape:
+    - 2
+    doc: Size of viewing area, in meters.
+
+- neurodata_type_def: AxisMap
+  neurodata_type_inc: RetinotopyMap
+  dtype: float32
+  dims:
+  - num_rows
+  - num_cols
+  shape:
+  - null
+  - null
+  doc: Abstract two-dimensional map of responses to stimuli along a single response axis (e.g. eccentricity)
+  attributes:
+  - name: unit
+    dtype: text
+    doc: Unit that axis data is stored in (e.g., degrees).
+- neurodata_type_def: RetinotopyImage
+  neurodata_type_inc: GrayscaleImage
+  dtype: uint16
+  doc: 'Gray-scale image related to retinotopic mapping. Array structure: [num_rows][num_columns]'
+  attributes:
+  - name: bits_per_pixel
+    dtype: int32
+    doc: Number of bits used to represent each value. This is necessary to determine
+      maximum (white) pixel value.
+  - name: dimension
+    dtype: int32
+    dims:
+    - row_col
+    shape:
+    - 2
+    doc: 'Number of rows and columns in the image. NOTE: row, column representation
+      is equivalent to height, width.'
+  - name: field_of_view
+    dtype: float32
+    dims:
+    - row_col
+    shape:
+    - 2
+    doc: Size of viewing area, in meters.
+  - name: format
+    dtype: text
+    doc: Format of image. Right now only 'raw' is supported.

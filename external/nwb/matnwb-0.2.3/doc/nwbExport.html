@@ -1,0 +1,98 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of nwbExport</title>
+  <meta name="keywords" content="nwbExport">
+  <meta name="description" content="NWBEXPORT Writes an NWB file.">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="index.html">Home</a> &gt;  <a href="index.html">.</a> &gt; nwbExport.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="index.html"><img alt="<" border="0" src="left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for .&nbsp;<img alt=">" border="0" src="right.png"></a></td></tr></table>-->
+
+<h1>nwbExport
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="box"><strong>NWBEXPORT Writes an NWB file.</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="box"><strong>function nwbExport(nwb, filenames) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="fragment"><pre class="comment">NWBEXPORT Writes an NWB file.
+  nwbRead(nwb,filename) Writes the nwb object to a file at filename.
+
+  Example:
+    % Generate Matlab code for the NWB objects from the core schema.
+    % This only needs to be done once.
+    generateCore('schema\core\nwb.namespace.yaml');
+    % Create some fake fata and write
+    nwb = NwbFile;
+    nwb.session_start_time = datetime('now');
+    nwb.identifier = 'EMPTY';
+    nwb.session_description = 'empty test file';
+    nwbExport(nwb, 'empty.nwb');
+
+  See also <a href="generateCore.html" class="code" title="function generateCore(varargin)">GENERATECORE</a>, <a href="generateExtension.html" class="code" title="function generateExtension(source)">GENERATEEXTENSION</a>, NWBFILE, <a href="nwbRead.html" class="code" title="function nwb = nwbRead(filename, varargin)">NWBREAD</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function nwbExport(nwb, filenames)</a>
+0002 <span class="comment">%NWBEXPORT Writes an NWB file.</span>
+0003 <span class="comment">%  nwbRead(nwb,filename) Writes the nwb object to a file at filename.</span>
+0004 <span class="comment">%</span>
+0005 <span class="comment">%  Example:</span>
+0006 <span class="comment">%    % Generate Matlab code for the NWB objects from the core schema.</span>
+0007 <span class="comment">%    % This only needs to be done once.</span>
+0008 <span class="comment">%    generateCore('schema\core\nwb.namespace.yaml');</span>
+0009 <span class="comment">%    % Create some fake fata and write</span>
+0010 <span class="comment">%    nwb = NwbFile;</span>
+0011 <span class="comment">%    nwb.session_start_time = datetime('now');</span>
+0012 <span class="comment">%    nwb.identifier = 'EMPTY';</span>
+0013 <span class="comment">%    nwb.session_description = 'empty test file';</span>
+0014 <span class="comment">%    nwbExport(nwb, 'empty.nwb');</span>
+0015 <span class="comment">%</span>
+0016 <span class="comment">%  See also GENERATECORE, GENERATEEXTENSION, NWBFILE, NWBREAD</span>
+0017 validateattributes(nwb, {<span class="string">'NwbFile'</span>}, {<span class="string">'nonempty'</span>});
+0018 validateattributes(filenames, {<span class="string">'cell'</span>, <span class="string">'string'</span>, <span class="string">'char'</span>}, {<span class="string">'nonempty'</span>});
+0019 <span class="keyword">if</span> iscell(filenames)
+0020     assert(iscellstr(filenames), <span class="string">'filename cell array must consist of strings'</span>);
+0021 <span class="keyword">end</span>
+0022 <span class="keyword">if</span> ~isscalar(nwb)
+0023     assert(~ischar(filenames) &amp;&amp; length(filenames) == length(nwb), <span class="keyword">...</span>
+0024         <span class="string">'NwbFile and filename array dimensions must match.'</span>);
+0025 <span class="keyword">end</span>
+0026 
+0027 <span class="keyword">for</span> i=1:length(nwb)
+0028     <span class="keyword">if</span> iscellstr(filenames)
+0029         filename = filenames{i};
+0030     <span class="keyword">elseif</span> isstring(filenames)
+0031         filename = filenames(i);
+0032     <span class="keyword">else</span>
+0033         filename = filenames;
+0034     <span class="keyword">end</span>
+0035     export(nwb(i), filename);
+0036 <span class="keyword">end</span>
+0037 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Fri 09-Aug-2019 14:27:49 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

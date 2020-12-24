@@ -1,0 +1,11 @@
++types/+core
++types/+hdmf_common
+testResults.xml
+coverage.xml
+.ropeproject
+namespaces/
+workspace/
+*.asv
+*.swp
+.DS_Store
++tests/env.mat

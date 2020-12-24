@@ -1,0 +1,326 @@
+groups:
+- neurodata_type_def: TwoPhotonSeries
+  neurodata_type_inc: ImageSeries
+  doc: Image stack recorded over time from 2-photon microscope.
+  attributes:
+  - name: pmt_gain
+    dtype: float32
+    doc: Photomultiplier gain.
+    required: false
+  - name: scan_line_rate
+    dtype: float32
+    doc: Lines imaged per second. This is also stored in /general/optophysiology but
+      is kept here as it is useful information for analysis, and so good to be stored
+      w/ the actual data.
+    required: false
+  datasets:
+  - name: field_of_view
+    dtype: float32
+    dims:
+    - width|height
+    - width|height|depth
+    shape:
+    - - 2
+    - - 3
+    doc: Width, height and depth of image, or imaged area, in meters.
+    quantity: '?'
+  links:
+  - name: imaging_plane
+    target_type: ImagingPlane
+    doc: Link to ImagingPlane object from which this TimeSeries data was generated.
+
+- neurodata_type_def: RoiResponseSeries
+  neurodata_type_inc: TimeSeries
+  doc: ROI responses over an imaging plane. The first dimension represents time.
+    The second dimension, if present, represents ROIs.
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - - num_times
+    - - num_times
+      - num_ROIs
+    shape:
+    - - null
+    - - null
+      - null
+    doc: Signals from ROIs.
+  - name: rois
+    neurodata_type_inc: DynamicTableRegion
+    doc: DynamicTableRegion referencing into an ROITable containing information on the ROIs
+      stored in this timeseries.
+
+- neurodata_type_def: DfOverF
+  neurodata_type_inc: NWBDataInterface
+  default_name: DfOverF
+  doc: dF/F information about a region of interest (ROI). Storage hierarchy of dF/F
+    should be the same as for segmentation (i.e., same names for ROIs and for image
+    planes).
+  groups:
+  - neurodata_type_inc: RoiResponseSeries
+    doc: RoiResponseSeries object(s) containing dF/F for a ROI.
+    quantity: '+'
+
+- neurodata_type_def: Fluorescence
+  neurodata_type_inc: NWBDataInterface
+  default_name: Fluorescence
+  doc: Fluorescence information about a region of interest (ROI). Storage hierarchy
+    of fluorescence should be the same as for segmentation (ie, same names for ROIs
+    and for image planes).
+  groups:
+  - neurodata_type_inc: RoiResponseSeries
+    doc: RoiResponseSeries object(s) containing fluorescence data for a ROI.
+    quantity: '+'
+
+- neurodata_type_def: ImageSegmentation
+  neurodata_type_inc: NWBDataInterface
+  default_name: ImageSegmentation
+  doc: Stores pixels in an image that represent different regions of interest (ROIs)
+    or masks. All segmentation for a given imaging plane is stored together, with
+    storage for multiple imaging planes (masks) supported. Each ROI is stored in its
+    own subgroup, with the ROI group containing both a 2D mask and a list of pixels
+    that make up this mask. Segments can also be used for masking neuropil. If segmentation
+    is allowed to change with time, a new imaging plane (or module) is required and
+    ROI names should remain consistent between them.
+  groups:
+  - neurodata_type_inc: PlaneSegmentation
+    doc: Results from image segmentation of a specific imaging plane.
+    quantity: '+'
+
+- neurodata_type_def: PlaneSegmentation
+  neurodata_type_inc: DynamicTable
+  doc: Results from image segmentation of a specific imaging plane.
+  datasets:
+  - name: image_mask
+    neurodata_type_inc: VectorData
+    dims:
+    - - num_roi
+      - num_x
+      - num_y
+    - - num_roi
+      - num_x
+      - num_y
+      - num_z
+    shape:
+    - - null
+      - null
+      - null
+    - - null
+      - null
+      - null
+      - null
+    doc: ROI masks for each ROI. Each image mask is the size of the original imaging
+      plane (or volume) and members of the ROI are finite non-zero.
+    quantity: '?'
+  - name: pixel_mask_index
+    neurodata_type_inc: VectorIndex
+    doc: Index into pixel_mask.
+    quantity: '?'
+  - name: pixel_mask
+    neurodata_type_inc: VectorData
+    dtype:
+    - name: x
+      dtype: uint32
+      doc: Pixel x-coordinate.
+    - name: y
+      dtype: uint32
+      doc: Pixel y-coordinate.
+    - name: weight
+      dtype: float32
+      doc: Weight of the pixel.
+    doc: 'Pixel masks for each ROI: a list of indices and weights for the ROI. Pixel
+      masks are concatenated and parsing of this dataset is maintained by the PlaneSegmentation'
+    quantity: '?'
+  - name: voxel_mask_index
+    neurodata_type_inc: VectorIndex
+    doc: Index into voxel_mask.
+    quantity: '?'
+  - name: voxel_mask
+    neurodata_type_inc: VectorData
+    dtype:
+    - name: x
+      dtype: uint32
+      doc: Voxel x-coordinate.
+    - name: y
+      dtype: uint32
+      doc: Voxel y-coordinate.
+    - name: z
+      dtype: uint32
+      doc: Voxel z-coordinate.
+    - name: weight
+      dtype: float32
+      doc: Weight of the voxel.
+    doc: 'Voxel masks for each ROI: a list of indices and weights for the ROI. Voxel
+      masks are concatenated and parsing of this dataset is maintained by the PlaneSegmentation'
+    quantity: '?'
+  groups:
+  - name: reference_images
+    doc: Image stacks that the segmentation masks apply to.
+    groups:
+    - neurodata_type_inc: ImageSeries
+      doc: One or more image stacks that the masks apply to (can be one-element
+        stack).
+      quantity: '*'
+  links:
+  - name: imaging_plane
+    target_type: ImagingPlane
+    doc: Link to ImagingPlane object from which this data was generated.
+
+- neurodata_type_def: ImagingPlane
+  neurodata_type_inc: NWBContainer
+  doc: An imaging plane and its metadata.
+  quantity: '*'
+  datasets:
+  - name: description
+    dtype: text
+    doc: Description of the imaging plane.
+    quantity: '?'
+  - name: excitation_lambda
+    dtype: float32
+    doc: Excitation wavelength, in nm.
+  - name: imaging_rate
+    dtype: float32
+    doc: Rate that images are acquired, in Hz. If the corresponding TimeSeries is present, the rate should be stored
+      there instead.
+    quantity: '?'
+  - name: indicator
+    dtype: text
+    doc: Calcium indicator.
+  - name: location
+    dtype: text
+    doc: Location of the imaging plane. Specify the area, layer, comments on estimation
+      of area/layer, stereotaxic coordinates if in vivo, etc. Use standard atlas
+      names for anatomical regions when possible.
+  - name: manifold
+    dtype: float32
+    dims:
+    - - height
+      - width
+      - x, y, z
+    - - height
+      - width
+      - depth
+      - x, y, z
+    shape:
+    - - null
+      - null
+      - 3
+    - - null
+      - null
+      - null
+      - 3
+    doc: "DEPRECATED Physical position of each pixel. 'xyz' represents the position\
+      \ of the pixel relative to the defined coordinate space. Deprecated in favor of origin_coords and grid_spacing."
+    quantity: '?'
+    attributes:
+    - name: conversion
+      dtype: float32
+      default_value: 1.0
+      doc: Scalar to multiply each element in data to convert it to the specified 'unit'.
+        If the data are stored in acquisition system units or other units
+        that require a conversion to be interpretable, multiply the data by 'conversion'
+        to convert the data to the specified 'unit'. e.g. if the data acquisition system
+        stores values in this object as pixels from x = -500 to 499, y = -500 to 499
+        that correspond to a 2 m x 2 m range, then the 'conversion' multiplier to get
+        from raw data acquisition pixel units to meters is 2/1000.
+      required: false
+    - name: unit
+      dtype: text
+      default_value: meters
+      doc: Base unit of measurement for working with the data. The default value is 'meters'.
+      required: false
+  - name: origin_coords
+    dtype: float32
+    dims:
+    - x, y
+    - x, y, z
+    shape:
+    - 2
+    - 3
+    doc: Physical location of the first element of the imaging plane (0, 0) for 2-D data or (0, 0, 0) for 3-D data.
+      See also reference_frame for what the physical location is relative to (e.g., bregma).
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      default_value: meters
+      doc: Measurement units for origin_coords. The default value is 'meters'.
+  - name: grid_spacing
+    dtype: float32
+    dims:
+    - x, y
+    - x, y, z
+    shape:
+    - 2
+    - 3
+    doc: Space between pixels in (x, y) or voxels in (x, y, z) directions, in the specified unit.
+      Assumes imaging plane is a regular grid. See also reference_frame to interpret the grid.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      default_value: meters
+      doc: Measurement units for grid_spacing. The default value is 'meters'.
+  - name: reference_frame
+    dtype: text
+    doc: Describes reference frame of origin_coords and grid_spacing.
+      For example, this can be a text description of the anatomical location and orientation of the grid
+      defined by origin_coords and grid_spacing or the vectors needed to transform or rotate the grid to
+      a common anatomical axis (e.g., AP/DV/ML). This field is necessary to interpret origin_coords and grid_spacing.
+      If origin_coords and grid_spacing are not present, then this field is not required.
+      For example, if the microscope takes 10 x 10 x 2 images, where the first value of the data matrix
+      (index (0, 0, 0)) corresponds to (-1.2, -0.6, -2) mm relative to bregma, the spacing between pixels is 0.2 mm in
+      x, 0.2 mm in y and 0.5 mm in z, and larger numbers in x means more anterior, larger numbers in y means more
+      rightward, and larger numbers in z means more ventral, then enter the following --
+      origin_coords = (-1.2, -0.6, -2)
+      grid_spacing = (0.2, 0.2, 0.5)
+      reference_frame = "Origin coordinates are relative to bregma. First dimension corresponds to anterior-posterior
+      axis (larger index = more anterior). Second dimension corresponds to medial-lateral axis (larger index = more
+      rightward). Third dimension corresponds to dorsal-ventral axis (larger index = more ventral)."
+    quantity: '?'
+  groups:
+  - neurodata_type_inc: OpticalChannel
+    doc: An optical channel used to record from an imaging plane.
+    quantity: '+'
+  links:
+  - name: device
+    target_type: Device
+    doc: Link to the Device object that was used to record from this electrode.
+
+- neurodata_type_def: OpticalChannel
+  neurodata_type_inc: NWBContainer
+  doc: An optical channel used to record from an imaging plane.
+  datasets:
+  - name: description
+    dtype: text
+    doc: Description or other notes about the channel.
+  - name: emission_lambda
+    dtype: float32
+    doc: Emission wavelength for channel, in nm.
+
+- neurodata_type_def: MotionCorrection
+  neurodata_type_inc: NWBDataInterface
+  default_name: MotionCorrection
+  doc: 'An image stack where all frames are shifted (registered) to a common coordinate
+    system, to account for movement and drift between frames. Note: each frame at
+    each point in time is assumed to be 2-D (has only x & y dimensions).'
+  groups:
+  - neurodata_type_inc: CorrectedImageStack
+    doc: Reuslts from motion correction of an image stack.
+    quantity: '+'
+
+- neurodata_type_def: CorrectedImageStack
+  neurodata_type_inc: NWBDataInterface
+  doc: Reuslts from motion correction of an image stack.
+  groups:
+  - name: corrected
+    neurodata_type_inc: ImageSeries
+    doc: Image stack with frames shifted to the common coordinates.
+  - name: xy_translation
+    neurodata_type_inc: TimeSeries
+    doc: Stores the x,y delta necessary to align each frame to the common coordinates,
+      for example, to align each frame to a reference image.
+  links:
+  - name: original
+    target_type: ImageSeries
+    doc: Link to ImageSeries object that is being registered.

@@ -1,0 +1,717 @@
+<html>
+   <head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   
+      <link rel="stylesheet" href="../../helpwin.css">
+      <title>types.core.NWBFile - MATLAB File Help</title>
+   </head>
+   <body>
+      <!--Single-page help-->
+      <table border="0" cellspacing="0" width="100%">
+         <tr class="subheader">
+            <td class="headertitle">types.core.NWBFile - MATLAB File Help</td>
+            
+            
+            
+         </tr>
+      </table>
+      <div class="title">types.core.NWBFile</div>
+      <div class="helptext"><pre><!--helptext -->  <span class="helptopic">NWBFile</span> An NWB:N file storing cellular-based neurophysiology data from a single experimental session.</pre></div><!--after help -->
+      <!--Class-->
+      <div class="sectiontitle">Class Details</div>
+      <table class="class-details">
+         <tr>
+            <td class="class-detail-label">Superclasses</td>
+            <td><a href="NWBContainer.html">types.core.NWBContainer</a>, <a href="matlab:helpwin('types.untyped.GroupClass')">types.untyped.GroupClass</a></td>
+         </tr>
+         <tr>
+            <td class="class-detail-label">Sealed</td>
+            <td>false</td>
+         </tr>
+         <tr>
+            <td class="class-detail-label">Construct on load</td>
+            <td>false</td>
+         </tr>
+      </table>
+      <!--Constructors-->
+      <div class="sectiontitle"><a name="constructors"></a>Constructor Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="name">NWBFile</td>
+            <td class="m-help">Constructor for NWBFile&nbsp;</td>
+         </tr>
+      </table>
+      <!--Properties-->
+      <div class="sectiontitle"><a name="properties"></a>Property Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="name">acquisition</td>
+            <td class="m-help">Acquired, raw data.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">analysis</td>
+            <td class="m-help">Custom analysis results.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">file_create_date</td>
+            <td class="m-help">A record of the date the file was created and of subsequent modifications. The date is stored in UTC with local timezone offset
+               as ISO 8601 extended formatted strings: 2018-09-28T14:43:54.123+02:00. Dates stored in UTC end in "Z" with no timezone offset.
+               Date accuracy is up to milliseconds. The file can be created after the experiment was run, so this may differ from the experiment
+               start time. Each modification to the nwb file adds a new entry to the array.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general</td>
+            <td class="m-help">Place-holder than can be extended so that lab-specific meta-data can be placed in /general.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_data_collection</td>
+            <td class="m-help">Notes about data collection and analysis.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_devices</td>
+            <td class="m-help">Data acquisition devices.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_experiment_description</td>
+            <td class="m-help">General description of the experiment.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_experimenter</td>
+            <td class="m-help">Name of person(s) who performed the experiment. Can also specify roles of different people involved.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_extracellular_ephys</td>
+            <td class="m-help">Physical group of electrodes.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_extracellular_ephys_electrodes</td>
+            <td class="m-help">A table of all electrodes (i.e. channels) used for recording.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_institution</td>
+            <td class="m-help">Institution(s) where experiment was performed.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_intracellular_ephys</td>
+            <td class="m-help">An intracellular electrode.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_intracellular_ephys_filtering</td>
+            <td class="m-help">Description of filtering used. Includes filtering type and parameters, frequency fall-off, etc. If this changes between TimeSeries,
+               filter description should be stored as a text attribute for each TimeSeries.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_intracellular_ephys_sweep_table</td>
+            <td class="m-help">The table which groups different PatchClampSeries together.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_keywords</td>
+            <td class="m-help">Terms to search over.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_lab</td>
+            <td class="m-help">Laboratory where experiment was performed.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_notes</td>
+            <td class="m-help">Notes about the experiment.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_optogenetics</td>
+            <td class="m-help">An optogenetic stimulation site.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_optophysiology</td>
+            <td class="m-help">An imaging plane.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_pharmacology</td>
+            <td class="m-help">Description of drugs used, including how and when they were administered. Anesthesia(s), painkiller(s), etc., plus dosage,
+               concentration, etc.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_protocol</td>
+            <td class="m-help">Experimental protocol, if applicable. e.g., include IACUC protocol number.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_related_publications</td>
+            <td class="m-help">Publication information. PMID, DOI, URL, etc.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_session_id</td>
+            <td class="m-help">Lab-specific ID for the session.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_slices</td>
+            <td class="m-help">Description of slices, including information about preparation thickness, orientation, temperature, and bath solution.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_source_script</td>
+            <td class="m-help">Script file or link to public source code used to create this NWB file.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_source_script_file_name</td>
+            <td class="m-help">Name of script file.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_stimulus</td>
+            <td class="m-help">Notes about stimuli, such as how and where they were presented.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_subject</td>
+            <td class="m-help">Information about the animal or person from which the data was measured.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_surgery</td>
+            <td class="m-help">Narrative description about surgery/surgeries, including date(s) and who performed surgery.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">general_virus</td>
+            <td class="m-help">Information about virus(es) used in experiments, including virus ID, source, date made, injection location, volume, etc.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">identifier</td>
+            <td class="m-help">A unique text identifier for the file. For example, concatenated lab name, file creation date/time and experimentalist, or
+               a hash of these and/or other values. The goal is that the string should be unique to all other files.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">intervals</td>
+            <td class="m-help">Optional additional table(s) for describing other experimental time intervals.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">intervals_epochs</td>
+            <td class="m-help">Divisions in time marking experimental stages or sub-divisions of a single recording session.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">intervals_invalid_times</td>
+            <td class="m-help">Time intervals that should be removed from analysis.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">intervals_trials</td>
+            <td class="m-help">Repeated experimental events that have a logical grouping.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">nwb_version</td>
+            <td class="m-help">File version string. Use semantic versioning, e.g. 1.2.1. This will be the name of the format with trailing major, minor and
+               patch numbers.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">processing</td>
+            <td class="m-help">Intermediate analysis of acquired data.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">scratch</td>
+            <td class="m-help">Any one-off datasets&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">session_description</td>
+            <td class="m-help">A description of the experimental session and data in the file.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">session_start_time</td>
+            <td class="m-help">Date and time of the experiment/session start. The date is stored in UTC with local timezone offset as ISO 8601 extended formatted
+               string: 2018-09-28T14:43:54.123+02:00. Dates stored in UTC end in "Z" with no timezone offset. Date accuracy is up to milliseconds.&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">stimulus_presentation</td>
+            <td class="m-help">TimeSeries objects containing data of presented stimuli.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">stimulus_templates</td>
+            <td class="m-help">TimeSeries objects containing template data of presented stimuli.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">timestamps_reference_time</td>
+            <td class="m-help">Date and time corresponding to time zero of all timestamps. The date is stored in UTC with local timezone offset as ISO 8601
+               extended formatted string: 2018-09-28T14:43:54.123+02:00. Dates stored in UTC end in "Z" with no timezone offset. Date accuracy
+               is up to milliseconds. All times stored in the file use this time as reference (i.e., time zero).&nbsp;
+            </td>
+         </tr>
+         <tr class="summary-item">
+            <td class="name">units</td>
+            <td class="m-help">Data about sorted spike units.&nbsp;</td>
+         </tr>
+      </table>
+      <!--Methods-->
+      <div class="sectiontitle"><a name="methods"></a>Method Summary
+      </div>
+      <table class="summary-list">
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">addlistener</td>
+            <td class="m-help">Add listener for event.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">delete</td>
+            <td class="m-help">Delete a handle object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">eq</td>
+            <td class="m-help">== (EQ)   Test handle equality.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">export</td>
+            <td class="m-help">find reference properties&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">findobj</td>
+            <td class="m-help">Find objects matching specified conditions.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">findprop</td>
+            <td class="m-help">Find property of MATLAB handle object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">ge</td>
+            <td class="m-help">>= (GE)   Greater than or equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">gt</td>
+            <td class="m-help">> (GT)   Greater than relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">Sealed 
+               &nbsp;
+               
+            </td>
+            <td class="name">isvalid</td>
+            <td class="m-help">Test handle validity.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">le</td>
+            <td class="m-help"><= (LE)   Less than or equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">listener</td>
+            <td class="m-help">Add listener for event without binding the listener to the source object.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">loadAll</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">lt</td>
+            <td class="m-help">< (LT)   Less than relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">ne</td>
+            <td class="m-help">~= (NE)   Not equal relation for handles.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">notify</td>
+            <td class="m-help">Notify listeners of event.&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_acquisition</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_analysis</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_file_create_date</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_data_collection</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_devices</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_experiment_description</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_experimenter</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_extracellular_ephys</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_extracellular_ephys_electrodes</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_institution</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_intracellular_ephys</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_intracellular_ephys_filtering</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_intracellular_ephys_sweep_table</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_keywords</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_lab</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_notes</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_optogenetics</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_optophysiology</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_pharmacology</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_protocol</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_related_publications</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_session_id</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_slices</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_source_script</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_source_script_file_name</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_stimulus</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_subject</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_surgery</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_general_virus</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_identifier</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_intervals</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_intervals_epochs</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_intervals_invalid_times</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_intervals_trials</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_processing</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_scratch</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_session_description</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_session_start_time</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_stimulus_presentation</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_stimulus_templates</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_timestamps_reference_time</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+         <tr class="summary-item">
+            <td class="attributes">
+               &nbsp;
+               
+            </td>
+            <td class="name">validate_units</td>
+            <td class="m-help">&nbsp;</td>
+         </tr>
+      </table>
+      <!--Events-->
+      <div class="sectiontitle"><a name="events"></a>Event Summary
+      </div>
+      <table class="summary-list"></table>
+   </body>
+</html>

@@ -1,0 +1,173 @@
+datasets:
+- neurodata_type_def: GrayscaleImage
+  neurodata_type_inc: Image
+  dims:
+  - x
+  - y
+  shape:
+  - null
+  - null
+  doc: A grayscale image.
+  dtype: numeric
+
+- neurodata_type_def: RGBImage
+  neurodata_type_inc: Image
+  dims:
+  - x
+  - y
+  - r, g, b
+  shape:
+  - null
+  - null
+  - 3
+  doc: A color image.
+  dtype: numeric
+
+- neurodata_type_def: RGBAImage
+  neurodata_type_inc: Image
+  dims:
+  - x
+  - y
+  - r, g, b, a
+  shape:
+  - null
+  - null
+  - 4
+  doc: A color image with transparency.
+  dtype: numeric
+
+groups:
+- neurodata_type_def: ImageSeries
+  neurodata_type_inc: TimeSeries
+  doc: General image data that is common between acquisition and stimulus time series.
+    Sometimes the image data is stored in the file in a raw format while other
+    times it will be stored as a series of external image files in the host file system.
+    The data field will either be binary data, if the data is stored in the NWB file, or
+    empty, if the data is stored in an external image stack. [frame][x][y] or [frame][x][y][z].
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - - frame
+      - x
+      - y
+    - - frame
+      - x
+      - y
+      - z
+    shape:
+    - - null
+      - null
+      - null
+    - - null
+      - null
+      - null
+      - null
+    doc: Binary data representing images across frames.
+    quantity: '?'
+  - name: dimension
+    dtype: int32
+    dims:
+    - rank
+    shape:
+    - null
+    doc: Number of pixels on x, y, (and z) axes.
+    quantity: '?'
+  - name: external_file
+    dtype: text
+    dims:
+    - num_files
+    shape:
+    - null
+    doc: Paths to one or more external file(s). The field is only present if format='external'.
+      This is only relevant if the image series is stored in the file system as one
+      or more image file(s). This field should NOT be used if the image is stored
+      in another NWB file and that file is linked to this file.
+    quantity: '?'
+    attributes:
+    - name: starting_frame
+      dtype: int32
+      dims:
+      - num_files
+      shape:
+      - null
+      doc: Each external image may contain one or more consecutive frames of the full
+        ImageSeries. This attribute serves as an index to indicate which frames each file
+        contains, to faciliate random access. The 'starting_frame' attribute, hence,
+        contains a list of frame numbers within the full ImageSeries of the first frame
+        of each file listed in the parent 'external_file' dataset. Zero-based indexing is
+        used (hence, the first element will always be zero). For example, if the
+        'external_file' dataset has three paths to files and the first file has 5 frames,
+        the second file has 10 frames, and the third file has 20 frames, then this
+        attribute will have values [0, 5, 15]. If there is a single external file that
+        holds all of the frames of the ImageSeries (and so there is a single element in
+        the 'external_file' dataset), then this attribute should have value [0].
+  - name: format
+    dtype: text
+    default_value: raw
+    doc: Format of image. If this is 'external', then the attribute 'external_file'
+      contains the path information to the image files. If this is 'raw', then the raw
+      (single-channel) binary data is stored in the 'data' dataset. If this attribute
+      is not present, then the default format='raw' case is assumed.
+    quantity: '?'
+
+- neurodata_type_def: ImageMaskSeries
+  neurodata_type_inc: ImageSeries
+  doc: An alpha mask that is applied to a presented visual stimulus. The 'data' array
+    contains an array of mask values that are applied to the displayed image. Mask
+    values are stored as RGBA. Mask can vary with time. The timestamps array indicates
+    the starting time of a mask, and that mask pattern continues until it's explicitly
+    changed.
+  links:
+  - name: masked_imageseries
+    target_type: ImageSeries
+    doc: Link to ImageSeries object that this image mask is applied to.
+
+- neurodata_type_def: OpticalSeries
+  neurodata_type_inc: ImageSeries
+  doc: Image data that is presented or recorded. A stimulus template movie will be
+    stored only as an image. When the image is presented as stimulus, additional data
+    is required, such as field of view (e.g., how much of the visual field the image
+    covers, or how what is the area of the target being imaged). If the OpticalSeries
+    represents acquired imaging data, orientation is also important.
+  datasets:
+  - name: distance
+    dtype: float32
+    doc: Distance from camera/monitor to target/eye.
+    quantity: '?'
+  - name: field_of_view
+    dtype: float32
+    dims:
+    - - width, height
+    - - width, height, depth
+    shape:
+    - - 2
+    - - 3
+    doc: Width, height and depth of image, or imaged area, in meters.
+    quantity: '?'
+  - name: orientation
+    dtype: text
+    doc: Description of image relative to some reference frame (e.g., which way is
+      up). Must also specify frame of reference.
+    quantity: '?'
+
+- neurodata_type_def: IndexSeries
+  neurodata_type_inc: TimeSeries
+  doc: Stores indices to image frames stored in an ImageSeries. The purpose of the
+    ImageIndexSeries is to allow a static image stack to be stored somewhere, and
+    the images in the stack to be referenced out-of-order. This can be for the display
+    of individual images, or of movie segments (as a movie is simply a series of images).
+    The data field stores the index of the frame in the referenced ImageSeries, and
+    the timestamps array indicates when that image was displayed.
+  datasets:
+  - name: data
+    dtype: int32
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Index of the frame in the referenced ImageSeries.
+  links:
+  - name: indexed_timeseries
+    target_type: ImageSeries
+    doc: Link to ImageSeries object containing images that are indexed.

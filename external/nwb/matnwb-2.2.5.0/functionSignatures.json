@@ -1,0 +1,49 @@
+{
+  "generateCore":
+  {
+    "inputs":
+    [
+      {
+        "name":"core namespace",
+        "kind":"optional",
+        "type":"filepath=*.yaml,*.yml"
+      },
+      {
+        "name":"extensions namespace(s)",
+        "kind":"optional",
+        "type":"filepath=*.yaml,*.yml",
+        "multiplicity":"append"
+      }
+    ]
+  },
+  "generateExtension":
+  {
+    "inputs":
+    [
+      {
+        "name":"namespace",
+        "kind":"required",
+        "type":"filepath=*.yaml,*.yml"
+      }
+    ]
+  },
+  "nwbRead":
+  {
+    "inputs":
+    [
+      {"name":"NWB File", "kind":"required", "type":"filepath=*.nwb,*.h5"}
+    ],
+    "outputs":
+    [
+      {"name":"NwbFile Object", "type":"nwbfile"}
+    ]
+  },
+  "nwbExport":
+  {
+    "inputs":
+    [
+      {"name":"NwbFile Object", "kind":"required", "type":"NwbFile"},
+      {"name":"path to output file", "kind":"required", "type":"filepath=*.nwb"}
+    ]
+  }
+}

@@ -1,0 +1,24 @@
+groups:
+- data_type_def: CSRMatrix
+  doc: a compressed sparse row matrix
+  attributes:
+  - name: shape
+    dtype: int
+    shape:
+    - 2
+    doc: the shape of this sparse matrix
+  datasets:
+  - name: indices
+    dtype: int
+    shape:
+    - null
+    doc: column indices
+  - name: indptr
+    dtype: int
+    shape:
+    - null
+    doc: index pointer
+  - name: data
+    shape:
+    - null
+    doc: values in the matrix

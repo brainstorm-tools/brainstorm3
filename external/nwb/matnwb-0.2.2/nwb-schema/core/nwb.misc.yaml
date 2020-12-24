@@ -1,0 +1,279 @@
+groups:
+- neurodata_type_def: AbstractFeatureSeries
+  neurodata_type_inc: TimeSeries
+  doc: Abstract features, such as quantitative descriptions of sensory stimuli. The
+    TimeSeries::data field is a 2D array, storing those features (e.g., for visual
+    grating stimulus this might be orientation, spatial frequency and contrast). Null
+    stimuli (eg, uniform gray) can be marked as being an independent feature (eg,
+    1.0 for gray, 0.0 for actual stimulus) or by storing NaNs for feature values,
+    or through use of the TimeSeries::control fields. A set of features is considered
+    to persist until the next set of features is defined. The final set of features
+    stored should be the null set. This is useful when storing the raw stimulus
+    is impractical.
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - - num_times
+    - - num_times
+      - num_features
+    shape:
+    - - null
+    - - null
+      - null
+    doc: Values of each feature at each time.
+    attributes:
+    - name: unit
+      dtype: text
+      default_value: see 'feature_units'
+      doc: Since there can be different units for different features, store the units
+        in 'feature_units'. The default value for this attribute is "see 'feature_units'".
+      required: false
+  - name: feature_units
+    dtype: text
+    dims:
+    - num_features
+    shape:
+    - null
+    doc: Units of each feature.
+    quantity: '?'
+  - name: features
+    dtype: text
+    dims:
+    - num_features
+    shape:
+    - null
+    doc: Description of the features represented in TimeSeries::data.
+
+- neurodata_type_def: AnnotationSeries
+  neurodata_type_inc: TimeSeries
+  doc: Stores user annotations made during an experiment. The data[]
+    field stores a text array, and timestamps are stored for each annotation (ie,
+    interval=1). This is largely an alias to a standard TimeSeries storing a text
+    array but that is identifiable as storing annotations in a machine-readable way.
+  datasets:
+  - name: data
+    dtype: text
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Annotations made during an experiment.
+    attributes:
+    - name: resolution
+      dtype: float32
+      value: -1.0
+      doc: Smallest meaningful difference between values in data. Annotations have
+        no units, so the value is fixed to -1.0.
+    - name: unit
+      dtype: text
+      value: n/a
+      doc: Base unit of measurement for working with the data. Annotations have
+        no units, so the value is fixed to 'n/a'.
+
+- neurodata_type_def: IntervalSeries
+  neurodata_type_inc: TimeSeries
+  doc: Stores intervals of data. The timestamps field stores the beginning and end
+    of intervals. The data field stores whether the interval just started (>0 value)
+    or ended (<0 value). Different interval types can be represented in the same series
+    by using multiple key values (eg, 1 for feature A, 2 for feature B, 3 for feature
+    C, etc). The field data stores an 8-bit integer. This is largely an alias of a
+    standard TimeSeries but that is identifiable as representing time intervals in
+    a machine-readable way.
+  datasets:
+  - name: data
+    dtype: int8
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Use values >0 if interval started, <0 if interval ended.
+    attributes:
+    - name: resolution
+      dtype: float32
+      value: -1.0
+      doc: Smallest meaningful difference between values in data. Annotations have
+        no units, so the value is fixed to -1.0.
+    - name: unit
+      dtype: text
+      value: n/a
+      doc: Base unit of measurement for working with the data. Annotations have
+        no units, so the value is fixed to 'n/a'.
+
+- neurodata_type_def: DecompositionSeries
+  neurodata_type_inc: TimeSeries
+  doc: Spectral analysis of a time series, e.g. of an LFP or a speech signal.
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - num_times
+    - num_channels
+    - num_bands
+    shape:
+    - null
+    - null
+    - null
+    doc: Data decomposed into frequency bands.
+    attributes:
+    - name: unit
+      dtype: text
+      default_value: no unit
+      doc: Base unit of measurement for working with the data. Actual stored values are
+        not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+  - name: metric
+    dtype: text
+    doc: The metric used, e.g. phase, amplitude, power.
+  groups:
+  - name: bands
+    neurodata_type_inc: DynamicTable
+    doc: Table for describing the bands that this series was generated from. There
+      should be one row in this table for each band.
+    datasets:
+    - name: band_name
+      neurodata_type_inc: VectorData
+      dtype: text
+      doc: Name of the band, e.g. theta.
+    - name: band_limits
+      neurodata_type_inc: VectorData
+      dtype: float32
+      dims:
+      - num_bands
+      - low, high
+      shape:
+      - null
+      - 2
+      doc: Low and high limit of each band in Hz. If it is a Gaussian filter, use
+        2 SD on either side of the center.
+    - name: band_mean
+      neurodata_type_inc: VectorData
+      dtype: float32
+      dims:
+      - num_bands
+      shape:
+      - null
+      doc: The mean Gaussian filters, in Hz.
+    - name: band_stdev
+      neurodata_type_inc: VectorData
+      dtype: float32
+      dims:
+      - num_bands
+      shape:
+      - null
+      doc: The standard deviation of Gaussian filters, in Hz.
+  links:
+  - name: source_timeseries
+    target_type: TimeSeries
+    doc: Link to TimeSeries object that this data was calculated from. Metadata about
+      electrodes and their position can be read from that ElectricalSeries so it is
+      not necessary to store that information here.
+    quantity: '?'
+
+- neurodata_type_def: Units
+  neurodata_type_inc: DynamicTable
+  default_name: Units
+  doc: Data about spiking units. Event times of observed units (e.g. cell, synapse,
+    etc.) should be concatenated and stored in spike_times.
+  datasets:
+  - name: spike_times_index
+    neurodata_type_inc: VectorIndex
+    doc: Index into the spike_times dataset.
+    quantity: '?'
+  - name: spike_times
+    neurodata_type_inc: VectorData
+    dtype: float64
+    doc: Spike times for each unit.
+    quantity: '?'
+    attributes:
+    - name: resolution
+      dtype: float64
+      doc: The smallest possible difference between two spike times. Usually 1 divided by the acquisition sampling rate
+        from which spike times were extracted, but could be larger if the acquisition time series was downsampled or
+        smaller if the acquisition time series was smoothed/interpolated and it is possible for the spike time to be
+        between samples.
+      required: false
+  - name: obs_intervals_index
+    neurodata_type_inc: VectorIndex
+    doc: Index into the obs_intervals dataset.
+    quantity: '?'
+  - name: obs_intervals
+    neurodata_type_inc: VectorData
+    dtype: float64
+    dims:
+    - num_intervals
+    - start|end
+    shape:
+    - null
+    - 2
+    doc: Observation intervals for each unit.
+    quantity: '?'
+  - name: electrodes_index
+    neurodata_type_inc: VectorIndex
+    doc: Index into electrodes.
+    quantity: '?'
+  - name: electrodes
+    neurodata_type_inc: DynamicTableRegion
+    doc: Electrode that each spike unit came from, specified using a DynamicTableRegion.
+    quantity: '?'
+  - name: electrode_group
+    neurodata_type_inc: VectorData
+    dtype:
+      target_type: ElectrodeGroup
+      reftype: object
+    doc: Electrode group that each spike unit came from.
+    quantity: '?'
+  - name: waveform_mean
+    neurodata_type_inc: VectorData
+    dtype: float32
+    dims:
+    - - num_units
+      - num_samples
+    - - num_units
+      - num_samples
+      - num_electrodes
+    shape:
+    - - null
+      - null
+    - - null
+      - null
+      - null
+    doc: Spike waveform mean for each spike unit.
+    quantity: '?'
+    attributes:
+    - name: sampling_rate
+      dtype: float32
+      doc: Sampling rate, in hertz.
+      required: false
+    - name: unit
+      dtype: text
+      value: volts
+      doc: Unit of measurement. This value is fixed to 'volts'.
+      required: false
+  - name: waveform_sd
+    neurodata_type_inc: VectorData
+    dtype: float32
+    dims:
+    - - num_units
+      - num_samples
+    - - num_units
+      - num_samples
+      - num_electrodes
+    shape:
+    - - null
+      - null
+    - - null
+      - null
+      - null
+    doc: Spike waveform standard deviation for each spike unit.
+    quantity: '?'
+    attributes:
+    - name: sampling_rate
+      dtype: float32
+      doc: Sampling rate, in hertz.
+      required: false
+    - name: unit
+      dtype: text
+      value: volts
+      doc: Unit of measurement. This value is fixed to 'volts'.
+      required: false

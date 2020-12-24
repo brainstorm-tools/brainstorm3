@@ -1,0 +1,469 @@
+
+<!DOCTYPE html
+  PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN">
+<html><head>
+      <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+   <!--
+This HTML was auto-generated from MATLAB code.
+To make changes, update the MATLAB code and republish this document.
+      --><title>Neurodata Without Borders: Neurophysiology (NWB:N), Calcium Imaging Tutorial</title><meta name="generator" content="MATLAB 9.5"><link rel="schema.DC" href="http://purl.org/dc/elements/1.1/"><meta name="DC.date" content="2019-05-14"><meta name="DC.source" content="ophys.m"><style type="text/css">
+html,body,div,span,applet,object,iframe,h1,h2,h3,h4,h5,h6,p,blockquote,pre,a,abbr,acronym,address,big,cite,code,del,dfn,em,font,img,ins,kbd,q,s,samp,small,strike,strong,sub,sup,tt,var,b,u,i,center,dl,dt,dd,ol,ul,li,fieldset,form,label,legend,table,caption,tbody,tfoot,thead,tr,th,td{margin:0;padding:0;border:0;outline:0;font-size:100%;vertical-align:baseline;background:transparent}body{line-height:1}ol,ul{list-style:none}blockquote,q{quotes:none}blockquote:before,blockquote:after,q:before,q:after{content:'';content:none}:focus{outine:0}ins{text-decoration:none}del{text-decoration:line-through}table{border-collapse:collapse;border-spacing:0}
+
+html { min-height:100%; margin-bottom:1px; }
+html body { height:100%; margin:0px; font-family:Arial, Helvetica, sans-serif; font-size:10px; color:#000; line-height:140%; background:#fff none; overflow-y:scroll; }
+html body td { vertical-align:top; text-align:left; }
+
+h1 { padding:0px; margin:0px 0px 25px; font-family:Arial, Helvetica, sans-serif; font-size:1.5em; color:#d55000; line-height:100%; font-weight:normal; }
+h2 { padding:0px; margin:0px 0px 8px; font-family:Arial, Helvetica, sans-serif; font-size:1.2em; color:#000; font-weight:bold; line-height:140%; border-bottom:1px solid #d6d4d4; display:block; }
+h3 { padding:0px; margin:0px 0px 5px; font-family:Arial, Helvetica, sans-serif; font-size:1.1em; color:#000; font-weight:bold; line-height:140%; }
+
+a { color:#005fce; text-decoration:none; }
+a:hover { color:#005fce; text-decoration:underline; }
+a:visited { color:#004aa0; text-decoration:none; }
+
+p { padding:0px; margin:0px 0px 20px; }
+img { padding:0px; margin:0px 0px 20px; border:none; }
+p img, pre img, tt img, li img, h1 img, h2 img { margin-bottom:0px; } 
+
+ul { padding:0px; margin:0px 0px 20px 23px; list-style:square; }
+ul li { padding:0px; margin:0px 0px 7px 0px; }
+ul li ul { padding:5px 0px 0px; margin:0px 0px 7px 23px; }
+ul li ol li { list-style:decimal; }
+ol { padding:0px; margin:0px 0px 20px 0px; list-style:decimal; }
+ol li { padding:0px; margin:0px 0px 7px 23px; list-style-type:decimal; }
+ol li ol { padding:5px 0px 0px; margin:0px 0px 7px 0px; }
+ol li ol li { list-style-type:lower-alpha; }
+ol li ul { padding-top:7px; }
+ol li ul li { list-style:square; }
+
+.content { font-size:1.2em; line-height:140%; padding: 20px; }
+
+pre, code { font-size:12px; }
+tt { font-size: 1.2em; }
+pre { margin:0px 0px 20px; }
+pre.codeinput { padding:10px; border:1px solid #d3d3d3; background:#f7f7f7; }
+pre.codeoutput { padding:10px 11px; margin:0px 0px 20px; color:#4c4c4c; }
+pre.error { color:red; }
+
+@media print { pre.codeinput, pre.codeoutput { word-wrap:break-word; width:100%; } }
+
+span.keyword { color:#0000FF }
+span.comment { color:#228B22 }
+span.string { color:#A020F0 }
+span.untermstring { color:#B20000 }
+span.syscmd { color:#B28C00 }
+
+.footer { width:auto; padding:10px 0px; margin:25px 0px 0px; border-top:1px dotted #878787; font-size:0.8em; line-height:140%; font-style:italic; color:#878787; text-align:left; float:none; }
+.footer p { margin:0px; }
+.footer a { color:#878787; }
+.footer a:hover { color:#878787; text-decoration:underline; }
+.footer a:visited { color:#878787; }
+
+table th { padding:7px 5px; text-align:left; vertical-align:middle; border: 1px solid #d6d4d4; font-weight:bold; }
+table td { padding:7px 5px; text-align:left; vertical-align:top; border:1px solid #d6d4d4; }
+
+
+
+
+
+  </style></head><body><div class="content"><h1>Neurodata Without Borders: Neurophysiology (NWB:N), Calcium Imaging Tutorial</h1><!--introduction--><p>How to write ophys data to an NWB file using matnwb.</p><pre>author: Ben Dichter
+contact: ben.dichter@gmail.com
+last edited: May 14, 2019</pre><!--/introduction--><h2>Contents</h2><div><ul><li><a href="#3">NWB file</a></li><li><a href="#5">Subject</a></li><li><a href="#6">Adding metadata about acquisition</a></li><li><a href="#7">TwoPhotonSeries</a></li><li><a href="#9">Ophys Processing Module</a></li><li><a href="#10">Plane Segmentation</a></li><li><a href="#11">Fluoresence and RoiResponseSeries</a></li><li><a href="#14">Write</a></li><li><a href="#15">Read</a></li></ul></div><p>This tutorial will demonstrate how to write calcium imaging data. The workflow demonstrated here involves three main steps:</p><p>1. Acquiring two-photon images 2. Image segmentation 3. Fluorescence and dF/F response</p><p>The data we output will be in the following structure:</p><p><img vspace="5" hspace="5" src="ophys_tutorial_schematic.png" alt=""> </p><h2 id="3">NWB file</h2><p>All contents get added to the NWB file, which is created with the following command</p><pre class="codeinput">date = datetime(2018, 3, 1, 12, 0, 0);
+session_start_time = datetime(date, <span class="string">'TimeZone'</span>, <span class="string">'local'</span>);
+
+nwb = NwbFile( <span class="keyword">...</span>
+    <span class="string">'session_description'</span>, <span class="string">'a test NWB File'</span>, <span class="keyword">...</span>
+    <span class="string">'identifier'</span>, <span class="string">'mouse004_day4'</span>, <span class="keyword">...</span>
+    <span class="string">'session_start_time'</span>, session_start_time);
+</pre><p>You can check the contents by displaying the NwbFile object</p><pre class="codeinput">disp(nwb);
+</pre><pre class="codeoutput">  NwbFile with properties:
+
+                                nwb_version: '2.0b'
+                                acquisition: [1&times;1 types.untyped.Set]
+                                   analysis: [1&times;1 types.untyped.Set]
+                           file_create_date: []
+                                    general: [1&times;1 types.untyped.Set]
+                    general_data_collection: []
+                            general_devices: [1&times;1 types.untyped.Set]
+             general_experiment_description: []
+                       general_experimenter: []
+                general_extracellular_ephys: [1&times;1 types.untyped.Set]
+     general_extracellular_ephys_electrodes: []
+                        general_institution: []
+                general_intracellular_ephys: [1&times;1 types.untyped.Set]
+      general_intracellular_ephys_filtering: []
+    general_intracellular_ephys_sweep_table: []
+                           general_keywords: []
+                                general_lab: []
+                              general_notes: []
+                       general_optogenetics: [1&times;1 types.untyped.Set]
+                     general_optophysiology: [1&times;1 types.untyped.Set]
+                       general_pharmacology: []
+                           general_protocol: []
+               general_related_publications: []
+                         general_session_id: []
+                             general_slices: []
+                      general_source_script: []
+            general_source_script_file_name: []
+                     general_specifications: [1&times;1 types.untyped.Set]
+                           general_stimulus: []
+                            general_subject: []
+                            general_surgery: []
+                              general_virus: []
+                                 identifier: 'mouse004_day4'
+                                  intervals: [1&times;1 types.untyped.Set]
+                           intervals_epochs: []
+                    intervals_invalid_times: []
+                           intervals_trials: []
+                                 processing: [1&times;1 types.untyped.Set]
+                        session_description: 'a test NWB File'
+                         session_start_time: 2018-03-01T12:00:00.000000-05:00
+                      stimulus_presentation: [1&times;1 types.untyped.Set]
+                         stimulus_templates: [1&times;1 types.untyped.Set]
+                  timestamps_reference_time: []
+                                      units: []
+                                       help: 'an NWB:N file for storing cellular-based neurophysiology data'
+
+</pre><h2 id="5">Subject</h2><p>Subject-specific information goes in type <tt>Subject</tt> in location <tt>general_subject</tt>.</p><pre class="codeinput">nwb.general_subject = types.core.Subject( <span class="keyword">...</span>
+    <span class="string">'description'</span>, <span class="string">'mouse 5'</span>, <span class="string">'age'</span>, <span class="string">'9 months'</span>, <span class="keyword">...</span>
+    <span class="string">'sex'</span>, <span class="string">'M'</span>, <span class="string">'species'</span>, <span class="string">'Mus musculus'</span>);
+</pre><h2 id="6">Adding metadata about acquisition</h2><p>Before you can add your data, you will need to provide some information about how that data was generated. This amounts describing the device, imaging plane and the optical channel used.</p><pre class="codeinput">optical_channel = types.core.OpticalChannel( <span class="keyword">...</span>
+    <span class="string">'description'</span>, <span class="string">'description'</span>, <span class="keyword">...</span>
+    <span class="string">'emission_lambda'</span>, 500.);
+
+device_name = <span class="string">'my_device'</span>;
+nwb.general_devices.set(device_name, types.core.Device());
+
+imaging_plane_name = <span class="string">'imaging_plane'</span>;
+imaging_plane = types.core.ImagingPlane( <span class="keyword">...</span>
+    <span class="string">'optical_channel'</span>, optical_channel, <span class="keyword">...</span>
+    <span class="string">'description'</span>, <span class="string">'a very interesting part of the brain'</span>, <span class="keyword">...</span>
+    <span class="string">'device'</span>, types.untyped.SoftLink([<span class="string">'/general/devices/'</span> device_name]), <span class="keyword">...</span>
+    <span class="string">'excitation_lambda'</span>, 600., <span class="keyword">...</span>
+    <span class="string">'imaging_rate'</span>, 5., <span class="keyword">...</span>
+    <span class="string">'indicator'</span>, <span class="string">'GFP'</span>, <span class="keyword">...</span>
+    <span class="string">'location'</span>, <span class="string">'my favorite brain location'</span>, <span class="keyword">...</span>
+    <span class="string">'manifold'</span>, ones(3, 5, 5), <span class="keyword">...</span>
+    <span class="string">'manifold_conversion'</span>, 4, <span class="keyword">...</span>
+    <span class="string">'manifold_unit'</span>, <span class="string">'m'</span>, <span class="keyword">...</span>
+    <span class="string">'reference_frame'</span>, <span class="string">'A frame to refer to'</span>);
+
+nwb.general_optophysiology.set(imaging_plane_name, imaging_plane);
+
+imaging_plane_path = [<span class="string">'/general/optophysiology/'</span> imaging_plane_name];
+</pre><h2 id="7">TwoPhotonSeries</h2><p>Acquired imaging data is stored an an object called TwoPhotonSeries and put in the acquisition folder. You may store the image series data in the HDF5 file</p><pre class="codeinput">image_series_name = <span class="string">'image_series1'</span>;
+
+image_series = types.core.TwoPhotonSeries( <span class="keyword">...</span>
+    <span class="string">'imaging_plane'</span>, types.untyped.SoftLink(imaging_plane_path), <span class="keyword">...</span>
+    <span class="string">'starting_time_rate'</span>, 3.0, <span class="keyword">...</span>
+    <span class="string">'data'</span>, ones(200, 100, 1000), <span class="keyword">...</span>
+    <span class="string">'data_unit'</span>, <span class="string">'lumens'</span>);
+
+nwb.acquisition.set(image_series_name, image_series);
+</pre><p>Or you may link to a tiff file externally</p><pre class="codeinput">image_series_name = <span class="string">'image_series2'</span>;
+
+image_series = types.core.TwoPhotonSeries( <span class="keyword">...</span>
+    <span class="string">'external_file'</span>, <span class="string">'images.tiff'</span>, <span class="keyword">...</span>
+    <span class="string">'imaging_plane'</span>, types.untyped.SoftLink(imaging_plane_path), <span class="keyword">...</span>
+    <span class="string">'external_file_starting_frame'</span>, 0, <span class="keyword">...</span>
+    <span class="string">'format'</span>, <span class="string">'tiff'</span>, <span class="keyword">...</span>
+    <span class="string">'starting_time_rate'</span>, 3.0, <span class="keyword">...</span>
+    <span class="string">'data'</span>, NaN, <span class="keyword">...</span>
+    <span class="string">'data_unit'</span>, <span class="string">'na'</span>);
+
+nwb.acquisition.set(image_series_name, image_series);
+</pre><h2 id="9">Ophys Processing Module</h2><p>Processed data should go in the ophys ProcessingModule. Here we create the module</p><pre class="codeinput">ophys_module = types.core.ProcessingModule(<span class="keyword">...</span>
+    <span class="string">'description'</span>, <span class="string">'holds processed calcium imaging data'</span>);
+</pre><h2 id="10">Plane Segmentation</h2><p>Now that the raw data is stored, you can add the image segmentation results. This is done with the ImageSegmentation data interface. This class has the ability to store segmentation from one or more imaging planes, which are stored via the PlaneSegmentation class. PlaneSegmentation is a table where each row represents a single ROI. Once you have  your PlaneSegmentation object, you can add the an image_mask object to PlaneSegmenation. PlaneSegmentation is also a DynamicTable, which means you can add additional custom columns about the ROIs.</p><pre class="codeinput"><span class="comment">% generate fake image_mask data</span>
+imaging_shape = [100, 200];
+x = imaging_shape(1);
+y = imaging_shape(2);
+
+n_rois = 20;
+image_mask = NaN(y, x, n_rois);
+<span class="keyword">for</span> i = 1:n_rois
+    center = rand(1,2) .* [x,y];
+    sigma = eye(2)*2;
+    [X1,X2] = meshgrid(1:x,1:y);
+    X = [X1(:) X2(:)];
+    p = mvnpdf(X,center,sigma);
+    Z = reshape(p,y,x);
+    image_mask(:,:,i) = Z;
+<span class="keyword">end</span>
+
+<span class="comment">% add data to NWB structures</span>
+plane_segmentation = types.core.PlaneSegmentation( <span class="keyword">...</span>
+    <span class="string">'colnames'</span>, {<span class="string">'imaging_mask'</span>, <span class="string">'pixel_mask'</span>}, <span class="keyword">...</span>
+    <span class="string">'description'</span>, <span class="string">'output from segmenting my favorite imaging plane'</span>, <span class="keyword">...</span>
+    <span class="string">'id'</span>, types.core.ElementIdentifiers(<span class="string">'data'</span>, int64(0:2)), <span class="keyword">...</span>
+    <span class="string">'imaging_plane'</span>, imaging_plane);
+
+plane_segmentation.image_mask = types.core.VectorData( <span class="keyword">...</span>
+    <span class="string">'data'</span>, image_mask, <span class="string">'description'</span>, <span class="string">'image masks'</span>);
+
+img_seg = types.core.ImageSegmentation();
+img_seg.planesegmentation.set(<span class="string">'plane_segmentation'</span>, plane_segmentation)
+
+ophys_module.nwbdatainterface.set(<span class="string">'image_segmentation'</span>, img_seg);
+nwb.processing.set(<span class="string">'ophys'</span>, ophys_module);
+</pre><pre class="codeoutput">
+ans = 
+
+  Set with properties:
+
+    plane_segmentation: [types.core.PlaneSegmentation]
+
+</pre><h2 id="11">Fluoresence and RoiResponseSeries</h2><p>Now that ROIs are stored, you can store RoiResponseSeries. These objects go in a Fluorescence object, which can contain one or more instances of RoiResponseSeries. Each RoiResponse Series requires a DynamicTableRegion of a PlaneSegmentation, which indicates which ROIs are being reported. In order to construct this DynamicTableRegion, you must first construct an ObjectView of the PlaneSegmentation table.</p><pre class="codeinput">plane_seg_object_view = types.untyped.ObjectView( <span class="keyword">...</span>
+    <span class="string">'/processing/ophys/image_segmentation/plane_segmentation'</span>);
+
+roi_table_region = types.core.DynamicTableRegion( <span class="keyword">...</span>
+    <span class="string">'table'</span>, plane_seg_object_view, <span class="keyword">...</span>
+    <span class="string">'description'</span>, <span class="string">'all_rois'</span>, <span class="keyword">...</span>
+    <span class="string">'data'</span>, [0 n_rois-1]');
+
+roi_response_series = types.core.RoiResponseSeries( <span class="keyword">...</span>
+    <span class="string">'rois'</span>, roi_table_region, <span class="keyword">...</span>
+    <span class="string">'data'</span>, NaN(n_rois, 100), <span class="keyword">...</span>
+    <span class="string">'data_unit'</span>, <span class="string">'lumens'</span>, <span class="keyword">...</span>
+    <span class="string">'starting_time_rate'</span>, 3.0);
+
+fluorescence = types.core.Fluorescence();
+fluorescence.roiresponseseries.set(<span class="string">'roi_response_series'</span>, roi_response_series);
+
+ophys_module.nwbdatainterface.set(<span class="string">'fluorescence'</span>, fluorescence);
+</pre><p>You can also use a DfOverF object instead of a Fluorescence object.</p><p>Finally, the ophys ProcessingModule is added to the NWBFile.</p><pre class="codeinput">nwb.processing.set(<span class="string">'ophys'</span>, ophys_module);
+</pre><h2 id="14">Write</h2><pre class="codeinput">nwbExport(nwb, <span class="string">'ophys_tutorial.nwb'</span>);
+</pre><pre class="codeoutput">Warning: Overwriting ophys_tutorial.nwb 
+</pre><h2 id="15">Read</h2><pre class="codeinput">nwb = nwbRead(<span class="string">'ophys_tutorial.nwb'</span>);
+
+nwb.general_optophysiology.get(<span class="string">'imaging_plane'</span>)
+
+<span class="comment">%nwb.acquisition.get('image_series1').data.load</span>
+</pre><pre class="codeoutput">
+ans = 
+
+  ImagingPlane with properties:
+
+            description: 'a very interesting part of the brain'
+                 device: [1&times;1 types.untyped.SoftLink]
+      excitation_lambda: 600
+           imaging_rate: 5
+              indicator: 'GFP'
+               location: 'my favorite brain location'
+               manifold: [1&times;1 types.untyped.DataStub]
+    manifold_conversion: 4
+          manifold_unit: 'm'
+         opticalchannel: [1&times;1 types.untyped.Anon]
+        reference_frame: 'A frame to refer to'
+                   help: 'Metadata about an imaging plane'
+
+</pre><p class="footer"><br><a href="https://www.mathworks.com/products/matlab/">Published with MATLAB&reg; R2018b</a><br></p></div><!--
+##### SOURCE BEGIN #####
+%% Neurodata Without Borders: Neurophysiology (NWB:N), Calcium Imaging Tutorial
+% How to write ophys data to an NWB file using matnwb.
+% 
+%  author: Ben Dichter
+%  contact: ben.dichter@gmail.com
+%  last edited: May 14, 2019
+%
+%%
+% This tutorial will demonstrate how to write calcium imaging data. 
+% The workflow demonstrated here involves three main steps:
+%
+% 1. Acquiring two-photon images
+% 2. Image segmentation
+% 3. Fluorescence and dF/F response
+% 
+% The data we output will be in the following structure:
+%%
+% 
+% <<ophys_tutorial_schematic.png>>
+% 
+
+%% NWB file
+% All contents get added to the NWB file, which is created with the
+% following command
+
+date = datetime(2018, 3, 1, 12, 0, 0);
+session_start_time = datetime(date, 'TimeZone', 'local');
+
+nwb = NwbFile( ...
+    'session_description', 'a test NWB File', ...
+    'identifier', 'mouse004_day4', ...
+    'session_start_time', session_start_time);
+
+%%
+% You can check the contents by displaying the NwbFile object
+disp(nwb);
+
+%% Subject
+% Subject-specific information goes in type |Subject| in location 
+% |general_subject|.
+
+nwb.general_subject = types.core.Subject( ...
+    'description', 'mouse 5', 'age', '9 months', ...
+    'sex', 'M', 'species', 'Mus musculus');
+
+%% Adding metadata about acquisition
+% Before you can add your data, you will need to provide some information 
+% about how that data was generated. This amounts describing the device, 
+% imaging plane and the optical channel used.
+
+optical_channel = types.core.OpticalChannel( ...
+    'description', 'description', ...
+    'emission_lambda', 500.);
+
+device_name = 'my_device';
+nwb.general_devices.set(device_name, types.core.Device());
+
+imaging_plane_name = 'imaging_plane';
+imaging_plane = types.core.ImagingPlane( ...
+    'optical_channel', optical_channel, ...
+    'description', 'a very interesting part of the brain', ...
+    'device', types.untyped.SoftLink(['/general/devices/' device_name]), ...
+    'excitation_lambda', 600., ...
+    'imaging_rate', 5., ...
+    'indicator', 'GFP', ...
+    'location', 'my favorite brain location', ...
+    'manifold', ones(3, 5, 5), ...
+    'manifold_conversion', 4, ...
+    'manifold_unit', 'm', ...
+    'reference_frame', 'A frame to refer to');
+
+nwb.general_optophysiology.set(imaging_plane_name, imaging_plane);
+
+imaging_plane_path = ['/general/optophysiology/' imaging_plane_name];
+
+%% TwoPhotonSeries
+% Acquired imaging data is stored an an object called TwoPhotonSeries and
+% put in the acquisition folder. You may store the image series data in the
+% HDF5 file
+image_series_name = 'image_series1';
+
+image_series = types.core.TwoPhotonSeries( ...
+    'imaging_plane', types.untyped.SoftLink(imaging_plane_path), ...
+    'starting_time_rate', 3.0, ...
+    'data', ones(200, 100, 1000), ...
+    'data_unit', 'lumens');
+
+nwb.acquisition.set(image_series_name, image_series);
+
+%%
+% Or you may link to a tiff file externally
+image_series_name = 'image_series2';
+
+image_series = types.core.TwoPhotonSeries( ...
+    'external_file', 'images.tiff', ...
+    'imaging_plane', types.untyped.SoftLink(imaging_plane_path), ...
+    'external_file_starting_frame', 0, ...
+    'format', 'tiff', ...
+    'starting_time_rate', 3.0, ...
+    'data', NaN, ...
+    'data_unit', 'na');
+
+nwb.acquisition.set(image_series_name, image_series);
+
+%% Ophys Processing Module
+% Processed data should go in the ophys ProcessingModule. Here we create
+% the module
+
+ophys_module = types.core.ProcessingModule(...
+    'description', 'holds processed calcium imaging data');
+
+%% Plane Segmentation
+% Now that the raw data is stored, you can add the image segmentation 
+% results. This is done with the ImageSegmentation data interface. This 
+% class has the ability to store segmentation from one or more imaging 
+% planes, which are stored via the PlaneSegmentation class. 
+% PlaneSegmentation is a table where each row represents a single ROI. 
+% Once you have  your PlaneSegmentation object, you can add the an 
+% image_mask object to PlaneSegmenation. PlaneSegmentation is also a 
+% DynamicTable, which means you can add additional custom columns about the
+% ROIs.
+
+% generate fake image_mask data
+imaging_shape = [100, 200];
+x = imaging_shape(1);
+y = imaging_shape(2);
+
+n_rois = 20;
+image_mask = NaN(y, x, n_rois);
+for i = 1:n_rois
+    center = rand(1,2) .* [x,y];
+    sigma = eye(2)*2;
+    [X1,X2] = meshgrid(1:x,1:y);
+    X = [X1(:) X2(:)];
+    p = mvnpdf(X,center,sigma);
+    Z = reshape(p,y,x);
+    image_mask(:,:,i) = Z;
+end
+
+% add data to NWB structures
+plane_segmentation = types.core.PlaneSegmentation( ...
+    'colnames', {'imaging_mask', 'pixel_mask'}, ...
+    'description', 'output from segmenting my favorite imaging plane', ...
+    'id', types.core.ElementIdentifiers('data', int64(0:2)), ...
+    'imaging_plane', imaging_plane);
+
+plane_segmentation.image_mask = types.core.VectorData( ...
+    'data', image_mask, 'description', 'image masks');
+
+img_seg = types.core.ImageSegmentation();
+img_seg.planesegmentation.set('plane_segmentation', plane_segmentation)
+
+ophys_module.nwbdatainterface.set('image_segmentation', img_seg);
+nwb.processing.set('ophys', ophys_module);
+
+
+
+%% Fluoresence and RoiResponseSeries
+% Now that ROIs are stored, you can store RoiResponseSeries. These objects
+% go in a Fluorescence object, which can contain one or more instances of
+% RoiResponseSeries. Each RoiResponse Series requires a DynamicTableRegion
+% of a PlaneSegmentation, which indicates which ROIs are being reported. In
+% order to construct this DynamicTableRegion, you must first construct
+% an ObjectView of the PlaneSegmentation table.
+
+
+plane_seg_object_view = types.untyped.ObjectView( ...
+    '/processing/ophys/image_segmentation/plane_segmentation');
+
+roi_table_region = types.core.DynamicTableRegion( ...
+    'table', plane_seg_object_view, ...
+    'description', 'all_rois', ...
+    'data', [0 n_rois-1]');
+
+roi_response_series = types.core.RoiResponseSeries( ...
+    'rois', roi_table_region, ...
+    'data', NaN(n_rois, 100), ...
+    'data_unit', 'lumens', ...
+    'starting_time_rate', 3.0);
+
+fluorescence = types.core.Fluorescence();
+fluorescence.roiresponseseries.set('roi_response_series', roi_response_series);
+
+ophys_module.nwbdatainterface.set('fluorescence', fluorescence);
+
+%% 
+% You can also use a DfOverF object instead of a Fluorescence object.
+
+%%
+% Finally, the ophys ProcessingModule is added to the NWBFile.
+nwb.processing.set('ophys', ophys_module);
+
+
+%% Write
+
+nwbExport(nwb, 'ophys_tutorial.nwb');
+
+%% Read
+
+nwb = nwbRead('ophys_tutorial.nwb');
+
+nwb.general_optophysiology.get('imaging_plane')
+
+%nwb.acquisition.get('image_series1').data.load
+
+
+##### SOURCE END #####
+--></body></html>

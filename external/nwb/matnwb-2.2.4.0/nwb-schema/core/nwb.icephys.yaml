@@ -1,0 +1,247 @@
+groups:
+- neurodata_type_def: PatchClampSeries
+  neurodata_type_inc: TimeSeries
+  doc: An abstract base class for patch-clamp data - stimulus or response,
+    current or voltage.
+  attributes:
+  - name: stimulus_description
+    dtype: text
+    doc: Protocol/stimulus name for this patch-clamp dataset.
+  - name: sweep_number
+    dtype: uint32
+    doc: Sweep number, allows to group different PatchClampSeries together.
+    required: false
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Recorded voltage or current.
+    attributes:
+    - name: unit
+      dtype: text
+      doc: Base unit of measurement for working with the data. Actual stored values are
+        not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+  - name: gain
+    dtype: float32
+    doc: Gain of the recording, in units Volt/Amp (v-clamp) or Volt/Volt (c-clamp).
+    quantity: '?'
+  links:
+  - name: electrode
+    target_type: IntracellularElectrode
+    doc: Link to IntracellularElectrode object that describes the electrode that was
+      used to apply or record this data.
+
+- neurodata_type_def: CurrentClampSeries
+  neurodata_type_inc: PatchClampSeries
+  doc: Voltage data from an intracellular current-clamp recording. A
+    corresponding CurrentClampStimulusSeries (stored separately as a stimulus) is
+    used to store the current injected.
+  datasets:
+  - name: data
+    doc: Recorded voltage.
+    attributes:
+    - name: unit
+      dtype: text
+      value: volts
+      doc: Base unit of measurement for working with the data. which is fixed to 'volts'.
+        Actual stored values are not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+  - name: bias_current
+    dtype: float32
+    doc: Bias current, in amps.
+    quantity: '?'
+  - name: bridge_balance
+    dtype: float32
+    doc: Bridge balance, in ohms.
+    quantity: '?'
+  - name: capacitance_compensation
+    dtype: float32
+    doc: Capacitance compensation, in farads.
+    quantity: '?'
+
+- neurodata_type_def: IZeroClampSeries
+  neurodata_type_inc: CurrentClampSeries
+  doc: Voltage data from an intracellular recording when all current
+    and amplifier settings are off (i.e., CurrentClampSeries fields will be zero).
+    There is no CurrentClampStimulusSeries associated with an IZero series because
+    the amplifier is disconnected and no stimulus can reach the cell.
+  datasets:
+  - name: bias_current
+    dtype: float32
+    value: 0.0
+    doc: Bias current, in amps, fixed to 0.0.
+  - name: bridge_balance
+    dtype: float32
+    value: 0.0
+    doc: Bridge balance, in ohms, fixed to 0.0.
+  - name: capacitance_compensation
+    dtype: float32
+    value: 0.0
+    doc: Capacitance compensation, in farads, fixed to 0.0.
+
+- neurodata_type_def: CurrentClampStimulusSeries
+  neurodata_type_inc: PatchClampSeries
+  doc: Stimulus current applied during current clamp recording.
+  datasets:
+  - name: data
+    doc: Stimulus current applied.
+    attributes:
+    - name: unit
+      dtype: text
+      value: amperes
+      doc: Base unit of measurement for working with the data. which is fixed to 'amperes'.
+        Actual stored values are not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+
+- neurodata_type_def: VoltageClampSeries
+  neurodata_type_inc: PatchClampSeries
+  doc: Current data from an intracellular voltage-clamp recording. A
+    corresponding VoltageClampStimulusSeries (stored separately as a stimulus) is
+    used to store the voltage injected.
+  datasets:
+  - name: data
+    doc: Recorded current.
+    attributes:
+    - name: unit
+      dtype: text
+      value: amperes
+      doc: Base unit of measurement for working with the data. which is fixed to 'amperes'.
+        Actual stored values are not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+  - name: capacitance_fast
+    dtype: float32
+    doc: Fast capacitance, in farads.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: farads
+      doc: Unit of measurement for capacitance_fast, which is fixed to 'farads'.
+  - name: capacitance_slow
+    dtype: float32
+    doc: Slow capacitance, in farads.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: farads
+      doc: Unit of measurement for capacitance_fast, which is fixed to 'farads'.
+  - name: resistance_comp_bandwidth
+    dtype: float32
+    doc: Resistance compensation bandwidth, in hertz.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: hertz
+      doc: Unit of measurement for resistance_comp_bandwidth, which is fixed to 'hertz'.
+  - name: resistance_comp_correction
+    dtype: float32
+    doc: Resistance compensation correction, in percent.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: percent
+      doc: Unit of measurement for resistance_comp_correction, which is fixed to 'percent'.
+  - name: resistance_comp_prediction
+    dtype: float32
+    doc: Resistance compensation prediction, in percent.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: percent
+      doc: Unit of measurement for resistance_comp_prediction, which is fixed to 'percent'.
+  - name: whole_cell_capacitance_comp
+    dtype: float32
+    doc: Whole cell capacitance compensation, in farads.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: farads
+      doc: Unit of measurement for whole_cell_capacitance_comp, which is fixed to 'farads'.
+  - name: whole_cell_series_resistance_comp
+    dtype: float32
+    doc: Whole cell series resistance compensation, in ohms.
+    quantity: '?'
+    attributes:
+    - name: unit
+      dtype: text
+      value: ohms
+      doc: Unit of measurement for whole_cell_series_resistance_comp, which is fixed to 'ohms'.
+
+- neurodata_type_def: VoltageClampStimulusSeries
+  neurodata_type_inc: PatchClampSeries
+  doc: Stimulus voltage applied during a voltage clamp recording.
+  datasets:
+  - name: data
+    doc: Stimulus voltage applied.
+    attributes:
+    - name: unit
+      dtype: text
+      value: volts
+      doc: Base unit of measurement for working with the data. which is fixed to 'volts'.
+        Actual stored values are not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+
+- neurodata_type_def: IntracellularElectrode
+  neurodata_type_inc: NWBContainer
+  doc: An intracellular electrode and its metadata.
+  datasets:
+  - name: description
+    dtype: text
+    doc: Description of electrode (e.g.,  whole-cell, sharp, etc.).
+  - name: filtering
+    dtype: text
+    doc: Electrode specific filtering.
+    quantity: '?'
+  - name: initial_access_resistance
+    dtype: text
+    doc: Initial access resistance.
+    quantity: '?'
+  - name: location
+    dtype: text
+    doc: Location of the electrode. Specify the area, layer, comments on estimation
+      of area/layer, stereotaxic coordinates if in vivo, etc. Use standard atlas
+      names for anatomical regions when possible.
+    quantity: '?'
+  - name: resistance
+    dtype: text
+    doc: Electrode resistance, in ohms.
+    quantity: '?'
+  - name: seal
+    dtype: text
+    doc: Information about seal used for recording.
+    quantity: '?'
+  - name: slice
+    dtype: text
+    doc: Information about slice used for recording.
+    quantity: '?'
+  links:
+  - name: device
+    target_type: Device
+    doc: Device that was used to record from this electrode.
+
+- neurodata_type_def: SweepTable
+  neurodata_type_inc: DynamicTable
+  doc: The table which groups different PatchClampSeries together.
+  datasets:
+  - name: sweep_number
+    neurodata_type_inc: VectorData
+    dtype: uint32
+    doc: Sweep number of the PatchClampSeries in that row.
+  - name: series
+    neurodata_type_inc: VectorData
+    dtype:
+      target_type: PatchClampSeries
+      reftype: object
+    doc: The PatchClampSeries with the sweep number in that row.
+  - name: series_index
+    neurodata_type_inc: VectorIndex
+    doc: Index for series.

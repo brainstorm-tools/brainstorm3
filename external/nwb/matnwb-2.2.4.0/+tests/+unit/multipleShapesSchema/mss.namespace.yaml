@@ -1,0 +1,7 @@
+namespaces:
+- full_name: Multiple Shapes
+  name: mss
+  schema:
+  - namespace: core
+  - source: mss.multishapes.yaml
+  version: 1.0.0

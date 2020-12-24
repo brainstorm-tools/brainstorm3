@@ -1,0 +1,97 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01 Transitional//EN"
+                "http://www.w3.org/TR/REC-html40/loose.dtd">
+<html>
+<head>
+  <title>Description of generateExtension</title>
+  <meta name="keywords" content="generateExtension">
+  <meta name="description" content="GENERATEEXTENSION Generate Matlab classes from NWB extension schema file">
+  <meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+  <meta name="generator" content="m2html v1.5 &copy; 2003-2005 Guillaume Flandin">
+  <meta name="robots" content="index, follow">
+  <link type="text/css" rel="stylesheet" href="m2html.css">
+</head>
+<body>
+<a name="_top"></a>
+<div><a href="index.html">Home</a> &gt;  <a href="index.html">.</a> &gt; generateExtension.m</div>
+
+<!--<table width="100%"><tr><td align="left"><a href="index.html"><img alt="<" border="0" src="left.png">&nbsp;Master index</a></td>
+<td align="right"><a href="index.html">Index for .&nbsp;<img alt=">" border="0" src="right.png"></a></td></tr></table>-->
+
+<h1>generateExtension
+</h1>
+
+<h2><a name="_name"></a>PURPOSE <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="box"><strong>GENERATEEXTENSION Generate Matlab classes from NWB extension schema file</strong></div>
+
+<h2><a name="_synopsis"></a>SYNOPSIS <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="box"><strong>function generateExtension(source) </strong></div>
+
+<h2><a name="_description"></a>DESCRIPTION <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="fragment"><pre class="comment"> GENERATEEXTENSION Generate Matlab classes from NWB extension schema file
+   GENERATECORE(extension_path...)  Generate classes 
+   (Matlab m-files) from one or more NWB:N schema extension namespace 
+   files.  A registry of already generated core types is used to resolve 
+   dependent types.
+   
+   A cache of schema data is generated in the 'namespaces' subdirectory in
+   the current working directory.  This is for allowing cross-referencing
+   classes between multiple namespaces.
+
+   Output files are generated placed in a '+types' subdirectory in the
+   current working directory.
+   
+   Example:
+      generateCore('schema\core\nwb.namespace.yaml');
+      generateExtension('schema\myext\myextension.namespace.yaml')
+ 
+   See also <a href="generateCore.html" class="code" title="function generateCore(varargin)">GENERATECORE</a></pre></div>
+
+<!-- crossreference -->
+<h2><a name="_cross"></a>CROSS-REFERENCE INFORMATION <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+This function calls:
+<ul style="list-style-image:url(matlabicon.gif)">
+</ul>
+This function is called by:
+<ul style="list-style-image:url(matlabicon.gif)">
+</ul>
+<!-- crossreference -->
+
+
+
+<h2><a name="_source"></a>SOURCE CODE <a href="#_top"><img alt="^" border="0" src="up.png"></a></h2>
+<div class="fragment"><pre>0001 <a name="_sub0" href="#_subfunctions" class="code">function generateExtension(source)</a>
+0002 <span class="comment">% GENERATEEXTENSION Generate Matlab classes from NWB extension schema file</span>
+0003 <span class="comment">%   GENERATECORE(extension_path...)  Generate classes</span>
+0004 <span class="comment">%   (Matlab m-files) from one or more NWB:N schema extension namespace</span>
+0005 <span class="comment">%   files.  A registry of already generated core types is used to resolve</span>
+0006 <span class="comment">%   dependent types.</span>
+0007 <span class="comment">%</span>
+0008 <span class="comment">%   A cache of schema data is generated in the 'namespaces' subdirectory in</span>
+0009 <span class="comment">%   the current working directory.  This is for allowing cross-referencing</span>
+0010 <span class="comment">%   classes between multiple namespaces.</span>
+0011 <span class="comment">%</span>
+0012 <span class="comment">%   Output files are generated placed in a '+types' subdirectory in the</span>
+0013 <span class="comment">%   current working directory.</span>
+0014 <span class="comment">%</span>
+0015 <span class="comment">%   Example:</span>
+0016 <span class="comment">%      generateCore('schema\core\nwb.namespace.yaml');</span>
+0017 <span class="comment">%      generateExtension('schema\myext\myextension.namespace.yaml')</span>
+0018 <span class="comment">%</span>
+0019 <span class="comment">%   See also GENERATECORE</span>
+0020 validateattributes(source, {<span class="string">'char'</span>, <span class="string">'string'</span>}, {<span class="string">'scalartext'</span>});
+0021 
+0022 <span class="comment">%find jar from source and generate Schema</span>
+0023 schema = spec.loadSchema();
+0024 
+0025 [localpath, ~, ~] = fileparts(source);
+0026 assert(2 == exist(source, <span class="string">'file'</span>),<span class="keyword">...</span>
+0027     <span class="string">'MATNWB:FILE'</span>, <span class="string">'Path to file `%s` could not be found.'</span>, source);
+0028 fid = fopen(source);
+0029 namespace_map = schema.read(fread(fid, <span class="string">'*char'</span>) .');
+0030 fclose(fid);
+0031 
+0032 spec.generate(namespace_map, localpath);
+0033 <span class="keyword">end</span></pre></div>
+<hr><address>Generated on Fri 09-Aug-2019 14:27:49 by <strong><a href="http://www.artefact.tk/software/matlab/m2html/" title="Matlab Documentation in HTML">m2html</a></strong> &copy; 2005</address>
+</body>
+</html>

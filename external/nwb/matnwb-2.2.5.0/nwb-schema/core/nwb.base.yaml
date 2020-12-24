@@ -1,0 +1,206 @@
+datasets:
+- neurodata_type_def: NWBData
+  neurodata_type_inc: Data
+  doc: An abstract data type for a dataset.
+
+- neurodata_type_def: Image
+  neurodata_type_inc: NWBData
+  dtype: numeric
+  dims:
+  - - x
+    - y
+  - - x
+    - y
+    - r, g, b
+  - - x
+    - y
+    - r, g, b, a
+  shape:
+  - - null
+    - null
+  - - null
+    - null
+    - 3
+  - - null
+    - null
+    - 4
+  doc: An abstract data type for an image. Shape can be 2-D (x, y), or 3-D where the
+    third dimension can have three or four elements, e.g. (x, y, (r, g, b)) or
+    (x, y, (r, g, b, a)).
+  attributes:
+  - name: resolution
+    dtype: float32
+    doc: Pixel resolution of the image, in pixels per centimeter.
+    required: false
+  - name: description
+    dtype: text
+    doc: Description of the image.
+    required: false
+
+groups:
+- neurodata_type_def: NWBContainer
+  neurodata_type_inc: Container
+  doc: An abstract data type for a generic container storing collections of data and
+    metadata. Base type for all data and metadata containers.
+
+- neurodata_type_def: NWBDataInterface
+  neurodata_type_inc: NWBContainer
+  doc: An abstract data type for a generic container storing collections of data,
+    as opposed to metadata.
+
+- neurodata_type_def: TimeSeries
+  neurodata_type_inc: NWBDataInterface
+  doc: General purpose time series.
+  attributes:
+  - name: description
+    dtype: text
+    default_value: no description
+    doc: Description of the time series.
+    required: false
+  - name: comments
+    dtype: text
+    default_value: no comments
+    doc: Human-readable comments about the TimeSeries. This second descriptive field
+      can be used to store additional information, or descriptive information if the
+      primary description field is populated with a computer-readable string.
+    required: false
+  datasets:
+  - name: data
+    dims:
+    - - num_times
+    - - num_times
+      - num_DIM2
+    - - num_times
+      - num_DIM2
+      - num_DIM3
+    - - num_times
+      - num_DIM2
+      - num_DIM3
+      - num_DIM4
+    shape:
+    - - null
+    - - null
+      - null
+    - - null
+      - null
+      - null
+    - - null
+      - null
+      - null
+      - null
+    doc: Data values. Data can be in 1-D, 2-D, 3-D, or 4-D. The first dimension
+      should always represent time. This can also be used to store binary data
+      (e.g., image frames). This can also be a link to data stored in an external file.
+    attributes:
+    - name: conversion
+      dtype: float32
+      default_value: 1.0
+      doc: Scalar to multiply each element in data to convert it to the specified 'unit'.
+        If the data are stored in acquisition system units or other units
+        that require a conversion to be interpretable, multiply the data by 'conversion'
+        to convert the data to the specified 'unit'. e.g. if the data acquisition system
+        stores values in this object as signed 16-bit integers (int16 range
+        -32,768 to 32,767) that correspond to a 5V range (-2.5V to 2.5V), and the data
+        acquisition system gain is 8000X, then the 'conversion' multiplier to get from
+        raw data acquisition values to recorded volts is 2.5/32768/8000 = 9.5367e-9.
+      required: false
+    - name: resolution
+      dtype: float32
+      default_value: -1.0
+      doc: Smallest meaningful difference between values in data, stored in the specified
+        by unit, e.g., the change in value of the least significant bit, or a larger
+        number if signal noise is known to be present. If unknown, use -1.0.
+      required: false
+    - name: unit
+      dtype: text
+      doc: Base unit of measurement for working with the data. Actual stored values are
+        not necessarily stored in these units. To access the data in these units,
+        multiply 'data' by 'conversion'.
+  - name: starting_time
+    dtype: float64
+    doc: Timestamp of the first sample in seconds. When timestamps are uniformly
+      spaced, the timestamp of the first sample can be specified and all subsequent
+      ones calculated from the sampling rate attribute.
+    quantity: '?'
+    attributes:
+    - name: rate
+      dtype: float32
+      doc: Sampling rate, in Hz.
+    - name: unit
+      dtype: text
+      value: seconds
+      doc: Unit of measurement for time, which is fixed to 'seconds'.
+  - name: timestamps
+    dtype: float64
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Timestamps for samples stored in data, in seconds, relative to the
+      common experiment master-clock stored in NWBFile.timestamps_reference_time.
+    quantity: '?'
+    attributes:
+    - name: interval
+      dtype: int32
+      value: 1
+      doc: Value is '1'
+    - name: unit
+      dtype: text
+      value: seconds
+      doc: Unit of measurement for timestamps, which is fixed to 'seconds'.
+  - name: control
+    dtype: uint8
+    dims:
+    - num_times
+    shape:
+    - null
+    doc: Numerical labels that apply to each time point in data for the purpose of
+      querying and slicing data by these values. If present, the length of this
+      array should be the same size as the first dimension of data.
+    quantity: '?'
+  - name: control_description
+    dtype: text
+    dims:
+    - num_control_values
+    shape:
+    - null
+    doc: Description of each control value. Must be present if control is present.
+      If present, control_description[0] should describe time points where control == 0.
+    quantity: '?'
+  groups:
+  - name: sync
+    doc: Lab-specific time and sync information as provided directly from hardware
+      devices and that is necessary for aligning all acquired time information to
+      a common timebase. The timestamp array stores time in the common timebase.
+      This group will usually only be populated in TimeSeries that are
+      stored external to the NWB file, in files storing raw data. Once timestamp
+      data is calculated, the contents of 'sync' are mostly for archival purposes.
+    quantity: '?'
+
+- neurodata_type_def: ProcessingModule
+  neurodata_type_inc: NWBContainer
+  doc: A collection of processed data.
+  attributes:
+  - name: description
+    dtype: text
+    doc: Description of this collection of processed data.
+  groups:
+  - neurodata_type_inc: NWBDataInterface
+    doc: Data objects stored in this collection.
+    quantity: '*'
+  - neurodata_type_inc: DynamicTable
+    doc: Tables stored in this collection.
+    quantity: '*'
+
+- neurodata_type_def: Images
+  neurodata_type_inc: NWBDataInterface
+  default_name: Images
+  doc: A collection of images.
+  attributes:
+  - name: description
+    dtype: text
+    doc: Description of this collection of images.
+  datasets:
+  - neurodata_type_inc: Image
+    doc: Images stored in this collection.
+    quantity: '+'

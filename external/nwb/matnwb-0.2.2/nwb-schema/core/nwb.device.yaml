@@ -1,0 +1,14 @@
+groups:
+- neurodata_type_def: Device
+  neurodata_type_inc: NWBContainer
+  doc: Metadata about a data acquisition device, e.g., recording system, electrode, microscope.
+  attributes:
+  - name: description
+    dtype: text
+    doc: Description of the device (e.g., model, firmware version, processing software version, etc.)
+      as free-form text.
+    required: false
+  - name: manufacturer
+    dtype: text
+    doc: The name of the manufacturer of the device.
+    required: false

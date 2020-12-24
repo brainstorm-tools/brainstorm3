@@ -1,0 +1,116 @@
+groups:
+- neurodata_type_def: SpatialSeries
+  neurodata_type_inc: TimeSeries
+  doc: "Direction, e.g., of gaze or travel, or position. The TimeSeries::data field\
+    \ is a 2D array storing position or direction relative to some reference frame.\
+    \ Array structure: [num measurements] [num dimensions]. Each SpatialSeries has\
+    \ a text dataset reference_frame that indicates the zero-position, or the zero-axes\
+    \ for direction. For example, if representing gaze direction, 'straight-ahead'\
+    \ might be a specific pixel on the monitor, or some other point in space. For\
+    \ position data, the 0,0 point might be the top-left corner of an enclosure, as\
+    \ viewed from the tracking camera. The unit of data will indicate how to interpret\
+    \ SpatialSeries values."
+  datasets:
+  - name: data
+    dtype: numeric
+    dims:
+    - - num_times
+    - - num_times
+      - num_features
+    shape:
+    - - null
+    - - null
+      - null
+    doc: 1-D or 2-D array storing position or direction relative to some reference frame.
+    attributes:
+    - name: unit
+      dtype: text
+      default_value: meters
+      doc: Base unit of measurement for working with the data. The default value
+        is 'meters'. Actual stored values are not necessarily stored in these units.
+        To access the data in these units, multiply 'data' by 'conversion'.
+      required: false
+  - name: reference_frame
+    dtype: text
+    doc: Description defining what exactly 'straight-ahead' means.
+    quantity: '?'
+
+- neurodata_type_def: BehavioralEpochs
+  neurodata_type_inc: NWBDataInterface
+  default_name: BehavioralEpochs
+  doc: TimeSeries for storing behavioral epochs.  The objective of this and the other
+    two Behavioral interfaces (e.g. BehavioralEvents and BehavioralTimeSeries) is
+    to provide generic hooks for software tools/scripts. This allows a tool/script
+    to take the output one specific interface (e.g., UnitTimes) and plot that data
+    relative to another data modality (e.g., behavioral events) without having to
+    define all possible modalities in advance. Declaring one of these interfaces means
+    that one or more TimeSeries of the specified type is published. These TimeSeries
+    should reside in a group having the same name as the interface. For example, if
+    a BehavioralTimeSeries interface is declared, the module will have one or more
+    TimeSeries defined in the module sub-group 'BehavioralTimeSeries'. BehavioralEpochs
+    should use IntervalSeries. BehavioralEvents is used for irregular events. BehavioralTimeSeries
+    is for continuous data.
+  groups:
+  - neurodata_type_inc: IntervalSeries
+    doc: IntervalSeries object containing start and stop times of epochs.
+    quantity: '*'
+
+- neurodata_type_def: BehavioralEvents
+  neurodata_type_inc: NWBDataInterface
+  default_name: BehavioralEvents
+  doc: TimeSeries for storing behavioral events. See description of <a href="#BehavioralEpochs">BehavioralEpochs</a>
+    for more details.
+  groups:
+  - neurodata_type_inc: TimeSeries
+    doc: TimeSeries object containing behavioral events.
+    quantity: '*'
+
+- neurodata_type_def: BehavioralTimeSeries
+  neurodata_type_inc: NWBDataInterface
+  default_name: BehavioralTimeSeries
+  doc: TimeSeries for storing Behavoioral time series data. See description of <a href="#BehavioralEpochs">BehavioralEpochs</a>
+    for more details.
+  groups:
+  - neurodata_type_inc: TimeSeries
+    doc: TimeSeries object containing continuous behavioral data.
+    quantity: '*'
+
+- neurodata_type_def: PupilTracking
+  neurodata_type_inc: NWBDataInterface
+  default_name: PupilTracking
+  doc: Eye-tracking data, representing pupil size.
+  groups:
+  - neurodata_type_inc: TimeSeries
+    doc: TimeSeries object containing time series data on pupil size.
+    quantity: '+'
+
+- neurodata_type_def: EyeTracking
+  neurodata_type_inc: NWBDataInterface
+  default_name: EyeTracking
+  doc: Eye-tracking data, representing direction of gaze.
+  groups:
+  - neurodata_type_inc: SpatialSeries
+    doc: SpatialSeries object containing data measuring direction of gaze.
+    quantity: '*'
+
+- neurodata_type_def: CompassDirection
+  neurodata_type_inc: NWBDataInterface
+  default_name: CompassDirection
+  doc: With a CompassDirection interface, a module publishes a SpatialSeries object
+    representing a floating point value for theta. The SpatialSeries::reference_frame
+    field should indicate what direction corresponds to 0 and which is the direction
+    of rotation (this should be clockwise). The si_unit for the SpatialSeries should
+    be radians or degrees.
+  groups:
+  - neurodata_type_inc: SpatialSeries
+    doc: SpatialSeries object containing direction of gaze travel.
+    quantity: '*'
+
+- neurodata_type_def: Position
+  neurodata_type_inc: NWBDataInterface
+  default_name: Position
+  doc: Position data, whether along the x, x/y or x/y/z axis.
+  groups:
+  - neurodata_type_inc: SpatialSeries
+    doc: SpatialSeries object containing position data.
+    quantity: '+'

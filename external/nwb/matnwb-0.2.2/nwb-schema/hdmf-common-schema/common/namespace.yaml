@@ -1,0 +1,21 @@
+namespaces:
+- name: hdmf-common
+  doc: Common data structures provided by HDMF
+  author:
+  - Andrew Tritt
+  - Oliver Ruebel
+  - Ryan Ly
+  - Ben Dichter
+  contact:
+  - ajtritt@lbl.gov
+  - oruebel@lbl.gov
+  - rly@lbl.gov
+  - bdichter@lbl.gov
+  full_name: HDMF Common
+  schema:
+  - doc: data types for a column-based table
+    source: table.yaml
+    title: Table data types
+  - doc: data types for different types of sparse matrices
+    source: sparse.yaml
+  version: 1.1.2
