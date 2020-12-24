@@ -447,7 +447,7 @@ for iData = 1:length(Data)
             end
             
             % PSD: we don't want the bad segments
-            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd')
+            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd') && ~isempty(sStudy.Result(iFile).DataFile)
                 % Load associated data file
                 sMat = in_bst_data(sStudy.Result(iFile).DataFile);
                 % Raw file
