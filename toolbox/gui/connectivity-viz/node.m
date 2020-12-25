@@ -11,7 +11,7 @@ classdef   node < handle
         Visible = true;         % Logical true or false
         isAgregatingNode = false; % if this node is a grouped node/scout /lobe
         LabelVisible = true;    % logical true or false if label is visible or not
-        isClicked  % added Dec 23 to identify a node that has been selected by user
+        %isClicked  % added Dec 23 to identify a node that has been selected by user
     end
     
     properties (Access = public, Dependent = true)
@@ -22,6 +22,7 @@ classdef   node < handle
         TextLabel;    % Text graphics object
         NodeMarker;   % Line that makes the node visible
         Marker = 'o'; % Marker symbol when the node is 'on'
+        MarkerFaceColor = [0.7 0.7 0.7];
     end
     
     properties (Access = private, Constant)
@@ -87,22 +88,18 @@ classdef   node < handle
             value = this.TextLabel.Extent(3);
         end
         
-        % TODO to identify nodes linked to a selected lobe
-        %function setSelectedNodes()
-            
-        %end
-        
         function updateVisible(this)
+            global selectedLinks;
+            this_links = this.Links;
+            
             if this.Visible
                 this.NodeMarker.Marker = 'o';
-                this.NodeMarker.MarkerFaceColor = [0.7 0.7 0.7];
-                this.NodeMarker.Color = [0.7 0.7 0.7];
-               % this.NodeMarker.MarkerSize = 5;
-              %  this.NodeMarker.MarkerFaceColor = this.Color;
-              %  set(this.Links,'Color',this.Color);
-              
-                %nodes = hFig.UserData.Nodes;
-                
+                this.NodeMarker.Color = this.NodeMarker.MarkerFaceColor;
+ 
+                for i = 1:length(this_links)
+                    selectedLinks(selectedLinks == this_links(i)) = [];
+                end               
+ 
              %   for i = 1:length(this.Links)
                  %   this.Links(i).ZData = ones(size(this.Links(i).XData));
                % end
@@ -110,11 +107,22 @@ classdef   node < handle
             else % node is red when clicked on
                 this.NodeMarker.Marker = 'x'; % changed on Oct 25
                 this.NodeMarker.Color = 'red'; % changed on Dec 21
-                %this.NodeMarker.MarkerSize = 8; % changed on Oct 25
                 
-               % for i = 1:length(this.Links)
+                % Added Dec 24: Change visibility of links when node is
+                % selected
+                for i = 1:length(this_links)
+                    if isempty(selectedLinks)
+                        selectedLinks = this_links(i);
+                    % avoid duplicates
+                    elseif ~ismember(this_links(i), selectedLinks)
+                        selectedLinks(end+1) = this_links(i);
+                    end
+                end
+                
+                % for i = 1:length(this.Links)
                   %  this.Links(i).ZData = zeros(size(this.Links(i).XData));
-               % end            
+               % end 
+               
             end
         end
         
@@ -185,15 +193,10 @@ classdef   node < handle
           
             if n.Visible % can just change to n.Visible = ~n.Visible? 
                 n.Visible = false;
-                % if n.Visible == false, this means the node has been selected
-                % and marked by a red x
-                %global nodeSelectionFlag;
-                %nodeSelectionFlag = true;
             else
                 n.Visible = true;
-                %nodeSelectionFlag = false;
             end
-
+ 
             % TODO: Implement function similar to JavaClickCallback +
             % SetSelectedNodes to form aggregates
             % SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
@@ -204,4 +207,4 @@ classdef   node < handle
         end
     end
 end
-
+ 

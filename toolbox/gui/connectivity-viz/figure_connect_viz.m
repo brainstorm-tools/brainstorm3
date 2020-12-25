@@ -469,8 +469,8 @@ end
 %% ===== FIGURE MOUSE UP CALLBACK =====
 function FigureMouseUpCallback(hFig, varargin)
     disp('Entered FigureMouseUpCallback');
+    UpdateColormap(hFig)
     
-    %global nodeSelectionFlag;
     
     
     % Get application data (current user/mouse actions)
@@ -522,6 +522,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         % Set mutex
         ConnectKeyboardMutex = 0.1;
         % Process event
+        % note: keys only work when pressed twice in a row? (Yaqi)
         switch (keyEvent.Key)
             case 't'                            %TODO: remove test
                  test(hFig);
@@ -1546,7 +1547,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     %% ===== Rendering option =====
     % Select all
-    SetSelectedNodes(hFig, [], 1);
+    %SetSelectedNodes(hFig, [], 1);
     % Blending
     SetBlendingMode(hFig, 0);
     
@@ -1588,20 +1589,9 @@ function testPlot(hFig)
     M(M<test_thresh) = 0;
     circularGraph(M, 'Label', RowNames);
     
-    % Added for testing Dec 22 to distinguish single vs double clicks
-    %global lastClick; 
-    %lastClick = 0.0;
-    
-    %global doubleClick_flag;
-    %doubleClick_flag = false;
-    
     %hide test nodes
     delete(hFig.UserData.Nodes);
-    
-    % global variable used to detect if a node was selected 
-    global nodeSelectionFlag;
-    nodeSelectionFlag = false;
-    
+ 
     %test display
    % shg %force show current figure
 end
@@ -1611,7 +1601,12 @@ end
      %node's scout color) -> DONE
     % TODO: directional arcs
 function BuildLinks(hFig, DataPair)
+    disp('Entered BuildLinks');
     testNodes = hFig.UserData.testNodes;
+    
+    % empty the array when first loading figure
+    global selectedLinks;
+    selectedLinks = [];
   
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs
@@ -1670,6 +1665,7 @@ function BuildLinks(hFig, DataPair)
             'PickableParts','none',...
             'Visible','off'); %not visible as default;
         testNodes(node1).Links(end+1) = l;
+        testNodes(node2).Links(end+1) = l;
         if(i==1)
             hFig.UserData.AllLinks = l;
         else
@@ -1677,6 +1673,7 @@ function BuildLinks(hFig, DataPair)
         end
         
     end
+    
 end
 %test callback function
 function test(hFig)
@@ -1686,58 +1683,7 @@ function test(hFig)
 %            
 %         
 end
-
-function selectedLinks()
-
-end
-
  
-% Added Dec 21: function that identifies the links linked to the selected
-% node
-% used to determine nearest node in JavaClickCallback
-function nodeIndex = getNodeIndex(hFig, xpos_mouse, ypos_mouse)
- 
-    testNodes = hFig.UserData.testNodes;
-    % get x and y coordinates of the mouse click
-    for i=1:length(testNodes)      
-        if(i==1)
-            xpos_nodes = testNodes(i).Position(1);
-            ypos_nodes = testNodes(i).Position(2);
-        else
-            xpos_nodes(end+1) = testNodes(i).Position(1);
-            ypos_nodes(end+1) = testNodes(i).Position(2);
-        end
-    end
-    
-    % rescale onto our graph circle
-    %x = 4*0.6*r*cos(theta)+4*0.6*x0;
-    %y = 4*0.6*r*sin(theta)+4*0.6*y0;
-    
-    %disp(xpos_nodes(10));
-    %disp(ypos_nodes);
-    %disp(ypos_mouse);
-    
-    % take Euclidean distance
-    % compare with each node and take the minimum distance
-    min_distance = sqrt((xpos_mouse - xpos_nodes(1))^2 + (ypos_mouse - ypos_nodes(1))^2);
-    nodeIndex = 1;
-    for i=2:length(xpos_nodes)
-        distance = sqrt((xpos_mouse - xpos_nodes(i))^2 + (ypos_mouse - ypos_nodes(i))^2);
- 
-        if distance < min_distance
-            min_distance = distance;
-            nodeIndex = i;
-        end
-    end
-    
-    
-    % set index to 0 when distance is too large
-    %getNodeIndex
-    
-    
-    %disp(testNodes(10).Position(1));
-    %disp(min_distance);
-end
  
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
@@ -2298,6 +2244,8 @@ end
 function UpdateColormap(hFig)
     disp('Entered UpdateColormap');
     
+    global selectedLinks;
+    
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
@@ -2387,27 +2335,30 @@ function UpdateColormap(hFig)
         
         iData = find(DataMask == 1);
         VisibleLinks = hFig.UserData.AllLinks(iData).';
-        
+  
         % Added Dec 23: get the transparency
         LinkTransparency = getappdata(hFig, 'LinkTransparency');
         LinkIntensity = 1.00 - LinkTransparency;
         
         % set desired colors to each link
         % 4th column of Color is transparency
-        for i=1:size(VisibleLinks,1)
-            set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
-        end
         
-        % idea: add colour to the nodes that have visible links connected to them
-        % a node has the same colour as the first link connected to it (for
-        % now, can discuss later)
-        %nodes = hFig.UserData.Nodes;
-        
-        %for i = 1:size(VisibleLinks,1) % for each link shown on the canvas
-            %node1 = VisibleLinks(i,1);
-            %node2 = VisibleLinks(i,2);
-        %end
-        
+        % if no node is selected, show all links above threshold
+        if isempty(selectedLinks)
+            for i=1:size(VisibleLinks,1)
+                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
+                set(VisibleLinks(i), 'Visible', 'on');
+            end
+        else % if node(s) were selected
+            for i=1:size(VisibleLinks,1)
+                if ismember(VisibleLinks(i), selectedLinks)
+                    set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
+                    set(VisibleLinks(i), 'Visible', 'on');
+                else
+                    set(VisibleLinks(i), 'Visible', 'off');
+                end
+            end
+        end        
         
         % old code
         % Update color
@@ -2608,6 +2559,8 @@ end
 % USAGE:  SetSelectedNodes(hFig, iNodes=[], isSelected=1, isRedraw=1) : Add or remove nodes from the current selection
 %         If node selection is empty: select/unselect all the nodes
 function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
+    disp('Entered SetSelectedNodes');
+    disp(nargin);
     % Parse inputs
     if (nargin < 2) || isempty(iNodes)
         % Get all the nodes
@@ -2646,13 +2599,13 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     NoColorNodes = ismember(iNodes,AgregatingNodes);
     
-    for i = 1:length(iNodes)
-        if isSelected
-            testNodes(iNodes(i)).Visible = true;
-        else
-            testNodes(iNodes(i)).Visible = false;
-        end
-    end
+    %for i = 1:length(iNodes)
+        %if isSelected
+            %testNodes(iNodes(i)).Visible = true;
+        %else
+            %testNodes(iNodes(i)).Visible = false;
+        %end
+    %end
          
     %if (sum(~NoColorNodes) > 0)
         %sets current visibility type and updates display marker
@@ -2723,20 +2676,20 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
  
     iData = find(DataMask == 1); % - 1;
  
-    if (~isempty(iData))
+    %if (~isempty(iData))
         % Update link visibility
-        if (MeasureLinksIsVisible)
-            if (isSelected)
-                set(hFig.UserData.AllLinks(iData), 'Visible', 'on');
-            else
-                set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
-            end
+        %if (MeasureLinksIsVisible)
+            %if (isSelected)
+                %set(hFig.UserData.AllLinks(iData), 'Visible', 'on');
+            %else
+                %set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
+            %end
  
          %   OGL.setMeasureLinkVisibility(iData, isSelected);
-        else
+        %else
           %  OGL.setRegionLinkVisibility(iData, isSelected);
-        end
-    end
+        %end
+    %end
     
     % These functions sets global Boolean value in Java that allows
     % or disallows the drawing of these measures, which makes it
@@ -2909,6 +2862,7 @@ end
  
 %TODO: update ogl
 function SetBlendingMode(hFig, BlendingEnabled)
+    disp('Entered SetBlendingMode');
     % Update figure variable
     setappdata(hFig, 'BlendingEnabled', BlendingEnabled);
     % Update display
@@ -2923,7 +2877,7 @@ function SetBlendingMode(hFig, BlendingEnabled)
         LinkTransparency = getappdata(hFig, 'LinkTransparency');
         if (LinkTransparency == 0)
             SetLinkTransparency(hFig, 0.02);
-        end
+        end  
     else
         % Translucent blending only
       %  OGL.setMeasureLinkBlendingFunction(770,771);
@@ -2933,6 +2887,7 @@ function SetBlendingMode(hFig, BlendingEnabled)
 end
  
 function ToggleBlendingMode(hFig)
+    disp('Entered ToggleBlendingMode');
     BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
     if isempty(BlendingEnabled)
         BlendingEnabled = 0;
@@ -2983,7 +2938,7 @@ function SetLinkTransparency(hFig, LinkTransparency)
         current_color(4) = 1.00 - LinkTransparency;
         set(VisibleLinks(i), 'Color', current_color);
     end
-
+ 
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
 end
  
@@ -3013,8 +2968,8 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     % Update Matlab background color
     set(hFig, 'Color', BackgroundColor)
     
-    % === @TODO: BLENDING ===
-    % Ensures that if background is white no blending is on.
+    % === BLENDING ===
+    % Ensures that if background is white no blending is on. -> checked
     % Blending is additive and therefore won't be visible.
     if all(BackgroundColor == [1 1 1])
         SetBlendingMode(hFig, 0);
@@ -4157,5 +4112,4 @@ function Vertices = ReorganiseNodeAroundInCircle(hFig, sGroups, aNames, Level)
         end
     end
 end
-
-
+ 

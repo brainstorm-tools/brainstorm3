@@ -78,7 +78,8 @@ classdef circularGraph < handle
             %set colourmap value and labels for each node
             for i = 1:length(adjacencyMatrix)
                 this.Nodes(i) = node(cos(t(i)),sin(t(i)));
-                this.Nodes(i).Color = this.ColorMap(i,:);
+                this.Nodes(i).Color = [0.7 0.7 0.7];
+                %this.Nodes(i).Color = this.ColorMap(i,:);
                 this.Nodes(i).Label = this.Label{i};
             end
             
@@ -95,60 +96,60 @@ classdef circularGraph < handle
                 lineWidth = lineWidthCoef*lineWidth + minLineWidth;
             end
             
-            % Draw Linkss on the Poincare hyperbolic disk.
-            %
-            % Equation of the circles on the disk:
-            % x^2 + y^2
-            % + 2*(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1))*x
-            % - 2*(u(1)-v(1))/(u(1)*v(2)-u(2)*v(1))*y + 1 = 0,
-            % where u and v are points on the boundary.
-            %
-            % Standard form of equation of a circle
-            % (x - x0)^2 + (y - y0)^2 = r^2
-            %
-            % Therefore we can identify
-            % x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-            % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
-            % r^2 = x0^2 + y0^2 - 1
-            
-            for i = 1:length(v) %for each link
-                if row(i) ~= col(i) % not at a diagonal
-                    if abs(row(i) - col(i)) - length(adjacencyMatrix)/2 == 0
-                        % points are diametric, so draw a straight line
-                        u = [cos(t(row(i)));sin(t(row(i)))];
-                        v = [cos(t(col(i)));sin(t(col(i)))];
-                        this.Nodes(row(i)).Links(end+1) = line(...
-                            [u(1);v(1)],...
-                            [u(2);v(2)],...
-                            'LineWidth', lineWidth(i),...
-                            'Color', this.ColorMap(row(i),:),...
-                            'PickableParts','none');
-                    else % points are not diametric, so draw an arc
-                        u  = [cos(t(row(i)));sin(t(row(i)))];
-                        v  = [cos(t(col(i)));sin(t(col(i)))];
-                        x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-                        y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
-                        r  = sqrt(x0^2 + y0^2 - 1);
-                        thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
-                        thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
-                        
-                        if u(1) >= 0 && v(1) >= 0
-                            % ensure the arc is within the unit disk
-                            theta = [linspace(max(thetaLim),pi,50),...
-                                linspace(-pi,min(thetaLim),50)].';
-                        else
-                            theta = linspace(thetaLim(1),thetaLim(2)).';
-                        end
-                        
-                        this.Nodes(row(i)).Links(end+1) = line(...
-                            r*cos(theta)+x0,...
-                            r*sin(theta)+y0,...
-                            'LineWidth', lineWidth(i),...
-                            'Color', this.ColorMap(row(i),:),...
-                            'PickableParts','none');
-                    end
-                end
-            end
+%             % Draw Linkss on the Poincare hyperbolic disk.
+%             %
+%             % Equation of the circles on the disk:
+%             % x^2 + y^2
+%             % + 2*(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1))*x
+%             % - 2*(u(1)-v(1))/(u(1)*v(2)-u(2)*v(1))*y + 1 = 0,
+%             % where u and v are points on the boundary.
+%             %
+%             % Standard form of equation of a circle
+%             % (x - x0)^2 + (y - y0)^2 = r^2
+%             %
+%             % Therefore we can identify
+%             % x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
+%             % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
+%             % r^2 = x0^2 + y0^2 - 1
+%             
+%             for i = 1:length(v) %for each link
+%                 if row(i) ~= col(i) % not at a diagonal
+%                     if abs(row(i) - col(i)) - length(adjacencyMatrix)/2 == 0
+%                         % points are diametric, so draw a straight line
+%                         u = [cos(t(row(i)));sin(t(row(i)))];
+%                         v = [cos(t(col(i)));sin(t(col(i)))];
+%                         this.Nodes(row(i)).Links(end+1) = line(...
+%                             [u(1);v(1)],...
+%                             [u(2);v(2)],...
+%                             'LineWidth', lineWidth(i),...
+%                             'Color', this.ColorMap(row(i),:),...
+%                             'PickableParts','none');
+%                     else % points are not diametric, so draw an arc
+%                         u  = [cos(t(row(i)));sin(t(row(i)))];
+%                         v  = [cos(t(col(i)));sin(t(col(i)))];
+%                         x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
+%                         y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
+%                         r  = sqrt(x0^2 + y0^2 - 1);
+%                         thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
+%                         thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
+%                         
+%                         if u(1) >= 0 && v(1) >= 0
+%                             % ensure the arc is within the unit disk
+%                             theta = [linspace(max(thetaLim),pi,50),...
+%                                 linspace(-pi,min(thetaLim),50)].';
+%                         else
+%                             theta = linspace(thetaLim(1),thetaLim(2)).';
+%                         end
+%                         
+%                         this.Nodes(row(i)).Links(end+1) = line(...
+%                             r*cos(theta)+x0,...
+%                             r*sin(theta)+y0,...
+%                             'LineWidth', lineWidth(i),...
+%                             'Color', this.ColorMap(row(i),:),...
+%                             'PickableParts','none');
+%                     end
+%                 end
+%             end
             
             axis image;
             ax = gca;
@@ -166,7 +167,7 @@ classdef circularGraph < handle
             ax.SortMethod = 'depth';
             
             fig = gcf;
-
+ 
         end
         
     end
