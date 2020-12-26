@@ -1789,6 +1789,7 @@ end
 
 
 function UpdateFigurePlot(hFig)
+    disp('Entered UpdateFigurePlot');
     % Progress bar
     bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected rows

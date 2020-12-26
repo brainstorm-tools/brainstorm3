@@ -1497,7 +1497,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %NEW Nov 10: create links from computed DataPair
     BuildLinks(hFig, DataPair);
     LinkSize = getappdata(hFig, 'LinkSize');
-    %disp(LinkSize);
     SetLinkSize(hFig, LinkSize);
     SetLinkTransparency(hFig, 0.00);
         
@@ -2317,6 +2316,11 @@ function UpdateColormap(hFig)
     CMap = sColormap.CMap;
     % OGL = getappdata(hFig, 'OpenGLDisplay');
     
+    % Added Dec 23: get the transparency
+    LinkTransparency = getappdata(hFig, 'LinkTransparency');
+    LinkIntensity = 1.00 - LinkTransparency;
+        
+    
     if (sum(DataMask) > 0)
         % Normalize DataPair for Offset
         Max = max(DataPair(:,3));
@@ -2336,10 +2340,6 @@ function UpdateColormap(hFig)
         iData = find(DataMask == 1);
         VisibleLinks = hFig.UserData.AllLinks(iData).';
   
-        % Added Dec 23: get the transparency
-        LinkTransparency = getappdata(hFig, 'LinkTransparency');
-        LinkIntensity = 1.00 - LinkTransparency;
-        
         % set desired colors to each link
         % 4th column of Color is transparency
         
@@ -2391,10 +2391,27 @@ function UpdateColormap(hFig)
         iData = find(RegionDataMask == 1);
         VisibleLinks_region = hFig.UserData.AllLinks(iData).';
         
+        % if no node is selected, show all links above threshold
+        if isempty(selectedLinks)
+            for i=1:size(VisibleLinks_region,1)
+                set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+                set(VisibleLinks_region(i), 'Visible', 'on');
+            end
+        else % if node(s) were selected
+            for i=1:size(VisibleLinks_region,1)
+                if ismember(VisibleLinks(i), selectedLinks)
+                    set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+                    set(VisibleLinks_region(i), 'Visible', 'on');
+                else
+                    set(VisibleLinks_region(i), 'Visible', 'off');
+                end
+            end
+        end        
+        
         % set desired colors to each link
-        for i=1:size(VisibleLinks_region,1)
-            set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
-        end
+        %for i=1:size(VisibleLinks_region,1)
+            %set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+        %end
         
         % old code
 %         OGL.setRegionLinkColorGradient( ...
@@ -2560,7 +2577,6 @@ end
 %         If node selection is empty: select/unselect all the nodes
 function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     disp('Entered SetSelectedNodes');
-    disp(nargin);
     % Parse inputs
     if (nargin < 2) || isempty(iNodes)
         % Get all the nodes
@@ -2676,20 +2692,20 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
  
     iData = find(DataMask == 1); % - 1;
  
-    %if (~isempty(iData))
+    if (~isempty(iData))
         % Update link visibility
-        %if (MeasureLinksIsVisible)
-            %if (isSelected)
-                %set(hFig.UserData.AllLinks(iData), 'Visible', 'on');
-            %else
-                %set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
-            %end
+        if (MeasureLinksIsVisible)
+            if (isSelected)
+                set(hFig.UserData.AllLinks(iData), 'Visible', 'on');
+            else
+                set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
+            end
  
          %   OGL.setMeasureLinkVisibility(iData, isSelected);
         %else
           %  OGL.setRegionLinkVisibility(iData, isSelected);
-        %end
-    %end
+        end
+    end
     
     % These functions sets global Boolean value in Java that allows
     % or disallows the drawing of these measures, which makes it
