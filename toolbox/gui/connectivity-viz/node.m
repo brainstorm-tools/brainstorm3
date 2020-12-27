@@ -11,7 +11,6 @@ classdef   node < handle
         Visible = true;         % Logical true or false
         isAgregatingNode = false; % if this node is a grouped node/scout /lobe
         LabelVisible = true;    % logical true or false if label is visible or not
-        %isClicked  % added Dec 23 to identify a node that has been selected by user
     end
     
     properties (Access = public, Dependent = true)
@@ -73,6 +72,7 @@ classdef   node < handle
             updateTextLabel(this);
         end
         
+        % don't actually need this if using the implementation from Dec 26
         function set.isAgregatingNode(this,value)
             this.isAgregatingNode = value;
             % updateAgregatingNode(this); % added Oct 25, bug?
@@ -96,6 +96,7 @@ classdef   node < handle
                 this.NodeMarker.Marker = 'o';
                 this.NodeMarker.Color = this.NodeMarker.MarkerFaceColor;
  
+                % node is unselected: remove link from selectedLinks
                 for i = 1:length(this_links)
                     selectedLinks(selectedLinks == this_links(i)) = [];
                 end               
@@ -107,17 +108,17 @@ classdef   node < handle
             else % node is red when clicked on
                 this.NodeMarker.Marker = 'x'; % changed on Oct 25
                 this.NodeMarker.Color = 'red'; % changed on Dec 21
-                
+             
                 % Added Dec 24: Change visibility of links when node is
                 % selected
                 for i = 1:length(this_links)
                     if isempty(selectedLinks)
                         selectedLinks = this_links(i);
-                    % avoid duplicates
+                    % avoid duplicates (since each link has 2 noes)
                     elseif ~ismember(this_links(i), selectedLinks)
                         selectedLinks(end+1) = this_links(i);
                     end
-                end
+                end  
                 
                 % for i = 1:length(this.Links)
                   %  this.Links(i).ZData = zeros(size(this.Links(i).XData));
@@ -200,9 +201,6 @@ classdef   node < handle
             % TODO: Implement function similar to JavaClickCallback +
             % SetSelectedNodes to form aggregates
             % SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
-            
-            % identify node that was selected
-            %nodeIndex = getNodeIndex(hFig, xpos_mouse, ypos_mouse);
             
         end
     end

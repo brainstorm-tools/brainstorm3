@@ -31,7 +31,6 @@ classdef circularGraph < handle
         ShowButton;       % Turn all nodes on
         HideButton;       % Turn all nodes off
         AllLinks;
-        %VisibleLinks; % added Dec 20
     end
     
     methods
@@ -78,7 +77,7 @@ classdef circularGraph < handle
             %set colourmap value and labels for each node
             for i = 1:length(adjacencyMatrix)
                 this.Nodes(i) = node(cos(t(i)),sin(t(i)));
-                this.Nodes(i).Color = [0.7 0.7 0.7];
+                this.Nodes(i).Color = [0.7 0.7 0.7]; % default
                 %this.Nodes(i).Color = this.ColorMap(i,:);
                 this.Nodes(i).Label = this.Label{i};
             end

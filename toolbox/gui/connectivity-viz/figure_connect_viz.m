@@ -469,10 +469,11 @@ end
 %% ===== FIGURE MOUSE UP CALLBACK =====
 function FigureMouseUpCallback(hFig, varargin)
     disp('Entered FigureMouseUpCallback');
+    
+    % Added Dec 24: Functionalities from JavaClickCallback currently
+    % implemented in UpdateColormap
     UpdateColormap(hFig)
-    
-    
-    
+
     % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
     hasMoved = getappdata(hFig, 'hasMoved');
@@ -648,8 +649,8 @@ function ToggleRegionSelection(hFig, Inc)
         NextNode = getNextCircularRegion(hFig, SelectedNode, Inc);
     end
     % Is node an agregating node
-    IsAgregatingNode = ismember(NextNode, AgregatingNodes);
-    if (IsAgregatingNode)
+    isAgregatingNode = ismember(NextNode, AgregatingNodes);
+    if (isAgregatingNode)
         % Get agregated nodes
         AgregatedNodeIndex = getAgregatedNodesFrom(hFig, NextNode); 
         if (~isempty(AgregatedNodeIndex))
@@ -663,7 +664,8 @@ end
  
  
 %% ===== JAVA MOUSE CLICK CALLBACK =====
-% TODO: convert to matlab callbacks
+% NOTE: CURRENTLY NOT USED
+% functionalities currently implemented in buildLinks + UpdateColormap
 function JavaClickCallback(hFig, ev)
     disp('Entered JavaClickCallback');
     % Retrieve button
@@ -705,7 +707,7 @@ function JavaClickCallback(hFig, ev)
                 % Is the node already selected ?
                 AlreadySelected = any(selNodes == nodeIndex);
                 % Is the node an agregating node ?
-                IsAgregatingNode = any(AgregatingNodes == nodeIndex);
+                isAgregatingNode = any(AgregatingNodes == nodeIndex);
  
                 if (button == 'normal')
                     % If node is already select
@@ -720,7 +722,7 @@ function JavaClickCallback(hFig, ev)
                             return;
                         end
                         % Aggragtive nodes: select blocks of nodes
-                        if IsAgregatingNode
+                        if isAgregatingNode
                             % Get agregated nodes
                             AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
                             % How many are already selected
@@ -752,7 +754,7 @@ function JavaClickCallback(hFig, ev)
                         Select = 1;
                     end
                 
-                    if (IsAgregatingNode)
+                    if (isAgregatingNode)
                         % Get agregated nodes
                         SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
                         % Select
@@ -767,7 +769,7 @@ function JavaClickCallback(hFig, ev)
                     disp('BST> Zoom into a region: Feature disabled until fixed.');
                     return;
                     
-                    if (IsAgregatingNode)
+                    if (isAgregatingNode)
                         OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
                         if isempty(OrganiseNode)
                             OrganiseNode = 1;
@@ -1239,7 +1241,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
  
 % Currently using a "test" plot with defined threshold
 % for testing purposes only
-    testPlot(hFig)
+     testPlot(hFig)
     
     % get the nodes
    
@@ -1495,6 +1497,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     end
     
     %NEW Nov 10: create links from computed DataPair
+    %testPlot(hFig)
     BuildLinks(hFig, DataPair);
     LinkSize = getappdata(hFig, 'LinkSize');
     SetLinkSize(hFig, LinkSize);
@@ -1606,6 +1609,17 @@ function BuildLinks(hFig, DataPair)
     % empty the array when first loading figure
     global selectedLinks;
     selectedLinks = [];
+    NodeIndex = {}; % cell array
+    
+    % to add the new link to the aggregating node(s) too
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+        
+    % get list of nodes belonging to each aggregating node
+    for i = 1:length(AgregatingNodes)
+        NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
+        member = cellfun(@(x) ismember(AgregatingNodes(i),x), NodePaths);
+        NodeIndex{i} = (find(member == 1)).';    
+    end
   
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs
@@ -1651,7 +1665,6 @@ function BuildLinks(hFig, DataPair)
         x = 4*0.6*r*cos(theta)+4*0.6*x0;
         y = 4*0.6*r*sin(theta)+4*0.6*y0;
         
-        % add as link to node1
         
         % use thresh as ABS value
         % default colour for now, will be updated in updateColormap
@@ -1665,6 +1678,17 @@ function BuildLinks(hFig, DataPair)
             'Visible','off'); %not visible as default;
         testNodes(node1).Links(end+1) = l;
         testNodes(node2).Links(end+1) = l;
+        
+        % Add link to the aggregating nodes too
+        % each cell of NodeIndex refers to the nodes belonging to one
+        % particular aggregating node
+        for j = 1:length(NodeIndex)
+            if ismember(node1, NodeIndex{j}) || ismember(node2, NodeIndex{j})
+                index = AgregatingNodes(j);
+                testNodes(index).Links(end+1) = l;      
+            end
+        end
+        
         if(i==1)
             hFig.UserData.AllLinks = l;
         else
@@ -2243,7 +2267,7 @@ end
 function UpdateColormap(hFig)
     disp('Entered UpdateColormap');
     
-    global selectedLinks;
+    global selectedLinks; % used to hold links of nodes selected by user
     
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
@@ -2345,6 +2369,7 @@ function UpdateColormap(hFig)
         
         % if no node is selected, show all links above threshold
         if isempty(selectedLinks)
+            % if we did not click on an aggregating node
             for i=1:size(VisibleLinks,1)
                 set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
                 set(VisibleLinks(i), 'Visible', 'on');
@@ -2358,7 +2383,7 @@ function UpdateColormap(hFig)
                     set(VisibleLinks(i), 'Visible', 'off');
                 end
             end
-        end        
+        end  
         
         % old code
         % Update color
@@ -2407,11 +2432,6 @@ function UpdateColormap(hFig)
                 end
             end
         end        
-        
-        % set desired colors to each link
-        %for i=1:size(VisibleLinks_region,1)
-            %set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
-        %end
         
         % old code
 %         OGL.setRegionLinkColorGradient( ...
@@ -2654,6 +2674,9 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
         DisplayInwardMeasure = getappdata(hFig, 'DisplayInwardMeasure');
         DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
+        
+        %disp(DisplayOutwardMeasure);
+        
         if (DisplayOutwardMeasure)
             OutMask = ismember(DataToFilter(:,1), iNodes);
             NodeDirectionMask = NodeDirectionMask | OutMask;
@@ -2684,6 +2707,8 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
                          | ismember(DataToFilter(:,2), iNodes);
         DataMask = DataMask & SelectedNodeMask;
     end
+    
+    %disp(NodeDirectionMask);
     
     % Links are from valid node only
     ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode') > 0);
@@ -3397,7 +3422,7 @@ end
 %@TODO: default link and node size (user adjustable)
 %@TODO: figurehastext default on/off
 function ClearAndAddNodes(hFig, V, Names)
-    
+    disp('Entered ClearAndAddNodes');
     % get calculated nodes
     MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
@@ -3418,6 +3443,9 @@ function ClearAndAddNodes(hFig, V, Names)
         if (i<=nAgregatingNodes)
             %this alters display/rotation of lobe node text
             UserData.testNodes(i).isAgregatingNode = true; 
+            
+            %disp(UserData.testNodes(i).Links);
+            
         end
         
         % add label to node
