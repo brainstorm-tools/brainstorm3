@@ -210,11 +210,11 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
 
     % ===== DELETE EXISTING SURFACES =====
-    if ~isempty(sSubject.Surface)
+    if ~isempty(sSubject.Surface) || (length(sSubject.Anatomy) >= 2)
         % Ask user whether the previous anatomy should be removed
         if isInteractive
-            isDel = java_dialog('confirm', ['Warning: There are already surfaces available for this subject.' 10 10 ...
-                'Delete the existing surfaces?' 10 10], 'CAT12 segmentation');
+            isDel = java_dialog('confirm', ['Warning: There are already surfaces or atlases in this subject.' 10 10 ...
+                'Delete the existing files?' 10 10], 'CAT12 segmentation');
         else
             isDel = 1;
         end
@@ -236,7 +236,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || (length(sMri.SCS.NAS)~=3) || (length(sMri.SCS.LPA)~=3) || (length(sMri.SCS.RPA)~=3) || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'T') || isempty(sMri.SCS.T)
         % Issue warning
         errMsg = 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.'; 
-        % Compute MNI transformation
+        % Compute MNI normalization
         [sMri, errNorm] = bst_normalize_mni(T1FileBst);
         % Handle errors
         if ~isempty(errNorm)
@@ -278,7 +278,6 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;                % Blocking call to CAT12
     matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {TpmNii};      % User-defined TPM atlas
     matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
-    matlabbatch{1}.spm.tools.cat.estwrite.output.warps       = [0 0]; % Skip deformation fields for the moment: [forward inverse]
     matlabbatch{1}.spm.tools.cat.estwrite.output.GM.native   = 1;   % GM tissue maps
     matlabbatch{1}.spm.tools.cat.estwrite.output.GM.warped   = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.GM.mod      = 0;
@@ -298,18 +297,26 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.native = 1;  % Label: background=0, CSF=1, GM=2, WM=3, WMH=4
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
+    % Do not save IXI550 deformation fields (we need ICBM152NLinAsym09 deformation fields for compatibility)
+    % matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];  % Non-linear MNI normalization deformation fields: [forward inverse]
     % Volume atlases
     if isVolumeAtlases
-        matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];     % Save non-linear MNI normalization deformation fields: [forward inverse]
-        matlabbatch{1}.spm.tools.cat.estwrite.output.ROI = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.cobra              = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.aal3               = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.anatomy3           = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.ibsr               = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.julichbrain        = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.hammers            = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.mori               = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_100Parcels_17Networks_order = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_200Parcels_17Networks_order = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_400Parcels_17Networks_order = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_800Parcels_17Networks_order = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.atlas.native = 1;  % Save atlases in native space
     else
         % No ROIs
-        matlabbatch{1}.spm.tools.cat.estwrite.output.ROI = 0;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);   % CGaser comment: Correct syntax to disable ROI processing for volumes   
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 0;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.lpba40             = 0;
@@ -392,9 +399,17 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     nVertices = str2double(nVertices);
     % Ask for volume atlases
-    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Compute anatomical atlases?' 10 ...
-        '- CAT atlases: neuromorphometrics, lpba40, cobra, hammers' 10 ...
-        '- SPM non-linear MNI normalization'], 'Anatomical atlases');
+    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Import anatomical atlases?' 10 10 ...
+        ' - CoBrALab' 10 ...
+        ' - Hammers' 10 ... 
+        ' - Neuromorphometrics' 10 ...
+        ' - LPBA40' 10 ...
+        ' - AAL3', 10 ...
+        ' - Anatomy v3', 10 ...
+        ' - IBSR', 10 ...
+        ' - JulichBrain v2', 10 ...
+        ' - Mori', 10 ...
+        ' - Schaefer2018', 10 10], 'Anatomical atlases');
     if isCancel
         return
     end

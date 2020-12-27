@@ -111,7 +111,7 @@ end
 %% ===== LOOP ON MULTIPLE MRI =====
 if iscell(MriFile) && (length(MriFile) == 1)
     MriFile = MriFile{1};
-elseif iscell(MriFile)
+elseif iscell(MriFile) && ~strcmpi(FileFormat, 'SPM-TPM')
     % Only allow multiple import if there is already a MRI
     if isempty(sSubject.Anatomy)
         error(['You must import the first MRI in the subject folder separately.' 10 'Please select only one volume at a time.']);
@@ -131,11 +131,11 @@ end
 %% ===== LOAD MRI FILE =====
 isProgress = bst_progress('isVisible');
 if ~isProgress
-    bst_progress('start', 'Import MRI', ['Loading file "' MriFile '"...']);
+    bst_progress('start', 'Import MRI', 'Loading MRI file...');
 end
 % MNI / Atlas?
 isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
-isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS'});
+isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 % Load MRI
 isNormalize = 0;
 sMri = in_mri(MriFile, FileFormat, isInteractive && ~isMni, isNormalize);
@@ -144,11 +144,19 @@ if isempty(sMri)
     return
 end
 % History: File name
-sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
-
+if iscell(MriFile)
+    sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile{1}]);
+else
+    sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
+end
+    
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
-[Labels, AtlasName] = mri_getlabels(MriFile, sMri);
+if ~iscell(MriFile)
+    Labels = mri_getlabels(MriFile, sMri);
+else
+    Labels = [];
+end
 % Save labels in the file structure
 if ~isempty(Labels)
     sMri.Labels = Labels;

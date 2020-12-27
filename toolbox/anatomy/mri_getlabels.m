@@ -66,7 +66,7 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
         AtlasName = 'cobra';
     elseif ~isempty(strfind(fBase, 'hammers'))
         AtlasName = 'hammers';
-    elseif ~isempty(strfind(fBase, 'julich'))
+    elseif ~isempty(strfind(fBase, 'julich')) || ~isempty(strfind(fBase, 'jubrain'))
         AtlasName = 'julich';
     elseif ~isempty(strfind(fBase, 'lpba40'))
         AtlasName = 'lpba40';
@@ -177,9 +177,9 @@ switch lower(AtlasName)
         Labels = mri_getlabels_shaeffer600();
 
     case 'brodmann'
-        Labels = {...
-            error('todo');
-            };
+%         Labels = {...
+%             error('todo');
+%             };
 end
 
 

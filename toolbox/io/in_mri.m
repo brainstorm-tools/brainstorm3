@@ -67,28 +67,30 @@ MRI = [];
 vox2ras = [];
 
 % ===== GUNZIP FILE =====
-% Get file extension
-[filePath, fileBase, fileExt] = bst_fileparts(MriFile);
-% If file is gzipped
-if strcmpi(fileExt, '.gz')
-    % Get temporary folder
-    tmpDir = bst_get('BrainstormTmpDir');
-    % Target file
-    gunzippedFile = bst_fullfile(tmpDir, fileBase);
-    % Unzip file
-    res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
-    if ~res
-        error(['Could not gunzip file "' MriFile '" to:' 10 gunzippedFile ]);
-    end
-    % Import gunzipped file
-    MriFile = gunzippedFile;
+if ~iscell(MriFile)
+    % Get file extension
     [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+    % If file is gzipped
+    if strcmpi(fileExt, '.gz')
+        % Get temporary folder
+        tmpDir = bst_get('BrainstormTmpDir');
+        % Target file
+        gunzippedFile = bst_fullfile(tmpDir, fileBase);
+        % Unzip file
+        res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
+        if ~res
+            error(['Could not gunzip file "' MriFile '" to:' 10 gunzippedFile ]);
+        end
+        % Import gunzipped file
+        MriFile = gunzippedFile;
+        [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+    end
 end
 
                 
 %% ===== DETECT FILE FORMAT =====
 isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
-isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS'});
+isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
     % Switch between file extensions
     switch (lower(fileExt))
@@ -135,6 +137,8 @@ switch (FileFormat)
         if ~isempty(strfind(lower(fileBase), 'subjectimage'))
             MRI = load(MriFile);
         end
+    case 'SPM-TPM'
+        MRI = in_mri_tpm(MriFile);
     otherwise
         error(['Unknown format: ' FileFormat]);
 end

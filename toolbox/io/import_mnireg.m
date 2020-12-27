@@ -1,8 +1,10 @@
-function sMri = import_mnireg(MriFile, RegFile, RegInvFile)
+function sMri = import_mnireg(sMri, RegFile, RegInvFile)
 % IMPORT_MNIREG: Add deformation fields for MNI normalization.
 %
+% USAGE:  sMri = import_mnireg(sMri, RegFile, RegInvFile)
+%
 % INPUTS:
-%    - MriFile    : MRI file saved in the Brainstorm database
+%    - sMri       : Brainstorm MRI structure
 %    - RegFile    : SPM file y_*.nii, forward MNI deformation field
 %                   Used for coverting from MNI to MRI coordinates in cs_convert
 %                   The .nii must contain 3 volumes (X,Y,Z)
@@ -40,14 +42,6 @@ if (nargin < 2) || isempty(RegFile)
 end
 
 %% ===== READ FILES =====
-% Read destination MRI
-sMri = bst_memory('GetMri', file_short(MriFile));
-if isempty(sMri)
-    isLoadedHere = 1;
-    sMri = bst_memory('LoadMri', file_short(MriFile));
-else
-    isLoadedHere = 0;
-end
 % Read registration volumes
 if ~isempty(RegInvFile)
     sReg = in_mri(RegInvFile, 'ALL', 0, 0);
@@ -69,15 +63,6 @@ end
 %% ===== COMPUTE DEFAULT FIDUCIALS =====
 if ~isempty(RegFile) && (~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || isempty(sMri.NCS.AC) || isempty(sMri.NCS.PC) || isempty(sMri.NCS.IH))
     sMri = mri_set_default_fid(sMri, 'cat12');
-end
-
-
-%% ===== SAVE IN MRI =====
-% Save modified file
-bst_save(file_fullpath(MriFile), sMri, 'v7');
-% Unload surface to save it
-if isLoadedHere
-    bst_memory('UnloadMri', MriFile);
 end
 
 

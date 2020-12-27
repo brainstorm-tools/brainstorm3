@@ -162,9 +162,9 @@ if isVolumeAtlas
                 file_find(CatDir, 'p6*.nii', 2)};     % Background
     VolAtlasFiles = file_find(bst_fullfile(CatDir, 'mri_atlas'), '*.nii', 1, 0);
 end
-% Find MNI registration volumes
-RegFile = file_find(CatDir, 'y_*.nii', 2);
-RegInvFile = file_find(CatDir, 'iy_*.nii', 2);
+% % Find MNI registration volumes
+% RegFile = file_find(CatDir, 'y_*.nii', 2);
+% RegInvFile = file_find(CatDir, 'iy_*.nii', 2);
 
 % Find extra cortical maps
 if isExtraMaps
@@ -286,12 +286,14 @@ if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.
 end
 
 %% ===== MNI NORMALIZATION =====
-% Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
-if ~isempty(RegFile) && ~isempty(RegInvFile)
-    bst_progress('text', 'Loading non-linear MNI transformation...');
-    sMri = import_mnireg(BstT1File, RegFile, RegInvFile);
+% % Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
+% if ~isempty(RegFile) && ~isempty(RegInvFile)
+%     bst_progress('text', 'Loading non-linear MNI transformation...');
+%     sMri = import_mnireg(sMri, RegFile, RegInvFile);
+%     % Save modified file
+%     bst_save(file_fullpath(BstT1File), sMri, 'v7');
 % Compute linear MNI registration (spm_maff8)
-elseif isComputeMni
+if isComputeMni
     % Call normalize function
     [sMri, errCall] = bst_normalize_mni(BstT1File);
     errorMsg = [errorMsg errCall];
@@ -476,60 +478,7 @@ end
 %% ===== IMPORT TISSUE LABELS =====
 if isVolumeAtlas && ~isempty(TpmFiles)
     bst_progress('start', 'Import CAT12 folder', 'Importing tissue probability maps...');
-    sMriTissue = [];
-    pCube = [];
-    % Find for each voxel in which tissue there is the highest probability
-    for iTissue = 1:length(TpmFiles)
-        % Skip missing tissue
-        if isempty(TpmFiles{iTissue})
-            continue;
-        end
-        % Load probability map
-        sMriProb = in_mri_nii(TpmFiles{iTissue});
-        % First volume: Copy structure
-        if isempty(sMriTissue)
-            sMriTissue = sMriProb;
-            sMriTissue.Cube = 0 .* sMriTissue.Cube;
-            pCube = sMriTissue.Cube;
-        end
-        % Set label for the voxels that have a probability higher than the previous volumes
-        maskLabel = ((sMriProb.Cube > pCube) & (sMriProb.Cube > 0));
-        sMriTissue.Cube(maskLabel) = iTissue;
-        pCube(maskLabel) = sMriProb.Cube(maskLabel);
-    end
-    % Save tissues atlas
-    if ~isempty(sMriTissue)
-        % Get updated subject definition
-        sSubject = bst_get('Subject', iSubject);
-        % Replace background with zeros
-        sMriTissue.Cube(sMriTissue.Cube == 6) = 0;
-        % Add basic labels
-        sMriTissue.Labels = mri_getlabels('tissues5');
-        % Set comment
-        sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
-        % Copy some fields from the original MRI
-        if isfield(sMri, 'SCS') 
-            sMriTissue.SCS = sMri.SCS;
-        end
-        if isfield(sMri, 'NCS') 
-            sMriTissue.NCS = sMri.NCS;
-        end
-        if isfield(sMri, 'History') 
-            sMriTissue.History = sMri.History;
-        end
-        % Add history tag
-        sMriTissue = bst_history('add', sMriTissue, 'segment', 'Tissues segmentation generated with CAT12.');
-        % Output file name
-        TissueFile = file_unique(strrep(file_fullpath(BstT1File), '.mat', '_tissues.mat'));
-        % Save new MRI in Brainstorm format
-        sMriTissue = out_mri_bst(sMriTissue, TissueFile);
-        % Add to subject
-        iAnatomy = length(sSubject.Anatomy) + 1;
-        sSubject.Anatomy(iAnatomy).Comment  = sMriTissue.Comment;
-        sSubject.Anatomy(iAnatomy).FileName = file_short(TissueFile);
-        % Save subject
-        bst_set('Subject', iSubject, sSubject);
-    end
+    import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 0, 'tissues_cat12');
 end
 
 
