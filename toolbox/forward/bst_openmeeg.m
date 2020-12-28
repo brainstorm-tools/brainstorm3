@@ -297,20 +297,23 @@ for i = 1:length(OPTIONS.BemFiles)
             end
         end
     end
-    % Check if any sensor is outside this BEM layer
-    chLoc = bst_bsxfun(@minus, [OPTIONS.Channel([OPTIONS.iEeg, OPTIONS.iMeg, OPTIONS.iSeeg, OPTIONS.iEcog]).Loc]', bfs_center(:)');
-    iChanOutside = find(~inpolyhd(chLoc, vLayer, TessMat.Faces));
-    if ~isempty(iChanOutside)
-        errMsg = sprintf(['WARNING: %d sensor(s) outside the BEM layer "%s" (see list in command window).\n' ...
-                          'The leadfield for these sensors could be incorrect, or OpenMEEG could crash.\n' ...
-                          'Edit the channel file and change their type to exclude them.'], length(iChanOutside), OPTIONS.BemNames{i});
-        disp([10 errMsg 10]);
-        disp(['Sensors outside "' OPTIONS.BemNames{i} '": ' sprintf('%s ', OPTIONS.Channel(iChanOutside).Name), 10]);
-        if OPTIONS.Interactive
-            isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
-            if ~isConfirm
-                errMsg = [];
-                return;
+    % Check if any SEEG/ECOG sensor is outside this BEM layer
+    if (isEcog || isSeeg)
+        iIntra = [OPTIONS.iSeeg, OPTIONS.iEcog];
+        chLoc = bst_bsxfun(@minus, [OPTIONS.Channel(iIntra).Loc]', bfs_center(:)');
+        iChanOutside = iIntra(~inpolyhd(chLoc, vLayer, TessMat.Faces));
+        if ~isempty(iChanOutside)
+            errMsg = sprintf(['WARNING: %d sensor(s) outside the BEM layer "%s" (see list in command window).\n' ...
+                              'The leadfield for these sensors could be incorrect, or OpenMEEG could crash.\n' ...
+                              'Edit the channel file and change their type to exclude them.'], length(iChanOutside), OPTIONS.BemNames{i});
+            disp([10 errMsg 10]);
+            disp(['Sensors outside "' OPTIONS.BemNames{i} '": ' sprintf('%s ', OPTIONS.Channel(iChanOutside).Name), 10]);
+            if OPTIONS.Interactive
+                isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
+                if ~isConfirm
+                    errMsg = [];
+                    return;
+                end
             end
         end
     end
