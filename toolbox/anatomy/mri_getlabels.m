@@ -90,6 +90,8 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
         AtlasName = 'aicha';
     elseif ~isempty(strfind(fBase, 'hcp')) && ~isempty(strfind(fBase, 'mmp1'))
         AtlasName = 'hcp_mmp1';
+    elseif ~isempty(strfind(fBase, 'anatomy3'))
+        AtlasName = 'anatomy3';
     elseif ~isempty(strfind(fBase, 'brodmann'))
         AtlasName = 'brodmann';
     end
@@ -175,11 +177,10 @@ switch lower(AtlasName)
         Labels = mri_getlabels_shaeffer400();
     case 'schaefer_600_17net'
         Labels = mri_getlabels_shaeffer600();
-
+    case 'anatomy3'
+        Labels = mri_getlabels_anatomy3();
     case 'brodmann'
-%         Labels = {...
-%             error('todo');
-%             };
+        
 end
 
 
