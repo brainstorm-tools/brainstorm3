@@ -920,15 +920,15 @@ function DisplayFigurePopup(hFig)
             % Label
             gui_component('label', jPanelModifiers, '', 'Link size');
             % Slider
-            jSliderContrast = JSlider(1,5,2); % changed Dec 23
-            jSliderContrast.setValue(LinkSize);
+            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for link sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(LinkSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
             jSliderContrast.setFocusable(0);
             jSliderContrast.setOpaque(0);
             jPanelModifiers.add('tab hfill', jSliderContrast);
             % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LinkSize)));
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LinkSize * 2)));
             jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
             jPanelModifiers.add(jLabelContrast);
@@ -1042,18 +1042,17 @@ function TransparencySliderModifiersModifying_Callback(hFig, ev, jLabel)
     newValue = double(ev.getSource().getValue()) / 100;
     % Update text value
     jLabel.setText(sprintf('%.0f %%', newValue * 100));
-    %
     SetLinkTransparency(hFig, newValue);
 end
  
 % Link size slider
 function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
-    disp('Entered SizeSliderModifiersModifying_Callback');
+    disp('Entered SizeSliderModifiersModifying_Callback'); % TODO: remove
     % Update Modifier value
-    newValue = ev.getSource().getValue();
+    newValue = ev.getSource().getValue() / 2;
+    disp(newValue)
     % Update text value
-    jLabel.setText(sprintf('%.0f', round(newValue)));
-    %
+    jLabel.setText(sprintf('%.0f', newValue * 2));
     SetLinkSize(hFig, newValue);
 end
  
@@ -2809,7 +2808,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
             % Add on Java side
            % OGL.addPrecomputedHierarchyLink(aSplines); 
             % Get link size
-            LinkSize = 6;
+          %  LinkSize = 6;
             % Width
            % OGL.setRegionLinkWidth(0:(size(RegionDataPair,1) - 1), LinkSize);
         end
@@ -2940,21 +2939,19 @@ end
 function LinkSize = GetLinkSize(hFig)
     LinkSize = getappdata(hFig, 'LinkSize');
     if isempty(LinkSize)
-        LinkSize = 2;
+        LinkSize = 1.5; % default
     end
 end
  
 % DONE Dec 23
 function SetLinkSize(hFig, LinkSize)
     disp('Entered SetLinkSize');
-    % default = 2
     if isempty(LinkSize)
-        LinkSize = 2;
+        LinkSize = 1.5; % default
     end
     
     Links = hFig.UserData.AllLinks;
     set(Links, 'LineWidth', LinkSize);
-    
     setappdata(hFig, 'LinkSize', LinkSize);
 end
  
