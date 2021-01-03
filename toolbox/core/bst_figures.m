@@ -453,6 +453,11 @@ function UpdateFigureName(hFig)
                     figureName = [figureNameModality  'MriViewer: ' figureName];
                 end
             end
+            % Add atlas name
+            AnatAtlas = getappdata(hFig, 'AnatAtlas');
+            if ~isempty(AnatAtlas) && ~strcmpi(AnatAtlas, 'none')
+                figureName = [figureName ' (' AnatAtlas ')'];
+            end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];
         case 'Spectrum'

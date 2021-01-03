@@ -178,8 +178,9 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
     sMriRef = in_mri_bst(refMriFile);
     % Adding an MNI volume to an existing subject
     if isMni
-        [sMri, errMsg] = mri_reslice_mni(sMri, sMriRef, isAtlas);
+        sMri = mri_reslice_mni(sMri, sMriRef, isAtlas);
         isSameSize = 1;
+        errMsg = '';
     % Regular coregistration options between volumes
     else
         % If some transformation where made to the intial volume: apply them to the new one ?

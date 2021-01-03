@@ -191,9 +191,13 @@ if isOverlay
         return;
     end
 end
-% Try load load an anatomical atlas (if the overlay is not already an atlas)
+% Try to load an anatomical atlas (if the overlay is not already an atlas)
 if ~isOverlay || isempty(TessInfo.OverlayLabels)
     figure_mri('SetVolumeAtlas', hFig);
+% If the overlay is an atlas: simply set the atlas name in the figure
+elseif isOverlay && ~isempty(TessInfo.OverlayLabels)
+    [sSubject, iSubject, iAnatomy] = bst_get('MriFile', OverlayFile);
+    setappdata(hFig, 'AnatAtlas', sSubject.Anatomy(iAnatomy).Comment);
 end
 % Configure the operations that are allowed
 figure_mri('SetFigureStatus', hFig, isEditFiducials, isEditVolume, isOverlay, 0, 1);

@@ -70,7 +70,12 @@ else
     iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,sSubject.iAnatomy)];
     % Create and add anatomy nodes
     for iAnatomy = iAnatList
-        [nodeCreated, nodeAnatomy] = CreateNode('anatomy', ...
+        if ~isempty(strfind(char(sSubject.Anatomy(iAnatomy).FileName), '_volatlas')) || ~isempty(strfind(char(sSubject.Anatomy(iAnatomy).FileName), '_tissues'))
+            nodeType = 'volatlas';
+        else
+            nodeType = 'anatomy';
+        end
+        [nodeCreated, nodeAnatomy] = CreateNode(nodeType, ...
             char(sSubject.Anatomy(iAnatomy).Comment), ...
             char(sSubject.Anatomy(iAnatomy).FileName), ...
             iAnatomy, iSubject, iSearch);

@@ -1,7 +1,7 @@
-function [sMriReg, errMsg] = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
+function sMriReg = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
 % MRI_RESLICE_MNI: Relice a MNI atlas or volume into subject space (using linear or non-linear MNI registration).
 %
-% USAGE:  [sMriReg, errMsg] = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
+% USAGE:  sMriReg = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
 %
 % INPUTS:
 %    - sMriMni : MNI atlas to reslice, as a Brainstorm MRI structure

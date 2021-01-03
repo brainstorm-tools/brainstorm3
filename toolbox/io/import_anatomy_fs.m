@@ -205,7 +205,7 @@ end
 
 %% ===== IMPORT T1 =====
 % Read T1 MRI
-[BstT1File, sMri] = import_mri(iSubject, T1File, [], 0, [], T1Comment);
+[BstT1File, sMri] = import_mri(iSubject, T1File, 'ALL', 0, [], T1Comment);
 if isempty(BstT1File)
     errorMsg = 'Could not import FreeSurfer folder: MRI was not imported properly';
     if isInteractive
@@ -299,7 +299,7 @@ end
 %% ===== IMPORT T2 =====
 % Read T2 MRI (optional)
 if ~isempty(T2File)
-    [BstT2File, sMri] = import_mri(iSubject, T2File, [], 0, [], T2Comment);
+    [BstT2File, sMri] = import_mri(iSubject, T2File, 'ALL', 0, [], T2Comment);
     if isempty(BstT2File)
         disp('BST> Could not import T2.mgz.');
     end

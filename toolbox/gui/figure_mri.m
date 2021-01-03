@@ -899,23 +899,31 @@ function DisplayFigurePopup(hFig)
 %         jItem2.setSelected(MriOptions.InterpDownsample == 2);
 %         jItem3.setSelected(MriOptions.InterpDownsample == 3);
     end
-    % Anatomical atlas
-    AnatAtlas = getappdata(hFig, 'AnatAtlas');
-    if ~isempty(AnatAtlas)
-        [AtlasNames, AtlasFiles, iAtlas] = GetVolumeAtlases(hFig);
+    
+    % === ANATOMICAL ATLASES ===
+    [AtlasNames, AtlasFiles, iAtlas] = GetVolumeAtlases(hFig);
+    if ~isempty(AtlasNames)
         jMenuAtlas = gui_component('Menu', jPopup, [], 'Anatomical atlas', IconLoader.ICON_ANATOMY, [], []);
         for i = 1:length(AtlasNames)
-            if (i == length(AtlasNames))
-                jMenuAtlas.addSeparator();
-            end
             jCheck = gui_component('radiomenuitem', jMenuAtlas, [], AtlasNames{i}, [], [], @(h,ev)SetVolumeAtlas(hFig, AtlasNames{i}));
-            if (i == iAtlas)
+            if (length(iAtlas) == 1) && (i == iAtlas)
                 jCheck.setSelected(1);
+            end
+        end
+        % Show/Hide atlas
+        if (length(iAtlas) == 1) && ~strcmpi(AtlasNames{iAtlas}, 'none')
+            if isempty(TessInfo.DataSource.FileName)
+                jMenuAtlas.addSeparator();
+                gui_component('MenuItem', jMenuAtlas, [], 'Show atlas', [], [], @(h,ev)panel_surface('SetSurfaceData', hFig, 1, 'Anatomy', AtlasFiles{iAtlas}, 0));
+            elseif file_compare(AtlasFiles{iAtlas}, TessInfo.DataSource.FileName)
+                jMenuAtlas.addSeparator();
+                gui_component('MenuItem', jMenuAtlas, [], 'Hide atlas', [], [], @(h,ev)panel_surface('RemoveSurfaceData', hFig, 1));
             end
         end
         jPopup.addSeparator();
     end
-    % Set fiducials
+    
+    % === SET FIDUCIALS ===
     if Handles.isEditFiducials
         jMenuEdit = gui_component('Menu', jPopup, [], 'Edit fiducial positions', IconLoader.ICON_EDIT, [], []);
             gui_component('MenuItem', jMenuEdit, [], 'MRI coordinates', IconLoader.ICON_EDIT, [], @(h,ev)EditFiducials(hFig, 'mri'));
@@ -2949,7 +2957,7 @@ function [AtlasNames, AtlasFiles, iAtlas] = GetVolumeAtlases(hFig)
     % Look for the atlas selected for this figure
     AnatAtlas = getappdata(hFig, 'AnatAtlas');
     if ~isempty(AnatAtlas)
-        iAtlas = find(strcmpi(AtlasNames, AnatAtlas));
+        iAtlas = find(strcmpi(AtlasNames, AnatAtlas), 1);
     end
 end
 
@@ -2986,9 +2994,11 @@ function SetVolumeAtlas(hFig, AnatAtlas)
     end
     % Disable atlas
     if strcmpi(AnatAtlas, 'none')
+        if TessInfo(iTess).isOverlayAtlas
+            TessInfo = panel_surface('RemoveSurfaceData', hFig, 1);
+        end
         TessInfo(iTess).OverlayCubeLabels = [];
         TessInfo(iTess).OverlayLabels = [];
-        TessInfo(iTess).isOverlayAtlas = 0;
     % Select atlas
     else
         % Select atlas
@@ -2996,19 +3006,28 @@ function SetVolumeAtlas(hFig, AnatAtlas)
         if isempty(iAtlas)
             disp(['BST> Error: Atlas "' AnatAtlas '" not available for this figure.']);
             return;
+        elseif (length(iAtlas) > 1)
+            duplicAtlas = unique(AtlasNames(iAtlas));
+            disp(['BST> Warning: Multiple atlases with identical name: ' sprintf('%s ', duplicAtlas{:})]);
+            iAtlas = iAtlas(1);
         end
-        % Load atlas volume
-        sMriAtlas = bst_memory('LoadMri', AtlasFiles{iAtlas});
-        if isempty(sMriAtlas)
-            return;
-        elseif isempty(sMriAtlas.Labels)
-            disp(['BST> Invalid atlas "' AnatAtlas '": does not contain any labels.']);
-            return;
+        % If the atlas is currently displayed: reload the overlay
+        if TessInfo(iTess).isOverlayAtlas
+            [isOk, TessInfo] = panel_surface('SetSurfaceData', hFig, 1, 'Anatomy', AtlasFiles{iAtlas}, 0);
+        % Otherwise: only load the labels
+        else
+            % Load atlas volume
+            sMriAtlas = bst_memory('LoadMri', AtlasFiles{iAtlas});
+            if isempty(sMriAtlas)
+                return;
+            elseif isempty(sMriAtlas.Labels)
+                disp(['BST> Invalid atlas "' AnatAtlas '": does not contain any labels.']);
+                return;
+            end
+            % Save label information
+            TessInfo(iTess).OverlayCubeLabels = sMriAtlas.Cube;
+            TessInfo(iTess).OverlayLabels = sMriAtlas.Labels;
         end
-        % Save label information
-        TessInfo(iTess).OverlayCubeLabels = sMriAtlas.Cube;
-        TessInfo(iTess).OverlayLabels = sMriAtlas.Labels;
-        TessInfo(iTess).isOverlayAtlas = 0;
     end
     % Save surface info
     setappdata(hFig, 'Surface', TessInfo);
@@ -3022,6 +3041,8 @@ function SetVolumeAtlas(hFig, AnatAtlas)
     Handles = bst_figures('GetFigureHandles', hFig);
     UpdateCoordinates(sMri, Handles);
     drawnow;
+    % Update figure name
+    bst_figures('UpdateFigureName', hFig);
 end
 
 

@@ -38,7 +38,7 @@ for iTissue = 1:length(TpmFiles)
         continue;
     end
     % Load probability map
-    sMriProb = in_mri_nii(TpmFiles{iTissue});
+    sMriProb = in_mri(TpmFiles{iTissue}, 'Nifti1', 0, 0);
     % First volume: Copy structure
     if isempty(sMriTissue)
         sMriTissue = sMriProb;

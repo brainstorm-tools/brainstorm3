@@ -457,7 +457,7 @@ end
 %% ===== IMPORT SVREG ATLAS =====
 if isVolumeAtlas && ~isempty(SvregFile)
     % Import atlas as volume
-    [BstSvregFile, sMriSvreg] = import_mri(iSubject, SvregFile, [], 0, [], 'svreg');
+    [BstSvregFile, sMriSvreg] = import_mri(iSubject, SvregFile, 'ALL-ATLAS', 0, 1, 'svreg');
     % Import atlas
     SelLabels = {...
         'Accumbens L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', ...

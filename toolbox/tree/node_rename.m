@@ -116,7 +116,7 @@ switch lower(nodeType)
 
 
 %% ===== ANATOMY (Comment) =====
-    case 'anatomy'
+    case {'anatomy', 'volatlas'}
         iSubject = iItem;
         iAnatomy = iSubItem;
         sSubject = bst_get('Subject', iSubject);

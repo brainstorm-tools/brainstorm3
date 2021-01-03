@@ -1518,6 +1518,23 @@ function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isSt
 end
 
 
+%% ===== REMOVE DATA SOURCE FOR A SURFACE =====
+function TessInfo = RemoveSurfaceData(hFig, iTess)
+    % Get surfaces list for this figure
+    TessInfo = getappdata(hFig, 'Surface');
+    % Remove overlay
+    TessInfo(iTess).DataSource.Type     = [];
+    TessInfo(iTess).DataSource.FileName = [];
+    TessInfo(iTess).Data        = [];
+    TessInfo(iTess).DataMinMax  = [];
+    TessInfo(iTess).DataWmat    = [];
+    TessInfo(iTess).OverlayCube = [];
+    % Update figure appdata
+    setappdata(hFig, 'Surface', TessInfo);
+    % Update colormap
+    UpdateSurfaceColormap(hFig, iTess);
+end
+
 
 %% ===== UPDATE SURFACE DATA =====
 % Update the 'Data' field for given surfaces :

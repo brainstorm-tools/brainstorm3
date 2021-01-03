@@ -448,7 +448,7 @@ if isVolumeAtlas && ~isempty(VolAtlasFiles)
         [fPath, AtlasName] = bst_fileparts(VolAtlasFiles{iFile});
         AtlasName = strrep(AtlasName, ['_' SubjectTag], '');
         % Import volume
-        import_mri(iSubject, VolAtlasFiles{iFile}, [], [], [], AtlasName);
+        import_mri(iSubject, VolAtlasFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName);
     end
 end
 
@@ -478,7 +478,7 @@ end
 %% ===== IMPORT TISSUE LABELS =====
 if isVolumeAtlas && ~isempty(TpmFiles)
     bst_progress('start', 'Import CAT12 folder', 'Importing tissue probability maps...');
-    import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 0, 'tissues_cat12');
+    import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_cat12');
 end
 
 

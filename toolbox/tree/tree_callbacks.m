@@ -67,7 +67,7 @@ nodeType = char(bstNodes(1).getType());
 filenameRelative = char(bstNodes(1).getFileName());
 % Build full filename (depends on the file type)
 switch lower(nodeType)
-    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy'}
+    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy', 'volatlas'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
     case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
@@ -161,17 +161,23 @@ switch (lower(action))
             case 'anatomy'
                 % Get subject
                 iSubject = bstNodes(1).getStudyIndex();
+                sSubject = bst_get('Subject', iSubject);
+                % MRI: Display in MRI viewer
+                view_mri(filenameRelative);
+                
+            % ===== VOLUME ATLAS =====
+            case 'volatlas'
+                % Get subject
+                iSubject = bstNodes(1).getStudyIndex();
                 iAnatomy = bstNodes(1).getItemIndex();
                 sSubject = bst_get('Subject', iSubject);
                 % Atlas: display as overlay on the default MRI
-                anatComment = lower(bstNodes(1).getComment());
-                if (iAnatomy > 1) && (~isempty(strfind(filenameRelative, '_volatlas')) || ~isempty(strfind(anatComment, 'aseg')) || ~isempty(strfind(anatComment, 'svreg')) || ~isempty(strfind(anatComment, 'tissues')))
+                if (iAnatomy > 1)
                     view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative);
-                % MRI: Display in MRI viewer
                 else
                     view_mri(filenameRelative);
                 end
-    
+                
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
             case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem'}
@@ -594,6 +600,7 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
                     end
                     
+                    
                     % === GENERATE HEAD ===
                     AddSeparator(jPopup);
                     jItem = gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(iSubject));
@@ -984,13 +991,16 @@ switch (lower(action))
                 end
                 
 %% ===== POPUP: ANATOMY =====
-            case 'anatomy'
+            case {'anatomy', 'volatlas'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
                 iAnatomy = [];
                 for iFile = 1:length(bstNodes)
                     iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
                 end
+                mriComment = bstNodes(1).getComment();
+                isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
+                    
                 if (length(bstNodes) == 1)
                     % MENU : DISPLAY
                     jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
@@ -1011,22 +1021,22 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
                         gui_component('MenuItem', jMenuDisplay, [], 'Coronal slices',  IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'coronal', 20));
                         gui_component('MenuItem', jMenuDisplay, [], 'Sagittal slices', IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'sagittal', 20));
-                        AddSeparator(jMenuDisplay);
-                        gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
+                        if ~isAtlas
+                            AddSeparator(jMenuDisplay);
+                            gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
+                        end
                     % === MENU: EDIT MRI ===
-                    if ~bst_get('ReadOnly')
+                    if ~bst_get('ReadOnly') && ~isAtlas
                         gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
                     end
                     % === MENU: SET AS DEFAULT ===
-                    if ~bst_get('ReadOnly') && (length(bstNodes) == 1) && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked())
+                    if ~bst_get('ReadOnly') && (length(bstNodes) == 1) && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas
                         gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
                     end
                 end
                 % === REGISTRATION ===
                 if ~bst_get('ReadOnly')
                     % Get file comment
-                    mriComment = bstNodes(1).getComment();
-                    isAtlas = ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
@@ -1061,7 +1071,7 @@ switch (lower(action))
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
                     end
-                    if isAtlas && (length(bstNodes) == 1)
+                    if ~isempty(strfind(mriComment, 'tissues')) && (length(bstNodes) == 1)
                         gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));                   
                     end
                 end

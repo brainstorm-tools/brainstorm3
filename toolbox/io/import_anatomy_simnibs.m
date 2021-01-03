@@ -270,11 +270,11 @@ end
 %% ===== IMPORT OTHER VOLUMES =====
 % Read T2 MRI
 if ~isKeepMri && ~isempty(T2Nii)
-    [T2File, sMriT2] = import_mri(iSubject, T2Nii, [], 0, 1, 'T2');
+    [T2File, sMriT2] = import_mri(iSubject, T2Nii, 'ALL', 0, 1, 'T2');
 end
 % Read masks
 if ~isempty(MaskNii)
-    MaskFile = import_mri(iSubject, MaskNii, [], 0, 1, 'tissues');
+    MaskFile = import_mri(iSubject, MaskNii, 'ALL-ATLAS', 0, 1, 'tissues');
 end
 
 

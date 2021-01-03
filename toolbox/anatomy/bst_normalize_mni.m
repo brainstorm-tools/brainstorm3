@@ -169,7 +169,7 @@ try
                 % Get subject
                 [sSubject, iSubject] = bst_get('MriFile', MriFile);
                 % Import tissue classification
-                import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 0, 'tissues_segment');
+                import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
             end
             % Save results
             bst_progress('text', 'Saving results...');
