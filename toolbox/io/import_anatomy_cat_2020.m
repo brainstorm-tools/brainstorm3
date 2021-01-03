@@ -289,7 +289,7 @@ end
 % % Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
 % if ~isempty(RegFile) && ~isempty(RegInvFile)
 %     bst_progress('text', 'Loading non-linear MNI transformation...');
-%     sMri = import_mnireg(sMri, RegFile, RegInvFile);
+%     sMri = import_mnireg(sMri, RegFile, RegInvFile, 'cat12');
 %     % Save modified file
 %     bst_save(file_fullpath(BstT1File), sMri, 'v7');
 % Compute linear MNI registration (spm_maff8)

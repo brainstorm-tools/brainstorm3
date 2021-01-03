@@ -81,7 +81,7 @@ end
 if ischar(TransfSrc)
     if strcmpi(TransfSrc, 'ncs')
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         if isempty(errMsg)
             TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
@@ -110,7 +110,7 @@ end
 if ischar(TransfRef)
     if strcmpi(TransfRef, 'ncs')
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         if isempty(errMsg)
             TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];

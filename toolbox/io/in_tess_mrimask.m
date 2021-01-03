@@ -75,7 +75,9 @@ if any(allValues ~= round(allValues))
     allValues = [0,1];
 end
 % Display warning when no MNI transformation available
-if isMni && (~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R))
+if isMni && (~isfield(sMri, 'NCS') || ...
+    ((~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T)) && ... 
+     (~isfield(sMri.NCS, 'iy') || isempty(sMri.NCS.iy))))
     isMni = 0;
     disp('Error: No MNI transformation available in this file.');
 end

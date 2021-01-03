@@ -599,7 +599,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
                 % Issue warning
                 bst_report('Warning', 'process_fem_mesh', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
-                % Compute MNI transformation
+                % Compute MNI normalization
                 [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)
@@ -690,7 +690,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
                 % Issue warning
                 bst_report('Warning', 'process_fem_mesh', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
-                % Compute MNI transformation
+                % Compute MNI normalization
                 [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)

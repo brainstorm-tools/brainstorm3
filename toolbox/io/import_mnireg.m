@@ -1,7 +1,7 @@
-function sMri = import_mnireg(sMri, RegFile, RegInvFile)
+function sMri = import_mnireg(sMri, RegFile, RegInvFile, Method)
 % IMPORT_MNIREG: Add deformation fields for MNI normalization.
 %
-% USAGE:  sMri = import_mnireg(sMri, RegFile, RegInvFile)
+% USAGE:  sMri = import_mnireg(sMri, RegFile, RegInvFile, Method)
 %
 % INPUTS:
 %    - sMri       : Brainstorm MRI structure
@@ -58,11 +58,13 @@ if ~isempty(RegFile)
 else
     sMri.NCS.y = [];
 end
+% Save method
+sMri.NCS.y_method = Method;
 
 
 %% ===== COMPUTE DEFAULT FIDUCIALS =====
 if ~isempty(RegFile) && (~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || isempty(sMri.NCS.AC) || isempty(sMri.NCS.PC) || isempty(sMri.NCS.IH))
-    sMri = mri_set_default_fid(sMri, 'cat12');
+    sMri = mri_set_default_fid(sMri, Method);
 end
 
 

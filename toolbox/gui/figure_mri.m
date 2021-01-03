@@ -308,7 +308,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridx = 3;  c.gridy = 4;  Handles.jTextCoordMniY = gui_component('label', Handles.jPanelCoordinates, c, '...');
     c.gridx = 4;  c.gridy = 4;  Handles.jTextCoordMniZ = gui_component('label', Handles.jPanelCoordinates, c, '...');    
     c.gridx = 2;  c.gridy = 4;  c.gridwidth = 3;  
-    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#E00000"><U>Click here to compute MNI transformation</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
+    Handles.jTextNoMni = gui_component('label', Handles.jPanelCoordinates, c, '<HTML>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#E00000"><U>Click here to compute MNI normalization</U></FONT>',  [], '', @(h,ev)ComputeMniCoordinates(hFig));
     
     % ===== VALIDATION BAR =====
     % Default constrains
@@ -1780,6 +1780,14 @@ function [sMri, Handles] = LoadLandmarks(sMri, Handles)
             bst_error('Impossible to identify the SCS coordinate system with the specified coordinates.', 'MRI Viewer', 0);
         end
     end
+    % MNI method 
+    if isfield(sMri.NCS, 'y') && isfield(sMri.NCS, 'y_method') && ~isempty(sMri.NCS.y) && ~isempty(sMri.NCS.y_method)
+        Handles.jTitleMNI.setText(['MNI-' sMri.NCS.y_method ':']);
+    elseif isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R)
+        Handles.jTitleMNI.setText('MNI-maff8:');
+    else
+        Handles.jTitleMNI.setText('MNI:');
+    end
     % Update landmarks display
     if Handles.isEditFiducials || Handles.isEeg
         UpdateVisibleLandmarks(sMri, Handles);
@@ -2722,7 +2730,7 @@ function FidFile = SaveFiducialsFile(sMri, FidFile, isComputeMni)
     if isempty(strFid)
         error('Fiducials are not set.');
     end
-    % Compute MNI transform: FreeSurfer only
+    % Compute MNI normalization
     if isComputeMni
         strFid = [strFid, 'isComputeMni = 1;', 10];
     end
@@ -2842,25 +2850,15 @@ end
 
 %% ===== COMPUTE MNI COORDINATES =====
 function ComputeMniCoordinates(hFig)
-    % Ask for confirmation
-    isConfirm = java_dialog('confirm', [...
-        'Displaying MNI coordinates requires the download of additional atlases' 10 ...
-        'and may take a lot of time or crash on some computers.' 10 10 ...
-        'Compute normalized coordinates now?'], 'Normalize anatomy');
-    if ~isConfirm
+    % Get loaded MRI
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    % Compute normalization
+    sMri = process_mni_normalize('ComputeInteractive', sMri.FileName, [], 0);
+    if isempty(sMri)
         return;
     end
     % Get figure handles
     Handles = bst_figures('GetFigureHandles', hFig);
-    % Get MRI and figure handles
-    sMri = panel_surface('GetSurfaceMri', hFig);
-    % Compute normalization
-    [sMri, errMsg] = bst_normalize_mni(sMri.FileName);
-    % Error handling
-    if ~isempty(errMsg)
-        bst_error(errMsg, 'Compute MNI transformation', 0);
-        return;
-    end
     % Update coordinates display
     [sMri, Handles] = LoadLandmarks(sMri, Handles);
     % Update figure handles

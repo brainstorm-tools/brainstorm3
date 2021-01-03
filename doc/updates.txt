@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+January 2021
+- Anatomy: MNI normalization with SPM12 Segment
+---------------------------------------------------------------
 December 2020
 - Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)
 - Anatomy: Import and reslices MNI atlases using linear/nonlinear reg

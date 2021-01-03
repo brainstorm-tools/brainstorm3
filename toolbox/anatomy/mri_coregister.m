@@ -177,11 +177,11 @@ switch lower(Method)
         % === COMPUTE MNI TRANSFORMATIONS ===
         % Source MRI
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         % Reference MRI
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         % Handle errors
         if ~isempty(errMsg)

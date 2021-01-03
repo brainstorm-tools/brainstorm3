@@ -52,10 +52,7 @@ sMriRef = in_mri_bst(MriFileRef);
 if ~isfield(sMriRef, 'NCS') || ...
         ((~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)) && ... 
          (~isfield(sMriRef.NCS, 'iy') || isempty(sMriRef.NCS.iy)))
-    [sMriRef, errMsg] = bst_normalize_mni(MriFileRef);
-    if ~isempty(errMsg)
-        error(['Impossible to download atlas:' 10 errMsg]);
-    end
+     error('The subject anatomy must be normalized to MNI space first.');
 end
 
 

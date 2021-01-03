@@ -1,7 +1,7 @@
 function [sMriReg, errMsg] = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
 % MRI_RESLICE_MNI: Relice a MNI atlas or volume into subject space (using linear or non-linear MNI registration).
 %
-% USAGE:  [sMriReg, errMsg] = mri_reslice_mniatlas(sMriMni, sMriRef, isAtlas)
+% USAGE:  [sMriReg, errMsg] = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
 %
 % INPUTS:
 %    - sMriMni : MNI atlas to reslice, as a Brainstorm MRI structure
@@ -32,24 +32,16 @@ function [sMriReg, errMsg] = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
 %
 % Authors: Francois Tadel, 2020
 
-% Initialize returned values
-sMriReg = [];
-errMsg = [];
+% If no MNI normalization: error
+if ~isfield(sMriRef, 'NCS') || ...
+        ((~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)) && ... 
+         (~isfield(sMriRef.NCS, 'iy') || isempty(sMriRef.NCS.iy)))
+    error('The subject anatomy must be normalized to MNI space first.');
+end
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', 'MNI atlas', 'Reslicing MNI atlas...');
-end
-
-% ===== MNI NORMALIZATION =====
-% If no MNI transformation available, compute linear transformation
-if ~isfield(sMriRef, 'NCS') || ...
-        ((~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)) && ... 
-         (~isfield(sMriRef.NCS, 'iy') || isempty(sMriRef.NCS.iy)))
-    [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
-    if ~isempty(errMsg)
-        return;
-    end
 end
 
 % ===== INTERPOLATE MRI VOLUME =====

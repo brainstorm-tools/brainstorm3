@@ -593,7 +593,7 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
                         gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
                     end
-
+                    
                     % === GENERATE HEAD ===
                     AddSeparator(jPopup);
                     jItem = gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(iSubject));
@@ -1029,7 +1029,7 @@ switch (lower(action))
                     isAtlas = ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
                         gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
                         gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
                         if ~bstNodes(1).isMarked()
@@ -3359,17 +3359,6 @@ function LoadSSP(filenameFull)
     end
 end
 
-%% ===== NORMALIZE MRI =====
-function NormalizeMri(MriFile)
-    % Unloading everything
-    bst_memory('UnloadAll', 'Forced');
-    % Call normalize function
-    [sMri, errMsg] = bst_normalize_mni(MriFile);
-    % Error handling
-    if ~isempty(errMsg)
-        bst_error(errMsg, 'Compute MNI transformation', 0);
-    end
-end
 
 %% ===== RESAMPLE MRI =====
 function ResampleMri(MriFile)

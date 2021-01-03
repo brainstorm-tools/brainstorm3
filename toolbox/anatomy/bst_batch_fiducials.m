@@ -198,7 +198,7 @@ for iMri = 1:length(MriFiles)
     panel_protocols('UpdateNode', 'Subject', iSubject);
 
     % === CREATE FIDUCIALS FILE ===
-    % Compute MNI transform
+    % Compute MNI normalizations
     isComputeMni = 1;
     % Save fiducials
     figure_mri('SaveFiducialsFile', sMRI, FidFile, isComputeMni);

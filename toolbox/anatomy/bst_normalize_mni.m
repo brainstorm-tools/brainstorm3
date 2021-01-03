@@ -1,10 +1,16 @@
-function [sMri, errMsg] = bst_normalize_mni(MriFile)
-% BST_NORMALIZE_MNI:  Normalize the subject anatomy to the MNI ICBM152 template 
-%                     using SPM mutual information algorithm (affine transform).
-% 
-% USAGE:  [sMri, errMsg] = bst_normalize_mni(MriFile)
-%         [sMri, errMsg] = bst_normalize_mni(sMri)
-%                          bst_normalize_mni('install')
+function [sMri, errMsg] = bst_normalize_mni(MriFile, Method)
+% BST_NORMALIZE_MNI: Compute deformation fields to the MNI ICBM152 space.
+%
+% USAGE:  [sMri, errMsg] = bst_normalize_mni(MriFile, Method='maff8')
+%         [sMri, errMsg] = bst_normalize_mni(sMri,    Method='maff8')
+%                          bst_normalize_mni('install')               % Only installs default SPM tpm.nii
+%
+% INPUTS:
+%    - MriFile : Relative path to a MRI file in the Brainstorm database
+%    - sMri    : Brainstorm MRI structure
+%    - Method  : String defining the method to use for the registration
+%                'maff8'   : SPM mutual information algorithm (affine transform)
+%                'segment' : SPM12 segment
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -24,7 +30,7 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2019
+% Authors: Francois Tadel, 2015-2020
 
 %% ===== PARSE INPUTS =====
 % Inializations
@@ -45,12 +51,17 @@ else
         sMri = [];
     end
 end
-
+% Other parameters
+if (nargin < 2) || isempty(Method)
+    Method = 'maff8';
+end
+    
+    
 %% ===== GET SPM TEMPLATE =====
 % Open progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
-    bst_progress('start', 'Normalize anatomy', 'Initialization...');
+    bst_progress('start', 'MNI normalization', 'Initialization...');
 end
 % Get template file
 tpmFile = bst_get('SpmTpmAtlas');
@@ -107,38 +118,71 @@ if isempty(sMri)
 else
     iLoadedMri = [];
 end
-% Progress bar
-bst_progress('text', 'Resampling MRI...');
-% Resample volume if needed
-if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
-    [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1]);
-else
-    sMriRes = sMri;
-    Tres = [];
-end
 
-
-%% ===== ESTIMATE MNI TRANSFORMATION =====
-% Compute affine transformation to MNI space
-try
-    Tmni = mri_register_maff(sMriRes);
-    % Transf = mri_register_ls(sMri);
-catch
-    errMsg = ['mri_register_maff: ' lasterr()];
-    sMri = [];
+% Get template file
+TpmFile = bst_get('SpmTpmAtlas');
+if isempty(TpmFile) || ~file_exist(TpmFile)
+    errMsg = 'Missing file TPM.nii';
     return;
 end
-% Append the resampling transformation matrix
-if ~isempty(Tres)
-    Tmni = Tmni * Tres;
+
+
+%% ===== MNI NORMALIZATION =====
+try
+    switch (Method)
+        % SPM12 LINEAR MUTUAL INFORMATION
+        case 'maff8'
+            % Progress bar
+            bst_progress('text', 'Resampling MRI...');
+            % Resample volume if needed
+            if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
+                [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1]);
+            else
+                sMriRes = sMri;
+                Tres = [];
+            end
+            % Compute affine transformation to MNI space
+            Tmni = mri_normalize_maff(sMriRes, TpmFile);
+            % Append the resampling transformation matrix
+            if ~isempty(Tres)
+                Tmni = Tmni * Tres;
+            end
+            % Save results into the MRI structure
+            sMri.NCS.R = Tmni(1:3,1:3);
+            sMri.NCS.T = Tmni(1:3,4);
+            
+        % SPM12 SEGMENT 
+        case 'segment'
+            % Check SPM installation
+            bst_spm_init(0);
+            % Progress bar
+            bst_progress('text', 'Running SPM batch... (see command window)');
+            % Compute non-linear registration to MNI space
+            [sMri, TpmFiles] = mri_normalize_segment(sMri, TpmFile);
+            if isempty(sMri)
+                errMsg = 'SPM Segment failed.';
+                return;
+            end
+            % Import tissue classification
+            if ~isempty(TpmFiles) && ~isempty(MriFile)
+                bst_progress('text', 'Loading tissue segmentations...');
+                % Get subject
+                [sSubject, iSubject] = bst_get('MriFile', MriFile);
+                % Import tissue classification
+                import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 0, 'tissues_segment');
+            end
+            % Save results
+            bst_progress('text', 'Saving results...');
+    end
+catch
+    errMsg = ['bst_normalize_mni/' Method ': ' lasterr()];
+    sMri = [];
+    return;
 end
 
 
 %% ===== SAVE RESULTS =====
 bst_progress('text', 'Saving normalization...');
-% Save results into the MRI structure
-sMri.NCS.R = Tmni(1:3,1:3);
-sMri.NCS.T = Tmni(1:3,4);
 % Compute default fiducials positions based on MNI coordinates
 sMri = mri_set_default_fid(sMri, 'maff8');
 % Save modifications in the MRI file
@@ -157,6 +201,11 @@ if ~isempty(iLoadedMri)
     GlobalData.Mri(iLoadedMri).NCS.PC = sMri.NCS.PC;
     GlobalData.Mri(iLoadedMri).NCS.IH = sMri.NCS.IH;
     GlobalData.Mri(iLoadedMri).NCS.Origin = sMri.NCS.Origin;
+    if isfield(sMri.NCS,'y') && isfield(sMri.NCS,'iy') && isfield(sMri.NCS,'y_vox2ras')
+        GlobalData.Mri(iLoadedMri).NCS.y         = sMri.NCS.y;
+        GlobalData.Mri(iLoadedMri).NCS.iy        = sMri.NCS.iy;
+        GlobalData.Mri(iLoadedMri).NCS.y_vox2ras = sMri.NCS.y_vox2ras;
+    end
     GlobalData.Mri(iLoadedMri).SCS.R   = sMri.SCS.R;
     GlobalData.Mri(iLoadedMri).SCS.T   = sMri.SCS.T;
     GlobalData.Mri(iLoadedMri).SCS.NAS = sMri.SCS.NAS;
@@ -169,6 +218,5 @@ if ~isProgress
     bst_progress('stop');
 end
 
-end    
 
 

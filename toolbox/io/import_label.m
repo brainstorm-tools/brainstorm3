@@ -323,9 +323,11 @@ for iFile = 1:length(LabelFiles)
             % Select only the first volume (if more than one) 
             sMriMask.Cube = double(sMriMask.Cube(:,:,:,1));
             % Display warning when no MNI transformation available
-            if isMni && (~isfield(sMriMask, 'NCS') || ~isfield(sMriMask.NCS, 'R') || isempty(sMriMask.NCS.R))
+            if isMni && (~isfield(sMriMask, 'NCS') || ...
+                ((~isfield(sMriMask.NCS, 'R') || ~isfield(sMriMask.NCS, 'T') || isempty(sMriMask.NCS.R) || isempty(sMriMask.NCS.T)) && ... 
+                 (~isfield(sMriMask.NCS, 'iy') || isempty(sMriMask.NCS.iy))))
                 isMni = 0;
-                disp('Error: No MNI transformation available in this file.');
+                disp('Error: No MNI normalization available in this file.');
             end
             % Get all the values in the MRI
             bst_progress('text', 'Extract regions...');

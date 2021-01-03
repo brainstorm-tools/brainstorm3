@@ -147,7 +147,7 @@ if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R) && isf
     sMriNew.SCS.R = Tscs(1:3,1:3);
     sMriNew.SCS.T = Tscs(1:3,4);
 end    
-% Update MNI transformation
+% Update linear MNI transformation
 if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
     % Compute new transformation matrices to SCS
     Tncs = [sMri.NCS.R, sMri.NCS.T; 0 0 0 1] * inv(Transf);
@@ -155,7 +155,13 @@ if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isf
     sMriNew.NCS.R = Tncs(1:3,1:3);
     sMriNew.NCS.T = Tncs(1:3,4);
 end
-
+% Remove non-linear MNI normalization
+if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y') && ~isempty(sMri.NCS.y) && isfield(sMri.NCS, 'iy') && ~isempty(sMri.NCS.iy)
+    sMri.NCS.iy = [];
+    sMri.NCS.y = [];
+    sMri.NCS.y_vox2ras = [];
+    sMri.NCS.y_method = [];
+end
 
 % ===== SAVE NEW FILE =====
 % Save output

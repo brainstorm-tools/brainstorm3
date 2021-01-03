@@ -1,5 +1,5 @@
 function sMri = mri_set_default_fid(sMri, Method)
-% MRI_SET_DEFAULT_FID:  Set default fiducials based on the MNI transformation.
+% MRI_SET_DEFAULT_FID:  Set default fiducials based on the MNI normalization.
 %
 % INPUTS:
 %    - sMri   : Brainstorm MRI structure
@@ -35,7 +35,7 @@ end
 % ===== NCS FIDUCIALS =====
 % MNI coordinates for all the fiducials
 switch (Method)
-    case 'maff8'
+    case {'maff8', 'segment'}   % SPM12
         AC  = [0,   3,  -4] ./ 1000;
         PC  = [0, -25,  -2] ./ 1000;
         IH  = [0, -10,  60] ./ 1000;
@@ -51,6 +51,8 @@ switch (Method)
         NAS = [  1.86,  73.74, -40.51] ./ 1000;
         LPA = [-80.04, -24.16, -44.85] ./ 1000;
         RPA = [ 81.87, -26.83, -44.35] ./ 1000;
+    otherwise
+        error(['Unknown method: ' Method]);
 end
 % Convert: MNI (meters) => MRI (millimeters)
 sMri.NCS.AC     = cs_convert(sMri, 'mni', 'mri', AC) .* 1000;

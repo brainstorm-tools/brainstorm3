@@ -96,28 +96,22 @@ switch lower(src)
         end
         RT1 = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
     case 'mni'
-        if isfield(sMri,'NCS') && isfield(sMri.NCS,'y') && ~isempty(sMri.NCS.y)
-            % Transformation of each point by indirection in the deformation field iy
-            if ~isempty(P)
-                % Convert MNI => voxel space of the registration matrix
-                P_reg = inv(sMri.NCS.y_vox2ras) * (P .* [1000;1000;1000;1]);
-                % Convert from 0-based to 1-based??
-                % => This solution was obtained empirically by minimizing: 
-                %    sqrt(sum((cs_convert(sMri, 'mri', 'mni', cs_convert(sMri, 'mni', 'mri', P)) - P).^2)).*1000 => around 0.003 with this adjustment
-                P_reg = P_reg + [1;1;1;0];
-                % Convert Voxel => World
-                P_world = [...
-                    interp3(sMri.NCS.y(:,:,:,1), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
-                    interp3(sMri.NCS.y(:,:,:,2), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
-                    interp3(sMri.NCS.y(:,:,:,3), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN)] ./ 1000;
-                % Convert World => MRI
-                P = world2mri * [P_world; 1];
-                RT1 = eye(4);
-            else
-                disp('BST> Get linear mni2mri: Using non-linear MNI normalization.');
-                Transf = [];
-                return;
-            end
+        % Transformation of each point by indirection in the deformation field iy
+        if ~isempty(P) && isfield(sMri,'NCS') && isfield(sMri.NCS,'y') && ~isempty(sMri.NCS.y)
+            % Convert MNI => voxel space of the registration matrix
+            P_reg = inv(sMri.NCS.y_vox2ras) * (P .* [1000;1000;1000;1]);
+            % Convert from 0-based to 1-based??
+            % => This solution was obtained empirically by minimizing: 
+            %    sqrt(sum((cs_convert(sMri, 'mri', 'mni', cs_convert(sMri, 'mni', 'mri', P)) - P).^2)).*1000 => around 0.003 with this adjustment
+            P_reg = P_reg + [1;1;1;0];
+            % Convert Voxel => World
+            P_world = [...
+                interp3(sMri.NCS.y(:,:,:,1), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
+                interp3(sMri.NCS.y(:,:,:,2), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
+                interp3(sMri.NCS.y(:,:,:,3), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN)] ./ 1000;
+            % Convert World => MRI
+            P = world2mri * [P_world; 1];
+            RT1 = eye(4);
         elseif isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
             RT1 = inv([sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1]);
         else
@@ -144,24 +138,18 @@ switch lower(dest)
         end
         RT2 = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1];
     case 'mni'
-        % Using non-linear MNI transformation
-        if isfield(sMri,'NCS') && isfield(sMri.NCS,'iy') && ~isempty(sMri.NCS.iy)
-            % Transformation of each point by indirection in the deformation field iy
-            if ~isempty(P)
-                % Convert: src => MRI => voxel
-                P_vox = diag([1000 ./ sMri.Voxsize(:); 1]) * RT1 * P;
-                % Get values from the iy volumes
-                P = [interp3(sMri.NCS.iy(:,:,:,1), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
-                     interp3(sMri.NCS.iy(:,:,:,2), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
-                     interp3(sMri.NCS.iy(:,:,:,3), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN)] ./ 1000;
-                % Transpose the matrix back
-                P = P';
-            else
-                disp('BST> Get linear mri2mni: Using non-linear MNI normalization.');
-            end
+        % Using non-linear MNI normalization: Transformation of each point by indirection in the deformation field iy
+        if ~isempty(P) && isfield(sMri,'NCS') && isfield(sMri.NCS,'iy') && ~isempty(sMri.NCS.iy)
+            % Convert: src => MRI => voxel
+            P_vox = diag([1000 ./ sMri.Voxsize(:); 1]) * RT1 * P;
+            % Get values from the iy volumes
+            P = [interp3(sMri.NCS.iy(:,:,:,1), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
+                 interp3(sMri.NCS.iy(:,:,:,2), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
+                 interp3(sMri.NCS.iy(:,:,:,3), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN)] ./ 1000;
+            % Transpose the matrix back
+            P = P';
             Transf = [];
             return;
-            
         elseif isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
             RT2 = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
         else
