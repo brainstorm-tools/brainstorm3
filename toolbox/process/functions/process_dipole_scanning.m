@@ -101,6 +101,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         DataMatP.Leff = sResultP.Leff;
     else
         DataMatP = in_bst_data(sResultP.DataFile);
+        % Not supported for raw files
+        if isstruct(DataMatP.F)
+            bst_report('Error', sProcess, [], 'Dipole scanning is not supported for raw files. Import some data blocks first.');
+            return;
+        end
     end
     
     if isempty(sResultP.ImageGridAmp)
