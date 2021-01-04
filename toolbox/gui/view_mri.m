@@ -1,7 +1,7 @@
-function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
+function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 % VIEW_MRI: Display a MRI in a MriViewer figure.
 %
-% USAGE:  view_mri(MriFile, OverlayFile, Modality)
+% USAGE:  view_mri(MriFile, OverlayFile, Modality, isNewFig=0)
 %         view_mri(MriFile, 'EditMri')
 %         view_mri(MriFile, 'EditFiducials')
 %
@@ -11,6 +11,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 %     - Modality        : Type of sensors to interpolate (if the overlay file is a data file)
 %     - 'EditMri'       : Show the control to modify the MRI and the fiducials
 %     - 'EditFiducials' : Show the control to modify the fiducials only
+%     - isNewFig        : If 1, forces new figure creation (do not re-use a previously created figure)
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the figure that was created or updated
@@ -41,6 +42,9 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+if (nargin < 4) || isempty(isNewFig)
+    isNewFig = 0;
+end
 if (nargin < 3) || isempty(Modality)
     Modality = '';
 end
@@ -131,14 +135,18 @@ end
 
 %% ===== CREATE FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
-[hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
-isNewFig = 0;
+if ~isNewFig
+    [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
+else
+    hFig = [];
+end
 % Make sure that only one figure was found
 if ~isempty(hFig)
     hFig  = hFig(1);
     iFig  = iFig(1);
     iDS   = iOldDataSet(1);
     iSurface = iSurface(1);
+    isNewFig = 0;
 % Else: Figure was not found
 elseif isempty(hFig)
     % Try to get a default modality from the channel file
