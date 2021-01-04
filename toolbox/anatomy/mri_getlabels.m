@@ -52,9 +52,25 @@ maxNameLength = 16;
 if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriFile)
     % Get file name
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
+    fBase = strrep(fBase, '.nii', '');
+    % Try to get a side .csv with the labels
+    LabelsFile = bst_fullfile(fPath, [fBase, '.csv']);
+    if file_exist(LabelsFile)
+        Labels = in_tsv(LabelsFile, {'ROIid','ROIname','ROIcolor'}, 0, ';');
+        if any(cellfun(@isempty, Labels(:)))
+            disp('BST> Error: Missing columns is CSV file: ROIid, ROIname or ROIcolor.');
+            Labels = [];
+        else
+            Labels(:,1) = cellfun(@str2double,  Labels(:,1), 'UniformOutput', 0);
+            Labels(:,3) = cellfun(@str2num,  Labels(:,3), 'UniformOutput', 0);
+        end
+    end
+    % If labels were read: use the filename as the atlas name
     fBase = lower(fBase);
+    if ~isempty(Labels)
+        AtlasName = fBase;
     % Standard atlases (FreeSurfer/ASEG, BrainSuite/SVREG)
-    if ~isempty(strfind(fBase, 'aseg')) || ~isempty(strfind(fBase, 'aparc'))  % aseg.mgz
+    elseif ~isempty(strfind(fBase, 'aseg')) || ~isempty(strfind(fBase, 'aparc'))  % aseg.mgz
         AtlasName = 'aseg';
     elseif ~isempty(strfind(fBase, '.svreg.label.'))   % *.svreg.label.nii.gz
         AtlasName = 'svreg';
@@ -62,11 +78,19 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
         AtlasName = 'svreg';
     elseif ~isempty(strfind(fBase, 'aal'))
         AtlasName = 'aal';
+    elseif ~isempty(strfind(fBase, 'aicha'))
+        AtlasName = 'aicha';
+    elseif ~isempty(strfind(fBase, 'anatomy3'))
+        AtlasName = 'anatomy3';
     elseif ~isempty(strfind(fBase, 'cobra'))
         AtlasName = 'cobra';
     elseif ~isempty(strfind(fBase, 'hammers'))
         AtlasName = 'hammers';
-    elseif ~isempty(strfind(fBase, 'julich')) || ~isempty(strfind(fBase, 'jubrain'))
+    elseif ~isempty(strfind(fBase, 'hcp')) && ~isempty(strfind(fBase, 'mmp1'))
+        AtlasName = 'hcp_mmp1';
+    elseif ~isempty(strfind(fBase, 'ibsr'))
+        AtlasName = 'ibsr';
+    elseif ~isempty(strfind(fBase, 'julich')) || ~isempty(strfind(fBase, 'juelich')) || ~isempty(strfind(fBase, 'jubrain'))
         AtlasName = 'julich';
     elseif ~isempty(strfind(fBase, 'lpba40'))
         AtlasName = 'lpba40';
@@ -86,12 +110,6 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
         AtlasName = 'schaefer_400_17net';
     elseif ~isempty(strfind(fBase, 'schaefer')) && ~isempty(strfind(fBase, '600')) && ~isempty(strfind(fBase, '17'))
         AtlasName = 'schaefer_600_17net';
-    elseif ~isempty(strfind(fBase, 'aicha'))
-        AtlasName = 'aicha';
-    elseif ~isempty(strfind(fBase, 'hcp')) && ~isempty(strfind(fBase, 'mmp1'))
-        AtlasName = 'hcp_mmp1';
-    elseif ~isempty(strfind(fBase, 'anatomy3'))
-        AtlasName = 'anatomy3';
     elseif ~isempty(strfind(fBase, 'brodmann'))
         AtlasName = 'brodmann';
     end
@@ -115,72 +133,76 @@ if isempty(AtlasName)
 end
 
 % Switch by atlas name
-switch lower(AtlasName)
-    case 'tissues5'    % Basic head tissues
-        Labels = {...
-                0, 'Background',    [  0,   0,   0]; ...
-                1, 'White',         [220, 220, 220]; ...
-                2, 'Gray',          [130, 130, 130]; ...
-                3, 'CSF',           [ 44, 152, 254]; ...
-                4, 'Skull',         [255, 255, 255]; ...
-                5, 'Scalp',         [255, 205, 184]};               
-        
-    case 'aseg3'   % Old FreeSurfer labels
-        Labels = {...
-            0,  'Unknown'; ...
-            6,  'White L'; ...
-            9,  'Cortex L'; ...
-           21,  'Cerebellum white L'; ...
-           24,  'Cerebellum L'; ...
-           30,  'Thalamus L'; ...
-           36,  'Putamen L'; ...
-           39,  'Pallidum L'; ...
-           48,  'Brainstem'; ...
-           51,  'Hippocampus L'; ...
-          123,  'White R'; ...
-          126,  'Cortex R'; ...
-          138,  'Cerebellum white R'; ...
-          141,  'Cerebellum R'; ...
-          147,  'Thalamus R'; ...
-          153,  'Putamen R'; ...
-          156,  'Pallidum R'; ...
-          159,  'Hippocampus R'; ...
-        };
-            
-    case 'aseg'          % FreeSurfer ASEG + Desikan-Killiany (2006) + Destrieux (2010)
-        Labels = mri_getlabels_aseg();
-    case 'marsatlas'     % BrainVISA MarsAtlas (Auzias 2006)
-        Labels = mri_getlabels_marsatlas();
-    case 'svreg'         % BrainSuite SVREG (Brainsuite1, USCBrain)
-        Labels = mri_getlabels_svreg();
-    case 'aal'           % AAL3 - Automated Anatomical Labeling (Tzourio-Mazoyer 2002)
-        Labels = mri_getlabels_aal();
-    case 'aicha'         % AICHA - An atlas of intrinsic connectivity of homotopic areas (Joliot 2015)
-        Labels = mri_getlabels_aicha();
-    case 'cobra'         % COBRA - 
-        Labels = mri_getlabels_cobra();
-    case 'hammers'       % HAMMERS - Hammersmith atlas (Hammers 2003, Gousias 2008, Faillenot 2017, Wild 2017)
-        Labels = mri_getlabels_hammers();
-    case 'julich'        % Julich-Brain: Juelich histological atlas (Eickhoff 2005)
-        Labels = mri_getlabels_julich();
-    case 'lpba40'        % LONI lpba40
-        Labels = mri_getlabels_lpba40();
-    case 'mori'          % Mori 2009
-        Labels = mri_getlabels_mori();
-    case 'neuromorphometrics'   % MICCAI 2012 Multi-Atlas Labeling Workshop and Challenge (Neuromorphometrics)
-        Labels = mri_getlabels_neuromorpho();
-    case 'schaefer_100_17net'
-        Labels = mri_getlabels_shaeffer100();
-    case 'schaefer_200_17net'
-        Labels = mri_getlabels_shaeffer200();
-    case 'schaefer_400_17net'
-        Labels = mri_getlabels_shaeffer400();
-    case 'schaefer_600_17net'
-        Labels = mri_getlabels_shaeffer600();
-    case 'anatomy3'
-        Labels = mri_getlabels_anatomy3();
-    case 'brodmann'
-        
+if isempty(Labels)
+    switch lower(AtlasName)
+        case 'tissues5'    % Basic head tissues
+            Labels = {...
+                    0, 'Background',    [  0,   0,   0]; ...
+                    1, 'White',         [220, 220, 220]; ...
+                    2, 'Gray',          [130, 130, 130]; ...
+                    3, 'CSF',           [ 44, 152, 254]; ...
+                    4, 'Skull',         [255, 255, 255]; ...
+                    5, 'Scalp',         [255, 205, 184]};               
+
+        case 'aseg3'   % Old FreeSurfer labels
+            Labels = {...
+                0,  'Unknown'; ...
+                6,  'White L'; ...
+                9,  'Cortex L'; ...
+               21,  'Cerebellum white L'; ...
+               24,  'Cerebellum L'; ...
+               30,  'Thalamus L'; ...
+               36,  'Putamen L'; ...
+               39,  'Pallidum L'; ...
+               48,  'Brainstem'; ...
+               51,  'Hippocampus L'; ...
+              123,  'White R'; ...
+              126,  'Cortex R'; ...
+              138,  'Cerebellum white R'; ...
+              141,  'Cerebellum R'; ...
+              147,  'Thalamus R'; ...
+              153,  'Putamen R'; ...
+              156,  'Pallidum R'; ...
+              159,  'Hippocampus R'; ...
+            };
+
+        case 'aseg'          % FreeSurfer ASEG + Desikan-Killiany (2006) + Destrieux (2010)
+            Labels = mri_getlabels_aseg();
+        case 'marsatlas'     % BrainVISA MarsAtlas (Auzias 2006)
+            Labels = mri_getlabels_marsatlas();
+        case 'svreg'         % BrainSuite SVREG (Brainsuite1, USCBrain)
+            Labels = mri_getlabels_svreg();
+        case 'aal'           % AAL3 - Automated Anatomical Labeling (Tzourio-Mazoyer 2002)
+            Labels = mri_getlabels_aal();
+        case 'aicha'         % AICHA - An atlas of intrinsic connectivity of homotopic areas (Joliot 2015)
+            Labels = mri_getlabels_aicha();
+        case 'anatomy3'
+            Labels = mri_getlabels_anatomy3();
+        case 'cobra'         % COBRA - 
+            Labels = mri_getlabels_cobra();
+        case 'hammers'       % HAMMERS - Hammersmith atlas (Hammers 2003, Gousias 2008, Faillenot 2017, Wild 2017)
+            Labels = mri_getlabels_hammers();
+        case 'ibsr'
+            Labels = mri_getlabels_ibsr();
+        case 'julich'        % Julich-Brain: Juelich histological atlas (Eickhoff 2005)
+            Labels = mri_getlabels_julich();
+        case 'lpba40'        % LONI lpba40
+            Labels = mri_getlabels_lpba40();
+        case 'mori'          % Mori 2009
+            Labels = mri_getlabels_mori();
+        case 'neuromorphometrics'   % MICCAI 2012 Multi-Atlas Labeling Workshop and Challenge (Neuromorphometrics)
+            Labels = mri_getlabels_neuromorpho();
+        case 'schaefer_100_17net'
+            Labels = mri_getlabels_shaeffer100();
+        case 'schaefer_200_17net'
+            Labels = mri_getlabels_shaeffer200();
+        case 'schaefer_400_17net'
+            Labels = mri_getlabels_shaeffer400();
+        case 'schaefer_600_17net'
+            Labels = mri_getlabels_shaeffer600();
+        case 'brodmann'
+
+    end
 end
 
 
