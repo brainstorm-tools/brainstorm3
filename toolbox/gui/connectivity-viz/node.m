@@ -3,14 +3,16 @@ classdef   node < handle
     %%
     % Copyright 2016 The MathWorks, Inc.
     properties (Access = public)
+        NodeIndex;
         Label = '';             % String
         Links = line(0,0); % Array of lines
         Position;               % [x,y] coordinates
         Color = [0.7 0.7 0.7];  % [r g b] default grey node
         LabelColor = [1 1 1]    % [r g b] default white
-        Visible = true;         % Logical true or false
+        Selected = true;         % Logical true or false
         isAgregatingNode = false; % if this node is a grouped node/scout /lobe
         LabelVisible = true;    % logical true or false if label is visible or not
+
     end
     
     properties (Access = public, Dependent = true)
@@ -19,8 +21,8 @@ classdef   node < handle
     
     properties (Access = private)
         TextLabel;    % Text graphics object
-        NodeMarker;   % Line that makes the node visible
-        Marker = 'o'; % Marker symbol when the node is 'on'
+        NodeMarker;   % Line object that makes the node visible
+        Marker = 'o'; % Marker symbol when the node is selected 'on'
         MarkerFaceColor = [0.7 0.7 0.7];
     end
     
@@ -29,8 +31,9 @@ classdef   node < handle
     end
     
     methods
-        function this = node(x,y)
+        function this = node(x,y,index)
             % Constructor
+            this.NodeIndex = index;
             this.Position = [x,y];
             this.Links = line(0,0);
             makeLine(this);
@@ -52,9 +55,9 @@ classdef   node < handle
                 'UserData',this);
         end
         
-        function set.Visible(this,value)
-            this.Visible = value;
-            updateVisible(this);
+        function set.Selected(this,value)
+            this.Selected = value;
+            updateSelected(this);
         end
         
         function set.LabelVisible(this,value)
@@ -88,42 +91,13 @@ classdef   node < handle
             value = this.TextLabel.Extent(3);
         end
         
-        function updateVisible(this)
-            global selectedLinks;
-            this_links = this.Links;
-            
-            if this.Visible
+        function updateSelected(this)
+            if this.Selected % node is SELECTED ("ON")
                 this.NodeMarker.Marker = 'o';
                 this.NodeMarker.Color = this.NodeMarker.MarkerFaceColor;
- 
-                % node is unselected: remove link from selectedLinks
-                for i = 1:length(this_links)
-                    selectedLinks(selectedLinks == this_links(i)) = [];
-                end               
- 
-             %   for i = 1:length(this.Links)
-                 %   this.Links(i).ZData = ones(size(this.Links(i).XData));
-               % end
-               
-            else % node is red when clicked on
+            else % node is NOT selected ("OFF") (displays as a grey X)
                 this.NodeMarker.Marker = 'x'; % changed on Oct 25
-                this.NodeMarker.Color = 'red'; % changed on Dec 21
-             
-                % Added Dec 24: Change visibility of links when node is
-                % selected
-                for i = 1:length(this_links)
-                    if isempty(selectedLinks)
-                        selectedLinks = this_links(i);
-                    % avoid duplicates (since each link has 2 noes)
-                    elseif ~ismember(this_links(i), selectedLinks)
-                        selectedLinks(end+1) = this_links(i);
-                    end
-                end  
-                
-                % for i = 1:length(this.Links)
-                  %  this.Links(i).ZData = zeros(size(this.Links(i).XData));
-               % end 
-               
+                this.NodeMarker.Color =  [0.7 0.7 0.7]; % grey when "off"
             end
         end
         
@@ -138,7 +112,6 @@ classdef   node < handle
         function updateColor(this) % when is this called?
             this.NodeMarker.Color = this.Color;
             this.NodeMarker.MarkerFaceColor = this.Color; % set marker fill color
-            %set(this.Links,'Color',this.Color); % set links color %todo: this will be replaced by color map for connectivity intensity
         end
         
         function updateTextLabelColor(this)
@@ -187,22 +160,18 @@ classdef   node < handle
     
     methods (Static = true)
         
-        %node was selected/unselected by mouse click
-        function ButtonDownFcn(this,~)
-            n = this.UserData;
-            disp(n.Label + " clicked");
-          
-            if n.Visible % can just change to n.Visible = ~n.Visible? 
-                n.Visible = false;
-            else
-                n.Visible = true;
-            end
- 
-            % TODO: Implement function similar to JavaClickCallback +
-            % SetSelectedNodes to form aggregates
-            % SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
-            
-        end
+        %node is to be selected/unselected by mouse click
+          function ButtonDownFcn(this,~)
+              % NOTE: we use functions within figure_connect's NodeClickedEvent and SetSelectedNodes 
+              % to set actual node and link selection display 
+              
+              % all we need to do here is make sure that the correct index
+              % of the clicked node is stored for access
+              n = this.UserData;
+              disp("Node with label '" + n.Label + "' was clicked");
+              global GlobalData
+              GlobalData.FigConnect.ClickedNodeIndex = n.NodeIndex;
+          end
     end
 end
  

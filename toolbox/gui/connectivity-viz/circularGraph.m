@@ -24,8 +24,8 @@ classdef circularGraph < handle
     %%
     % Copyright 2016 The MathWorks, Inc.
     properties
-        Nodes = node(0,0); % Array of nodes
-        testNodes = node(0,0); %array of nodes
+        Nodes = node(0,0,0); % Array of nodes
+        testNodes = node(0,0,0); %array of nodes
         ColorMap;         % Colormap
         Label;            % Cell array of strings
         ShowButton;       % Turn all nodes on
@@ -76,7 +76,7 @@ classdef circularGraph < handle
             extent = zeros(length(adjacencyMatrix),1);
             %set colourmap value and labels for each node
             for i = 1:length(adjacencyMatrix)
-                this.Nodes(i) = node(cos(t(i)),sin(t(i)));
+                this.Nodes(i) = node(cos(t(i)),sin(t(i)),0);
                 this.Nodes(i).Color = [0.7 0.7 0.7]; % default
                 %this.Nodes(i).Color = this.ColorMap(i,:);
                 this.Nodes(i).Label = this.Label{i};
@@ -171,26 +171,5 @@ classdef circularGraph < handle
         
     end
     
-    
-    %% CALLBACKs
-    methods (Static = true)
-        function showNodes(this,~)
-            % Callback for 'Show All' button
-            n = this.UserData.Nodes;
-            for i = 1:length(n)
-                n(i).Visible = true;
-            end
-        end
-        
-        function hideNodes(this,~)
-            % Callback for 'Hide All' button
-            n = this.UserData.Nodes;
-            for i = 1:length(n)
-                n(i).Visible = false;
-            end
-        end
-        
-        
-    end
     
 end

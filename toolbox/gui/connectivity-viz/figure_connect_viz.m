@@ -345,52 +345,40 @@ end
 % getkey
  
 %% ===== FIGURE MOUSE CLICK CALLBACK =====
-    % TODO: remove java canvas once prototype complete
     % Mouse click callbacks include:
         % Right-click for popup menu (NOTE: DONE)
         % Double click to reset display (NOTE: DONE)
         % SHIFT+CLICK to move/pan camera (NOTE: DONE)
-        % CLICK colorbar to change colormap, double-click colorbar to reset
-        % (NOTE: DONE)
+        % CLICK colorbar to change colormap, double-click to reset (DONE)
+        % CLICK a node to select/unselect it and its links (PENDING)
+    % See https://www.mathworks.com/help/matlab/ref/matlab.ui.figure-properties.html#buiwuyk-1-SelectionType
+    % for details on possible mouseclick types
 function FigureMouseDownCallback(hFig, ev)
     disp('Entered FigureMouseDownCallback');
-  
+    % Note: Actual triggered events are applied at MouseUp or other points
+    % (e.g. during mousedrag). This function gets information about the
+    % click event to classify it
+    
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
         return;
     end
     
-    % TODO: remove java canvas, use key events in MATLAB
-    if ~isempty(ev) 
-        if isjava(ev) % Click on the Java canvas
-            if ((ev.getButton() == ev.BUTTON3) || (ev.getButton() == ev.BUTTON2))
-                clickAction = 'popup'; % pop-up menu on right-click
-            else
-                clickAction = 'MouseMoveCamera';
-            end
-            clickPos = [ev.getX() ev.getY()];
-        else % click from Matlab figure
-            if strcmpi(get(hFig, 'SelectionType'), 'alt')
-                clickAction = 'popup';
-            elseif strcmpi(get(hFig, 'SelectionType'), 'open')
-                %double-click to reset display
-                clickAction = 'ResetCamera';
-            else
-                clickAction = 'MouseMoveCamera';
-                
-                % Check if any node's visibility change (i.e. if a node was selected)
-                %testNodes = hFig.UserData.testNodes;
-                %disp(testNodes(26).Visible);
-                %disp(nodes(1).Visible);
-                %for i = 1:length(nodes)
-                    %if nodes(i).Visible 
-                        %disp('node was selected!');
-                    %end
-                %end
-            end
-            clickPos = get(hFig, 'CurrentPoint');
+    % click from Matlab figure
+    if ~isempty(ev)
+        if strcmpi(get(hFig, 'SelectionType'), 'alt') % right-click
+            clickAction = 'popup';
+        elseif strcmpi(get(hFig, 'SelectionType'), 'open') % double-click
+            %double-click to reset display
+            clickAction = 'ResetCamera';
+        elseif strcmpi(get(hFig, 'SelectionType'), 'extend') % SHIFT is held
+            clickAction = 'MouseMoveCamera';
+        else % normal click
+            clickAction = 'SingleClick'; % POTENTIAL node click!
         end
-    % Click on the Matlab colorbar
+        clickPos = get(hFig, 'CurrentPoint');
+
+    % otherwise, click from Matlab colorbar
     else
         if strcmpi(get(hFig, 'SelectionType'), 'alt')
             clickAction = 'popup';
@@ -399,6 +387,7 @@ function FigureMouseDownCallback(hFig, ev)
         end
         clickPos = get(hFig, 'CurrentPoint');
     end
+    
     % Record action to perform when the mouse is moved
     setappdata(hFig, 'clickAction', clickAction);
     setappdata(hFig, 'clickSource', hFig);
@@ -406,9 +395,6 @@ function FigureMouseDownCallback(hFig, ev)
     setappdata(hFig, 'hasMoved', 0);
     % Record mouse location in the figure coordinates system
     setappdata(hFig, 'clickPositionFigure', clickPos);
-    
-    % not ready yet
-    %JavaClickCallback(hFig, ev)
 end
  
  
@@ -467,13 +453,13 @@ end
  
  
 %% ===== FIGURE MOUSE UP CALLBACK =====
+% This function applies certain triggered events from mouse clicks/movements
+    % Left click on a node: select/deselect nodes
+    % Right click: popup menu
+    % Double click: reset camera
 function FigureMouseUpCallback(hFig, varargin)
     disp('Entered FigureMouseUpCallback');
-    
-    % Added Dec 24: Functionalities from JavaClickCallback currently
-    % implemented in UpdateColormap
-    UpdateColormap(hFig)
-
+   
     % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
     hasMoved = getappdata(hFig, 'hasMoved');
@@ -497,7 +483,10 @@ function FigureMouseUpCallback(hFig, varargin)
             DisplayFigurePopup(hFig);
         elseif strcmpi(clickAction, 'ResetCamera')
             DefaultCamera(hFig);
+        elseif strcmpi(clickAction, 'SingleClick')
+            NodeClickEvent(hFig);
         end
+        
     % ===== MOUSE HAS MOVED =====
     else
         if strcmpi(clickAction, 'colorbar')
@@ -647,147 +636,97 @@ function ToggleRegionSelection(hFig, Inc)
 end
  
  
-%% ===== JAVA MOUSE CLICK CALLBACK =====
-% NOTE: CURRENTLY NOT USED
-% functionalities currently implemented in buildLinks + UpdateColormap
-function JavaClickCallback(hFig, ev)
-    disp('Entered JavaClickCallback');
-    % Retrieve button
-    %ButtonClicked = ev.get('Button');
-    %ClickCount = ev.get('ClickCount');
-    curPos = get(hFig, 'CurrentPoint');
-    %ClickCount = get(hFig, '');
-    %Counter = getappdata(hObject,'Counter');
-    
-    button = convertCharsToStrings(get(hFig,'SelectionType'));
- 
-    %set(gcf,'WindowButtonDownFcn', 'disp(get(gcf,''SelectionType''));');
-    if (button == 'normal') | (button == 'open') % left click
-    %if (ButtonClicked == 1)
-        % OpenGL handle
-        %OGL = getappdata(hFig,'OpenGLDisplay');
-        % Minimum distance. 1 is difference between level order of distance
-        % minimumDistanceThreshold = 0.2;
-        % '+1' is to account for the different indexing in Java and Matlab
-        % TODO:find index of node that is nearest the point being clicked
-        %nodeIndex = OGL.raypickNearestNode(ev.getX(), ev.getY(), minimumDistanceThreshold) + 1;
-     
-        %xpos_mouse = curPos(1,1);
-        %ypos_mouse = curPos(1,2);
+%% ===== NODE CLICK CALLBACK =====
+% If mouse click was used to select or unselect a node, this function is called to apply the appropriate changes
+% Basic logic:
+    % - The index of the clicked node is stored in globaldata
+    % - A node is clicked to select or deselect it (displays as grey X when deselected, and links are hidden)
+    % - If the node is a region (lobe/hemisphere) node, selections are
+    % applied to all of its parts
+    % - TODO: SHIFT + CLICK to select/deselect MULTIPLE nodes at once
+function NodeClickEvent(hFig)
+    disp('Entered NodeClickEvent');
+    global GlobalData
+    nodeIndex = GlobalData.FigConnect.ClickedNodeIndex;
+
+    % If visible node was clicked
+    if (nodeIndex > 0)
+        DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
         
-        % get index of the node that is closest to the point where user clicked
-        %nodeIndex = getNodeIndex(hFig, xpos_mouse, ypos_mouse);
-        %disp(nodeIndex);
-        
-        % If a visible node is clicked on
-        if (nodeIndex > 0)
-            DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
-            if (DisplayNode(nodeIndex) == 1)
-                % Get selected nodes
-                selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
-                % Get agregating nodes
-                MeasureNodes    = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
-                AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-                % Is the node already selected ?
-                AlreadySelected = any(selNodes == nodeIndex);
-                % Is the node an agregating node ?
-                isAgregatingNode = any(AgregatingNodes == nodeIndex);
- 
-                if (button == 'normal')
-                    % If node is already select
-                    if AlreadySelected
-                        % If all the nodes are selected, then select only this one
-                        if all(ismember(MeasureNodes, selNodes))
-                            SetSelectedNodes(hFig, [], 0);
-                            AlreadySelected = 0;
-                         % If it's the only selected node, then select all
-                        elseif (length(selNodes) == 1)
-                            SetSelectedNodes(hFig, [], 1);
-                            return;
-                        end
-                        % Aggragtive nodes: select blocks of nodes
-                        if isAgregatingNode
-                            % Get agregated nodes
-                            AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                            % How many are already selected
-                            NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
-                            % Get selected agregated nodes
-%                               AgregatingNodeAlreadySelected = ismember(AgregatingNodes, selNodes);
-                            % If the agregating node and his measure node are the only selected nodes, then select all
-                            if (sum(NodeAlreadySelected) == size(selNodes,1))
-                                SetSelectedNodes(hFig, [], 1);
-                                return;
-                            end
-                        end
-                    end
-                    
-                    % Select picked node
-                    Select = 1;
-                    if (AlreadySelected)
-                        % Deselect picked node
-                        Select = 0;
-                    end
- 
-                    % If shift is not pressed, deselect all node
-                    %isShiftDown = ev.get('ShiftDown');
-                    %if (strcmp(isShiftDown,'off'))
-                    if (ev.Key == 'shift')
-                        % Deselect
-                        SetSelectedNodes(hFig, selNodes, 0, 1);
-                        % Deselect picked node
-                        Select = 1;
-                    end
-                
-                    if (isAgregatingNode)
-                        % Get agregated nodes
-                        SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                        % Select
-                        SetSelectedNodes(hFig, [SelectNodeIndex(:); nodeIndex], Select);
-                        % Go up the hierarchy
-                        UpdateHierarchySelection(hFig, nodeIndex, Select);
-                    else
-                        SetSelectedNodes(hFig, nodeIndex, Select);
-                    end                
-                else % more than a single click
-                    %doubleClick_flag = true;
-                    disp('BST> Zoom into a region: Feature disabled until fixed.');
+        if (DisplayNode(nodeIndex) == 1)
+            % 1. GET NODE SETS AND PROPERTIES
+            % Get selected nodes
+            selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+            % Get agregating nodes
+            MeasureNodes    = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+            AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+            % Is the node already selected ?
+            AlreadySelected = any(selNodes == nodeIndex);
+            % Is the node an agregating node ?
+            isAgregatingNode = any(AgregatingNodes == nodeIndex);
+
+            % 2. IF NODE IS ALREADY SELECTED, TOGGLE IT
+            if AlreadySelected
+                % If all nodes are already selected
+                if all(ismember(MeasureNodes, selNodes))  
+                    % then we want to select only this new one
+                    SetSelectedNodes(hFig, [], 0); % first unselect all nodes
+                    AlreadySelected = 0;
+
+                % If it's the only already selected node then select
+                % all and return
+                elseif (length(selNodes) == 1)
+                    SetSelectedNodes(hFig, [], 1); 
                     return;
-                    
-                    if (isAgregatingNode)
-                        OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
-                        if isempty(OrganiseNode)
-                            OrganiseNode = 1;
-                        end
-                        % If it's the same, don't reload for nothing..
-                        if (OrganiseNode == nodeIndex)
-                            return;
-                        end
-                        % If there's only one node, useless update
-                        AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                        Invalid = ismember(AgregatedNodeIndex, AgregatingNodes);
-                        Invalid = Invalid | ismember(AgregatedNodeIndex, OrganiseNode);
-                        if (size(AgregatedNodeIndex(~Invalid),1) == 1)
-                            return;
-                        end
-                        % There's no exploration in 3D
-                        % There's no exploration in 3D
-                        is3DDisplay = getappdata(hFig, 'is3DDisplay');
-                        if (~is3DDisplay)
-                            bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', nodeIndex);
-                            UpdateFigurePlot(hFig);
-                        end
+                end
+
+                % Aggregative nodes: select blocks of nodes
+                if isAgregatingNode
+                    % Get agregated nodes
+                    AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
+                    % How many are already selected
+                    NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
+
+                    % If the agregating node and this measure node are
+                    % the only selected nodes, then select all and
+                    % return
+                    if (sum(NodeAlreadySelected) == size(selNodes,1))
+                        SetSelectedNodes(hFig, [], 1);
+                        return;
                     end
                 end
             end
-        else
-            if (button == 'open')
-                % double click resets display
-                DefaultCamera(hFig);
+
+            % 3. CHECK IF WE ARE SELECTING OR UNSELECTING A NODE
+            Select = 1;
+            if (AlreadySelected)
+                Select = 0; % Deselect picked node
             end
+
+            %TODO: If shift is not pressed, deselect all nodes first
+            %isShiftDown = ev.get('ShiftDown');
+            %if (strcmp(isShiftDown,'off'))
+            if (0)
+                SetSelectedNodes(hFig, selNodes, 0, 1); % Deselect all
+                Select = 1; % Select picked node
+            end
+
+            % 4. APPLY DE/SELECTIONS
+            if (isAgregatingNode)
+                SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
+                SetSelectedNodes(hFig, [SelectNodeIndex(:); nodeIndex], Select); %set the selection
+                % Go up the hierarchy
+                UpdateHierarchySelection(hFig, nodeIndex, Select);
+            else
+                SetSelectedNodes(hFig, nodeIndex, Select);
+            end                
         end
     end
+
+    % Reset ClickedNode Index
+    GlobalData.FigConnect.ClickedNodeIndex = 0;
 end
- 
+
 %%
 function UpdateHierarchySelection(hFig, NodeIndex, Select)
     % Incorrect data
@@ -1224,10 +1163,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
 % Currently using a "test" plot with defined threshold
 % for testing purposes only
      testPlot(hFig)
-    
-    % get the nodes
    
-    
     global GlobalData;
     %% === Initialize data @NOTE: DONE ===
     
@@ -1434,9 +1370,10 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'DisplayNode', ones(size(Vertices,1),1));
     bst_figures('SetFigureHandleField', hFig, 'ValidNode', ones(size(Vertices,1),1));
     
-    % Add nodes
+    %% ===== Create Nodes =====
     %   This also defines some data-based display parameters
     ClearAndAddNodes(hFig, Vertices, Names);
+    GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
     % background color : 
     %   White is for publications
@@ -1586,9 +1523,6 @@ function BuildLinks(hFig, DataPair)
     disp('Entered BuildLinks');
     testNodes = hFig.UserData.testNodes;
     
-    % empty the array when first loading figure
-    global selectedLinks;
-    selectedLinks = [];
     NodeIndex = {}; % cell array
     
     % to add the new link to the aggregating node(s) too
@@ -2346,15 +2280,6 @@ function UpdateColormap(hFig)
                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
         end
 
-        % old code
-        % Update color
-%         OGL.setMeasureLinkColorGradient( ...
-%             find(DataMask) - 1, ...
-%             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
-%             EndColor(:,1), EndColor(:,2), EndColor(:,3));
- 
-        % TODO: Offset is always in absolute
-        % OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
     end
     
     [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig);
@@ -2381,16 +2306,7 @@ function UpdateColormap(hFig)
         for i=1:size(VisibleLinks_region,1)
             set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
         end
-        
-        % old code
-%         OGL.setRegionLinkColorGradient( ...
-%             find(RegionDataMask) - 1, ...
-%             StartColor(:,1), StartColor(:,2), StartColor(:,3), ...
-%             EndColor(:,1), EndColor(:,2), EndColor(:,3));
-       
-        % TODO: Offset is always in absolute
-%       OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
- 
+    
     end
 
 end
@@ -2545,6 +2461,8 @@ end
 %         If node selection is empty: select/unselect all the nodes
 function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     disp('Entered SetSelectedNodes');
+    
+    % ==================== SETUP =========================
     % Parse inputs
     if (nargin < 2) || isempty(iNodes)
         % Get all the nodes
@@ -2564,6 +2482,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         iNodes = selNodes;
         isSelected = 1;
     end
+    
     % Define node properties
     if isSelected
        % SelectedNodeColor = [0.95, 0.0, 0.0]; %selection is indicated by
@@ -2573,24 +2492,16 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         %SelectedNodeColor = getappdata(hFig, 'BgColor');
         selNodes = setdiff(selNodes, iNodes);
     end
+    
     % Update list of selected channels
     bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', selNodes);
     
-    %get nodes from figure
+    % =================== DISPLAY SELECTED NODES =========================
     testNodes = hFig.UserData.testNodes;
     
-    % Agregating nodes are not visually selected
-    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-    NoColorNodes = ismember(iNodes,AgregatingNodes);
-    
-    %for i = 1:length(iNodes)
-        %if isSelected
-            %testNodes(iNodes(i)).Visible = true;
-        %else
-            %testNodes(iNodes(i)).Visible = false;
-        %end
-    %end
-         
+    % old code - Agregating nodes are not visually selected
+   % AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+    %NoColorNodes = ismember(iNodes,AgregatingNodes);
     %if (sum(~NoColorNodes) > 0)
         %sets current visibility type and updates display marker
        % allIdx = iNodes(~NoColorNodes);  
@@ -2604,6 +2515,16 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
           % testNodes(allIdx(i)).Visible = false;
       %  end
   %  end
+  
+    % REQUIRED: Display selected nodes ('ON' or 'OFF')
+    for i = 1:length(iNodes)
+        if isSelected
+            testNodes(iNodes(i)).Selected = true;
+        else
+            testNodes(iNodes(i)).Selected = false;
+        end
+    end
+         
     RefreshTextDisplay(hFig, isRedraw);
     
     % Get data
@@ -2614,7 +2535,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         [DataToFilter, DataMask] = GetRegionPairs(hFig);
     end
     
-    % ===== Selection based data filtering =====
+    % ===== Selection based data filtering of links =====
     % Direction mask
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     if (~isempty(IsDirectionalData) && IsDirectionalData == 1)
@@ -2658,6 +2579,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     
     %disp(NodeDirectionMask);
     
+    % ==================== DISPLAY LINKS SELECTION ====================
     % Links are from valid node only
     ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode') > 0);
     ValidDataForDisplay = sum(ismember(DataToFilter(:,1:2), ValidNode),2);
@@ -2900,15 +2822,10 @@ end
 function SetLinkTransparency(hFig, LinkTransparency)
     disp('Entered SetLinkTransparency');
    
-    %Links = hFig.UserData.AllLinks;
     [DataPair, DataMask] = GetPairs(hFig);
     iData = find(DataMask == 1);
     VisibleLinks = hFig.UserData.AllLinks(iData).';
-    
-    %current_color = Links.Color;
-    %disp(current_color);
-    %current_color(:,4) = LinkTransparency;
-    
+ 
     % set desired colors to each link
     for i=1:length(VisibleLinks)
         current_color = VisibleLinks(i).Color;
@@ -3356,7 +3273,6 @@ end
  
 %% ===== ADD NODES TO DISPLAY =====
 %@Note: new display prototype (working)
-%@TODO: default link and node size (user adjustable)
 %@TODO: figurehastext default on/off
 function ClearAndAddNodes(hFig, V, Names)
     disp('Entered ClearAndAddNodes');
@@ -3376,7 +3292,7 @@ function ClearAndAddNodes(hFig, V, Names)
     
     scaleFactor = 0.6; %new scale factor for x,y position of nodes
     for i = 1: nVertices
-        UserData.testNodes(i) = node(scaleFactor*V(i,1),scaleFactor*V(i,2)); %create node
+        UserData.testNodes(i) = node(scaleFactor*V(i,1),scaleFactor*V(i,2),i); %create node (indexed)
         if (i<=nAgregatingNodes)
             %this alters display/rotation of lobe node text
             UserData.testNodes(i).isAgregatingNode = true; 
