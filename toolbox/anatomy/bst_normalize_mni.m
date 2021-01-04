@@ -128,6 +128,7 @@ end
 
 
 %% ===== MNI NORMALIZATION =====
+TpmFiles = [];
 try
     switch (Method)
         % SPM12 LINEAR MUTUAL INFORMATION
@@ -163,16 +164,6 @@ try
                 errMsg = 'SPM Segment failed.';
                 return;
             end
-            % Import tissue classification
-            if ~isempty(TpmFiles) && ~isempty(MriFile)
-                bst_progress('text', 'Loading tissue segmentations...');
-                % Get subject
-                [sSubject, iSubject] = bst_get('MriFile', MriFile);
-                % Import tissue classification
-                import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
-            end
-            % Save results
-            bst_progress('text', 'Saving results...');
     end
 catch
     errMsg = ['bst_normalize_mni/' Method ': ' lasterr()];
@@ -213,6 +204,18 @@ if ~isempty(iLoadedMri)
     GlobalData.Mri(iLoadedMri).SCS.RPA = sMri.SCS.RPA;
     GlobalData.Mri(iLoadedMri).SCS.Origin = sMri.SCS.Origin;
 end
+
+
+%% ===== TISSUE CLASSIFICATION =====
+% Import tissue classification
+if ~isempty(TpmFiles) && ~isempty(MriFile)
+    bst_progress('text', 'Loading tissue segmentations...');
+    % Get subject
+    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    % Import tissue classification
+    import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
+end
+
 % Close progress bar
 if ~isProgress
     bst_progress('stop');

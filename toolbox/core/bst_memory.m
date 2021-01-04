@@ -147,6 +147,21 @@ function [sMri,iMri] = LoadMri(MriFile)
             end
         end
         
+        % === REFERENCE VOLUME ===
+        % Copy SCS and NCS fields from reference volume
+        if ~isempty(sSubject.iAnatomy) && ~file_compare(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName) && ...
+            (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || ~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC))
+            % Load reference volume for this subject
+            sMriRef = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            % Copy SCS field
+            if (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS)) && isfield(sMriRef, 'SCS') && ~isempty(sMriRef.SCS) && ~isempty(sMriRef.SCS.NAS)
+                sMri.SCS = sMriRef.SCS;
+            end
+            % Copy NCS field
+            if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC)) && isfield(sMriRef, 'NCS') && ~isempty(sMriRef.NCS) && ~isempty(sMriRef.NCS.AC)
+                sMri.NCS = sMriRef.NCS;
+            end
+        end
         % === REGISTER NEW MRI ===
         % Add MRI to loaded MRIs in this protocol
         iMri = length(GlobalData.Mri) + 1;
@@ -3461,10 +3476,11 @@ function UnloadMri(MriFile) %#ok<DEFNU>
     MriFile = file_short(MriFile);
     % Check if MRI is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
-    % If it is: unload it
-    if ~isempty(iMri)
-        GlobalData.Mri(iMri) = [];
+    if isempty(iMri)
+        return;
     end
+    % Unload MRI
+    GlobalData.Mri(iMri) = [];
     % Get subject
     sSubject = bst_get('MriFile', MriFile);
     % Unload subject

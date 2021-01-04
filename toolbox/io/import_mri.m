@@ -211,7 +211,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         % Get volumes dimensions
         refSize = size(sMriRef.Cube(:,:,:,1));
         newSize = size(sMri.Cube(:,:,:,1));
-        isSameSize = all(refSize == newSize) && all(sMriRef.Voxsize(1:3) == sMri.Voxsize(1:3));
+        isSameSize = all(refSize == newSize) && all(round(sMriRef.Voxsize(1:3) .* 1000) == round(sMri.Voxsize(1:3) .* 1000));
         % Ask what operation to perform with this MRI
         if isInteractive
             % Initialize list of options to register this new MRI with the existing one
@@ -285,7 +285,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
                 % Copy the old SCS and NCS fields to the new file (only if registered)
                 if isSameSize || isReslice
                     sMri.SCS = sMriRef.SCS;
-                    sMri.NCS = sMriRef.NCS;
+                    %sMri.NCS = sMriRef.NCS;
                 end
         end
     end
