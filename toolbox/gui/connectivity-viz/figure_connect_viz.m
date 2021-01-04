@@ -511,70 +511,54 @@ end
  
 %% ===== FIGURE KEY PRESSED CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)
-    global ConnectKeyboardMutex;
     % Convert to Matlab key event
     [keyEvent, tmp, tmp] = gui_brainstorm('ConvertKeyEvent', keyEvent);
     if isempty(keyEvent.Key)
         return;
     end
-    % Set a mutex to prevent to enter twice at the same time in the routine
-    if (isempty(ConnectKeyboardMutex))
-        tic;
-        % Set mutex
-        ConnectKeyboardMutex = 0.1;
-        % Process event
-        % note: keys only work when pressed twice in a row? (Yaqi)
-        switch (keyEvent.Key)
-            case 't'                            %TODO: remove test
-                 test(hFig);
-            case 'a'
-                SetSelectedNodes(hFig, [], 1, 1);   %TODO
-            case 'b'
-                ToggleBlendingMode(hFig);           %TODO
-            case 'l'
-                ToggleTextDisplayMode(hFig);         % DONE
-            case 'h'                            %TODO
-                HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-                HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
-                SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
-            case 'd'                    %TODO
-                ToggleDisplayMode(hFig);
-            case 'm'                    %TODO
-                ToggleMeasureToRegionDisplay(hFig)
-            case 'q'                    %TODO
-                RenderInQuad = 1 - getappdata(hFig, 'RenderInQuad');
-                setappdata(hFig, 'RenderInQuad', RenderInQuad)
-                OGL = getappdata(hFig, 'OpenGLDisplay');
-                OGL.renderInQuad(RenderInQuad)
-                OGL.repaint();
-            case {'+', 'add'}             %TODO
-                panel_display('ConnectKeyCallback', keyEvent);
-            case {'-', 'subtract'}              %TODO
-                panel_display('ConnectKeyCallback', keyEvent);
-            case 'leftarrow'                    %TODO
-                ToggleRegionSelection(hFig, 1);
-            case 'rightarrow'                    %TODO
-                ToggleRegionSelection(hFig, -1);
-            case 'uparrow'          %DONE - oct 20 2020
-                % zoom in
-                ZoomCamera(hFig, 0.95 ); % zoom in
-            case 'downarrow'        %DONE - oct 20 2020
-                % zoom out
-                ZoomCamera(hFig, 1.05); % zoom out
-            case 'escape'           %TODO
-                SetExplorationLevelTo(hFig, 1);
-            case 'shift'            %DONE - oct 20 2020
-                % SHIFT+CLICK to move camera horizontally/vertically
-                setappdata(hFig, 'MouseMoveCamera', 1);
-        end
-        %ConnectKeyboardMutex = [];
-    else
-        % Release mutex if last keypress was processed more than one 2s ago
-        t = toc;
-        if (t > ConnectKeyboardMutex)
-            ConnectKeyboardMutex = [];
-        end
+    
+    % Process event
+    switch (keyEvent.Key)
+        case 't' % TO REMOVE AT END: test key
+             test(hFig);
+        case 'a' % DONE: Select All Nodes
+            SetSelectedNodes(hFig, [], 1, 1);
+        case 'b' % TODO: Blending Mode (unclear if needed)
+            ToggleBlendingMode(hFig);
+        case 'l' % DONE: Toggle Lobe Labels
+            ToggleTextDisplayMode(hFig); 
+        case 'h' % TODO: Toggle visibility of hierarchy/region nodes (unclear if needed)
+            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+            HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
+            SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
+        case 'd' % upclear if needed (does not work in previous figure_connect either)
+            ToggleDisplayMode(hFig);
+        case 'm' % TODO: Toggle Region Links
+            ToggleMeasureToRegionDisplay(hFig)
+        case 'q' % unclear if needed
+            RenderInQuad = 1 - getappdata(hFig, 'RenderInQuad');
+            setappdata(hFig, 'RenderInQuad', RenderInQuad)
+            OGL = getappdata(hFig, 'OpenGLDisplay');
+            OGL.renderInQuad(RenderInQuad)
+            OGL.repaint();
+        case {'+', 'add'} % unclear if needed
+            panel_display('ConnectKeyCallback', keyEvent);
+        case {'-', 'subtract'} % unclear if needed
+            panel_display('ConnectKeyCallback', keyEvent);
+        case 'leftarrow'  % DONE: Toggle Region Selection (backward)
+            ToggleRegionSelection(hFig, 1);
+        case 'rightarrow' % DONE: Toggle Region Selection (forward)
+            ToggleRegionSelection(hFig, -1);
+        case 'uparrow' % DONE: Zoom in
+            ZoomCamera(hFig, 0.95 );
+        case 'downarrow' % DONE - oct 20 2020
+            ZoomCamera(hFig, 1.05);
+        case 'escape' % unclear if needed
+            SetExplorationLevelTo(hFig, 1);
+        case 'shift' % DONE: SHIFT+CLICK to move camera horizontally/vertically
+            setappdata(hFig, 'MouseMoveCamera', 1);
     end
+      
 end
  
 %Note: ready
@@ -2689,19 +2673,10 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             else
                 set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
             end
- 
-         %   OGL.setMeasureLinkVisibility(iData, isSelected);
-        %else
-          %  OGL.setRegionLinkVisibility(iData, isSelected);
         end
     end
     
-    % These functions sets global Boolean value in Java that allows
-    % or disallows the drawing of these measures, which makes it
-    % really fast to switch between the two mode
-  %  OGL.setMeasureIsVisible(MeasureLinksIsVisible);
- %   OGL.setRegionIsVisible(~MeasureLinksIsVisible);
-    
+
     % Redraw OpenGL
     if isRedraw
       %  OGL.repaint();
