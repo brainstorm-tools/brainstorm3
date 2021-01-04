@@ -414,7 +414,7 @@ end
  
 %% ===== FIGURE MOUSE MOVE CALLBACK =====
 function FigureMouseMoveCallback(hFig, ev)
-    disp('Entered FigureMouseMoveCallback');
+   % disp('Entered FigureMouseMoveCallback');
     % Get current mouse action
     clickAction = getappdata(hFig, 'clickAction');   
     clickSource = getappdata(hFig, 'clickSource');
@@ -1050,7 +1050,6 @@ function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
     disp('Entered SizeSliderModifiersModifying_Callback'); % TODO: remove
     % Update Modifier value
     newValue = ev.getSource().getValue() / 2;
-    disp(newValue)
     % Update text value
     jLabel.setText(sprintf('%.0f', newValue * 2));
     SetLinkSize(hFig, newValue);
@@ -1598,8 +1597,6 @@ function testPlot(hFig)
 end
  
 %% ======== Create all links as Matlab Lines =====
-    %@todo: color for strength (current TEMP color is using the
-     %node's scout color) -> DONE
     % TODO: directional arcs
 function BuildLinks(hFig, DataPair)
     disp('Entered BuildLinks');
@@ -1674,7 +1671,7 @@ function BuildLinks(hFig, DataPair)
             'LineWidth', 2,...
             'Color', [testNodes(node1).Color 0.00],...
             'PickableParts','none',...
-            'Visible','off'); %not visible as default;
+            'Visible','off'); % not visible as default;
         testNodes(node1).Links(end+1) = l;
         testNodes(node2).Links(end+1) = l;
         
@@ -1702,8 +1699,7 @@ function test(hFig)
    testNodes = hFig.UserData.testNodes;
    
    DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
-%            
-%         
+  
 end
  
  
@@ -2265,9 +2261,7 @@ end
 %TODO: update ogl
 function UpdateColormap(hFig)
     disp('Entered UpdateColormap');
-    
-    global selectedLinks; % used to hold links of nodes selected by user
-    
+
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
@@ -2363,27 +2357,11 @@ function UpdateColormap(hFig)
         iData = find(DataMask == 1);
         VisibleLinks = hFig.UserData.AllLinks(iData).';
   
-        % set desired colors to each link
-        % 4th column of Color is transparency
-        
-        % if no node is selected, show all links above threshold
-        if isempty(selectedLinks)
-            % if we did not click on an aggregating node
-            for i=1:size(VisibleLinks,1)
-                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
-                set(VisibleLinks(i), 'Visible', 'on');
-            end
-        else % if node(s) were selected
-            for i=1:size(VisibleLinks,1)
-                if ismember(VisibleLinks(i), selectedLinks)
-                    set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
-                    set(VisibleLinks(i), 'Visible', 'on');
-                else
-                    set(VisibleLinks(i), 'Visible', 'off');
-                end
-            end
-        end  
-        
+        % set desired colors to each link (4th column is transparency)
+        for i=1:size(VisibleLinks,1)
+               set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
+        end
+
         % old code
         % Update color
 %         OGL.setMeasureLinkColorGradient( ...
@@ -2415,22 +2393,10 @@ function UpdateColormap(hFig)
         iData = find(RegionDataMask == 1);
         VisibleLinks_region = hFig.UserData.AllLinks(iData).';
         
-        % if no node is selected, show all links above threshold
-        if isempty(selectedLinks)
-            for i=1:size(VisibleLinks_region,1)
-                set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
-                set(VisibleLinks_region(i), 'Visible', 'on');
-            end
-        else % if node(s) were selected
-            for i=1:size(VisibleLinks_region,1)
-                if ismember(VisibleLinks(i), selectedLinks)
-                    set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
-                    set(VisibleLinks_region(i), 'Visible', 'on');
-                else
-                    set(VisibleLinks_region(i), 'Visible', 'off');
-                end
-            end
-        end        
+        % set desired colors to each link (4th column is transparency)
+        for i=1:size(VisibleLinks_region,1)
+            set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+        end
         
         % old code
 %         OGL.setRegionLinkColorGradient( ...
@@ -2442,8 +2408,7 @@ function UpdateColormap(hFig)
 %       OGL.setRegionLinkOffset(find(RegionDataMask) - 1, Offset(:).^2 * 2);
  
     end
-            
-%     OGL.repaint();
+
 end
  
  
@@ -3465,23 +3430,10 @@ function ClearAndAddNodes(hFig, V, Names)
     % refresh display extent
     axis image; %fit display to all objects in image
     ax = hFig.CurrentAxes; %z-axis on default
-%     extent = 0;
-%     for i = 1: nVertices
-%         if (UserData.testNodes(i).Extent > extent)
-%             extent = UserData.testNodes(i).Extent;
-%         end
-%     end
-%     
-%     ax.XLim = ax.XLim + extent*[-1 1];
-%     displayFactor = 1.5;
-%     ax.YLim = ax.YLim + displayFactor*extent*[-1 1];
     ax.Visible = 'off';
- %   ax.SortMethod = 'depth'; % this sorts (displays) the ax.Children  by their z-coordinate.
-    
-    
-    % @TODO: default link and node size (user adjustable)
+ 
+    % @TODO: default node size (user adjustable)
     %setappdata(hFig, 'NodeSize', NodeSize);
-    %setappdata(hFig, 'LinkSize', LinkSize);
     
     % @TODO: If the number of node is greater than a certain number, we do not display text due to too many nodes
     FigureHasText = NumberOfMeasureNode <= 500;
