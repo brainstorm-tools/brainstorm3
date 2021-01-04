@@ -22,6 +22,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('DirAnalysisInter')      : Directory name of the inter-subject analysis study 
 %    - bst_get('DirAnalysisIntra')      : Directory name of the intra-subject analysis study (for each subject)
 %    - bst_get('AnatomyDefaults')       : Get the contents of directory bstDir/defaults/anatomy
+%    - bst_get('MniAtlasDefaults')      : Get the contents of directory bstDir/defaults/mniatlas
 %    - bst_get('EegDefaults')           : Get the contents of directory bstDir/defaults/eeg
 %    - bst_get('LastUsedDirs')          : Structure with all the last used directories (last used)
 %    - bst_get('OsType', isMatlab=1)    : Get a string that describes the operating system (if isMatlab=1 return the Matlab/JVM platform, else return the real host system)
@@ -2211,51 +2212,51 @@ switch contextName
             end
         end
         % Get defaults from internet 
-        if ~ismember(lower({sTemplates.Name}), 'icbm152')
+        if ~ismember('icbm152', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152';
         end
-        if ~ismember(lower({sTemplates.Name}), 'icbm152_2019')
+        if ~ismember('icbm152_2019', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152_2019';
         end
-        if ~ismember(lower({sTemplates.Name}), 'icbm152_brainsuite_2016')
+        if ~ismember('icbm152_brainsuite_2016', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
             sTemplates(end).Name = 'ICBM152_BrainSuite_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_2016')
+        if ~ismember('colin27_2016', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_brainsuite_2016')
+        if ~ismember('colin27_brainsuite_2016', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2020')
+        if ~ismember('bci-dni_brainsuite_2020', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
             sTemplates(end).Name = 'BCI-DNI_BrainSuite_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2020')
+        if ~ismember('uscbrain_brainsuite_2020', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
             sTemplates(end).Name = 'USCBrain_BrainSuite_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'fsaverage_2020')
+        if ~ismember('fsaverage_2020', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
             sTemplates(end).Name = 'FsAverage_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'kabdebon_7w')
+        if ~ismember('kabdebon_7w', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
             sTemplates(end).Name = 'Kabdebon_7w';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_0.5m')
+        if ~ismember('oreilly_0.5m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m';
             sTemplates(end).Name = 'Oreilly_0.5m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_1m')
+        if ~ismember('oreilly_1m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m';
             sTemplates(end).Name = 'Oreilly_1m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_2m')
+        if ~ismember('oreilly_2m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m';
             sTemplates(end).Name = 'Oreilly_2m';
         end
@@ -2263,39 +2264,39 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m';
             sTemplates(end).Name = 'Oreilly_3m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_4.5m')
+        if ~ismember('oreilly_4.5m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m';
             sTemplates(end).Name = 'Oreilly_4.5m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_6m')
+        if ~ismember('oreilly_6m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m';
             sTemplates(end).Name = 'Oreilly_6m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_7.5m')
+        if ~ismember('oreilly_7.5m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m';
             sTemplates(end).Name = 'Oreilly_7.5m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_9m')
+        if ~ismember('oreilly_9m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m';
             sTemplates(end).Name = 'Oreilly_9m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_10.5m')
+        if ~ismember('oreilly_10.5m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m';
             sTemplates(end).Name = 'Oreilly_10.5m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_12m')
+        if ~ismember('oreilly_12m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m';
             sTemplates(end).Name = 'Oreilly_12m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_15m')
+        if ~ismember('oreilly_15m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m';
             sTemplates(end).Name = 'Oreilly_15m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_18m')
+        if ~ismember('oreilly_18m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m';
             sTemplates(end).Name = 'Oreilly_18m';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_24m')
+        if ~ismember('oreilly_24m', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m';
             sTemplates(end).Name = 'Oreilly_24m';
         end
@@ -2308,6 +2309,48 @@ switch contextName
         if ~isempty(sTemplates)
             [tmp__, I] = sort_nat({sTemplates(2:end).Name});
             sTemplates = sTemplates([1, I+1]);
+        end
+        % Return defaults list
+        argout1 = sTemplates;
+        
+        
+%% ==== MNI ATLASES ====
+    % Returns the list of all the available MNI atlases
+    case 'MniAtlasDefaults'
+        % Get templates from the brainstorm3 folder
+        mniDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'mniatlas');
+        mniFiles = dir(bst_fullfile(mniDir, '*.nii.gz'));
+        mniFiles = cellfun(@(c)bst_fullfile(mniDir,c), {mniFiles.name}, 'UniformOutput', 0);
+        % Initialize list of defaults
+        sTemplates = repmat(struct('FilePath',[],'Name',[],'Info',[]), 0);
+        % Find all the valid defaults (.zip files or subdirectory with a brainstormsubject.mat in it)
+        for i = 1:length(mniFiles)
+            % Decompose file name
+            [fPath, fBase, fExt] = bst_fileparts(mniFiles{i});
+            % Keep only files with .nii and .nii.gz extensions
+            if ~isempty(fBase) && (fBase(1) ~= '.') && ~isempty(fExt) && strcmpi(fExt, '.gz')
+                sTemplates(end+1).FilePath = mniFiles{i};
+                sTemplates(end).Name = strrep(fBase, '.nii', '');
+                sTemplates(end).Info = '';
+            end
+        end
+        
+        % Get defaults from internet
+        if ~ismember('brainnetome', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
+            sTemplates(end).Name = 'Brainnetome';
+            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+        end
+        if ~ismember('brainnetome_leaddbs', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome_leaddbs';
+            sTemplates(end).Name = 'Brainnetome_leaddbs';
+            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+        end
+        
+        % Sort in alphabetical order
+        if ~isempty(sTemplates)
+            [tmp__, I] = sort_nat(lower({sTemplates.Name}));
+            sTemplates = sTemplates(I);
         end
         % Return defaults list
         argout1 = sTemplates;
@@ -3277,6 +3320,7 @@ switch contextName
                     {'*'},             'MRI: DICOM (SPM converter)',           'DICOM-SPM'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'All MRI files (subject space)', 'ALL'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'All MRI files (MNI space)',     'ALL-MNI'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume atlas (subject space)',  'ALL-ATLAS'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume atlas (MNI space)',      'ALL-MNI-ATLAS'; ...
                    };
             case 'mriout'

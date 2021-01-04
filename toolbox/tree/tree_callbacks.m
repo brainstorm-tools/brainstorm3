@@ -564,43 +564,60 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
                     AddSeparator(jPopup);
-                    % === USE DEFAULT ===
+                    
+                    % === ANATOMY TEMPLATE ===
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
-                    if ~isempty(sTemplates)
-                        jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
-                        jMenuDefMni = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
-                        jMenuDefUsc = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
-                        jMenuDefFs = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
-                        jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
-                        % Add an item per Template available
-                        for i = 1:length(sTemplates)
-                            % Local or download?
-                            if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
-                                Comment = ['Download: ' sTemplates(i).Name];
-                            else
-                                Comment = sTemplates(i).Name;
-                            end
-                            % Sub-group
-                            if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
-                                jParent = jMenuDefMni;
-                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
-                                jParent = jMenuDefUsc;
-                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
-                                jParent = jMenuDefFs;
-                            elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
-                                jParent = jMenuDefInfants;
-                            end
-                            % Create item
-                            gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
+                    % Create menus
+                    jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefMni = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefUsc = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefFs = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
+                    % Add an item per Template available
+                    for i = 1:length(sTemplates)
+                        % Local or download?
+                        if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
+                            Comment = ['Download: ' sTemplates(i).Name];
+                        else
+                            Comment = sTemplates(i).Name;
                         end
-                        % Create new template
-                        AddSeparator(jMenuDefaults);
-                        gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
-                        gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
+                        % Sub-group
+                        if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
+                            jParent = jMenuDefMni;
+                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
+                            jParent = jMenuDefUsc;
+                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
+                            jParent = jMenuDefFs;
+                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
+                            jParent = jMenuDefInfants;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
                     end
+                    % Create new template
+                    AddSeparator(jMenuDefaults);
+                    gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
+                    gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
                     
-                    
+                    % === MNI ATLASES ===
+                    % Get list of templates registered in Brainstorm
+                    sMniAtlases = bst_get('MniAtlasDefaults');
+                    % Add MNI atlases
+                    jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI atlas', IconLoader.ICON_ANATOMY, [], []);
+                    for i = 1:length(sMniAtlases)
+                        % Local or download?
+                        if ~isempty(strfind(sMniAtlases(i).FilePath, 'http://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'https://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'ftp://'))
+                            Comment = ['Download: ' sMniAtlases(i).Name];
+                        else
+                            Comment = sMniAtlases(i).Name;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jMenuMniVol, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject, sMniAtlases(i), 1));
+                    end
+                    AddSeparator(jMenuMniVol);
+                    gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));
+
                     % === GENERATE HEAD ===
                     AddSeparator(jPopup);
                     jItem = gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(iSubject));
@@ -861,7 +878,6 @@ switch (lower(action))
                             end
                             if ~isempty(sSubject.iAnatomy)
                                 % MRI 3D
-                               % gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'],     IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
                                 if (length(sSubject.Anatomy) == 1)
                                     gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
                                 else

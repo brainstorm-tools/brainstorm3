@@ -456,7 +456,7 @@ function UpdateFigureName(hFig)
             % Add atlas name
             AnatAtlas = getappdata(hFig, 'AnatAtlas');
             if ~isempty(AnatAtlas) && ~strcmpi(AnatAtlas, 'none')
-                figureName = [figureName ' (' AnatAtlas ')'];
+                figureName = [figureName ' (' str_remove_parenth(AnatAtlas) ')'];
             end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];

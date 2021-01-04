@@ -2,6 +2,7 @@ function [MriFileMni, sMriMni] = import_mniatlas(iSubject, sTemplate, isInteract
 % IMPORT_MNIATLAS: Add a MNI atlas to the selected subject.
 %
 % USAGE:  [MriFileMni, sMriMni] = import_mniatlas(iSubject, sTemplate, isInteractive=1);
+%         [MriFileMni, sMriMni] = import_mniatlas(iSubject);     % Import MNI atlas from file on the hard drive
 %
 % INPUT: 
 %    - iSubject      : Subject indice in protocol definition (default anatomy: iSubject=0)
@@ -37,6 +38,74 @@ sMriMni = [];
 if (nargin < 3) || isempty(isInteractive)
     isInteractive = 1;
 end
+if (nargin < 2) || isempty(sTemplate)
+    sTemplate = [];
+end
+
+
+%% ===== GET INPUT FILE =====
+if isempty(sTemplate)
+    % Get last used directories
+    LastUsedDirs = bst_get('LastUsedDirs');
+    % Get MRI file
+    [AtlasFile, FileFormat, FileFilter] = java_getfile( 'open', ...
+        'Import MRI...', ...              % Window title
+        LastUsedDirs.ImportAnat, ...      % Default directory
+        'single', 'files', ...            % Selection mode
+        {{'.nii', '.gz'}, 'Volume atlas (MNI space)', 'ALL-MNI-ATLAS'}, 'ALL-MNI-ATLAS');
+    % If no file was selected: exit
+    if isempty(AtlasFile)
+        return
+    end
+    % Save default import directory
+    [fPath,fBase,fExt] = bst_fileparts(AtlasFile);
+    LastUsedDirs.ImportAnat = fPath;
+    bst_set('LastUsedDirs', LastUsedDirs);
+    % For .nii.gz files, remove also the .nii
+    fBase = strrep(fBase, '.nii', '');
+    % Files for this template
+    LicenseFile = bst_fullfile(fPath, [fBase '.txt']);
+    AtlasName = fBase;
+    AtlasUrl = [];
+    
+%% ===== GET TEMPLATE =====
+else
+    % Get MNI atlas directory
+    atlasDir = bst_fullfile(bst_get('UserDefaultsDir'), 'mniatlas');
+    if ~file_exist(atlasDir)
+        mkdir(atlasDir);
+    end
+    % URL: Download zip file
+    if ~isempty(strfind(sTemplate.FilePath, 'http://')) || ~isempty(strfind(sTemplate.FilePath, 'https://')) || ~isempty(strfind(sTemplate.FilePath, 'ftp://'))
+        tmpDir = bst_get('BrainstormTmpDir');
+        % Output file
+        ZipFile = bst_fullfile(tmpDir, [lower(sTemplate.Name) '.zip']);
+        % Download file
+        errMsg = gui_brainstorm('DownloadFile', sTemplate.FilePath, ZipFile, 'Download MNI atlas');
+        if ~isempty(errMsg)
+            error(['Impossible to download atlas:' 10 errMsg]);
+        end
+        % Progress bar
+        bst_progress('start', 'Download atlas', 'Unzipping file...');
+        % URL: Download zip file
+        try
+            unzip(ZipFile, atlasDir);
+        catch
+            error(['Could not unzip atlas: ' 10 10 lasterr]);
+        end
+        % Look for atlas volume
+        sTemplate.FilePath = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.nii.gz']);
+    end
+    % Check the existence of MNI volume
+    if ~file_exist(sTemplate.FilePath)
+        error(['Could not find file: ' sTemplate.FilePath]);
+    end
+    % Files for this template
+    LicenseFile = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.txt']);
+    AtlasFile = sTemplate.FilePath;
+    AtlasName = sTemplate.Name;
+    AtlasUrl = sTemplate.Info;
+end
 
 
 %% ===== TARGET SUBJECT =====
@@ -56,58 +125,21 @@ if ~isfield(sMriRef, 'NCS') || ...
 end
 
 
-%% ===== GET TEMPLATE =====
-% Get MNI atlas directory
-atlasDir = bst_fullfile(bst_get('UserDefaultsDir'), 'mniatlas');
-if ~file_exist(atlasDir)
-    mkdir(atlasDir);
-end
-% URL: Download zip file
-if ~isempty(strfind(sTemplate.FilePath, 'http://')) || ~isempty(strfind(sTemplate.FilePath, 'https://')) || ~isempty(strfind(sTemplate.FilePath, 'ftp://'))
-    tmpDir = bst_get('BrainstormTmpDir');
-    % Output file
-    ZipFile = bst_fullfile(tmpDir, [lower(sTemplate.Name) '.zip']);
-    % Download file
-    errMsg = gui_brainstorm('DownloadFile', sTemplate.FilePath, ZipFile, 'Download MNI atlas');
-    if ~isempty(errMsg)
-        error(['Impossible to download atlas:' 10 errMsg]);
-    end
-    % Progress bar
-    bst_progress('start', 'Download atlas', 'Unzipping file...');
-    % URL: Download zip file
-    try
-        unzip(ZipFile, atlasDir);
-    catch
-        error(['Could not unzip atlas: ' 10 10 lasterr]);
-    end
-    % Look for atlas volume
-    sTemplate.FilePath = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.nii.gz']);
-end
-% Check the existence of MNI volume
-if ~file_exist(sTemplate.FilePath)
-    error(['Could not find file: ' sTemplate.FilePath]);
-end
-
-
 %% ===== IMPORT ATLAS =====
 % Display license
-LicenseFile = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.txt']);
 if file_exist(LicenseFile)
-    view_text(LicenseFile, [sTemplate.Name ' atlas'], 1, 1);
+    view_text(LicenseFile, AtlasName, 1, 1);
 end
 % Import
-[MriFileMni, sMriMni] = import_mri(iSubject, sTemplate.FilePath, 'ALL-MNI-ATLAS', isInteractive);
+[MriFileMni, sMriMni] = import_mri(iSubject, AtlasFile, 'ALL-MNI-ATLAS', isInteractive);
 if isempty(MriFileMni)
-    error(['Could not import file: ' sTemplate.FilePath]);
+    error(['Could not import file: ' AtlasFile]);
 end
 % Open website
-if ~isempty(sTemplate.Info)
-    web(sTemplate.Info, '-browser');
+if ~isempty(AtlasUrl)
+    web(AtlasUrl, '-browser');
 end
 % Close process bar
 bst_progress('stop');
-
-
-
 
 

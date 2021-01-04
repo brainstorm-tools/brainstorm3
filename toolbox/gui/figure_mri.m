@@ -2980,6 +2980,11 @@ function SetVolumeAtlas(hFig, AnatAtlas)
     if isempty(AtlasNames)
         return;
     end
+    % Open progress bar
+    isProgress = bst_progress('isVisible');
+    if ~isProgress
+        bst_progress('start', 'MRI Viewer', 'Loading volume atlas...');
+    end
     % If atlas is not specified: pick the saved one, or Desikan-Killiany, or the first one
     if isempty(AnatAtlas)
         if ~isempty(MriOptions.DefaultAtlas) && ismember(MriOptions.DefaultAtlas, AtlasNames)
@@ -2999,6 +3004,7 @@ function SetVolumeAtlas(hFig, AnatAtlas)
         end
         TessInfo(iTess).OverlayCubeLabels = [];
         TessInfo(iTess).OverlayLabels = [];
+        TessInfo(iTess).isOverlayAtlas = 0;
     % Select atlas
     else
         % Select atlas
@@ -3043,6 +3049,10 @@ function SetVolumeAtlas(hFig, AnatAtlas)
     drawnow;
     % Update figure name
     bst_figures('UpdateFigureName', hFig);
+    % Close progress bar
+    if ~isProgress
+        bst_progress('stop');
+    end
 end
 
 
