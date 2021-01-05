@@ -75,10 +75,8 @@ classdef   node < handle
             updateTextLabel(this);
         end
         
-        % don't actually need this if using the implementation from Dec 26
         function set.isAgregatingNode(this,value)
             this.isAgregatingNode = value;
-            % updateAgregatingNode(this); % added Oct 25, bug?
             updateTextLabel(this);
         end
         
@@ -169,6 +167,7 @@ classdef   node < handle
               % of the clicked node is stored for access
               n = this.UserData;
               disp("Node with label '" + n.Label + "' was clicked");
+              disp("Node index: " + n.NodeIndex);
               global GlobalData
               GlobalData.FigConnect.ClickedNodeIndex = n.NodeIndex;
           end

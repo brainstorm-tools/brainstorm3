@@ -86,7 +86,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     % J3D Container
    % setappdata(hFig, 'OpenGLDisplay', OGL);
    % setappdata(hFig, 'OpenGLContainer', container);
-    setappdata(hFig, 'TextDisplayMode', 1);
     setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     setappdata(hFig, 'MeasureLinksIsVisible', 1);
@@ -140,18 +139,17 @@ function Dispose(hFig) %#ok<DEFNU>
     %NOTE: do not need to delete gcf (curr figure) because this is done in
     %bst_figures(DeleteFigure)
     
-    %====NEW====
-    c = hFig.UserData;
-    if (~isempty(c))
-        for i = 1:length(c.Nodes)
-            delete(c.Nodes(i));
-        end
-        for i = 1:length(c.testNodes)
-            delete(c.testNodes(i));
-        end
+    %====Delete Graphics Objects and Clear Variables====
+    if (isappdata(hFig,'AllNodes')) 
+        delete(getappdata(hFig,'AllNodes'));
+        rmappdata(hFig,'AllNodes');
     end
- 
     
+    if (isappdata(hFig,'AllLinks'))
+        delete(getappdata(hFig,'AllLinks'));
+        rmappdata(hFig,'AllLinks');
+    end
+
     %===old===
     SetBackgroundColor(hFig, [1 1 1]); %[1 1 1]= white [0 0 0]= black
     
@@ -182,7 +180,7 @@ function ResetDisplay(hFig)
     setappdata(hFig, 'DisplayBidirectionalMeasure', 0);
     setappdata(hFig, 'DataThreshold', 0.5);
     setappdata(hFig, 'DistanceThreshold', 0);
-    setappdata(hFig, 'TextDisplayMode', 1);
+    setappdata(hFig, 'TextDisplayMode', [1 2]);
     setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     if isappdata(hFig, 'DataPair')
@@ -1159,11 +1157,7 @@ end
  
 %% ===== UPDATE FIGURE PLOT =====
 function LoadFigurePlot(hFig) %#ok<DEFNU>
- 
-% Currently using a "test" plot with defined threshold
-% for testing purposes only
-     testPlot(hFig)
-   
+  
     global GlobalData;
     %% === Initialize data @NOTE: DONE ===
     
@@ -1371,7 +1365,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'ValidNode', ones(size(Vertices,1),1));
     
     %% ===== Create Nodes =====
-    %   This also defines some data-based display parameters
+    %  This also defines some data-based display parameters
     ClearAndAddNodes(hFig, Vertices, Names);
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
@@ -1399,12 +1393,15 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     end
     bst_figures('SetFigureHandleField', hFig, 'MeasureDistance', MeasureDistance);
     
+    
+    %% ==== Create and Display Links =======
+   
     % Build path based on region %todo:remove
     MeasureLinks = BuildRegionPath(hFig, Paths, DataPair);
     
     % Compute spline based on MeasureLinks @todo:remove
     aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
-    if ~isempty(aSplines)
+    %if ~isempty(aSplines)
         %OGL.addPrecomputedMeasureLinks(aSplines);
         % Get link size (type double)
         %LinkSize = getappdata(hFig, 'LinkSize');
@@ -1413,17 +1410,16 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         %SetLinkSize(hFig, LinkSize);
         % Set link transparency (if 3DDisplay, set to 0.75)
         %SetLinkTransparency(hFig, 0.00);
-    end
+    %end
     
     %NEW Nov 10: create links from computed DataPair
-    %testPlot(hFig)
     BuildLinks(hFig, DataPair);
     LinkSize = getappdata(hFig, 'LinkSize');
     SetLinkSize(hFig, LinkSize);
     SetLinkTransparency(hFig, 0.00);
         
     %% ===== Init Filters =====
-    % 
+    % Default intensity threshold
     MinThreshold = 0.9;
     
     % Don't refresh display for each filter at loading time
@@ -1467,8 +1463,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     SetRegionFunction(hFig, getappdata(hFig, 'DefaultRegionFunction'));
     
     %% ===== Rendering option =====
-    % Select all
-    %SetSelectedNodes(hFig, [], 1);
+    % Required: Select all on default
+    SetSelectedNodes(hFig, [], 1);
+    
     % Blending
     SetBlendingMode(hFig, 0);
     
@@ -1489,7 +1486,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     % Update colormap
     UpdateColormap(hFig);
-    % 
+    % Refresh Text Display Mode default set in CreateFigure
     RefreshTextDisplay(hFig);
     % Last minute hiding
     HideLonelyRegionNode(hFig);
@@ -1497,44 +1494,22 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     DefaultCamera(hFig);
     % display final figure on top
     shg
-    
-    
-    
-end
- 
-% calls circularGraph in MATLAB
-function testPlot(hFig)
-    test_thresh = 0.75; % temporary value used for now
-    
-    [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
-    M(M<test_thresh) = 0;
-    circularGraph(M, 'Label', RowNames);
-    
-    %hide test nodes
-    delete(hFig.UserData.Nodes);
- 
-    %test display
-   % shg %force show current figure
 end
  
 %% ======== Create all links as Matlab Lines =====
     % TODO: directional arcs
 function BuildLinks(hFig, DataPair)
     disp('Entered BuildLinks');
-    testNodes = hFig.UserData.testNodes;
     
-    NodeIndex = {}; % cell array
-    
-    % to add the new link to the aggregating node(s) too
-    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-        
-    % get list of nodes belonging to each aggregating node
-    for i = 1:length(AgregatingNodes)
-        NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
-        member = cellfun(@(x) ismember(AgregatingNodes(i),x), NodePaths);
-        NodeIndex{i} = (find(member == 1)).';    
+    % get pre-created nodes
+    AllNodes = getappdata(hFig, 'AllNodes');
+
+    % clear any previous links
+    if (isappdata(hFig,'AllLinks'))
+        delete(getappdata(hFig,'AllLinks'));
+        rmappdata(hFig,'AllLinks');
     end
-  
+    
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs
     
@@ -1557,8 +1532,8 @@ function BuildLinks(hFig, DataPair)
         % node positions (rescaled to *unit* circle)
         node1 = DataPair(i,1);
         node2 = DataPair(i,2);
-        u  = [testNodes(node1).Position(1);testNodes(node1).Position(2)]/0.6/4;
-        v  = [testNodes(node2).Position(1);testNodes(node2).Position(2)]/0.6/4;
+        u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/0.6/4;
+        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/0.6/4;
  
         % poincare hyperbolic disc
         x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
@@ -1579,45 +1554,34 @@ function BuildLinks(hFig, DataPair)
         x = 4*0.6*r*cos(theta)+4*0.6*x0;
         y = 4*0.6*r*sin(theta)+4*0.6*y0;
         
-        
-        % use thresh as ABS value
-        % default colour for now, will be updated in updateColormap
-        % LineWidth set to 2 by default
+        % Create the link as a line object
+            % default colour for now, will be updated in updateColormap
+            % Link Size set to 1.5 by default
         l = line(...
             x,...
             y,...
-            'LineWidth', 2,...
-            'Color', [testNodes(node1).Color 0.00],...
+            'LineWidth', 1.5,...
+            'Color', [AllNodes(node1).Color 0.00],...
             'PickableParts','none',...
             'Visible','off'); % not visible as default;
-        testNodes(node1).Links(end+1) = l;
-        testNodes(node2).Links(end+1) = l;
         
-        % Add link to the aggregating nodes too
-        % each cell of NodeIndex refers to the nodes belonging to one
-        % particular aggregating node
-        for j = 1:length(NodeIndex)
-            if ismember(node1, NodeIndex{j}) || ismember(node2, NodeIndex{j})
-                index = AgregatingNodes(j);
-                testNodes(index).Links(end+1) = l;      
-            end
-        end
-        
+        % Store the link into our figu
         if(i==1)
-            hFig.UserData.AllLinks = l;
+            AllLinks = l;
         else
-            hFig.UserData.AllLinks(end+1) = l;
+            AllLinks(end+1) = l;
         end
         
     end
     
+    % Store AllLinks into figure
+    setappdata(hFig,'AllLinks',AllLinks); % Very important!
 end
+
 %test callback function
 function test(hFig)
-   testNodes = hFig.UserData.testNodes;
-   
-   DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
-  
+   AllNodes = getappdata(hFig,'AllNodes');
+   AllLinks = getappdata(hFig,'AllLinks');
 end
  
  
@@ -2273,8 +2237,9 @@ function UpdateColormap(hFig)
         color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
         
         iData = find(DataMask == 1);
-        VisibleLinks = hFig.UserData.AllLinks(iData).';
-  
+        AllLinks = getappdata(hFig, 'AllLinks');
+        VisibleLinks = AllLinks(iData).';
+        
         % set desired colors to each link (4th column is transparency)
         for i=1:size(VisibleLinks,1)
                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
@@ -2300,7 +2265,8 @@ function UpdateColormap(hFig)
         color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
         
         iData = find(RegionDataMask == 1);
-        VisibleLinks_region = hFig.UserData.AllLinks(iData).';
+        AllLinks = getappdata(hFig,'AllLinks');
+        VisibleLinks_region = AllLinks(iData).';
         
         % set desired colors to each link (4th column is transparency)
         for i=1:size(VisibleLinks_region,1)
@@ -2497,7 +2463,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', selNodes);
     
     % =================== DISPLAY SELECTED NODES =========================
-    testNodes = hFig.UserData.testNodes;
+    AllNodes = getappdata(hFig,'AllNodes');
     
     % old code - Agregating nodes are not visually selected
    % AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
@@ -2519,9 +2485,9 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     % REQUIRED: Display selected nodes ('ON' or 'OFF')
     for i = 1:length(iNodes)
         if isSelected
-            testNodes(iNodes(i)).Selected = true;
+            AllNodes(iNodes(i)).Selected = true;
         else
-            testNodes(iNodes(i)).Selected = false;
+            AllNodes(iNodes(i)).Selected = false;
         end
     end
          
@@ -2590,10 +2556,12 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     if (~isempty(iData))
         % Update link visibility
         if (MeasureLinksIsVisible)
+            AllLinks = getappdata(hFig,'AllLinks');
+            
             if (isSelected)
-                set(hFig.UserData.AllLinks(iData), 'Visible', 'on');
+                set(AllLinks(iData), 'Visible', 'on');
             else
-                set(hFig.UserData.AllLinks(iData), 'Visible', 'off');
+                set(AllLinks(iData), 'Visible', 'off');
             end
         end
     end
@@ -2738,6 +2706,7 @@ function SetTextDisplayMode(hFig, DisplayMode)
 end
  
 %% == Toggle label displays for lobes === 
+% Note: done
 function ToggleTextDisplayMode(hFig)
     % Get display mode
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -2811,9 +2780,10 @@ function SetLinkSize(hFig, LinkSize)
     if isempty(LinkSize)
         LinkSize = 1.5; % default
     end
+
+    AllLinks = getappdata(hFig,'AllLinks');
     
-    Links = hFig.UserData.AllLinks;
-    set(Links, 'LineWidth', LinkSize);
+    set(AllLinks, 'LineWidth', LinkSize);
     setappdata(hFig, 'LinkSize', LinkSize);
 end
  
@@ -2824,8 +2794,9 @@ function SetLinkTransparency(hFig, LinkTransparency)
    
     [DataPair, DataMask] = GetPairs(hFig);
     iData = find(DataMask == 1);
-    VisibleLinks = hFig.UserData.AllLinks(iData).';
- 
+    AllLinks = getappdata(hFig,'AllLinks');
+    VisibleLinks = AllLinks(iData).';
+    
     % set desired colors to each link
     for i=1:length(VisibleLinks)
         current_color = VisibleLinks(i).Color;
@@ -2873,28 +2844,10 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     % === UPDATE TEXT COLOR ===
     FigureHasText = getappdata(hFig, 'FigureHasText');
     if FigureHasText
-        % TODO: Agregating node text (region node - lobe label)
-        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-        if ~isempty(AgregatingNodes)
-           % OGL.setTextColor(AgregatingNodes - 1, TextColor(1), TextColor(2), TextColor(3));
-        end
-        
-        % Measure node text @NOTE: done
-        MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
-        if ~isempty(MeasureNodes)
-            nodes = hFig.UserData.Nodes;
-            if isvalid(nodes) %check in case no nodes (deleted handle)
-                for i = 1:length(nodes)
-                    nodes(i).LabelColor = TextColor;
-                end
-            end
-            
-            %@TODO: remove testing nodes
-            testNodes = hFig.UserData.testNodes;
-            if isvalid(testNodes)
-                for i = 1:length(testNodes)
-                    testNodes(i).LabelColor = TextColor;
-                end
+        if isappdata(hFig, 'AllNodes')
+            AllNodes = getappdata(hFig, 'AllNodes');
+            for i = 1:length(AllNodes)
+                AllNodes(i).LabelColor = TextColor;
             end
         end
     end
@@ -3034,12 +2987,12 @@ function RefreshTextDisplay(hFig, isRedraw)
        % OGL = getappdata(hFig, 'OpenGLDisplay');
        
         % Update text visibility
-        testNodes = hFig.UserData.testNodes;
+        AllNodes = getappdata(hFig,'AllNodes');
         for i=1:length(VisibleText)
             if (VisibleText(i) == 1)
-                testNodes(i).LabelVisible = true;
+                AllNodes(i).LabelVisible = true;
             else
-                testNodes(i).LabelVisible = false;
+                AllNodes(i).LabelVisible = false;
             end
         end
  
@@ -3271,8 +3224,7 @@ function [B,x] = bspline_basismatrix(n,t,x)
 end
  
  
-%% ===== ADD NODES TO DISPLAY =====
-%@Note: new display prototype (working)
+%% ===== CREATE AND ADD NODES TO DISPLAY =====
 %@TODO: figurehastext default on/off
 function ClearAndAddNodes(hFig, V, Names)
     disp('Entered ClearAndAddNodes');
@@ -3286,37 +3238,53 @@ function ClearAndAddNodes(hFig, V, Names)
     nAgregatingNodes = length(AgregatingNodes);
     nVertices = size(V,1);
     
-    % --- CREATE AND ADD NODES TO DISPLAY ---- %
-    UserData = hFig.UserData; 
-    delete(UserData.testNodes);
+    % --- Clear any previous data ---- %
+    if (isappdata(hFig,'AllNodes')) 
+        delete(getappdata(hFig,'AllNodes'));
+        rmappdata(hFig,'AllNodes');
+    end
     
+    if (isappdata(hFig,'AllLinks'))
+        delete(getappdata(hFig,'AllLinks'));
+        rmappdata(hFig,'AllLinks');
+    end
+    
+    % --- CREATE AND ADD NODES TO DISPLAY ---- %
     scaleFactor = 0.6; %new scale factor for x,y position of nodes
+    
     for i = 1: nVertices
-        UserData.testNodes(i) = node(scaleFactor*V(i,1),scaleFactor*V(i,2),i); %create node (indexed)
+        % create the new node (indexed in node list by i)
+        newNode = node(scaleFactor*V(i,1),scaleFactor*V(i,2),i); %create node (indexed)
+        
+        % set agregating node properties (alters display/rotation of lobe
+        % nodes)
         if (i<=nAgregatingNodes)
-            %this alters display/rotation of lobe node text
-            UserData.testNodes(i).isAgregatingNode = true; 
-            
-            %disp(UserData.testNodes(i).Links);
-            
+            newNode.isAgregatingNode = true; 
         end
         
         % add label to node
         if (isempty(Names(i)) || isempty(Names{i}))
             Names{i} = ''; % Blank name if none is assigned
         end
-        UserData.testNodes(i).Label = Names(i);
+        newNode.Label = Names(i);
         
-        % OGL.setNodeTransparency(i - 1, 0.01); %TODO: check needed
+        % add new node to all nodes and store in figure
+        if (i==1)
+            AllNodes = newNode;
+        else
+            AllNodes(i) = newNode;
+        end
     end 
     
     % Measure Nodes are color coded to their Scout counterpart
     RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
     if ~isempty(RowColors)
         for i=1:length(RowColors)
-            UserData.testNodes(nAgregatingNodes+i).Color = RowColors(i,:);
+            AllNodes(nAgregatingNodes+i).Color = RowColors(i,:);
         end 
     end
+    
+    setappdata(hFig, 'AllNodes', AllNodes); % Very important!
     
     % refresh display extent
     axis image; %fit display to all objects in image
