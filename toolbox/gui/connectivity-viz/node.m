@@ -5,7 +5,6 @@ classdef   node < handle
     properties (Access = public)
         NodeIndex;
         Label = '';             % String
-        Links = line(0,0); % Array of lines
         Position;               % [x,y] coordinates
         Color = [0.7 0.7 0.7];  % [r g b] default grey node
         LabelColor = [1 1 1]    % [r g b] default white
@@ -14,14 +13,10 @@ classdef   node < handle
         LabelVisible = true;    % logical true or false if label is visible or not
 
     end
-    
-    properties (Access = public, Dependent = true)
-        Extent; % Width of text label
-    end
-    
+
     properties (Access = private)
         TextLabel;    % Text graphics object
-        NodeMarker;   % Line object that makes the node visible
+        NodeMarker;   % Line graphics object that makes the node visible
         Marker = 'o'; % Marker symbol when the node is selected 'on'
         MarkerFaceColor = [0.7 0.7 0.7];
     end
@@ -35,7 +30,6 @@ classdef   node < handle
             % Constructor
             this.NodeIndex = index;
             this.Position = [x,y];
-            this.Links = line(0,0);
             makeLine(this);
         end
         
@@ -44,11 +38,11 @@ classdef   node < handle
             this.NodeMarker = line(...
                 this.Position(1),...
                 this.Position(2),...
-                -2,... #z coordinate 
+                -2,...                              #z coordinate 
                 'Color',this.Color,...
-                'Marker',this.Marker,...
-                'MarkerFaceColor', this.Color,...
-                'MarkerSize', 5,... #default (6) is too big
+                'Marker','o',...                    # Marker symbol when the node is selected 'on'
+                'MarkerFaceColor', this.Color,...   # Marker is default node color when 'on', grey when 'off'
+                'MarkerSize', 5,...                 #default (6) is too big
                 'LineStyle','none',...
                 'PickableParts','all',...
                 'ButtonDownFcn',@node.ButtonDownFcn,...
@@ -84,18 +78,18 @@ classdef   node < handle
             this.LabelColor = value;
             updateTextLabelColor(this);
         end
-        
-        function value = get.Extent(this)
-            value = this.TextLabel.Extent(3);
-        end
-        
+       
         function updateSelected(this)
             if this.Selected % node is SELECTED ("ON")
+                % return to original node colour, shape, and size
                 this.NodeMarker.Marker = 'o';
                 this.NodeMarker.Color = this.NodeMarker.MarkerFaceColor;
-            else % node is NOT selected ("OFF") (displays as a grey X)
-                this.NodeMarker.Marker = 'x'; % changed on Oct 25
-                this.NodeMarker.Color =  [0.7 0.7 0.7]; % grey when "off"
+                this.NodeMarker.MarkerSize = 5;
+            else % node is NOT selected ("OFF")
+                % display as a grey 'X' (slightly bigger/bolded to allow for easier clicking shape)
+                this.NodeMarker.Marker = 'x';
+                this.NodeMarker.Color =  [0.7 0.7 0.7]; % grey
+                this.NodeMarker.MarkerSize = 6;
             end
         end
         
@@ -148,7 +142,6 @@ classdef   node < handle
         
         function delete(this)
             % Destructor
-            delete(this.Links(:))
             delete(this.TextLabel);
             delete(this.NodeMarker);
             delete(this);
@@ -160,7 +153,7 @@ classdef   node < handle
         
         %node is to be selected/unselected by mouse click
           function ButtonDownFcn(this,~)
-              % NOTE: we use functions within figure_connect's NodeClickedEvent and SetSelectedNodes 
+              % NOTE: we use functions within figure_connect's NodeClickedEvent() and SetSelectedNodes() 
               % to set actual node and link selection display 
               
               % all we need to do here is make sure that the correct index
