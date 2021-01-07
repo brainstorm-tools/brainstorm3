@@ -375,15 +375,17 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 %    Onset[21]Duration[20]Annot1[20]Annot2[20]..AnnotN[20][0]
                 %    Onset[20]Annot1[20]Annot2[20]..AnnotN[20][0]
                 %    Onset[20]Annot1[20][0]
+                %    Onset[20][20][0]                       : First TAL of a record, with an empty annotation, indicating the offset from the beginning of the file
+                %    Onset[20][20]Annot2[20]..AnnotN[20][0] : First TAL + extra annotations
                 iSeparator = [-1, find((F(1:end-1) == 20) & (F(2:end) == 0))];
                 % Loop on all the TALs
                 for iAnnot = 1:length(iSeparator)-1
                     % Get annotation
                     strAnnot = char(F(iSeparator(iAnnot)+2:iSeparator(iAnnot+1)-1));
                     % Split in blocks with [20]
-                    splitAnnot = str_split(strAnnot, 20);
-                    % The first TAL in a record should be indicating the timing of the first sample of the record
-                    if (iAnnot == 1) && (length(splitAnnot) == 1) && ~any(splitAnnot{1} == 21)
+                    splitAnnot = str_split(strAnnot, 20, 0);
+                    % The first TAL in a record should be indicating the timing of the first sample of the record (empty annotation)
+                    if (iAnnot == 1) && ((length(splitAnnot) == 1) || isempty(splitAnnot{2})) && ~any(splitAnnot{1} == 21)
                         % Ignore if this is not the first channel
                         if (ichan > 1)
                             continue;
@@ -421,6 +423,10 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                         end
                         prev_rec = t0_rec;
                         prev_irec = irec;
+                        % If there are extra annotations for this TAL: Create one event for each label in the TAL
+                        for iLabel = 3:length(splitAnnot)
+                            evtList(end+1,:) = {splitAnnot{iLabel}, (t0_rec-t0_file) + [0;0]};
+                        end
                     % Regular TAL: indicating a marker
                     else
                         % Split time in onset/duration
