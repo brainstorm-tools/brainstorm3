@@ -364,13 +364,13 @@ function FigureMouseDownCallback(hFig, ev)
     
     % click from Matlab figure
     if ~isempty(ev)
-        if strcmpi(get(hFig, 'SelectionType'), 'alt') % right-click
+        if strcmpi(get(hFig, 'SelectionType'), 'alt') % right-click or CTRL+Click
             clickAction = 'popup';
         elseif strcmpi(get(hFig, 'SelectionType'), 'open') % double-click
             %double-click to reset display
             clickAction = 'ResetCamera';
         elseif strcmpi(get(hFig, 'SelectionType'), 'extend') % SHIFT is held
-            clickAction = 'MouseMoveCamera';
+            clickAction = 'ShiftClick'; % POTENTIAL node click, or mousemovecamera
         else % normal click
             clickAction = 'SingleClick'; % POTENTIAL node click!
         end
@@ -432,19 +432,12 @@ function FigureMouseMoveCallback(hFig, ev)
             % Changes contrast            
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
-        case 'MouseMoveCamera'
-            %check SHIFT+MOUSEMOVE
-             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
-             if isempty(MouseMoveCamera)
-                 MouseMoveCamera = 0;
-             end
-             if (MouseMoveCamera)
+        case 'ShiftClick'
+            % check SHIFT is still held down
+            isShift = getappdata(hFig, 'ShiftPressed');
+            if (~isempty(isShift) && isShift)
                  motion = -motionFigure * 0.05;
                  MoveCamera(hFig, [motion(1) motion(2) 0]);
-             else
-                 % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
-                 %motion = -motionFigure * 0.01;
-                 %RotateCameraAlongAxis(hFig, -motion(2), motion(1));
              end
     end
 end
@@ -457,10 +450,17 @@ end
     % Double click: reset camera
 function FigureMouseUpCallback(hFig, varargin)
     disp('Entered FigureMouseUpCallback');
-   
+    
+    % Get index of potentially clicked node
+    % NOTE: Node index stored whenever the node is clicked (any type)
+    global GlobalData
+    NodeIndex = GlobalData.FigConnect.ClickedNodeIndex; 
+    GlobalData.FigConnect.ClickedNodeIndex = 0; % clear stored index
+    
     % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
     hasMoved = getappdata(hFig, 'hasMoved');
+    
     % Remove mouse appdata (to stop movements first)
     setappdata(hFig, 'hasMoved', 0);
     if isappdata(hFig, 'clickPositionFigure')
@@ -481,8 +481,10 @@ function FigureMouseUpCallback(hFig, varargin)
             DisplayFigurePopup(hFig);
         elseif strcmpi(clickAction, 'ResetCamera')
             DefaultCamera(hFig);
-        elseif strcmpi(clickAction, 'SingleClick')
-            NodeClickEvent(hFig);
+        elseif (strcmpi(clickAction, 'SingleClick') || strcmpi(clickAction, 'ShiftClick'))
+            if (NodeIndex>0)
+                NodeClickEvent(hFig,NodeIndex);
+            end
         end
         
     % ===== MOUSE HAS MOVED =====
@@ -497,23 +499,55 @@ end
  
  
 %% ===== FIGURE KEY PRESSED CALLBACK =====
+    %TODO: Implement/check 'OTHER' key shortcut events
 function FigureKeyPressedCallback(hFig, keyEvent)
     % Convert to Matlab key event
-    [keyEvent, tmp, tmp] = gui_brainstorm('ConvertKeyEvent', keyEvent);
+    [keyEvent, isControl, isShift] = gui_brainstorm('ConvertKeyEvent', keyEvent);
     if isempty(keyEvent.Key)
         return;
     end
     
     % Process event
     switch (keyEvent.Key)
-        case 't' % TO REMOVE AT END: test key
+        % TO REMOVE AT END: test key
+        case 't' 
              test(hFig);
-        case 'a' % DONE: Select All Nodes
+             
+        % ---NODE SELECTIONS---
+        case 'a'            % DONE: Select All Nodes
             SetSelectedNodes(hFig, [], 1, 1);
-        case 'b' % TODO: Blending Mode (unclear if needed)
-            ToggleBlendingMode(hFig);
-        case 'l' % DONE: Toggle Lobe Labels
+        case 'leftarrow'    % DONE: Select Previous Region
+            ToggleRegionSelection(hFig, 1);
+        case 'rightarrow'   % DONE: Select Next Region
+            ToggleRegionSelection(hFig, -1);
+        
+        % ---NODE DISPLAY---  
+        case 'l'            % DONE: Toggle Lobe Labels
             ToggleTextDisplayMode(hFig); 
+        
+        % ---ZOOM CAMERA---
+        case 'uparrow'      % DONE: Zoom in
+            ZoomCamera(hFig, 0.95 );
+        case 'downarrow'    % DONE: Zoom in
+            ZoomCamera(hFig, 1.05);
+        
+        % ---SHIFT---
+        case 'shift'        % DONE: SHIFT+MOVE to move camera, SHIFT+CLICK to select multi-nodes  
+            setappdata(hFig, 'ShiftPressed', 1);
+            
+        % ---SNAPSHOT---
+        case 'i'            % DONE: CTRL+I Save as image
+            if isControl
+                out_figure_image(hFig);
+            end
+        case 'j'            % DONE: CTRL+J Open as image
+            if isControl
+                out_figure_image(hFig, 'Viewer');
+            end
+        
+        % ---OTHER---    
+        case 'b' % TODO: Blending Mode (unclear if needed)
+            ToggleBlendingMode(hFig);    
         case 'h' % TODO: Toggle visibility of hierarchy/region nodes (unclear if needed)
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
             HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
@@ -532,18 +566,8 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             panel_display('ConnectKeyCallback', keyEvent);
         case {'-', 'subtract'} % unclear if needed
             panel_display('ConnectKeyCallback', keyEvent);
-        case 'leftarrow'  % DONE: Toggle Region Selection (backward)
-            ToggleRegionSelection(hFig, 1);
-        case 'rightarrow' % DONE: Toggle Region Selection (forward)
-            ToggleRegionSelection(hFig, -1);
-        case 'uparrow' % DONE: Zoom in
-            ZoomCamera(hFig, 0.95 );
-        case 'downarrow' % DONE - oct 20 2020
-            ZoomCamera(hFig, 1.05);
         case 'escape' % unclear if needed
             SetExplorationLevelTo(hFig, 1);
-        case 'shift' % DONE: SHIFT+CLICK to move camera horizontally/vertically
-            setappdata(hFig, 'MouseMoveCamera', 1);
     end
       
 end
@@ -557,8 +581,8 @@ function FigureKeyReleasedCallback(hFig, keyEvent)
     end
     % Process event
     switch (keyEvent.Key)
-        case 'shift'  % no longer panning/hor. translation
-            setappdata(hFig, 'MouseMoveCamera', 0);
+        case 'shift'  % no longer in SHIFT mode
+            setappdata(hFig, 'ShiftPressed', 0);
     end
 end
  
@@ -637,92 +661,88 @@ end
 %% ===== NODE CLICK CALLBACK =====
 % If mouse click was used to select or unselect a node, this function is called to apply the appropriate changes
 % Basic logic:
-    % - The index of the clicked node is stored in globaldata
     % - A node is clicked to select or deselect it (displays as grey X when deselected, and links are hidden)
     % - If the node is a region (lobe/hemisphere) node, selections are
     % applied to all of its parts
     % - TODO: SHIFT + CLICK to select/deselect MULTIPLE nodes at once
-function NodeClickEvent(hFig)
+function NodeClickEvent(hFig, NodeIndex)
     disp('Entered NodeClickEvent');
-    global GlobalData
-    nodeIndex = GlobalData.FigConnect.ClickedNodeIndex;
+    if(NodeIndex <= 0)
+        return;
+    end
+    
+    DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
 
-    % If visible node was clicked
-    if (nodeIndex > 0)
-        DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
-        
-        if (DisplayNode(nodeIndex) == 1)
-            % 1. GET NODE SETS AND PROPERTIES
-            % Get selected nodes
-            selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
-            % Get agregating nodes
-            MeasureNodes    = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
-            AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-            % Is the node already selected ?
-            AlreadySelected = any(selNodes == nodeIndex);
-            % Is the node an agregating node ?
-            isAgregatingNode = any(AgregatingNodes == nodeIndex);
+    if (DisplayNode(NodeIndex) == 1)
+        % 1. GET NODE SETS AND PROPERTIES
+        % Get selected nodes
+        selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+        % Get agregating nodes
+        MeasureNodes    = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+        % Is the node already selected ?
+        AlreadySelected = any(selNodes == NodeIndex);
+        % Is the node an agregating node ?
+        isAgregatingNode = any(AgregatingNodes == NodeIndex);
 
-            % 2. IF NODE IS ALREADY SELECTED, TOGGLE IT
-            if AlreadySelected
-                % If all nodes are already selected
-                if all(ismember(MeasureNodes, selNodes))  
-                    % then we want to select only this new one
-                    SetSelectedNodes(hFig, [], 0); % first unselect all nodes
-                    AlreadySelected = 0;
+        % 2. IF NODE IS ALREADY SELECTED, TOGGLE IT
+        if AlreadySelected
+            % If all nodes are already selected
+            if all(ismember(MeasureNodes, selNodes))  
+                % then we want to select only this new one
+                SetSelectedNodes(hFig, [], 0); % first unselect all nodes
+                AlreadySelected = 0;
 
-                % If it's the only already selected node then select
-                % all and return
-                elseif (length(selNodes) == 1)
-                    SetSelectedNodes(hFig, [], 1); 
+            % If it's the only already selected node then select
+            % all and return
+            elseif (length(selNodes) == 1)
+                SetSelectedNodes(hFig, [], 1); 
+                return;
+            end
+
+            % Aggregative nodes: select blocks of nodes
+            if isAgregatingNode
+                % Get agregated nodes
+                AgregatedNodeIndex = getAgregatedNodesFrom(hFig, NodeIndex);
+                % How many are already selected
+                NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
+
+                % If the agregating node and this measure node are
+                % the only selected nodes, then select all and
+                % return
+                if (sum(NodeAlreadySelected) == size(selNodes,1))
+                    SetSelectedNodes(hFig, [], 1);
                     return;
                 end
-
-                % Aggregative nodes: select blocks of nodes
-                if isAgregatingNode
-                    % Get agregated nodes
-                    AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                    % How many are already selected
-                    NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
-
-                    % If the agregating node and this measure node are
-                    % the only selected nodes, then select all and
-                    % return
-                    if (sum(NodeAlreadySelected) == size(selNodes,1))
-                        SetSelectedNodes(hFig, [], 1);
-                        return;
-                    end
-                end
             end
-
-            % 3. CHECK IF WE ARE SELECTING OR UNSELECTING A NODE
-            Select = 1;
-            if (AlreadySelected)
-                Select = 0; % Deselect picked node
-            end
-
-            %TODO: If shift is not pressed, deselect all nodes first
-            %isShiftDown = ev.get('ShiftDown');
-            %if (strcmp(isShiftDown,'off'))
-            if (0)
-                SetSelectedNodes(hFig, selNodes, 0, 1); % Deselect all
-                Select = 1; % Select picked node
-            end
-
-            % 4. APPLY DE/SELECTIONS
-            if (isAgregatingNode)
-                SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
-                SetSelectedNodes(hFig, [SelectNodeIndex(:); nodeIndex], Select); %set the selection
-                % Go up the hierarchy
-                UpdateHierarchySelection(hFig, nodeIndex, Select);
-            else
-                SetSelectedNodes(hFig, nodeIndex, Select);
-            end                
         end
-    end
 
-    % Reset ClickedNode Index
-    GlobalData.FigConnect.ClickedNodeIndex = 0;
+        % 3. CHECK IF WE ARE SELECTING OR UNSELECTING A NODE
+        Select = 1;
+        if (AlreadySelected)
+            Select = 0; % We want to deselect picked node
+        end
+
+        % 3. SHIFT Behaviour:
+            % Default: toggle select this node only
+            % If SHIFT is currently held, select multiple nodes
+            
+        isShift = getappdata(hFig,'ShiftPressed');
+        if (isempty(isShift) || ~isShift)
+            SetSelectedNodes(hFig, selNodes, 0, 1); % Deselect all
+            Select = 1; % Select picked node
+        end
+
+        % 4. APPLY DE/SELECTIONS
+        if (isAgregatingNode)
+            SelectNodeIndex = getAgregatedNodesFrom(hFig, NodeIndex);
+            SetSelectedNodes(hFig, [SelectNodeIndex(:); NodeIndex], Select); %set the selection
+            % Go up the hierarchy
+            UpdateHierarchySelection(hFig, NodeIndex, Select);
+        else
+            SetSelectedNodes(hFig, NodeIndex, Select);
+        end                
+    end
 end
 
 %%
@@ -773,6 +793,7 @@ end
  
  
 %% ===== POPUP MENU =====
+%TODO: Saved image to display current values from Display Panel filters 
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -798,14 +819,15 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: SNAPSHOT ====
     jPopup.addSeparator();
-%     jMenuSave = gui_component('Menu', jPopup, [], 'Snapshots', IconLoader.ICON_SNAPSHOT);
-%         % === SAVE AS IMAGE ===
-%         jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
-%         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
-%         % === OPEN AS IMAGE ===
-%         jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
-%         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));       
-%     jPopup.add(jMenuSave);
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
+        % === SAVE AS IMAGE ===
+        %TODO: Saved image to display current values from Display Panel filters 
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@out_figure_image, hFig));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
+        % === OPEN AS IMAGE ===
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h,ev)bst_call(@out_figure_image, hFig, 'Viewer'));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));       
+    jPopup.add(jMenuSave);
     
     % ==== MENU: 2D LAYOUT ====
     jGraphMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
@@ -877,12 +899,17 @@ function DisplayFigurePopup(hFig)
         % === TOGGLE BLENDING OPTIONS ===
         TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
         jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Labels Display');
+            % Measure (outer) node labels
             jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Measure Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
             jItem.setSelected(ismember(1,TextDisplayMode));
+            
+            % Region (lobe/hemisphere) node labels
             if (DisplayInRegion)
                 jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Region Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
                 jItem.setSelected(ismember(2,TextDisplayMode));
             end
+            
+            % Selected Nodes' labels only
             jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
             jItem.setSelected(ismember(3,TextDisplayMode));
  
@@ -909,10 +936,10 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('MenuItem', jGraphMenu, [], 'Select all the nodes', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0));
         % === SELECT NEXT REGION ===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
         % === SELECT PREVIOUS REGION===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
         jGraphMenu.addSeparator();
  
@@ -923,6 +950,7 @@ function DisplayFigurePopup(hFig)
 %             jGraphMenu.addSeparator();
 %             
             % === TOGGLE DISPLAY REGION MEAN ===
+            % TODO: IMPLEMENT REGION MEAN LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
             jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
@@ -942,21 +970,8 @@ function DisplayFigurePopup(hFig)
     gui_popup(jPopup, hFig);
 end
  
-% Cortex transparency slider
-function CortexTransparencySliderModifying_Callback(hFig, ev, jLabel)
-    % Update Modifier value
-    newValue = double(ev.getSource().getValue()) / 1000;
-    % Setting newValue to 0 will automatically disable Blending
-    if (newValue < eps)
-        newValue = eps;
-    end
-    % Update text value
-    jLabel.setText(sprintf('%0.2f', newValue));
-    %
-    SetCortexTransparency(hFig, newValue);
-end
- 
 % Link transparency slider
+% NOTE: DONE DEC 2020
 function TransparencySliderModifiersModifying_Callback(hFig, ev, jLabel)
     disp('Entered TransparencySliderModifiersModifying_Callback');
     % Update Modifier value
@@ -967,6 +982,7 @@ function TransparencySliderModifiersModifying_Callback(hFig, ev, jLabel)
 end
  
 % Link size slider
+% NOTE: DONE DEC 2020
 function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
     disp('Entered SizeSliderModifiersModifying_Callback'); % TODO: remove
     % Update Modifier value
@@ -1156,6 +1172,8 @@ end
  
  
 %% ===== UPDATE FIGURE PLOT =====
+% This function creates and loads the base figure including nodes, links and default
+% params
 function LoadFigurePlot(hFig) %#ok<DEFNU>
   
     global GlobalData;
@@ -1816,6 +1834,7 @@ function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     %OGL.repaint();
 end
  
+% TODO: implement region max and mean links and functions
 function HideLonelyRegionNode(hFig)
     %
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
@@ -2140,7 +2159,9 @@ end
  
  
 %% ===== UPDATE COLORMAP =====
-%TODO: update ogl
+    % This function alters the color display of links and due to updates in
+    % colormap
+    % NOTE: DONE DEC 2020
 function UpdateColormap(hFig)
     disp('Entered UpdateColormap');
 
@@ -2213,7 +2234,6 @@ function UpdateColormap(hFig)
     
     % === UPDATE DISPLAY ===
     CMap = sColormap.CMap;
-    % OGL = getappdata(hFig, 'OpenGLDisplay');
     
     % Added Dec 23: get the transparency
     LinkTransparency = getappdata(hFig, 'LinkTransparency');
@@ -2329,7 +2349,6 @@ function DefaultCamera(hFig)
   %  setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
   %  setappdata(hFig, 'CameraPosition', [0 0 36]);  %TODO: remove
    % setappdata(hFig, 'CameraTarget', [0 0 -0.5]);  %TODO: remove
-  %   RotateCameraAlongAxis(hFig, 0, 0);
     hFig.CurrentAxes.CameraViewAngle = 7;
     hFig.CurrentAxes.CameraPosition = [0 0 36];
     hFig.CurrentAxes.CameraTarget = [0 0 -0.5];
@@ -2363,7 +2382,6 @@ function MoveCamera(hFig, Translation)
    % CameraTarget = getappdata(hFig, 'CameraTarget') + Translation;
   %  setappdata(hFig, 'CameraPosition', CameraPosition);
   %  setappdata(hFig, 'CameraTarget', CameraTarget);
-  %  UpdateCamera(hFig);
     
     %new 
     position = hFig.CurrentAxes.CameraPosition + Translation; %[0.01 0.01 0]; 
@@ -2372,57 +2390,12 @@ function MoveCamera(hFig, Translation)
     hFig.CurrentAxes.CameraTarget = target;
 end
  
-%% ===== UPDATE CAMERA =====
-% TODO: REMOVE
-function UpdateCamera(hFig)
-   % disp('UpdateCamera reached') %TODO: remove test
-   % Pos = getappdata(hFig, 'CameraPosition');
-   % CameraTarget = getappdata(hFig, 'CameraTarget');
-  %  Zoom = getappdata(hFig, 'CameraZoom');
-   % OGL = getappdata(hFig, 'OpenGLDisplay');
-   % OGL.zoom(Zoom);
-   % OGL.lookAt(Pos(1), Pos(2), Pos(3), CameraTarget(1), CameraTarget(2), CameraTarget(3), 0, 1, 0);
-  %  OGL.repaint();
-end
- 
-%% ===== ROTATE CAMERA =====
-% TODO: REMOVE
-function RotateCameraAlongAxis(hFig, theta, phi)
-%     disp('RotateCamera reached') %TODO: remove test
-%   Pos = getappdata(hFig, 'CameraPosition');
-%     Target = getappdata(hFig, 'CameraTarget');
-%     Zoom = getappdata(hFig, 'CameraZoom');
-%     Pitch = getappdata(hFig, 'CamPitch');
-%     Yaw = getappdata(hFig, 'CamYaw');
-%     
-%     Pitch = Pitch + theta;
-%     Yaw = Yaw + phi;
-%     if (Pitch > (0.5 * 3.1415))
-%         Pitch = (0.5 * 3.1415);
-%     elseif (Pitch < -(0.5 * 3.1415))
-%         Pitch = -(0.5 * 3.1415);
-%     end
-%     
-%     % Projection 
-%     Pos(1) = cos(Yaw) * cos(Pitch);
-%   Pos(2) = sin(Yaw) * cos(Pitch);
-%     Pos(3) = sin(Pitch);
-%     Pos = Target + Zoom * Pos;
-%     
-%     setappdata(hFig, 'CamPitch', Pitch);
-%     setappdata(hFig, 'CamYaw', Yaw);
-%     setappdata(hFig, 'CameraPosition', Pos);
-% 
-%   UpdateCamera(hFig);
-end
- 
- 
- 
 %% ===========================================================================
 %  ===== NODE DISPLAY AND SELECTION ==========================================
 %  ===========================================================================
  
 %% ===== SET SELECTED NODES =====
+% TODO: implement/check isRedraw, otherwise DONE
 % USAGE:  SetSelectedNodes(hFig, iNodes=[], isSelected=1, isRedraw=1) : Add or remove nodes from the current selection
 %         If node selection is empty: select/unselect all the nodes
 function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
@@ -2679,6 +2652,7 @@ end
  
  
 %% ===== DISPLAY MODE =====
+    % NOTE: done Oct 2020
 function SetTextDisplayMode(hFig, DisplayMode)
     % Get current display
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -2706,7 +2680,7 @@ function SetTextDisplayMode(hFig, DisplayMode)
 end
  
 %% == Toggle label displays for lobes === 
-% Note: done
+    % NOTE: done Oct 2020
 function ToggleTextDisplayMode(hFig)
     % Get display mode
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -2731,7 +2705,7 @@ end
 % GL_ONE = 1;
 % GL_ZERO = 0;
  
-%TODO: update ogl
+%TODO: determine if colorblending is needed, if not, remove.
 function SetBlendingMode(hFig, BlendingEnabled)
     disp('Entered SetBlendingMode');
     % Update figure variable
@@ -2767,6 +2741,7 @@ function ToggleBlendingMode(hFig)
 end
  
 %% ===== LINK SIZE =====
+     % NOTE: DONE DEC 2020
 function LinkSize = GetLinkSize(hFig)
     LinkSize = getappdata(hFig, 'LinkSize');
     if isempty(LinkSize)
@@ -2774,7 +2749,6 @@ function LinkSize = GetLinkSize(hFig)
     end
 end
  
-% DONE Dec 23
 function SetLinkSize(hFig, LinkSize)
     disp('Entered SetLinkSize');
     if isempty(LinkSize)
@@ -2788,7 +2762,7 @@ function SetLinkSize(hFig, LinkSize)
 end
  
 %% ===== LINK TRANSPARENCY =====
-% DONE: Dec 23
+    % NOTE: DONE DEC 2020
 function SetLinkTransparency(hFig, LinkTransparency)
     disp('Entered SetLinkTransparency');
    
@@ -2806,20 +2780,6 @@ function SetLinkTransparency(hFig, LinkTransparency)
     end
  
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
-end
- 
-%% ===== CORTEX TRANSPARENCY =====
-% TODO: was this only for 3d link?
-function CortexTransparency = GetCortexTransparency(hFig)
-    CortexTransparency = getappdata(hFig, 'CortexTransparency');
-    if isempty(CortexTransparency)
-        CortexTransparency = 0.025;
-    end
-end
- 
-function SetCortexTransparency(hFig, CortexTransparency)
-    %only for 3d display
-    setappdata(hFig, 'CortexTransparency', CortexTransparency);
 end
  
 %% ===== BACKGROUND COLOR =====
@@ -2856,7 +2816,7 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     UpdateContainer(hFig, []);
 end
  
-% @NOTE: DONE
+% NOTE: DONE OCT 2020
 function ToggleBackground(hFig)
     BackgroundColor = getappdata(hFig, 'BgColor');
     if all(BackgroundColor == [1 1 1])
@@ -2954,7 +2914,7 @@ function RefreshBinaryStatus(hFig)
     setappdata(hFig, 'UserSpecifiedBinaryData', 0);
 end
  
-% ===== REFRESH TEXT VISIBILITY =====
+%% ===== REFRESH TEXT VISIBILITY =====
 %TODO: Check text display modes 1,2,3
 function RefreshTextDisplay(hFig, isRedraw)
     % 
@@ -3207,23 +3167,6 @@ function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
     end
 end
  
-function [B,x] = bspline_basismatrix(n,t,x)
-    if nargin > 2
-        B = zeros(numel(x),numel(t)-n);
-        for j = 0 : numel(t)-n-1
-            B(:,j+1) = bspline_basis(j,n,t,x);
-        end
-    else
-        [b,x] = bspline_basis(0,n,t);
-        B = zeros(numel(x),numel(t)-n);
-        B(:,1) = b;
-        for j = 1 : numel(t)-n-1
-            B(:,j+1) = bspline_basis(j,n,t,x);
-        end
-    end
-end
- 
- 
 %% ===== CREATE AND ADD NODES TO DISPLAY =====
 %@TODO: figurehastext default on/off
 function ClearAndAddNodes(hFig, V, Names)
@@ -3351,18 +3294,6 @@ function Tag = ExtractSubRegion(Region)
         Tag = Region(4:end);
     else
         Tag = Region(3:end);
-    end
-end
- 
-function Tag = HemisphereIndexToTag(Index)
-    Tag = 'U';
-    switch (Index)
-        case 1
-            Tag = 'L';
-        case 2
-            Tag = 'R';
-        case 3
-            Tag = 'C';
     end
 end
  
