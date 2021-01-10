@@ -22,7 +22,7 @@ function varargout = figure_connect_viz( varargin )
 % =============================================================================@
 %
 % Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin
-% Cousineau, 2019; Helen Lin & Yaqi Li, 2020
+% Cousineau, 2019; Helen Lin & Yaqi Li, 2020-2021
  
 disp('figure_connect_viz.m : ' + string(varargin(1))) % @TODO: remove test
  
@@ -346,9 +346,10 @@ end
     % Mouse click callbacks include:
         % Right-click for popup menu (NOTE: DONE)
         % Double click to reset display (NOTE: DONE)
-        % SHIFT+CLICK to move/pan camera (NOTE: DONE)
-        % CLICK colorbar to change colormap, double-click to reset (DONE)
-        % CLICK a node to select/unselect it and its links (PENDING)
+        % SHIFT+MOUSEMOVE to move/pan camera (NOTE: DONE)
+        % CLICK a node to select/unselect it and its links (NOTE: DONE)
+        % SHIFT+CLICK to select multiple nodes (NOTE: DONE)
+        % CLICK colorbar to change colormap, double-click to reset (NOTE: DONE)
     % See https://www.mathworks.com/help/matlab/ref/matlab.ui.figure-properties.html#buiwuyk-1-SelectionType
     % for details on possible mouseclick types
 function FigureMouseDownCallback(hFig, ev)
@@ -664,7 +665,7 @@ end
     % - A node is clicked to select or deselect it (displays as grey X when deselected, and links are hidden)
     % - If the node is a region (lobe/hemisphere) node, selections are
     % applied to all of its parts
-    % - TODO: SHIFT + CLICK to select/deselect MULTIPLE nodes at once
+    % -SHIFT + CLICK to select/deselect MULTIPLE nodes at once
 function NodeClickEvent(hFig, NodeIndex)
     disp('Entered NodeClickEvent');
     if(NodeIndex <= 0)
@@ -726,7 +727,6 @@ function NodeClickEvent(hFig, NodeIndex)
         % 3. SHIFT Behaviour:
             % Default: toggle select this node only
             % If SHIFT is currently held, select multiple nodes
-            
         isShift = getappdata(hFig,'ShiftPressed');
         if (isempty(isShift) || ~isShift)
             SetSelectedNodes(hFig, selNodes, 0, 1); % Deselect all
@@ -834,7 +834,52 @@ function DisplayFigurePopup(hFig)
         % Check Matlab version: Works only for R2007b and newer
         if (bst_get('MatlabVersion') >= 705)
             
+            % == MODIFY NODE SIZE (Jan 2021)== 
+            jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
+            NodeSize = GetNodeSize(hFig);
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Node size');
+            % Slider
+            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(NodeSize * 2));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jGraphMenu.add(jPanelModifiers);
+            
+            % == MODIFY LABEL SIZE (Jan 2021)== 
+            jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
+            LabelSize = GetLabelSize(hFig);
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Label size');
+            % Slider
+            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(LabelSize * 2));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LabelSize * 2)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jGraphMenu.add(jPanelModifiers);
+            
             % == MODIFY LINK TRANSPARENCY ==
+            jGraphMenu.addSeparator();
             jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
             Transparency = getappdata(hFig, 'LinkTransparency');
             % Label
@@ -853,7 +898,6 @@ function DisplayFigurePopup(hFig)
             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
-            % java_setcb(jSliderContrast, 'MouseReleasedCallback', @(h,ev)SliderModifiersValidate_Callback(h, ev, ColormapType, 'Contrast', jLabelContrast));
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)TransparencySliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
             jGraphMenu.add(jPanelModifiers);
  
@@ -876,8 +920,7 @@ function DisplayFigurePopup(hFig)
             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
-            % java_setcb(jSliderContrast, 'MouseReleasedCallback', @(h,ev)SliderModifiersValidate_Callback(h, ev, ColormapType, 'Contrast', jLabelContrast));
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)SizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LinkSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
             jGraphMenu.add(jPanelModifiers);
         end
         
@@ -970,6 +1013,28 @@ function DisplayFigurePopup(hFig)
     gui_popup(jPopup, hFig);
 end
  
+% Node size slider
+% NOTE: DONE JAN 2020
+function NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+    disp('Entered NodeSizeSliderModifiersModifying_Callback'); % TODO: remove
+    % Update Modifier value
+    newValue = ev.getSource().getValue() / 2;
+    % Update text value
+    jLabel.setText(sprintf('%.0f', newValue * 2));
+    SetNodeSize(hFig, newValue);
+end
+
+% Label size slider
+% NOTE: DONE JAN 2020
+function LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+    disp('Entered LabelSizeSliderModifiersModifying_Callback'); % TODO: remove
+    % Update Modifier value
+    newValue = ev.getSource().getValue() / 2;
+    % Update text value
+    jLabel.setText(sprintf('%.0f', newValue * 2));
+    SetLabelSize(hFig, newValue);
+end
+
 % Link transparency slider
 % NOTE: DONE DEC 2020
 function TransparencySliderModifiersModifying_Callback(hFig, ev, jLabel)
@@ -983,16 +1048,15 @@ end
  
 % Link size slider
 % NOTE: DONE DEC 2020
-function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
-    disp('Entered SizeSliderModifiersModifying_Callback'); % TODO: remove
+function LinkSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+    disp('Entered LinkSizeSliderModifiersModifying_Callback'); % TODO: remove
     % Update Modifier value
     newValue = ev.getSource().getValue() / 2;
     % Update text value
     jLabel.setText(sprintf('%.0f', newValue * 2));
     SetLinkSize(hFig, newValue);
 end
- 
- 
+
 %% ===========================================================================
 %  ===== PLOT FUNCTIONS ======================================================
 %  ===========================================================================
@@ -2372,7 +2436,7 @@ function ZoomCamera(hFig, factor)
 end
  
 %% ====== MOVE CAMERA HORIZONTALLY/ VERTIVALLY ===============
-    % NOTE: Oct 20, 2020. Needs accuracy improvement.
+    % NOTE: Oct 20, 2020. May need accuracy improvement.
     % Move camera horizontally/vertically (from SHIFT+MOUSEMOVE) 
     % by applying X and Y translation to the CameraPosition and CameraTarget
     % ref: https://www.mathworks.com/help/matlab/ref/matlab.graphics.axis.axes-properties.html#budumk7-CameraTarget
@@ -2739,7 +2803,49 @@ function ToggleBlendingMode(hFig)
     end
     SetBlendingMode(hFig, 1 - BlendingEnabled);
 end
+
+%% ===== NODE SIZE =====
+     % NOTE: JAN 2020
+function NodeSize = GetNodeSize(hFig)
+    NodeSize = getappdata(hFig, 'NodeSize');
+    if isempty(NodeSize)
+        NodeSize = 5; % default for 'on' is 5, default for off is '6'
+    end
+end
  
+function SetNodeSize(hFig, NodeSize)
+    disp('Entered SetNodeSize');
+    if isempty(NodeSize)
+        NodeSize = 5; % default for 'on' is 5, default for off is '6'
+    end
+
+    AllNodes = getappdata(hFig,'AllNodes');
+    % TODO: actually set the size in NodeMarker
+   % set(AllNodes.NodeMarker, 'MarkerSize', NodeSize);
+    setappdata(hFig, 'NodeSize', NodeSize);
+end
+%% ===== LABEL SIZE =====
+     % NOTE: JAN 2020
+function LabelSize = GetLabelSize(hFig)
+    LabelSize = getappdata(hFig, 'LabelSize');
+    if isempty(LabelSize)
+        LabelSize = 5; % set to default -3
+    end
+end
+ 
+function SetLabelSize(hFig, LabelSize)
+    disp('Entered SetLabelSize');
+    if isempty(LabelSize)
+        LabelSize = 5; % set to default -3
+    end
+
+    AllNodes = getappdata(hFig,'AllNodes');
+    % TODO: actually set the size in NodeMarker
+   % set(AllNodes.NodeMarker, 'MarkerSize', NodeSize);
+   %this.TextLabel.FontSize
+    setappdata(hFig, 'LabelSize', LabelSize);
+end
+    
 %% ===== LINK SIZE =====
      % NOTE: DONE DEC 2020
 function LinkSize = GetLinkSize(hFig)

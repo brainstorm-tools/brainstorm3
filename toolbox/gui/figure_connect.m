@@ -679,24 +679,15 @@ end
 %% ===== JAVA MOUSE CLICK CALLBACK =====
 function JavaClickCallback(hFig, ev)
     % Retrieve button
-    ButtonClicked = ev.get('Button'); %
-    ClickCount = ev.get('ClickCount'); %
-    if (ButtonClicked == 1) %
-        
-        
-        
-        
-        % TODO
+    ButtonClicked = ev.get('Button');
+    ClickCount = ev.get('ClickCount');
+    if (ButtonClicked == 1)
         % OpenGL handle
         OGL = getappdata(hFig,'OpenGLDisplay');
         % Minimum distance. 1 is difference between level order of distance
         minimumDistanceThreshold = 0.2;
         % '+1' is to account for the different indexing in Java and Matlab
         nodeIndex = OGL.raypickNearestNode(ev.getX(), ev.getY(), minimumDistanceThreshold) + 1;
-       
-        
-        
-        
         % If a visible node is clicked on
         if (nodeIndex > 0)
             DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
@@ -723,9 +714,6 @@ function JavaClickCallback(hFig, ev)
                             SetSelectedNodes(hFig, [], 1);
                             return;
                         end
-                        
-                        
-                        
                         % Aggragtive nodes: select blocks of nodes
                         if IsAgregatingNode
                             % Get agregated nodes
@@ -768,12 +756,6 @@ function JavaClickCallback(hFig, ev)
                     else
                         SetSelectedNodes(hFig, nodeIndex, Select);
                     end
-                    
-                    
-                    
-                    
-                    
-                % done to bottom
                 else
                     disp('BST> Zoom into a region: Feature disabled until fixed.');
                     return;
@@ -803,11 +785,11 @@ function JavaClickCallback(hFig, ev)
                     end
                 end
             end
-        else %
-            if (ClickCount == 2)%
-                DefaultCamera(hFig);%
-            end%
-        end%
+        else
+            if (ClickCount == 2)
+                DefaultCamera(hFig);
+            end
+        end
     end
 end
 
