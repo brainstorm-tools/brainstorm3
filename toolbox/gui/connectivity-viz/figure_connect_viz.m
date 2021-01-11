@@ -1609,43 +1609,89 @@ function BuildLinks(hFig, DataPair)
     % x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
     % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
     % r^2 = x0^2 + y0^2 - 1
-    for i = 1:length(DataPair) %for each link
+        for i = 1:length(DataPair) %for each link
         
         % node positions (rescaled to *unit* circle)
         node1 = DataPair(i,1);
         node2 = DataPair(i,2);
         u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/0.6/4;
         v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/0.6/4;
- 
-        % poincare hyperbolic disc
-        x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-        y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
-        r  = sqrt(x0^2 + y0^2 - 1);
-        thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
-        thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
- 
-        if (u(1) >= 0 && v(1) >= 0)
-            % ensure the arc is within the unit disk
-            theta = [linspace(max(thetaLim),pi,50),...
-                linspace(-pi,min(thetaLim),50)].';
-        else
-            theta = linspace(thetaLim(1),thetaLim(2)).';
-        end
-                
-        % rescale onto our graph circle
-        x = 4*0.6*r*cos(theta)+4*0.6*x0;
-        y = 4*0.6*r*sin(theta)+4*0.6*y0;
         
-        % Create the link as a line object
+        IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+        
+        % diametric points: draw a straight line
+        % can adjust the error margin (currently 0.2)
+        if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
+            x = linspace(4*0.6*u(1),4*0.6*v(1),100);
+            y = linspace(4*0.6*u(2),4*0.6*v(2),100);
+            l = line(...
+                x,...
+                y,...
+                'LineWidth', 1.5,...
+                'Color', [AllNodes(node1).Color 0.00],...
+                'PickableParts','none',...
+                'Visible','off'); % not visible as default;
+
+        else % else, draw an arc
+            x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
+            y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
+            r  = sqrt(x0^2 + y0^2 - 1);
+            thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
+            thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
+            
+            if (u(1) >= 0 && v(1) >= 0)
+                % ensure the arc is within the unit disk
+                theta = [linspace(max(thetaLim),pi,50),...
+                    linspace(-pi,min(thetaLim),50)].';
+            else
+                theta = linspace(thetaLim(1),thetaLim(2)).';
+            end    
+                
+%           % rescale onto our graph circle
+            x = 4*0.6*r*cos(theta)+4*0.6*x0;
+            y = 4*0.6*r*sin(theta)+4*0.6*y0;
+
+            % Create the link as a line object
             % default colour for now, will be updated in updateColormap
             % Link Size set to 1.5 by default
-        l = line(...
-            x,...
-            y,...
-            'LineWidth', 1.5,...
-            'Color', [AllNodes(node1).Color 0.00],...
-            'PickableParts','none',...
-            'Visible','off'); % not visible as default;
+            % line with no arrow marker
+            l = line(...
+                x,...
+                y,...
+                'LineWidth', 1.5,...
+                'Color', [AllNodes(node1).Color 0.00],...
+                'PickableParts','none',...
+                'Visible','off'); % not visible as default;
+        end
+            
+        % for directional links
+        if (IsDirectionalData)
+            
+            % find index of the ending node
+            arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0);
+            
+%%% to put the marker right before the node so as not to hide scout, but
+%%% does not work well %%%%%%%
+%             arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0) - 1;
+%             
+%             if (size(arrow_index) < 2)
+%                 if (arrow_index < 1)
+%                     arrow_index = 2;
+%                 end
+%             else
+%                 for k=1:size(arrow_index,1)
+%                     if (arrow_index(k) < 1)
+%                         arrow_index(k) = 2;
+%                     end
+%                 end
+%             end
+            
+            set(l, 'Marker', '*',...
+                   'LineStyle', '--',...
+                   'MarkerFaceColor', AllNodes(node1).Color,...
+                   'MarkerIndices', arrow_index,...
+                   'MarkerSize', 10);
+        end
         
         % Store the link into our figu
         if(i==1)
@@ -1653,7 +1699,6 @@ function BuildLinks(hFig, DataPair)
         else
             AllLinks(end+1) = l;
         end
-        
     end
     
     % Store AllLinks into figure
@@ -2228,6 +2273,9 @@ end
     % NOTE: DONE DEC 2020
 function UpdateColormap(hFig)
     disp('Entered UpdateColormap');
+    
+    IsBinaryData = getappdata(hFig, 'IsBinaryData');
+    DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
 
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
@@ -2301,8 +2349,8 @@ function UpdateColormap(hFig)
     
     % Added Dec 23: get the transparency
     LinkTransparency = getappdata(hFig, 'LinkTransparency');
-    LinkIntensity = 1.00 - LinkTransparency;
-        
+    LinkIntensity = 1.00 - LinkTransparency;  
+    IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     if (sum(DataMask) > 0)
         % Normalize DataPair for Offset
@@ -2326,9 +2374,27 @@ function UpdateColormap(hFig)
         
         % set desired colors to each link (4th column is transparency)
         for i=1:size(VisibleLinks,1)
-               set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
+            if (IsDirectionalData)
+                set(VisibleLinks(i), 'Color', color_viz(i,:));
+                set(VisibleLinks(i), 'MarkerFaceColor', color_viz(i,:));
+            else 
+                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
+            end 
         end
-
+        
+        if (IsDirectionalData)
+            if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)            
+                % Get Bidirectional data
+                Data_matrix = DataPair(DataMask,:);
+                OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                % Bidirectional links are solid;        
+                set(AllLinks(OutIndex | InIndex), 'LineStyle', '-');
+            else
+                % revert back to dashed lines if user selected "In" or "Out"
+                set(AllLinks(:), 'LineStyle', '--');            
+            end 
+        end
     end
     
     [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig);
@@ -2354,54 +2420,52 @@ function UpdateColormap(hFig)
         
         % set desired colors to each link (4th column is transparency)
         for i=1:size(VisibleLinks_region,1)
-            set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+            if (IsDirectionalData)
+                set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
+                set(VisibleLinks_region(i), 'MarkerFaceColor', color_viz_region(i,:));
+            else 
+                set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+            end
+        end  
+        
+        if (IsDirectionalData)
+            % Make bidirectional links solid
+            if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)            
+                % Get Bidirectional data
+                Data_matrix = RegionDataPair(RegionDataMask,:);
+                OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                % Bidirectional links are solid;            
+                set(AllLinks(OutIndex | InIndex), 'LineStyle', '-');
+            else
+                % revert back to dashed lines if user selected "In" or "Out"
+                set(AllLinks(:), 'LineStyle', '--');
+            end
         end
-    
     end
 
 end
  
- 
+% Update Jan 09: Mapped links to colormap for ALL graphs (including
+% directional ones)
 function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, Limit)
-    IsBinaryData = getappdata(hFig, 'IsBinaryData');
-    if (~isempty(IsBinaryData) && IsBinaryData == 1)
-        % Retrieve ColorMap extremeties
-        nDataPair = size(DataPair,1);
-        % 
-        StartColor(:,:) = repmat(ColorMap(1,:), nDataPair, 1);
-        EndColor(:,:) = repmat(ColorMap(end,:), nDataPair, 1);
-        % Bidirectional data ?
-        DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
-        if (DisplayBidirectionalMeasure)
-            % Get Bidirectional data
-            OutIndex = ismember(DataPair(:,1:2),DataPair(:,2:-1:1),'rows');
-            InIndex = ismember(DataPair(:,1:2),DataPair(:,2:-1:1),'rows');
-            % Bidirectional links in total Green
-            StartColor(OutIndex | InIndex,1) = 0;
-            StartColor(OutIndex | InIndex,2) = 0.7;
-            StartColor(OutIndex | InIndex,3) = 0;
-            EndColor(OutIndex | InIndex,:) = StartColor(OutIndex | InIndex,:);
-        end
-    else
-        % Normalize and interpolate
-        a = (DataPair(:,3)' - Limit(1)) / (Limit(2) - Limit(1));
-        b = linspace(0,1,size(ColorMap,1));
-        m = size(a,2);
-        n = size(b,2);
-        [tmp,p] = sort([a,b]);
-        q = 1:m+n; q(p) = q;
-        t = cumsum(p>m);
-        r = 1:n; r(t(q(m+1:m+n))) = r;
-        s = t(q(1:m));
-        id = r(max(s,1));
-        iu = r(min(s+1,n));
-        [tmp,it] = min([abs(a-b(id));abs(b(iu)-a)]);
-        StartColor = ColorMap(id+(it-1).*(iu-id),:);
-        EndColor = ColorMap(id+(it-1).*(iu-id),:);
-    end
+    % Normalize and interpolate
+    a = (DataPair(:,3)' - Limit(1)) / (Limit(2) - Limit(1));
+    b = linspace(0,1,size(ColorMap,1));
+    m = size(a,2);
+    n = size(b,2);
+    [tmp,p] = sort([a,b]);
+    q = 1:m+n; q(p) = q;
+    t = cumsum(p>m);
+    r = 1:n; r(t(q(m+1:m+n))) = r;
+    s = t(q(1:m));
+    id = r(max(s,1));
+    iu = r(min(s+1,n));
+    [tmp,it] = min([abs(a-b(id));abs(b(iu)-a)]);
+    StartColor = ColorMap(id+(it-1).*(iu-id),:);
+    EndColor = ColorMap(id+(it-1).*(iu-id),:);
 end
- 
- 
+
 %% ======== RESET CAMERA DISPLAY ================
     % NOTE: DONE Oct 20 2020
     % Resets camera position, target and view angle of the figure
