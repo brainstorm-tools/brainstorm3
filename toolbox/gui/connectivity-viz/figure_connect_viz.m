@@ -267,67 +267,15 @@ function HasTitle = RefreshTitle(hFig)
     Title = [];
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
     if (DisplayInRegion)
-        % Organisation level
-        OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
         % Label 
         hTitle = getappdata(hFig, 'TitlesHandle');
         % If data are hierarchicaly organised and we are not
         % already at the whole cortical view
-        if (~isempty(OrganiseNode) && OrganiseNode ~= 1)
-            % Get where we are textually
-            PathNames = VerticeToFullName(hFig, OrganiseNode);
-            Recreate = 0;
-            nLevel = size(PathNames,2);
-            if (nLevel ~= size(hTitle,2) || size(hTitle,2) == 0)
-                Recreate = 1;
-                for i=1:size(hTitle,2)
-                    delete(hTitle(i));
-                end
-                hTitle = [];
-            end
-            backgroundColor = GetBackgroundColor(hFig);
-            figPos = get(hFig, 'Position');
-            Width = 1;
-            Height = 25;
-            X = 10;
-            Y = figPos(4) - Height;
-            for i=1:nLevel
-                Title = PathNames{i};
-                if (Recreate)
-                    hTitle(i) = uicontrol( ...
-                                       'Style',               'pushbutton', ...
-                                       'Enable',              'inactive', ...
-                                       'String',              Title, ...
-                                       'Units',               'Pixels', ...
-                                       'Position',            [0 0 1 1], ...
-                                       'HorizontalAlignment', 'center', ...
-                                       'FontUnits',           'points', ...
-                                       'FontSize',            bst_get('FigFont'), ...
-                                       'ForegroundColor',     [0 0 0], ...
-                                       'BackgroundColor',     backgroundColor, ...
-                                       'HitTest',             'on', ...
-                                       'Parent',              hFig, ...
-                                       'Callback', @(h,ev)bst_call(@SetExplorationLevelTo,hFig,nLevel-i));
-                    set(hTitle(i), 'ButtonDownFcn', @(h,ev)bst_call(@SetExplorationLevelTo,hFig,nLevel-i), ...
-                                   'BackgroundColor',     backgroundColor);
-                end
-                X = X + Width;
-                Size = get(hTitle(i), 'extent');
-                Width = Size(3) + 10;
-                % Minimum width so all buttons look the same
-                if (Width < 50)
-                    Width = 50;
-                end
-                set(hTitle(i), 'String',            Title, ...
-                               'Position',          [X Y Width Height], ...
-                               'BackgroundColor',   backgroundColor);
-            end
-        else
-            for i=1:size(hTitle,2)
-                delete(hTitle(i));
-            end
-            hTitle = [];
+        for i=1:size(hTitle,2)
+            delete(hTitle(i));
         end
+        hTitle = [];
+        
         setappdata(hFig, 'TitlesHandle', hTitle);
         UpdateContainer(hFig, getappdata(hFig, 'OpenGLContainer'));
     end    
@@ -546,9 +494,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 out_figure_image(hFig, 'Viewer');
             end
         
-        % ---OTHER---    
-        case 'b' % TODO: Blending Mode (unclear if needed)
-            ToggleBlendingMode(hFig);    
+        % ---OTHER---        
         case 'h' % TODO: Toggle visibility of hierarchy/region nodes (unclear if needed)
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
             HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
@@ -567,8 +513,6 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             panel_display('ConnectKeyCallback', keyEvent);
         case {'-', 'subtract'} % unclear if needed
             panel_display('ConnectKeyCallback', keyEvent);
-        case 'escape' % unclear if needed
-            SetExplorationLevelTo(hFig, 1);
     end
       
 end
@@ -587,29 +531,34 @@ function FigureKeyReleasedCallback(hFig, keyEvent)
     end
 end
  
-function SetExplorationLevelTo(hFig, Level)
-    % Last reorganisation
-    OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
-    if (isempty(OrganiseNode) || OrganiseNode == 1)
-        return;
-    end
-    Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
-    Path = Paths{OrganiseNode};
-    NextAgregatingNode = Path(find(Path == OrganiseNode) + Level);
-    if (NextAgregatingNode ~= OrganiseNode)
-        bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', NextAgregatingNode);
-        UpdateFigurePlot(hFig);
-    end
-end
- 
 function NextNode = getNextCircularRegion(hFig, Node, Inc)
+    DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
+    if (DisplayInRegion)
+        % get region (mean or max) links visibility
+        RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
+    end
+    
     % Construct Spiral Index
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     DisplayNode = find(bst_figures('GetFigureHandleField', hFig, 'DisplayNode'));
     CircularIndex = [];
-    for i=1:size(Levels,1)
-        CircularIndex = [CircularIndex; Levels{i}];
+    
+    % Do we need to skip a level?
+    skip = []; % default skip nothing
+    if (DisplayInRegion)
+        if (RegionLinksIsVisible) 
+            skip = [1 2]; % skip Levels{1} and Levels{2} if in region links mode, 
+        else
+            skip = 2; % skip Levels{2} if in measure links mode
+        end 
     end
+    
+    for i=1:size(Levels,1) 
+        if (~ismember(i,skip))
+            CircularIndex = [CircularIndex; Levels{i}];
+        end
+    end
+    
     CircularIndex(~ismember(CircularIndex,DisplayNode)) = [];
     if isempty(Node)
         NextIndex = 1;
@@ -644,18 +593,19 @@ function ToggleRegionSelection(hFig, Inc)
         %
         NextNode = getNextCircularRegion(hFig, SelectedNode, Inc);
     end
-    % Is node an agregating node
+    % Is the next node an agregating node?
     isAgregatingNode = ismember(NextNode, AgregatingNodes);
     if (isAgregatingNode)
         % Get agregated nodes
-        AgregatedNodeIndex = getAgregatedNodesFrom(hFig, NextNode); 
-        if (~isempty(AgregatedNodeIndex))
-            % Select agregated node
-            SetSelectedNodes(hFig, AgregatedNodeIndex, 1, 1);
+        AgregatedNodeIndices = getAgregatedNodesFrom(hFig, NextNode); 
+        if (~isempty(AgregatedNodeIndices))
+            % Select all nodes associated to NextNode
+            SetSelectedNodes(hFig, AgregatedNodeIndices, 1, 1);
         end    
+    else
+        % Select next node
+        SetSelectedNodes(hFig, NextNode, 1, 1);
     end
-    % Select node
-    SetSelectedNodes(hFig, NextNode, 1, 1);
 end
  
  
@@ -931,13 +881,6 @@ function DisplayFigurePopup(hFig)
         isWhite = all(BackgroundColor == [1 1 1]);
         jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
         jItem.setSelected(isWhite);
-        
-        % === TOGGLE BLENDING OPTIONS ===
-        BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
-        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Color blending', [], [], @(h, ev)ToggleBlendingMode(hFig));
-        jItem.setSelected(BlendingEnabled);
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
-        jGraphMenu.addSeparator();
         
         % === TOGGLE BLENDING OPTIONS ===
         TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -1547,10 +1490,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %% ===== Rendering option =====
     % Required: Select all on default
     SetSelectedNodes(hFig, [], 1);
-    
-    % Blending
-    SetBlendingMode(hFig, 0);
-    
+
     % OpenGL Constant
     % GL_LIGHTING = 2896
     % GL_COLOR_MATERIAL 2903
@@ -1766,71 +1706,6 @@ function UpdateFigurePlot(hFig)
  
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
- 
-    OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
-    if ~isempty(OrganiseNode)
-        % Reset display
-        OGL.resetDisplay();
-        % Back to Default camera
-        DefaultCamera(hFig);
-        % Which hierarchy level are we ?
-        NodeLevel = 1;
-        Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-        for i=1:size(Levels,1)
-            if ismember(OrganiseNode,Levels{i})
-                NodeLevel = i;
-            end
-        end
-        % 
-        Groups = bst_figures('GetFigureHandleField', hFig, 'Groups');
-        RowNames = bst_figures('GetFigureHandleField', hFig, 'RowNames');
-        nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
-        % 
-        Nodes = getAgregatedNodesFrom(hFig, OrganiseNode);
-        % 
-        Channels = ismember(RowNames, [Groups.RowNames]);
-        Index = find(Channels) + nAgregatingNodes;
-        InGroups = Index(ismember(Index,Nodes)) - nAgregatingNodes;
-        NamesOfNodes = RowNames(InGroups);
-        
-        GroupsIWant = [];
-        for i=1:size(Groups,2)
-            if (sum(ismember(Groups(i).RowNames, NamesOfNodes)) > 0)
-                GroupsIWant = [GroupsIWant i];
-            end
-        end
-        
-        if (OrganiseNode == 1)
-            % Return to first display
-            DisplayInCircle = getappdata(hFig, 'DisplayInCircle');
-            if (~isempty(DisplayInCircle) && DisplayInCircle == 1)
-                Vertices = OrganiseNodeInCircle(hFig, RowNames, Groups);
-            else
-                Vertices = OrganiseNodesWithConstantLobe(hFig, RowNames, Groups, RowLocs, 1);
-            end
-        else
-            % 
-            Vertices = ReorganiseNodeAroundInCircle(hFig, Groups(GroupsIWant), RowNames, NodeLevel);
-        end
-        % 
-        bst_figures('SetFigureHandleField', hFig, 'Vertices', Vertices);
-        % 
-        nVertices = size(Vertices,1);
-        Visible = sum(Vertices(:,1:3) ~= repmat([0 0 -5], nVertices,1),2) >= 1;
-        % 
-        DisplayNode = zeros(nVertices,1);
-        DisplayNode(OrganiseNode) = 1;
-        DisplayNode(Visible) = 1;
-        % 
-        bst_figures('SetFigureHandleField', hFig, 'DisplayNode', DisplayNode);
-        bst_figures('SetFigureHandleField', hFig, 'ValidNode', DisplayNode);
-        % Add the nodes
-        ClearAndAddNodes(hFig, Vertices, bst_figures('GetFigureHandleField', hFig, 'Names'));
-    else
-        % We assume that if 3D display, we did not unload the polygons
-        % so we simply need to load new data
-    end
-    
     Options = getappdata(hFig, 'LoadingOptions');
     % Clean and Build Datapair
     DataPair = LoadConnectivityData(hFig, Options);
@@ -2687,7 +2562,10 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
 end
  
  
-%%
+%% SHOW/HIDE REGION NODES FROM DISPLAY
+%TODO - allow hiding region nodes (lobes + hem nodes) from display
+%TODO - hidden nodes should not be clickable
+%TODO - hidden nodes should not have options to show/hide text labels
 function SetHierarchyNodeIsVisible(hFig, isVisible)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     if (HierarchyNodeIsVisible ~= isVisible)
@@ -2822,51 +2700,6 @@ function ToggleTextDisplayMode(hFig)
     % Refresh
     RefreshTextDisplay(hFig);
 end
- 
-%% ===== BLENDING =====
-% Blending functions has defined by OpenGL
-% GL_SRC_COLOR = 768;
-% GL_ONE_MINUS_SRC_COLOR = 769;
-% GL_SRC_ALPHA = 770;
-% GL_ONE_MINUS_SRC_ALPHA = 771;
-% GL_ONE_MINUS_DST_COLOR = 775;
-% GL_ONE = 1;
-% GL_ZERO = 0;
- 
-%TODO: determine if colorblending is needed, if not, remove.
-function SetBlendingMode(hFig, BlendingEnabled)
-    disp('Entered SetBlendingMode');
-    % Update figure variable
-    setappdata(hFig, 'BlendingEnabled', BlendingEnabled);
-    % Update display
-    %OGL = getappdata(hFig,'OpenGLDisplay');
-    % 
-    if BlendingEnabled
-        % Good looking additive blending
-        %OGL.setMeasureLinkBlendingFunction(770,1);
-        % Blending only works nicely on black background
-        SetBackgroundColor(hFig, [0 0 0], [1 1 1]);
-        % AND with a minimum amount of transparency
-        LinkTransparency = getappdata(hFig, 'LinkTransparency');
-        if (LinkTransparency == 0)
-            SetLinkTransparency(hFig, 0.02);
-        end  
-    else
-        % Translucent blending only
-      %  OGL.setMeasureLinkBlendingFunction(770,771);
-    end
-    % Request redraw
-   % OGL.repaint();
-end
- 
-function ToggleBlendingMode(hFig)
-    disp('Entered ToggleBlendingMode');
-    BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
-    if isempty(BlendingEnabled)
-        BlendingEnabled = 0;
-    end
-    SetBlendingMode(hFig, 1 - BlendingEnabled);
-end
 
 %% ===== NODE SIZE =====
      % NOTE: JAN 2020
@@ -2953,7 +2786,6 @@ function SetLinkTransparency(hFig, LinkTransparency)
 end
  
 %% ===== BACKGROUND COLOR =====
-% @TODO: BLENDING
 % @TODO: Agregating node text (region node - lobe label)
 function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     % Negate text color if necessary
@@ -2963,13 +2795,6 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
  
     % Update Matlab background color
     set(hFig, 'Color', BackgroundColor)
-    
-    % === BLENDING ===
-    % Ensures that if background is white no blending is on. -> checked
-    % Blending is additive and therefore won't be visible.
-    if all(BackgroundColor == [1 1 1])
-        SetBlendingMode(hFig, 0);
-    end
     
     % === UPDATE TEXT COLOR ===
     FigureHasText = getappdata(hFig, 'FigureHasText');
