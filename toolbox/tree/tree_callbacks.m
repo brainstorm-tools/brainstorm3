@@ -603,6 +603,7 @@ switch (lower(action))
                     % === MNI ATLASES ===
                     % Get list of templates registered in Brainstorm
                     sMniAtlases = bst_get('MniAtlasDefaults');
+                    jMenuSchaefer = [];
                     % Add MNI atlases
                     jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI atlas', IconLoader.ICON_ANATOMY, [], []);
                     for i = 1:length(sMniAtlases)
@@ -612,8 +613,17 @@ switch (lower(action))
                         else
                             Comment = sMniAtlases(i).Name;
                         end
+                        % Submenus
+                        if ~isempty(strfind(Comment, 'Schaefer2018_'))
+                            if isempty(jMenuSchaefer)
+                                jMenuSchaefer = gui_component('Menu', jMenuMniVol, [], 'Schaefer2018', IconLoader.ICON_ANATOMY, [], []);
+                            end
+                            jMenuMniSub = jMenuSchaefer;
+                        else
+                            jMenuMniSub = jMenuMniVol;
+                        end
                         % Create item
-                        gui_component('MenuItem', jMenuMniVol, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject, sMniAtlases(i), 1));
+                        gui_component('MenuItem', jMenuMniSub, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject, sMniAtlases(i), 1));
                     end
                     AddSeparator(jMenuMniVol);
                     gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));

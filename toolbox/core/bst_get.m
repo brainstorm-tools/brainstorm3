@@ -2334,8 +2334,28 @@ switch contextName
                 sTemplates(end).Info = '';
             end
         end
+        % Sort in alphabetical order
+        if ~isempty(sTemplates)
+            [tmp__, I] = sort_nat(lower({sTemplates.Name}));
+            sTemplates = sTemplates(I);
+        end
         
         % Get defaults from internet
+        if ~ismember('aal2', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL2';
+            sTemplates(end).Name = 'AAL2';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
+        end
+        if ~ismember('aal3', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL3';
+            sTemplates(end).Name = 'AAL3';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
+        end
+        if ~ismember('aicha', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AICHA';
+            sTemplates(end).Name = 'AICHA';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aicha';
+        end
         if ~ismember('brainnetome', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
             sTemplates(end).Name = 'Brainnetome';
@@ -2346,11 +2366,30 @@ switch contextName
             sTemplates(end).Name = 'Brainnetome_leaddbs';
             sTemplates(end).Info = 'http://atlas.brainnetome.org/';
         end
-        
-        % Sort in alphabetical order
-        if ~isempty(sTemplates)
-            [tmp__, I] = sort_nat(lower({sTemplates.Name}));
-            sTemplates = sTemplates(I);
+        if ~ismember('brodmann', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brodmann';
+            sTemplates(end).Name = 'Brodmann';
+            sTemplates(end).Info = 'https://people.cas.sc.edu/rorden/mricro/lesion.html#brod';
+        end
+        if ~ismember('hammers83', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Hammers';
+            sTemplates(end).Name = 'Hammers';
+            sTemplates(end).Info = 'http://brain-development.org/brain-atlases/adult-brain-atlases/';
+        end
+        if ~ismember('neuromorphometrics', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Neuromorphometrics';
+            sTemplates(end).Name = 'Neuromorphometrics';
+            sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
+        end
+        if ~ismember('julich-brain-v25', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain-v25';
+            sTemplates(end).Name = 'Julich-Brain-v25';
+            sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
+        end
+        if ~ismember('schaefer2018_100_7net', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Schaefer2018';
+            sTemplates(end).Name = 'Schaefer2018';
+            sTemplates(end).Info = 'https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal';
         end
         % Return defaults list
         argout1 = sTemplates;
@@ -2419,7 +2458,6 @@ switch contextName
                                                     'name',     fBase);
             end
         end
-        
         % Return defaults list
         argout1 = fullDefaultsList;
         

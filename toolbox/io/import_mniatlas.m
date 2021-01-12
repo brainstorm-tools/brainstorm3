@@ -89,9 +89,12 @@ else
         bst_progress('start', 'Download atlas', 'Unzipping file...');
         % URL: Download zip file
         try
-            unzip(ZipFile, atlasDir);
+            UnzippedFiles = unzip(ZipFile, atlasDir);
         catch
             error(['Could not unzip atlas: ' 10 10 lasterr]);
+        end
+        if (length(UnzippedFiles) > 3)
+            error('Multiple atlases were downloaded, please select one of them.');
         end
         % Look for atlas volume
         sTemplate.FilePath = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.nii.gz']);

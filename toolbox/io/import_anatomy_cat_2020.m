@@ -39,7 +39,7 @@ function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInter
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2020
+% Authors: Francois Tadel, 2019-2021
 
 %% ===== PARSE INPUTS =====
 % Import tissues
@@ -447,8 +447,25 @@ if isVolumeAtlas && ~isempty(VolAtlasFiles)
         % Strip the subject tag from the atlas name
         [fPath, AtlasName] = bst_fileparts(VolAtlasFiles{iFile});
         AtlasName = strrep(AtlasName, ['_' SubjectTag], '');
+        % Get the labels
+        switch (AtlasName)
+            case 'aal3',               Labels = mri_getlabels_cat12_aal3();                % AAL3 - Automated Anatomical Labeling (Tzourio-Mazoyer 2002)
+            case 'anatomy3',           Labels = mri_getlabels_cat12_anatomy3();
+            case 'cobra',              Labels = mri_getlabels_cat12_cobra();
+            case 'hammers',            Labels = mri_getlabels_cat12_hammers();             % HAMMERS - Hammersmith atlas (Hammers 2003, Gousias 2008, Faillenot 2017, Wild 2017)
+            case 'ibsr',               Labels = mri_getlabels_cat12_ibsr();
+            case 'julichbrain',        Labels = mri_getlabels_cat12_julichbrain();         % Julich-Brain 2.0
+            case 'lpba40',             Labels = mri_getlabels_cat12_lpba40();              % LONI lpba40
+            case 'mori',               Labels = mri_getlabels_cat12_mori();                % Mori 2009
+            case 'neuromorphometrics', Labels = mri_getlabels_cat12_neuromorphometrics();  % MICCAI 2012 Multi-Atlas Labeling Workshop and Challenge (Neuromorphometrics)
+            case 'Schaefer2018_100Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_100();
+            case 'Schaefer2018_200Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_200();
+            case 'Schaefer2018_400Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_400();
+            case 'Schaefer2018_600Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_600();
+            otherwise,                 Labels = [];
+        end
         % Import volume
-        import_mri(iSubject, VolAtlasFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName);
+        import_mri(iSubject, VolAtlasFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName, Labels);
     end
 end
 

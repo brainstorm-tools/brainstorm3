@@ -21,7 +21,7 @@ function [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptio
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2021
         
 
 % Parse inputs

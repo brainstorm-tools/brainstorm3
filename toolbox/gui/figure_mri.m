@@ -221,7 +221,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridy = 3;    c.weighty = 0.7;
     Handles.jPanelCoordinates = gui_component('Panel', jPanelOptions, c);
     Handles.jPanelCoordinates.setLayout(java_create('java.awt.GridBagLayout'));
-    jBorder = BorderFactory.createTitledBorder('Coordinates (milimeters)');
+    jBorder = BorderFactory.createTitledBorder('Coordinates (millimeters)');
     jBorder.setTitleFont(bst_get('Font', 11));
     jBorder.setTitleColor(Color(.9,.9,.9));
     Handles.jPanelCoordinates.setBorder(jBorder);
@@ -1364,11 +1364,15 @@ function UpdateCoordinates(sMri, Handles)
             value = TessInfo.OverlayCubeLabels(voxXYZ(1), voxXYZ(2), voxXYZ(3));
             iLabel = find([TessInfo.OverlayLabels{:,1}] == value);
             if ~isempty(iLabel)
+                strLabel = TessInfo.OverlayLabels{iLabel,2};
+                if ismember(lower(strLabel), {'background', 'bg', 'unknown'})
+                    strLabel = '-';
+                end
                 if TessInfo.isOverlayAtlas
-                    strValue = sprintf('%g: %s', value, TessInfo.OverlayLabels{iLabel,2});
+                    strValue = sprintf('%g: %s', value, strLabel);
                 else
                     mriValue = sMri.Cube(voxXYZ(1), voxXYZ(2), voxXYZ(3), 1);
-                    strValue = sprintf('%s  |  value=%g', TessInfo.OverlayLabels{iLabel,2}, mriValue);
+                    strValue = sprintf('%s  |  value=%g', strLabel, mriValue);
                 end
             else
                 strValue = sprintf('value=%g', value);

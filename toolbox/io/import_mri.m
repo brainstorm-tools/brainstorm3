@@ -1,7 +1,7 @@
-function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment)
+function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
-% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[])
+% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
 %
 % INPUT:
@@ -13,6 +13,7 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 %    - isInteractive : If 1, importation will be interactive (MRI is displayed after loading)
 %    - isAutoAdjust  : If isInteractive=0 and isAutoAdjust=1, relice/resample automatically without user confirmation
 %    - Comment       : Comment of the output file
+%    - Labels        : Labels attached to this file (cell array {Nlabels x 3}: {index, text, RGB})
 % OUTPUT:
 %    - BstMriFile : Full path to the new file if success, [] if error
 
@@ -48,6 +49,9 @@ if (nargin < 5) || isempty(isAutoAdjust)
 end
 if (nargin < 6) || isempty(Comment)
     Comment = [];
+end
+if (nargin < 7) || isempty(Labels)
+    Labels = [];
 end
 % Initialize returned variables
 BstMriFile = [];
@@ -152,10 +156,8 @@ end
     
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
-if ~iscell(MriFile)
+if isempty(Labels) && ~iscell(MriFile)
     Labels = mri_getlabels(MriFile, sMri);
-else
-    Labels = [];
 end
 % Save labels in the file structure
 if ~isempty(Labels)
@@ -324,7 +326,15 @@ else
     end
     % Add MNI tag
     if isMni
-        sMri.Comment = [sMri.Comment ' (MNI)'];
+        if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y_method') && ~isempty(sMri.NCS.y_method)
+            sMri.Comment = [sMri.Comment ' (MNI-' sMri.NCS.y_method ')'];
+        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y') && isfield(sMri.NCS, 'iy') && ~isempty(sMri.NCS.y) && ~isempty(sMri.NCS.iy)
+            sMri.Comment = [sMri.Comment ' (MNI-nonlin)'];
+        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.R) && ~isempty(sMri.NCS.T)
+            sMri.Comment = [sMri.Comment ' (MNI-linear)'];
+        else
+            sMri.Comment = [sMri.Comment ' (MNI)'];
+        end
     end
     % Get imported base name
     [tmp__, importedBaseName] = bst_fileparts(MriFile);
