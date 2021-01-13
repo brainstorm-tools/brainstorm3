@@ -628,40 +628,8 @@ switch (lower(action))
                     AddSeparator(jMenuMniVol);
                     gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));
 
-                    % === GENERATE HEAD ===
-                    AddSeparator(jPopup);
-                    jItem = gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(iSubject));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
-                    % === GENERATE BEM ===
-                    jItemBem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, []));
-                    jItemFem = gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, []));
-                    % Disable if no scalp or cortex available
-                    if isempty(sSubject.Anatomy)
-                        jItemBem.setEnabled(0);
-                    end
-                    if isempty(sSubject.iScalp) && isempty(sSubject.Anatomy)
-                        jItemFem.setEnabled(0);
-                    end
-                    % === SEGMENTATION ===
-                    AddSeparator(jPopup);
-                    jItem1 = gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, []));
-                    jItem2 = gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, []));
-                    jItem3 = gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, []));
-                    if isempty(sSubject.Anatomy)
-                        jItem1.setEnabled(0);
-                        jItem2.setEnabled(0);
-                        jItem3.setEnabled(0);
-                    end
-                    % === DEFACE MRI ===
-                    AddSeparator(jPopup);
-                    OPTIONS = struct('isDefaceHead', 1);
-                    jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
-
+                    % === MRI SEGMENTATION ===
+                    fcnMriSegment(jPopup, sSubject, iSubject, [], 0);
                     % Export menu (added later)
                     if (iSubject ~= 0)
                         jMenuExport{1} = gui_component('MenuItem', [], [], 'Export subject',  IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
@@ -1060,14 +1028,14 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
                     end
                 end
-                % === REGISTRATION ===
+                
                 if ~bst_get('ReadOnly')
+                    % === REGISTRATION ===
                     % Get file comment
                     if ~isAtlas && (length(bstNodes) == 1)
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
                         gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
-                        gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
                         if ~bstNodes(1).isMarked()
                             jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
                             gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 1));
@@ -1080,26 +1048,8 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'vox2ras', 0));
                         end
                     end
-                    AddSeparator(jPopup);
-                    if ~isAtlas && (length(bstNodes) == 1)
-                        gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
-                        gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
-                    end
-                    if ~isAtlas && (length(bstNodes) <= 2)
-                        gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
-                    end
-                    if ~isAtlas && (length(bstNodes) == 1)
-                        AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, iAnatomy));
-                        gui_component('MenuItem', jPopup, [], 'CAT12 MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, iAnatomy));
-                        gui_component('MenuItem', jPopup, [], 'FieldTrip MRI segmentation', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));                   
-                        % SEEG/ECOG
-                        AddSeparator(jPopup);
-                        gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
-                    end
-                    if ~isempty(strfind(mriComment, 'tissues')) && (length(bstNodes) == 1)
-                        gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));                   
-                    end
+                    % === MRI SEGMENTATION ===
+                    fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas);
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
@@ -2961,8 +2911,71 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
     end
 end
 
-    
-%% ===== SURFACE CALLBACKS =====
+
+%% ===== MRI SEGMENTATION =====
+function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
+    import org.brainstorm.icon.*;
+    % No anatomy: nothing to do
+    if isempty(sSubject.Anatomy)
+        return;
+    end
+    % Using default anatomy
+    if isempty(iAnatomy)
+        if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
+            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        else
+            return
+        end
+    elseif (length(iAnatomy) == 1)
+        MriFile = sSubject.Anatomy(iAnatomy).FileName;
+    else
+        MriFile = {sSubject.Anatomy(iAnatomy).FileName};
+    end
+    % Add menu separator
+    AddSeparator(jPopup);
+
+    % === MRI/CT ===
+    if ~isAtlas
+        % Create sub-menu
+        jMenu = gui_component('Menu', jPopup, [], 'MRI segmentation', IconLoader.ICON_ANATOMY);
+        % === GENERATE HEAD/BEM ===
+        if (length(iAnatomy) <= 1)
+            gui_component('MenuItem', jMenu, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(MriFile));
+            gui_component('MenuItem', jMenu, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
+        end
+        % === GENERATE FEM ===
+        if (length(iAnatomy) <= 2)   % T1 + optional T2
+            jItemFem = gui_component('MenuItem', jMenu, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
+            if isempty(sSubject.iScalp)
+                jItemFem.setEnabled(0);
+            end
+        end
+        % === SEGMENTATION ===
+        if (length(iAnatomy) <= 1)
+            AddSeparator(jMenu);
+            % gui_component('MenuItem', jMenu, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, iAnatomy));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>CAT12</B>: Cortex, atlases, tissues', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, iAnatomy));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Tissues, MNI normalization', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_mni_normalize, 'ComputeInteractive', MriFile, 'segment'));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>FieldTrip</B>: Tissues, BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));
+        end
+        % === DEFACE MRI ===
+        if isempty(iAnatomy)
+            gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
+        else
+            gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', MriFile, struct('isDefaceHead', 0)));
+        end
+        % === SEEG/ECOG ===
+        if (length(iAnatomy) <= 1)
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', MriFile));
+        end
+          
+    % === TISSUE SEGMENTATION ===
+    elseif (length(iAnatomy) == 1) && ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, 'tissues'))
+        gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));
+    end
+end
+
+                    
 %% ===== GET ALL FILENAMES =====
 function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullPath)
     % Parse inputs
@@ -3588,5 +3601,6 @@ function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
         bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
     end
 end
+
 
     

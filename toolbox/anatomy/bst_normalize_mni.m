@@ -64,12 +64,12 @@ if ~isProgress
     bst_progress('start', 'MNI normalization', 'Initialization...');
 end
 % Get template file
-tpmFile = bst_get('SpmTpmAtlas');
+TpmFile = bst_get('SpmTpmAtlas');
 % If it does not exist: download
-if isempty(tpmFile) || ~file_exist(tpmFile)
+if isempty(TpmFile) || ~file_exist(TpmFile)
     % Create folder
-    if ~file_exist(bst_fileparts(tpmFile))
-        mkdir(bst_fileparts(tpmFile));
+    if ~file_exist(bst_fileparts(TpmFile))
+        mkdir(bst_fileparts(TpmFile));
     end
     % URL to download
     tmpUrl = 'http://neuroimage.usc.edu/bst/getupdate.php?t=SPM_TPM';
@@ -98,6 +98,12 @@ if isempty(tpmFile) || ~file_exist(tpmFile)
     end
     % Delete zip file
     file_delete(tpmZip, 1);
+    % Get template file
+    TpmFile = bst_get('SpmTpmAtlas');
+    if isempty(TpmFile) || ~file_exist(TpmFile)
+        errMsg = 'Missing file TPM.nii';
+        return;
+    end
 end
 % If only installing: exit
 if isInstall
@@ -118,14 +124,6 @@ if isempty(sMri)
 else
     iLoadedMri = [];
 end
-
-% Get template file
-TpmFile = bst_get('SpmTpmAtlas');
-if isempty(TpmFile) || ~file_exist(TpmFile)
-    errMsg = 'Missing file TPM.nii';
-    return;
-end
-
 
 %% ===== MNI NORMALIZATION =====
 TpmFiles = [];
