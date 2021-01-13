@@ -175,12 +175,16 @@ for iFile = 1:length(LabelFiles)
                 % If correspondence not defined: ignore label
                 if (length(iTable) ~= 1)
                     continue;
-                end
+                end             
                 % New scout index
                 iScout = length(sAtlas.Scouts) + 1;
                 sAtlas.Scouts(iScout).Vertices = find(labels == lablist(i))';
                 if ~isempty(colortable.struct_names{iTable})
-                    sAtlas.Scouts(iScout).Label = file_unique(colortable.struct_names{iTable}, {sAtlas.Scouts.Label});
+                    % Strip CAT12 Schaeffer labels
+                    Label = colortable.struct_names{iTable};
+                    Label = strrep(Label, '17Networks_LH_', '');
+                    Label = strrep(Label, '17Networks_RH_', '');
+                    sAtlas.Scouts(iScout).Label = file_unique(Label, {sAtlas.Scouts.Label});
                 else
                     sAtlas.Scouts(iScout).Label = file_unique('Unknown', {sAtlas.Scouts.Label});
                 end
