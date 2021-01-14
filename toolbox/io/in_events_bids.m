@@ -25,13 +25,18 @@ function events = in_events_bids(sFile, EventFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2021
 
 % Read tsv file
 Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel'}, 0);
-if isempty(Markers) || isempty(Markers{1,1}) || isempty(Markers{1,3})
+if isempty(Markers) || isempty(Markers{1,1})
     events = [];
     return;
+end
+% If there is no trial_type information: use the filename as the event name
+if all(cellfun(@isempty, Markers(:,3)))
+    [fPath, fbase, fExt] = bst_fileparts(EventFile);
+    Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
 end
 % List of events
 uniqueEvt = unique(Markers(:,3)');
