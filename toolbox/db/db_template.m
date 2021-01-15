@@ -1160,6 +1160,25 @@ switch lower(structureName)
         template.InputTypes = {};
         template.OutputTypes = {};
        
+    case 'plugdesc'
+        template = struct(...
+            'Name',          '', ...  % Plugin name = subfolder in the Brainstorm user folder
+            'Version',       [], ...  % String with the version name
+            'URLzip',        '', ...  % Download URL (zip file accessible over HTTP/HTTPS/FTP)
+            'URLinfo',       [], ...  % Information URL: Software website
+            'ReadmeFile',    [], ...  % Text filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_readme.txt
+            'LogoFile',      [], ...  % Logo filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
+            'TestFile',      [], ...  % Function/file name to check the existence of the plugin outside of the Brainstorm user folder
+            'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up
+            'UnloadPlugs',   [], ...  % Cell-array of incompatible plugin names, to remove from path before adding
+            'RequiredPlugs', [], ...  % Cell-array of required plugin names, to install/load before this one
+            'Path',          [], ...  % Set at runtime: Installation path for this plugin
+            'isLoaded',      0, ...   % Set at runtime: 0=Not loaded, 1=Loaded (folder and specific subfolders added to Matlab path)
+            'isManaged',     0);      % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm
+        template.LoadFolders = {};
+        template.UnloadPlugs = {};
+        template.RequiredPlugs = {};
+        
     case 'interpolation'
         template = struct(...
             'WInterp',   [], ...
