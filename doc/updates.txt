@@ -4,6 +4,7 @@ January 2021
 - Anatomy: Prepared a list of standard MNI atlases: AAL2, AAL3, AICHA, 
 | Brainnetome, Hammers, Neuromorphometrics, Julich-Brain, Schaefer2018
 - Distrib: New plugin manager bst_plugin
+- IO: Added support for ADInstruments LabChart EEG (.adicht)
 ---------------------------------------------------------------
 December 2020
 - Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)

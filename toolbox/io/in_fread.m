@@ -34,7 +34,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2020
+% Authors: Francois Tadel, 2009-2021
 
 %% ===== PARSE INPUTS =====
 if (nargin < 6)
@@ -97,6 +97,8 @@ switch (sFile.format)
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'EEG-ADICHT'
+        F = in_fread_adicht(sFile, iEpoch, iChannels, SamplesBounds);
     case 'EEG-ANT-CNT'
         F = in_fread_ant(sFile, SamplesBounds);
         if ~isempty(iChannels)
