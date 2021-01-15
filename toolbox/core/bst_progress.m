@@ -14,6 +14,7 @@ function pBar = bst_progress(varargin)
 %         pBar = bst_progress('setimage', imagefile) : display an image in the wait bar
 %         pBar = bst_progress('setlink', url)        : clicking on the image opens a browser to display the url
 %         pBar = bst_progress('removeimage')         : Remove the image from the wait bar
+%         pBar = bst_progress('setbutton', 	, btnCallback) : Adds one or two buttons at the bottom right of the progress bar
 
 % NOTES : The window is created once, and then never deleted, just hidden.
 %         Progress bar is represented by a structure: 
@@ -50,7 +51,7 @@ global GlobalData;
 
 %% ===== PARSE INPUTS =====
 if ((nargin >= 1) && ischar(varargin{1}))
-    commandName = varargin{1};
+    commandName = lower(varargin{1});
 else
     error('Usage : bst_progress(commandName, parameters)');
 end
@@ -59,7 +60,7 @@ end
 %% ===== GET OR CREATE PROGRESS BAR =====
 % Do nothing in case of server mode
 if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Program, 'GuiLevel') && (GlobalData.Program.GuiLevel == -1)
-    if ismember(lower(commandName), {'pos','isvisible'})
+    if ismember(commandName, {'pos','isvisible'})
         pBar = 0;
     else
         pBar = [];
@@ -68,7 +69,7 @@ if ~isempty(GlobalData) && ~isempty(GlobalData.Program) && isfield(GlobalData.Pr
 end
 % If running in NOGUI mode: just display the message in the command window
 if ~bst_get('isGUI')
-    switch lower(commandName)
+    switch commandName
         case 'start',     disp(['PROGRESS> ' varargin{2} ': ' varargin{3}]); pBar = [];
         case 'text',      disp(['PROGRESS> ' varargin{2}]); pBar = [];
         case 'get',       pBar = 1;
@@ -89,14 +90,14 @@ if isempty(jBstFrame)
 end
 
 % Default window size
-if isempty(pBar) || strcmpi(commandName, 'removeimage') || (strcmpi(commandName, 'stop') && pBar.isImage)
+if isempty(pBar) || ismember(commandName, {'setbutton', 'removeimage'}) || (strcmp(commandName, 'stop') && (pBar.isImage || pBar.isButton))
     DefaultSize = java_scaled('dimension', 350, 130);
 end
 
 % If progress bar was not created yet : create it
 if isempty(pBar)
     % If action=isvisible: no need to create the progress bar
-    if strcmpi(commandName, 'isvisible')
+    if strcmp(commandName, 'isvisible')
         pBar = 0;
         return
     end
@@ -135,6 +136,9 @@ if isempty(pBar)
     pBar.jLabel = java_create('javax.swing.JLabel', 'Ljava.lang.String;', '...');
     pBar.jLabel.setFont(bst_get('Font'));
     pBar.jProgressBar = java_create('javax.swing.JProgressBar', 'II', 0, 99);
+    pBar.isButton = 0;
+    pBar.jButtonLeft = java_create('javax.swing.JButton');
+    pBar.jButtonRight = java_create('javax.swing.JButton');
     % Update constraints
     UpdateConstraints(0);
     
@@ -153,7 +157,7 @@ if isempty(pBar)
 end
 
 % Linux: need to print something on the command window (don't know why...)
-if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa64'})
+if strcmp(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa64'})
     drawnow();
     fprintf(' ');
     fprintf('\b');
@@ -162,7 +166,7 @@ end
 
 
 %% ===== SWITCH BETWEEN COMMANDS =====
-switch (lower(commandName))
+switch commandName
     % ==== START ====
     case 'start'
         % Set as "always on top"
@@ -235,6 +239,17 @@ switch (lower(commandName))
             GlobalData.Program.ProgressBar.isImage = 0;
             pBar.jImage.setIcon([]);
             java_setcb(pBar.jImage, 'MouseClickedCallback', []);
+            UpdateConstraints(0);
+            pBar.jWindow.setPreferredSize(DefaultSize);
+            pBar.jWindow.pack();
+        end
+        if pBar.isButton
+            GlobalData.Program.ProgressBar.isButton = 0;
+            pBar.isButton = 0;
+            pBar.jButtonLeft.setText('');
+            pBar.jButtonRight.setText('');
+            java_setcb(pBar.jButtonLeft, 'ActionPerformedCallback', []);
+            java_setcb(pBar.jButtonRight, 'ActionPerformedCallback', []);
             UpdateConstraints(0);
             pBar.jWindow.setPreferredSize(DefaultSize);
             pBar.jWindow.pack();
@@ -345,10 +360,41 @@ switch (lower(commandName))
         UpdateConstraints(0);
         pBar.jWindow.setPreferredSize(DefaultSize);
         pBar.jWindow.pack();
+        
+    case 'setbutton'
+        % Inputs: leftText, leftCallback, rightText, rightCallback
+        % Inputs: RightText, rightCallback
+        isTwoButtons = nargin > 3;
+        
+        GlobalData.Program.ProgressBar.isButton = 1 + isTwoButtons;
+        pBar.isButton = 1 + isTwoButtons;
+        
+        % Left button (optional)
+        if isTwoButtons
+            pBar.jButtonLeft.setText(varargin{2});
+            if nargin > 2
+                java_setcb(pBar.jButtonLeft, 'ActionPerformedCallback', varargin{3});
+            end
+            iRight = 4;
+        else
+            iRight = 2;
+        end
+        
+        % Right button
+        pBar.jButtonRight.setText(varargin{iRight});
+        if nargin > iRight
+            java_setcb(pBar.jButtonRight, 'ActionPerformedCallback', varargin{iRight+1});
+        end
+        
+        % Resize window
+        UpdateConstraints(0);
+        pBar.jWindow.setPreferredSize(java_scaled('dimension', 350, 150));
+        pBar.jWindow.pack();
 end
 
 %% ===== ADD COMPONENTS =====
     function UpdateConstraints(isImage)
+        import java.awt.BorderLayout;
         import java.awt.GridBagConstraints;
         import java.awt.Insets;
         % Remove all components
@@ -373,12 +419,22 @@ end
         c.weighty = 0;
         c.insets = Insets(0,12,9,12);
         pBar.jPanel.add(pBar.jProgressBar, c);
-%         % CANCEL BUTTON
-%         c.gridy = 4;
-%         c.weighty = 0;
-%         c.insets = Insets(0,12,9,12);
-%         c.weightx = 0;
-%         pBar.jPanel.add(pBar.jButtonCancel, c);
+        % CANCEL BUTTON(S)
+        if pBar.isButton
+            jButtonPanel = java_create('javax.swing.JPanel');
+            if pBar.isButton > 1
+                jButtonPanel.add(pBar.jButtonLeft);
+            end
+            jButtonPanel.add(pBar.jButtonRight);
+            
+            jBottomPanel = java_create('javax.swing.JPanel');
+            jBottomPanel.setLayout(BorderLayout());
+            jBottomPanel.add(jButtonPanel, BorderLayout.EAST);
+            c.gridy = 4;
+            c.weighty = 0;
+            c.weightx = 0;
+            pBar.jPanel.add(jBottomPanel, c);
+        end
     end
 
 
