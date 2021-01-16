@@ -217,28 +217,32 @@ sFile.acq_date = str_date(hdr.startdate);
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
 for i = 1:hdr.nsignal
-    % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
-    if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
-        hdr.signal(i).label(end) = [];
+    if ~isempty(hdr.signal(i).label)    
+        % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
         if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
             hdr.signal(i).label(end) = [];
             if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
                 hdr.signal(i).label(end) = [];
+                if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
+                    hdr.signal(i).label(end) = [];
+                end
             end
         end
-    end
-    % Remove extra spaces
-    signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
-    % Find space chars (label format "Type Name")
-    iSpace = find(signalLabel == ' ');
-    % Only if there is one space only
-    if (length(iSpace) == 1) && (iSpace >= 3)
-        SplitName{i} = signalLabel(iSpace+1:end);
-        SplitType{i} = signalLabel(1:iSpace-1);
-    % Accept also 2 spaces
-    elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
-        SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
-        SplitType{i} = signalLabel(1:iSpace(1)-1);
+        % Remove extra spaces
+        signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
+        % Find space chars (label format "Type Name")
+        iSpace = find(signalLabel == ' ');
+        % Only if there is one space only
+        if (length(iSpace) == 1) && (iSpace >= 3)
+            SplitName{i} = signalLabel(iSpace+1:end);
+            SplitType{i} = signalLabel(1:iSpace-1);
+        % Accept also 2 spaces
+        elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+            SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
+            SplitType{i} = signalLabel(1:iSpace(1)-1);
+        end
+    else
+        hdr.signal(i).label = sprintf('E%d', i);
     end
 end
 % Remove the classification if it makes some names non unique
