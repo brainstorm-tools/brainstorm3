@@ -197,12 +197,10 @@ switch (cfg.HeadModelType)
         iGM = find(panel_duneuro('CheckType', FemMat.TissueLabels, 'gray'), 1);
         iWM = find(panel_duneuro('CheckType', FemMat.TissueLabels, 'white'), 1);
         if cfg.SrcForceInGM && ~isempty(iGM)
-            % Install iso2mesh if needed
-            if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                errMsg = process_fem_mesh('InstallIso2mesh', cfg.Interactive);
-                if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                    return;
-                end
+            % Install/load iso2mesh plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1, cfg.Interactive);
+            if ~isInstalled
+                return;
             end
             % Extract GM vertices and elements
             [gmVert, gmElem] = removeisolatednode(FemMat.Vertices, FemMat.Elements(FemMat.Tissue == iGM,:));

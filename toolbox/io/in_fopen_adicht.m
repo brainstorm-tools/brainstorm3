@@ -23,20 +23,9 @@ function [sFile, ChannelMat] = in_fopen_adicht(DataFile, isInteractive)
 
 
 %% ===== INSTALL ADI-SDK =====
-if ~exist('adi', 'file')
-    % Plugin available only for win64 systems
-    if ~strcmpi(bst_get('OsType'), 'win64')
-        error('The ADI-SDK plugin is available only on Windows 64bits computers.');
-    end
-    % Install ADI-SDK plugin
-    if isInteractive
-        [isOk, errMsg] = bst_plugin('InstallInteractive', 'adi-sdk');
-    else
-        [isOk, errMsg] = bst_plugin('Install', 'adi-sdk', 1, 0);
-    end
-    if ~isempty(errMsg)
-        error(errMsg); 
-    end
+[isInstalled, errMsg] = bst_plugin('Install', 'adi-sdk', 1, 1);
+if ~isInstalled
+    error(errMsg); 
 end
 
 

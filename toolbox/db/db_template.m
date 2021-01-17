@@ -21,7 +21,7 @@ function [ template ] = db_template(structureName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 
 switch lower(structureName)
@@ -1169,9 +1169,10 @@ switch lower(structureName)
             'ReadmeFile',    [], ...  % Text filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_readme.txt
             'LogoFile',      [], ...  % Logo filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
             'TestFile',      [], ...  % Function/file name to check the existence of the plugin outside of the Brainstorm user folder
-            'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up
             'UnloadPlugs',   [], ...  % Cell-array of incompatible plugin names, to remove from path before adding
             'RequiredPlugs', [], ...  % Cell-array of required plugin names, to install/load before this one
+            'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up
+            'LoadedFcn',     [], ...  % Function to call or string to eval after loading the plugin
             'Path',          [], ...  % Set at runtime: Installation path for this plugin
             'isLoaded',      0, ...   % Set at runtime: 0=Not loaded, 1=Loaded (folder and specific subfolders added to Matlab path)
             'isManaged',     0);      % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm

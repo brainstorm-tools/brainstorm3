@@ -48,15 +48,19 @@ function PlugDesc = GetSupported(SelPlug)
     end
     % Initialized returned structure
     PlugDesc = repmat(db_template('PlugDesc'), 0);
+    % Get OS
+    OsType = bst_get('OsType', 0);
     
     % ================================================================================================================
     % === ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1).Name        = 'adi-sdk';
     PlugDesc(end).Version       = 'github';
-    PlugDesc(end).URLzip        = 'https://github.com/JimHokanson/adinstruments_sdk_matlab/archive/master.zip';
     PlugDesc(end).URLinfo       = 'https://github.com/JimHokanson/adinstruments_sdk_matlab';
     PlugDesc(end).TestFile      = 'adi';
     PlugDesc(end).LoadFolders   = {'adinstruments_sdk_matlab-master'};
+    switch (OsType)
+        case 'win64', PlugDesc(end).URLzip = 'https://github.com/JimHokanson/adinstruments_sdk_matlab/archive/master.zip';
+    end
     % === BRAIN2MESH ===
     PlugDesc(end+1).Name        = 'brain2mesh';
     PlugDesc(end).Version       = 'github';
@@ -65,6 +69,34 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile    = 'brain2mesh-master/README.md';
     PlugDesc(end).TestFile      = 'brain2mesh.m';
     PlugDesc(end).LoadFolders   = {'brain2mesh-master'};
+%     PlugDesc(end).RequiredPlugs = {'spm12', 'iso2mesh'};
+    PlugDesc(end).RequiredPlugs = {'iso2mesh'};
+    % === ISO2MESH ===
+    PlugDesc(end+1).Name        = 'iso2mesh';
+    PlugDesc(end).Version       = '1.9.2';
+    PlugDesc(end).URLinfo       = 'http://iso2mesh.sourceforge.net/cgi-bin/index.cgi';
+    PlugDesc(end).ReadmeFile    = 'iso2mesh/README.txt';
+    PlugDesc(end).TestFile      = 'iso2meshver.m';
+    PlugDesc(end).LoadFolders   = {'iso2mesh'};
+    PlugDesc(end).LoadedFcn     = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
+    switch (OsType)
+        case 'linux64', PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-linux64.zip';
+        case 'mac32',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx32.zip';
+        case 'mac64',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx64.zip';
+        case 'win32',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
+        case 'win64',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
+    end
+    % === SPM12 ===
+    PlugDesc(end+1).Name        = 'spm12';
+    PlugDesc(end).URLzip        = 'https://github.com/JimHokanson/adinstruments_sdk_matlab/archive/master.zip';
+    PlugDesc(end).TestFile      = 'spm';
+    PlugDesc(end).UnloadPlugs   = {'fieldtrip'};
+    % === CAT12 ===
+    PlugDesc(end+1).Name        = 'cat12';
+    PlugDesc(end).URLzip        = 'https://github.com/JimHokanson/adinstruments_sdk_matlab/archive/master.zip';
+    PlugDesc(end).TestFile      = 'cat_version';
+    PlugDesc(end).UnloadPlugs   = {'fieldtrip'};
+    PlugDesc(end).RequiredPlugs = {'spm12'};
     % ================================================================================================================
     
     % Select only one plugin
@@ -184,9 +216,10 @@ function PlugDesc = GetInstalled(SelPlug)
                 PlugMat = struct();
             end
             % Copy fields
-            for f = {'Version', 'URL', 'Info', 'TestFile', 'LoadFolders', 'UnloadPlugs', 'RequiredPlugs'}
-                if isfield(PlugMat, f{1}) && ~isempty(PlugMat.(f{1}))
-                    PlugDesc(iPlug).(f{1}) = PlugMat.(f{1});
+            loadFields = setdiff(fieldnames(db_template('PlugDesc')), {'Name', 'Path', 'isLoaded', 'isManaged'});
+            for iField = 1:length(loadFields)
+                if isfield(PlugMat, loadFields{iField}) && ~isempty(PlugMat.(loadFields{iField}))
+                    PlugDesc(iPlug).(loadFields{iField}) = PlugMat.(loadFields{iField});
                 end
             end
         else
@@ -339,6 +372,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isAutoUpdate, isInteractiv
     if (nargin < 2) || isempty(isAutoUpdate)
         isAutoUpdate = 1;
     end
+    if ~ischar(PlugName)
+        errMsg = 'Invalid call to Install()';
+        PlugDesc = [];
+        return;
+    end
     % Get plugin structure from name
     [PlugDesc, errMsg] = GetDescription(PlugName);
     if ~isempty(errMsg)
@@ -346,17 +384,31 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isAutoUpdate, isInteractiv
     end
     % Check if there is a URL to download
     if isempty(PlugDesc.URLzip)
-        errMsg = ['Invalid plugin: ' PlugName ''];
+        errMsg = ['No download URL for ', bst_get('OsType', 0), ': ', PlugName ''];
         return;
     end
       
+    % === PROCESS DEPENDENCIES ===
+    if ~isempty(PlugDesc.RequiredPlugs)
+        disp(['BST> Processing dependencies: ' PlugName ' requires: ' sprintf('%s ', PlugDesc.RequiredPlugs{:})]);
+        for iPlug = 1:length(PlugDesc.RequiredPlugs)
+            [isInstalled, errMsg] = Install(PlugDesc.RequiredPlugs{iPlug}, isAutoUpdate, isInteractive);
+            if ~isInstalled
+                errMsg = ['Error processing dependency: ' PlugDesc.RequiredPlugs{iPlug} 10 errMsg];
+                return;
+            end
+        end
+    end
+    
     % === CHECK PREVIOUS INSTALL ===
     % Check if installed
     OldPlugDesc = GetInstalled(PlugName);
     % If already installed
     if ~isempty(OldPlugDesc)
         % If an update is requested
-        if isAutoUpdate && (~isequal(PlugDesc.URLzip, OldPlugDesc.URLzip) || (~isempty(PlugDesc.Version) && ~isequal(PlugDesc.Version, OldPlugDesc.Version)))
+        if isAutoUpdate && ...
+                ((~isempty(OldPlugDesc.URLzip) && ~isequal(PlugDesc.URLzip, OldPlugDesc.URLzip)) || ...
+                 (~isempty(OldPlugDesc.Version) && ~isequal(PlugDesc.Version, OldPlugDesc.Version)))
             % Compare versions
             if (~isempty(PlugDesc.Version) && ~isequal(PlugDesc.Version, OldPlugDesc.Version))
                 strCompare = ['Installed version: ' OldPlugDesc.Version 10 'Latest version: ' PlugDesc.Version 10];
@@ -414,18 +466,6 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isAutoUpdate, isInteractiv
                 'Download the latest version of ' PlugName '?'], 'Plugin manager');
             if ~isConfirm
                 errMsg = 'Installation aborted by user.';
-                return;
-            end
-        end
-    end
-    
-    % === PROCESS DEPENDENCIES ===
-    if ~isempty(PlugDesc.RequiredPlugs)
-        disp(['BST> Processing dependencies: ' PlugName ' requires: ' sprintf('%s ', PlugDesc.RequiredPlugs{:})]);
-        for iPlug = 1:length(PlugDesc.RequiredPlugs)
-            [isInstalled, errMsg] = Install(PlugDesc.RequiredPlugs{iPlug}, isAutoUpdate);
-            if ~isInstalled
-                errMsg = ['Error processing dependency: ' PlugDesc.RequiredPlugs{iPlug} 10 errMsg];
                 return;
             end
         end
@@ -524,6 +564,10 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive)
     if (nargin < 2) || isempty(isInteractive)
         isInteractive = 0;
     end
+    if ~ischar(PlugName)
+        errMsg = 'Invalid call to Uninstall()';
+        return;
+    end
     
     % === CHECK INSTALLATION ===
     % Get installation
@@ -565,7 +609,7 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive)
     for iPlug = 1:length(AllPlugs)
         if ~isempty(AllPlugs(iPlug).RequiredPlugs) && ismember(PlugDesc.Name, AllPlugs(iPlug).RequiredPlugs)
             disp(['BST> Uninstalling dependent plugin: ' AllPlugs(iPlug).Name]);
-            Uninstall(AllPlugs(iPlug), isInteractive);
+            Uninstall(AllPlugs(iPlug).Name, isInteractive);
         end
     end
     
@@ -580,7 +624,11 @@ function [isOk, errMsg] = Uninstall(PlugName, isInteractive)
     % === UNINSTALL ===
     disp(['BST> Deleting plugin ' PlugName ': ' PlugPath]);
     % Delete plugin folder
-    file_delete(PlugPath, 1, 3);
+    isDeleted = file_delete(PlugPath, 1, 3);
+    if ~isDeleted
+        errMsg = ['Could not delete plugin folder.' 10 'Restart Matlab and try again, or delete it manually.'];
+        return;
+    end
     % Return success
     isOk = 1;
 end
@@ -671,15 +719,15 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     % Unload incompatible plugins
     if ~isempty(PlugDesc.UnloadPlugs)
         for iPlug = 1:length(PlugDesc.UnloadPlugs)
-            disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlug{iPlug}]);
-            Unload(PlugDesc.UnloadPlug{iPlug});
+            disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
+            Unload(PlugDesc.UnloadPlugs{iPlug});
         end
     end
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:length(PlugDesc.RequiredPlugs)
             disp(['BST> Loading required plugin: ' PlugDesc.RequiredPlugs{iPlug}]);
-            [isOk, errMsg] = Load(PlugDesc.RequiredPlugs{iPlug}, isAutoUpdate);
+            [isOk, errMsg] = Load(PlugDesc.RequiredPlugs{iPlug});
             if ~isOk
                 errMsg = ['Error processing dependencies: ', PlugDesc.Name, 10, errMsg];
                 return;
@@ -711,6 +759,13 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     end
     % Load readme+logo files
     PlugDesc = GetReadMe(PlugDesc);
+    % Call loaded function
+    if ~isempty(PlugDesc.LoadedFcn)
+        if ischar(PlugDesc.LoadedFcn)
+            disp(['BST> Executing loaded callback: ' PlugDesc.LoadedFcn]);
+            eval(PlugDesc.LoadedFcn);
+        end
+    end
     % Return success
     PlugDesc.isLoaded = 1;
     isOk = 1;

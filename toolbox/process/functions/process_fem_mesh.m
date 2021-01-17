@@ -7,8 +7,6 @@ function varargout = process_fem_mesh( varargin )
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
-%                 errMsg = process_fem_mesh('InstallIso2mesh', isInteractive)
-%                 errMsg = process_fem_mesh('InstallBrain2mesh', isInteractive)
 %                 errMsg = process_fem_mesh('InstallRoast', isInteractive)
 
 % @=============================================================================
@@ -29,7 +27,7 @@ function varargout = process_fem_mesh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Takfarinas Medani, 2019-2020
+% Authors: Francois Tadel, Takfarinas Medani, 2019-2021
 
 eval(macro_method);
 end
@@ -332,12 +330,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     switch lower(OPTIONS.Method)
         % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
         case 'iso2mesh'
-            % Install iso2mesh if needed
-            if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                errMsg = InstallIso2mesh(isInteractive);
-                if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                    return;
-                end
+            % Install/load iso2mesh plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1, isInteractive);
+            if ~isInstalled
+                error(errMsg);
             end
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
@@ -462,12 +458,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = 'SPM12 must be in the Matlab path for using this feature.';
                 return;
             end
-            % Install brain2mesh if needed
-            if ~exist('brain2mesh', 'file')
-                errMsg = InstallBrain2mesh(isInteractive);
-                if ~isempty(errMsg) || ~exist('brain2mesh', 'file')
-                    return;
-                end
+            % Install/load brain2mesh plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'brain2mesh', 1, isInteractive);
+            if ~isInstalled
+                return;
             end
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
@@ -1078,206 +1072,6 @@ function errMsg = InstallRoast(isInteractive)
         % If the executable is still not accessible
     else
         errMsg = ['ROAST could not be installed in: ' roastDir];
-    end
-end
-
-
-%% ===== INSTALL ISO2MESH =====
-function errMsg = InstallIso2mesh(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Check if already available in path
-    if exist('iso2meshver', 'file') && isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-        disp([10, 'Iso2mesh path: ', bst_fileparts(which('iso2meshver')), 10]);
-        return;
-    end
-
-    % Get default url
-    osType = bst_get('OsType', 0);
-    switch (osType)
-        case 'linux64',  url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-linux64.zip';
-        case 'mac32',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx32.zip';
-        case 'mac64',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx64.zip';
-        case 'win32',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
-        case 'win64',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
-        otherwise,       error(['Iso2mesh software does not exist for your operating system (' osType ').']);
-    end
-
-    % Local folder where to install iso2mesh
-    isoDir = bst_fullfile(bst_get('BrainstormUserDir'), 'iso2mesh', osType);
-    exePath = bst_fullfile(isoDir, 'iso2mesh', 'iso2meshver.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(isoDir)
-        isoDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'iso2mesh');
-        if isdir(isoDirMaster)
-            isoDir = isoDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(isoDir, 'url');
-    % Read the previous download url information
-    if isdir(isoDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If executable doesn't exist or is outdated: download
-    if ~isdir(isoDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(isoDir)
-            file_delete(isoDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(isoDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 isoDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['Iso2mesh is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of Iso2mesh?'], 'Iso2mesh');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(isoDir, 'iso2mesh.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download Iso2mesh');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download Iso2mesh automatically:' 10 errMsg];
-            if ~exist('isdeployed', 'builtin') || ~isdeployed
-                errMsg = [errMsg 10 10 ...
-                    'Alternative download solution:' 10 ...
-                    '1) Copy the URL below from the Matlab command window: ' 10 ...
-                    '     ' url 10 ...
-                    '2) Paste it in a web browser' 10 ...
-                    '3) Save the file and unzip it' 10 ...
-                    '4) Add the folder "iso2mesh" to your Matlab path.'];
-            end
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing Iso2mesh...');
-        % Unzip file
-        cd(isoDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add to path
-    if ~exist('iso2meshver', 'file') && file_exist(exePath)
-        addpath(bst_fileparts(exePath));
-        disp([10, 'Iso2mesh path: ', bst_fileparts(exePath), 10]);
-        % Set iso2mesh temp folder
-        assignin('base', 'ISO2MESH_TEMP', bst_get('BrainstormTmpDir'));
-    else
-        errMsg = ['Iso2mesh could not be installed in: ' isoDir];
-    end
-end
-
-
-%% ===== INSTALL BRAIN2MESH =====
-function errMsg = InstallBrain2mesh(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Check if already available in path
-    if exist('brain2mesh', 'file')
-        disp([10, 'Brain2Mesh path: ', bst_fileparts(which('brain2mesh')), 10]);
-        return;
-    end
-    % Download url
-    url = 'http://neuroimage.usc.edu/bst/getupdate.php?d=Brain2Mesh_alpha2.zip';
-    % Local folder where to install iso2mesh
-    installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'brain2mesh');
-    exePath = bst_fullfile(installDir, 'brain2mesh', 'brain2mesh.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(installDir)
-        installDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'brain2mesh');
-        if isdir(installDirMaster)
-            installDir = installDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(installDir, 'url');
-    % Read the previous download url information
-    if isdir(installDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If executable doesn't exist or is outdated: download
-    if ~isdir(installDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(installDir)
-            file_delete(installDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(installDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 installDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['Brain2Mesh is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of Brain2Mesh?'], 'Brain2Mesh');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(installDir, 'brain2mesh.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download Brain2Mesh');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download Brain2Mesh automatically:' 10 errMsg];
-            if ~exist('isdeployed', 'builtin') || ~isdeployed
-                errMsg = [errMsg 10 10 ...
-                    'Alternative download solution:' 10 ...
-                    '1) Copy the URL below from the Matlab command window: ' 10 ...
-                    '     ' url 10 ...
-                    '2) Paste it in a web browser' 10 ...
-                    '3) Save the file and unzip it' 10 ...
-                    '4) Add the folder "brain2mesh" to your Matlab path.'];
-            end
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing Brain2Mesh...');
-        % Unzip file
-        cd(installDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add to path
-    if ~exist('brain2mesh', 'file') && isdir(bst_fullfile(bst_fileparts(which('brain2mesh')), 'doc'))
-        addpath(bst_fileparts(exePath));
-        disp([10, 'Brain2Mesh path: ', bst_fileparts(exePath), 10]);
-    else
-        errMsg = ['Brain2Mesh could not be installed in: ' installDir];
     end
 end
 
