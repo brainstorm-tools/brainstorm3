@@ -82,6 +82,8 @@ for iChan = 1:nChannels
     if ~isempty(src_pos) && ~isempty(det_pos)
         ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
         ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
+        ChannelMat.Channel(iChan).Orient  = [];
+        ChannelMat.Channel(iChan).Comment = [];
     end
 end
 
