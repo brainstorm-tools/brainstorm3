@@ -67,10 +67,18 @@ if sSubject.UseDefaultAnat && (iSubject ~= 0)
 else
     % Create list of anat files (put the default at the top)
     iAnatList = 1:length(sSubject.Anatomy);
-    iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,sSubject.iAnatomy)];
+    iAtlas = find(~cellfun(@(c)(isempty(strfind(char(c), '_volatlas')) && isempty(strfind(char(c), '_tissues'))), {sSubject.Anatomy.FileName}));
+    if (length(sSubject.Anatomy) > 1)
+        iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,[iAtlas,sSubject.iAnatomy]), setdiff(iAtlas,sSubject.iAnatomy)];
+    end
     % Create and add anatomy nodes
     for iAnatomy = iAnatList
-        [nodeCreated, nodeAnatomy] = CreateNode('anatomy', ...
+        if ismember(iAnatomy, iAtlas)
+            nodeType = 'volatlas';
+        else
+            nodeType = 'anatomy';
+        end
+        [nodeCreated, nodeAnatomy] = CreateNode(nodeType, ...
             char(sSubject.Anatomy(iAnatomy).Comment), ...
             char(sSubject.Anatomy(iAnatomy).FileName), ...
             iAnatomy, iSubject, iSearch);

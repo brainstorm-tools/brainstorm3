@@ -26,9 +26,9 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 %% ===== READ HEADER =====
 % Get file type
 [fPath, fBase, fExt]=fileparts(DataFile);
-if (strcmpi(fExt,'.smr') == 1)
+if strcmpi(fExt,'.smr') || strcmpi(fExt,'.smrx')
     byteorder = 'l';  % Spike2 for Windows source file: little-endian
-elseif strcmpi(fExt,'.son')==1
+elseif strcmpi(fExt,'.son')
     byteorder = 'b';  % Spike2 for Mac file: Big-endian
 else
     error('Not a Spike2 file.');

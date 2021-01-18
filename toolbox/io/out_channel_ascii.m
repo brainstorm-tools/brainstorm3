@@ -16,6 +16,7 @@ function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isH
 %     - isHeader    : Writes header (number of EEG points)
 %     - Factor      : Factor to convert the positions values in meters.
 %     - Transf      : 4x4 transformation matrix to apply to the 3D positions before saving
+%                     or entire MRI structure for conversion to MNI space
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -35,7 +36,7 @@ function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isH
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2020
 
 
 %% ===== PARSE INPUTS =====
@@ -78,9 +79,15 @@ end
 
 % Apply transformation
 if ~isempty(Transf)
-    R = Transf(1:3,1:3);
-    T = Transf(1:3,4);
-    Loc = R * Loc + T * ones(1, size(Loc,2));
+    % MNI coordinates: the entire MRI is passed in input
+    if isstruct(Transf)
+        Loc = cs_convert(Transf, 'scs', 'mni', Loc')';
+    % World coordinates
+    else
+        R = Transf(1:3,1:3);
+        T = Transf(1:3,4);
+        Loc = R * Loc + T * ones(1, size(Loc,2));
+    end
 end
 % Apply factor
 Loc = Loc ./ Factor;
@@ -101,12 +108,12 @@ for i = 1:nLoc
     for iF = 1:length(Format)
         % Entry types
         switch lower(Format{iF})
-            case 'x',       str = sprintf('%f', Loc(1,i));
-            case '-x',      str = sprintf('%f', -Loc(1,i));
-            case 'y',       str = sprintf('%f', Loc(2,i));
-            case '-y',      str = sprintf('%f', -Loc(2,i));
-            case 'z',       str = sprintf('%f', Loc(3,i));
-            case '-z',      str = sprintf('%f', -Loc(3,i));
+            case 'x',       str = sprintf('%1.4f', Loc(1,i));
+            case '-x',      str = sprintf('%1.4f', -Loc(1,i));
+            case 'y',       str = sprintf('%1.4f', Loc(2,i));
+            case '-y',      str = sprintf('%1.4f', -Loc(2,i));
+            case 'z',       str = sprintf('%1.4f', Loc(3,i));
+            case '-z',      str = sprintf('%1.4f', -Loc(3,i));
             case 'indice',  str = sprintf('%d', i);
             case 'name',    str = Label{i};
             otherwise,      str = ' ';

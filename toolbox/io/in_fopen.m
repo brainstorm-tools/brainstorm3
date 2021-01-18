@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(DataFile
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2021
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -85,6 +85,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_itab(DataFile);
     case 'MEGSCAN-HDF5'
         [sFile, ChannelMat] = in_fopen_megscan(DataFile);
+    case 'EEG-ADICHT'
+        [sFile, ChannelMat] = in_fopen_adicht(DataFile, ImportOptions.DisplayMessages);
     case 'EEG-ANT-CNT'
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
     case 'EEG-ANT-MSR'
@@ -112,7 +114,7 @@ switch (FileFormat)
     case 'EEG-MANSCAN'
         [sFile, ChannelMat] = in_fopen_manscan(DataFile);
     case 'EEG-EGI-MFF'
-        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions);
+        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, 0);
     case 'EEG-MICROMED'
         [sFile, ChannelMat] = in_fopen_micromed(DataFile);
     case 'EEG-NEURONE'
@@ -131,8 +133,12 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_nicolet(DataFile);
     case 'EEG-NK'
         [sFile, ChannelMat] = in_fopen_nk(DataFile);
+    case 'EEG-OEBIN'
+        [sFile, ChannelMat] = in_fopen_oebin(DataFile);
     case 'EEG-SMR'
         [sFile, ChannelMat] = in_fopen_smr(DataFile);
+    case 'EEG-SMRX'
+        [sFile, ChannelMat] = in_fopen_smrx(DataFile);
     case 'EYELINK'
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
@@ -148,7 +154,7 @@ switch (FileFormat)
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
     case {'NWB', 'NWB-CONTINUOUS'}
-        [sFile, ChannelMat] = in_fopen_nwb(DataFile);
+        [sFile, ChannelMat] = in_fopen_nwb(DataFile, ImportOptions);
         
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
@@ -179,6 +185,8 @@ switch (FileFormat)
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'
         DataMat = in_data_neuroscan_dat(DataFile);
+    case 'EEG-TVB'
+        [DataMat, ChannelMat] = in_data_tvb(DataFile);
     case 'FT-TIMELOCK'
         [DataMat, ChannelMat] = in_data_fieldtrip(DataFile);
         % Check that time is linear

@@ -1,8 +1,8 @@
-function [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile, Modality, FigureOption)
+function [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile, Modality, FigureOption, ShowScouts)
 % VIEW_SURFACE_DATA: Display a surface with overlaid data (recordings, sources, stats...).
 %
-% USAGE:  [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile=[], Modality=[], 'NewFigure')
-%         [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile=[], Modality=[], hFig)
+% USAGE:  [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile=[], Modality=[], 'NewFigure', ShowScouts=1)
+%         [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile=[], Modality=[], hFig, ShowScouts=1)
 %         [hFig, iDS, iFig] = view_surface_data(         [], OverlayFile)
 %
 % INPUT: 
@@ -11,6 +11,7 @@ function [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile, Modalit
 %                      If set to [], in case of source files, the surface to be used is detected automatically
 %     - Modality     : {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG', 'NIRS', 'Other'}
 %     - 'NewFigure'  : Force new figure creation (do not re-use a previously created figure)
+%     - ShowScouts   : Display scout if not zero
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -36,11 +37,15 @@ function [hFig, iDS, iFig] = view_surface_data(SurfaceFile, OverlayFile, Modalit
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2020
 
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+% Show scouts
+if (nargin < 5) || isempty(ShowScouts)
+    ShowScouts = 1;
+end
 % FigureOption
 if (nargin >= 4) && isequal(FigureOption, 'NewFigure')
     NewFigure = 1;
@@ -320,7 +325,7 @@ if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'})
     panel_scout('SetCurrentAtlas', 1);
 end
 % If there are some loaded scouts available for this figure
-if isResults || isTimefreq
+if ShowScouts && (isResults || isTimefreq)
     % Plot scouts
     if (iTess > 1)
         panel_scout('ReloadScouts', hFig);

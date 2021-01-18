@@ -238,6 +238,10 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
 
     % Get options
     FreqList = sProcess.options.freqlist.Value{1};
+    if isempty(FreqList)
+        disp('BST> No frequencies selected.');
+        return;
+    end
     % Method 
     if (sProcess.options.useold.Value)
         Method = 'fixed-width' ; 

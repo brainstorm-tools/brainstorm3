@@ -1152,6 +1152,14 @@ function DeleteMontage(MontageName)
     global GlobalData;
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
+    if isempty(sMontage)
+        disp(['BST> Error: Montage "' MontageName '" was not found.']);
+        return;
+    elseif (length(sMontage) >= 2)
+        disp(['BST> Error: Mulitple montages "' MontageName '" were found. Deleting only the first one.']);
+        sMontage = sMontage(1);
+        iMontage = iMontage(1);
+    end
     % If this is a non-editable montage: error
     if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'})
         return;
@@ -1188,10 +1196,12 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
         % Get channels displayed in this figure
         iFigChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
         FigChannels = {GlobalData.DataSet(iDS).Channel(iFigChannels).Name};
+        AllChannels = {GlobalData.DataSet(iDS).Channel.Name};
         FigId = GlobalData.DataSet(iDS).Figure(iFig).Id;
         isStat = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat');
         % Remove all the spaces
         FigChannels = cellfun(@(c)c(c~=' '), FigChannels, 'UniformOutput', 0);
+        AllChannels = cellfun(@(c)c(c~=' '), AllChannels, 'UniformOutput', 0);
         % Get the predefined montages that match this list of channels
         iMontage = [];
         for i = 1:length(GlobalData.ChannelMontages.Montages)
@@ -1248,7 +1258,7 @@ function [sMontage, iMontage] = GetMontagesForFigure(hFig)
             % Skip montages that have no common channels with the current figure (remove all the white spaces in the channel names)
             curSelChannels = GlobalData.ChannelMontages.Montages(i).ChanNames;
             curSelChannels = cellfun(@(c)c(c~=' '), curSelChannels, 'UniformOutput', 0);
-            if ~isBadMontage && ~isempty(curSelChannels) && (length(intersect(curSelChannels, FigChannels)) < 0.3 * length(curSelChannels))    % We need at least 30% of the montage channels
+            if ~isBadMontage && ~isempty(curSelChannels) && (length(intersect(curSelChannels, AllChannels)) < 0.3 * length(curSelChannels))    % We need at least 30% of the montage channels
                 continue;
             end
             % Remove the re-referencing montages when the reference is not available
@@ -2342,8 +2352,12 @@ end
 %% ===== ADD AUTO MONTAGES: PROJECTORS =====
 % USAGE:  panel_montage('AddAutoMontagesProj', ChannelMat)
 %         panel_montage('AddAutoMontagesProj')              % Loads montage for currently selected file
-function AddAutoMontagesProj(ChannelMat)
+function AddAutoMontagesProj(ChannelMat, isInteractive)
     global GlobalData;
+    % Non-interactive mode by default
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
     % Get current channels
     if (nargin < 1) || isempty(ChannelMat)
         iDS = panel_record('GetCurrentDataset');
@@ -2353,6 +2367,7 @@ function AddAutoMontagesProj(ChannelMat)
         ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
     end
     % Loop on all the projectors available
+    nNewMontages = 0;
     for iProj = 1:length(ChannelMat.Projector)
         % Get selected channels
         sCat = ChannelMat.Projector(iProj);
@@ -2397,6 +2412,16 @@ function AddAutoMontagesProj(ChannelMat)
         sMontage.Matrix    = W;
         % Add montage: orig
         panel_montage('SetMontage', sMontage.Name, sMontage);
+        nNewMontages = nNewMontages + 1;
+    end
+    % Display report
+    if isInteractive
+        if (nNewMontages > 0)
+            strMsg = sprintf('%d ICA/SSP projectors now available as montages.', nNewMontages);
+        else
+            strMsg = 'No ICA/SSP projectors found for these recordings.';
+        end
+        java_dialog('msgbox', strMsg, 'Load projectors as montages.');
     end
 end
 

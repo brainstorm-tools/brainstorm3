@@ -758,7 +758,7 @@ function UpdateChannelFlag(DataFile, ChannelFlag, varargin)
             % Get figure handles
             Figure = GlobalData.DataSet(iDS).Figure(iFig);
             % Process only the figures that involve the channel selection
-            if ~ismember(Figure.Id.Type, {'DataTimeSeries', 'Topography', '3DViz'})
+            if ~ismember(Figure.Id.Type, {'DataTimeSeries', 'Topography', '3DViz', 'Spectrum'})
                 continue;
             end
             % Update sensors selected in the figure

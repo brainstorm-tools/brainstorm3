@@ -1,7 +1,7 @@
-function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubject, SurfaceFiles, FileFormat, isApplyMriOrient, OffsetMri)
+function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubject, SurfaceFiles, FileFormat, isApplyMriOrient, OffsetMri, SelLabels, Comment)
 % IMPORT_SURFACES: Import a set of surfaces in a Subject of Brainstorm database.
 % 
-% USAGE: iNewSurfaces = import_surfaces(iSubject, SurfaceFiles, FileFormat, offset=[])
+% USAGE: iNewSurfaces = import_surfaces(iSubject, SurfaceFiles, FileFormat, offset=[], SelLabels=[all], Comment=[])
 %        iNewSurfaces = import_surfaces(iSubject)   : Ask user the files to import
 %
 % INPUT:
@@ -13,6 +13,8 @@ function [iNewSurfaces, OutputSurfacesFiles, nVertices] = import_surfaces(iSubje
 %                     Please see in_tess.m to get the list of supported file formats
 %    - isApplyMriOrient: {0,1}
 %    - OffsetMri    : (x,y,z) values to add to the coordinates of the surface before converting it to SCS
+%    - SelLabels    : Cell-array of labels, when importing atlases
+%    - Comment      : Comment of the output file
 %
 % OUTPUT:
 %    - iNewSurfaces : Indices of the surfaces added in database
@@ -58,6 +60,12 @@ if (nargin < 4) || isempty(isApplyMriOrient)
 end
 if (nargin < 5) || isempty(OffsetMri)
     OffsetMri = [];
+end
+if (nargin < 6) || isempty(SelLabels)
+    SelLabels = [];
+end
+if (nargin < 7) || isempty(Comment)
+    Comment = [];
 end
 iNewSurfaces = [];
 OutputSurfacesFiles = {};
@@ -117,7 +125,8 @@ else
     sMri = [];
 end
 % If user transformation on MRI: ask to apply transformations on surfaces
-if isempty(isApplyMriOrient) && ~isempty(sMri) && isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
+isMni = isequal(FileFormat, 'MRI-MASK-MNI');
+if ~isMni && isempty(isApplyMriOrient) && ~isempty(sMri) && isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
     isApplyMriOrient = java_dialog('confirm', ['MRI orientation was non-standard and had to be reoriented.' 10 10 ...
                                    'Apply the same transformation to the surfaces ?' 10 ...
                                    'Default answer is: NO', 10 10], 'Import surfaces');
@@ -134,7 +143,7 @@ for iFile = 1:length(SurfaceFiles)
     % ===== LOAD SURFACE FILE =====
     bst_progress('start', 'Importing tesselation', ['Loading file "' TessFile '"...']);
     % Load surfaces(s)
-    Tess = in_tess(TessFile, FileFormat, sMri, OffsetMri);
+    Tess = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels);
     if isempty(Tess)
         bst_progress('stop');
         return
@@ -168,15 +177,14 @@ for iFile = 1:length(SurfaceFiles)
     else
         [Tess(:).Atlas] = deal(db_template('Atlas'));
         NewTess = tess_concatenate(Tess);
-        if strcmpi(importedBaseName, 'aseg')
-            NewTess.Comment = 'aseg atlas';
-        elseif strfind(importedBaseName, 'svreg.label.nii')
-            % subcortical labels for BrainSuite
-            NewTess.Comment = 'subcortical labels';            
-        else
-            NewTess.Comment = importedBaseName;
-        end
         NewTess.iAtlas  = find(strcmpi({NewTess.Atlas.Name}, 'Structures'));
+        NewTess.Comment = importedBaseName;
+    end
+    % Comment
+    if ~isempty(Comment)
+        NewTess.Comment = Comment;
+    elseif isempty(NewTess.Comment)
+        NewTess.Comment = importedBaseName;
     end
 
     % ===== APPLY MRI ORIENTATION =====

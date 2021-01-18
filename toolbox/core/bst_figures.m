@@ -212,7 +212,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         GlobalData.DataSet(iDS).Figure(iFig).Id      = FigureId;
         GlobalData.DataSet(iDS).Figure(iFig).hFigure = hFig;
         GlobalData.DataSet(iDS).Figure(iFig).Handles = FigHandles;
-    end   
+    end
     
     % Find selected channels
     [selChan,errMsg] = GetChannelsForFigure(iDS, iFig);
@@ -452,6 +452,11 @@ function UpdateFigureName(hFig)
                 else
                     figureName = [figureNameModality  'MriViewer: ' figureName];
                 end
+            end
+            % Add atlas name
+            AnatAtlas = getappdata(hFig, 'AnatAtlas');
+            if ~isempty(AnatAtlas) && ~strcmpi(AnatAtlas, 'none')
+                figureName = [figureName ' (' str_remove_parenth(AnatAtlas) ')'];
             end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];
@@ -1920,7 +1925,7 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                 case 'Timefreq'
                     figure_timefreq('UpdateFigurePlot', Figure.hFigure, 1);
                 case 'Spectrum'
-                    figure_spectrum('UpdateFigurePlot', Figure.hFigure);
+                    figure_spectrum('UpdateFigurePlot', Figure.hFigure, 1);
                     UpdateFigureName(Figure.hFigure);
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);

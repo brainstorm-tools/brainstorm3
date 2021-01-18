@@ -63,7 +63,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     %                  'Visible',  'off', ...
     %                  'BusyAction',    'queue', ...
     %                  'Interruptible', 'off');
-              
+
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
 	% Create rendering panel
     [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
     % Resize callback
@@ -2371,7 +2375,7 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte','henv'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')

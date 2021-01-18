@@ -55,6 +55,8 @@ function strA = FormatValue(A, isCode, nIndent)
         if (size(A,1) > 1)
             A = reshape(A',1,[]);
         end
+        % Escape single quotes
+        A = strrep(A, '''', '''''');
         % If there are breaks: full representation with "['...' 10 '...']"
         if any(A == 10)
             strA = ['[''', strrep(A, char(10), ''' 10 '''), ''']'];
@@ -70,7 +72,11 @@ function strA = FormatValue(A, isCode, nIndent)
         strA = FormatCellArray(A, isCode, nIndent);
     % STRUCTURES
     elseif isstruct(A)
-        strA = DisplayStruct(A, isCode, nIndent + 1);
+        if ~isempty(fieldnames(A))
+            strA = DisplayStruct(A, isCode, nIndent + 1);
+        else
+            strA = 'struct()';
+        end
     elseif isCode
         strA = [];
     else

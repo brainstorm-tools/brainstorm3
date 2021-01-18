@@ -70,9 +70,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jTreeProtocols.setTransferHandler(jTreeDragHandler);
     
     % Add tree callbacks
-    java_setcb(jTreeProtocols, 'MouseClickedCallback',   @protocolTreeClicked_Callback, ...
-                               'KeyPressedCallback',     @protocolTreeKeyPressed_Callback, ...
-                               'TreeWillExpandCallback', @protocolTreeExpand_Callback);
+    java_setcb(jTreeProtocols, 'MouseClickedCallback',   @(h,ev)bst_call(@protocolTreeClicked_Callback, h, ev), ...
+                               'KeyPressedCallback',     @(h,ev)bst_call(@protocolTreeKeyPressed_Callback, h, ev), ...
+                               'TreeWillExpandCallback', @(h,ev)bst_call(@protocolTreeExpand_Callback, h, ev));
     java_setcb(jTreeProtocols.getCellEditor(), 'EditingStoppedCallback', @protocolTreeEditingStopped_Callback);
     java_setcb(jTreeSelModel, 'ValueChangedCallback', @protocolTreeSelectionChanged_Callback);
     java_setcb(jTreeProtocols.getModel(), 'TreeNodesChangedCallback', @protocolTreeDrop_Callback);
@@ -976,7 +976,7 @@ function isCopied = CopyNode( bstNodes, isCut )
         nodeType{i} = lower(char(bstNodes(i).getType()));
     end
     % Cannot copy multiple unique nodes
-    if ismember(nodeType{1}, {'channel', 'anatomy', 'noisecov', 'ndatacov'}) && (length(bstNodes) > 1)
+    if ismember(nodeType{1}, {'channel', 'anatomy', 'volatlas', 'noisecov', 'ndatacov'}) && (length(bstNodes) > 1)
         bst_error(['Cannot copy multiple ' nodeType{1} ' nodes.'], 'Clipboard', 0);
         return;
     % Can only copy data files
@@ -1024,7 +1024,7 @@ function destFile = PasteNode( targetNode )
         return
     end
     firstSrcType = lower(char(srcNodes(1).getType()));
-    isAnatomy = ismember(firstSrcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
+    isAnatomy = ismember(firstSrcType, {'anatomy','volatlas','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get all target studies/subjects
     iTarget = [];
     for i = 1:length(targetNode)
@@ -1078,7 +1078,7 @@ function destFile = PasteNode( targetNode )
         srcType = lower(char(srcNodes(i).getType()));
         iSrcStudy = srcNodes(i).getStudyIndex();
         % Cannot copy (channel/noisecov/MRI) or move to the same folder
-        if (isCut || ismember(srcType, {'channel', 'noisecov', 'ndatacov', 'anatomy'})) && (iSrcStudy == iTarget)
+        if (isCut || ismember(srcType, {'channel', 'noisecov', 'ndatacov', 'anatomy', 'volatlas'})) && (iSrcStudy == iTarget)
             bst_error('Source and destination folders are the same.', 'Clipboard', 0);
             destFile = {};
             return;
@@ -1124,7 +1124,7 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
         sStudyTarget = bst_get('Study', iTarget);
         [sSubjectTargetRaw, iSubjectTargetRaw] = bst_get('Subject', sStudyTarget.BrainStormSubject, 1);
     end
-    isAnatomy = ismember(srcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
+    isAnatomy = ismember(srcType, {'anatomy','volatlas','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get source subject
     if ~isAnatomy
         sStudySrc   = bst_get('Study', iSrcStudy);

@@ -21,7 +21,7 @@ function [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptio
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2021
         
 
 % Parse inputs
@@ -184,6 +184,8 @@ if hdr.interrupted
              'Brainstorm will read this file as a continuous file ("EDF+C"), the timing of the samples after the first discontinuity will be wrong.' 10 ...
              'This may not cause any major problem unless there are time markers in the file, they might be inaccurate in all the segments >= 2.']);
     end
+else
+    hdr.fixinterrupted = 0;
 end
 
 
@@ -215,28 +217,32 @@ sFile.acq_date = str_date(hdr.startdate);
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
 for i = 1:hdr.nsignal
-    % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
-    if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
-        hdr.signal(i).label(end) = [];
+    if ~isempty(hdr.signal(i).label)    
+        % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
         if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
             hdr.signal(i).label(end) = [];
             if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
                 hdr.signal(i).label(end) = [];
+                if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
+                    hdr.signal(i).label(end) = [];
+                end
             end
         end
-    end
-    % Remove extra spaces
-    signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
-    % Find space chars (label format "Type Name")
-    iSpace = find(signalLabel == ' ');
-    % Only if there is one space only
-    if (length(iSpace) == 1) && (iSpace >= 3)
-        SplitName{i} = signalLabel(iSpace+1:end);
-        SplitType{i} = signalLabel(1:iSpace-1);
-    % Accept also 2 spaces
-    elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
-        SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
-        SplitType{i} = signalLabel(1:iSpace(1)-1);
+        % Remove extra spaces
+        signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
+        % Find space chars (label format "Type Name")
+        iSpace = find(signalLabel == ' ');
+        % Only if there is one space only
+        if (length(iSpace) == 1) && (iSpace >= 3)
+            SplitName{i} = signalLabel(iSpace+1:end);
+            SplitType{i} = signalLabel(1:iSpace-1);
+        % Accept also 2 spaces
+        elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+            SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
+            SplitType{i} = signalLabel(1:iSpace(1)-1);
+        end
+    else
+        hdr.signal(i).label = sprintf('E%d', i);
     end
 end
 % Remove the classification if it makes some names non unique
@@ -355,6 +361,10 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
     % Read EDF annotations
     if strcmpi(sFile.format, 'EEG-EDF')
         evtList = {};
+        % By default: the file starts at 0s (definitions useful in case the first records are missing)
+        t0_file = 0;
+        prev_rec = 0;
+        prev_irec = 1;
         % In EDF+, the first annotation channel has epoch time stamps (EDF
         % calls epochs records).  So read all annotation channels per epoch.
         for irec = 1:hdr.nrec
@@ -363,80 +373,92 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 % Sample indices for the current epoch (=record)
                 SampleBounds = [irec-1,irec] * sFile.header.signal(iEvtChans(ichan)).nsamples - [0,1];
                 % Read record
-                F = char(in_fread(sFile, ChannelMat, 1, SampleBounds, iEvtChans(ichan), ImportOptions));
-                % Split after removing the 0 values
-                Fsplit = str_split(F(F~=0), 20);
-                if isempty(Fsplit)
-                    continue;
-                end
-                if ichan == 1
-                    % Get record time stamp
-                    t0_rec = str2double(char(Fsplit{1}));
-                    if (irec == 1)
-                        t0_file = t0_rec;
-                    % Find discontinuities
-                    elseif abs(t0_rec - prev_rec - hdr.reclen) > 1e-8
-                        % Brainstorm fills partial/interrupted records with zeros
-                        bstTime = prev_rec + hdr.reclen;
-                        timeDiff = bstTime - t0_rec;
-                        % If we want to fix timing, apply skip to initial timestamp
-                        if hdr.fixinterrupted
-                            t0_file = t0_file - timeDiff;
+                F = in_fread(sFile, ChannelMat, 1, SampleBounds, iEvtChans(ichan), ImportOptions);
+                % Find all the TALs (Time-stamped Annotations Lists): separated with [20][0]
+                % Possible configurations:
+                %    Onset[21]Duration[20]Annot1[20]Annot2[20]..AnnotN[20][0]
+                %    Onset[20]Annot1[20]Annot2[20]..AnnotN[20][0]
+                %    Onset[20]Annot1[20][0]
+                %    Onset[20][20][0]                       : First TAL of a record, with an empty annotation, indicating the offset from the beginning of the file
+                %    Onset[20][20]Annot2[20]..AnnotN[20][0] : First TAL + extra annotations
+                iSeparator = [-1, find((F(1:end-1) == 20) & (F(2:end) == 0))];
+                % Loop on all the TALs
+                for iAnnot = 1:length(iSeparator)-1
+                    % Get annotation
+                    strAnnot = char(F(iSeparator(iAnnot)+2:iSeparator(iAnnot+1)-1));
+                    % Split in blocks with [20]
+                    splitAnnot = str_split(strAnnot, 20, 0);
+                    % The first TAL in a record should be indicating the timing of the first sample of the record (empty annotation)
+                    if (iAnnot == 1) && ((length(splitAnnot) == 1) || isempty(splitAnnot{2})) && ~any(splitAnnot{1} == 21)
+                        % Ignore if this is not the first channel
+                        if (ichan > 1)
+                            continue;
                         end
-                        % Warn user of discontinuity
-                        if timeDiff > 0
-                            expectMsg = 'blank data';
+                        % Get record time stamp
+                        t0_rec = str2double(splitAnnot{1});
+                        if isempty(t0_rec) || isnan(t0_rec)
+                            continue;
+                        end
+                        if (irec == 1)
+                            t0_file = t0_rec;
+                        % Find discontinuities larger than 1 sample
+                        elseif abs(t0_rec - prev_rec - (irec - prev_irec) * hdr.reclen) > (1 / sFile.prop.sfreq)
+                            % Brainstorm fills partial/interrupted records with zeros
+                            bstTime = prev_rec + hdr.reclen;
+                            timeDiff = bstTime - t0_rec;
+                            % If we want to fix timing, apply skip to initial timestamp
+                            if hdr.fixinterrupted
+                                t0_file = t0_file - timeDiff;
+                            end
+                            % Warn user of discontinuity
+                            if timeDiff > 0
+                                expectMsg = 'blank data';
+                            else
+                                expectMsg = 'skipped data';
+                            end
+                            startTime = min(t0_rec - t0_file - [0, timeDiff]); % before and after t0_file adjustment
+                            endTime  = max(t0_rec - t0_file - [0, timeDiff]);
+                            fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
+                            % Create event for users information
+                            if timeDiff < 0
+                                endTime = startTime; % no extent in this case, there is skipped time.
+                            end
+                            evtList(end+1,:) = {'EDF+D Discontinuity', [startTime; endTime]};
+                        end
+                        prev_rec = t0_rec;
+                        prev_irec = irec;
+                        % If there are extra annotations for this TAL: Create one event for each label in the TAL
+                        for iLabel = 3:length(splitAnnot)
+                            evtList(end+1,:) = {splitAnnot{iLabel}, (t0_rec-t0_file) + [0;0]};
+                        end
+                    % Regular TAL: indicating a marker
+                    else
+                        % Split time in onset/duration
+                        splitTime = str_split(splitAnnot{1}, 21);
+                        % Get time
+                        t = str2double(splitTime{1});
+                        if isempty(t) || isnan(t)
+                            continue;
+                        end
+                        % Get duration
+                        if (length(splitTime) > 1)
+                            duration = str2double(splitTime{2});
+                            % Exclude 1-sample long events
+                            if isempty(duration) || isnan(duration) || (round(duration .* sFile.prop.sfreq) <= 1)
+                                duration = 0;
+                            end
                         else
-                            expectMsg = 'skipped data';
-                        end
-                        startTime = min(t0_rec - t0_file - [0, timeDiff]); % before and after t0_file adjustment
-                        endTime  = max(t0_rec - t0_file - [0, timeDiff]);
-                        fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
-                        % Create event for users information
-                        if timeDiff < 0
-                            endTime = startTime; % no extent in this case, there is skipped time.
-                        end
-                        evtList(end+1,:) = {'EDF+D Discontinuity', [startTime; endTime]};
-                    end
-                    prev_rec = t0_rec;
-                end
-                
-                %% FIXME: There can be multiple text annotations (separated by 20) for a single onset/duration.
-                %% The zero characters should not be removed above as they delimit the TALs (Time-stamped Annotations Lists)
-                % If there is an initial time: 3 values (ex: "+44.00000+44.47200Event1Event2)
-                if (mod(length(Fsplit),2) == 1) && (length(Fsplit) >= 3)
-                    iStart = 2;
-                % If there is no initial time: 2 values (ex: "+44.00000Epoch1)
-                elseif (mod(length(Fsplit),2) == 0)
-                    iStart = 1;
-                else
-                    continue;
-                end
-                % If there is information on this channel
-                for iAnnot = iStart:2:length(Fsplit)
-                    % If there are no 2 values, skip
-                    if (iAnnot == length(Fsplit))
-                        break;
-                    end
-                    % Split time in onset/duration
-                    t_dur = str_split(Fsplit{iAnnot}, 21);
-                    % Get time and label
-                    t = str2double(t_dur{1});
-                    label = Fsplit{iAnnot+1};
-                    if (length(t_dur) > 1)
-                        duration = str2double(t_dur{2});
-                        % Exclude 1-sample long events
-                        if (round(duration .* sFile.prop.sfreq) <= 1)
                             duration = 0;
                         end
-                    else
-                        duration = 0;
+                        % Unnamed event
+                        if (length(splitAnnot) == 1) || isempty(splitAnnot{2})
+                            splitAnnot{2} = 'Unnamed';
+                        end
+                        % Create one event for each label in the TAL
+                        for iLabel = 2:length(splitAnnot)
+                            evtList(end+1,:) = {splitAnnot{iLabel}, (t-t0_file) + [0;duration]};
+                        end
                     end
-                    if isempty(t) || isnan(t) || isempty(label) || (~isempty(duration) && isnan(duration))
-                        continue;
-                    end
-                    % Add to list of read events
-                    evtList(end+1,:) = {label, (t-t0_file) + [0;duration]};
                 end
             end
         end

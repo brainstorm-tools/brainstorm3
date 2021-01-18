@@ -1,10 +1,8 @@
-function TessMat = in_tess_mrimask(MriFile, isMni)
+function TessMat = in_tess_mrimask(MriFile, isMni, SelLabels)
 % IN_TESS_MRIMASK: Import an MRI as a mask or atlas, and tesselate the volumes in it
 %
-% USAGE:  TessMat = in_tess_mrimask(MriFile, isMni=0)
-%         TessMat = in_tess_mrimask(sMri,    isMni=0)
-%
-% 
+% USAGE:  TessMat = in_tess_mrimask(MriFile, isMni=0, SelLabels=[all])
+%         TessMat = in_tess_mrimask(sMri,    isMni=0, SelLabels=[all])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -27,23 +25,24 @@ function TessMat = in_tess_mrimask(MriFile, isMni)
 % Authors: Francois Tadel, 2012-2020
 
 % Parse inputs
+if (nargin < 3) || isempty(SelLabels)
+    SelLabels = [];
+end
 if (nargin < 2) || isempty(isMni)
     isMni = 0;
 end
 
 % Read MRI volume
 if ischar(MriFile)
-    % FreeSurfer ASEG or BrainSuite SVReg label file? For convenience, both
-    % are referred to as isAseg
-    isAseg = (~isempty(strfind(MriFile, 'svreg.label.nii.gz')) || ~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')));
-    isBrainSuite = ~isempty(strfind(MriFile, 'svreg.label.nii.gz'));
+    % Try to get volume labels for this atlas automatically
+    [Labels, AtlasName] = mri_getlabels(MriFile);
     % Read volume
-    isInteractive = ~isAseg;
+    isInteractive = ~isempty(AtlasName) && ~ismember(AtlasName, {'aseg', 'svreg'});
     if isMni
-        sMri = in_mri(MriFile, 'ALL-MNI', isInteractive, 0);
+        sMri = in_mri(MriFile, 'ALL-MNI', 0, 0);
     else
         sMri = in_mri(MriFile, 'ALL', isInteractive, 0);
-        if isBrainSuite
+        if strcmp(AtlasName, 'svreg')
             sMri.Cube = mod(sMri.Cube,1000);
         end
     end
@@ -51,26 +50,11 @@ if ischar(MriFile)
         TessMat = [];
         return;
     end
-    % Try to get volume labels for this atlas
-    if isAseg
-        if (nnz(sMri.Cube == 7) == 0)
-            FsVersion = 3;  % Old FreeSurfer
-        else
-            FsVersion = 5;  % FreeSurfer 5 and 6
-        end
-        if isBrainSuite 
-            FsVersion = 0;  % Set Fs version 0 for BrainSuite
-        end
-        
-        VolumeLabels = panel_scout('GetVolumeLabels', MriFile, FsVersion);
-    else
-        % Other file formats
-        VolumeLabels = panel_scout('GetVolumeLabels', MriFile);
-    end
 else
     sMri = MriFile;
     MriFile = [];
-    VolumeLabels = [];
+    Labels = [];
+    AtlasName = [];
 end
 % Convert to double and keep only the first volume (if multiple)
 sMri.Cube = double(sMri.Cube(:,:,:,1));
@@ -91,97 +75,48 @@ if any(allValues ~= round(allValues))
     allValues = [0,1];
 end
 % Display warning when no MNI transformation available
-if isMni && (~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R))
+if isMni && (~isfield(sMri, 'NCS') || ...
+    ((~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T)) && ... 
+     (~isfield(sMri.NCS, 'iy') || isempty(sMri.NCS.iy))))
     isMni = 0;
     disp('Error: No MNI transformation available in this file.');
 end
-% Default labels for FreeSurfer ASEG.MGZ
-if (length(allValues) > 10) && ~isempty(MriFile) && isAseg
-    switch FsVersion
-        case 5
-            Labels = {...
-                16,  'Brainstem'; ...
-                8,  'Cerebellum L'; ...
-                47,  'Cerebellum R'; ...
-                26,  'Accumbens L'; ...
-                58,  'Accumbens R'; ...
-                18,  'Amygdala L'; ...
-                54,  'Amygdala R'; ...
-                11,  'Caudate L'; ...
-                50,  'Caudate R'; ...
-                17,  'Hippocampus L'; ...
-                53,  'Hippocampus R'; ...
-                13,  'Pallidum L'; ...
-                52,  'Pallidum R'; ...
-                12,  'Putamen L'; ...
-                51,  'Putamen R'; ...
-                9,  'Thalamus L'; ...
-                10,  'Thalamus L'; ...
-                48,  'Thalamus R'; ...
-                49,  'Thalamus R'; ...
-                };
-            % Grouping the cerebellum white+cortex voxels
-            sMri.Cube(sMri.Cube == 7) = 8;
-            sMri.Cube(sMri.Cube == 46) = 47;
-        case 3
-            Labels = {...
-                48,  'Brainstem'; ...
-                24,  'Cerebellum L'; ...
-                141,  'Cerebellum R'; ...
-                51,  'Hippocampus L'; ...
-                159,  'Hippocampus R'; ...
-                39,  'Pallidum L'; ...
-                156,  'Pallidum R'; ...
-                36,  'Putamen L'; ...
-                153,  'Putamen R'; ...
-                30,  'Thalamus L'; ...
-                147,  'Thalamus R'; ...
-                };
-            % Grouping the cerebellum white+cortex voxels
-            sMri.Cube(sMri.Cube == 21) = 24;
-            sMri.Cube(sMri.Cube == 138) = 141;
-        case 0 
-            % This means BrainSuite labels
-            % Remove 4th decimal place which indicates GM or WM            
-            if sum(sMri.Cube(:)==370) == 0
-                % Old BrainSuite labels on/before 2018
-                Labels = {...
-                    800,  'Brainstem'; ...
-                    900,  'Cerebellum'; ...
-                    345,  'Hippocampus L'; ...
-                    344,  'Hippocampus R'; ...
-                    613,  'Caudate L';...
-                    612,  'Caudate R';...
-                    615,  'Putamen L'; ...
-                    614,  'Putamen R'; ...
-                    617,  'Pallidum L'; ...
-                    616,  'Pallidum R'; ...
-                    621,  'Accumbens L';...
-                    620,  'Accumbens R';...
-                    641,  'Thalamus L'; ...
-                    640,  'Thalamus R';...
-                    };
-                
-            else
-                % new BrainSuite Labels                
-                Labels = {...
-                    800,  'Brainstem'; ...
-                    900,  'Cerebellum'; ...
-                    371,  'Hippocampus L'; ...
-                    370,  'Hippocampus R'; ...
-                    641,  'Pallidum L'; ...
-                    640,  'Pallidum R'; ...
-                    631,  'Putamen L'; ...
-                    630,  'Putamen R'; ...
-                    661,  'Thalamus L'; ...
-                    660,  'Thalamus R'; ...
-                    613,  'Caudate L';...
-                    612,  'Caudate R';...
-                    621,  'Accumbens L';...
-                    620,  'Accumbens R';...                    
-                    };
-                
-            end
+
+% If the volume contains labels
+if (length(allValues) > 10) && ~isempty(MriFile) && ~isempty(Labels)
+    % FreeSurfer ASEG
+    if strcmp(AtlasName, 'aseg')
+        % Keep only a subset of labels
+        if ~isempty(SelLabels)
+            Labels = Labels(ismember(Labels(:,2), SelLabels), :);
+        end
+        % Group the cerebellum white+cortex voxels
+        sMri.Cube(sMri.Cube == 7) = 8;
+        sMri.Cube(sMri.Cube == 46) = 47;
+        % Group all the brainstem elements
+        sMri.Cube(sMri.Cube == 170) = 16;
+        sMri.Cube(sMri.Cube == 171) = 16;
+        sMri.Cube(sMri.Cube == 172) = 16;
+        sMri.Cube(sMri.Cube == 173) = 16;
+        sMri.Cube(sMri.Cube == 174) = 16;
+        sMri.Cube(sMri.Cube == 175) = 16;
+        sMri.Cube(sMri.Cube == 177) = 16;
+        sMri.Cube(sMri.Cube == 178) = 16;
+        sMri.Cube(sMri.Cube == 179) = 16;
+        % Update unique values
+        allValues = unique(sMri.Cube);
+        
+    % BrainSuite SVREG
+    elseif strcmp(AtlasName, 'svreg') 
+        % Keep only a subset of labels
+        if ~isempty(SelLabels)
+            Labels = Labels(ismember(Labels(:,2), SelLabels), :);
+        end
+        % Remove 4th digit decimal (indicates GM/WM)
+        isGM = ((sMri.Cube >= 1000) & (sMri.Cube < 2000));
+        isWM = ((sMri.Cube >= 2000) & (sMri.Cube < 3000));
+        sMri.Cube(isGM) = sMri.Cube(isGM) - 1000;
+        sMri.Cube(isWM) = sMri.Cube(isWM) - 2000;
     end
 
     % Keep only the labelled areas
@@ -189,22 +124,13 @@ if (length(allValues) > 10) && ~isempty(MriFile) && isAseg
     Labels = Labels(I,:);
     % Get labelled values in alphabetical order 
     allValues = [Labels{:,1}];
-    
-% Labels available in an external file
-elseif ~isempty(VolumeLabels)
-    % Keep only the labelled areas
-    [allValues, I, J] = intersect([VolumeLabels{:,1}], allValues);
-    Labels = VolumeLabels(I,:);
-    % Get labelled values in alphabetical order 
-    allValues = [Labels{:,1}];
-    
 % No labels available
 else
-    % Skip the first value (background)
-    allValues(1) = [];
     Labels = {};
 end
-
+% Remove zero (background)
+allValues = setdiff(allValues, 0);
+    
 TessMat = repmat(struct('Comment', [], 'Vertices', [], 'Faces', []), [1, 0]);
 % Generate a tesselation for all the others
 for i = 1:length(allValues)
@@ -310,7 +236,6 @@ function [Vertices, Faces] = TesselateMask(sMri, mask, isMni)
         % Convert from voxels to MRI (in meters)
         Vertices = cs_convert(sMri, 'voxel', 'mri', Vertices);
     end
-
     % Remove small objects
     [Vertices, Faces] = tess_remove_small(Vertices, Faces);
     % Compute vertex-vertex connectivity

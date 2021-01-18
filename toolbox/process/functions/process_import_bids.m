@@ -405,7 +405,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             else
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
-                    % Compute MNI transformation
+                    % Compute MNI normalization
                     [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);

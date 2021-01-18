@@ -1,5 +1,7 @@
-function cTsv = in_tsv(TsvFile, ColNames, isWarning)
+function cTsv = in_tsv(TsvFile, ColNames, isWarning, Delimiter)
 % IN_TSV: Reads specific columns in a .tsv file
+%
+% USAGE:  cTsv = in_tsv(TsvFile, ColNames, isWarning=1, Delimiter=[tab])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,9 +21,12 @@ function cTsv = in_tsv(TsvFile, ColNames, isWarning)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018-2019
+% Authors: Francois Tadel, 2018-2020
 
 % Parse inputs
+if (nargin < 4) || isempty(Delimiter)
+    Delimiter = sprintf('\t');
+end
 if (nargin < 3) || isempty(isWarning)
     isWarning = 1;
 end
@@ -35,11 +40,11 @@ if (fid < 0)
 end
     
 % Read header
-tsvHeader = str_split(fgetl(fid), sprintf('\t'));
+tsvHeader = str_split(fgetl(fid), Delimiter);
 tsvFormat = repmat('%s ', 1, length(tsvHeader));
 tsvFormat(end) = [];
 % Read file
-tsvValues = textscan(fid, tsvFormat, 'Delimiter', '\t');
+tsvValues = textscan(fid, tsvFormat, 'Delimiter', Delimiter);
 % Close file
 fclose(fid);
 
@@ -57,7 +62,7 @@ for i = 1:length(ColNames)
     if ~isempty(iCol)
         cTsv(:,i) = tsvValues{iCol};
     elseif isWarning
-        disp(['Error: Column "' ColNames{i} '" not found in file: ' TsvFile]);
+        disp(['Warning: Column "' ColNames{i} '" not found in file: ' TsvFile]);
     end
 end
 

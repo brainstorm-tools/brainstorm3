@@ -20,20 +20,31 @@ function pyObj = bst_mat2py(matArray)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2019
+%          Francois Tadel, 2020
 
+% Get Matlab version
+MatlabVersion = bst_get('MatlabVersion');
+% Empty objects
+if isempty(matArray)
+    pyObj = py.None;
+% Matlab >= 2020b: Can convert everything
+elseif (MatlabVersion >= 909) 
+    pyObj = matArray;
+% Matlab <= 2020a: Must do some manual conversions
+else
+    switch class(matArray)
+        case {'double', 'single', 'logical', 'int8', 'int16', 'int32', 'int64', 'uint8', 'uint16', 'uint32', 'uint64'}
+            % Convert numerical matrices to Numpy arrays
+            shape = int64(size(matArray));
+            pyObj = py.numpy.array(reshape(matArray', 1, []));
+            pyObj = pyObj.reshape(shape);
 
-switch class(matArray)
-    case {'double', 'single', 'logical'}
-        % Convert numerical matrices to Numpy arrays
-        shape = int64(size(matArray));
-        pyObj = py.numpy.array(matArray(:)');
-        pyObj = pyObj.reshape(shape);
-        
-    case 'cell'
-        % Convert cell arrays to Python lists (which support mixed types)
-        pyObj = py.list(matArray(:)');
-        
-    otherwise
-        error(['Unsupported class: ' class(matArray)]);
+        case 'cell'
+            % Convert cell arrays to Python lists (which support mixed types)
+            pyObj = py.list(matArray(:)');
+
+        otherwise
+            error(['Unsupported class: ' class(matArray)]);
+    end
 end
 

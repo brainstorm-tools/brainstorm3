@@ -4,12 +4,12 @@ function [DuneuroExe, errMsg] = duneuro_install(isInteractive)
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-%
+% 
 % Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-%
+% 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -34,6 +34,8 @@ curdir = pwd;
 exeFile = ['bst_duneuro_meeg_', bst_get('OsType')];
 if ispc
     exeFile = [exeFile, '.exe'];
+else
+    exeFile = [exeFile, '.app'];
 end
 % Check if already available in path
 if exist(exeFile, 'file')
@@ -42,25 +44,15 @@ if exist(exeFile, 'file')
 end
 
 % === GET CURRENT ONLINE VERSION ===
-% Reading function: urlread replaced with webread in Matlab 2014b
-if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @urlread;
-else
-    url_read_fcn = @webread;
-end
 % Read online version.txt
-try
-    str = url_read_fcn('https://neuroimage.usc.edu/bst/getversion_duneuro.php');
-catch
-    errMsg = 'Could not get current online version of bst_duneuro.';
-    return;
-end
+str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
 if (length(str) < 6)
+    errMsg = 'Could not get current online version of bst_duneuro.';
     return;
 end
 DuneuroVersion = str(1:6);
 % Get download URL
-url = ['https://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' DuneuroVersion '.zip'];
+url = ['http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' DuneuroVersion '.zip'];
 
 % Local folder where to install the program
 installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'bst_duneuro');

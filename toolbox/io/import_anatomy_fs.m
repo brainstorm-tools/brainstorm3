@@ -1,18 +1,18 @@
-function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
+function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isVolumeAtlas)
 % IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isAseg=1)
+% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isExtraMaps=0, isVolumeAtlas=1)
 %
 % INPUT:
-%    - iSubject     : Indice of the subject where to import the MRI
-%                     If iSubject=0 : import MRI in default subject
-%    - FsDir        : Full filename of the FreeSurfer folder to import
-%    - nVertices    : Number of vertices in the file cortex surface
-%    - isInteractive: If 0, no input or user interaction
-%    - sFid         : Structure with the fiducials coordinates
-%    - isExtraMaps  : If 1, create an extra folder "FreeSurfer" to save some of the
-%                     FreeSurfer cortical maps (thickness, ...)
-%    - isAseg       : If 1, imports the aseg atlas as a set of surfaces
+%    - iSubject      : Indice of the subject where to import the MRI
+%                      If iSubject=0 : import MRI in default subject
+%    - FsDir         : Full filename of the FreeSurfer folder to import
+%    - nVertices     : Number of vertices in the file cortex surface
+%    - isInteractive : If 0, no input or user interaction
+%    - sFid          : Structure with the fiducials coordinates
+%    - isExtraMaps   : If 1, create an extra folder "FreeSurfer" to save some of the
+%                      FreeSurfer cortical maps (thickness, ...)
+%    - isVolumeAtlas : If 1, imports all the volume atlases available
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -34,12 +34,12 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2020
 
 %% ===== PARSE INPUTS =====
-% Import ASEG atlas
-if (nargin < 7) || isempty(isAseg)
-    isAseg = 1;
+% Import ASEG atlases
+if (nargin < 7) || isempty(isVolumeAtlas)
+    isVolumeAtlas = 1;
 end
 % Extract cortical maps
 if (nargin < 6) || isempty(isExtraMaps)
@@ -119,36 +119,57 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE FREESURFER FOLDER =====
 bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
 % Find MRI
-MriFile = file_find(FsDir, 'T1.mgz', 2);
-if isempty(MriFile)
+T1File = file_find(FsDir, 'T1.mgz', 2);
+T2File = file_find(FsDir, 'T2.mgz', 2);
+if isempty(T1File)
     errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+elseif ~isempty(T1File) && ~isempty(T2File)
+    T1Comment = 'MRI T1';
+    T2Comment = 'MRI T2';
+else
+    T1Comment = 'MRI';
 end
-% Find surfaces
+% Find surface: lh.pial (or lh.pial.T1)
 TessLhFile = file_find(FsDir, 'lh.pial', 2);
+if ~isempty(TessLhFile)
+    d = dir(TessLhFile);
+    if (length(d) == 1) && (d.bytes < 256)
+        TessLhFile = [];
+    end
+end
+if isempty(TessLhFile)
+    TessLhFile = file_find(FsDir, 'lh.pial.T1', 2);
+    if isempty(TessLhFile)
+        errorMsg = [errorMsg 'Surface file was not found: lh.pial/lh.pial.T1' 10];
+    end
+end
+% Find surface: rh.pial (or rh.pial.T1)
 TessRhFile = file_find(FsDir, 'rh.pial', 2);
+if ~isempty(TessRhFile)
+    d = dir(TessRhFile);
+    if (length(d) == 1) && (d.bytes < 256)
+        TessRhFile = [];
+    end
+end
+if isempty(TessRhFile)
+    TessRhFile = file_find(FsDir, 'rh.pial.T1', 2);
+    if isempty(TessRhFile)
+        errorMsg = [errorMsg 'Surface file was not found: rh.pial/rh.pial.T1' 10];
+    end
+end
+% Find other surfaces
 TessLwFile = file_find(FsDir, 'lh.white', 2);
 TessRwFile = file_find(FsDir, 'rh.white', 2);
 TessLsphFile = file_find(FsDir, 'lh.sphere.reg', 2);
 TessRsphFile = file_find(FsDir, 'rh.sphere.reg', 2);
 TessInnerFile = file_find(FsDir, 'inner_skull-*.surf', 2);
 TessOuterFile = file_find(FsDir, 'outer_skull-*.surf', 2);
-if isempty(TessLhFile)
-    errorMsg = [errorMsg 'Surface file was not found: lh.pial' 10];
-end
-if isempty(TessRhFile)
-    errorMsg = [errorMsg 'Surface file was not found: rh.pial' 10];
-end
 % Find volume segmentation
 AsegFile = file_find(FsDir, 'aseg.mgz', 2);
+OtherAsegFiles = file_find(FsDir, '*+aseg.mgz', 2, 0);
 % Find labels
-AnnotLhFiles = {file_find(FsDir, 'lh.pRF.annot', 2), file_find(FsDir, 'lh.aparc.a2009s.annot', 2), file_find(FsDir, 'lh.aparc.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'lh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'lh.BA.annot', 2), file_find(FsDir, 'lh.BA.thresh.annot', 2), file_find(FsDir, 'lh.BA_exvivo.annot', 2), file_find(FsDir, 'lh.BA_exvivo.thresh.annot', 2), ...
-                file_find(FsDir, 'lh.myaparc_36.annot', 2), file_find(FsDir, 'lh.myaparc_60.annot', 2), file_find(FsDir, 'lh.myaparc_125.annot', 2), file_find(FsDir, 'lh.myaparc_250.annot', 2), file_find(FsDir, 'lh.BN_Atlas.annot', 2), file_find(FsDir, 'lh.oasis.chubs.annot', 2), ...
-                file_find(FsDir, 'lh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'lh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'lh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'lh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'lh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'lh.Yeo2011_17Networks_N1000.annot', 2)};
-AnnotRhFiles = {file_find(FsDir, 'rh.pRF.annot', 2), file_find(FsDir, 'rh.aparc.a2009s.annot', 2), file_find(FsDir, 'rh.aparc.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas40.annot', 2), file_find(FsDir, 'rh.aparc.DKTatlas.annot', 2), file_find(FsDir, 'rh.BA.annot', 2), file_find(FsDir, 'rh.BA.thresh.annot', 2), file_find(FsDir, 'rh.BA_exvivo.annot', 2), file_find(FsDir, 'rh.BA_exvivo.thresh.annot', 2), ...
-                file_find(FsDir, 'rh.myaparc_36.annot', 2), file_find(FsDir, 'rh.myaparc_60.annot', 2), file_find(FsDir, 'rh.myaparc_125.annot', 2), file_find(FsDir, 'rh.myaparc_250.annot', 2), file_find(FsDir, 'rh.BN_Atlas.annot', 2), file_find(FsDir, 'rh.oasis.chubs.annot', 2), ...
-                file_find(FsDir, 'rh.PALS_B12_Brodmann.annot', 2), file_find(FsDir, 'rh.PALS_B12_Lobes.annot', 2), file_find(FsDir, 'rh.PALS_B12_OrbitoFrontal.annot', 2), file_find(FsDir, 'rh.PALS_B12_Visuotopic.annot', 2), file_find(FsDir, 'rh.Yeo2011_7Networks_N1000.annot', 2), file_find(FsDir, 'rh.Yeo2011_17Networks_N1000.annot', 2)};
-AnnotLhFiles(cellfun(@isempty, AnnotLhFiles)) = [];
-AnnotRhFiles(cellfun(@isempty, AnnotRhFiles)) = [];
+AnnotLhFiles = file_find(FsDir, 'lh.*.annot', 2, 0);
+AnnotRhFiles = file_find(FsDir, 'rh.*.annot', 2, 0);
 % Remove old labels
 if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
     % Freesurfer 5.3 creates "BA.annot", Freesurfer 6 creates "BA_exvivo.annot" 
@@ -182,23 +203,19 @@ if ~isempty(errorMsg)
 end
 
 
-%% ===== IMPORT MRI =====
-% Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile);
-if isempty(BstMriFile)
+%% ===== IMPORT T1 =====
+% Read T1 MRI
+[BstT1File, sMri] = import_mri(iSubject, T1File, 'ALL', 0, [], T1Comment);
+if isempty(BstT1File)
     errorMsg = 'Could not import FreeSurfer folder: MRI was not imported properly';
     if isInteractive
         bst_error(errorMsg, 'Import FreeSurfer folder', 0);
     end
     return;
 end
-% Size of the volume
-cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
-
 
 %% ===== DEFINE FIDUCIALS =====
 % If fiducials file exist: read it
-OffsetMri = [];
 isComputeMni = 0;
 if ~isempty(FidFile)
     % Execute script
@@ -230,20 +247,10 @@ if ~isInteractive || ~isempty(FidFile)
         % Already loaded
     % Compute them from MNI transformation
     elseif isempty(sFid)
-%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-%         AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-%         PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-%         IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
-        NAS = [];
-        LPA = [];
-        RPA = [];
-        AC  = [];
-        PC  = [];
-        IH  = [];
+        NAS = [];  LPA = [];  RPA = [];
+        AC  = [];  PC  = [];  IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -262,20 +269,16 @@ if ~isInteractive || ~isempty(FidFile)
     end
 % Define with the MRI Viewer
 else
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
-    % Display help message: ask user to select fiducial points
-    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
-    % Close help window
-    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
 warning('off','MATLAB:load:variableNotFound');
-sMri = load(BstMriFile, 'SCS', 'NCS');
+sMri = load(BstT1File, 'SCS', 'NCS');
 warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import FreeSurfer folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
@@ -288,10 +291,20 @@ end
 %% ===== MNI NORMALIZATION =====
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     % Error handling
     errorMsg = [errorMsg errCall];
 end
+
+%% ===== IMPORT T2 =====
+% Read T2 MRI (optional)
+if ~isempty(T2File)
+    [BstT2File, sMri] = import_mri(iSubject, T2File, 'ALL', 0, [], T2Comment);
+    if isempty(BstT2File)
+        disp('BST> Could not import T2.mgz.');
+    end
+end
+
 
 %% ===== IMPORT SURFACES =====
 % Left pial
@@ -303,13 +316,18 @@ if ~isempty(TessLhFile)
     if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left pial...');
         [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     % Load sphere
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left pial...');
@@ -324,13 +342,18 @@ if ~isempty(TessRhFile)
     if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right pial...');
         [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right pial...');
@@ -345,12 +368,17 @@ if ~isempty(TessLwFile)
     if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: left white...');
         [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLhFiles, 1);
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     if ~isempty(TessLsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
         [TessMat, err] = tess_addsphere(BstTessLwFile, TessLsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left white...');
@@ -365,13 +393,18 @@ if ~isempty(TessRwFile)
     if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading atlases: right white...');
         [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRhFiles, 1);
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            disp(['BST> ERROR: ' strrep(err(1:end-1), char(10), [10 'BST> ERROR: '])]);  % Not a blocking error anymore
+            errorMsg = [errorMsg err];
+        end
     end
     % Load sphere
     if ~isempty(TessRsphFile)
         bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
         [TessMat, err] = tess_addsphere(BstTessRwFile, TessRsphFile, 'FS');
-        errorMsg = [errorMsg err];
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
     end
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right white...');
@@ -397,7 +430,8 @@ end
 
 
 %% ===== GENERATE MID-SURFACE =====
-if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
+% Do not compute without volume atlases, to make a very light default import
+if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
     bst_progress('start', 'Import FreeSurfer folder', 'Generating mid-surface...');
     % Average pial and white surfaces
     BstTessLmFile = tess_average({BstTessLhFile, BstTessLwFile});
@@ -406,8 +440,6 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: mid-surface...');
     [BstTessLmLowFile, iLmLow, xLmLow] = tess_downsize(BstTessLmFile, nVertHemi, 'reducepatch');
     [BstTessRmLowFile, iRmLow, xRmLow] = tess_downsize(BstTessRmFile, nVertHemi, 'reducepatch');
-else
-    MidHiFile = [];
 end
 
 
@@ -450,8 +482,8 @@ if ~isempty(TessLwFile) && ~isempty(TessRwFile)
     WhiteLowFile    = bst_fullfile(bst_fileparts(oldWhiteLowFile), 'tess_cortex_white_low.mat');
     file_move(oldWhiteLowFile, WhiteLowFile);
 end
-% Merge hemispheres: mid-surface
-if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
+% Merge hemispheres: mid-surface (do not compute without volume atlases, to make a very light default import)
+if isVolumeAtlas && ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isempty(TessRwFile)
     % Hi-resolution surface
     MidHiFile  = tess_concatenate({BstTessLmFile,    BstTessRmFile},    sprintf('mid_%dV', nVertOrigL + nVertOrigR), 'Cortex');
     MidLowFile = tess_concatenate({BstTessLmLowFile, BstTessRmLowFile}, sprintf('mid_%dV', length(xLmLow) + length(xRmLow)), 'Cortex');
@@ -465,9 +497,6 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile) && ~isempty(TessLwFile) && ~isem
     oldMidLowFile = file_fullpath(MidLowFile);
     MidLowFile    = bst_fullfile(bst_fileparts(oldMidLowFile), 'tess_cortex_mid_low.mat');
     file_move(oldMidLowFile, MidLowFile);
-%     % Use by default instead of the cortex surface
-%     CortexHiFile  = MidHiFile;
-%     CortexLowFile = MidLowFile;
 end
 
 %% ===== DELETE INTERMEDIATE FILES =====
@@ -482,10 +511,20 @@ end
 % Generate head surface
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
-%% ===== LOAD ASEG.MGZ =====
-if isAseg && ~isempty(AsegFile)
-    % Import atlas
-    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
+%% ===== IMPORT ASEG ATLAS =====
+if isVolumeAtlas && ~isempty(AsegFile)
+    % Import atlas as volume
+    import_mri(iSubject, AsegFile);
+    % Import other ASEG volumes
+    for iFile = 1:length(OtherAsegFiles)
+        import_mri(iSubject, OtherAsegFiles{iFile});
+    end
+    % Import atlas as surfaces
+    SelLabels = {...
+        'Cerebellum L', 'Accumbens L', 'Amygdala L', 'Caudate L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', 'Thalamus R', ...
+        'Cerebellum R', 'Accumbens R', 'Amygdala R', 'Caudate R', 'Hippocampus R', 'Pallidum R', 'Putamen R', 'Thalamus L', 'Thalamus R', ...
+        'Brainstem'};
+    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, [], SelLabels, 'subcortical');
     % Extract cerebellum only
     try
         BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum L', 'Cerebellum R'}, 'aseg | cerebellum');
@@ -506,8 +545,6 @@ if isAseg && ~isempty(AsegFile)
         file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
         db_reload_subjects(iSubject);
     end
-else
-    BstAsegFile = [];
 end
 
 
@@ -546,7 +583,6 @@ if isInteractive
 end
 % Close progress bar
 bst_progress('stop');
-
 
 
 

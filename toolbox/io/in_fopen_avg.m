@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_avg(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2020
         
 %% ===== READ HEADER =====
 % Read the header
@@ -40,9 +40,8 @@ sFile.header     = hdr;
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Time and samples indices
-sFile.prop.times   = linspace(hdr.data.xmin, hdr.data.xmax, hdr.data.pnts + 1);
-sFile.prop.times   = [sFile.prop.times(1), sFile.prop.times(end-1)];
-sFile.prop.nAvg    = hdr.data.acceptcnt;
+sFile.prop.times = (round(hdr.data.xmin .* sFile.prop.sfreq) + [0, hdr.data.pnts-1]) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = hdr.data.acceptcnt;
 % Get bad channels
 nChannels = length(hdr.electloc);
 sFile.channelflag = ones(nChannels,1);

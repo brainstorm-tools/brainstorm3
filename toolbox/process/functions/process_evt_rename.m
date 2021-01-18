@@ -19,7 +19,7 @@ function varargout = process_evt_rename( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2020
 
 eval(macro_method);
 end
@@ -28,7 +28,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Rename event';
+    sProcess.Comment     = 'Rename events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 53;
@@ -39,13 +39,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name
-    sProcess.options.src.Comment  = 'Rename event: ';
+    sProcess.options.src.Comment  = 'Rename event(s): ';
     sProcess.options.src.Type     = 'text';
     sProcess.options.src.Value    = '';
     % New name
-    sProcess.options.dest.Comment = 'New event name: ';
+    sProcess.options.dest.Comment = 'New event name(s): ';
     sProcess.options.dest.Type    = 'text';
     sProcess.options.dest.Value   = '';
+    % Help
+    sProcess.options.label.Comment = '<FONT COLOR="#777777">To rename multiple events, separate them with commas.</FONT>';
+    sProcess.options.label.Type    = 'label';
 end
 
 
@@ -61,13 +64,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     
     % Get options
-    src  = strtrim(sProcess.options.src.Value);
-    dest = strtrim(sProcess.options.dest.Value);
+    src  = strtrim(str_split(sProcess.options.src.Value, ',;'));
+    dest = strtrim(str_split(sProcess.options.dest.Value, ',;'));
     if isempty(src) || isempty(dest)
         bst_report('Error', sProcess, [], 'The source or destination name is empty.');
         return;
     end
-
+    
     % For each file
     for iFile = 1:length(sInputs)
         % ===== GET FILE DESCRIPTOR =====
@@ -109,14 +112,28 @@ end
 function [events, isModified] = Compute(sInput, events, src, dest)
     % No modification
     isModified = 0;
-    % Find event in the list
-    iEvt = find(strcmpi({events.label}, src));
-    if isempty(iEvt)
-        bst_report('Warning', 'process_evt_rename', sInput, ['Event "' src '" does not exist.']);
+    % Check inputs
+    if ischar(src)
+        src = {src};
+    end
+    if ischar(dest)
+        dest = {dest};
+    end
+    if (length(src) ~= length(dest))
+        bst_report('Error', 'process_evt_rename', sInput, 'You need to specify the same number of event names in both lists.');
         return;
     end
-    % Rename event
-    events(iEvt).label = dest;
+    % Loop over multiple events
+    for i = 1:length(src)
+        % Find event in the list
+        iEvt = find(strcmpi({events.label}, src{i}));
+        if isempty(iEvt)
+            bst_report('Warning', 'process_evt_rename', sInput, ['Event "' src{i} '" does not exist.']);
+            return;
+        end
+        % Rename event
+        events(iEvt).label = dest{i};
+    end
     % File was modified
     isModified = 1;
 end

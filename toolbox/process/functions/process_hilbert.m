@@ -61,12 +61,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
     % Options: Normalize
-    sProcess.options.labelnorm.Comment = '<BR>Spectral flattening:';
-    sProcess.options.labelnorm.Type    = 'label';
+    sProcess.options.normalize2020.Comment = 'Spectral flattening: Multiply output power values by frequency';
+    sProcess.options.normalize2020.Type    = 'checkbox';
+    sProcess.options.normalize2020.Value   = 0;    
+    % Old normalize option, for backwards compatibility.
     sProcess.options.normalize.Comment = {'<B>None</B>: Save non-standardized time-frequency maps', '<B>1/f compensation</B>: Multiply output values by frequency'; ...
                                           'none', 'multiply'};
     sProcess.options.normalize.Type    = 'radio_label';
     sProcess.options.normalize.Value   = 'none';
+    sProcess.options.normalize.Hidden  = 1;
     % Options: Mirror
     sProcess.options.mirror.Comment = 'Mirror signal before filtering (not recommended)';
     sProcess.options.mirror.Type    = 'checkbox';

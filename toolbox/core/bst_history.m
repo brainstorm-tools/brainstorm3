@@ -26,10 +26,12 @@ function FileMat = bst_history(action, FileMat, eventType, eventDesc)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010
+% Authors: Francois Tadel, 2010-2020
 
 if (nargin < 4)
     eventDesc = [];
+elseif isstruct(eventDesc)
+    eventDesc = PrintOptStruct(eventDesc);
 end
 
 %% ===== PARSE INPUTS =====
@@ -79,24 +81,30 @@ end
 %% ===== ACTION =====
 switch lower(action)
     case 'add'
-        % If event to add is already an history cell list
-        if iscell(eventType)
-            cellHistory = eventType;
-            % Add prefix to description, if specified
-            if ~isempty(eventDesc)
-                cellHistory(:,3) = cellfun(@(c)cat(2, eventDesc, c), cellHistory(:,3), 'UniformOutput', 0);
+        try
+            % If event to add is already an history cell list
+            if iscell(eventType)
+                cellHistory = eventType;
+                % Add prefix to description, if specified
+                if ~isempty(eventDesc)
+                    cellHistory(:,3) = cellfun(@(c)cat(2, eventDesc, c), cellHistory(:,3), 'UniformOutput', 0);
+                end
+            else
+                eventTime = datestr(now);
+                cellHistory = {eventTime, eventType, eventDesc};
             end
-        else
-            eventTime = datestr(now);
-            cellHistory = {eventTime, eventType, eventDesc};
+            % Add history line
+            if ~isfield(FileMat, 'History') || isempty(FileMat.History)
+                FileMat.History = cellHistory;
+            else
+                FileMat.History = cat(1, FileMat.History, cellHistory);
+            end
+            isModified = 1;
+        catch
+            disp('BST> Error: Cannot edit file history.');
+            disp(['BST> ' lasterr]);
+            isModified = 0;
         end
-        % Add history line
-        if ~isfield(FileMat, 'History') || isempty(FileMat.History)
-            FileMat.History = cellHistory;
-        else
-            FileMat.History = cat(1, FileMat.History, cellHistory);
-        end
-        isModified = 1;
         
     case 'view'
         if ~isfield(FileMat, 'History') || isempty(FileMat.History)
@@ -136,6 +144,29 @@ if isModified && ~isempty(FileName)
     save(FileName, '-struct', 'FileMat', '-append');
 end
 
+end
+
+
+
+%% =================================================================================
+%  === HELPER FUNCTIONS ============================================================
+%  =================================================================================
+
+%% ===== PRINT OPTIONS STRUCT =====
+function str = PrintOptStruct(s)
+    str = '';
+    for f = fieldnames(s)'
+        str = [str, f{1}, '='];
+        if isnumeric(s.(f{1}))
+            str = [str, num2str(s.(f{1}))];
+        elseif ischar(s.(f{1}))
+            str = [str, '''', s.(f{1}), ''''];
+        elseif iscell(s.(f{1})) && ~isempty(s.(f{1}))
+            str = [str, sprintf('''%s'',', s.(f{1}){:})];
+        end
+        str = [str, ' '];
+    end
+end
 
 
 

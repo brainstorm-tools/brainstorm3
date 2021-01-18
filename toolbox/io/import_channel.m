@@ -251,6 +251,10 @@ switch (FileFormat)
         ChannelMat.Comment = '10-10 electrodes';
         FileUnits = 'mm';
         
+    case 'TVB'
+        ChannelMat = in_channel_tvb(ChannelFile);
+        FileUnits = 'm';
+        
     case {'INTRANAT', 'INTRANAT_MNI'}
         switch (fExt)
             case 'pts'
@@ -338,16 +342,13 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'I
         end
         % Load the MRI
         MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
-        sMri = load(MriFile, 'SCS', 'NCS');
-        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
+        sMri = in_mri_bst(MriFile);
+        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri, 'NCS') || ((~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)) && (~isfield(sMri.NCS, 'y') || isempty(sMri.NCS.y)))
             error(['The SCS and MNI transformations must be defined for this subject' 10 'in order to load sensor positions in MNI coordinates.']);
         end
-        % Compute the transformation MNI => SCS
-        RTmni2mri = inv([sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1]);
-        RTmri2scs = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1];
-        RTmni2scs = RTmri2scs * RTmni2mri;
-        % Convert all the coordinates
-        AllChannelMats = channel_apply_transf(ChannelMat, RTmni2scs, [], 1);
+        % Convert all the coordinates: MNI => SCS
+        fcnTransf = @(Loc)cs_convert(sMri, 'mni', 'scs', Loc')';
+        AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
         ChannelMat = AllChannelMats{1};
     end
     % Do not convert the positions to SCS
@@ -356,7 +357,7 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'I
 %% ===== MRI/NII TRANSFORMATION =====
 % If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
 % Only available if there is one study in output
-elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0)
+elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
     % Get the folders
     sStudies = bst_get('Study', iStudies);
     if (length(sStudies) > 1) && ~all(strcmpi(sStudies(1).BrainStormSubject, {sStudies.BrainStormSubject}))

@@ -1,4 +1,4 @@
-function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = ctf_get_files( ds_directory, verbose)
+function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory, verbose)
 % CTF_GET_FILES: Get the name and files of a CTF .DS directory.
 %
 % INPUT: 
@@ -11,6 +11,7 @@ function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = 
 %     - marker_file  : Full path to the marker file in this folder (.mrk)
 %     - pos_file     : Full path to the polhemus digitized head points
 %     - hc_file      : Full path to the original measured head coordinates
+%     - badseg_file  : Full path to the bad segments file (bad.segments)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -30,7 +31,7 @@ function [DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2020
 
 % Parse arguments
 if nargin < 2
@@ -166,14 +167,25 @@ if verbose
 end
 
 % ===== .HC =====
-% Get .hc files
+% Get .hc file
 hc_file = bst_fullfile(ds_directory, [DataSetName,'.hc']);
-% Check that both files are accessible
+% Check that file is accessible
 if ~file_exist(hc_file)
     if verbose
         disp(['CTF> Warning: ' hc_file ' missing.']);
     end
     hc_file = [];
+end
+
+% ===== BAD.SEGMENTS =====
+% Get file bad.segments
+badseg_file = bst_fullfile(ds_directory, 'bad.segments');
+% Check that file is accessible
+if ~file_exist(badseg_file)
+    if verbose
+        disp(['CTF> Warning: ' badseg_file ' missing.']);
+    end
+    badseg_file = [];
 end
 
 

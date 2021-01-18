@@ -1,27 +1,27 @@
 function varargout = process_adjust_coordinates(varargin)
-    % PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
-    
-    % @=============================================================================
-    % This function is part of the Brainstorm software:
-    % https://neuroimage.usc.edu/brainstorm
-    %
-    % Copyright (c)2000-2020 University of Southern California & McGill University
-    % This software is distributed under the terms of the GNU General Public License
-    % as published by the Free Software Foundation. Further details on the GPLv3
-    % license can be found at http://www.gnu.org/copyleft/gpl.html.
-    %
-    % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
-    % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
-    % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
-    % MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
-    % LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
-    %
-    % For more information type "brainstorm license" at command prompt.
-    % =============================================================================@
-    %
-    % Authors: Marc Lalancette, 2018
-    
-    eval(macro_method);
+% PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
+
+% @=============================================================================
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
+% 
+% Copyright (c)2000-2020 University of Southern California & McGill University
+% This software is distributed under the terms of the GNU General Public License
+% as published by the Free Software Foundation. Further details on the GPLv3
+% license can be found at http://www.gnu.org/copyleft/gpl.html.
+% 
+% FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
+% UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
+% WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
+% MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE, NOR DO THEY ASSUME ANY
+% LIABILITY OR RESPONSIBILITY FOR THE USE OF THIS SOFTWARE.
+%
+% For more information type "brainstorm license" at command prompt.
+% =============================================================================@
+%
+% Authors: Marc Lalancette, 2018-2020
+
+eval(macro_method);
 end
 
 
@@ -94,8 +94,8 @@ function OutputFiles = Run(sProcess, sInputs)
     
     if ~sProcess.options.remove.Value && sProcess.options.head.Value && ...
             nFiles < nInFiles
-        bst_report('Warning', sProcess, sInputs, ...
-            'Multiple inputs were found for a single channel file. Only the first one will be used for adjusting the head position.');
+        bst_report('Info', sProcess, sInputs, ...
+            'Multiple inputs were found for a single channel file. They will be concatenated for adjusting the head position.');
     end
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
@@ -170,7 +170,9 @@ function OutputFiles = Run(sProcess, sInputs)
         
         % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.head.Value
-            [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs(iFile), sProcess);
+            % Complex indexing to get all inputs for this same channel file.
+            [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, ...
+                sInputs(iUniqInputs == iUniqInputs(iFile)), sProcess);
             if Failed
                 continue;
             end
@@ -435,17 +437,17 @@ function ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInput, sPro
 end % RemoveTransformation
 
 
-function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
+function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess)
     Failed = false;
     % Check the input is CTF.
-    isRaw = (length(sInput.FileName) > 9) && ~isempty(strfind(sInput.FileName, 'data_0raw'));
+    isRaw = (length(sInputs(1).FileName) > 9) && ~isempty(strfind(sInputs(1).FileName, 'data_0raw'));
     if isRaw
-        DataMat = in_bst_data(sInput.FileName, {'Device', 'F'});
+        DataMat = in_bst_data(sInputs(1).FileName, {'Device', 'F'});
     else
-        DataMat = in_bst_data(sInput.FileName, {'Device', 'Events', 'Time'});
+        DataMat = in_bst_data(sInputs(1).FileName, {'Device', 'Events', 'Time'});
     end
     if ~strcmp(DataMat.Device, 'CTF')
-        bst_report('Error', sProcess, sInput, ...
+        bst_report('Error', sProcess, sInputs, ...
             'Adjust head position is currently only available for CTF data.');
         Failed = true;
         return;
@@ -456,55 +458,70 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
     % previous adjustment will be replaced.
     if isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ...
             ismember('AdjustedNative', ChannelMat.TransfMegLabels)
-        bst_report('Info', sProcess, sInput, ...
+        bst_report('Info', sProcess, sInputs, ...
             'Head position already adjusted. Previous adjustment will be replaced.');
     end
     
     % Load head coil locations, in m.
     bst_progress('text', 'Loading head coil locations...');
     %                 bst_progress('inc', 1);
-    [Locations, HeadSamplePeriod] = process_evt_head_motion('LoadHLU', sInput, [], false);
-    if isempty(Locations)
-        % No HLU channels. Error already reported. Skip this file.
-        Failed = true;
-        return;
-    end
-    bst_progress('text', 'Correcting head position...');
-    % Exclude all bad segments.
-    if sProcess.options.bad.Value
-        if isRaw
-            DataMat = DataMat.F;
-        else
-            DataMat.events = DataMat.Events;
-            DataMat.prop.sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
+
+    % A trial marked as bad is excluded from the process file selection box.
+    % Loop over trial data files for the same channel file.
+    Locations = [];
+    for iIn = 1:numel(sInputs)
+        [Locs, HeadSamplePeriod] = process_evt_head_motion('LoadHLU', sInputs(iIn), [], false);
+        if isempty(Locs)
+            % No HLU channels. Error already reported. Skip this file.
+            Failed = true;
+            return;
         end
-        [BadSegments, BadEpoch] = panel_record('GetBadSegments', DataMat); % - DataMat.prop.sfreq * DataMat.Time(1) + 1;
-        if ~isempty(BadSegments)
-            % Convert to continuous (non-epoched) sample indices, but rounding up
-            % the number of samples per epoch to an integer multiple of HeadSamplePeriod.
-            nSamples = ceil(numel(DataMat.Time)/HeadSamplePeriod) * HeadSamplePeriod;
-            [nChannels, nHeadSamples, nEpochs] = size(Locations);
-            Locations = reshape(Locations, nChannels, []);
-            iHeadSamples = 1 + ((1:(nHeadSamples*nEpochs)) - 1) * HeadSamplePeriod;
-            iBad = [];
-            for iSeg = 1:size(BadSegments, 2)
-                iBad = [iBad, nSamples * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; %#ok<AGROW>
-                % iBad = [iBad, find((DataMat.Time >= badTimes(1,iSeg)) & (DataMat.Time <= badTimes(2,iSeg)))];
+        % Exclude all bad segments.
+        if sProcess.options.bad.Value
+            if isRaw
+                DataMat = in_bst_data(sInputs(iIn).FileName, {'F'});
+                DataMat = DataMat.F;
+            else
+                DataMat = in_bst_data(sInputs(iIn).FileName, {'Events', 'Time'});
+                DataMat.events = DataMat.Events;
+                DataMat.prop.sfreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
+                DataMat.prop.times = DataMat.Time([1, end]);
             end
-            % Exclude bad samples.
-            Locations(:, ismember(iHeadSamples, iBad)) = [];
+            [BadSegments, BadEpoch] = panel_record('GetBadSegments', DataMat); % samples that correspond to times
+            if ~isempty(BadSegments)
+                % Shift so first sample is 1.
+                BadSegments = BadSegments - DataMat.prop.sfreq * DataMat.prop.times(1) + 1;
+                % Convert bad samples to continuous (non-epoched) sample indices, but rounding up
+                % the number of samples per epoch to an integer multiple of HeadSamplePeriod.
+                SampleBounds = round(DataMat.prop.times .* DataMat.prop.sfreq); % This is single epoch samples if epoched.
+                nSamplesPerEpoch = SampleBounds(2) - SampleBounds(1) + 1;
+                nSamplesPerEpoch = ceil(nSamplesPerEpoch/HeadSamplePeriod) * HeadSamplePeriod;
+                [nChannels, nHeadSamples, nEpochs] = size(Locs);
+                Locs = reshape(Locs, nChannels, []);
+                % "Real" (but rounded up per epoch) sample indices of (downsampled) head samples.
+                iHeadSamples = 1 + ((1:(nHeadSamples*nEpochs)) - 1) * HeadSamplePeriod; % first is 1
+                iBad = [];
+                for iSeg = 1:size(BadSegments, 2)
+                    iBad = [iBad, nSamplesPerEpoch * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; %#ok<AGROW>
+                    % iBad = [iBad, find((DataMat.Time >= badTimes(1,iSeg)) & (DataMat.Time <= badTimes(2,iSeg)))];
+                end
+                % Exclude bad samples.
+                Locs(:, ismember(iHeadSamples, iBad)) = [];
+            end
         end
+        Locations = [Locations, Locs];
     end
     
     % If a collection was aborted, the channels will be filled with zeros. Remove these.
     Locations(:, all(Locations == 0, 1)) = []; % (This reshapes to continuous.)
     
+    bst_progress('text', 'Correcting head position...');
     MedianLoc = MedianLocation(Locations);
     %         disp(MedianLoc);
     
     % Also get the initial reference position.  We only use it to see
     % how much the adjustment moves.
-    InitRefLoc = ReferenceHeadLocation(ChannelMat, sInput);
+    InitRefLoc = ReferenceHeadLocation(ChannelMat, sInputs);
     if isempty(InitRefLoc)
         % There was an error, already reported. Skip this file.
         Failed = true;
@@ -515,7 +532,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
     % head position adjustment.  Any previous adjustment will be
     % ignored here and replaced later.
     [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
-        GetTransforms(ChannelMat, sInput);
+        GetTransforms(ChannelMat, sInputs);
     if isempty(TransfBefore)
         % There was an error, already reported. Skip this file.
         Failed = true;
@@ -567,7 +584,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
         'Added adjustment to Native coordinates based on median head position');
     
     % Give an idea of the distance we moved.
-    AfterRefLoc = ReferenceHeadLocation(ChannelMat, sInput);
+    AfterRefLoc = ReferenceHeadLocation(ChannelMat, sInputs);
     if isempty(AfterRefLoc)
         % There was an error, already reported. Skip this file.
         Failed = true;
@@ -575,7 +592,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInput, sProcess)
     end
     DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
     fprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3);
-    bst_report('Info', sProcess, sInput, ...
+    bst_report('Info', sProcess, sInputs, ...
         sprintf('Head position adjusted by %1.1f mm.\n', DistanceAdjusted * 1e3));
 end % AdjustHeadPosition
 
@@ -591,6 +608,8 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
     
     if nargin < 2
         sInput = [];
+    elseif numel(sInput) > 1
+        sInput = sInput(1);
     end
     Message = '';
     
@@ -649,7 +668,7 @@ end % ReferenceHeadLocation
 
 
 function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
-        GetTransforms(ChannelMat, sInput)
+        GetTransforms(ChannelMat, sInputs)
     % Extract transformations that are applied before and after the head
     % position adjustment we are creating now.  We keep the 'Dewar=>Native'
     % transformation intact and separate from the adjustment for no deep
@@ -673,16 +692,16 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
     TransfAfter = [];
     TransfAdjust = [];
     if isempty(iDewToNat) || numel(iDewToNat) > 1
-        bst_report('Error', 'process_adjust_coordinates', sInput, ...
+        bst_report('Error', 'process_adjust_coordinates', sInputs, ...
             'Could not find required transformation.');
         return;
     end
     if iDewToNat > 1
-        bst_report('Warning', 'process_adjust_coordinates', sInput, ...
+        bst_report('Warning', 'process_adjust_coordinates', sInputs, ...
             'Unexpected transformations found before ''Dewar=>Native''; ignoring them.');
     end
     if numel(iAdjust) > 1
-        bst_report('Error', 'process_adjust_coordinates', sInput, ...
+        bst_report('Error', 'process_adjust_coordinates', sInputs, ...
             'Could not find required transformation.');
         return;
     elseif isempty(iAdjust)
@@ -691,11 +710,11 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
         TransfAdjust = eye(4);
     else
         if iAdjust < iDewToNat
-            bst_report('Error', 'process_adjust_coordinates', sInput, ...
+            bst_report('Error', 'process_adjust_coordinates', sInputs, ...
                 'Unable to interpret order of transformations.');
             return;
         elseif iAdjust - iDewToNat > 1
-            bst_report('Warning', 'process_adjust_coordinates', sInput, ...
+            bst_report('Warning', 'process_adjust_coordinates', sInputs, ...
                 'Unexpected transformations found between ''Dewar=>Native'' and ''AdjustedNative''; assuming they make sense there.');
         end
         iBef = iAdjust - 1;

@@ -3,9 +3,11 @@ function [hFig, iDS, iFig] = view_timeseries(DataFile, Modality, RowNames, hFig)
 %
 % USAGE: [hFig, iDS, iFig] = view_timeseries(DataFile, Modality=[], RowNames=[], hFig=[])
 %        [hFig, iDS, iFig] = view_timeseries(DataFile, Modality=[], RowNames=[], 'NewFigure')
+%        [hFig, iDS, iFig] = view_timeseries(DataFiles, ...)
 %
 % INPUT: 
 %     - DataFile  : Path to data file to visualize
+%     - DataFiles : Cell-array of file paths (simply calls this function recursively for each file)
 %     - Modality  : Modality to display with the input Data file
 %     - RowNames  : Cell array of channel names to plot in this figure
 %     - "NewFigure" : force new figure creation (do not re-use a previously created figure)
@@ -34,7 +36,7 @@ function [hFig, iDS, iFig] = view_timeseries(DataFile, Modality, RowNames, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 %% ===== INITIALIZATION =====
 global GlobalData;
@@ -74,6 +76,21 @@ elseif ishandle(hFig)
     NewFigure = 0;
 else
     error('Invalid figure handle.');
+end
+% Multiple files in input: call function recursively
+if iscell(DataFile)
+    hFigInput = hFig;
+    hFig = zeros(1,length(DataFile));
+    iDS = zeros(1,length(DataFile));
+    iFig = zeros(1,length(DataFile));
+    for iFile = 1:length(DataFile)
+        [hFig(iFile), iDS(iFile), iFig(iFile)] = view_timeseries(DataFile{iFile}, Modality, RowNames, hFigInput);
+        % Remove the borders in the figure
+        hAxes = findobj(hFig(iFile), '-depth', 1, 'tag', 'AxesGraph');
+        set(hFig(iFile), bst_get('ResizeFunction'), []);
+        set(hAxes, 'Units', 'normalized', 'Position', [0 0 1 1]);
+    end
+    return;
 end
 
 

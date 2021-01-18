@@ -87,7 +87,10 @@ end
 
 
 %% ===== COMPUTE =====
-function [Values, isError] = Compute(Values, srcMeasure, destMeasure)
+function [Values, isError] = Compute(Values, srcMeasure, destMeasure, isKeepNan)
+    if nargin < 4 || isempty(isKeepNan)
+        isKeepNan = false;
+    end
     isError = 0;
     if strcmpi(srcMeasure, destMeasure)
         return;
@@ -132,7 +135,9 @@ function [Values, isError] = Compute(Values, srcMeasure, destMeasure)
                 otherwise,         isError = 1;
             end
     end
-    Values(isnan(Values)) = 0;
+    if ~isKeepNan
+        Values(isnan(Values)) = 0;
+    end
 end
 
 
@@ -151,6 +156,7 @@ function [DefFunction, ColormapType] = GetDefaultFunction(sTimefreq) %#ok<DEFNU>
         case 'cohere',   DefFunction = 'other';       ColormapType = 'connect1';
         case 'granger',  DefFunction = 'other';       ColormapType = 'connect1';
         case 'spgranger',DefFunction = 'other';       ColormapType = 'connect1';
+        case 'henv',     DefFunction = 'other';       ColormapType = 'connect1';
         case 'plv',      DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'plvt',     DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'pac',      DefFunction = 'maxpac';      ColormapType = 'pac';

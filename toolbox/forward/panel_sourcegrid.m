@@ -473,6 +473,8 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
         sSubject = bst_get('SurfaceFile', CortexFile);
         if ~isempty(sSubject.iInnerSkull)
             sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
+        else
+            sInner = sEnvelope;
         end
     end
     % Switch between methods
@@ -540,12 +542,11 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
             if isempty(gridMni)
                 return;
             end
-            % Display warning when transformation is not available
-            if ~isfield(sMriSubject, 'NCS') || isempty(sMriSubject.NCS) || ~isfield(sMriSubject.NCS, 'R') ||  isempty(sMriSubject.NCS.R)
-                disp('PROJECT> Error: The MNI transformation is not available for this subject.');
-            end
             % Convert grid coordinates: MNI => Subject SCS
             grid = cs_convert(sMriSubject, 'mni', 'scs', gridMni);
+            if isempty(grid)
+                disp('PROJECT> Error: The MNI transformation is not available for this subject.');
+            end
     end
     % Close progress bar
     bst_progress('stop');

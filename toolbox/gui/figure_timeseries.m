@@ -34,7 +34,9 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2017
+%          Marc Lalancette, 2020
 
 eval(macro_method);
 end
@@ -84,6 +86,7 @@ function hFig = CreateFigure(FigureId)
         set(hFig, 'defaultLegendAutoUpdate', 'off');
     end
     % Prepare figure appdata
+    setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
     setappdata(hFig, 'isSensorsOnly', 0);
@@ -896,7 +899,7 @@ function ZoomSelection(hFig)
     end
     % Set axes bounds to selection
     hAxesList = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
-    set(hAxesList, 'XLim', [GraphSelection(1), GraphSelection(2)]);
+    set(hAxesList, 'XLim', [min(GraphSelection), max(GraphSelection)]);
     % Delete selection
     SetTimeSelectionLinked(hFig, []);
 end
@@ -945,8 +948,15 @@ end
 %% ===== FIGURE ZOOM: LINKED =====
 % Apply the same zoom operations to similar figures
 function FigureZoomLinked(hFig, direction, Factor)
+    % Get figure type
+    FigureId = getappdata(hFig, 'FigureId');
     % Get all the time-series figures
-    hAllFigs = bst_figures('GetFiguresByType', {'DataTimeSeries', 'ResultsTimeSeries'});
+    switch (FigureId.Type)
+        case {'DataTimeSeries', 'ResultsTimeSeries'}
+            hAllFigs = bst_figures('GetFiguresByType', {'DataTimeSeries', 'ResultsTimeSeries'});
+        case 'Spectrum'
+            hAllFigs = bst_figures('GetFiguresByType', 'Spectrum');
+    end
     % Place the input figure in first
     hAllFigs(hAllFigs == hFig) = [];
     hAllFigs = [hFig, hAllFigs];
@@ -977,11 +987,15 @@ function FigureZoom(hFig, direction, Factor, center)
                 % Get current zoom factor
                 XLim = get(hAxes(i), 'XLim');
                 YLim = get(hAxes(i), 'YLim');
+                isYLog = strcmpi(get(hAxes(i), 'YScale'), 'log');
+                if isYLog
+                    YLim = log10(YLim);
+                end
                 Ylength = YLim(2) - YLim(1);
                 % Butterfly plot
                 if strcmpi(TsInfo.DisplayMode, 'butterfly')
-                    % In case everything is positive: zoom from the bottom
-                    if (YLim(1) >= 0)
+                    % In case everything is positive: zoom from the bottom, except log spectrum.
+                    if (YLim(1) >= 0) && ~isYLog
                         YLim = [YLim(1), YLim(1) + Ylength/Factor];
                     % Else: zoom from the middle
                     else
@@ -999,6 +1013,9 @@ function FigureZoom(hFig, direction, Factor, center)
                         else
                             Ycenter = curPt(1,2);
                         end
+                        if isYLog
+                            Ycenter = log10(Ycenter);
+                        end
                         Yratio = (Ycenter - YLim(1)) ./ Ylength;
                         if (Ycenter - Ylength/Factor/2 < 0)
                             YLim = [0, Ylength/Factor];
@@ -1012,9 +1029,16 @@ function FigureZoom(hFig, direction, Factor, center)
                         YLim = [YLim(1), YLim(1) + Ylength/Factor];
                     end
                     % Restrict zoom
-                    YLim(1) = max(YLim(1), 0);
-                    YLim(2) = min(YLim(2), 1);
+                    if isYLog
+                        YLim(2) = min(YLim(2), 0);
+                    else
+                        YLim(1) = max(YLim(1), 0);
+                        YLim(2) = min(YLim(2), 1);
+                    end
                 end
+                if isYLog
+                    YLim = 10.^YLim;
+                end                
                 % Update zoom factor
                 set(hAxes(i), 'YLim', YLim);
                 % Set the time cursor height to the maximum of the display
@@ -1024,6 +1048,11 @@ function FigureZoom(hFig, direction, Factor, center)
                 hTimeSelectionPatch = findobj(hAxes(i), '-depth', 1, 'Tag', 'TimeSelectionPatch');
                 if ~isempty(hTimeSelectionPatch)
                     set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+                else % Check for spectrum selection patch
+                    hSelectionPatch = findobj(hAxes(i), '-depth', 1, 'Tag', 'SelectionPatch');
+                    if ~isempty(hSelectionPatch)
+                        set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+                    end
                 end
                 % Update amplitude bar (columns mode only)
                 if strcmpi(TsInfo.DisplayMode, 'column')
@@ -1055,10 +1084,35 @@ function FigureZoom(hFig, direction, Factor, center)
             XLimInit = getappdata(hAxes(1), 'XLimInit');
             % Get current limits
             XLim = get(hAxes(1), 'XLim');
+            isXLog = strcmpi(get(hAxes(1), 'XScale'), 'log');
+            if isXLog
+                % Even in log mode, XLim(1) can be 0. This fixes it.
+                if XLim(1) == 0
+                    YLim = get(hAxes(1), 'YLim');
+                    axis(hAxes(1), 'tight')
+                    set(hAxes(1), 'YLim', YLim);
+                    XLim = get(hAxes(1), 'XLim');
+                    % Also adjust XLimInit and save
+                    if XLimInit(1) == 0
+                        XLimInit(1) = XLim(1);
+                        setappdata(hAxes(1), 'XLimInit', XLimInit);
+                    end
+                end
+                % Avoid errors when Xcurrent was 0 in log scale.
+                if Xcurrent < XLimInit(1)
+                    Xcurrent = XLimInit(1);
+                end
+                XLim = log10(XLim);
+                XLimInit = log10(XLimInit);
+                Xcurrent = log10(Xcurrent);
+            end
             % Apply zoom factor
             Xlength = XLim(2) - XLim(1);
             XLim = [Xcurrent - Xlength/Factor/2, Xcurrent + Xlength/Factor/2];
             XLim = bst_saturate(XLim, XLimInit, 1);
+            if isXLog
+                XLim = 10.^XLim;
+            end
             % Apply to ALL Axes in the figure
             set(hAxes, 'XLim', XLim);
             % RAW: Set the time limits of the events bar
@@ -1069,6 +1123,11 @@ end
 
 %% ===== FIGURE PAN =====
 function FigurePan(hFig, motion)
+    % Flip Y motion for flipped axis
+    TsInfo = getappdata(hFig, 'TsInfo');
+    if ~isempty(TsInfo) && isfield(TsInfo, 'FlipYAxis') && isequal(TsInfo.FlipYAxis, 1)
+        motion(2) = -motion(2);
+    end
     % Get list of axes in this figure
     hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Displacement in X
@@ -1076,9 +1135,17 @@ function FigurePan(hFig, motion)
         % Get initial and current XLim
         XLimInit = getappdata(hAxes(1), 'XLimInit');
         XLim = get(hAxes(1), 'XLim');
+        XLog = strcmpi(get(hAxes, 'XScale'), 'log');
+        if XLog
+            XLim = log10(XLim);
+            XLimInit = log10(XLimInit);
+        end
         % Move view along X axis
         XLim = XLim - (XLim(2) - XLim(1)) * motion(1);
         XLim = bst_saturate(XLim, XLimInit, 1);
+        if XLog
+            XLim = 10.^XLim;
+        end
         set(hAxes, 'XLim', XLim);
         % Update raw events bar xlim
         UpdateRawXlim(hFig, XLim);
@@ -1088,9 +1155,17 @@ function FigurePan(hFig, motion)
         % Get initial and current YLim
         YLimInit = getappdata(hAxes(1), 'YLimInit');
         YLim = get(hAxes(1), 'YLim');
+        isYLog = strcmpi(get(hAxes, 'YScale'), 'log');
+        if isYLog
+            YLim = log10(YLim);
+            YLimInit = log10(YLimInit);
+        end
         % Move view along Y axis
         YLim = YLim - (YLim(2) - YLim(1)) * motion(2);
         YLim = bst_saturate(YLim, YLimInit, 1);
+        if isYLog
+            YLim = 10.^YLim;
+        end
         set(hAxes, 'YLim', YLim);
         % Set the time cursor height to the maximum of the display
         hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
@@ -1436,6 +1511,11 @@ function FigureKeyPressedCallback(hFig, ev)
             if isControl && isFullDataFile
                 panel_record('JumpToVideoTime', hFig);
             end
+        % Y : Scale to fit Y axis
+        case 'y'
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                ScaleToFitY(hFig, ev);
+            end
         % RETURN: VIEW SELECTED CHANNELS
         case 'return'
             if isMenuSelectedChannels && isFullDataFile               
@@ -1657,11 +1737,9 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         % Butterfly: Zoom/unzoom vertically in the graph
         else
             FigureZoom(hFig, 'vertical', changeFactor);
-            % If auto-scale is disabled: Update DataMinMax to keep it hen scrolling
+            % If auto-scale is disabled: Update DataMinMax to keep it when scrolling
             if ~TsInfo.AutoScaleY
-                for iAxe = 1:length(GlobalData.DataSet(iDS).Figure(iFig).Handles)
-                    GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxe).DataMinMax ./ changeFactor;
-                end
+                GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DataMinMax = GlobalData.DataSet(iDS).Figure(iFig).Handles(iAxes).DataMinMax ./ changeFactor;
             end
         end
     end
@@ -1673,7 +1751,7 @@ function UpdateTimeSeriesFactor(hFig, changeFactor, isSave)
         SetDefaultFactor(iDS, iFig, changeFactor);
     end
     % Update scale bar (not for spectrum figures)
-    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && strcmpi(TsInfo.DisplayMode, 'column')
+    if ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Spectrum') && isColumn
         UpdateScaleBar(iDS, iFig, TsInfo);
     end
 end
@@ -1989,17 +2067,24 @@ function SetProperty(hFig, propName, propVal)
     else
         propGraph = 'on';
     end
+    % Get axes handles
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
     % Update figure
     switch propName
         case 'ShowXGrid'
-            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
             set(hAxes, 'XGrid',      propGraph);
             set(hAxes, 'XMinorGrid', propGraph);
         case 'ShowYGrid'
-            hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesGraph');
             set(hAxes, 'YGrid',      propGraph);
             set(hAxes, 'YMinorGrid', propGraph);
-        case {'ShowZeroLines', 'FlipYAxis', 'ShowEventsMode'}
+        case 'FlipYAxis'
+            ResetViewLinked(hFig);
+            YLimInit = getappdata(hAxes, 'YLimInit');
+            if (length(YLimInit) == 2)
+                setappdata(hAxes, 'YLimInit', [YLimInit(2), YLimInit(1)]);
+            end
+            bst_figures('ReloadFigures', hFig, 0);
+        case {'ShowZeroLines', 'ShowEventsMode'}
             bst_figures('ReloadFigures', hFig, 0);
         otherwise
             error('Invalid property name.');
@@ -2109,8 +2194,12 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
                 dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
                 dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
             end
+        % Spike2 SMR: Wall clock time
+        elseif strcmpi(sFile.format, 'EEG-SMRX') && isfield(sFile.header, 'timedate')
+            t = sFile.header.timedate;
+            dateTitle = [datestr(datenum(t(7), t(6), t(5), t(4), t(3), t(2)), 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
         end
-    end   
+    end
     % Menu title
     if ~isempty(menuTitle) || ~isempty(dateTitle)
         if ~isempty(menuTitle) && ~isempty(dateTitle)
@@ -2457,7 +2546,7 @@ function DisplayConfigMenu(hFig, jParent)
                     newMode = 'log';
                     isSel = 0;
             end
-            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleX(hFig, newMode));
+            jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeX(hFig, newMode));
             jItem.setSelected(isSel);
         end
     end
@@ -2510,19 +2599,42 @@ function DisplayConfigMenu(hFig, jParent)
         end
         % Spectrum: power/magnitude/log
         if strcmpi(FigureId.Type, 'Spectrum')
+            TfInfo = getappdata(hFig, 'Timefreq');
             sOptions = panel_display('GetDisplayOptions');
-            jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
-            jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
-            jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
-            jButtonGroup = ButtonGroup();
-            jButtonGroup.add(jScalePow);
-            jButtonGroup.add(jScaleMag);
-            jButtonGroup.add(jScaleLog);
-            switch (sOptions.Function)
-                case 'power',      jScalePow.setSelected(1);
-                case 'magnitude',  jScaleMag.setSelected(1);
-                case 'log',        jScaleLog.setSelected(1);
+            if ismember(TfInfo.Function, {'power', 'magnitude'})
+                jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
+                jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
+                jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
+                jButtonGroup = ButtonGroup();
+                jButtonGroup.add(jScalePow);
+                jButtonGroup.add(jScaleMag);
+                jButtonGroup.add(jScaleLog);
+                switch (sOptions.Function)
+                    case 'power',      jScalePow.setSelected(1);
+                    case 'magnitude',  jScaleMag.setSelected(1);
+                    case 'log',        jScaleLog.setSelected(1);
+                end
+                jMenu.addSeparator();
             end
+            % Log scale
+            if strcmpi(TsInfo.DisplayMode, 'butterfly')
+                switch (TsInfo.YScale)
+                    case 'log'
+                        newMode = 'linear';
+                        isSel = 1;
+                    case 'linear'
+                        newMode = 'log';
+                        isSel = 0;
+                end
+                jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Log scale', [], [], @(h,ev)SetScaleModeY(hFig, newMode));
+                jItem.setSelected(isSel);
+            end
+        end
+        % Scale to fit Y
+        if strcmpi(TsInfo.DisplayMode, 'butterfly')
+            jMenu.addSeparator();
+            jItem = gui_component('MenuItem', jMenu, [], 'Scale to fit screen', IconLoader.ICON_Y, [], @(h,ev)ScaleToFitY(hFig, ev));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_Y, 0));
         end
         
     % === LINES ===
@@ -3861,7 +3973,7 @@ function CreateScaleButtons(iDS, iFig)
     if isRaw
         set([h1 h2], 'Visible', 'off');
     end
-    if isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat')
+    if (isempty(TsInfo) || isempty(TsInfo.FileName) || ~ismember(file_gettype(TsInfo.FileName), {'data','matrix'}) || strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat'))
         set(h5, 'Visible', 'off');
     end
     if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'column') || ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'DataTimeSeries')
@@ -3966,15 +4078,34 @@ function SetScaleY(iDS, iFig, newScale)
 end
 
 
-%% ===== SET X-SCALE =====
-function SetScaleX(hFig, newMode)
+%% ===== SET X-SCALE MODE =====
+function SetScaleModeX(hFig, newMode)
     TsInfo = getappdata(hFig, 'TsInfo');
     TsInfo.XScale = newMode;
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
     set(hAxes, 'XScale', newMode);
     setappdata(hFig, 'TsInfo', TsInfo);
-    % Update value
+    % Update preferred value
     bst_set('XScale', newMode);
+end
+
+%% ===== SET Y-SCALE MODE =====
+function SetScaleModeY(hFig, newMode)
+    [Handles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
+    % Prevent log scale for data that's already log (dB), or negative.
+    if ~isempty(Handles) && Handles.DataMinMax(1) < 0
+        newMode = 'linear';
+    else
+        % Update preferred value
+        bst_set('YScale', newMode);
+    end
+    hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesGraph');
+    set(hAxes, 'YScale', newMode);
+    TsInfo = getappdata(hFig, 'TsInfo');
+    TsInfo.YScale = newMode;
+    setappdata(hFig, 'TsInfo', TsInfo);
+    % Readjust y scale limits.
+    ScaleToFitY(hFig);
 end
 
 
@@ -4155,6 +4286,132 @@ function SetAutoScale(hFig, isAutoScale)
     bst_figures('ReloadFigures', hFig);
     % Hide progress bar
     bst_progress('stop');
+end
+
+%% ===== RESCALE SPECTRUM AMPLITUDE =====
+function ScaleToFitY(hFig, ev)
+    TsInfo = getappdata(hFig, 'TsInfo');
+    % Only for butterfly display mode
+    if isempty(TsInfo) || ~strcmpi(TsInfo.DisplayMode, 'butterfly')
+        return;
+    end
+    % Get figure data
+    FigureId = getappdata(hFig, 'FigureId');
+    isSpectrum = strcmpi(FigureId.Type, 'spectrum');
+    [PlotHandles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
+    hAxes = PlotHandles.hAxes;
+    % Get initial YLim
+    YLimInit = getappdata(hAxes(1), 'YLimInit');
+
+    % ===== GET DATA =====
+    if isSpectrum
+        isBands = false;
+        % Get data to plot
+        switch lower(FigureId.SubType)
+            case 'timeseries'
+                [XVector, Freq, TfInfo, TF] = figure_timefreq('GetFigureData', hFig);
+            otherwise %case 'spectrum'
+                [Time, XVector, TfInfo, TF] = figure_timefreq('GetFigureData', hFig, 'CurrentTimeIndex');
+                % Frequency bands (cell array of named bands): Compute center of each band
+                if iscell(XVector)
+                    isBands = true;
+                    % Multiple frequency bands
+                    if (size(XVector,1) > 1)
+                        XVector = mean(process_tf_bands('GetBounds', XVector), 2)';
+                    % One frequency band: replicate data on both ends of the band
+                    else
+                        XVector = XVector{2};
+                        TF = cat(3, TF, TF);
+                    end
+                % Remove the first frequency bin (0)
+                elseif (size(TF,3)>2)
+                    iZero = find(XVector == 0);
+                    if ~isempty(iZero)
+                        XVector(iZero) = [];
+                        TF(:,:,iZero) = [];
+                    end
+                end
+                % Redimension TF according to what we want to display
+                TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
+        end
+    else
+        TF = GetFigureData(iDS, iFig);
+        TF = TF{1};
+        [XVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
+        XVector = XVector(iTime);
+    end
+    
+    % Get limits of currently plotted data
+    XLim = get(hAxes, 'XLim');    
+    % For linear y axis spectrum, ignore very low frequencies with high amplitudes. Use the first local maximum
+    if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ~isBands && ...
+            any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
+        TFmax = max(TF,[],1);
+        iStartMin = find(diff(TFmax)>0,1);
+        if isempty(iStartMin)
+            iStartMin = 1;
+        end
+    else
+        iStartMin = 1;
+    end
+    [val, iStart] = min(abs(XVector - XLim(1)));
+    iStart = max(iStartMin, iStart);
+    [val, iEnd] = min(abs(XVector - XLim(2)));
+    curTF = TF(:, iStart:iEnd);
+    isYLog = strcmpi(TsInfo.YScale, 'log');
+    if isYLog
+        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+        if YLim(1) <= 0
+            YLim(1) = min(curTF(curTF(:)>0)) * PlotHandles.DisplayFactor;
+        end
+        YLim = log10(YLim);
+    else
+        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+    end
+    % Add 5% margin above and below
+    YSpan = YLim(2) - YLim(1);
+    YLim(1) = YLim(1) - YSpan * 0.05;
+    YLim(2) = YLim(2) + YSpan * 0.05;
+    if isYLog
+        YLim = 10.^YLim;
+    end
+    % Respect data limits
+    if isSpectrum 
+        if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
+            YLim(1) = max(YLim(1), YLimInit(1));
+            YLim(2) = min(YLim(2), YLimInit(2));
+        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
+            YLim(1) = max(YLim(1), PlotHandles.DataMinMax(1) * PlotHandles.DisplayFactor);
+            YLim(2) = min(YLim(2), PlotHandles.DataMinMax(2) * PlotHandles.DisplayFactor);
+        end
+    end
+    % Catch exceptions
+    if YLim(1) == YLim (2)
+        if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
+            YLim = YLimInit;
+        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
+            YLim = PlotHandles.DataMinMax;
+        else
+            YLim = [-1, 1];
+        end
+    end
+    
+    % Rescale axis
+    set(hAxes, 'YLim', YLim);
+    % Update TimeCursor position
+    hCursor = findobj(hAxes, '-depth', 1, 'Tag', 'Cursor');
+    set(hCursor, 'YData', YLim);
+    % Update selection patches
+    hTimeSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'TimeSelectionPatch');
+    if ~isempty(hTimeSelectionPatch)
+        set(hTimeSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+    else % Check for spectrum selection patch
+        hSelectionPatch = findobj(hAxes, '-depth', 1, 'Tag', 'SelectionPatch');
+        if ~isempty(hSelectionPatch)
+            set(hSelectionPatch, 'YData', [YLim(1), YLim(1), YLim(2), YLim(2)]);
+        end
+    end
+    
 end
 
 
@@ -4696,7 +4953,7 @@ function PlotEventsDots_EventsBar(hFig)
             hEvtLabel = text(...
                 mean(events(iEvt).times,1), ...  % X
                 Ytext, ...                       % Y
-                events(iEvt).label, ...
+                repmat({events(iEvt).label}, 1, size(events(iEvt).times,2)), ...
                 'Color',               color, ...
                 'FontSize',            bst_get('FigFont'), ...
                 'FontUnits',           'points', ...

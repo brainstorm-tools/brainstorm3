@@ -33,10 +33,10 @@ end
 
 % Nodes list
 nNodes = size(FemMat.Vertices,1);
-nodes = [FemMat.Vertices(1:end-1,:), FemMat.Vertices(2:end,:)];
+nodes = [FemMat.Vertices(1:2:end-1,:), FemMat.Vertices(2:2:end,:)];
 
 % Open file
-[fid, message] = fopen(OutputFile, 'wt');
+[fid, message] = fopen(OutputFile, 'w');
 if (fid < 0)
     error(['Could not create file: ' message]);
 end

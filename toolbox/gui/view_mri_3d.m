@@ -99,6 +99,8 @@ if ~isempty(OverlayFile)
             OverlayType = 'Surface';
         case 'subjectimage'
             OverlayType = 'Anatomy';
+        case 'headmodel'
+            OverlayType = 'HeadModel';
         otherwise
             error('To do: See view_mri.m');
     end
@@ -107,12 +109,13 @@ end
 
 % ===== CREATE NEW FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
+% Prepare FigureId structure
+FigureId = db_template('FigureId');
+FigureId.Type     = '3DViz';
+FigureId.SubType  = '';
+FigureId.Modality = '';
+% Create new figure
 if isempty(hFig)
-    % Prepare FigureId structure
-    FigureId = db_template('FigureId');
-    FigureId.Type     = '3DViz';
-    FigureId.SubType  = '';
-    FigureId.Modality = '';
     % Create figure
     if NewFigure
         [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');

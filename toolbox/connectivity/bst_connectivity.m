@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017; Hossein Shahabi, 2019
+% Authors: Francois Tadel, 2012-2020; Martin Cousineau, 2017; Hossein Shahabi, 2019-2020
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -100,7 +100,7 @@ if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && ismember(OPTION
 end
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
-    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
+    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec','henv'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
@@ -585,29 +585,23 @@ for iFile = 1:length(FilesA)
             % We don't want to compute again the frequency bands
             FreqBands = [];
             
-        % ==== hcoh ====
-        case 'hcoh'
+        % ==== henv ====
+        case 'henv'
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
                 size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = [OPTIONS.tfMeasure ' | ' OPTIONS.CohMeasure ' | ' sprintf('%ds',OPTIONS.WinParam(1)) ' | ' ...
-                sprintf('%ds',prod(OPTIONS.WinParam)) ' | '] ;
+            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%1.2fs',OPTIONS.WinLength) ' | ' ...
+                sprintf('%1.2fs',OPTIONS.WinLength * OPTIONS.WinOverlap) ' | '] ;
             
-            % ======
-            OPTIONS.SampleRate        = sfreq;
-            OPTIONS.ExtraInf.nTrials  = length(FilesA);
-            OPTIONS.ExtraInf.trialNum = iFile;
-            OPTIONS.Freqs             = OPTIONS.Freqrange ;
+            OPTIONS.SampleRate = sfreq;
+            OPTIONS.Freqs      = OPTIONS.Freqrange;
 
-            % ======
-            [cOut,timeSamples] = bst_hcoh(sInputA.Data,OPTIONS);
-            R4d = cOut ;
-            sInputB.Time = timeSamples + sInputB.Time(1) ;
-            [~,~,nTime,nFreq] = size(R4d) ;
-            R = reshape(R4d,[],nTime,nFreq) ;
+            [R4d,timeSamples]       = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
+            sInputB.Time            = timeSamples + sInputB.Time(1) ;
+            [tmp1,tmp1,nTime,nBand] = size(R4d) ;
             
-            % =======
-            OPTIONS.Nwin = nTime ;
-            
+            % Rehaping a 4D matrix to 3 dim
+            R = reshape(R4d,[],nTime,nBand) ;
+                    
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
             return;
@@ -725,7 +719,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
         FileMat.HeadModelType = sInputB.HeadModelType;
     end
     % Time vector
-    if strcmpi(OPTIONS.Method, 'plvt')
+    if ismember(OPTIONS.Method, {'plvt','henv'})
         FileMat.Time      = sInputB.Time;
         FileMat.TimeBands = [];
     else

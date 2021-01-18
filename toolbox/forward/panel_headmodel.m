@@ -104,6 +104,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         % Combobox
         jComboMethodECOG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodECOG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodECOG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodECOG.setSelectedIndex(0);
     else
         jCheckMethodECOG = [];
@@ -117,6 +118,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         % Combobox
         jComboMethodSEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodSEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodSEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodSEEG.setSelectedIndex(0);
     else
         jCheckMethodSEEG = [];

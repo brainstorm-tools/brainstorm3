@@ -396,6 +396,10 @@ function data = nifti_read_img(fid, hdr)
         if (Nt == 0)
             Nt = 1;
         end
+        Nv = hdr.dim.dim(6);    % Number of 4D volumes (eg. MNI transformation)
+        if (Nv > 0)
+            Nt = Nt * Nv;
+        end
         % Read data
         data = repmat(cast(1, datatype),[Nx,Ny,Nz,Nt]);
         Nxy = Nx*Ny;

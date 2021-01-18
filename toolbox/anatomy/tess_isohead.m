@@ -41,24 +41,12 @@ else
     sSubject = bst_get('Subject', iSubject);
     MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 end
-% Ask user to set the parameters if they are not set
-if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
-    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:'}, 'Generate head surface', [], {'10000', '0', '2'});
-    % If user cancelled: return
-    if isempty(res)
-        return
-    end
-    % Get new values
-    nVertices   = str2num(res{1});
-    erodeFactor = str2num(res{2});
-    fillFactor  = str2num(res{3});
-end
-% Check parameters values
-if isempty(nVertices) || (nVertices < 50) || (nVertices ~= round(nVertices)) || isempty(erodeFactor) || ~ismember(erodeFactor,[0,1,2,3]) || isempty(fillFactor) || ~ismember(fillFactor,[0,1,2,3])
-    bst_error('Invalid parameters.', 'Head surface', 0);
-    return
-end
 
+%% ===== LOAD MRI =====
+% Load MRI 
+bst_progress('start', 'Generate head surface', 'Loading MRI...');
+sMri = bst_memory('LoadMri', MriFile);
+bst_progress('stop');
 % Save current scouts modifications
 panel_scout('SaveModifications');
 % If subject is using the default anatomy: use the default subject instead
@@ -70,21 +58,43 @@ if isempty(sSubject.iAnatomy) || isempty(sSubject.Anatomy)
     bst_error('The generate of the head surface requires at least the MRI of the subject.', 'Head surface', 0);
     return
 end
-% Progress bar
-bst_progress('start', 'Generate head surface', 'Initialization...', 0, 100);
-
-
-%% ===== CREATE HEAD MASK =====
-bst_progress('text', 'Creating head mask...');
-% Get MRI 
-sMri = bst_memory('LoadMri', MriFile);
 % Check that everything is there
 if ~isfield(sMri, 'Histogram') || isempty(sMri.Histogram) || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA)
     bst_error('You need to set the fiducial points in the MRI first.', 'Head surface', 0);
     return
 end
+
+%% ===== ASK PARAMETERS =====
+% Ask user to set the parameters if they are not set
+if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
+    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
+    % If user cancelled: return
+    if isempty(res)
+        return
+    end
+    % Get new values
+    nVertices   = str2num(res{1});
+    erodeFactor = str2num(res{2});
+    fillFactor  = str2num(res{3});
+    bgLevel     = str2num(res{4});
+    if isempty(bgLevel)
+        bgLevel = sMri.Histogram.bgLevel;
+    end
+else
+    bgLevel = sMri.Histogram.bgLevel;
+end
+% Check parameters values
+if isempty(nVertices) || (nVertices < 50) || (nVertices ~= round(nVertices)) || isempty(erodeFactor) || ~ismember(erodeFactor,[0,1,2,3]) || isempty(fillFactor) || ~ismember(fillFactor,[0,1,2,3])
+    bst_error('Invalid parameters.', 'Head surface', 0);
+    return
+end
+
+
+%% ===== CREATE HEAD MASK =====
+% Progress bar
+bst_progress('start', 'Generate head surface', 'Creating head mask...', 0, 100);
 % Threshold mri to the level estimated in the histogram
-headmask = (sMri.Cube(:,:,:,1) > sMri.Histogram.bgLevel);
+headmask = (sMri.Cube(:,:,:,1) > bgLevel);
 % Closing all the faces of the cube
 headmask(1,:,:)   = 0*headmask(1,:,:);
 headmask(end,:,:) = 0*headmask(1,:,:);
@@ -154,7 +164,7 @@ HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
 if ~isempty(Comment)
     sHead.Comment = Comment;
 else
-    sHead.Comment = sprintf('head mask (%d,%d,%d)', nVertices, erodeFactor, fillFactor);
+    sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, bgLevel);
 end
 sHead = bst_history('add', sHead, 'bem', 'Head surface generated with Brainstorm');
 bst_save(HeadFile, sHead, 'v7');
