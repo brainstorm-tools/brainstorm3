@@ -2162,7 +2162,7 @@ switch contextName
                 end
             end
             % If Condition is not added yet : add it to the list
-            if isNewCondition
+            if isNewCondition && ~isempty(sStudies(i).Condition)
                 Conditions{end+1} = sStudies(i).Condition{1};
             end
         end
