@@ -22,7 +22,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis 2019-2020
+% Author: Konstantinos Nasiotis 2019-2021
 
 
 %% ===== INSTALL NWB LIBRARY =====
@@ -56,39 +56,25 @@ rmpath(genpath(bst_fullfile(bst_get('BrainstormHomeDir'), 'external', 'nwb')));
 schemaVersion = util.getSchemaVersion(DataFile);
 disp(['NWB file schema version: ' schemaVersion])
 
-% Get the schema release version it corresponds to
-associated_folder_string = associateSchemaVersionToRelease(schemaVersion);
-
-if isempty(associated_folder_string)
-	error('This version of NWB is not supported within Brainstorm.');
-end
-
-% % Add to the path the specific schema's version and enter the directory
-% schemaDirectory = bst_fullfile(bst_get('BrainstormHomeDir'), 'external', 'nwb',['matnwb-' associated_folder_string]);
-% previous_directory = pwd;
-% cd(schemaDirectory);
-% addpath(genpath(schemaDirectory));
-% % generateCore();
-
-% Go in the tmp folder so the +types can be dumped
-cd(bst_get(BrainstormTmpDir))
+previous_directory = pwd;
 
 % Do everything in the NWB directory - With every call of nwbRead a +types
 % folder is created in the pwd for some reason
-
-% previous_directory = pwd;
-% cd(bst_fullfile(bst_get('BrainstormUserDir'),'NWB'));
+% Go in the tmp folder so the +types can be dumped
+cd(bst_get('BrainstormTmpDir'))
 
 % Load the metadata
-nwb2 = nwbRead(DataFile,'ignorecache');
-
+nwb2 = nwbRead(DataFile);
 cd(previous_directory)
 
-% Get the keys of every time-series that is saved within NWB
+%% Make sure this is an extracellular NWB.
+if isempty(nwb2.general_extracellular_ephys_electrodes)
+    error('This is not an extracellular ephys NWB file. Only extracellular recordings are supported')
+end
+
+%% Get the keys of every time-series that is saved within NWB
 all_TimeSeries_keys = keys(nwb2.searchFor('Timeseries', 'includeSubClasses'));
 all_electricalSeries_keys = keys(nwb2.searchFor('electricalseries', 'includeSubClasses'));
-
-disp('Add a check here if there are both RAW and LFP signals present - MAYBE POPUP FOR USER TO SELECT')
 
 %% Check for channels
 
@@ -123,9 +109,6 @@ end
 
 % Get rid of channels that should not be used
 ChannelsModuleStructure = ChannelsModuleStructure(~cellfun(@isempty,{ChannelsModuleStructure.module}));
-
-
-
 
 %% Perform a quality check that in case there are multiple RAW or multiple LFP keys present, they have the same sampling rate
 electrophysiologicalFs = [];
@@ -261,19 +244,16 @@ end
 %% Add information read from header
 sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
 sFile.filename     = DataFile;
-sFile.device       = 'NWB'; %nwb2.general_devices.get('implant');   % THIS WAS NOT SET ON THE EXAMPLE DATASET
+sFile.device       = 'NWB';
 sFile.header.nwb   = nwb2;
 sFile.comment      = nwb2.identifier;
 sFile.prop.times   = [time(1), time(end)];
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag  = ones(nChannels, 1);
-
 sFile.header.ChannelType = ChannelType;
 
-
 %% ===== READ EVENTS =====
-
 events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat);
 
 if ~isempty(events)
@@ -369,10 +349,12 @@ function moduleStructure = getDeeperModule(nwb, DataKey)
 end
 
 
-
 function [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj, DataKey, index)
     LabelParsed=regexp(DataKey,'/','split');
     index = index + 1;
+    
+    % Recursive search for timeseries - Once you hit the level that has
+    % timeseries or electricalseries or spatialseries etc. return them
 
     if strcmp(class(obj),'types.core.LFP')
         [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.electricalseries, DataKey, index);
@@ -390,8 +372,14 @@ function [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_disc
         [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = getFsnChannels(obj);
     elseif strcmp(class(obj), 'types.untyped.Set')
         [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = get_module(obj.get(LabelParsed(index)), DataKey, index);
-    elseif strcmp(class(obj), 'types.ndx_aibs_ecephys.EcephysCSD')
-        obj_return = []; % Dont really care using this - Confirm with the developers
+    
+    % Known Input types to be ignored:
+    elseif strcmp(class(obj), 'types.ndx_aibs_ecephys.EcephysCSD') || strcmp(class(obj), 'types.core.SpikeEventSeries') || ...
+           strcmp(class(obj), 'types.core.DecompositionSeries') || strcmp(class(obj), 'types.core.AnnotationSeries') || ...
+           strcmp(class(obj), 'types.core.CurrentClampSeries') || strcmp(class(obj), 'types.core.CurrentClampStimulusSeries') || ...
+           strcmp(class(obj), 'types.core.OptogeneticSeries') || strcmp(class(obj), 'types.core.OptogeneticSeries')
+       
+        obj_return = [];
         Fs = 0;
         nChannels = 0;
         nSamples = 0;
@@ -399,13 +387,17 @@ function [obj_return, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_disc
         timeBounds = [0,0];
         time_discontinuities = [];
     else
-        error('take care of this input type')
+        % DEV NOTE: NWB Evolves and new types are coming out. If it's not a
+        % core input that really needs to be included in Brainstorm, just
+        % add it on the input types to be ignored right above
+        error(['Unrecognized input type: ' class(obj)])
     end
 %     if strcmp(class(obj), 'types.untyped.Anon')
 %         obj_return = obj;
 %     end
     
 end
+
 
 function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinuities] = getFsnChannels(obj)
     % This is an assumption that we will have more samples than channels
@@ -464,7 +456,6 @@ function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinui
         
         % Remove the artificial discontinuity if the recording doesn't start from 0
         time_discontinuities = time_discontinuities(~ismember(time_discontinuities,[0 0],'rows'),:);
-        
     else
         obj = [];
         Fs = 0;
@@ -473,35 +464,3 @@ function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinui
         error('Cant determine sampling rate for this module - Ignoring it')
     end
 end
-
-
-function associated_folder_string = associateSchemaVersionToRelease(schemaVersion)
-    % This is used in order to find the correct association of Schema and
-    % release. No Schemas before 2.2.2 are supported in Brainstorm
-    % These are taken from:
-    % https://github.com/NeurodataWithoutBorders/matnwb/releases
-    % Add future releases 
-    % Unless they fix it from the NWB side, we might need to cache each
-    % version locally. So far it was not needed: worked seamlessly between
-    % NWB files: 2.2.1, 2.2.2 and 2.2.5
-    % WARNING: THE RELEASE VERSIONS DONT NECESSARILY MATCH THE SCHEMA
-    % VERSIONS
-    
-    if schemaVersion == '2.2.1' %#ok<*BDSCA>
-        associated_folder_string = '0.2.2';
-    elseif schemaVersion == '2.2.2'
-        associated_folder_string = '0.2.3';
-    elseif schemaVersion == '2.2.4'
-        associated_folder_string = '2.2.4.0';
-    elseif schemaVersion == '2.2.5'
-        associated_folder_string = '2.2.5.0';
-    else
-        associated_folder_string = [];
-    end
-end
-
-
-
-
-
-

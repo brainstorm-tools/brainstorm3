@@ -38,8 +38,12 @@ else
     % === EPOCHS FILE ===
     % Build epochs structure
     for iEpoch = 1:nEpochs
-        epochLabel = nwb2.intervals_epochs.tags.data.load(iEpoch);
-        sFile.epochs(iEpoch).label       = ['Epoch #(' num2str(iEpoch) ') - ' epochLabel{1}];
+        try
+            epochLabel = nwb2.intervals_epochs.tags.data.load(iEpoch);
+            sFile.epochs(iEpoch).label       = ['Epoch #(' num2str(iEpoch) ') - ' epochLabel{1}];
+        catch
+            sFile.epochs(iEpoch).label       = ['Epoch #(' num2str(iEpoch) ')'];
+        end
         sFile.epochs(iEpoch).times       = timeBoundsTrials(iEpoch,:);
 %         sFile.epochs(iEpoch).samples     = round(sFile.epochs(iEpoch).times * sFile.prop.sfreq);
         sFile.epochs(iEpoch).nAvg        = 1;
