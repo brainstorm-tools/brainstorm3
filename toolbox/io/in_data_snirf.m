@@ -57,8 +57,6 @@ elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isem
     
     src_pos(:,3) = 1;
     det_pos(:,3) = 1;
-    
-    scale = 0.01;
 else
     src_pos = [];
     det_pos = [];
