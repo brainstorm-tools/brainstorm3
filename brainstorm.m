@@ -126,7 +126,6 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     % This JAVA object needs to be initialized every time before Brainstorm
     NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');  
     if exist(NWBDir, 'dir')
-        disp('Initializing NWB library...');
         % The generateCore needs to run from the NWB folder
         current_path = pwd;
         cd(NWBDir);
