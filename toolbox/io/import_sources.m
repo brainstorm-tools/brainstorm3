@@ -273,12 +273,6 @@ if isStat
     else
         ResultsMat.Time = TimeVector;
     end
-    % Time vector
-    if isempty(TimeVector) || (length(TimeVector) ~= size(ResultsMat.tmap,2))
-        ResultsMat.Time = 0:(size(map,2)-1);
-    else
-        ResultsMat.Time = TimeVector;
-    end
 % === REGULAR SOURCE FILE ===
 else
     % New results structure
