@@ -154,7 +154,7 @@ switch (FileFormat)
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
     case {'NWB', 'NWB-CONTINUOUS'}
-        [sFile, ChannelMat] = in_fopen_nwb(DataFile, ImportOptions);
+        [sFile, ChannelMat] = in_fopen_nwb(DataFile);
         
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'

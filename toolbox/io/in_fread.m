@@ -215,7 +215,7 @@ switch (sFile.format)
         F = in_fread_tdt(sFile, SamplesBounds, iChannels);
     case {'NWB', 'NWB-CONTINUOUS'}
         isContinuous = strcmpi(sFile.format, 'NWB-CONTINUOUS');
-        F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous, ImportOptions);
+        F = in_fread_nwb(sFile, iEpoch, SamplesBounds, iChannels, isContinuous);
     case 'MNE-PYTHON'
         [F, TimeVector] = in_fread_mne(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels);
     otherwise
