@@ -5,6 +5,7 @@ January 2021
 | Brainnetome, Hammers, Neuromorphometrics, Julich-Brain, Schaefer2018
 - Distrib: New plugin manager bst_plugin
 - IO: Added support for ADInstruments LabChart EEG (.adicht)
+- IO: Added again NWB support
 ---------------------------------------------------------------
 December 2020
 - Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)
