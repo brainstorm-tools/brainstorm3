@@ -43,9 +43,12 @@ switch strtrim(str_remove_spec_chars(jnirs.nirs.metaDataTags.LengthUnit(:)'))
 end
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
+    
     src_pos = jnirs.nirs.probe.sourcePos3D;
     det_pos = jnirs.nirs.probe.detectorPos3D;
+
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
+    
     src_pos = jnirs.nirs.probe.sourcePos;
     det_pos = jnirs.nirs.probe.detectorPos;
     % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
@@ -53,11 +56,23 @@ elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(
         src_pos(:,3) = 1;
         det_pos(:,3) = 1;
     end
-    scale = 0.01;
+elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
+    
+    src_pos = jnirs.nirs.probe.sourcePos2D;
+    det_pos = jnirs.nirs.probe.detectorPos2D;
+    
+    if size(src_pos,2) ~= 3
+        src_pos = src_pos';
+        det_pos = det_pos';
+    end
+    
+    src_pos(:,3) = 1;
+    det_pos(:,3) = 1;
 else
     src_pos = [];
     det_pos = [];
 end
+
 % Apply units
 src_pos = scale .* src_pos;
 det_pos = scale .* det_pos;
@@ -67,8 +82,7 @@ nAux = length(jnirs.nirs.aux);
 
 % Create channel file structure
 ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'NIRS channels';
-ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels+nAux]);
+ChannelMat.Comment = 'NIRS-BRS channels';
 ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
 % NIRS channels
 for iChan = 1:nChannels
@@ -80,16 +94,34 @@ for iChan = 1:nChannels
     if ~isempty(src_pos) && ~isempty(det_pos)
         ChannelMat.Channel(iChan).Loc(:,1) = src_pos(channel.sourceIndex, :);
         ChannelMat.Channel(iChan).Loc(:,2) = det_pos(channel.detectorIndex, :);
+        ChannelMat.Channel(iChan).Orient  = [];
+        ChannelMat.Channel(iChan).Comment = [];
     end
 end
+
 % AUX channels
+aux_index = false(1,nAux);
 for iAux = 1:nAux
+    
+     if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
+        && ( size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
+    
+        warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
+        continue;
+
+        % If needed, following code should work :) 
+        % interp1(jnirs.nirs.aux(iAux).time, jnirs.nirs.aux(iAux).dataTimeSeries, jnirs.nirs.data.time); 
+        
+     end
+     
+    aux_index(iAux)=1;
     channel = jnirs.nirs.aux(iAux);
     ChannelMat.Channel(nChannels+iAux).Type = 'NIRS_AUX';
     ChannelMat.Channel(nChannels+iAux).Name = strtrim(str_remove_spec_chars(channel.name(:)'));
-    % TODO: Sanity check: make sure that time course are consistent with
-    % nirs one (compare channel.time with nirs timecourse)
 end
+
+nAux = sum(aux_index);
+ChannelMat.Channel = ChannelMat.Channel(1:(nChannels+nAux));
 % Check channel names
 for iChan = 1:length(ChannelMat.Channel)
     % If empty channel name: fill with index
@@ -130,17 +162,35 @@ end
 %% ===== DATA =====
 % Initialize returned file structure                    
 DataMat = db_template('DataMat');
-% Check dimensions
-if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux.dataTimeSeries) && (size(jnirs.nirs.data.dataTimeSeries,1) ~= size(jnirs.nirs.aux.dataTimeSeries,1))
-    error('TODO: Resample AUX channels to the NIRS sampling frequency.');
-end
+
 % Add information read from header
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = 'Unknown';
-DataMat.F           = [jnirs.nirs.data.dataTimeSeries'; ...
-                       jnirs.nirs.aux.dataTimeSeries']; 
+
+
+if(size(jnirs.nirs.data.dataTimeSeries,1) == nChannels)
+    DataMat.F           = jnirs.nirs.data.dataTimeSeries;
+else
+   DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
+end   
+
+
+for i_aux= 1:length(aux_index)
+    if aux_index(i_aux)
+        if size(jnirs.nirs.aux(i_aux).dataTimeSeries,1)==1
+            DataMat.F = [DataMat.F ; ...
+                     jnirs.nirs.aux(i_aux).dataTimeSeries]; 
+        else
+            DataMat.F = [DataMat.F ; ...
+                     jnirs.nirs.aux(i_aux).dataTimeSeries']; 
+        end    
+    end
+end
+
+
+
 DataMat.Time        = jnirs.nirs.data.time;
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
@@ -149,16 +199,27 @@ DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 
 for iEvt = 1:length(jnirs.nirs.stim)
-    % Get timing
-    isExtended = (size(jnirs.nirs.stim(iEvt).data,2) >= 2) && ~all(jnirs.nirs.stim(iEvt).data(:,2) == 0);
-    if isExtended
-        evtTime = [jnirs.nirs.stim(iEvt).data(:,1)'; ...
-                   jnirs.nirs.stim(iEvt).data(:,1)' + jnirs.nirs.stim(iEvt).data(:,2)'];
-    else
-        evtTime = jnirs.nirs.stim(iEvt).data(:,1)';
-    end
-    % Events structure
+    
     DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(jnirs.nirs.stim(iEvt).name(:)'));
+    if ~isfield(jnirs.nirs.stim(iEvt), 'data')
+            % Events structure
+        warning(sprintf('No data found for event: %s',jnirs.nirs.stim(iEvt).name))
+        continue
+    end    
+    % Get timing
+    
+    if size(jnirs.nirs.stim(iEvt).data,1) >  size(jnirs.nirs.stim(iEvt).data,1)
+        jnirs.nirs.stim(iEvt).data = jnirs.nirs.stim(iEvt).data';
+    end    
+    
+    isExtended = (size(jnirs.nirs.stim(iEvt).data,1) >= 2) && ~all(jnirs.nirs.stim(iEvt).data(2,:) == 0);
+    if isExtended
+        evtTime = [jnirs.nirs.stim(iEvt).data(1,:); ...
+                   jnirs.nirs.stim(iEvt).data(1,:) + jnirs.nirs.stim(iEvt).data(2,:)];
+    else
+        evtTime = jnirs.nirs.stim(iEvt).data(1,:)';
+    end
+
     DataMat.Events(iEvt).times      = evtTime;
     DataMat.Events(iEvt).epochs     = ones(1, size(evtTime,2));
     DataMat.Events(iEvt).channels   = cell(1, size(evtTime,2));
