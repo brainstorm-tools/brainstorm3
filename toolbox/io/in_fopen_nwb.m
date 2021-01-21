@@ -92,13 +92,14 @@ for iKey = 1:length(allChannels_keys)
 end
 allChannels_keys = allChannels_keys(keep_module);
 
-
 ChannelsModuleStructure = struct;
 ChannelsModuleStructure.path = [];
 ChannelsModuleStructure.module = [];
 ChannelsModuleStructure.Fs = [];
 ChannelsModuleStructure.nChannels = [];
 ChannelsModuleStructure.nSamples  = [];
+ChannelsModuleStructure.amp_channel_IDs = [];
+ChannelsModuleStructure.groupLabels = [];
 ChannelsModuleStructure.FlipMatrix = [];
 ChannelsModuleStructure.timeBounds = [];
 ChannelsModuleStructure.time_discontinuities = [];
@@ -123,13 +124,11 @@ for iModule = 1:length(ChannelsModuleStructure)
     end
 end
 
-
 % I reorder the structure - I prefer to have the electrophysiological
 % signals first since in_fread_nwb will follow that order as well
 putOnTop = ChannelsModuleStructure([ChannelsModuleStructure.isElectrophysiology]);
 ChannelsModuleStructure([ChannelsModuleStructure.isElectrophysiology]) = [];
 ChannelsModuleStructure = [putOnTop ChannelsModuleStructure];
-
 
 if length(unique(electrophysiologicalFs))>1
     error('There are electrophysiological signals with different sampling rates on this file - Aborting')
@@ -142,7 +141,6 @@ if size(unique(electrophysiologicalTimeBounds,'rows'),1)>1
 else
     time = unique(electrophysiologicalTimeBounds,'rows');
 end
-
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
@@ -157,7 +155,6 @@ nChannels = sum([ChannelsModuleStructure.nChannels]);
 % [sFile, nEpochs] = in_trials_nwb(sFile, nwb2);
 [sFile, nEpochs] = in_epochs_nwb(sFile, nwb2);
 
-
 %% ===== CREATE EMPTY CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NWB channels';
@@ -165,35 +162,17 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChannels]);
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-% Check which one to select here!!!
-% amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load + 1;
-amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.id.data.load;
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+iElectrophysiologyModules = find([ChannelsModuleStructure.isElectrophysiology]);
 
-% The following is weird - this should probably be stored differently in
-% the NWB - change how Ben stores electrode assignements to shank
-group_name = nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data.load;
-try
-    assignChannelsToShank = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load+1; % Python based - first entry is 0 - maybe add condition for matlab based entries
-    
-    group_name = cellstr(group_name);
-    groups = cell(1,length(group_name));
-    for iChannel = 1:length(group_name)
-        ii = find(assignChannelsToShank==iChannel);
-        groups{iChannel} = group_name{ii};
-    end
-    
-catch
-    try
-        groups = cellstr(nwb2.general_extracellular_ephys_electrodes.vectordata.get('group_name').data.load);
-    catch
-        groups = cell(1,length(group_name));
-    end
+groups = [];
+for iModule = iElectrophysiologyModules
+    groups = [groups ChannelsModuleStructure(iModule).groupLabels];
 end
-    
+
+
 try
     % Get coordinates and set to 0 if they are not available
-    x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB saves in m ???
+    x = nwb2.general_extracellular_ephys_electrodes.vectordata.get('x').data.load'./1000; % NWB doesn't specify in what metric it saves
     y = nwb2.general_extracellular_ephys_electrodes.vectordata.get('y').data.load'./1000;
     z = nwb2.general_extracellular_ephys_electrodes.vectordata.get('z').data.load'./1000;
     
@@ -206,9 +185,6 @@ catch
     z = zeros(1, length(group_name));
 end
   
-
-
-
 ChannelType = cell(sum([ChannelsModuleStructure.nChannels]), 1);
 ii = 0;
 
@@ -218,28 +194,23 @@ for iModule = 1:length(ChannelsModuleStructure)
         ii = ii + 1;
         zz = zz + 1;
         if ChannelsModuleStructure(iModule).isElectrophysiology
-            ChannelMat.Channel(ii).Name    = ['amp' num2str(amp_channel_IDs(iChannel))];
+            ChannelMat.Channel(ii).Name    = ['amp' num2str(ii-1)];
             ChannelMat.Channel(ii).Loc     = [x(iChannel);y(iChannel);z(iChannel)];
-            ChannelMat.Channel(ii).Group   = groups{iChannel};
+            ChannelMat.Channel(ii).Group   = groups(iChannel,:);
             ChannelMat.Channel(ii).Type    = 'SEEG';
-
             ChannelType{ii} = 'EEG';
         else
             LabelParsed=regexp(ChannelsModuleStructure(iModule).path,'/','split');
-
             ChannelMat.Channel(ii).Name    = [LabelParsed{end} '_' num2str(zz)];
             ChannelMat.Channel(ii).Loc     = [0;0;0];
             ChannelMat.Channel(ii).Group   = LabelParsed{end};
             ChannelMat.Channel(ii).Type    = 'Extra';
-
         end
         ChannelMat.Channel(ii).Orient  = [];
         ChannelMat.Channel(ii).Weight  = 1;
         ChannelMat.Channel(ii).Comment = [];
     end
 end
-
-
 
 %% Add information read from header
 sFile.byteorder    = 'l';  % Not confirmed - just assigned a value
@@ -262,7 +233,6 @@ if ~isempty(events)
 end
 
 end
-
 
 
 function downloadNWB()
@@ -329,8 +299,6 @@ function downloadNWB()
 end
 
 
-
-
 function moduleStructure = getDeeperModule(nwb, DataKey)
     % Parse the key for processing signal check
     BehaviorDataKeyLabelParsed=regexp(DataKey,'/','split');      
@@ -345,6 +313,26 @@ function moduleStructure = getDeeperModule(nwb, DataKey)
     moduleStructure.FlipMatrix      = FlipMatrix;
     moduleStructure.timeBounds      = timeBounds;
     moduleStructure.time_discontinuities = time_discontinuities;
+    
+    
+    % Get the amp_channel_ID and the GroupName of each channel
+    % Get the ElectrodeID and the ElectrodeGroup of each channel
+    if strcmp(class(obj),'types.core.ElectricalSeries')
+        amp_channel_IDs = obj.electrodes.data.load + 1; % Python starts from 0
+        
+        electrodes_path = obj.electrodes.table.path;
+        electrodes_path = strrep(electrodes_path(2:end), '/','_');        
+        
+        not_ordered_groupLabels = nwb.(electrodes_path).vectordata.get('group_name').data.load;
+        groupLabels = not_ordered_groupLabels(amp_channel_IDs,:);
+        
+        moduleStructure.amp_channel_IDs = amp_channel_IDs;
+        moduleStructure.groupLabels = groupLabels;
+
+    else
+        moduleStructure.amp_channel_IDs = [];
+        moduleStructure.groupLabels = [];
+    end
     
 end
 
@@ -463,4 +451,5 @@ function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinui
         time_discontinuities = [];
         error('Cant determine sampling rate for this module - Ignoring it')
     end
+    
 end
