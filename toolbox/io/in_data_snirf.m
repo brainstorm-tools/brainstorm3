@@ -43,8 +43,19 @@ switch strtrim(str_remove_spec_chars(jnirs.nirs.metaDataTags.LengthUnit(:)'))
 end
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
+    
     src_pos = jnirs.nirs.probe.sourcePos3D;
     det_pos = jnirs.nirs.probe.detectorPos3D;
+
+elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
+    
+    src_pos = jnirs.nirs.probe.sourcePos;
+    det_pos = jnirs.nirs.probe.detectorPos;
+    % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
+    if ~isempty(src_pos) && all(src_pos(:,3)==0) && all(det_pos(:,3)==0)
+        src_pos(:,3) = 1;
+        det_pos(:,3) = 1;
+    end
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
     
     src_pos = jnirs.nirs.probe.sourcePos2D;
@@ -61,6 +72,7 @@ else
     src_pos = [];
     det_pos = [];
 end
+
 % Apply units
 src_pos = scale .* src_pos;
 det_pos = scale .* det_pos;
@@ -93,12 +105,18 @@ for iAux = 1:nAux
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) && size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1)
         warning('TODO: Resample AUX channels to the NIRS sampling frequency.');
         continue;
+
+        % If needed, following code should work :) 
+        % interp1(jnirs.nirs.aux(iAux).time, jnirs.nirs.aux(iAux).dataTimeSeries, jnirs.nirs.data.time); 
+        
      end
+     
     aux_index(iAux)=1;
     channel = jnirs.nirs.aux(iAux);
     ChannelMat.Channel(nChannels+iAux).Type = 'NIRS_AUX';
     ChannelMat.Channel(nChannels+iAux).Name = strtrim(str_remove_spec_chars(channel.name(:)'));
 end
+
 nAux = sum(aux_index);
 ChannelMat.Channel = ChannelMat.Channel(1:(nChannels+nAux));
 % Check channel names
