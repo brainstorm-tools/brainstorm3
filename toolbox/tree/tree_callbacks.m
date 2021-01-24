@@ -1869,18 +1869,24 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     % ===== CONNECTIVITY =====
                     if ~isempty(strfind(filenameRelative, '_connectn')) || ~isempty(strfind(filenameRelative, '_connect1'))
+
                         % [NxN] only
                         if ~isempty(strfind(filenameRelative, '_connectn'))                           
                             
                             % new Connectivity Visualization menu option
                             gui_component('MenuItem', jPopup, [], 'Connectivity Graph (in dev) [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphFull'));
-                            
+                                                                      
                             gui_component('MenuItem', jPopup, [], 'Display as graph     [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));
                             %gui_component('MenuItem', jPopup, [], 'Connectivity graph (3D)',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, '3DGraph'));
                             gui_component('MenuItem', jPopup, [], 'Display as image    [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
                                 gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
                             end
+                            jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [1xN]', IconLoader.ICON_CONNECT1, [], []);
+                        
+                        % [1xN] option
+                        elseif ~isempty(strfind(filenameRelative, '_connect1'))
+                            gui_component('MenuItem', jPopup, [], 'Connectivity Graph (in dev) [1xN]',   IconLoader.ICON_CONNECT1, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphRegion'));
                             jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [1xN]', IconLoader.ICON_CONNECT1, [], []);
                         else
                             jMenuConn1 = jPopup;

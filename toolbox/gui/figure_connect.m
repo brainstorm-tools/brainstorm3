@@ -2350,7 +2350,7 @@ function UpdateColormap(hFig)
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
         return
-    end
+     end
     % Get data description
     iDS = bst_memory('GetDataSetTimefreq', TfInfo.FileName);
     if isempty(iDS)

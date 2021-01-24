@@ -39,7 +39,7 @@ function [hFig, iDS, iFig] = view_connect_viz(TimefreqFile, DisplayMode, hFig)
 %% ===== PARSE INPUTS =====
 
 disp('view_connect_viz.m reached') % @TODO: remove test
-
+disp(nargin);
 if (nargin < 2)
     DisplayMode = 'GraphFull';
 end
@@ -58,7 +58,7 @@ iFig = [];
 
 % @TODO: remove once OpenGL is no longer needed
 % Check if OpenGL is activated
-if strcmpi(DisplayMode, 'GraphFull')
+if (strcmpi(DisplayMode, 'GraphFull')) || (strcmpi(DisplayMode, 'GraphRegion'))
 %     if (bst_get('DisableOpenGL') == 1)
 %         bst_error(['Connectivity graphs require the OpenGL rendering to be enabled.' 10 ...
 %                    'Please go to File > Edit preferences...'], 'View connectivity matrix', 0);
@@ -71,7 +71,6 @@ if strcmpi(DisplayMode, 'GraphFull')
         return;
     end
 end
-
 
 %% ===== LOAD CONNECT FILE =====
 % Find file in database
@@ -103,11 +102,16 @@ end
 % Detect modality
 Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
 % Check that the matrix is square: cannot display [NxM] connectivity  where N~=M
-if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) ~= length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)) && ~strcmpi(DisplayMode, 'Image')
-    bst_error(sprintf('The connectivity matrix size is [%dx%d].\nThis graph display can be used only for square matrices (NxN).', ...
-              length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames), length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)), ...
-              'View connectivity matrix', 0);
-    return;
+if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) > length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)) && ~strcmpi(DisplayMode, 'Image')
+    
+%     if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) == 1)
+%         disp('1 x N graph');
+%     else
+        bst_error(sprintf('The connectivity matrix size is [%dx%d].\nThis graph display can be used only for square matrices (NxN).', ...
+                length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames), length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)), ...
+                'View connectivity matrix', 0);
+        return;
+    %end
 end
 
 %% ===== CREATE MATLAB FIGURE =====
