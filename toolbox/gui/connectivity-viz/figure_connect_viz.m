@@ -267,67 +267,15 @@ function HasTitle = RefreshTitle(hFig)
     Title = [];
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
     if (DisplayInRegion)
-        % Organisation level
-        OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
         % Label 
         hTitle = getappdata(hFig, 'TitlesHandle');
         % If data are hierarchicaly organised and we are not
         % already at the whole cortical view
-        if (~isempty(OrganiseNode) && OrganiseNode ~= 1)
-            % Get where we are textually
-            PathNames = VerticeToFullName(hFig, OrganiseNode);
-            Recreate = 0;
-            nLevel = size(PathNames,2);
-            if (nLevel ~= size(hTitle,2) || size(hTitle,2) == 0)
-                Recreate = 1;
-                for i=1:size(hTitle,2)
-                    delete(hTitle(i));
-                end
-                hTitle = [];
-            end
-            backgroundColor = GetBackgroundColor(hFig);
-            figPos = get(hFig, 'Position');
-            Width = 1;
-            Height = 25;
-            X = 10;
-            Y = figPos(4) - Height;
-            for i=1:nLevel
-                Title = PathNames{i};
-                if (Recreate)
-                    hTitle(i) = uicontrol( ...
-                                       'Style',               'pushbutton', ...
-                                       'Enable',              'inactive', ...
-                                       'String',              Title, ...
-                                       'Units',               'Pixels', ...
-                                       'Position',            [0 0 1 1], ...
-                                       'HorizontalAlignment', 'center', ...
-                                       'FontUnits',           'points', ...
-                                       'FontSize',            bst_get('FigFont'), ...
-                                       'ForegroundColor',     [0 0 0], ...
-                                       'BackgroundColor',     backgroundColor, ...
-                                       'HitTest',             'on', ...
-                                       'Parent',              hFig, ...
-                                       'Callback', @(h,ev)bst_call(@SetExplorationLevelTo,hFig,nLevel-i));
-                    set(hTitle(i), 'ButtonDownFcn', @(h,ev)bst_call(@SetExplorationLevelTo,hFig,nLevel-i), ...
-                                   'BackgroundColor',     backgroundColor);
-                end
-                X = X + Width;
-                Size = get(hTitle(i), 'extent');
-                Width = Size(3) + 10;
-                % Minimum width so all buttons look the same
-                if (Width < 50)
-                    Width = 50;
-                end
-                set(hTitle(i), 'String',            Title, ...
-                               'Position',          [X Y Width Height], ...
-                               'BackgroundColor',   backgroundColor);
-            end
-        else
-            for i=1:size(hTitle,2)
-                delete(hTitle(i));
-            end
-            hTitle = [];
+        for i=1:size(hTitle,2)
+            delete(hTitle(i));
         end
+        hTitle = [];
+        
         setappdata(hFig, 'TitlesHandle', hTitle);
         UpdateContainer(hFig, getappdata(hFig, 'OpenGLContainer'));
     end    
@@ -546,9 +494,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 out_figure_image(hFig, 'Viewer');
             end
         
-        % ---OTHER---    
-        case 'b' % TODO: Blending Mode (unclear if needed)
-            ToggleBlendingMode(hFig);    
+        % ---OTHER---        
         case 'h' % TODO: Toggle visibility of hierarchy/region nodes (unclear if needed)
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
             HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
@@ -567,8 +513,6 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             panel_display('ConnectKeyCallback', keyEvent);
         case {'-', 'subtract'} % unclear if needed
             panel_display('ConnectKeyCallback', keyEvent);
-        case 'escape' % unclear if needed
-            SetExplorationLevelTo(hFig, 1);
     end
       
 end
@@ -587,29 +531,34 @@ function FigureKeyReleasedCallback(hFig, keyEvent)
     end
 end
  
-function SetExplorationLevelTo(hFig, Level)
-    % Last reorganisation
-    OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
-    if (isempty(OrganiseNode) || OrganiseNode == 1)
-        return;
-    end
-    Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
-    Path = Paths{OrganiseNode};
-    NextAgregatingNode = Path(find(Path == OrganiseNode) + Level);
-    if (NextAgregatingNode ~= OrganiseNode)
-        bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', NextAgregatingNode);
-        UpdateFigurePlot(hFig);
-    end
-end
- 
 function NextNode = getNextCircularRegion(hFig, Node, Inc)
+    DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
+    if (DisplayInRegion)
+        % get region (mean or max) links visibility
+        RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
+    end
+    
     % Construct Spiral Index
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     DisplayNode = find(bst_figures('GetFigureHandleField', hFig, 'DisplayNode'));
     CircularIndex = [];
-    for i=1:size(Levels,1)
-        CircularIndex = [CircularIndex; Levels{i}];
+    
+    % Do we need to skip a level?
+    skip = []; % default skip nothing
+    if (DisplayInRegion)
+        if (RegionLinksIsVisible) 
+            skip = [1 2]; % skip Levels{1} and Levels{2} if in region links mode, 
+        else
+            skip = 2; % skip Levels{2} if in measure links mode
+        end 
     end
+    
+    for i=1:size(Levels,1) 
+        if (~ismember(i,skip))
+            CircularIndex = [CircularIndex; Levels{i}];
+        end
+    end
+    
     CircularIndex(~ismember(CircularIndex,DisplayNode)) = [];
     if isempty(Node)
         NextIndex = 1;
@@ -644,18 +593,19 @@ function ToggleRegionSelection(hFig, Inc)
         %
         NextNode = getNextCircularRegion(hFig, SelectedNode, Inc);
     end
-    % Is node an agregating node
+    % Is the next node an agregating node?
     isAgregatingNode = ismember(NextNode, AgregatingNodes);
     if (isAgregatingNode)
         % Get agregated nodes
-        AgregatedNodeIndex = getAgregatedNodesFrom(hFig, NextNode); 
-        if (~isempty(AgregatedNodeIndex))
-            % Select agregated node
-            SetSelectedNodes(hFig, AgregatedNodeIndex, 1, 1);
+        AgregatedNodeIndices = getAgregatedNodesFrom(hFig, NextNode); 
+        if (~isempty(AgregatedNodeIndices))
+            % Select all nodes associated to NextNode
+            SetSelectedNodes(hFig, AgregatedNodeIndices, 1, 1);
         end    
+    else
+        % Select next node
+        SetSelectedNodes(hFig, NextNode, 1, 1);
     end
-    % Select node
-    SetSelectedNodes(hFig, NextNode, 1, 1);
 end
  
  
@@ -792,8 +742,9 @@ function FigureMouseWheelCallback(hFig, ev)
 end
  
  
-%% ===== POPUP MENU =====
+%% ===== POPUP MENU V1: Display Options menu with no sub-menus=====
 %TODO: Saved image to display current values from Display Panel filters 
+%TODO: Remove '(in dev)' for features once fully functional
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -829,38 +780,16 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));       
     jPopup.add(jMenuSave);
     
-    % ==== MENU: 2D LAYOUT ====
-    jGraphMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
-        % Check Matlab version: Works only for R2007b and newer
-        if (bst_get('MatlabVersion') >= 705)
-            
-            % == MODIFY NODE SIZE (Jan 2021)== 
-            jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
-            NodeSize = GetNodeSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Node size');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(NodeSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jGraphMenu.add(jPanelModifiers);
-            
-            % == MODIFY LABEL SIZE (Jan 2021)== 
-            jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
+    % ==== MENU: 2D LAYOUT (DISPLAY OPTIONS)====
+    jDisplayMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
+        
+        % === LABEL DISPLAY OPTIONS ===
+        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+            % === MODIFY LABEL SIZE (Jan 2021) ===
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LabelSize = GetLabelSize(hFig);
             % Label
-            gui_component('label', jPanelModifiers, '', 'Label size');
+            gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
             % Slider
             jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
             jSliderContrast.setValue(round(LabelSize * 2));
@@ -876,33 +805,66 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jGraphMenu.add(jPanelModifiers);
-            
-            % == MODIFY LINK TRANSPARENCY ==
-            jGraphMenu.addSeparator();
-            jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
-            Transparency = getappdata(hFig, 'LinkTransparency');
+            jDisplayMenu.add(jPanelModifiers);
+        end
+        
+            % === TOGGLE LABEL OPTIONS ===
+            TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
+            % Measure (outer) node labels
+            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show scout labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
+            jItem.setSelected(ismember(1,TextDisplayMode));
+            % Region (lobe/hemisphere) node labels
+            if (DisplayInRegion)
+                jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show region labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
+                jItem.setSelected(ismember(2,TextDisplayMode));
+            end
+            % Selected Nodes' labels only
+            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show labels for selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
+            jItem.setSelected(ismember(3,TextDisplayMode));
+        
+        jDisplayMenu.addSeparator();
+        
+        % === NODE DISPLAY OPTIONS ===
+        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+            % === MODIFY NODE SIZE (Jan 2021)===
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            NodeSize = GetNodeSize(hFig);
             % Label
-            gui_component('label', jPanelModifiers, '', 'Link transp');
+            gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
             % Slider
-            jSliderContrast = JSlider(0,100,100);
-            jSliderContrast.setValue(round(Transparency * 100));
+            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(NodeSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
             jSliderContrast.setFocusable(0);
             jSliderContrast.setOpaque(0);
             jPanelModifiers.add('tab hfill', jSliderContrast);
             % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f %%', Transparency * 100));
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
             jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)TransparencySliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jGraphMenu.add(jPanelModifiers);
- 
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jDisplayMenu.add(jPanelModifiers);
+            if (~DisplayInRegion)
+                jDisplayMenu.addSeparator();
+            end
+        end
+
+        if (DisplayInRegion)
+            % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
+            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Hide region nodes (in dev)', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+            jItem.setSelected(~HierarchyNodeIsVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
+            jDisplayMenu.addSeparator();
+        end
+        
+        % == LINK DISPLAY OPTIONS ==
+        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
             % == MODIFY LINK SIZE ==
-            jPanelModifiers = gui_river([0 0], [3, 18, 3, 2]);
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LinkSize = GetLinkSize(hFig);
             % Label
             gui_component('label', jPanelModifiers, '', 'Link size');
@@ -921,91 +883,77 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LinkSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jGraphMenu.add(jPanelModifiers);
+            jDisplayMenu.add(jPanelModifiers);
+            
+            % == MODIFY LINK TRANSPARENCY ==
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            Transparency = getappdata(hFig, 'LinkTransparency');
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Link transp');
+            % Slider
+            jSliderContrast = JSlider(0,100,100);
+            jSliderContrast.setValue(round(Transparency * 100));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f %%', Transparency * 100));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)TransparencySliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jDisplayMenu.add(jPanelModifiers);
         end
         
-        % === TOGGLE BACKGROUND WHITE/BLACK ===
-        % @NOTE: done
-        jGraphMenu.addSeparator();
+            % === TOGGLE BINARY LINK STATUS ===
+            Method = getappdata(hFig, 'Method');
+            if ismember(Method, {'granger'}) || ismember(Method, {'spgranger'})
+                IsBinaryData = getappdata(hFig, 'IsBinaryData');
+                jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Binary Link Display', IconLoader.ICON_CHANNEL_LABEL, [], @(h, ev)SetIsBinaryData(hFig, 1 - IsBinaryData));
+                jItem.setSelected(IsBinaryData);
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
+            end
+        
+        % === BACKGROUND OPTIONS (NOTE: DONE)===
+        jDisplayMenu.addSeparator();
         BackgroundColor = getappdata(hFig, 'BgColor');
         isWhite = all(BackgroundColor == [1 1 1]);
-        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
+        jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
         jItem.setSelected(isWhite);
-        
-        % === TOGGLE BLENDING OPTIONS ===
-        BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
-        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Color blending', [], [], @(h, ev)ToggleBlendingMode(hFig));
-        jItem.setSelected(BlendingEnabled);
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
-        jGraphMenu.addSeparator();
-        
-        % === TOGGLE BLENDING OPTIONS ===
-        TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
-        jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Labels Display');
-            % Measure (outer) node labels
-            jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Measure Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
-            jItem.setSelected(ismember(1,TextDisplayMode));
-            
-            % Region (lobe/hemisphere) node labels
-            if (DisplayInRegion)
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Region Nodes', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
-                jItem.setSelected(ismember(2,TextDisplayMode));
-            end
-            
-            % Selected Nodes' labels only
-            jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
-            jItem.setSelected(ismember(3,TextDisplayMode));
+  
  
-        % === TOGGLE HIERARCHY NODE VISIBILITY ===
-        if (DisplayInRegion)
-            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
-            jItem.setSelected(~HierarchyNodeIsVisible);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
-        end
-        
-        % === TOGGLE BINARY LINK STATUS ===
-        Method = getappdata(hFig, 'Method');
-        if ismember(Method, {'granger'}) || ismember(Method, {'spgranger'})
-            IsBinaryData = getappdata(hFig, 'IsBinaryData');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Binary Link Display', IconLoader.ICON_CHANNEL_LABEL, [], @(h, ev)SetIsBinaryData(hFig, 1 - IsBinaryData));
-            jItem.setSelected(IsBinaryData);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
-        end
- 
-    % ==== MENU: GRAPH DISPLAY ====
-    jGraphMenu = gui_component('Menu', jPopup, [], 'Graph options', IconLoader.ICON_CONNECTN);
+    % ==== GRAPH OPTIONS ====
+    % NOTE: now all 'Graph Options' are directly shown in main pop-up menu
+        jPopup.addSeparator();
         % === SELECT ALL THE NODES ===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select all the nodes', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
+        jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0));
         % === SELECT NEXT REGION ===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
+        jItem = gui_component('MenuItem', jPopup, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
         % === SELECT PREVIOUS REGION===
-        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
+        jItem = gui_component('MenuItem', jPopup, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
-        jGraphMenu.addSeparator();
- 
+        jPopup.addSeparator();
+
         if (DisplayInRegion)
-%             % === UP ONE LEVEL IN HIERARCHY ===
-%             jItem = gui_component('MenuItem', jGraphMenu, [], 'One Level Up', [], [], @(h, ev)SetExplorationLevelTo(hFig, 1), []);
-%             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0));
-%             jGraphMenu.addSeparator();
-%             
-            % === TOGGLE DISPLAY REGION MEAN ===
-            % TODO: IMPLEMENT REGION MEAN LINKS
+            % === TOGGLE DISPLAY REGION LINKS ===
+            % TODO: IMPLEMENT REGION LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction ' (in dev)'], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
-            
+
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Region function');
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function (in dev)');
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -1548,10 +1496,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %% ===== Rendering option =====
     % Required: Select all on default
     SetSelectedNodes(hFig, [], 1);
-    
-    % Blending
-    SetBlendingMode(hFig, 0);
-    
+
     % OpenGL Constant
     % GL_LIGHTING = 2896
     % GL_COLOR_MATERIAL 2903
@@ -1767,71 +1712,6 @@ function UpdateFigurePlot(hFig)
  
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
- 
-    OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
-    if ~isempty(OrganiseNode)
-        % Reset display
-        OGL.resetDisplay();
-        % Back to Default camera
-        DefaultCamera(hFig);
-        % Which hierarchy level are we ?
-        NodeLevel = 1;
-        Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-        for i=1:size(Levels,1)
-            if ismember(OrganiseNode,Levels{i})
-                NodeLevel = i;
-            end
-        end
-        % 
-        Groups = bst_figures('GetFigureHandleField', hFig, 'Groups');
-        RowNames = bst_figures('GetFigureHandleField', hFig, 'RowNames');
-        nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
-        % 
-        Nodes = getAgregatedNodesFrom(hFig, OrganiseNode);
-        % 
-        Channels = ismember(RowNames, [Groups.RowNames]);
-        Index = find(Channels) + nAgregatingNodes;
-        InGroups = Index(ismember(Index,Nodes)) - nAgregatingNodes;
-        NamesOfNodes = RowNames(InGroups);
-        
-        GroupsIWant = [];
-        for i=1:size(Groups,2)
-            if (sum(ismember(Groups(i).RowNames, NamesOfNodes)) > 0)
-                GroupsIWant = [GroupsIWant i];
-            end
-        end
-        
-        if (OrganiseNode == 1)
-            % Return to first display
-            DisplayInCircle = getappdata(hFig, 'DisplayInCircle');
-            if (~isempty(DisplayInCircle) && DisplayInCircle == 1)
-                Vertices = OrganiseNodeInCircle(hFig, RowNames, Groups);
-            else
-                Vertices = OrganiseNodesWithConstantLobe(hFig, RowNames, Groups, RowLocs, 1);
-            end
-        else
-            % 
-            Vertices = ReorganiseNodeAroundInCircle(hFig, Groups(GroupsIWant), RowNames, NodeLevel);
-        end
-        % 
-        bst_figures('SetFigureHandleField', hFig, 'Vertices', Vertices);
-        % 
-        nVertices = size(Vertices,1);
-        Visible = sum(Vertices(:,1:3) ~= repmat([0 0 -5], nVertices,1),2) >= 1;
-        % 
-        DisplayNode = zeros(nVertices,1);
-        DisplayNode(OrganiseNode) = 1;
-        DisplayNode(Visible) = 1;
-        % 
-        bst_figures('SetFigureHandleField', hFig, 'DisplayNode', DisplayNode);
-        bst_figures('SetFigureHandleField', hFig, 'ValidNode', DisplayNode);
-        % Add the nodes
-        ClearAndAddNodes(hFig, Vertices, bst_figures('GetFigureHandleField', hFig, 'Names'));
-    else
-        % We assume that if 3D display, we did not unload the polygons
-        % so we simply need to load new data
-    end
-    
     Options = getappdata(hFig, 'LoadingOptions');
     % Clean and Build Datapair
     DataPair = LoadConnectivityData(hFig, Options);
@@ -2699,7 +2579,10 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
 end
  
  
-%%
+%% SHOW/HIDE REGION NODES FROM DISPLAY
+%TODO - allow hiding region nodes (lobes + hem nodes) from display
+%TODO - hidden nodes should not be clickable
+%TODO - hidden nodes should not have options to show/hide text labels
 function SetHierarchyNodeIsVisible(hFig, isVisible)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     if (HierarchyNodeIsVisible ~= isVisible)
@@ -3087,7 +2970,6 @@ function SetLinkTransparency(hFig, LinkTransparency)
 end
  
 %% ===== BACKGROUND COLOR =====
-% @TODO: BLENDING
 % @TODO: Agregating node text (region node - lobe label)
 function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     % Negate text color if necessary
@@ -3097,13 +2979,6 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
  
     % Update Matlab background color
     set(hFig, 'Color', BackgroundColor)
-    
-    % === BLENDING ===
-    % Ensures that if background is white no blending is on. -> checked
-    % Blending is additive and therefore won't be visible.
-    if all(BackgroundColor == [1 1 1])
-        SetBlendingMode(hFig, 0);
-    end
     
     % === UPDATE TEXT COLOR ===
     FigureHasText = getappdata(hFig, 'FigureHasText');

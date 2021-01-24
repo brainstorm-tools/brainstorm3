@@ -141,7 +141,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelAnatomical = gui_river([1,1], [2,2,2,2], 'Anatomy');
         % gui_component('label', jPanelAnatomical, 'br', 'Anatomy: ');
         jToggleAll  = gui_component('radio', [], [], 'All',   [], [], @ToggleAnatomicalFiltering_Callback);
-        jToggleHemi = gui_component('radio', [], [], 'Between Hemisphere',  [], [], @ToggleAnatomicalFiltering_Callback);
+        jToggleHemi = gui_component('radio', [], [], 'Between Hemispheres',  [], [], @ToggleAnatomicalFiltering_Callback);
         jToggleLobe = gui_component('radio', [], [], 'Between Lobes', [], [], @ToggleAnatomicalFiltering_Callback);
         jPanelAnatomical.add('', jToggleAll);
         jPanelAnatomical.add('br', jToggleHemi);
