@@ -178,6 +178,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             CreateSubjectNode(nodeExpand, 0);
         elseif strcmp(nodeType, 'subject')
             CreateSubjectNode(nodeExpand, 1);
+        else
+            CreateFunctionalNode(nodeExpand);
         end
     end
         
@@ -495,7 +497,6 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
         sqlConn = sql_connect();
         sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Id', iStudy));
         sSubject = sql_query(sqlConn, 'select', 'subject', 'UseDefaultChannel', struct('Id', sStudy.Subject));
-        sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
         sql_close(sqlConn);
         if ~isempty(sStudy)
             % Get selected search tab
@@ -503,7 +504,7 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
             % Create node sub-tree
             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
             isExpandTrials = 1;
-            node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+            node_create_study(nodeStudy, [], sStudy, iStudy, [], isExpandTrials, UseDefaultChannel, iSearch);
         end
     end
     
@@ -546,6 +547,31 @@ function CreateSubjectNode(nodeSubject, isAnatomyView) %#ok<DEFNU>
     % Mark as updated
     nodeSubject.setUserObject([]);
     ctrl.jTreeProtocols.getModel.reload(nodeSubject);
+end
+
+%% ===== NODE: CREATE FUNCTIONAL FILE NODE =====
+function CreateFunctionalNode(nodeFile) %#ok<DEFNU>
+    % If node is already generated: return
+    if isempty(nodeFile.getUserObject())
+        return;
+    end
+    % Get tree handle
+    ctrl = bst_get('PanelControls', 'protocols');
+    if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
+        return;
+    end
+    % Remove existing nodes
+    nodeFile.removeAllChildren();
+    % Get selected search tab
+    iSearch = GetSelectedSearch();
+    % Get file ID
+    iFile  = nodeFile.getItemIndex();
+    iStudy = nodeFile.getStudyIndex();
+    node_create_study(nodeFile, [], [], iStudy, iFile, [], [], iSearch);
+    
+    % Mark as updated
+    nodeFile.setUserObject([]);
+    ctrl.jTreeProtocols.getModel.reload(nodeFile);
 end
 
 
@@ -658,7 +684,7 @@ function UpdateNode(category, indices, isExpandTrials)
                             sSubject = bst_get('Subject', sStudy.BrainStormSubject);
                             % Create new study node (default node / normal node)
                             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
-                            node_create_study(nodeStudy, [], sStudy, iStudy, isExpandTrials, UseDefaultChannel, iSearch);
+                            node_create_study(nodeStudy, [], sStudy, iStudy, [], isExpandTrials, UseDefaultChannel, iSearch);
                             % Refresh node display
                             ctrl.jTreeProtocols.getModel.reload(nodeStudy);
                             drawnow

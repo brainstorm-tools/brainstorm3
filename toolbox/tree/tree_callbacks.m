@@ -109,7 +109,8 @@ switch (lower(action))
                 end
                 % If not is not generated: Create node contents
                 if ~isempty(nodeStudy)
-                    panel_protocols('CreateStudyNode', nodeStudy);
+                    %TODO: I don't see the need for this? Disabled for now.
+                    %panel_protocols('CreateStudyNode', nodeStudy);
                 end
             % Selecting a file in a condition
             case {'data', 'rawdata', 'datalist', 'channel', 'headmodel', 'noisecov', 'ndatacov', 'results', 'kernel', 'matrix', 'matrixlist', 'dipoles', 'timefreq', 'spectrum', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'pmatrix', 'link', 'image', 'video', 'videolink'}

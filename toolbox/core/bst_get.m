@@ -339,6 +339,21 @@ switch contextName
         end
         argout1 = userName;
         
+    case 'ComputerName'
+        try
+            if ispc
+                computerName = getenv('computername');
+            else
+                computerName = char(java.net.InetAddress.getLocalHost.getHostName());
+            end
+        catch
+            computerName = '';
+        end
+        if isempty(computerName)
+            computerName = 'Unknown';
+        end
+        argout1 = computerName;
+        
     case 'BrainstormUserDir'
         bstUserDir = bst_fullfile(bst_get('UserDir'), '.brainstorm');
         if ~isdir(bstUserDir)

@@ -347,7 +347,7 @@ end
 if ~isempty(studyMat)
     % HeadModel : last file
     if ~isempty(sStudy(1).HeadModel)
-        sStudy(1).iHeadModel = length(sStudy(1).HeadModel);
+        sStudy(1).iHeadModel = sStudy(1).HeadModel(end).FileName;
     else
         sStudy(1).iHeadModel = [];
     end

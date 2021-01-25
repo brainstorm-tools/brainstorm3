@@ -54,7 +54,7 @@ if nargin < 3
     return;
 end
 % Get additional query part
-if nargin < 6
+if nargin < 6 || isempty(addQuery)
     addQuery = '';
 else
     addQuery = [' ' addQuery];

@@ -216,6 +216,9 @@ function varargout = db_get2(contextName, sqlConn, args)
                             end
                         end
                         
+                    case 'dipoles'
+                        sFile.DataFile = results(iFile).ExtraStr1;
+                        
                     case {'matrix', 'noisecov', 'image'}
                         % Nothing to add
                         

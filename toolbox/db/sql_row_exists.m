@@ -1,4 +1,4 @@
-function exists = sql_row_exists(sqlConnection, table, values)
+function exists = sql_row_exists(sqlConnection, table, values, addQuery)
 % SQL_ROW_EXISTS: Checks if a row with certain value(s) exists in a table
 
 % @=============================================================================
@@ -21,4 +21,8 @@ function exists = sql_row_exists(sqlConnection, table, values)
 %
 % Authors: Martin Cousineau, 2020
 
-exists = sql_query(sqlConnection, 'select', table, '1', values);
+if nargin < 4
+    addQuery = [];
+end
+
+exists = sql_query(sqlConnection, 'select', table, '1', values, addQuery);

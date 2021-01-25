@@ -71,6 +71,14 @@ editField('Subject', 'ForeignKey', {'Subject', 'Id'});
 table.PrimaryKey = 'Id';
 tables(end + 1) = table;
 
+% Locks table
+table = generateTable('Lock', 1);
+editField('Id', 'AutoIncrement');
+editField('Study', 'NotNull', 0);
+editField('File', 'NotNull', 0);
+table.PrimaryKey = 'Id';
+tables(end + 1) = table;
+
 function addField(Name, Type, NotNull, AutoIncrement, ForeignKey, DefaultValue)
     field = db_template('sqlfield');
     field.Name = Name;

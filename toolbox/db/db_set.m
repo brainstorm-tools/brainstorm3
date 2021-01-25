@@ -89,8 +89,15 @@ switch contextName
         if length(args) == 1
             sStudy = args{1};
             iStudy = sStudy.Id;
-            types = {'Channel', 'Data', 'HeadModel', 'Result', 'Stat', ...
-                'Image', 'NoiseCov', 'Dipoles', 'Timefreq', 'Matrix'};
+            % Note: Order important here, as potential parent files (Data, Matrix, Result)
+            % should be created before potential child files (Result, Timefreq, dipoles).
+            types = {'Channel', 'HeadModel', 'Data', 'Matrix', 'Result', ...
+                'Stat', 'Image', 'NoiseCov', 'Dipoles', 'Timefreq'};
+            % Create structure to save inserted IDs of potential parent files.
+            fileIds = struct('filename', [], 'id', [], 'numChildren', 0);
+            parentFiles = struct('data', repmat(fileIds, 0), ...
+                'matrix', repmat(fileIds, 0), ...
+                'result', repmat(fileIds, 0));
         else
             types  = {lower(args{1})};
             sFiles = args{2};
@@ -104,6 +111,12 @@ switch contextName
                 type = lower(types{iType});
             else
                 type = types{iType};
+            end
+            
+            % Group trials
+            if ismember(type, {'data', 'matrix'})
+                dataGroups = repmat(struct('name', [], 'parent', [], ...
+                    'files', repmat(db_template('FunctionalFile'),0)), 0);
             end
 
             for iFile = 1:length(sFiles)
@@ -125,13 +138,15 @@ switch contextName
                         functionalFile.ExtraStr2 = str_join(sFiles(iFile).DisplayableSensorTypes, ',');
 
                     case {'result', 'results'}
-                        functionalFile.ExtraStr1 = sFiles(iFile).DataFile;
-                        functionalFile.ExtraNum  = sFiles(iFile).isLink;
-                        functionalFile.ExtraStr2 = sFiles(iFile).HeadModelType;
+                        functionalFile.ExtraStr1  = sFiles(iFile).DataFile;
+                        functionalFile.ExtraNum   = sFiles(iFile).isLink;
+                        functionalFile.ExtraStr2  = sFiles(iFile).HeadModelType;
+                        functionalFile.ParentFile = GetParent('data', sFiles(iFile).DataFile);
 
                     case 'timefreq'
-                        functionalFile.ExtraStr1 = sFiles(iFile).DataFile;
-                        functionalFile.ExtraStr2 = sFiles(iFile).DataType;
+                        functionalFile.ExtraStr1  = sFiles(iFile).DataFile;
+                        functionalFile.ExtraStr2  = sFiles(iFile).DataType;
+                        functionalFile.ParentFile = GetParent({'data', 'result', 'matrix'}, sFiles(iFile).DataFile);
 
                     case 'stat'
                         functionalFile.SubType   = sFiles(iFile).Type;
@@ -154,6 +169,10 @@ switch contextName
                         functionalFile.SubType   = sFiles(iFile).HeadModelType;
                         functionalFile.ExtraStr1 = str_join(modalities, ',');
                         functionalFile.ExtraStr2 = str_join(methods, ',');
+                        
+                    case 'dipoles'
+                        functionalFile.ExtraStr1  = sFiles(iFile).DataFile;
+                        functionalFile.ParentFile = GetParent({'result', 'data'}, sFiles(iFile).DataFile);
 
                     case {'matrix', 'noisecov', 'image'}
                         % Nothing to add
@@ -162,7 +181,64 @@ switch contextName
                         error('Unsupported functional file type');
                 end
 
-                sql_query(sqlConn, 'insert', 'functionalfile', functionalFile);
+                % For data trials, do not insert them right away in the 
+                % database since we need to group in trial groups first
+                if ismember(type, {'data', 'matrix'})
+                    comment = str_remove_parenth(functionalFile.Name);
+                    iPos = find(strcmp(comment, {dataGroups.name}), 1);
+                    if ~isempty(iPos)
+                        dataGroups(iPos).files(end + 1) = functionalFile;
+                    else
+                        dataGroups(end + 1).name = comment;
+                        dataGroups(end).files = functionalFile;
+                    end
+                else
+                    FileId = sql_query(sqlConn, 'insert', 'functionalfile', functionalFile);
+                    
+                    % Save inserted ID if this is a potential parent file
+                    if ~isempty(sStudy) && ismember(type, {'data', 'matrix', 'result', 'results'})
+                        SaveParent(type, functionalFile.FileName, FileId);
+                    end
+                end
+            end
+            
+            % Create trial groups
+            if ismember(type, {'data', 'matrix'})
+                for iGroup = 1:length(dataGroups)
+                    nFiles = length(dataGroups(iGroup).files);
+                    
+                    if nFiles > 4
+                        % Insert file for group
+                        functionalFile = db_template('FunctionalFile');
+                        functionalFile.Study = iStudy;
+                        functionalFile.Type = [type 'list'];
+                        functionalFile.FileName = dataGroups(iGroup).files(1).FileName;
+                        functionalFile.Name = dataGroups(iGroup).name;
+                        functionalFile.NumChildren = nFiles;
+                        ParentId = sql_query(sqlConn, 'insert', 'functionalfile', functionalFile);
+                    else
+                        ParentId = [];
+                    end
+                    
+                    % Insert trials
+                    for iFile = 1:nFiles
+                        dataGroups(iGroup).files(iFile).ParentFile = ParentId;
+                        FileId = sql_query(sqlConn, 'insert', 'functionalfile', dataGroups(iGroup).files(iFile));
+                        SaveParent(type, dataGroups(iGroup).files(iFile).FileName, FileId);
+                    end
+                end
+            end
+        end
+        
+        % Update children count of parent files
+        fieldTypes = fieldnames(parentFiles);
+        for iField = 1:length(fieldTypes)
+            for iFile = 1:length(parentFiles.(fieldTypes{iField}))
+                if parentFiles.(fieldTypes{iField})(iFile).numChildren > 0
+                    sql_query(sqlConn, 'update', 'functionalfile', ...
+                        struct('NumChildren', parentFiles.(fieldTypes{iField})(iFile).numChildren), ...
+                        struct('Id', parentFiles.(fieldTypes{iField})(iFile).id));
+                end
             end
         end
 
@@ -173,6 +249,43 @@ end
 % Close SQL connection if it was created
 if handleConn
     sql_close(sqlConn);
+end
+
+    function SaveParent(type, fileName, id)
+        if strcmp(type, 'results')
+            fieldType = 'result';
+        else
+            fieldType = type;
+        end
+        parentFiles.(fieldType)(end + 1).filename = FileStandard(fileName);
+        parentFiles.(fieldType)(end).id = id;
+        parentFiles.(fieldType)(end).numChildren = 0;
+    end
+
+function FileId = GetParent(types, fileName)
+    FileId = [];
+    if isempty(fileName)
+        return;
+    end
+    if ~iscell(types)
+        types = {types};
+    end
+    
+    fileName = FileStandard(fileName);
+    for iCurType = 1:length(types)
+        if strcmp(types{iCurType}, 'results')
+            fieldType = 'result';
+        else
+            fieldType = types{iCurType};
+        end
+        
+        iFound = find(strcmp(fileName, {parentFiles.(fieldType).filename}), 1);
+        if ~isempty(iFound)
+            FileId = parentFiles.(fieldType)(iFound).id;
+            parentFiles.(fieldType)(iFound).numChildren = parentFiles.(fieldType)(iFound).numChildren + 1;
+            return;
+        end
+    end
 end
 end
 
@@ -185,3 +298,13 @@ function outStr = str_join(cellStr, delimiter)
         outStr = [outStr cellStr{iCell}];
     end
 end
+
+function FileName = FileStandard(FileName)
+    % Replace '\' with '/'
+    FileName(FileName == '\') = '/';
+    % Remove first slash (filenames all relative)
+    if (FileName(1) == '/')
+        FileName = FileName(2:end);
+    end
+end
+
