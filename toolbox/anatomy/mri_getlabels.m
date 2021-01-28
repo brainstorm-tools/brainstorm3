@@ -1,13 +1,15 @@
-function [Labels, AtlasName] = mri_getlabels(MriFile, sMri)
+function [Labels, AtlasName] = mri_getlabels(MriFile, sMri, isForced)
 % MRI_GETLABELS: Get labels associated with a volume atlas (based on the MRI or the atlas name)
 % 
-% USAGE:  Labels = mri_getlabels(MriFile)       : Get labels based on filename (look for .txt file next to it, or use standard filenames)
-%         Labels = mri_getlabels(MriFile, sMri) : Keep only the labels available in the sMRI structure
-%         Labels = mri_getlabels(AtlasName)     : Get labels based on atlas name {'aseg', 'marsatlas'}
+% USAGE:  Labels = mri_getlabels(MriFile)                   : Get labels based on filename (look for .txt file next to it, or use standard filenames)
+%         Labels = mri_getlabels(MriFile, sMri, isForced=0) : Keep only the labels available in the sMRI structure
+%         Labels = mri_getlabels(AtlasName)                 : Get labels based on atlas name {'aseg', 'marsatlas'}
 %
 % INPUT:
 %    - MriFile   : Full path to the volume atlas (eg. '/path/to/aseg.mgz')
+%    - sMri      : Braistorm MRI structure
 %    - AtlasName : Name of the atlas: {'aseg', 'marsatlas'}
+%    - isForced  : Create labels based on the numeric labels if text labels are missing
 % 
 % OUTPUT:
 %    - Labels : Cell-array {nLabels x 3}
@@ -40,6 +42,9 @@ function [Labels, AtlasName] = mri_getlabels(MriFile, sMri)
 % Authors: Francois Tadel, 2020-2021
 
 % Parse inputs
+if (nargin < 3) || isempty(isForced)
+    isForced = [];
+end
 if (nargin < 2) || isempty(sMri)
     sMri = [];
 end
@@ -74,8 +79,6 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
         AtlasName = 'aseg';
     elseif ~isempty(strfind(fBase, '.svreg.label.'))   % *.svreg.label.nii.gz
         AtlasName = 'svreg';
-    elseif ~isempty(strfind(fBase, '.svreg.label.'))   % *.svreg.label.nii.gz
-        AtlasName = 'svreg';
     end
 end
 % If the name of the altas is in the file comment
@@ -92,12 +95,12 @@ elseif ~any(MriFile == '.') && (length(MriFile) <= maxNameLength)
     AtlasName = MriFile;
 end
 % No atlas identified
-if isempty(AtlasName)
+if isempty(AtlasName) && ~isForced
 	return;
 end
 
 % Switch by atlas name
-if isempty(Labels)
+if isempty(Labels) && ~isempty(AtlasName)
     switch lower(AtlasName)
         case 'aseg'          % FreeSurfer ASEG + Desikan-Killiany (2006) + Destrieux (2010)
             Labels = mri_getlabels_aseg();
@@ -158,3 +161,18 @@ if ~isempty(sMri) && ~isempty(Labels)
     end
 end
 
+
+%% ===== FORCE LABEL CREATION =====
+if isempty(Labels) && ~isempty(sMri) && isForced
+    % Get labels available in the volume
+    allLabels =num2cell(reshape(setdiff(unique(sMri.Cube(:)), 0), [], 1));
+    indList = num2cell(reshape(1:length(allLabels), [], 1));
+    % Get colormap
+    ColorTable = round(panel_scout('GetScoutsColorTable') .* 255);
+    ColorTable = repmat(ColorTable, round(length(allLabels)/length(ColorTable)) + 1, 1);
+    % Create label entry for each value in the volume
+    Labels = [{0, 'Background', [0 0 0]}; ...
+        cat(2, allLabels, ...
+               cellfun(@num2str, allLabels, 'UniformOutput', 0), ...
+               cellfun(@(i)ColorTable(i,:), indList, 'UniformOutput', 0))];
+end

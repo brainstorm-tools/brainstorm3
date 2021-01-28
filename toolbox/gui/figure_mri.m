@@ -3015,6 +3015,9 @@ function SetVolumeAtlas(hFig, AnatAtlas)
         iAtlas = find(strcmpi(AnatAtlas, AtlasNames));
         if isempty(iAtlas)
             disp(['BST> Error: Atlas "' AnatAtlas '" not available for this figure.']);
+            if ~isProgress
+                bst_progress('stop');
+            end
             return;
         elseif (length(iAtlas) > 1)
             duplicAtlas = unique(AtlasNames(iAtlas));
@@ -3029,9 +3032,15 @@ function SetVolumeAtlas(hFig, AnatAtlas)
             % Load atlas volume
             sMriAtlas = bst_memory('LoadMri', AtlasFiles{iAtlas});
             if isempty(sMriAtlas)
+                if ~isProgress
+                    bst_progress('stop');
+                end
                 return;
             elseif isempty(sMriAtlas.Labels)
                 disp(['BST> Invalid atlas "' AnatAtlas '": does not contain any labels.']);
+                if ~isProgress
+                    bst_progress('stop');
+                end
                 return;
             end
             % Save label information

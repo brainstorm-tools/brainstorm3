@@ -157,13 +157,15 @@ end
 %% ===== GET ATLAS LABELS =====
 % Try to get associated labels
 if isempty(Labels) && ~iscell(MriFile)
-    Labels = mri_getlabels(MriFile, sMri);
+    Labels = mri_getlabels(MriFile, sMri, isAtlas);
 end
 % Save labels in the file structure
-if ~isempty(Labels)
+if ~isempty(Labels)   % Labels were found in the input folder
     sMri.Labels = Labels;
     tagAtlas = '_volatlas';
     isAtlas = 1;
+elseif isAtlas    % Volume was explicitly imported as an atlas
+    tagAtlas = '_volatlas';
 else
     tagAtlas = '';
 end
