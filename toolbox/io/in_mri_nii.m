@@ -413,6 +413,10 @@ function data = nifti_read_img(fid, hdr)
               data(:,:,z,t) = temp;
            end
         end
+        % Rescaling is not needed if the slope==1 and intersect==0
+        if strcmpi(datatype, 'single') && (hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_inter==0 && hdr.nifti.scl_slope==1)
+        	data = data * hdr.nifti.scl_slope + hdr.nifti.scl_inter;
+        end
     end
 end
 
