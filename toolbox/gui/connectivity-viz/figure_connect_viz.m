@@ -2626,7 +2626,13 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
        % OGL = getappdata(hFig, 'OpenGLDisplay');
         % Clear
        % OGL.clearRegionLinks();
-        %
+       
+        % Clear previous region links
+        if (isappdata(hFig,'RegionLinks')) 
+            delete(getappdata(hFig,'RegionLinks'));
+            rmappdata(hFig,'RegionLinks');
+        end      
+
         Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
         Vertices = bst_figures('GetFigureHandleField', hFig, 'Vertices');
         % Build path for new datapair
@@ -2743,6 +2749,15 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         % Update figure value
         bst_figures('SetFigureHandleField', hFig, 'RegionDataPair', RegionDataPair);
         setappdata(hFig, 'RegionFunction', RegionFunction);
+        
+        % Added Jan. 31: update visibility of region links
+        % Get selected node
+        selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+        % Erase selected node
+        SetSelectedNodes(hFig, selNodes, 0, 1);
+        % Redraw selected nodes
+        SetSelectedNodes(hFig, selNodes, 1, 1);
+        
         % Update color map
         UpdateColormap(hFig);
     end
