@@ -161,6 +161,7 @@ classdef   node < handle
               n = this.UserData;
               disp("Node with label '" + n.Label + "' was clicked");
               disp("Node index: " + n.NodeIndex);
+              disp("Node position: " + n.Position);
               global GlobalData
               GlobalData.FigConnect.ClickedNodeIndex = n.NodeIndex;
           end
