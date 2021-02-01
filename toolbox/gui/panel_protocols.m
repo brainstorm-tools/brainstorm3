@@ -659,8 +659,6 @@ function UpdateNode(category, indices, isExpandTrials)
             % For each study
             for i = 1:length(indices)
                 iStudy = indices(i);
-                % Get study
-                sStudy  = bst_get('Study', iStudy);
                 % Exploration mode
                 switch bst_get('Layout', 'ExplorationMode')
                     case 'Subjects'
@@ -680,8 +678,11 @@ function UpdateNode(category, indices, isExpandTrials)
                             end
                             % Remove all children from this node
                             nodeStudy.removeAllChildren();
-                            % Get associated subject
-                            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+                            % Get study and associated subject
+                            sqlConn = sql_connect();
+                            sStudy = sql_query(sqlConn, 'select', 'Study', '*', struct('Id', iStudy));
+                            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', sStudy.Subject));
+                            sql_close(sqlConn);
                             % Create new study node (default node / normal node)
                             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
                             node_create_study(nodeStudy, [], sStudy, iStudy, [], isExpandTrials, UseDefaultChannel, iSearch);

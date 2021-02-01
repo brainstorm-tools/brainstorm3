@@ -30,157 +30,87 @@ if (nargin < 4)
 end
 deletedFile = {};
 
-% Get study
-sStudy = bst_get('Study', iStudy);
 % Get relative filename
 ProtocolInfo = bst_get('ProtocolInfo');
 FileName = file_short(FileName);
 % Get file type
 fileType = file_gettype(FileName);
+
+% Create new descriptor
+sNew = db_template('FunctionalFile');
+sNew.Study    = iStudy;
+sNew.Type     = fileType;
+sNew.FileName = FileName;
+sNew.Name     = FileMat.Comment;
+
 % Switch according to file type
 switch (fileType)
     case {'pdata', 'presults','ptimefreq','pmatrix'}
-        % Create new descriptor
-        sNew = db_template('Stat');
-        sNew.FileName   = FileName;
-        sNew.Comment    = FileMat.Comment;
-        sNew.Type       = FileMat.Type;
-        % Add it to study
-        if isempty(iItem)
-            iItem = length(sStudy.Stat) + 1;
-            % Make file comment unique
-            if ~isempty(sStudy.Stat)
-                Comment = file_unique(sNew.Comment, {sStudy.Stat.Comment});
-                % Modify input file
-                if ~isequal(Comment, sNew.Comment)
-                    save(file_fullpath(FileName), 'Comment', '-append');
-                    sNew.Comment = Comment;
-                end
-            end
-        else
-            deletedFile{end+1} = sStudy.Stat(iItem).FileName;
-        end
-        sStudy.Stat(iItem) = sNew;
+        sNew.Type    = 'stat';
+        sNew.SubType = FileMat.Type;
+        
     case 'timefreq'
-        % Create new descriptor
-        sNew = db_template('Timefreq');
-        sNew.FileName = FileName;
-        sNew.Comment  = FileMat.Comment;
-        sNew.DataFile = FileMat.DataFile;
-        sNew.DataType = FileMat.DataType;
-        % Add it to study
-        if isempty(iItem)
-            iItem = length(sStudy.Timefreq) + 1;
-            % Make file comment unique
-            if ~isempty(sStudy.Timefreq)
-                % Get the time-frequency files that have reference file
-                iSameParent = find(cellfun(@(c)isequal(c, sNew.DataFile), {sStudy.Timefreq.DataFile}));
-                % If there are files with the same parent: make it unique within this group
-                if ~isempty(iSameParent)
-                    Comment = file_unique(sNew.Comment, {sStudy.Timefreq(iSameParent).Comment});
-                    % Modify input file
-                    if ~isequal(Comment, sNew.Comment)
-                        save(file_fullpath(FileName), 'Comment', '-append');
-                        sNew.Comment = Comment;
-                    end
-                end
-            end
-        else
-            deletedFile{end+1} = sStudy.Timefreq(iItem).FileName;
-        end
-        sStudy.Timefreq(iItem) = sNew;
+        sNew.ExtraStr1 = FileMat.DataFile;
+        sNew.ExtraStr2 = FileMat.DataType;
+        
     case 'data'
-        % Create new descriptor
-        sNew = db_template('Data');
-        sNew.FileName = FileName;
-        sNew.Comment  = FileMat.Comment;
         % DataType
         if isfield(FileMat, 'DataType')
-            sNew.DataType = FileMat.DataType;
+            sNew.ExtraStr1 = FileMat.DataType;
         else
-            sNew.DataType = 'recordings';
+            sNew.ExtraStr1 = 'recordings';
         end
         % BadTrial
-        sNew.BadTrial = 0;
-        % Add it to study
-        if isempty(iItem)
-            iItem = length(sStudy.Data) + 1;
-            % Make file comment unique
-            if ~isempty(sStudy.Data)
-                Comment = file_unique(sNew.Comment, {sStudy.Data.Comment});
-                % Modify input file
-                if ~isequal(Comment, sNew.Comment)
-                    save(file_fullpath(FileName), 'Comment', '-append');
-                    sNew.Comment = Comment;
-                end
-            end
-        else
-            deletedFile{end+1} = sStudy.Data(iItem).FileName;
-        end
-        sStudy.Data(iItem) = sNew;
+        sNew.ExtraNum = 0;
+        
     case {'results','link'}
-        % Create new descriptor
-        sNew = db_template('Results');
-        sNew.FileName = FileName;
-        sNew.Comment  = FileMat.Comment;
-        sNew.DataFile = FileMat.DataFile;
+        sNew.Type  = 'result';
+        sNew.ExtraStr1 = FileMat.DataFile;
         % HeadModelType
         if isfield(FileMat, 'HeadModelType')
-            sNew.HeadModelType = FileMat.HeadModelType;
+            sNew.ExtraStr2 = FileMat.HeadModelType;
         else
-            sNew.HeadModelType = 'surface';
+            sNew.ExtraStr2 = 'surface';
         end
-        % Add it to study
-        if isempty(iItem)
-            iItem = length(sStudy.Result) + 1;
-            % Make file comment unique
-            if ~isempty(sStudy.Result)
-                % Get the time-frequency files that have reference file
-                iSameParent = find(cellfun(@(c)isequal(c, sNew.DataFile), {sStudy.Result.DataFile}));
-                % If there are files with the same parent: make it unique within this group
-                if ~isempty(iSameParent)
-                    Comment = file_unique(sNew.Comment, {sStudy.Result(iSameParent).Comment});
-                    % Modify input file
-                    if ~isequal(Comment, sNew.Comment)
-                        save(file_fullpath(FileName), 'Comment', '-append');
-                        sNew.Comment = Comment;
-                    end
-                end
-            end
-        else
-            deletedFile{end+1} = sStudy.Result(iItem).FileName;
-        end
-        sStudy.Result(iItem) = sNew;
-    case 'matrix'
-        % Create new descriptor
-        sNew = db_template('Matrix');
-        sNew.FileName = FileName;
-        sNew.Comment  = FileMat.Comment;
-        % Add it to study
-        if isempty(iItem)
-            iItem = length(sStudy.Matrix) + 1;
-            % Make file comment unique
-            if ~isempty(sStudy.Matrix)
-                Comment = file_unique(sNew.Comment, {sStudy.Matrix.Comment});
-                % Modify input file
-                if ~isequal(Comment, sNew.Comment)
-                    save(file_fullpath(FileName), 'Comment', '-append');
-                    sNew.Comment = Comment;
-                end
-            end
-        else
-            deletedFile{end+1} = sStudy.Matrix(iItem).FileName;
-        end
-        sStudy.Matrix(iItem) = sNew;
 end
-% Update database
-bst_set('Study', iStudy, sStudy);
 
-% Delete replaced file
-if ~isempty(deletedFile)
-    for i = 1:length(deletedFile)
-        file_delete(bst_fullfile(ProtocolInfo.STUDIES, deletedFile{i}), 1);
+% Add it to study
+sqlConn = sql_connect();
+if isempty(iItem)
+    % Make file comment unique
+    queryCond = struct('Study', iStudy, 'Type', sNew.Type);
+    
+    % Special case for timefreq and result file: get unique file name out
+    % of files with same reference file (DataFile).
+    if ismember(sNew.Type, {'timefreq', 'result'})
+        queryCond.ExtraStr1 = sNew.ExtraStr1;
     end
+    
+    sFiles = sql_query(sqlConn, 'select', 'FunctionalFile', 'Name', queryCond);
+    if ~isempty(sFiles)
+        Comment = file_unique(sNew.Name, {sFiles.Name});
+        % Modify input file
+        if ~isequal(Comment, sNew.Name)
+            save(file_fullpath(FileName), 'Comment', '-append');
+            sNew.Name = Comment;
+        end
+    end
+    
+    % Update database
+    iItem = sql_query(sqlConn, 'insert', 'FunctionalFile', sNew);
+else
+    % Delete replaced file
+    sOld = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Id', iItem));
+    if ~isempty(sOld)
+        file_delete(bst_fullfile(ProtocolInfo.STUDIES, sOld.FileName), 1);
+    end
+    
+    % Update database
+    sql_query(sqlConn, 'update', 'FunctionalFile', sNew, struct('Id', iItem));
 end
+sql_close(sqlConn);
 
-
+% Get study only if necessary
+if nargout > 0
+    sStudy = bst_get('Study', iStudy);
+end

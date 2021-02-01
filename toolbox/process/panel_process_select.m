@@ -84,17 +84,19 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         ChannelNames = {'No channel info'};
     end
     % Get all the subjects names
-    ProtocolSubjects = bst_get('ProtocolSubjects');
+    sqlConn = sql_connect();
+    sSubjects = db_get('Subjects', sqlConn);
     ProtocolInfo     = bst_get('ProtocolInfo');
     SubjectNames = {};
     iSelSubject = [];
-    if ~isempty(ProtocolSubjects)
-        SubjectNames = {ProtocolSubjects.Subject.Name};
+    if ~isempty(sSubjects)
+        SubjectIds   = [sSubjects.Id];
+        SubjectNames = {sSubjects.Name};
         if ~isempty(ProtocolInfo.iStudy)
-            sSelStudy = bst_get('Study', ProtocolInfo.iStudy);
-            [sSelSubject, iSelSubject] = bst_get('Subject', sSelStudy.BrainStormSubject);
+            iSelSubject = db_get('SubjectFromStudy', sqlConn, ProtocolInfo.iStudy);
         end
     end
+    sql_close(sqlConn);
     
     % Reload processes
     panel_process_select('ParseProcessFolder');
@@ -1277,7 +1279,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     if ~isempty(defSubjectName)
                         iDefault = find(strcmp(listSubj, defSubjectName));
                     elseif ~isempty(iSelSubject)
-                        iDefault = iSelSubject;
+                        iDefault = find(SubjectIds == iSelSubject);
                     else
                         iDefault = 1;
                     end

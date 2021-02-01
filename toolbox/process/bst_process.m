@@ -64,7 +64,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
     if ischar(sInputs2) || iscell(sInputs2)
         sInputs2 = GetInputStruct(sInputs2);
     end
-    StudyToRedraw = {};
+    iStudyToRedraw = {};
     isReload = 0;
     % List all the input files
     if ~isempty(sInputs2)
@@ -144,10 +144,31 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Process each input file
                 for iInput = 1:length(sInputs)
+                    isProcess1 = strcmpi(sProcesses(iProc).Category, 'filter');
                     % Capture process crashes
                     try
+                        % Acquire lock on input files
+                        ProcessName = func2str(sProcesses(iProc).Function);
+                        LockIds = lock_acquire(ProcessName, ...
+                            sInputs(iInput).SubjectName, ...
+                            sInputs(iInput).iStudy, ...
+                            sInputs(iInput).iItem);
+                        if isempty(LockIds)
+                            error(['Could not acquire lock on file ' sInputs(iInput).FileName]);
+                        end
+                        if ~isProcess1
+                            LockId2 = lock_acquire(ProcessName, ...
+                                sInputs2(iInput).SubjectName, ...
+                                sInputs2(iInput).iStudy, ...
+                                sInputs2(iInput).iItem);
+                            if isempty(LockId2)
+                                error(['Could not acquire lock on file ' sInputs2(iInput).FileName]);
+                            end
+                            LockIds(end + 1) = LockId2;
+                        end
+                        
                         % Apply filter to file
-                        if strcmpi(sProcesses(iProc).Category, 'filter')
+                        if isProcess1
                             OutputFiles{iInput} = ProcessFilter(sProcesses(iProc), sInputs(iInput));
                         else
                             OutputFiles{iInput} = ProcessFilter2(sProcesses(iProc), sInputs(iInput), sInputs2(iInput));
@@ -161,6 +182,10 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                         end
                         continue;
                     end
+                    
+                    % Release locks
+                    lock_release([], LockIds);
+                    
                     % Increase progress bar
                     if UseProgress
                         bst_progress('set', 100 * ((iProc-1) * length(sInputs) + iInput));
@@ -275,10 +300,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
             sInputs2 = [];
         end
         % Get all the studies to update
-        allStudies = bst_get('Study', unique([sInputs.iStudy]));
-        if ~isempty(allStudies)
-            StudyToRedraw = cat(2, StudyToRedraw, {allStudies.FileName});
-        end
+        iStudyToRedraw = unique([sInputs.iStudy]);
         % Are those studies supposed to be reloaded
         isReload = isReload || (~strcmpi(sProcesses(iProc).Category, 'Filter') && isfield(sProcesses(iProc).options, 'overwrite') && isfield(sProcesses(iProc).options.overwrite, 'Value') && isequal(sProcesses(iProc).options.overwrite.Value, 1));
     end
@@ -294,21 +316,15 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
     
     % ===== UPDATE INTERFACE =====
     % If there are studies to redraw
-    if ~isempty(StudyToRedraw)
-        StudyToRedraw = unique(StudyToRedraw);
-        % Get all the study indices
-        iStudyToRedraw = [];
-        for i = 1:length(StudyToRedraw)
-            [sStudy, iStudy] = bst_get('Study', StudyToRedraw{i});
-            iStudyToRedraw = [iStudyToRedraw, iStudy];
-        end
+    if ~isempty(iStudyToRedraw)
         % Full reload
         if isReload
             db_reload_studies(iStudyToRedraw, 1);
         % Simple tree update
         else
             % Update results links in target study
-            db_links('Study', iStudyToRedraw);
+            %TODO: Reactive this
+            %db_links('Study', iStudyToRedraw);
             % Update tree 
             panel_protocols('UpdateNode', 'Study', iStudyToRedraw);
         end
@@ -644,7 +660,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             basefile = sInput.FileName;
         end
         % Get output study: same as input
-        [sOutputStudy, iOutputStudy, iFile] = bst_get('AnyFile', sInput.FileName);
+        iOutputStudy = sInput.iStudy;
         % Full output file
         basefile = file_short(basefile);
         MatFile = [strrep(basefile, '.mat', ''), fileTag, '.mat'];
@@ -1457,93 +1473,81 @@ function sInputs = GetInputStruct(FileNames)
     FilePaths = cellfun(@(c)c(1:find(c=='/',1,'last')-1), FileNames, 'UniformOutput', 0);
     [uniquePath,I,J] = unique(FilePaths);
     % Loop on studies
+    sqlConn = sql_connect();
     for iPath = 1:length(uniquePath)
         % Get files in this group
         iGroupFiles = find(J == iPath);
         GroupFileNames = FileNames(iGroupFiles);
-        % Get study for the first file
-        [sStudy, iStudy] = bst_get('AnyFile', GroupFileNames{1});
-        if isempty(sStudy)
+        % Get study and subject information using first file
+        result = sql_query(sqlConn, [
+            'SELECT Subject.Filename AS SubjectFile, ' ...
+              'Subject.Name AS SubjectName, ' ...
+              'Study.Condition AS StudyCond, ' ...
+              'Study.iChannel AS iChannel, ' ...
+              'FunctionalFile.Study AS iStudy ' ...
+            'FROM FunctionalFile ' ...
+            'LEFT JOIN Study ON Study.Id = FunctionalFile.Study ' ...
+            'LEFT JOIN Subject on Subject.Id = Study.Subject ' ...
+            'WHERE FunctionalFile.FileName = "' GroupFileNames{1} '"']);
+        if ~result.next()
             sInputs = [];
             return;
         end
+        iStudy      = result.getInt('iStudy');
+        iChannel    = result.getInt('iChannel');
+        SubjectFile = char(result.getString('SubjectFile'));
+        SubjectName = char(result.getString('SubjectName'));
+        StudyCond   = char(result.getString('StudyCond'));
+        result.close();
         % Set information for the files in this group
         [sInputs(iGroupFiles).iStudy]      = deal(iStudy);
-        [sInputs(iGroupFiles).SubjectFile] = deal(file_win2unix(sStudy.BrainStormSubject));
+        [sInputs(iGroupFiles).SubjectName] = deal(SubjectName);
+        [sInputs(iGroupFiles).SubjectFile] = deal(file_win2unix(SubjectFile));
         % Get channel file
-        sChannel = bst_get('ChannelForStudy', iStudy);
-        if ~isempty(sChannel)
+        if iChannel ~= 0
+            sChannel = db_get('FunctionalFile', sqlConn, 'channel', iChannel);
             [sInputs(iGroupFiles).ChannelFile]  = deal(file_win2unix(sChannel.FileName));
             [sInputs(iGroupFiles).ChannelTypes] = deal(sChannel.Modalities);
         end
         % Condition
-        if ~isempty(sStudy.Condition)
-            [sInputs(iGroupFiles).Condition] = deal(sStudy.Condition{1});
+        if ~isempty(StudyCond)
+            [sInputs(iGroupFiles).Condition] = deal(StudyCond);
         end
-        % Look for items in database
-        switch (FileType)
-            case 'data'
-                [tmp, iDb, iList] = intersect({sStudy.Data.FileName}, GroupFileNames);
-                sItems = sStudy.Data(iDb);
-                if ~isempty(sItems) && strcmpi(sItems(1).DataType, 'raw')
-                    InputType = 'raw';
-                else
-                    InputType = 'data';
-                end
-            case {'results', 'link'}
-                [tmp, iDb, iList] = intersect({sStudy.Result.FileName}, GroupFileNames);
-                sItems = sStudy.Result(iDb);
+        % Get item info
+        for iItem = 1:length(iGroupFiles)
+            iInput = iGroupFiles(iItem);
+            [sItem, sFile] = db_get('FunctionalFile', sqlConn, FileType, GroupFileNames{iItem});
+            
+            % Skip if file not found in database
+            if isempty(sItem)
+                continue;
+            end
+            
+            % Extract input type
+            if strcmpi(FileType, 'data') && strcmpi(sItem.DataType, 'raw')
+                InputType = 'raw';
+            elseif strcmpi(FileType, 'link')
                 InputType = 'results';
-            case {'presults', 'pdata','ptimefreq','pmatrix'}
-                [tmp, iDb, iList] = intersect({sStudy.Stat.FileName}, GroupFileNames);
-                sItems = sStudy.Stat(iDb);
+            else
                 InputType = FileType;
-            case 'timefreq'
-                [tmp, iDb, iList] = intersect({sStudy.Timefreq.FileName}, GroupFileNames);
-                sItems = sStudy.Timefreq(iDb);
-                InputType = 'timefreq';
-            case 'matrix'
-                [tmp, iDb, iList] = intersect({sStudy.Matrix.FileName}, GroupFileNames);
-                sItems = sStudy.Matrix(iDb);
-                InputType = 'matrix';
-            case 'dipoles'
-                [tmp, iDb, iList] = intersect({sStudy.Dipoles.FileName}, GroupFileNames);
-                sItems = sStudy.Dipoles(iDb);
-                InputType = 'dipoles';
-            otherwise
-                error('File format not supported.');
-        end
-        % Error: not all files were found
-        if (length(iList) ~= length(GroupFileNames))
-            disp(sprintf('BST> Warning: %d file(s) not found in database.', length(GroupFileNames) - length(iList)));
-            continue;
-        end
-        % Fill structure
-        iInputs = iGroupFiles(iList);
-        iDb = num2cell(iDb);
-        [sInputs(iInputs).iItem]    = deal(iDb{:});
-        [sInputs(iInputs).FileType] = deal(InputType);
-        [sInputs(iInputs).FileName] = deal(sItems.FileName);
-        [sInputs(iInputs).Comment]  = deal(sItems.Comment);
-        % Associated data file
-        if isfield(sItems, 'DataFile')
-            [sInputs(iInputs).DataFile] = deal(sItems.DataFile);
+            end
+            
+            % Fill structure
+            sInputs(iInput).iItem = sFile.Id;
+            sInputs(iInput).FileType = InputType;
+            sInputs(iInput).FileName = sItem.FileName;
+            sInputs(iInput).Comment = sItem.Comment;
+            % Associated data file
+            if isfield(sItem, 'DataFile')
+                sInputs(iInput).DataFile = sItem.DataFile;
+            end            
         end
     end
+    sql_close(sqlConn);
     % Remove entries that were not found in the database
     iEmpty = cellfun(@isempty, {sInputs.FileName});
     if ~isempty(iEmpty)
         sInputs(iEmpty) = [];
-    end
-    % No files: exit
-    if isempty(sInputs)
-        return;
-    end
-    % Get subject names
-    [uniqueSubj,I,J] = unique({sInputs.SubjectFile});
-    for i = 1:length(uniqueSubj)
-        sSubject = bst_get('Subject', uniqueSubj{i});
-        [sInputs(J==i).SubjectName] = deal(sSubject.Name);
     end
 end
 

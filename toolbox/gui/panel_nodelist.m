@@ -697,13 +697,35 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
     sFiles = repmat(db_template('processfile'), [1, length(iStudies)]);
     % Get unique list of studies
     iUniqueStudies = unique(iStudies);
+    sqlConn = sql_connect();
     for is = 1:length(iUniqueStudies)
         iStudy = iUniqueStudies(is);
         % Get study/subject
-        sStudy = bst_get('Study', iStudy);
-        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        result = sql_query(sqlConn, [
+            'SELECT Subject.Filename AS SubjectFile, ' ...
+              'Subject.Name AS SubjectName, ' ...
+              'Study.Name AS StudyName, ' ...
+              'Study.Condition AS StudyCond, ' ...
+              'Study.iChannel AS iChannel ' ...
+            'FROM Study ' ...
+            'LEFT JOIN Subject on Subject.Id = Study.Subject ' ...
+            sprintf('WHERE Study.Id = %d', iStudy)]);
+        if ~result.next()
+            sFiles = [];
+            return;
+        end
+        iChannel    = result.getInt('iChannel');
+        SubjectFile = char(result.getString('SubjectFile'));
+        SubjectName = char(result.getString('SubjectName'));
+        StudyName   = char(result.getString('StudyName'));
+        StudyCond   = char(result.getString('StudyCond'));
+        result.close();
         % Get channel file
-        sChannel = bst_get('ChannelForStudy', iStudy);
+        if iChannel ~= 0
+            sChannel = db_get('FunctionalFile', sqlConn, 'channel', iChannel);
+        else
+            sChannel = [];
+        end
         % Get list of samples in this study
         iFiles = find(iStudies == iStudy);
         % Loop on samples
@@ -711,8 +733,8 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
             i = iFiles(ind);
             sFiles(i).iStudy      = iStudy;
             sFiles(i).iItem       = iItems(i);
-            sFiles(i).SubjectFile = file_win2unix(sStudy.BrainStormSubject);
-            sFiles(i).SubjectName = sSubject.Name;
+            sFiles(i).SubjectFile = file_win2unix(SubjectFile);
+            sFiles(i).SubjectName = SubjectName;
             sFiles(i).FileType    = ProcessType;
             % Channel file
             if ~isempty(sChannel)
@@ -725,18 +747,21 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
             % Data or results
             switch (ProcessType)
                 case 'data'
-                    sFiles(i).FileName = file_win2unix(sStudy.Data(iItems(i)).FileName);
-                    sFiles(i).Comment  = sStudy.Data(iItems(i)).Comment;
-                    if strcmpi(sStudy.Data(iItems(i)).DataType, 'raw')
+                    sData = db_get('FunctionalFile', sqlConn, 'Data', iItems(i));
+                    sFiles(i).FileName = file_win2unix(sData.FileName);
+                    sFiles(i).Comment  = sData.Comment;
+                    if strcmpi(sData.DataType, 'raw')
                         sFiles(i).FileType = 'raw';
                     end
                 case 'results'
-                    sFiles(i).FileName = file_win2unix(sStudy.Result(iItems(i)).FileName);
-                    sFiles(i).Comment  = sStudy.Result(iItems(i)).Comment;
-                    sFiles(i).DataFile = file_win2unix(sStudy.Result(iItems(i)).DataFile);
+                    sResult = db_get('FunctionalFile', sqlConn, 'Result', iItems(i));
+                    sFiles(i).FileName = file_win2unix(sResult.FileName);
+                    sFiles(i).Comment  = sResult.Comment;
+                    sFiles(i).DataFile = file_win2unix(sResult.DataFile);
                 case 'timefreq'
+                    sTimefreq = db_get('FunctionalFile', sqlConn, 'Timefreq', iItems(i));
                     % Do not accept TF/sources, because it's impossible to get the full matrix [nSources x nTime x nFrequencies]
-                    if isFirstWarning && strcmpi(sStudy.Timefreq(iItems(i)).DataType, 'results') && ~isempty(strfind(sStudy.Timefreq(iItems(i)).FileName, '_KERNEL_'))
+                    if isFirstWarning && strcmpi(sTimefreq.DataType, 'results') && ~isempty(strfind(sTimefreq.FileName, '_KERNEL_'))
                         isFirstWarning = 0;
                         java_dialog('warning', ...
                             ['You are about to process a source file saved in an optimized way.' 10 ...
@@ -749,26 +774,29 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
                              'way to process your data, using scouts instead of the full brain.'], ...
                              'Processing time-frequency files');
                     end
-                    sFiles(i).FileName = file_win2unix(sStudy.Timefreq(iItems(i)).FileName);
-                    sFiles(i).Comment  = sStudy.Timefreq(iItems(i)).Comment;
-                    sFiles(i).DataFile = file_win2unix(sStudy.Timefreq(iItems(i)).DataFile);
+                    sFiles(i).FileName = file_win2unix(sTimefreq.FileName);
+                    sFiles(i).Comment  = sTimefreq.Comment;
+                    sFiles(i).DataFile = file_win2unix(sTimefreq.DataFile);
                 case 'matrix'
-                    sFiles(i).FileName = file_win2unix(sStudy.Matrix(iItems(i)).FileName);
-                    sFiles(i).Comment  = sStudy.Matrix(iItems(i)).Comment;
+                    sMatrix = db_get('FunctionalFile', sqlConn, 'Matrix', iItems(i));
+                    sFiles(i).FileName = file_win2unix(sMatrix.FileName);
+                    sFiles(i).Comment  = sMatrix.Comment;
                 case {'pdata','presults','ptimefreq','pmatrix'}
-                    sFiles(i).FileName = file_win2unix(sStudy.Stat(iItems(i)).FileName);
-                    sFiles(i).Comment  = sStudy.Stat(iItems(i)).Comment;
+                    sStat = db_get('FunctionalFile', sqlConn, 'Stat', iItems(i));
+                    sFiles(i).FileName = file_win2unix(sStat.FileName);
+                    sFiles(i).Comment  = sStat.Comment;
                 otherwise
                     error('???');
             end
             % Condition
-            if ~isempty(sStudy.Condition)
-                sFiles(i).Condition = sStudy.Condition{1};
+            if ~isempty(StudyCond)
+                sFiles(i).Condition = StudyCond;
             else
-                sFiles(i).Condition = sStudy.Name;
+                sFiles(i).Condition = StudyName;
             end
         end
     end
+    sql_close(sqlConn);
     % Close progressbar
     if isProgress
         bst_progress('stop');

@@ -2514,41 +2514,14 @@ switch contextName
         iItems = varargin{3};
         DataType = varargin{4};
         FileNames = cell(1, length(iStudies));
-        argout1 = {};
-        for i = 1:length(iStudies)
-            % Get study definition
-            sStudy = bst_get('Study', iStudies(i));
-            if isempty(sStudy)
+        sqlConn = sql_connect();
+        for i = 1:length(iItems)
+            sFile = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', ...
+                struct('Id', iItems(i), 'Study', iStudies(i), 'Type', DataType));
+            if isempty(sFile)
                 continue;
             end
-            % Recordings or sources
-            switch (DataType)
-                case 'data'
-                    if (iItems(i) > length(sStudy.Data))
-                        return;
-                    end
-                    FileNames{i} = sStudy.Data(iItems(i)).FileName;
-                case 'results'
-                    if (iItems(i) > length(sStudy.Result))
-                        return;
-                    end
-                    FileNames{i} = sStudy.Result(iItems(i)).FileName;
-                case 'timefreq'
-                    if (iItems(i) > length(sStudy.Timefreq))
-                        return;
-                    end
-                    FileNames{i} = sStudy.Timefreq(iItems(i)).FileName;
-                case 'matrix'
-                    if (iItems(i) > length(sStudy.Matrix))
-                        return;
-                    end
-                    FileNames{i} = sStudy.Matrix(iItems(i)).FileName;
-                case {'pdata','presults','ptimfreq'}
-                    if (iItems(i) > length(sStudy.Stat))
-                        return;
-                    end
-                    FileNames{i} = sStudy.Stat(iItems(i)).FileName;
-            end
+            FileNames{i} = sFile.FileName;
         end
         argout1 = FileNames;
 
@@ -4012,6 +3985,9 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
             otherwise,  sStudy = ProtocolStudies.Study(iStudy);
         end
         % Check if field is available for the study
+        if isempty(sStudy)
+            continue;
+        end
         if isempty(sStudy.(fieldGroup))
             continue;
         end

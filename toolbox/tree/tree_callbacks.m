@@ -1314,11 +1314,12 @@ switch (lower(action))
             case {'data', 'rawdata'}
                 % Get study description
                 iStudy = bstNodes(1).getStudyIndex();
-                sStudy = bst_get('Study', iStudy);
                 iData = bstNodes(1).getItemIndex();
-                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+                sData = db_get('FunctionalFile', 'Data', iData);
+                iSubject = db_get('SubjectFromStudy', iStudy);
+                sSubject = bst_get('Subject', iSubject);
                 % Data type
-                DataType = sStudy.Data(iData).DataType;
+                DataType = sData.DataType;
                 isStat = ~strcmpi(DataType, 'recordings') && ~strcmpi(DataType, 'raw');
                 % Get modalities for first selected file
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
@@ -1337,8 +1338,6 @@ switch (lower(action))
                 end
                 % One data file selected only
                 if (length(bstNodes) == 1)
-                    % Get associated subject and surfaces, if it exists
-                    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                     % RAW continuous files
                     if ~bst_get('ReadOnly') && ~isStat
                         % Import in database
@@ -1492,7 +1491,7 @@ switch (lower(action))
                     [sInterStudy, iInterStudy] = bst_get('AnalysisInterStudy');
                     % === COMPUTE SOURCES ===
                     % If not Default Channel
-                    if (sSubject.UseDefaultChannel == 0) && (iStudy ~= iInterStudy)
+                    if (sSubject.UseDefaultChannel == 0) && (isempty(iInterStudy) || iStudy ~= iInterStudy)
                         fcnPopupComputeHeadmodel();
                     else
                         AddSeparator(jPopup);    

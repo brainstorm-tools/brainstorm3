@@ -161,9 +161,9 @@ try
                 % Check for bad trials
                 if ~GetBadTrials
                     % Get study
-                    [sStudy, tmp__, iData] = bst_get('DataFile', nodeFileNames{iNode}, iStudy);
+                    sItem = db_get('FunctionalFile', 'data', nodeFileNames{iNode});
                     % Ignore bad trials
-                    if sStudy.Data(iData).BadTrial
+                    if sItem.BadTrial
                         continue;
                     end
                 end
