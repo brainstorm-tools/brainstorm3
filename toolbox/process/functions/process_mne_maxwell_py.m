@@ -106,6 +106,14 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         skip_by_annotation = strtrim(str_split(sProcess.options.skip_by_annotation.Value, ','));
         opt = cat(2, opt, {'skip_by_annotation', skip_by_annotation});
     end
+    % calibration
+    if isfield(sProcess.options, 'calibration') && isfield(sProcess.options.calibration, 'Value') && ~isempty(sProcess.options.calibration.Value{1})
+        opt = cat(2, opt, {'calibration', py.str(sProcess.options.calibration.Value{1})});
+    end
+    % cross-talk
+    if isfield(sProcess.options, 'ctc') && isfield(sProcess.options.ctc, 'Value') && ~isempty(sProcess.options.ctc.Value{1})
+        opt = cat(2, opt, {'cross_talk', py.str(sProcess.options.ctc.Value{1})});
+    end
     
     % ===== CALL MNE-PYTHON FUNCTION =====
     bst_progress('text', 'Loading input as Python object...');
