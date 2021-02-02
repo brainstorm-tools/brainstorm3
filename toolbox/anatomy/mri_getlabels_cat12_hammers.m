@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_hammers_cat12()
+function Labels = mri_getlabels_cat12_hammers()
 % ATLAS     : Hammersmith atlas (Hammers 2003, Gousias 2008, Faillenot 2017, Wild 2017)
 % REFERENCE : http://brain-development.org/brain-atlases/adult-brain-maximum-probability-map-hammers-mith-atlas-n30r83-in-mni-space/
 

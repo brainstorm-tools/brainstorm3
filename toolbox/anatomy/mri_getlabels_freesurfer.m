@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_aseg()
+function Labels = mri_getlabels_freesurfer()
 % ATLAS     : FreeSurfer ASEG + Desikan-Killiany (2006) + Destrieux (2010)
 % REFERENCE : https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
 

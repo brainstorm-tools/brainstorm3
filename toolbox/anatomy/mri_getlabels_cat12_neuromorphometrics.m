@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_neuromorpho()
+function Labels = mri_getlabels_cat12_neuromorphometrics()
 % ATLAS     : MICCAI 2012 Multi-Atlas Labeling Workshop and Challenge (Neuromorphometrics)
 % REFERENCE : http://www.neuromorphometrics.com/
 

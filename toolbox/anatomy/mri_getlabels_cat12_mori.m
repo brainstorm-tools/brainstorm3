@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_mori()
+function Labels = mri_getlabels_cat12_mori()
 % ATLAS     : Mori 2009
 % REFERENCE : https://pubmed.ncbi.nlm.nih.gov/19571751/
 

@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_lpba40()
+function Labels = mri_getlabels_cat12_lpba40()
 % ATLAS     : LONI LPBA40 atlas
 % REFERENCE : https://resource.loni.usc.edu/resources/atlases-downloads/
 

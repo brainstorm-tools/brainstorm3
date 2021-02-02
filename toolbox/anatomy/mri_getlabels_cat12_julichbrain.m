@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_julichbrain20_cat12()
+function Labels = mri_getlabels_cat12_julichbrain()
 % ATLAS     : Juelich histological atlas (Eickhoff 2005)
 % REFERENCE : http://www.fz-juelich.de/inm/inm-1/EN/Forschung/JuBrain/Jubrain_Webtools/Jubrain_Webtools_node.html
 

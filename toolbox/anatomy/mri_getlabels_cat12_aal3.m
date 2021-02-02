@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_aal()
+function Labels = mri_getlabels_cat12_aal3()
 % ATLAS     : AAL3 - Automated Anatomical Labeling (Tzourio-Mazoyer 2002)
 % REFERENCE : http://www.gin.cnrs.fr/AAL
 

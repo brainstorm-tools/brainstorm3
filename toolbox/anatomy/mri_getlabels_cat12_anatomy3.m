@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_anatomy3()
+function Labels = mri_getlabels_cat12_anatomy3()
 % ATLAS     : Anatomy atlas v3: Combining probabilistic cytoarchitectonic maps and functional imaging data.
 % REFERENCE : https://www.fz-juelich.de/SharedDocs/Downloads/INM/INM-7/EN/SPM_Toolbox/Toolbox_3.html
 

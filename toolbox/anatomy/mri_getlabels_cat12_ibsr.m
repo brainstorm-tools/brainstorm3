@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_ibsr()
+function Labels = mri_getlabels_cat12_ibsr()
 % ATLAS     : IBSR atlas: based on the IBSR datasets (A,B)
 % REFERENCE : https://www.nitrc.org/projects/ibsr
 

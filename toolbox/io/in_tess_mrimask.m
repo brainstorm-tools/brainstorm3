@@ -37,7 +37,7 @@ if ischar(MriFile)
     % Try to get volume labels for this atlas automatically
     [Labels, AtlasName] = mri_getlabels(MriFile);
     % Read volume
-    isInteractive = ~isempty(AtlasName) && ~ismember(AtlasName, {'aseg', 'svreg'});
+    isInteractive = ~isempty(AtlasName) && ~ismember(AtlasName, {'aseg', 'svreg', 'freesurfer', 'marsatlas'});
     if isMni
         sMri = in_mri(MriFile, 'ALL-MNI', 0, 0);
     else
@@ -85,7 +85,7 @@ end
 % If the volume contains labels
 if (length(allValues) > 10) && ~isempty(MriFile) && ~isempty(Labels)
     % FreeSurfer ASEG
-    if strcmp(AtlasName, 'aseg')
+    if strcmp(AtlasName, 'aseg') || strcmp(AtlasName, 'freesurfer')
         % Keep only a subset of labels
         if ~isempty(SelLabels)
             Labels = Labels(ismember(Labels(:,2), SelLabels), :);

@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_cobra()
+function Labels = mri_getlabels_cat12_cobra()
 % ATLAS     : Cobra
 % REFERENCE : http://cobralab.ca/atlases/
 

@@ -1,4 +1,4 @@
-function Labels = mri_getlabels_shaeffer100()
+function Labels = mri_getlabels_cat12_schaefer17_100()
 % ATLAS     : Local-Global Parcellation of the Human Cerebral Cortex from Intrinsic Functional Connectivity MRI
 % REFERENCE : https://pubmed.ncbi.nlm.nih.gov/28981612/
 
