@@ -141,7 +141,8 @@ function Dispose(hFig) %#ok<DEFNU>
     
     %====Delete Graphics Objects and Clear Variables====
     if (isappdata(hFig,'AllNodes')) 
-        delete(getappdata(hFig,'AllNodes'));
+%        delete(getappdata(hFig,'AllNodes')); % prev use with node.m
+        deleteAllNodes(hFig);
         rmappdata(hFig,'AllNodes');
     end
     
@@ -402,7 +403,7 @@ function FigureMouseUpCallback(hFig, varargin)
     
     % Get index of potentially clicked node
     % NOTE: Node index stored whenever the node is clicked (any type)
-    global GlobalData
+    global GlobalData;
     NodeIndex = GlobalData.FigConnect.ClickedNodeIndex; 
     GlobalData.FigConnect.ClickedNodeIndex = 0; % clear stored index
     
@@ -470,9 +471,13 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         case 'rightarrow'   % DONE: Select Next Region
             ToggleRegionSelection(hFig, -1);
         
-        % ---NODE DISPLAY---  
+        % ---NODE LABELS DISPLAY---  
         case 'l'            % DONE: Toggle Lobe Labels
             ToggleTextDisplayMode(hFig); 
+        
+        % ---TOGGLE BACKGROUND---  
+        case 'b'            % DONE: Toggle Background
+            ToggleBackground(hFig);
         
         % ---ZOOM CAMERA---
         case 'uparrow'      % DONE: Zoom in
@@ -503,7 +508,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             ToggleDisplayMode(hFig);
         case 'm' % TODO: Toggle Region Links
             ToggleMeasureToRegionDisplay(hFig)
-        case 'q' % unclear if needed
+        case 'q' % TODO: unclear if needed
             RenderInQuad = 1 - getappdata(hFig, 'RenderInQuad');
             setappdata(hFig, 'RenderInQuad', RenderInQuad)
             OGL = getappdata(hFig, 'OpenGLDisplay');
@@ -1555,7 +1560,7 @@ function BuildLinks(hFig, DataPair)
     % x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
     % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
     % r^2 = x0^2 + y0^2 - 1
-        for i = 1:length(DataPair) %for each link
+    for i = 1:length(DataPair) %for each link
         
         % node positions (rescaled to *unit* circle)
         node1 = DataPair(i,1);
@@ -2468,9 +2473,11 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     % REQUIRED: Display selected nodes ('ON' or 'OFF')
     for i = 1:length(iNodes)
         if isSelected
-            AllNodes(iNodes(i)).Selected = true;
+          %  AllNodes(iNodes(i)).Selected = true; % prev use with node.m
+            SelectNode(AllNodes(iNodes(i)), true);
         else
-            AllNodes(iNodes(i)).Selected = false;
+         %   AllNodes(iNodes(i)).Selected = false; % prev use with node.m
+            SelectNode(AllNodes(iNodes(i)), false);
         end
     end
          
@@ -3015,7 +3022,8 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
         if isappdata(hFig, 'AllNodes')
             AllNodes = getappdata(hFig, 'AllNodes');
             for i = 1:length(AllNodes)
-                AllNodes(i).LabelColor = TextColor;
+               % AllNodes(i).LabelColor = TextColor; % prev use with node.m
+               set(AllNodes(i).TextLabel,'Color',TextColor);
             end
         end
     end
@@ -3158,9 +3166,11 @@ function RefreshTextDisplay(hFig, isRedraw)
         AllNodes = getappdata(hFig,'AllNodes');
         for i=1:length(VisibleText)
             if (VisibleText(i) == 1)
-                AllNodes(i).LabelVisible = true;
+                %AllNodes(i).LabelVisible = true; % prev use with node.m
+                AllNodes(i).TextLabel.Visible = 'on';
             else
-                AllNodes(i).LabelVisible = false;
+               % AllNodes(i).LabelVisible = false; % prev use with node.m
+               AllNodes(i).TextLabel.Visible = 'off';
             end
         end
  
@@ -3393,7 +3403,8 @@ function ClearAndAddNodes(hFig, V, Names)
     
     % --- Clear any previous data ---- %
     if (isappdata(hFig,'AllNodes')) 
-        delete(getappdata(hFig,'AllNodes'));
+       % delete(getappdata(hFig,'AllNodes')); % prev use with node.m
+        deleteAllNodes(hFig);
         rmappdata(hFig,'AllNodes');
     end
     
@@ -3405,28 +3416,19 @@ function ClearAndAddNodes(hFig, V, Names)
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
     scaleFactor = 0.6; %new scale factor for x,y position of nodes
     
-    for i = 1: nVertices
-        % create the new node (indexed in node list by i)
-        newNode = node(scaleFactor*V(i,1),scaleFactor*V(i,2),i); %create node (indexed)
-        
-        % set agregating node properties (alters display/rotation of lobe
-        % nodes)
+    % Create nodes as an array of struct nodes
+    for i=1:nVertices
+        isAgregatingNode = false;
         if (i<=nAgregatingNodes)
-            newNode.isAgregatingNode = true; 
+            isAgregatingNode = true; 
         end
         
-        % add label to node
         if (isempty(Names(i)) || isempty(Names{i}))
             Names{i} = ''; % Blank name if none is assigned
         end
-        newNode.Label = Names(i);
-        
-        % add new node to all nodes and store in figure
-        if (i==1)
-            AllNodes = newNode;
-        else
-            AllNodes(i) = newNode;
-        end
+
+        % createNode(xpos, ypos, index, label, isAggregatingNode) 
+        AllNodes(i) = CreateNode(scaleFactor*V(i,1),scaleFactor*V(i,2),i,Names(i),isAgregatingNode);
     end 
     
     % Measure Nodes are color coded to their Scout counterpart
@@ -3434,6 +3436,8 @@ function ClearAndAddNodes(hFig, V, Names)
     if ~isempty(RowColors)
         for i=1:length(RowColors)
             AllNodes(nAgregatingNodes+i).Color = RowColors(i,:);
+            AllNodes(nAgregatingNodes+i).NodeMarker.Color = RowColors(i,:);
+            AllNodes(nAgregatingNodes+i).NodeMarker.MarkerFaceColor = RowColors(i,:); % set marker fill color
         end 
     end
     
@@ -3462,6 +3466,109 @@ function ClearAndAddNodes(hFig, V, Names)
     
 end
  
+%% Create A New Node with NodeMarker and TextLabel graphics objs
+% Note: done feb 2 2021, removal of node.m usage
+% Note: each node is a struct with the following fields:
+%   node.Position           - [x,y] coordinates
+%   node.isAgregatingNode   - true/false (if this node is a grouped node)
+%   node.Color              - colour of the ROI/associated scout, or grey on default
+%   node.NodeMarker         - Line Object reprenting the node on the figure
+%   node.TextLabel          - Text Object representing the node label on the figure
+%
+%   NOTE: node.NodeMarker.Userdata = [{[index]} {label} ] to store useful node data
+%   so that we can ID the nodes when clicked! Can also retrieve xpos/ypos
+%   from the NodeMarker line obj using node.NodeMarker.XData/YData
+function node = CreateNode(xpos, ypos, index, label, isAgregatingNode)
+    node.Position = [xpos,ypos];
+    node.isAgregatingNode = isAgregatingNode;
+    node.Color = [0.7 0.7 0.7];
+    
+    % Mark the node as a Matlab Line graphic object
+    node.NodeMarker = line(...
+        node.Position(1),...
+        node.Position(2),...
+        -2,...                              #z coordinate 
+        'Color',node.Color,...
+        'Marker','o',...                    # Marker symbol when the node is selected 'on'
+        'MarkerFaceColor', node.Color,...   # Marker is default node color when 'on', grey when 'off'
+        'MarkerSize', 5,...                 # default (6) is too big
+        'LineStyle','none',...
+        'PickableParts','all',...
+        'ButtonDownFcn',@NodeButtonDownFcn,...
+        'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
+    
+    % Create label as Matlab Text obj
+    node.TextLabel = text(0,0,label, 'Interpreter', 'none', 'Color', [1 1 1]); % display with '_', default colour white
+    node.TextLabel.Position = 1.05*node.Position; %need offset factor so label doesn't overlap
+    node.TextLabel.FontSize = node.TextLabel.FontSize-3; %default size too big
+    
+    %rotate and align labels
+    t = atan2(node.Position(2),node.Position(1));
+    if (~node.isAgregatingNode)
+        if abs(t) > pi/2
+            node.TextLabel.Rotation = 180*(t/pi + 1);
+        else
+            node.TextLabel.Rotation = t*180/pi;
+        end
+    end
+
+    if abs(t) > pi/2
+        node.TextLabel.HorizontalAlignment = 'right';
+    end
+    
+    % show node as 'selected' as default
+    SelectNode(node, true);
+end
+
+% To visually change the appearance of sel/unsel nodes
+function SelectNode(node,isSelected)
+    if isSelected % node is SELECTED ("ON")
+        % return to original node colour, shape, and size
+        node.NodeMarker.Marker = 'o';
+        node.NodeMarker.Color = node.NodeMarker.MarkerFaceColor;
+        node.NodeMarker.MarkerSize = 5;
+    else % node is NOT selected ("OFF")
+        % display as a grey 'X' (slightly bigger/bolded to allow for easier clicking shape)
+        node.NodeMarker.Marker = 'x';
+        node.NodeMarker.Color =  [0.7 0.7 0.7]; % grey
+        node.NodeMarker.MarkerSize = 6;
+    end
+end
+
+% Callback Fn for clicked NodeMarker on figure
+% NOTE: we use functions within NodeClickedEvent(), SetSelectedNodes(), and SelectNode() 
+    % to set actual node and link selection display.      
+    % All we need to do here is make sure that the correct index
+    % of the clicked node is stored for access 
+function NodeButtonDownFcn(src,~)
+    % node.UserData = [{[index]} {label} ]
+    global GlobalData;
+    GlobalData.FigConnect.ClickedNodeIndex = src.UserData{1};
+    
+    disp("Node with label '" + src.UserData{2} + "' was clicked");
+    disp("Node index: " + src.UserData{1});
+    disp("Node position: " + src.XData + " " + src.YData);
+end
+
+% Delete all node structs and associated graphics objs if exist
+function deleteAllNodes(hFig)
+    AllNodes = getappdata(hFig,'AllNodes');
+
+    % delete TextLabel Text Objects
+    if isfield(AllNodes,'TextLabel')
+        for i=1:length(AllNodes)
+            delete(AllNodes(i).TextLabel);
+        end
+    end
+
+    % delete NodeMarker Line Objects
+    if isfield(AllNodes,'NodeMarker')
+        for i=1:length(AllNodes)
+            delete(AllNodes(i).NodeMarker);
+        end
+    end
+end
+        
 %%
 function Index = HemisphereTagToIndex(Region)
     Tag = Region(1);
