@@ -1,12 +1,13 @@
-function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
+function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply, isScale)
 % IN_MRI_NII: Reads a structural NIfTI/Analyze MRI.
 %
-% USAGE:  [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask]);
+% USAGE:  [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti=0, isApply=[ask], isScale=[]);
 %
 % INPUT: 
 %    - MriFile     : name of file to open, WITH EXTENSION
 %    - isReadMulti : If 1, allow reading multiple volumes from the same file
 %    - isApply     : If 1, apply best orientation found to match Brainstorm convention
+%    - isScale     : If 1, apply scaling based on scl_slope/scl_inter, and save the volume in float
 %
 % OUTPUT:
 %    - sMri    : Brainstorm MRI structure
@@ -35,11 +36,14 @@ function [sMri, vox2ras] = in_mri_nii(MriFile, isReadMulti, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2021
 
 sMri = [];
 vox2ras = [];
 % Parse inputs
+if (nargin < 4) || isempty(isScale)
+    isScale = [];
+end
 if (nargin < 3) || isempty(isApply)
     isApply = [];
 end
@@ -57,9 +61,19 @@ switch(lower(extension))
         % Read file header
         hdr = nifti_read_hdr(fid, isReadMulti);
         if isempty(hdr), disp(sprintf('in_mri_nii : Error reading header file')); return; end
+        % If there is some scaling needed: ask user what to do
+        if isempty(isScale) && (hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_slope==1 && hdr.nifti.scl_inter==0)
+            isScale = java_dialog('confirm', ...
+                ['A scaling is available in this volume:' 10 ...
+                 sprintf('%f * values + %f', hdr.nifti.scl_slope, hdr.nifti.scl_inter), 10 ...
+                 'This would save the file in float instead of integers.' 10 10, ...
+                 'Do you want to apply it to the volume now?' 10 10], 'NIfTI scaling');
+        else
+            isScale = 0;
+        end
         % Read image (3D matrix)
         fseek(fid, double(hdr.dim.vox_offset), 'bof');
-        data = nifti_read_img(fid, hdr);
+        data = nifti_read_img(fid, hdr, isScale);
         fclose(fid);
         if isempty(data), disp('in_mri_nii : Error reading image file'); return; end
         
@@ -359,7 +373,7 @@ end
 
 
 %% ===== READ IMG =====
-function data = nifti_read_img(fid, hdr)
+function data = nifti_read_img(fid, hdr, isScale)
     % Brainsuite BDP .eig file
     if (hdr.dim.datatype == 0)
         % Read all volumes
@@ -414,8 +428,22 @@ function data = nifti_read_img(fid, hdr)
            end
         end
         % Rescaling is not needed if the slope==1 and intersect==0
-        if strcmpi(datatype, 'single') && (hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_inter==0 && hdr.nifti.scl_slope==1)
-        	data = data * hdr.nifti.scl_slope + hdr.nifti.scl_inter;
+        if isScale && (hdr.nifti.scl_slope ~= 0) && ~(hdr.nifti.scl_slope==1 && hdr.nifti.scl_inter==0)
+        	data = double(data) * double(hdr.nifti.scl_slope) + double(hdr.nifti.scl_inter);
+            % Update nifti fields: scaling already performed
+            hdr.nifti.scl_slope = 0;
+            hdr.dim.glmax = max(data(:));
+            hdr.dim.glmin = min(data(:));
+            % If input is double: Save as double
+            if hdr.dim.datatype == 64
+                hdr.dim.datatype = 64;
+                hdr.dim.bitpix = 64;
+            % Otherwise, save as single
+            else
+                data = single(data);
+                hdr.dim.datatype = 16;
+                hdr.dim.bitpix = 32;
+            end
         end
     end
 end

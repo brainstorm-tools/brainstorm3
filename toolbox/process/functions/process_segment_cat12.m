@@ -259,7 +259,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % Let's reload this file to get the transformation matrix, it will be used when importing the results
     if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf) || isempty(find(strcmpi(sMri.InitTransf(:,1), 'vox2ras')))
         % Load again the file, with the default vox2ras transformation
-        [tmp, vox2ras] = in_mri_nii(NiiFile);
+        [tmp, vox2ras] = in_mri_nii(NiiFile, 0, 0, 0);
         % Prepare the history of transformations
         if ~isfield(sMri, 'InitTransf') || isempty(sMri.InitTransf)
             sMri.InitTransf = cell(0,2);

@@ -248,7 +248,7 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
                 cd(curdir);
                 % Read defaced file
                 bst_progress('text', 'Reading defaced file...');
-                sMriDefaced = in_mri_nii(fileNiiDefaced);
+                sMriDefaced = in_mri_nii(fileNiiDefaced, 0, 0, 0);
                 % Saves defaced volume
                 sMri.Cube = sMriDefaced.Cube;
                 

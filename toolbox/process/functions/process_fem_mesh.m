@@ -547,15 +547,15 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 return;
             end
             % Read outputs
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c1' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c1' subjid 'T1.nii']), 0, 0, 0);
             seg.gm = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c2' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c2' subjid 'T1.nii']), 0, 0, 0);
             seg.wm = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c3' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c3' subjid 'T1.nii']), 0, 0, 0);
             seg.csf = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c4' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c4' subjid 'T1.nii']), 0, 0, 0);
             seg.skull = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c5' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c5' subjid 'T1.nii']), 0, 0, 0);
             seg.scalp = sTpm.Cube;
 
             % ===== CALL BRAIN2MESH =====
@@ -749,7 +749,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % === ROAST: MESH GENERATION ===
             bst_progress('text', 'ROAST: Mesh generation (iso2mesh)...');
             % Load segmentation masks
-            sMasks = in_mri_nii(touchNii);
+            sMasks = in_mri_nii(touchNii, 0, 0, 0);
             % Call iso2mesh for mesh generation
             meshOpt = struct(...
                 'radbound',  5, ...

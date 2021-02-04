@@ -59,7 +59,7 @@ end
 % John Ashburner
 function tpm = bst_spm_load_priors8(TpmFile)
     % Read template volume
-    sMri = in_mri_nii(TpmFile, 1, 0);
+    sMri = in_mri_nii(TpmFile, 1, 0, 0);
     sMri.Cube = double(sMri.Cube);
     % If first dimension is flipped: flip it back
     if (sMri.Header.nifti.vox2ras(1,1) < 1)

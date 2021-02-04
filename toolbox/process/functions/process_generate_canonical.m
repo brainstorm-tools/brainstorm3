@@ -157,7 +157,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     end
     % ===== READ OUTPUT SURFACES =====
     % Read transformation from temporary .nii
-    niiMri = in_mri_nii(NiiFile);
+    niiMri = in_mri_nii(NiiFile, 0, 0, 0);
     % Create surfaces
     sHead   = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_scalp),'patch'),  'spm_head');
     sOuter  = CreateSurface(sMri, niiMri, export(gifti(spmMesh.tess_oskull),'patch'), 'spm_outerskull');
