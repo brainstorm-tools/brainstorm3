@@ -1882,11 +1882,11 @@ switch (lower(action))
                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
                                 gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
                             end
-                            jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [1xN]', IconLoader.ICON_CONNECT1, [], []);
+                            jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [NxN]', IconLoader.ICON_CONNECTN, [], []);
                         
                         % [1xN] option
                         elseif ~isempty(strfind(filenameRelative, '_connect1'))
-                            gui_component('MenuItem', jPopup, [], 'Connectivity Graph (in dev) [1xN]',   IconLoader.ICON_CONNECT1, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphRegion'));
+                            gui_component('MenuItem', jPopup, [], 'Connectivity Graph (in dev) [1xN]',   IconLoader.ICON_CONNECT1, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphFull'));
                             jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [1xN]', IconLoader.ICON_CONNECT1, [], []);
                         else
                             jMenuConn1 = jPopup;

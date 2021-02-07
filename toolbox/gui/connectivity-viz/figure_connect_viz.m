@@ -1208,6 +1208,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % Data type
     DataType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType;
     RowNames = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames;
+    
+    %disp(RowNames);
+    
     % ===== GET REGION POSITIONS AND HIERARCHY =====
     % Inialize variables
     sGroups = repmat(struct('Name', [], 'RowNames', [], 'Region', []), 0);
@@ -1287,12 +1290,12 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
                 end
             end
             % Sensors positions
-            selChan = zeros(1, length(RowNames));
-            for iRow = 1:length(RowNames)
-                % Get indice in the 
-                selChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
-            end
-            RowLocs = figure_3d('GetChannelPositions', iDS, selChan);
+%             selChan = zeros(1, length(RowNames));
+%             for iRow = 1:length(RowNames)
+%                 % Get indice in the 
+%                 selChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
+%             end
+%             RowLocs = figure_3d('GetChannelPositions', iDS, selChan);
  
         case {'results', 'matrix'} % when building 1 x n graph
             % Get the file information file
@@ -1382,7 +1385,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'RowLocs', RowLocs);
     bst_figures('SetFigureHandleField', hFig, 'RowColors', RowColors);
     
-        
+    disp(size(RowNames));
+    disp(size(sGroups));
     %% ===== ORGANISE VERTICES @NOTE: DONE=====    
     if DisplayInCircle
         [Vertices Paths Names] = OrganiseNodeInCircle(hFig, RowNames, sGroups);
@@ -1402,6 +1406,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     %% ===== Create Nodes =====
     %  This also defines some data-based display parameters
+    disp(size(Vertices));
+    disp(size(Names));
+    
     ClearAndAddNodes(hFig, Vertices, Names);
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
@@ -1542,6 +1549,11 @@ function BuildLinks(hFig, DataPair)
         delete(getappdata(hFig,'AllLinks'));
         rmappdata(hFig,'AllLinks');
     end
+    if (isappdata(hFig,'AllArrows'))
+        delete(getappdata(hFig,'AllArrows'));
+        rmappdata(hFig,'AllArrows');
+    end
+
     
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs
@@ -1560,15 +1572,27 @@ function BuildLinks(hFig, DataPair)
     % x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
     % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
     % r^2 = x0^2 + y0^2 - 1
+    
+    All_u = [];
+    All_v = [];
+    IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+
     for i = 1:length(DataPair) %for each link
         
         % node positions (rescaled to *unit* circle)
         node1 = DataPair(i,1);
         node2 = DataPair(i,2);
         u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/0.6/4;
-        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/0.6/4;
+        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/0.6/4;       
         
-        IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+        % check if 2 bidirectional links overlap
+        if(i==1)
+            All_u(1,:) = u.';
+            All_v(1,:) = v.';
+        else
+            All_u(end+1,:) = u.';
+            All_v(end+1,:) = v.';
+        end
         
         % diametric points: draw a straight line
         % can adjust the error margin (currently 0.2)
@@ -1586,7 +1610,22 @@ function BuildLinks(hFig, DataPair)
         else % else, draw an arc
             x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
             y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
+            
             r  = sqrt(x0^2 + y0^2 - 1);
+            
+%             % check if this line has a bidirectional equivalent that would
+%             % overlap
+%             for j = 1:length(All_u)-1
+%                 if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
+%                     
+%                     % change equation for an ellipse
+%                     x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
+%                     y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
+%             
+%                     r  = sqrt(x0^2 + y0^2 - 1);
+%                 end
+%             end
+            
             thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
             thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
             
@@ -1601,6 +1640,17 @@ function BuildLinks(hFig, DataPair)
 %           % rescale onto our graph circle
             x = 4*0.6*r*cos(theta)+4*0.6*x0;
             y = 4*0.6*r*sin(theta)+4*0.6*y0;
+            
+            % check if this line has a bidirectional equivalent that would
+            % overlap
+            for j = 1:length(All_u)-1
+                if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
+                    r  = sqrt(x0^2 + y0^2 - 1);
+                    x = 4*0.6*r*cos(theta) + 4*0.6*x0;
+                    y = 4*0.6*r*sin(theta) + 4*0.6*y0;
+
+                end
+            end
 
             % Create the link as a line object
             % default colour for now, will be updated in updateColormap
@@ -1617,34 +1667,17 @@ function BuildLinks(hFig, DataPair)
             
         % for directional links
         if (IsDirectionalData)
-            
-            % find index of the ending node
-            arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0);
-            
-%%% to put the marker right before the node so as not to hide scout, but
-%%% does not work well %%%%%%%
-%             arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0) - 1;
-%             
-%             if (size(arrow_index) < 2)
-%                 if (arrow_index < 1)
-%                     arrow_index = 2;
-%                 end
-%             else
-%                 for k=1:size(arrow_index,1)
-%                     if (arrow_index(k) < 1)
-%                         arrow_index(k) = 2;
-%                     end
-%                 end
-%             end
-            
-            set(l, 'Marker', '*',...
-                   'LineStyle', '--',...
-                   'MarkerFaceColor', AllNodes(node1).Color,...
-                   'MarkerIndices', arrow_index,...
-                   'MarkerSize', 10);
+            % create arrowhead
+            arrow = arrowh(x,y,AllNodes(node1).Color,100, 100);
+
+            if(i==1)
+                AllArrows = arrow;
+            else
+                AllArrows(end+1) = arrow;
+            end
         end
         
-        % Store the link into our figu
+        % Store the link into our figure
         if(i==1)
             AllLinks = l;
         else
@@ -1654,7 +1687,251 @@ function BuildLinks(hFig, DataPair)
     
     % Store AllLinks into figure
     setappdata(hFig,'AllLinks',AllLinks); % Very important!
+    
+    if (IsDirectionalData)
+        setappdata(hFig,'AllArrows',AllArrows);
+    end
 end
+
+
+
+%  ARROWH   Draws a solid 2D arrow head in current plot.
+%
+%	 ARROWH(X,Y,COLOR,SIZE,LOCATION) draws a  solid arrow  head into
+%	 the current plot to indicate a direction.  X and Y must contain
+%	 a pair of x and y coordinates ([x1 x2],[y1 y2]) of two points:
+%
+%	 The first  point is only used to tell  (in conjunction with the
+%	 second one)  the direction  and orientation of  the arrow -- it
+%	 will point from the first towards the second.
+%
+%	 The head of the arrow  will be located in the second point.  An
+%	 example of use is	plot([0 2],[0 4]); ARROWH([0 1],[0 2],'b')
+%
+%	 You may also give  two vectors of same length > 2.  The routine
+%	 will then choose two consecutive points from "about" the middle
+%	 of each vectors.  Useful if you  don't want to worry  each time
+%	 about  where to  put the arrows on  a trajectory.  If x1 and x2
+%	 are the vectors x1(t) and x2(t), simply put   ARROWH(x1,x2,'r')
+%	 to have the right  direction indicated in your x2 = f(x1) phase
+%	 plane.
+%
+%            (x2,y2)
+%            --o
+%            \ |
+%	            \|
+%
+%
+%		  o
+%	  (x1,y1)
+%
+%	 Please note  that the following  optional arguments  need -- if
+%	 you want  to use them -- to  be given in that exact order.  You
+%	 may pass on empty vectors "[]" to skip arguments you don't want
+%	 to set (if you want to access "later" arguments...).
+%
+%	 The COLOR argument is quite the same as for plots,  i.e. either
+%  a string like  'r' or an RGB value vector like  [1 0 0]. If you
+%  only want the outlines of the head  (in other words a non-solid
+%  arrow head), prefix the color string by 'e' or the color vector
+%  by 0, e.g. to get only a red outline use 'er' or [0 1 0 0].
+%
+%	 The SIZE argument allows you to tune the size of the arrows. If
+%	 SIZE is a scalar, it scales the arrow proportionally.  SIZE can
+%	 also be  a two element vector,  where the first element  is the
+%	 overall  scale (in percent),  the second one controls the width
+%	 of the arrow head (again, in percent).
+%
+%	 The LOCAITON argument can be used to tweak the position  of the
+%  arrow head.  If a time series of x and y coordinates are given,
+%  you can use this argument  to place the arrow head for instance
+%  at 20% along the line.  It can be a vector, if you want to have
+%  more than one arrow head drawn.
+%
+%	 Both SIZE and LOCATION arguments must also be given in percent,
+%	 where 100 means standard size, 50 means half size, respectively
+%	 100 means end of the vector, 0 beginning of it. Note that those
+%	 "locations" correspond to the cardinal position "inside" the
+%	 vector, in other words the "index-wise" position.
+%
+%	 This little tool is mainely intended  to be used for indicating
+%	 "directions" on trajectories -- just give two consecutive times
+%	 and the corresponding values of a flux and the proper direction
+%	 of the trajectory will be shown on the plot.  You may also pass
+%	 on two solution vectors, as described above.
+%
+%	 Note, that the arrow  heads only look good in the original axis
+%	 settings (as in when the routine was actually started).  If you
+%	 zoom in afterwards, the triangle will get distorted.
+%
+%  HANDLES = ARROWH(...)  will give you a vector with  the handles
+%  to the patches created by this function  (if you want to modify
+%  them later on, for instance).
+%
+%	 Examples of use:
+% 	 x1 = [0:.2:2]; x2 = [0:.2:2]; plot(x1,x2); hold on;
+% 	 arrowh(x1,x2,'r',[],20);            % passing entire vectors
+% 	 arrowh([0 1],[0 1],'eb',[300,75]);  % passing 2 points
+% 	 arrowh([0 1],[0 1],'eb',[300,75],25); % head closer to (x1,y1)
+%	 Author:     Florian Knorn
+%	 Email:      florian@knorn.org
+%	 Version:    1.14
+%	 Filedate:   Jun 18th, 2008
+%
+%	 History:    1.14 - LOCATION now also works with lines
+%              1.13 - Allow for non-solid arrow heads
+%              1.12 - Return handle(s) of created patches
+%              1.11 - Possibility to change width
+%	             1.10 - Buxfix
+%	             1.09 - Possibility to chose *several* locations
+%	             1.08 - Possibility to chose location
+%	             1.07 - Choice of color
+%	             1.06 - Bug fixes
+%	             1.00 - Release
+%
+%	 ToDos:      - Keep proportions when zooming or resizing; has to
+%	               be done with callback functions, I guess.
+%
+%	 Bugs:       None discovered yet, those discovered were fixed
+%
+%	 Thanks:     Thanks  also  to Oskar Vivero  for using  my humble
+%	             little program in his great MIMO-Toolbox.
+%
+%	 If you have  suggestions for  this program,  if it doesn't work
+%	 for your "situation" or if you change something in it -- please
+%	 send me an email!  This is my very  first "public" program  and
+%	 I'd  like to  improve it where  I can -- your  help is  kindely
+%	 appreciated! Thank you!
+function handle = arrowh(x,y,clr,ArSize,Where)
+%-- errors
+if nargin < 2
+	error('Please give enough coordinates !');
+end
+if (length(x) < 2) || (length(y) < 2),
+	error('X and Y vectors must each have "length" >= 2 !');
+end
+if (x(1) == x(2)) && (y(1) == y(2)),
+	error('Points superimposed - cannot determine direction !');
+end
+if nargin <= 2
+	clr = 'b';
+end
+if nargin <= 3
+	ArSize = [100,100];
+end
+handle = [];
+%-- check if variables left empty, deal width ArSize and Color
+if isempty(clr)
+	clr = 'b'; nonsolid = false;
+elseif ischar(clr)
+	if strncmp('e',clr,1) % for non-solid arrow heads
+		nonsolid = true; clr = clr(2);
+	else
+		nonsolid = false;
+	end
+elseif isvector(clr)
+	if length(clr) == 4 && clr(1) == 0  % for non-solid arrow heads
+		nonsolid = true;
+		clr = clr(2:end);
+	else
+		nonsolid = false;
+	end
+else
+	error('COLOR argument of wrong type (must be either char or vector)');
+end
+if nargin <= 4
+	if (length(x) == length(y)) && (length(x) == 2)
+		Where = 100;
+	else
+		Where = 50;
+	end
+end
+if isempty(ArSize)
+	ArSize = [100,100];
+end
+if length(ArSize) == 2
+	ArWidth = 0.75*ArSize(2)/100; % .75 to make arrows it a bit slimmer
+else
+	ArWidth = 0.75;
+end
+ArSize = ArSize(1);
+%-- determine and remember the hold status, toggle if necessary
+if ishold,
+	WasHold = 1;
+else
+	WasHold = 0;
+	hold on;
+end
+%-- start for-loop in case several arrows are wanted
+for Loop = 1:length(Where),
+	%-- if vectors "longer" then 2 are given we're dealing with time series
+	if (length(x) == length(y)) && (length(x) > 2),
+		j = floor(length(x)*Where(Loop)/100); %-- determine that location
+		if j >= length(x), j = length(x) - 1; end
+		if j == 0, j = 1; end
+		x1 = x(j); x2 = x(j+1); y1 = y(j); y2 = y(j+1);
+	else %-- just two points given - take those
+		x1 = x(1); x2 = (1-Where/100)*x(1)+Where/100*x(2);
+		y1 = y(1); y2 = (1-Where/100)*y(1)+Where/100*y(2);
+	end
+	%-- get axe ranges and their norm
+	OriginalAxis = axis;
+	Xextend = abs(OriginalAxis(2)-OriginalAxis(1));
+	Yextend = abs(OriginalAxis(4)-OriginalAxis(3));
+	%-- determine angle for the rotation of the triangle
+	if x2 == x1, %-- line vertical, no need to calculate slope
+		if y2 > y1,
+			p = pi/2;
+		else
+			p= -pi/2;
+		end
+	else %-- line not vertical, go ahead and calculate slope
+		%-- using normed differences (looks better like that)
+		m = ( (y2 - y1)/Yextend ) / ( (x2 - x1)/Xextend );
+		if x2 > x1, %-- now calculate the resulting angle
+			p = atan(m);
+		else
+			p = atan(m) + pi;
+		end
+	end
+	%-- the arrow is made of a transformed "template triangle".
+	%-- it will be created, rotated, moved, resized and shifted.
+	%-- the template triangle (it points "east", centered in (0,0)):
+	xt = [1	-sin(pi/6)	-sin(pi/6)];
+	yt = ArWidth*[0	 cos(pi/6)	-cos(pi/6)];
+	%-- rotate it by the angle determined above:
+	xd = []; yd = [];
+	for i=1:3
+		xd(i) = cos(p)*xt(i) - sin(p)*yt(i);
+		yd(i) = sin(p)*xt(i) + cos(p)*yt(i);
+	end
+	%-- move the triangle so that its "head" lays in (0,0):
+	xd = xd - cos(p);
+	yd = yd - sin(p);
+	%-- stretch/deform the triangle to look good on the current axes:
+	xd = xd*Xextend*ArSize/10000;
+	yd = yd*Yextend*ArSize/10000;
+	%-- move the triangle to the location where it's needed
+	xd = xd + x2;
+	yd = yd + y2;
+    
+    
+	%-- draw the actual triangle
+    
+    % Added Feb : Visibility
+	handle(Loop) = patch(xd,yd,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
+	if nonsolid, set(handle(Loop),'facecolor','none'); end
+end % Loops
+
+%-- restore original axe ranges and hold status
+axis(OriginalAxis);
+if ~WasHold
+	hold off;
+end
+%-- work done. good bye.
+end
+
+
 
 %test callback function
 function test(hFig)
@@ -2259,11 +2536,17 @@ function UpdateColormap(hFig)
         AllLinks = getappdata(hFig, 'AllLinks');
         VisibleLinks = AllLinks(iData).';
         
+        if (IsDirectionalData)
+            AllArrows = getappdata(hFig, 'AllArrows');
+            VisibleArrows = AllArrows(iData).';
+        end
+        
         % set desired colors to each link (4th column is transparency)
         for i=1:size(VisibleLinks,1)
             if (IsDirectionalData)
                 set(VisibleLinks(i), 'Color', color_viz(i,:));
-                set(VisibleLinks(i), 'MarkerFaceColor', color_viz(i,:));
+                %set(VisibleLinks(i), 'MarkerFaceColor', color_viz(i,:));
+                set(VisibleArrows(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
             else 
                 set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
             end 
@@ -2305,11 +2588,17 @@ function UpdateColormap(hFig)
         RegionLinks = getappdata(hFig,'RegionLinks');
         VisibleLinks_region = RegionLinks(iData).';
         
+        if (IsDirectionalData)
+            RegionArrows = getappdata(hFig, 'RegionArrows');
+            VisibleArrows = RegionArrows(iData).';
+        end
+        
         % set desired colors to each link (4th column is transparency)
         for i=1:size(VisibleLinks_region,1)
             if (IsDirectionalData)
                 set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
-                set(VisibleLinks_region(i), 'MarkerFaceColor', color_viz_region(i,:));
+                %set(VisibleLinks_region(i), 'MarkerFaceColor', color_viz_region(i,:));
+                set(VisibleArrows(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz_region(i,:));
             else 
                 set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
             end
@@ -2552,16 +2841,33 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             
             if (isSelected)
                 set(AllLinks(iData), 'Visible', 'on');
+                if (IsDirectionalData)
+                    AllArrows = getappdata(hFig, 'AllArrows');
+                    set(AllArrows(iData), 'Visible', 'on');
+                end
             else
                 set(AllLinks(iData), 'Visible', 'off');
+                if (IsDirectionalData)
+                    AllArrows = getappdata(hFig, 'AllArrows');
+                    set(AllArrows(iData), 'Visible', 'off');
+                end
             end
             
         else % display region links
             RegionLinks = getappdata(hFig,'RegionLinks');
+            
             if (isSelected)
                 set(RegionLinks(iData), 'Visible', 'on');
+                if (IsDirectionalData)
+                    RegionArrows = getappdata(hFig, 'RegionArrows');
+                    set(RegionArrows(iData), 'Visible', 'on');
+                end
             else
                 set(RegionLinks(iData), 'Visible', 'off');
+                if (IsDirectionalData)
+                    RegionArrows = getappdata(hFig, 'RegionArrows');
+                    set(RegionArrows(iData), 'Visible', 'off');
+                end
             end
         end
     end
@@ -2629,6 +2935,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                 RegionFunction = 'mean';
                 RegionDataPair = ComputeMeanMeasureMatrix(hFig, M);
         end
+        
         %
        % OGL = getappdata(hFig, 'OpenGLDisplay');
         % Clear
@@ -2638,7 +2945,11 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         if (isappdata(hFig,'RegionLinks')) 
             delete(getappdata(hFig,'RegionLinks'));
             rmappdata(hFig,'RegionLinks');
-        end      
+        end
+        if (isappdata(hFig,'RegionArrows')) 
+            delete(getappdata(hFig,'RegionArrows'));
+            rmappdata(hFig,'RegionArrows');
+        end  
 
         Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
         Vertices = bst_figures('GetFigureHandleField', hFig, 'Vertices');
@@ -2646,9 +2957,10 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         MeasureLinks = BuildRegionPath(hFig, Paths, RegionDataPair);
         % Compute spline
         aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
-
         
         if (~isempty(aSplines))
+            
+            %disp(MeasureLinks);
             % Add on Java side
             %OGL.addPrecomputedHierarchyLink(aSplines); 
             % change link size to default 6
@@ -2661,8 +2973,15 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
             AllNodes = getappdata(hFig, 'AllNodes');
             
             % draw link for region max/min
-            for i = 1:length(RegionDataPair) %for each link
-        
+            for i = 1:size(RegionDataPair,1) %for each link
+                
+%                 Link = MeasureLinks{i};
+%                 Frames = Vertices(Link(:),:);
+%                 node1 = Frames(1,:);
+%                 node2 = Frames(end,:);
+%                 u = [node1(1); node1(2)];
+%                 v = [node2(1); node2(2)];
+                
                 % node positions (rescaled to *unit* circle)
                 node1 = RegionDataPair(i,1);
                 node2 = RegionDataPair(i,2);
@@ -2680,7 +2999,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                     x,...
                     y,...
                     'LineWidth', 1.5,...
-                    'Color', [AllNodes(node1).Color 0.00],...
+                    'Color', [1 1 1 0.00],...
                     'PickableParts','none',...
                     'Visible','off'); % not visible as default;
 
@@ -2725,7 +3044,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                         x,...
                         y,...
                         'LineWidth', 1.5,...
-                        'Color', [AllNodes(node1).Color 0.00],...
+                        'Color', [1 1 1 0.00],...
                         'PickableParts','none',...
                         'Visible','off'); % not visible as default;
                 end
@@ -2734,23 +3053,36 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                 if (IsDirectionalData)
             
                     % find index of the ending node
-                    arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0);
+                    % arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0);
             
-                    set(l, 'Marker', '*',...
-                        'LineStyle', '--',...
-                        'MarkerFaceColor', AllNodes(node1).Color,...
-                        'MarkerIndices', arrow_index,...
-                        'MarkerSize', 10);
+%                     set(l, 'Marker', '*',...
+%                         'LineStyle', '--',...
+%                         'MarkerFaceColor', AllNodes(node1).Color,...
+%                         'MarkerIndices', arrow_index,...
+%                         'MarkerSize', 10);
+
+                    % draw arrow
+                    arrow = arrowh(x,y,[1 1 1],100, 100);
+                    
+                    if(i==1)
+                        RegionArrows = arrow;
+                    else
+                        RegionArrows(end+1) = arrow;
+                    end
                 end
         
-                % Store the link into our figu
+                % Store the link into our figure
                 if(i==1)
                     RegionLinks = l;
                 else
                     RegionLinks(end+1) = l;
                 end
             end 
-        setappdata(hFig,'RegionLinks',RegionLinks); % Very important!  
+            
+        setappdata(hFig,'RegionLinks',RegionLinks); % Very important!
+        if (IsDirectionalData)
+            setappdata(hFig,'RegionArrows',RegionArrows); % Very important!
+        end
         end 
        
         % Update figure value
@@ -2948,16 +3280,21 @@ function SetLinkSize(hFig, LinkSize)
     end
 
     AllLinks = getappdata(hFig,'AllLinks');
+    AllArrows = getappdata(hFig,'AllArrows');
     RegionLinks = getappdata(hFig,'RegionLinks');
+    RegionArrows = getappdata(hFig,'RegionArrows');
     
     MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
     RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
     
     if (MeasureLinksIsVisible)
         set(AllLinks, 'LineWidth', LinkSize);
+        set(AllArrows, 'LineWidth', LinkSize);
     else
         set(RegionLinks, 'LineWidth', LinkSize);
+        set(RegionArrows, 'LineWidth', LinkSize);
     end
+    
     setappdata(hFig, 'LinkSize', LinkSize);
 end
  
@@ -2968,37 +3305,54 @@ function SetLinkTransparency(hFig, LinkTransparency)
     
     MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
     RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
+    IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     if (MeasureLinksIsVisible)
-        AllLinks = getappdata(hFig,'AllLinks');        
+        AllLinks = getappdata(hFig,'AllLinks');
         [DataPair, DataMask] = GetPairs(hFig); 
         iData = find(DataMask == 1); % - 1;
  
         if (~isempty(iData))
             VisibleLinks = AllLinks(iData).';
+            
+            if (IsDirectionalData)
+                AllArrows = getappdata(hFig,'AllArrows');
+                VisibleArrows = AllArrows(iData).';
+            end
     
             % set desired colors to each link
             for i=1:length(VisibleLinks)
                 current_color = VisibleLinks(i).Color;
-        
                 current_color(4) = 1.00 - LinkTransparency;
                 set(VisibleLinks(i), 'Color', current_color);
+                
+                if (IsDirectionalData)
+                    set(VisibleArrows(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
+                end
             end
         end
     % region links
     else
-        RegionLinks = getappdata(hFig,'RegionLinks');       
+        RegionLinks = getappdata(hFig,'RegionLinks'); 
         [DataToFilter, DataMask] = GetRegionPairs(hFig);
         iData = find(DataMask == 1); % - 1;
  
         if (~isempty(iData))
             VisibleLinks_region = RegionLinks(iData).';
+            
+            if (IsDirectionalData)
+                RegionArrows = getappdata(hFig,'RegionArrows');
+                VisibleArrows = RegionArrows(iData).';
+            end
         
             for i=1:length(VisibleLinks_region)
                 current_color = VisibleLinks_region(i).Color;
-        
-                current_color(4) = 1.00 - LinkTransparency;
+                current_color(4) = 1.00 - LinkTransparency;              
                 set(VisibleLinks_region(i), 'Color', current_color);
+                
+                if (IsDirectionalData)
+                    set(VisibleArrows(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
+                end
             end
         end
     end
