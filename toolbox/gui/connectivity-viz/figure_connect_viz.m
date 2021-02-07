@@ -1613,19 +1613,6 @@ function BuildLinks(hFig, DataPair)
             
             r  = sqrt(x0^2 + y0^2 - 1);
             
-%             % check if this line has a bidirectional equivalent that would
-%             % overlap
-%             for j = 1:length(All_u)-1
-%                 if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
-%                     
-%                     % change equation for an ellipse
-%                     x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-%                     y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
-%             
-%                     r  = sqrt(x0^2 + y0^2 - 1);
-%                 end
-%             end
-            
             thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
             thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
             
@@ -1637,18 +1624,89 @@ function BuildLinks(hFig, DataPair)
                 theta = linspace(thetaLim(1),thetaLim(2)).';
             end    
                 
-%           % rescale onto our graph circle
+          % rescale onto our graph circle
             x = 4*0.6*r*cos(theta)+4*0.6*x0;
             y = 4*0.6*r*sin(theta)+4*0.6*y0;
+            
+%             % Bezier curve: DOES NOT WORK %%
+% 
+%             P(1,1) = u(1);
+%             P(2,1) = u(2);
+%             P(1,2) = v(1);
+%             P(2,2) = v(2);
+%             P(1,3) = x0;
+%             P(2,3) = y0;
+%             P(3,:) = 0;
+%             n = 3;
+%             count = 1;
+%             div = 50; %number of segments of the curve (Increase this value to obtain a
+%           %smoother curve
+%             for u = 0:(1/div):1
+%                 sum = [0 0 0]';
+%                 for k = 1:n
+%                     B = nchoosek(n,k-1)*(u^(k-1))*((1-u)^(n-k+1)); %B is the Bernstein polynomial value
+%                     sum = sum + B*P(:,k);
+%                 end
+%                 B = nchoosek(n,n)*(u^(n));
+%                 sum = sum + B*P(:,n);
+%                 A(:,count) = sum; %the matrix containing the points of curve as column vectors. 
+%                 count = count+1;  % count is the index of the points on the curve.
+%             end
+%             for j = 1:n %plots the points
+%                 plot(P(1,j),P(2,j),'*');
+%                 %hold on;
+%             end
+%             p1 = P(:,1);
+%             %draws the characteristic polygon describing the bezier curve
+%             for l = 1:n-1
+%                 p2 = P(:,l+1)';
+%                 %lineplot(p1,p2); %function the plots a line between two points.
+%                 x = [p1(1) p2(1)]; 
+%                 y = [p1(2) p2(2)]; 
+%                 l = line(x,y); %a dashed red  line 
+%                 p1 = p2;
+%             end
             
             % check if this line has a bidirectional equivalent that would
             % overlap
             for j = 1:length(All_u)-1
                 if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
-                    r  = sqrt(x0^2 + y0^2 - 1);
-                    x = 4*0.6*r*cos(theta) + 4*0.6*x0;
-                    y = 4*0.6*r*sin(theta) + 4*0.6*y0;
-
+                    
+                    sample_n = 100;
+                    curve = 0.95;
+                    x1 = [u(1), ...
+                        curve*mean([u(1), v(1)]), v(1)];
+        
+                    y1 = [u(2), ...
+                        curve*mean([u(2), v(2)]), v(2)];
+        
+                    xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
+                    if abs(x1(1) - x1(end)) < abs(y1(1) - y1(end))
+                        y2 = x1;
+                        x1 = y1;
+                        y1 = y2;
+                        xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
+                        yy = interp1(x1, y1, xx);
+                        if any(yy.^2 + xx.^2 > 1)
+                            xx = linspace(x1(1), x1(end) ,sample_n);
+                            yy = linspace(y1(1), y1(end),sample_n);
+                        end
+                        %l = line(4.0*0.6*yy, 4.0*0.6*xx);
+                        y = 4.0*0.6*xx;
+                        x = 4.0*0.6*yy;
+            
+                    else
+                        [x1, uniqIdx, ~] = unique(x1);
+                        y1 = y1(uniqIdx);
+                        yy = interp1(x1, y1, xx);
+                        if any(yy.^2 + xx.^2 > 1)
+                            xx = linspace(x1(1), x1(end), sample_n);
+                            yy = linspace(y1(1), y1(end), sample_n);
+                        end
+                        %l = line(4.0*0.6*xx, 4.0*0.6*yy);
+                        x = 4.0*0.6*xx;
+                        y = 4.0*0.6*yy;
+                    end
                 end
             end
 
@@ -1692,7 +1750,6 @@ function BuildLinks(hFig, DataPair)
         setappdata(hFig,'AllArrows',AllArrows);
     end
 end
-
 
 
 %  ARROWH   Draws a solid 2D arrow head in current plot.
@@ -2598,7 +2655,7 @@ function UpdateColormap(hFig)
             if (IsDirectionalData)
                 set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
                 %set(VisibleLinks_region(i), 'MarkerFaceColor', color_viz_region(i,:));
-                set(VisibleArrows(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz_region(i,:));
+                set(VisibleArrows(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
             else 
                 set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
             end
