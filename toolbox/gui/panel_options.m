@@ -135,11 +135,16 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             jTextBsDir = [];
         end
         % Python executable
-        gui_component('Label', jPanelFolders, 'br', 'Python executable: ', [], [], []);
+        jLabelPythonExe  = gui_component('Label', jPanelFolders, 'br', 'Python executable: ', [], [], []);
         jTextPythonExe   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
         jButtonPythonExe = gui_component('Button', jPanelFolders, [], '...', [], [], @PythonExe_Callback);
         jButtonPythonExe.setMargin(Insets(2,2,2,2));
         jButtonPythonExe.setFocusable(0);
+        if ~exist('pyenv', 'builtin') && ~exist('pyversion', 'builtin')
+            jLabelPythonExe.setEnabled(0);
+            jTextPythonExe.setEnabled(0);
+            jButtonPythonExe.setEnabled(0);
+        end
     jPanelRight.add('br hfill', jPanelFolders);
     
     % ===== RIGHT: SIGNAL PROCESSING =====

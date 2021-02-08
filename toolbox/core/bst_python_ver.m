@@ -40,11 +40,17 @@ if exist('pyenv', 'builtin')
     isLoaded = strcmpi(pyEnv.Status, 'Loaded');
     
 % PYVERSION: Matlab >= R2014b
-else
+elseif exist('pyversion', 'builtin')
     if isempty(PythonExe)
         [pyVer, PythonExe, isLoaded] = pyversion();
     else
         [pyVer, PythonExe, isLoaded] = pyversion(PythonExe);
     end
+    
+% Older versions of Matlab
+else
+    pyVer = [];
+    PythonExe = [];
+    isLoaded = 0;
 end
 
