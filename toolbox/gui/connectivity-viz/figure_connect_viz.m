@@ -2615,6 +2615,8 @@ function UpdateColormap(hFig)
                 Data_matrix = DataPair(DataMask,:);
                 OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                % Remaining links that are not bidirectional
+                set(AllLinks(:), 'LineStyle', '--');
                 % Bidirectional links are solid;        
                 set(AllLinks(OutIndex | InIndex), 'LineStyle', '-');
             else
