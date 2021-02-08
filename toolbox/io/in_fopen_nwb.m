@@ -34,6 +34,11 @@ end
 NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
 % Install toolbox
 if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
+    % Does not work with Matlab < 2016b
+    if (bst_get('MatlabVersion') < 901)
+        error('The NWB SDK does not work with Matlab versions older than 2016b.');
+    end
+    % Confirm install
     isOk = java_dialog('confirm', ...
         ['The NWB SDK is not installed on your computer.' 10 10 ...
              'Download and install the latest version?'], 'Neurodata Without Borders');
