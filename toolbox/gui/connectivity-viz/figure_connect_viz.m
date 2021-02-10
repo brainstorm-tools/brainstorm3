@@ -1614,18 +1614,21 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         node1 = DataPair(i,1);
         node2 = DataPair(i,2);
         u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/levelScale;
-        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;       
+        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;    
         
-        %TODO: do we need this for region links?
-        if (isMeasureLink)
-            % check if 2 bidirectional links overlap
-            if(i==1)
-                All_u(1,:) = u.';
-                All_v(1,:) = v.';
-            else
-                All_u(end+1,:) = u.';
-                All_v(end+1,:) = v.';
-            end
+        % Added Feb 10: Make nodes at level 3.5 invisible
+        if (~isMeasureLink)
+            AllNodes(node1).NodeMarker.Visible = 'off';
+            AllNodes(node2).NodeMarker.Visible = 'off';
+        end    
+        
+        % check if 2 bidirectional links overlap
+        if(i==1)
+            All_u(1,:) = u.';
+            All_v(1,:) = v.';
+        else
+            All_u(end+1,:) = u.';
+            All_v(end+1,:) = v.';
         end
 
         % diametric points: draw a straight line
@@ -1661,87 +1664,46 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             x = levelScale*r*cos(theta)+levelScale*x0;
             y = levelScale*r*sin(theta)+levelScale*y0;
             
-%             % Bezier curve: DOES NOT WORK %%
-% 
-%             P(1,1) = u(1);
-%             P(2,1) = u(2);
-%             P(1,2) = v(1);
-%             P(2,2) = v(2);
-%             P(1,3) = x0;
-%             P(2,3) = y0;
-%             P(3,:) = 0;
-%             n = 3;
-%             count = 1;
-%             div = 50; %number of segments of the curve (Increase this value to obtain a
-%           %smoother curve
-%             for u = 0:(1/div):1
-%                 sum = [0 0 0]';
-%                 for k = 1:n
-%                     B = nchoosek(n,k-1)*(u^(k-1))*((1-u)^(n-k+1)); %B is the Bernstein polynomial value
-%                     sum = sum + B*P(:,k);
-%                 end
-%                 B = nchoosek(n,n)*(u^(n));
-%                 sum = sum + B*P(:,n);
-%                 A(:,count) = sum; %the matrix containing the points of curve as column vectors. 
-%                 count = count+1;  % count is the index of the points on the curve.
-%             end
-%             for j = 1:n %plots the points
-%                 plot(P(1,j),P(2,j),'*');
-%                 %hold on;
-%             end
-%             p1 = P(:,1);
-%             %draws the characteristic polygon describing the bezier curve
-%             for l = 1:n-1
-%                 p2 = P(:,l+1)';
-%                 %lineplot(p1,p2); %function the plots a line between two points.
-%                 x = [p1(1) p2(1)]; 
-%                 y = [p1(2) p2(2)]; 
-%                 l = line(x,y); %a dashed red  line 
-%                 p1 = p2;
-%             end
-            
-             %TODO: do we need this for region links?
-            if (isMeasureLink) 
-                % check if this line has a bidirectional equivalent that would
-                % overlap
-                for j = 1:length(All_u)-1
-                    if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
 
-                        sample_n = 100;
-                        curve = 0.95;
-                        x1 = [u(1), ...
-                            curve*mean([u(1), v(1)]), v(1)];
-
-                        y1 = [u(2), ...
-                            curve*mean([u(2), v(2)]), v(2)];
-
+            % check if this line has a bidirectional equivalent that would
+            % overlap
+            for j = 1:length(All_u)-1
+                if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2))
+                    
+                    sample_n = 100;
+                    curve = 0.95;
+                    x1 = [u(1), ...
+                        curve*mean([u(1), v(1)]), v(1)];
+                    
+                    y1 = [u(2), ...
+                        curve*mean([u(2), v(2)]), v(2)];
+                    
+                    xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
+                    if abs(x1(1) - x1(end)) < abs(y1(1) - y1(end))
+                        y2 = x1;
+                        x1 = y1;
+                        y1 = y2;
                         xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
-                        if abs(x1(1) - x1(end)) < abs(y1(1) - y1(end))
-                            y2 = x1;
-                            x1 = y1;
-                            y1 = y2;
-                            xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
-                            yy = interp1(x1, y1, xx);
-                            if any(yy.^2 + xx.^2 > 1)
-                                xx = linspace(x1(1), x1(end) ,sample_n);
-                                yy = linspace(y1(1), y1(end),sample_n);
-                            end
-                            %l = line(levelScale*yy,levelScale*xx);
-                            y = levelScale*xx;
-                            x = levelScale*yy;
-
-                        else
-                            [x1, uniqIdx, ~] = unique(x1);
-                            y1 = y1(uniqIdx);
-                            yy = interp1(x1, y1, xx);
-                            if any(yy.^2 + xx.^2 > 1)
-                                xx = linspace(x1(1), x1(end), sample_n);
-                                yy = linspace(y1(1), y1(end), sample_n);
-                            end
-                            %l = line(levelScale*xx, levelScale*yy);
-                            x = levelScale*xx;
-                            y = levelScale*yy;
+                        yy = interp1(x1, y1, xx);
+                        if any(yy.^2 + xx.^2 > 1)
+                            xx = linspace(x1(1), x1(end) ,sample_n);
+                            yy = linspace(y1(1), y1(end),sample_n);
                         end
+                        %l = line(levelScale*yy,levelScale*xx);
+                        y = levelScale*xx;
+                        x = levelScale*yy;
+                        
+                    else
+                        [x1, uniqIdx, ~] = unique(x1);
+                        y1 = y1(uniqIdx);
+                        yy = interp1(x1, y1, xx);
+                        if any(yy.^2 + xx.^2 > 1)
+                            xx = linspace(x1(1), x1(end), sample_n);
+                            yy = linspace(y1(1), y1(end), sample_n);
+                        end
+                        %l = line(levelScale*xx, levelScale*yy);
+                        x = levelScale*xx;
+                        y = levelScale*yy;
                     end
                 end
             end
@@ -2028,7 +1990,6 @@ if ~WasHold
 end
 %-- work done. good bye.
 end
-
 
 
 %test callback function
@@ -2710,8 +2671,10 @@ function UpdateColormap(hFig)
             if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)            
                 % Get Bidirectional data
                 Data_matrix = RegionDataPair(RegionDataMask,:);
-                OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                OutIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                InIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                % Remaining links that are not bidirectional
+                set(RegionLinks(:), 'LineStyle', '--');
                 % Bidirectional links are solid;            
                 set(RegionLinks(OutIndex | InIndex), 'LineStyle', '-');
             else
@@ -3787,6 +3750,7 @@ function node = CreateNode(xpos, ypos, index, label, isAgregatingNode)
         'MarkerFaceColor', node.Color,...   # Marker is default node color when 'on', grey when 'off'
         'MarkerSize', 5,...                 # default (6) is too big
         'LineStyle','none',...
+        'Visible','on',...
         'PickableParts','all',...
         'ButtonDownFcn',@NodeButtonDownFcn,...
         'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
