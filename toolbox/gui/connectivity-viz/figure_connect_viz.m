@@ -146,9 +146,24 @@ function Dispose(hFig) %#ok<DEFNU>
         rmappdata(hFig,'AllNodes');
     end
     
-    if (isappdata(hFig,'AllLinks'))
-        delete(getappdata(hFig,'AllLinks'));
-        rmappdata(hFig,'AllLinks');
+    if (isappdata(hFig,'MeasureLinks'))
+        delete(getappdata(hFig,'MeasureLinks'));
+        rmappdata(hFig,'MeasureLinks');
+    end
+    
+    if (isappdata(hFig,'RegionLinks'))
+        delete(getappdata(hFig,'RegionLinks'));
+        rmappdata(hFig,'RegionLinks');
+    end
+    
+    if (isappdata(hFig,'MeasureArrows'))
+        delete(getappdata(hFig,'MeasureArrows'));
+        rmappdata(hFig,'MeasureArrows');
+    end
+    
+    if (isappdata(hFig,'RegionArrows'))
+        delete(getappdata(hFig,'RegionArrows'));
+        rmappdata(hFig,'RegionArrows');
     end
 
     %===old===
@@ -1440,10 +1455,10 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %% ==== Create and Display Links =======
    
     % Build path based on region %todo:remove
-    MeasureLinks = BuildRegionPath(hFig, Paths, DataPair);
+    %MeasureLinks = BuildRegionPath(hFig, Paths, DataPair);
     
     % Compute spline based on MeasureLinks @todo:remove
-    aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
+    %aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
     %if ~isempty(aSplines)
         %OGL.addPrecomputedMeasureLinks(aSplines);
         % Get link size (type double)
@@ -1456,7 +1471,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %end
     
     %NEW Nov 10: create links from computed DataPair
-    BuildLinks(hFig, DataPair);
+    BuildLinks(hFig, DataPair, true);
     LinkSize = getappdata(hFig, 'LinkSize');
     SetLinkSize(hFig, LinkSize);
     SetLinkTransparency(hFig, 0.00);
@@ -1537,23 +1552,40 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
 end
  
 %% ======== Create all links as Matlab Lines =====
-    % TODO: directional arcs
-function BuildLinks(hFig, DataPair)
-    disp('Entered BuildLinks');
+function BuildLinks(hFig, DataPair, isMeasureLink)
+    if (isMeasureLink)
+        disp('Entered BuildLinks. Creating MeasureLinks');
+    else
+        disp('Entered BuildLinks. Creating RegionLinks');
+    end;
     
     % get pre-created nodes
     AllNodes = getappdata(hFig, 'AllNodes');
-
+    
     % clear any previous links
-    if (isappdata(hFig,'AllLinks'))
-        delete(getappdata(hFig,'AllLinks'));
-        rmappdata(hFig,'AllLinks');
+    % and get scaling distance from nodes to unit circle
+    if (isMeasureLink)
+        levelScale = getappdata(hFig, 'MeasureLevelDistance'); % typically 4 for measure (outer) nodes
+        if (isappdata(hFig,'MeasureLinks'))
+            delete(getappdata(hFig,'MeasureLinks'));
+            rmappdata(hFig,'MeasureLinks');
+        end
+        if (isappdata(hFig,'MeasureArrows'))
+            delete(getappdata(hFig,'MeasureArrows'));
+            rmappdata(hFig,'MeasureArrows');
+        end
+    else
+        levelScale = getappdata(hFig, 'RegionLevelDistance'); % typically 3.5 for region nodes to display region links
+        
+        if (isappdata(hFig,'RegionLinks'))
+            delete(getappdata(hFig,'RegionLinks'));
+            rmappdata(hFig,'RegionLinks');
+        end
+        if (isappdata(hFig,'RegionArrows'))
+            delete(getappdata(hFig,'RegionArrows'));
+            rmappdata(hFig,'RegionArrows');
+        end
     end
-    if (isappdata(hFig,'AllArrows'))
-        delete(getappdata(hFig,'AllArrows'));
-        rmappdata(hFig,'AllArrows');
-    end
-
     
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs
@@ -1576,29 +1608,31 @@ function BuildLinks(hFig, DataPair)
     All_u = [];
     All_v = [];
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
-
     for i = 1:length(DataPair) %for each link
         
         % node positions (rescaled to *unit* circle)
         node1 = DataPair(i,1);
         node2 = DataPair(i,2);
-        u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/0.6/4;
-        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/0.6/4;       
+        u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/levelScale;
+        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;       
         
-        % check if 2 bidirectional links overlap
-        if(i==1)
-            All_u(1,:) = u.';
-            All_v(1,:) = v.';
-        else
-            All_u(end+1,:) = u.';
-            All_v(end+1,:) = v.';
+        %TODO: do we need this for region links?
+        if (isMeasureLink)
+            % check if 2 bidirectional links overlap
+            if(i==1)
+                All_u(1,:) = u.';
+                All_v(1,:) = v.';
+            else
+                All_u(end+1,:) = u.';
+                All_v(end+1,:) = v.';
+            end
         end
-        
+
         % diametric points: draw a straight line
         % can adjust the error margin (currently 0.2)
         if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
-            x = linspace(4*0.6*u(1),4*0.6*v(1),100);
-            y = linspace(4*0.6*u(2),4*0.6*v(2),100);
+            x = linspace(levelScale*u(1),levelScale*v(1),100);
+            y = linspace(levelScale*u(2),levelScale*v(2),100);
             l = line(...
                 x,...
                 y,...
@@ -1610,12 +1644,11 @@ function BuildLinks(hFig, DataPair)
         else % else, draw an arc
             x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
             y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
-            
             r  = sqrt(x0^2 + y0^2 - 1);
-            
             thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
             thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
             
+            % for arcs on the right-hand side, ensure they are drawn within the graph
             if (u(1) >= 0 && v(1) >= 0)
                 % ensure the arc is within the unit disk
                 theta = [linspace(max(thetaLim),pi,50),...
@@ -1624,9 +1657,9 @@ function BuildLinks(hFig, DataPair)
                 theta = linspace(thetaLim(1),thetaLim(2)).';
             end    
                 
-          % rescale onto our graph circle
-            x = 4*0.6*r*cos(theta)+4*0.6*x0;
-            y = 4*0.6*r*sin(theta)+4*0.6*y0;
+            % rescale onto our graph circle
+            x = levelScale*r*cos(theta)+levelScale*x0;
+            y = levelScale*r*sin(theta)+levelScale*y0;
             
 %             % Bezier curve: DOES NOT WORK %%
 % 
@@ -1667,45 +1700,48 @@ function BuildLinks(hFig, DataPair)
 %                 p1 = p2;
 %             end
             
-            % check if this line has a bidirectional equivalent that would
-            % overlap
-            for j = 1:length(All_u)-1
-                if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
-                    
-                    sample_n = 100;
-                    curve = 0.95;
-                    x1 = [u(1), ...
-                        curve*mean([u(1), v(1)]), v(1)];
-        
-                    y1 = [u(2), ...
-                        curve*mean([u(2), v(2)]), v(2)];
-        
-                    xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
-                    if abs(x1(1) - x1(end)) < abs(y1(1) - y1(end))
-                        y2 = x1;
-                        x1 = y1;
-                        y1 = y2;
+             %TODO: do we need this for region links?
+            if (isMeasureLink) 
+                % check if this line has a bidirectional equivalent that would
+                % overlap
+                for j = 1:length(All_u)-1
+                    if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2)) 
+
+                        sample_n = 100;
+                        curve = 0.95;
+                        x1 = [u(1), ...
+                            curve*mean([u(1), v(1)]), v(1)];
+
+                        y1 = [u(2), ...
+                            curve*mean([u(2), v(2)]), v(2)];
+
                         xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
-                        yy = interp1(x1, y1, xx);
-                        if any(yy.^2 + xx.^2 > 1)
-                            xx = linspace(x1(1), x1(end) ,sample_n);
-                            yy = linspace(y1(1), y1(end),sample_n);
+                        if abs(x1(1) - x1(end)) < abs(y1(1) - y1(end))
+                            y2 = x1;
+                            x1 = y1;
+                            y1 = y2;
+                            xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
+                            yy = interp1(x1, y1, xx);
+                            if any(yy.^2 + xx.^2 > 1)
+                                xx = linspace(x1(1), x1(end) ,sample_n);
+                                yy = linspace(y1(1), y1(end),sample_n);
+                            end
+                            %l = line(levelScale*yy,levelScale*xx);
+                            y = levelScale*xx;
+                            x = levelScale*yy;
+
+                        else
+                            [x1, uniqIdx, ~] = unique(x1);
+                            y1 = y1(uniqIdx);
+                            yy = interp1(x1, y1, xx);
+                            if any(yy.^2 + xx.^2 > 1)
+                                xx = linspace(x1(1), x1(end), sample_n);
+                                yy = linspace(y1(1), y1(end), sample_n);
+                            end
+                            %l = line(levelScale*xx, levelScale*yy);
+                            x = levelScale*xx;
+                            y = levelScale*yy;
                         end
-                        %l = line(4.0*0.6*yy, 4.0*0.6*xx);
-                        y = 4.0*0.6*xx;
-                        x = 4.0*0.6*yy;
-            
-                    else
-                        [x1, uniqIdx, ~] = unique(x1);
-                        y1 = y1(uniqIdx);
-                        yy = interp1(x1, y1, xx);
-                        if any(yy.^2 + xx.^2 > 1)
-                            xx = linspace(x1(1), x1(end), sample_n);
-                            yy = linspace(y1(1), y1(end), sample_n);
-                        end
-                        %l = line(4.0*0.6*xx, 4.0*0.6*yy);
-                        x = 4.0*0.6*xx;
-                        y = 4.0*0.6*yy;
                     end
                 end
             end
@@ -1723,37 +1759,42 @@ function BuildLinks(hFig, DataPair)
                 'Visible','off'); % not visible as default;
         end
             
-        % for directional links
+        % arrows for directional links
         if (IsDirectionalData)
             % create arrowhead
             arrow = arrowh(x,y,AllNodes(node1).Color,100, 100);
 
             if(i==1)
-                AllArrows = arrow;
+                Arrows = arrow;
             else
-                AllArrows(end+1) = arrow;
+                Arrows(end+1) = arrow;
             end
         end
         
-        % Store the link into our figure
+        % add link to list
         if(i==1)
-            AllLinks = l;
+            Links = l;
         else
-            AllLinks(end+1) = l;
+            Links(end+1) = l;
         end
     end
     
-    % Store AllLinks into figure
-    setappdata(hFig,'AllLinks',AllLinks); % Very important!
-    
-    if (IsDirectionalData)
-        setappdata(hFig,'AllArrows',AllArrows);
+    % Store Links into figure  % Very important!
+    if (isMeasureLink)
+        setappdata(hFig,'MeasureLinks',Links);
+        if (IsDirectionalData)
+            setappdata(hFig,'MeasureArrows',Arrows);
+        end
+    else
+        setappdata(hFig,'RegionLinks',Links);
+        if (IsDirectionalData)
+            setappdata(hFig,'RegionArrows',Arrows);
+        end
     end
+    
 end
 
-
-%  ARROWH   Draws a solid 2D arrow head in current plot.
-%
+%% ARROWH   Draws a solid 2D arrow head in current plot.
 %	 ARROWH(X,Y,COLOR,SIZE,LOCATION) draws a  solid arrow  head into
 %	 the current plot to indicate a direction.  X and Y must contain
 %	 a pair of x and y coordinates ([x1 x2],[y1 y2]) of two points:
@@ -1993,7 +2034,8 @@ end
 %test callback function
 function test(hFig)
    AllNodes = getappdata(hFig,'AllNodes');
-   AllLinks = getappdata(hFig,'AllLinks');
+   MeasureLinks = getappdata(hFig,'MeasureLinks');
+   RegionLinks = getappdata(hFig,'RegionLinks');
 end
  
  
@@ -2590,12 +2632,12 @@ function UpdateColormap(hFig)
         color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
         
         iData = find(DataMask == 1);
-        AllLinks = getappdata(hFig, 'AllLinks');
-        VisibleLinks = AllLinks(iData).';
+        MeasureLinks = getappdata(hFig, 'MeasureLinks');
+        VisibleLinks = MeasureLinks(iData).';
         
         if (IsDirectionalData)
-            AllArrows = getappdata(hFig, 'AllArrows');
-            VisibleArrows = AllArrows(iData).';
+            MeasureArrows = getappdata(hFig, 'MeasureArrows');
+            VisibleArrows = MeasureArrows(iData).';
         end
         
         % set desired colors to each link (4th column is transparency)
@@ -2616,12 +2658,12 @@ function UpdateColormap(hFig)
                 OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 % Remaining links that are not bidirectional
-                set(AllLinks(:), 'LineStyle', '--');
+                set(MeasureLinks(:), 'LineStyle', '--');
                 % Bidirectional links are solid;        
-                set(AllLinks(OutIndex | InIndex), 'LineStyle', '-');
+                set(MeasureLinks(OutIndex | InIndex), 'LineStyle', '-');
             else
                 % revert back to dashed lines if user selected "In" or "Out"
-                set(AllLinks(:), 'LineStyle', '--');            
+                set(MeasureLinks(:), 'LineStyle', '--');            
             end 
         end
     end
@@ -2713,8 +2755,8 @@ function DefaultCamera(hFig)
   %  setappdata(hFig, 'CameraPosition', [0 0 36]);  %TODO: remove
    % setappdata(hFig, 'CameraTarget', [0 0 -0.5]);  %TODO: remove
     hFig.CurrentAxes.CameraViewAngle = 7;
-    hFig.CurrentAxes.CameraPosition = [0 0 36];
-    hFig.CurrentAxes.CameraTarget = [0 0 -0.5];
+    hFig.CurrentAxes.CameraPosition = [0 0 60];
+    hFig.CurrentAxes.CameraTarget = [0 0 -2];
    
 end
  
@@ -2896,19 +2938,19 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     if (~isempty(iData))
         % Update link visibility
         if (MeasureLinksIsVisible)
-            AllLinks = getappdata(hFig,'AllLinks');
+            MeasureLinks = getappdata(hFig,'MeasureLinks');
             
             if (isSelected)
-                set(AllLinks(iData), 'Visible', 'on');
+                set(MeasureLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
-                    AllArrows = getappdata(hFig, 'AllArrows');
-                    set(AllArrows(iData), 'Visible', 'on');
+                    MeasureArrows = getappdata(hFig, 'MeasureArrows');
+                    set(MeasureArrows(iData), 'Visible', 'on');
                 end
             else
-                set(AllLinks(iData), 'Visible', 'off');
+                set(MeasureLinks(iData), 'Visible', 'off');
                 if (IsDirectionalData)
-                    AllArrows = getappdata(hFig, 'AllArrows');
-                    set(AllArrows(iData), 'Visible', 'off');
+                    MeasureArrows = getappdata(hFig, 'MeasureArrows');
+                    set(MeasureArrows(iData), 'Visible', 'off');
                 end
             end
             
@@ -2972,13 +3014,11 @@ function SetHierarchyNodeIsVisible(hFig, isVisible)
 end
  
  
-%% 
-%TODO: update no ogl
-% Updated Jan 24
+%% Create Region Mean/Max Links
 function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     disp('Entered SetRegionFunction');
 
-    % Does data has regions to cluster ?
+    % Does data have regions to cluster ?
     DisplayInCircle = getappdata(hFig, 'DisplayInCircle');
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
         % Get data
@@ -2994,156 +3034,20 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                 RegionFunction = 'mean';
                 RegionDataPair = ComputeMeanMeasureMatrix(hFig, M);
         end
-        
-        %
-       % OGL = getappdata(hFig, 'OpenGLDisplay');
-        % Clear
-       % OGL.clearRegionLinks();
        
-        % Clear previous region links
-        if (isappdata(hFig,'RegionLinks')) 
-            delete(getappdata(hFig,'RegionLinks'));
-            rmappdata(hFig,'RegionLinks');
+        %New Feb 9: create region mean/max links from computed RegionDataPair
+        BuildLinks(hFig, RegionDataPair, false); %Note: make sure to use isMeasureLink = false for this step
+        
+        % update size and transparency
+        LinkSize = getappdata(hFig, 'LinkSize');
+        SetLinkSize(hFig, LinkSize);
+        if (isappdata(hFig,'LinkTransparency'))
+            transparency = getappdata(hFig,'LinkTransparency');
+        else
+            transparency = 0;
         end
-        if (isappdata(hFig,'RegionArrows')) 
-            delete(getappdata(hFig,'RegionArrows'));
-            rmappdata(hFig,'RegionArrows');
-        end  
+        SetLinkTransparency(hFig, transparency);
 
-        Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
-        Vertices = bst_figures('GetFigureHandleField', hFig, 'Vertices');
-        % Build path for new datapair
-        MeasureLinks = BuildRegionPath(hFig, Paths, RegionDataPair);
-        % Compute spline
-        aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
-        
-        if (~isempty(aSplines))
-            
-            %disp(MeasureLinks);
-            % Add on Java side
-            %OGL.addPrecomputedHierarchyLink(aSplines); 
-            % change link size to default 6
-            %LinkSize = 6;
-            %SetLinkSize(hFig, LinkSize);
-            % Width
-           % OGL.setRegionLinkWidth(0:(size(RegionDataPair,1) - 1), LinkSize);
-           
-            % get pre-created nodes
-            AllNodes = getappdata(hFig, 'AllNodes');
-            
-            % draw link for region max/min
-            for i = 1:size(RegionDataPair,1) %for each link
-                
-%                 Link = MeasureLinks{i};
-%                 Frames = Vertices(Link(:),:);
-%                 node1 = Frames(1,:);
-%                 node2 = Frames(end,:);
-%                 u = [node1(1); node1(2)];
-%                 v = [node2(1); node2(2)];
-                
-                % node positions (rescaled to *unit* circle)
-                node1 = RegionDataPair(i,1);
-                node2 = RegionDataPair(i,2);
-                u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/0.6/4;
-                v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/0.6/4;
-        
-                IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
-        
-                % diametric points: draw a straight line
-                % can adjust the error margin (currently 0.2)
-                if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
-                    x = linspace(4*0.6*u(1),4*0.6*v(1),100);
-                    y = linspace(4*0.6*u(2),4*0.6*v(2),100);
-                    l = line(...
-                    x,...
-                    y,...
-                    'LineWidth', 1.5,...
-                    'Color', [1 1 1 0.00],...
-                    'PickableParts','none',...
-                    'Visible','off'); % not visible as default;
-
-                else % else, draw an arc
-                    x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-                    y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
-                    r  = sqrt(x0^2 + y0^2 - 1);
-                    thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
-                    thetaLim(2) = atan2(v(2)-y0,v(1)-x0);                 
-                    
-                    % ((u(2)>0.0 && v(2)<0.0) || (u(2)<0.0 && v(2)>0.0))
-                    % && u(2)*v(2) <=-0.0
-                    
-                    % for arcs on the right-hand side, ensure they are
-                    % drawn within the graph
-                    if (u(1) >= 0 && v(1) >= 0)
-                        theta = [linspace(max(thetaLim),pi,50),...
-                        linspace(-pi,min(thetaLim),50)].';
-                    
-                        x = 4*0.6*r*cos(theta)+4*0.6*x0;
-                        y = 4*0.6*r*sin(theta)+4*0.6*y0;   
-                        
-                        % check if any x or y values exceeded the unit
-                        % circle
-                        % in this case, use formula from else statement                  
-                        if (~isempty(find(x/(4*0.6) > 1)) | ~isempty(find(y/(4*0.6) > 1)))
-                            theta = linspace(thetaLim(1),thetaLim(2)).';
-                        end   
-                    else
-                        theta = linspace(thetaLim(1),thetaLim(2)).';
-                    end    
-                
-%                   % rescale onto our graph circle
-                    x = 4*0.6*r*cos(theta)+4*0.6*x0;
-                    y = 4*0.6*r*sin(theta)+4*0.6*y0;
-
-                    % Create the link as a line object
-                    % default colour for now, will be updated in updateColormap
-                    % Link Size set to 1.5 by default
-                    % line with no arrow marker
-                    l = line(...
-                        x,...
-                        y,...
-                        'LineWidth', 1.5,...
-                        'Color', [1 1 1 0.00],...
-                        'PickableParts','none',...
-                        'Visible','off'); % not visible as default;
-                end
-            
-                % for directional links
-                if (IsDirectionalData)
-            
-                    % find index of the ending node
-                    % arrow_index = find(y == 4*0.6*r*sin(thetaLim(2))+4*0.6*y0);
-            
-%                     set(l, 'Marker', '*',...
-%                         'LineStyle', '--',...
-%                         'MarkerFaceColor', AllNodes(node1).Color,...
-%                         'MarkerIndices', arrow_index,...
-%                         'MarkerSize', 10);
-
-                    % draw arrow
-                    arrow = arrowh(x,y,[1 1 1],100, 100);
-                    
-                    if(i==1)
-                        RegionArrows = arrow;
-                    else
-                        RegionArrows(end+1) = arrow;
-                    end
-                end
-        
-                % Store the link into our figure
-                if(i==1)
-                    RegionLinks = l;
-                else
-                    RegionLinks(end+1) = l;
-                end
-            end 
-            
-        setappdata(hFig,'RegionLinks',RegionLinks); % Very important!
-        if (IsDirectionalData)
-            setappdata(hFig,'RegionArrows',RegionArrows); % Very important!
-        end
-        end 
-       
         % Update figure value
         bst_figures('SetFigureHandleField', hFig, 'RegionDataPair', RegionDataPair);
         setappdata(hFig, 'RegionFunction', RegionFunction);
@@ -3243,43 +3147,6 @@ end
 % GL_ONE_MINUS_DST_COLOR = 775;
 % GL_ONE = 1;
 % GL_ZERO = 0;
- 
-%TODO: determine if colorblending is needed, if not, remove.
-function SetBlendingMode(hFig, BlendingEnabled)
-    disp('Entered SetBlendingMode');
-    % Update figure variable
-    setappdata(hFig, 'BlendingEnabled', BlendingEnabled);
-    % Update display
-    %OGL = getappdata(hFig,'OpenGLDisplay');
-    % 
-    if BlendingEnabled
-        % Good looking additive blending
-        %OGL.setMeasureLinkBlendingFunction(770,1);
-        % Blending only works nicely on black background
-        SetBackgroundColor(hFig, [0 0 0], [1 1 1]);
-        % AND with a minimum amount of transparency
-        LinkTransparency = getappdata(hFig, 'LinkTransparency');
-        if (LinkTransparency == 0)
-            SetLinkTransparency(hFig, 0.02);
-        end  
-    else
-        % Translucent blending only
-      %  OGL.setMeasureLinkBlendingFunction(770,771);
-    end
-    % Request redraw
-   % OGL.repaint();
-end
-
-%%% NOT IMPLEMENTED %%%
-function ToggleBlendingMode(hFig)
-    disp('Blending not available.');
-    return;
-%     BlendingEnabled = getappdata(hFig, 'BlendingEnabled');
-%     if isempty(BlendingEnabled)
-%         BlendingEnabled = 0;
-%     end
-%     SetBlendingMode(hFig, 1 - BlendingEnabled);
-end
 
 %% ===== NODE SIZE =====
      % NOTE: JAN 2020
@@ -3338,8 +3205,8 @@ function SetLinkSize(hFig, LinkSize)
         LinkSize = 1.5; % default
     end
 
-    AllLinks = getappdata(hFig,'AllLinks');
-    AllArrows = getappdata(hFig,'AllArrows');
+    MeasureLinks = getappdata(hFig,'MeasureLinks');
+    MeasureArrows = getappdata(hFig,'MeasureArrows');
     RegionLinks = getappdata(hFig,'RegionLinks');
     RegionArrows = getappdata(hFig,'RegionArrows');
     
@@ -3347,8 +3214,8 @@ function SetLinkSize(hFig, LinkSize)
     RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
     
     if (MeasureLinksIsVisible)
-        set(AllLinks, 'LineWidth', LinkSize);
-        set(AllArrows, 'LineWidth', LinkSize);
+        set(MeasureLinks, 'LineWidth', LinkSize);
+        set(MeasureArrows, 'LineWidth', LinkSize);
     else
         set(RegionLinks, 'LineWidth', LinkSize);
         set(RegionArrows, 'LineWidth', LinkSize);
@@ -3367,16 +3234,16 @@ function SetLinkTransparency(hFig, LinkTransparency)
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     if (MeasureLinksIsVisible)
-        AllLinks = getappdata(hFig,'AllLinks');
+        MeasureLinks = getappdata(hFig,'MeasureLinks');
         [DataPair, DataMask] = GetPairs(hFig); 
         iData = find(DataMask == 1); % - 1;
  
         if (~isempty(iData))
-            VisibleLinks = AllLinks(iData).';
+            VisibleLinks = MeasureLinks(iData).';
             
             if (IsDirectionalData)
-                AllArrows = getappdata(hFig,'AllArrows');
-                VisibleArrows = AllArrows(iData).';
+                MeasureArrows = getappdata(hFig,'MeasureArrows');
+                VisibleArrows = MeasureArrows(iData).';
             end
     
             % set desired colors to each link
@@ -3814,21 +3681,35 @@ function ClearAndAddNodes(hFig, V, Names)
     nAgregatingNodes = length(AgregatingNodes);
     nVertices = size(V,1);
     
-    % --- Clear any previous data ---- %
+    % --- Clear any previous nodes or links ---- %
     if (isappdata(hFig,'AllNodes')) 
        % delete(getappdata(hFig,'AllNodes')); % prev use with node.m
         deleteAllNodes(hFig);
         rmappdata(hFig,'AllNodes');
     end
     
-    if (isappdata(hFig,'AllLinks'))
-        delete(getappdata(hFig,'AllLinks'));
-        rmappdata(hFig,'AllLinks');
+    if (isappdata(hFig,'MeasureLinks'))
+        delete(getappdata(hFig,'MeasureLinks'));
+        rmappdata(hFig,'MeasureLinks');
+    end
+    
+    if (isappdata(hFig,'RegionLinks'))
+        delete(getappdata(hFig,'RegionLinks'));
+        rmappdata(hFig,'RegionLinks');
+    end
+    
+    if (isappdata(hFig,'MeasureArrows'))
+        delete(getappdata(hFig,'MeasureArrows'));
+        rmappdata(hFig,'MeasureArrows');
+    end
+    
+    if (isappdata(hFig,'RegionArrows'))
+        delete(getappdata(hFig,'RegionArrows'));
+        rmappdata(hFig,'RegionArrows');
     end
     
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
-    scaleFactor = 0.6; %new scale factor for x,y position of nodes
-    
+   
     % Create nodes as an array of struct nodes
     for i=1:nVertices
         isAgregatingNode = false;
@@ -3841,7 +3722,7 @@ function ClearAndAddNodes(hFig, V, Names)
         end
 
         % createNode(xpos, ypos, index, label, isAggregatingNode) 
-        AllNodes(i) = CreateNode(scaleFactor*V(i,1),scaleFactor*V(i,2),i,Names(i),isAgregatingNode);
+        AllNodes(i) = CreateNode(V(i,1),V(i,2),i,Names(i),isAgregatingNode);
     end 
     
     % Measure Nodes are color coded to their Scout counterpart
@@ -4151,7 +4032,8 @@ function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sG
     LobeLevel = 2.5;
     HemisphereLevel = 1.0;
     setappdata(hFig, 'MeasureLevelDistance', MeasureLevel);
- 
+    setappdata(hFig, 'RegionLevelDistance', RegionLevel);
+    
     % Some values are Hardcoded for Display consistency
     NumberOfMeasureNodes = size(aNames,1);
     NumberOfGroups = size(sGroups,2);
@@ -4493,7 +4375,9 @@ function [Vertices Paths Names] = OrganiseNodeInCircle(hFig, aNames, sGroups)
     % Display options
     MeasureLevel = 4;
     RegionLevel = 2;
- 
+    setappdata(hFig, 'MeasureLevelDistance', MeasureLevel);
+    setappdata(hFig, 'RegionLevelDistance', RegionLevel);
+    
     NumberOfMeasureNodes = size(aNames,1);
     NumberOfGroups = size(sGroups,2);
     NumberOfAgregatingNodes = 1;
@@ -4571,58 +4455,4 @@ function [Vertices Paths Names] = OrganiseNodeInCircle(hFig, aNames, sGroups)
     bst_figures('SetFigureHandleField', hFig, 'NumberOfLevels', NumberOfLevels);
     %
     bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
-end
- 
- 
-function Vertices = ReorganiseNodeAroundInCircle(hFig, sGroups, aNames, Level)
- 
-    Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
-    nVertices = size(bst_figures('GetFigureHandleField', hFig, 'Vertices'), 1);
-    Vertices = zeros(nVertices,3);
-    Vertices(:,3) = -5;
-    
-    DisplayLevel = 4:-(4/(Level-1)):0;
-    
-    NumberOfMeasureNodes = length([sGroups.RowNames]);
-    NumberOfGroups = length(sGroups);
-    
-    NumberOfAgregatingNodes = length(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'));
-    
-    NumberOfNodesInGroup = zeros(NumberOfGroups,1);
-    GroupsTheta = zeros(NumberOfGroups,1);
-    GroupsTheta(1,1) = (pi * 0.5);
-    for i=1:NumberOfGroups
-        if (i ~= 1)
-            GroupsTheta(i,1) = GroupsTheta(i-1,2);
-        end
-        NumberOfNodesInGroup(i) = 1;
-        if (iscellstr(sGroups(i).RowNames))
-            NumberOfNodesInGroup(i) = length(sGroups(i).RowNames);
-        end
-        Theta = (NumberOfNodesInGroup(i) / NumberOfMeasureNodes * (2 * pi));
-        GroupsTheta(i,2) = GroupsTheta(i,1) + Theta;
-    end
-    
-    for i=1:NumberOfGroups
-        LocalTheta = linspace(GroupsTheta(i,1), GroupsTheta(i,2), NumberOfNodesInGroup(i) + 2);
-        ChannelsOfThisGroup = ismember(aNames, sGroups(i).RowNames);
-        Index = find(ChannelsOfThisGroup) + NumberOfAgregatingNodes;
-        [posX,posY] = pol2cart(LocalTheta(2:end-1),1);
-        Vertices(Index,1:2) = [posX' posY'] * DisplayLevel(1);
-        Vertices(Index,3) = 0;
-        
-        for y=2:Level
-            Path = Paths{Index(1)};
-            RegionIndex = Path(y);
-            if (NumberOfNodesInGroup(i) == 1)
-                Mean = [posX posY];
-            else
-                Mean = mean([posX' posY']);
-            end
-            Mean = Mean / norm(Mean);
-            Vertices(RegionIndex,1:2) = Mean * DisplayLevel(y);
-            Vertices(RegionIndex,3) = 0;
-        end
-    end
-end
- 
+end 
