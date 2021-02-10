@@ -104,6 +104,12 @@ else
             system(['xterm -e "konqueror \"' filepath '\""']);
             return
         end
+        % Any X Desktop Group (XDG) compliant
+        ixXdg = system('which xdg-open');
+        if (ixXdg == 0)          
+            system(['xdg-open "' filepath '"']);
+            return
+        end     
         % Error
         error('No file manager found for your operating system.');
     end
