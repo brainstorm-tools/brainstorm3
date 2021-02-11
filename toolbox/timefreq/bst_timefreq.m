@@ -843,6 +843,8 @@ end
                 % Look for a trial tag in the filename
                 iTagStart = strfind(fBase, '_trial');
                 if ~isempty(iTagStart)
+                    % Extract the last occurrence in case it's also in the folder name
+                    iTagStart = iTagStart(end);
                     iTagStop = iTagStart + find(fBase(iTagStart+6:end) == '_',1) + 4;
                     if isempty(iTagStop)
                         iTagStop = length(fBase);
