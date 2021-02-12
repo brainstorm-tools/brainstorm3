@@ -62,6 +62,11 @@ else
     isDefaultStudyNode = 0;
 end
 
+% Nodes considered new are less than an hour old
+bstStartTime = bst_get('ProgramStartTime');
+newNodeTime  = bst_get('CurrentUnixTime') - bst_get('NewFileTime') * 60;
+ProtocolInfo = bst_get('ProtocolInfo');
+
 % Query database to get all functional files
 conditions = struct('Study', iStudy);
 if isempty(iFile)
@@ -84,7 +89,8 @@ iChannel = find(strcmp('channel', allTypes), 1);
 % Display channel if : default node, or do not use default
 if (~UseDefaultChannel || isDefaultStudyNode) && ~isempty(iChannel)
     CreateNode(nodeParent, 'channel', sFiles(iChannel).Name, ...
-        sFiles(iChannel).FileName, sFiles(iChannel).Id, iStudy, sFiles(iChannel).NumChildren);
+        sFiles(iChannel).FileName, sFiles(iChannel).Id, iStudy, ...
+        sFiles(iChannel).NumChildren, sFiles(iChannel).LastModified);
 end
 
 %% ===== HEAD MODEL =====
@@ -96,7 +102,8 @@ if ~UseDefaultChannel || isDefaultStudyNode
             sFiles(iHeadModel).Name = '';
         end
         nodeHeadModel = CreateNode(nodeParent, 'headmodel', sFiles(iHeadModel).Name, ...
-            sFiles(iHeadModel).FileName, sFiles(iHeadModel).Id, iStudy, sFiles(iHeadModel).NumChildren);
+            sFiles(iHeadModel).FileName, sFiles(iHeadModel).Id, iStudy, ...
+            sFiles(iHeadModel).NumChildren, sFiles(iHeadModel).LastModified);
         % If current item is default one
         if ~isempty(nodeHeadModel) && ~isempty(sStudy) && ismember(sFiles(iHeadModel).Id, sStudy.iHeadModel)
             nodeHeadModel.setMarked(1);
@@ -111,12 +118,14 @@ if (~UseDefaultChannel || isDefaultStudyNode) && ~isempty(iNoiseCovs)
     % Noise covariance
     if ~isempty(sFiles(iNoiseCovs(1)).FileName)
         CreateNode(nodeParent, 'noisecov', sFiles(iNoiseCovs(1)).Name, ...
-            sFiles(iNoiseCovs(1)).FileName, 1, iStudy, sFiles(iNoiseCovs(1)).NumChildren);
+            sFiles(iNoiseCovs(1)).FileName, sFiles(iNoiseCovs(1)).Id, iStudy, ...
+            sFiles(iNoiseCovs(1)).NumChildren, sFiles(iNoiseCovs(1)).LastModified);
     end
     % Data covariance
     if (length(iNoiseCovs) >= 2) && ~isempty(sFiles(iNoiseCovs(2)).FileName)
         CreateNode(nodeParent, 'noisecov', sFiles(iNoiseCovs(2)).Name, ...
-            sFiles(iNoiseCovs(2)).FileName, 2, iStudy, sFiles(iNoiseCovs(2)).NumChildren);
+            sFiles(iNoiseCovs(2)).FileName, sFiles(iNoiseCovs(2)).Id, iStudy, ...
+            sFiles(iNoiseCovs(2)).NumChildren, sFiles(iNoiseCovs(2)).LastModified);
     end
 end
 
@@ -126,7 +135,8 @@ iFolders = find(strcmp('folder', allTypes), 1);
 for i = 1:length(iFolders)
     iFolder = iFolders(i);
     CreateNode(nodeParent, 'folder', sFiles(iFolder).Name, ...
-        sFiles(iFolder).FileName, sFiles(iFolder).Id, iStudy, sFiles(iFolder).NumChildren);
+        sFiles(iFolder).FileName, sFiles(iFolder).Id, iStudy, ...
+        sFiles(iFolder).NumChildren, sFiles(iFolder).LastModified);
 end
 
 %% ===== DATA LISTS =====
@@ -135,7 +145,8 @@ for i = 1:length(iDataLists)
     iDataList = iDataLists(i);
     CreateNode(nodeParent, 'datalist', ...
         sprintf('%s (%d files)', sFiles(iDataList).Name, sFiles(iDataList).NumChildren), ...
-        sFiles(iDataList).Name, sFiles(iDataList).Id, iStudy, sFiles(iDataList).NumChildren);
+        sFiles(iDataList).Name, sFiles(iDataList).Id, iStudy, ...
+        sFiles(iDataList).NumChildren, sFiles(iDataList).LastModified);
 end
 
 %% ===== DATA =====
@@ -153,7 +164,8 @@ for i = 1:length(iDatas)
     end
     
     CreateNode(nodeParent, nodeType, sFiles(iData).Name, sFiles(iData).FileName, ...
-        sFiles(iData).Id, iStudy, sFiles(iData).NumChildren, Modifier);
+        sFiles(iData).Id, iStudy, sFiles(iData).NumChildren, ...
+        sFiles(iData).LastModified, Modifier);
 end
 
 %% ===== RESULT =====
@@ -175,7 +187,7 @@ for i = 1:length(iResults)
     end
     
     CreateNode(nodeParent, nodeType, sFiles(iResult).Name, sFiles(iResult).FileName, ...
-        sFiles(iResult).Id, iStudy, sFiles(iResult).NumChildren);
+        sFiles(iResult).Id, iStudy, sFiles(iResult).NumChildren, sFiles(iResult).LastModified);
 end
 
 %% ===== MATRIX LISTS =====
@@ -184,7 +196,8 @@ for i = 1:length(iMatrixLists)
     iMatrixList = iMatrixLists(i);
     CreateNode(nodeParent, 'matrixlist', ...
         sprintf('%s (%d files)', sFiles(iMatrixList).Name, sFiles(iMatrixList).NumChildren), ...
-        sFiles(iMatrixList).Name, sFiles(iMatrixList).Id, iStudy, sFiles(iMatrixList).NumChildren);
+        sFiles(iMatrixList).Name, sFiles(iMatrixList).Id, iStudy, ...
+        sFiles(iMatrixList).NumChildren, sFiles(iMatrixList).LastModified);
 end
 
 %% ===== MATRIX =====
@@ -192,7 +205,7 @@ iMatrices = find(strcmp('matrix', allTypes));
 for i = 1:length(iMatrices)
     iMatrix = iMatrices(i);    
     CreateNode(nodeParent, 'matrix', sFiles(iMatrix).Name, sFiles(iMatrix).FileName, ...
-        sFiles(iMatrix).Id, iStudy, sFiles(iMatrix).NumChildren);
+        sFiles(iMatrix).Id, iStudy, sFiles(iMatrix).NumChildren, sFiles(iMatrix).LastModified);
 end
 
 %% ===== TIMEFREQ =====
@@ -209,7 +222,7 @@ for i = 1:length(iTimeFreqs)
     end
     
     CreateNode(nodeParent, nodeType, sFiles(iTimeFreq).Name, sFiles(iTimeFreq).FileName, ...
-        sFiles(iTimeFreq).Id, iStudy, sFiles(iTimeFreq).NumChildren);
+        sFiles(iTimeFreq).Id, iStudy, sFiles(iTimeFreq).NumChildren, sFiles(iTimeFreq).LastModified);
 end
 
 
@@ -219,7 +232,7 @@ iDipoles = find(strcmp('dipole', allTypes));
 for i = 1:length(iDipoles)
     iDipole = iDipoles(i);
     CreateNode(nodeParent, 'dipoles', sFiles(iDipole).Name, sFiles(iDipole).FileName, ...
-        sFiles(iDipole).Id, iStudy, sFiles(iDipole).NumChildren);
+        sFiles(iDipole).Id, iStudy, sFiles(iDipole).NumChildren, sFiles(iDipole).LastModified);
 end
 
 
@@ -253,7 +266,7 @@ for i = 1:length(iStats)
     
     % Create node
     CreateNode(nodeParent, nodeType, sFiles(iStat).Name, sFiles(iStat).FileName, ...
-        sFiles(iStat).Id, iStudy, sFiles(iStat).NumChildren);
+        sFiles(iStat).Id, iStudy, sFiles(iStat).NumChildren, sFiles(iStat).LastModified);
 end
 
 
@@ -275,7 +288,7 @@ for i = 1:length(iImages)
     end
     
     CreateNode(nodeParent, nodeType, sFiles(iImage).Name, sFiles(iImage).FileName, ...
-        sFiles(iImage).Id, iStudy, sFiles(iImage).NumChildren);
+        sFiles(iImage).Id, iStudy, sFiles(iImage).NumChildren, sFiles(iImage).LastModified);
 end
 
     % Create a Java object for a database node if it passes the active search
@@ -287,9 +300,9 @@ end
     % Outputs:
     %  - node: Newly created Java object for the node
     function node = CreateNode(parentNode, nodeType, nodeComment, ...
-            nodeFileName, iItem, iStudy, numChildren, Modifier)
+            nodeFileName, iItem, iStudy, numChildren, dateModified, Modifier)
         import org.brainstorm.tree.*;
-        if nargin < 8
+        if nargin < 9
             Modifier = 0;
         end
         % Only create Java object is required
@@ -298,7 +311,22 @@ end
             if ~showParentNodes && ~isempty(nodeRoot)
                 parentNode = nodeRoot;
             end
+            
+            % Bold node if it's new (and not already bolded)
+            if dateModified > newNodeTime && dateModified > bstStartTime
+                % Make sure the node is not already read
+                isRead = isKey(ProtocolInfo.iReadFiles, iItem);
+                if isRead
+                    % Check if node was modified since last read
+                    isRead = ProtocolInfo.iReadFiles(iItem) == dateModified;
+                end
+                if ~isRead && ~strncmp(filteredComment, '<', 1)
+                    filteredComment = ['<HTML><B>' filteredComment '</B>'];
+                end
+            end
+            
             node = parentNode.add(nodeType, filteredComment, nodeFileName, iItem, iStudy, Modifier);
+            node.setLastModified(dateModified);
             numElems = numElems + 1;
             
             if numChildren > 0

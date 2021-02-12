@@ -92,6 +92,13 @@ switch (lower(action))
         conditionTypes = {'condition', 'rawcondition', 'studysubject', 'study', 'defaultstudy'};
         % Select the Study (subject/condition) closest to the node that was clicked
         switch lower(nodeType)
+            % Selecting a subject
+            case 'subject'
+                %nodeSubject = bstNodes(1);
+                ProtocolInfo = bst_get('ProtocolInfo');
+                ProtocolInfo.iSubject = nodeSubject.getItemIndex();
+                ProtocolInfo.iStudy = [];
+                bst_set('ProtocolInfo', ProtocolInfo);
             % Selecting a condition
             case conditionTypes
                 % If selected node is a Study node
@@ -115,6 +122,9 @@ switch (lower(action))
             % Selecting a file in a condition
             case {'data', 'rawdata', 'datalist', 'channel', 'headmodel', 'noisecov', 'ndatacov', 'results', 'kernel', 'matrix', 'matrixlist', 'dipoles', 'timefreq', 'spectrum', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'pmatrix', 'link', 'image', 'video', 'videolink'}
                 nodeStudy = bstNodes(1);
+                iFile = nodeStudy.getItemIndex();
+                % Mark file as "read"
+                ProtocolInfo.iReadFiles(iFile) = uint32(nodeStudy.getLastModified());
                 % Go up in the ancestors, until we get a study file
                 while ~isempty(nodeStudy) && ~any(strcmpi(nodeStudy.getType(), conditionTypes))
                     nodeStudy = nodeStudy.getParent();

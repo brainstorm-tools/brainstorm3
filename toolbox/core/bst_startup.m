@@ -108,6 +108,7 @@ bstVersion = struct('Name',    Name, ...
                     'Release', Release, ...
                     'Date',    Date);
 bst_set('Version', bstVersion);
+bst_set('ProgramStartTime', bst_get('CurrentUnixTime'));
 % Display version number
 disp(['BST> Version: ' Date ]);
 % Get release date
@@ -250,19 +251,20 @@ if ~isempty(bstOptions)
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
     end
+    if isfield(bstOptions, 'DbVersion')
+        GlobalData.DataBase.DbVersion = bstOptions.DbVersion;
+    end
     % Update GlobalData structure
     if GlobalData.DataBase.DbVersion < CurrentDbVersion
         %TODO: Create its own function?
         if GlobalData.DataBase.DbVersion < 6
-            defProtocolInfo = db_template('ProtocolInfo');
-            for iProtocol = 1:length(GlobalData.DataBase.ProtocolInfo)
-                GlobalData.DataBase.ProtocolInfo(iProtocol).Database = db_template('DatabaseInfo');
-                if isempty(GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultAnat)
-                    GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultAnat = defProtocolInfo.UseDefaultAnat;
-                end
-                if isempty(GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultChannel)
-                    GlobalData.DataBase.ProtocolInfo(iProtocol).UseDefaultChannel = defProtocolInfo.UseDefaultChannel;
-                end
+            previousProtocolInfo = GlobalData.DataBase.ProtocolInfo;
+            nProtocols = length(previousProtocolInfo);
+            GlobalData.DataBase.ProtocolInfo = repmat(db_template('ProtocolInfo'), 1, nProtocols);
+            for iProtocol = 1:nProtocols
+                GlobalData.DataBase.ProtocolInfo(iProtocol) = struct_copy_fields(...
+                    GlobalData.DataBase.ProtocolInfo(iProtocol), ...
+                    previousProtocolInfo(iProtocol));
             end
         end
         GlobalData.DataBase.DbVersion = CurrentDbVersion;

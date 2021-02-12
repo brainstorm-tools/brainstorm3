@@ -21,10 +21,6 @@ function db_save(isIgnoreTime)
 %
 % Authors: Francois Tadel, 2008-2016
 
-%TODO: Delete this function?
-disp('DB_SAVE: Disabled!');
-return
-
 global GlobalData;
 % Parse inputs
 if (nargin < 1) || isempty(isIgnoreTime)
@@ -40,6 +36,7 @@ if ~isfield(GlobalData.DataBase, 'isProtocolLoaded') || isempty(GlobalData.DataB
     GlobalData.DataBase.isProtocolLoaded = ones(1, length(GlobalData.DataBase.ProtocolInfo));
 end
 % Brainstorm information stored in root appdata to a 'brainstorm.mat' matrix
+BstMat.DbVersion             = GlobalData.DataBase.DbVersion;
 BstMat.iProtocol             = GlobalData.DataBase.iProtocol;
 BstMat.ProtocolsListInfo     = GlobalData.DataBase.ProtocolInfo;
 BstMat.BrainStormDbDir       = GlobalData.DataBase.BrainstormDbDir;

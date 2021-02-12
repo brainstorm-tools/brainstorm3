@@ -1,4 +1,4 @@
-function numElems = node_create_studysubject(nodeSubject, nodeRoot, sSubject, iSubject, iSearch)
+function [numElems, selectedNode] = node_create_studysubject(nodeSubject, nodeRoot, sSubject, iSubject, iSearch)
 % NODE_CREATE_STUDYSUBJECT: Create subject node from subject structure for functional view.
 %
 % USAGE:  node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject)
@@ -43,7 +43,9 @@ if nargin < 4 || isempty(iSearch) || iSearch == 0
 else
     numElems = 0;
 end
+selectedNode = [];
 showParentNodes = node_show_parents(iSearch);
+ProtocolInfo = bst_get('ProtocolInfo');
 
 % Update node fields
 nodeSubject.setFileName(sSubject.FileName);
@@ -78,10 +80,18 @@ if ~isempty(iDefaultStudy)
     % Only accessible when using default channel
     if sSubject.UseDefaultChannel == 1
         nodeStudy = BstNode('defaultstudy', '(Common files)', sStudies(iDefaultStudy).FileName, iSubject, sStudies(iDefaultStudy).Id);
-        % Set the node as un-processed
-        nodeStudy.setUserObject(0);
-        % Add a "Loading" node
-        nodeStudy.add(BstNode('loading', 'Loading...'));
+        
+        % Expand node if this is the currently selected study
+        if ~isempty(ProtocolInfo.iStudy) && ProtocolInfo.iStudy == sStudies(iDefaultStudy).Id
+            node_create_study(nodeStudy, nodeRoot, sStudies(iDefaultStudy), sStudies(iDefaultStudy).Id, [], 1, [], iSearch);
+            selectedNode = nodeStudy;
+        else
+            % Set the node as un-processed
+            nodeStudy.setUserObject(0);
+            % Add a "Loading" node
+            nodeStudy.add(BstNode('loading', 'Loading...'));
+        end
+        
         % Add node to tree
         nodeSubject.add(nodeStudy);
     end
@@ -92,10 +102,18 @@ end
 % 2. Intra-analysis study
 if ~isempty(iIntraStudy)
     nodeStudy = BstNode('study', '(Intra-subject)', sStudies(iIntraStudy).FileName, iSubject, sStudies(iIntraStudy).Id);
-    % Set the node as un-processed
-    nodeStudy.setUserObject(0);
-    % Add a "Loading" node
-    nodeStudy.add(BstNode('loading', 'Loading...'));
+    
+    % Expand node if this is the currently selected study
+    if ~isempty(ProtocolInfo.iStudy) && ProtocolInfo.iStudy == sStudies(iIntraStudy).Id
+        node_create_study(nodeStudy, nodeRoot, sStudies(iIntraStudy), sStudies(iIntraStudy).Id, [], 1, [], iSearch);
+        selectedNode = nodeStudy;
+    else
+        % Set the node as un-processed
+        nodeStudy.setUserObject(0);
+        % Add a "Loading" node
+        nodeStudy.add(BstNode('loading', 'Loading...'));
+    end
+    
     % Add node to tree
     nodeSubject.add(nodeStudy);
 else
@@ -144,10 +162,17 @@ for i = 1:length(sStudies)
         
     nodeStudy = BstNode(nodeType, Comment, sStudy.FileName, 0, sStudy.Id);
 
-    % Set the node as un-processed
-    nodeStudy.setUserObject(0);
-    % Add a "Loading" node
-    nodeStudy.add(BstNode('loading', 'Loading...'));
+    % Expand node if this is the currently selected study
+    if ~isempty(ProtocolInfo.iStudy) && ProtocolInfo.iStudy == sStudy.Id
+        node_create_study(nodeStudy, nodeRoot, sStudy, sStudy.Id, [], 1, [], iSearch);
+        selectedNode = nodeStudy;
+    else
+        % Set the node as un-processed
+        nodeStudy.setUserObject(0);
+        % Add a "Loading" node
+        nodeStudy.add(BstNode('loading', 'Loading...'));
+    end
+    
     % Add node to tree
     nodeSubject.add(nodeStudy);
 end

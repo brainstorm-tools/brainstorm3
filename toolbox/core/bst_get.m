@@ -353,6 +353,25 @@ switch contextName
             computerName = 'Unknown';
         end
         argout1 = computerName;
+    
+    case 'InstanceID'
+        if isempty(GlobalData.Program.InstanceID)
+            try
+                pid = feature('GetPid');
+                assert(~isempty(pid));
+            catch
+                pid = randi([1, 2^15]);
+            end
+            GlobalData.Program.InstanceID = sprintf('%i@%s', pid, bst_get('ComputerName'));
+        end
+        argout1 = GlobalData.Program.InstanceID;
+        
+    case 'CurrentUnixTime'
+        %TODO: Non-Java solution?
+        argout1 = floor(java.lang.System.currentTimeMillis() / 1000);
+        
+    case 'ProgramStartTime'
+        argout1 = GlobalData.Program.StartTime;
         
     case 'BrainstormUserDir'
         bstUserDir = bst_fullfile(bst_get('UserDir'), '.brainstorm');
@@ -2726,6 +2745,14 @@ switch contextName
             else
                 argout1 = 100;
             end
+        end
+        
+    case 'NewFileTime'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'NewFileTime')
+            argout1 = GlobalData.Preferences.NewFileTime;
+        else
+            % Default: 1 hour
+            argout1 = 60;
         end
         
     case 'JOGLVersion'

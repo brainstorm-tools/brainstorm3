@@ -193,7 +193,7 @@ switch contextName
                         dataGroups(end).files = functionalFile;
                     end
                 else
-                    FileId = sql_query(sqlConn, 'insert', 'functionalfile', functionalFile);
+                    FileId = ModifyFunctionalFile(sqlConn, 'insert', functionalFile);
                     
                     % Save inserted ID if this is a potential parent file
                     if ~isempty(sStudy) && ismember(type, {'data', 'matrix', 'result', 'results'})
@@ -215,7 +215,7 @@ switch contextName
                         functionalFile.FileName = dataGroups(iGroup).files(1).FileName;
                         functionalFile.Name = dataGroups(iGroup).name;
                         functionalFile.NumChildren = nFiles;
-                        ParentId = sql_query(sqlConn, 'insert', 'functionalfile', functionalFile);
+                        ParentId = ModifyFunctionalFile(sqlConn, 'insert', functionalFile);
                     else
                         ParentId = [];
                     end
@@ -223,7 +223,7 @@ switch contextName
                     % Insert trials
                     for iFile = 1:nFiles
                         dataGroups(iGroup).files(iFile).ParentFile = ParentId;
-                        FileId = sql_query(sqlConn, 'insert', 'functionalfile', dataGroups(iGroup).files(iFile));
+                        FileId = ModifyFunctionalFile(sqlConn, 'insert', dataGroups(iGroup).files(iFile));
                         SaveParent(type, dataGroups(iGroup).files(iFile).FileName, FileId);
                     end
                 end
@@ -235,12 +235,25 @@ switch contextName
         for iField = 1:length(fieldTypes)
             for iFile = 1:length(parentFiles.(fieldTypes{iField}))
                 if parentFiles.(fieldTypes{iField})(iFile).numChildren > 0
-                    sql_query(sqlConn, 'update', 'functionalfile', ...
+                    ModifyFunctionalFile(sqlConn, 'update', ...
                         struct('NumChildren', parentFiles.(fieldTypes{iField})(iFile).numChildren), ...
                         struct('Id', parentFiles.(fieldTypes{iField})(iFile).id));
                 end
             end
         end
+        
+    % db_set('FunctionalFile', 'insert', db_template('FunctionalFile'))
+    % db_set('FunctionalFile', 'update', db_template('FunctionalFile'), struct('Id', 1))
+    case 'FunctionalFile'
+        queryType = args{1};
+        sFile = args{2};
+        if length(args) > 2
+            updateCondition = args{3};
+        else
+            updateCondition = [];
+        end
+        
+        out1 = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition);
 
     otherwise
         error('Invalid context : "%s"', contextName);
@@ -306,5 +319,15 @@ function FileName = FileStandard(FileName)
     if (FileName(1) == '/')
         FileName = FileName(2:end);
     end
+end
+
+function res = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition)
+    if nargin < 4
+        updateCondition = [];
+    end
+
+    sFile.LastModified = bst_get('CurrentUnixTime');
+    
+    res = sql_query(sqlConn, queryType, 'functionalfile', sFile, updateCondition);
 end
 

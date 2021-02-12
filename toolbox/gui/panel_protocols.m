@@ -174,6 +174,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % If this is a study node, node created yet: create it
         if ismember(nodeType, {'condition', 'rawcondition', 'study', 'defaultstudy'})
             CreateStudyNode(nodeExpand);
+            SelectStudyNode(nodeExpand);
         elseif strcmp(nodeType, 'studysubject')
             CreateSubjectNode(nodeExpand, 0);
         elseif strcmp(nodeType, 'subject')
@@ -907,6 +908,7 @@ function nodeStudy = SelectStudyNode( varargin )
     % Update selected study in ProtocolInfo
     ProtocolInfo = bst_get('ProtocolInfo');
     ProtocolInfo.iStudy = nodeStudy.getStudyIndex();
+    ProtocolInfo.iSubject = nodeStudy.getParent().getItemIndex();
     bst_set('ProtocolInfo', ProtocolInfo);
     % ===== UPDATE SCOUTS PANEL =====
     % Get parent Subject node

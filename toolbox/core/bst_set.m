@@ -132,6 +132,8 @@ switch contextName
         GlobalData.DataBase.BrainstormDbDir = contextValue;
     case 'BrainstormTmpDir'
         GlobalData.Preferences.BrainstormTmpDir = contextValue;
+    case 'ProgramStartTime'
+        GlobalData.Program.StartTime = contextValue;
 
 %% ==== PROTOCOL ====
     case 'iProtocol'
@@ -407,7 +409,7 @@ switch contextName
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
           'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'BrainSuiteDir', 'PythonConfig', ...
-          'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
+          'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions', 'NewFileTime'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

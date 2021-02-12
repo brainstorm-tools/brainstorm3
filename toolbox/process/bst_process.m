@@ -335,8 +335,6 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
             disp('BST> Warning: Could not select the output file in the tree.'); 
             nodeStudy = [];
         end
-        % Save database
-        db_save();
         drawnow;
         % Select first output file
         if ~isempty(OutputFiles)

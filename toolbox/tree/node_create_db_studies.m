@@ -82,10 +82,18 @@ iGroupSubject   = find(strcmp({sSubjects.Name}, bst_get('NormalizedSubjectName')
 if ~isempty(sDefaultStudy)
     % Create analysis node
     nodeGlobal = BstNode('defaultstudy', '(Common files)', sDefaultStudy.FileName, 0, sDefaultStudy.Id);
-    % Set the node as un-processed
-    nodeGlobal.setUserObject(0);
-    % Add a "Loading" node
-    nodeGlobal.add(BstNode('loading', 'Loading...'));
+    
+    % Check whether we need to expand this node
+    if ~isempty(ProtocolInfo.iStudy) && ProtocolInfo.iStudy == sDefaultStudy.Id
+        node_create_study(nodeGlobal, nodeRoot, sDefaultStudy, sDefaultStudy.Id, [], isExpandTrials, [], iSearch);
+        bstDefaultNode = nodeGlobal;
+    else
+        % Set the node as un-processed
+        nodeGlobal.setUserObject(0);
+        % Add a "Loading" node
+        nodeGlobal.add(BstNode('loading', 'Loading...'));
+    end
+    
     % Add node to tree
     nodeStudiesDB.add(nodeGlobal);
 end
@@ -94,10 +102,18 @@ end
 if ~isempty(sAnalysisStudy)
     % Create analysis node
     nodeAnalysis = BstNode('study', '(Inter-subject)', sAnalysisStudy.FileName, 0, sAnalysisStudy.Id);
-    % Set the node as un-processed
-    nodeAnalysis.setUserObject(0);
-    % Add a "Loading" node
-    nodeAnalysis.add(BstNode('loading', 'Loading...'));
+    
+    % Check whether we need to expand this node
+    if ~isempty(ProtocolInfo.iStudy) && ProtocolInfo.iStudy == sAnalysisStudy.Id
+        node_create_study(nodeAnalysis, nodeRoot, sAnalysisStudy, sAnalysisStudy.Id, [], isExpandTrials, [], iSearch);
+        bstDefaultNode = nodeAnalysis;
+    else
+        % Set the node as un-processed
+        nodeAnalysis.setUserObject(0);
+        % Add a "Loading" node
+        nodeAnalysis.add(BstNode('loading', 'Loading...'));
+    end    
+
     % Add node to tree
     nodeStudiesDB.add(nodeAnalysis);
 end
@@ -130,10 +146,22 @@ if strcmpi(expandOrder, 'subject')
         % Create subject node
         nodeSubject = BstNode('studysubject', strComment, sSubject.FileName, sSubject.Id, 0);
 
-        % Set the node as un-processed
-        nodeSubject.setUserObject(0);
-        % Add a "Loading" node
-        nodeSubject.add(BstNode('loading', 'Loading...'));
+        % Check whether we need to expand this node
+        if ~isempty(ProtocolInfo.iSubject) && ProtocolInfo.iSubject == sSubject.Id
+            [numElems, selectedStudy] = node_create_studysubject(nodeSubject, nodeRoot, sSubject, sSubject.Id, iSearch);
+            % If subject is default subject (ProtocolInfo.iSubject)
+            if ~isempty(selectedStudy)
+                bstDefaultNode = selectedStudy;
+            else
+                bstDefaultNode = nodeSubject;
+            end
+        else
+            % Set the node as un-processed
+            nodeSubject.setUserObject(0);
+            % Add a "Loading" node
+            nodeSubject.add(BstNode('loading', 'Loading...'));
+        end
+        
         % Add node to tree
         nodeStudiesDB.add(nodeSubject);
     end
