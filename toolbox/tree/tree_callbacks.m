@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -738,6 +738,11 @@ switch (lower(action))
                         AddSeparator(jPopup);
                         % Menu "Group conditions"
                         gui_component('MenuItem', jPopup, [], 'Group folders', IconLoader.ICON_FUSION, [], @(h,ev)db_group_conditions(ConditionsPaths));
+                    end
+                    % === SIMULATIONS ===
+                    if (length(bstNodes) == 1) && ~isRaw
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@bst_simmeeg, 'GUI', iStudy));
                     end
                     % === EXPORT RAW FILE ===
                     if isRaw

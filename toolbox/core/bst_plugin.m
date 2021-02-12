@@ -97,6 +97,15 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile      = 'cat_version';
     PlugDesc(end).UnloadPlugs   = {'fieldtrip'};
     PlugDesc(end).RequiredPlugs = {'spm12'};
+    % === SIMMEEG ===
+    PlugDesc(end+1).Name        = 'simmeeg';
+    PlugDesc(end).Version       = '21a';
+    PlugDesc(end).URLzip        = 'https://github.com/docath/BRANELab/raw/SimMEEG/SimMEEG_v21a.zip';
+    PlugDesc(end).URLinfo       = 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/';
+    PlugDesc(end).ReadmeFile    = 'SimMEEG_v21a/SIMMEEG_TERMS_OF_USE.txt';
+    PlugDesc(end).LoadFolders   = {'SimMEEG_v21a'};
+    PlugDesc(end).TestFile      = 'SimMEEG_GUI_v21a.m';
+%     PlugDesc(end).RequiredPlugs = {'fieldtrip'};
     % ================================================================================================================
     
     % Select only one plugin
