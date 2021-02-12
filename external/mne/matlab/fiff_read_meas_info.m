@@ -70,11 +70,11 @@ end
 
 me='MNE:fiff_read_meas_info';
 
-if nargin ~= 2 & nargin ~= 1
+if nargin ~= 2 && nargin ~= 1
     error(me,'Incorrect number of arguments');
 end
 
-if nargin == 1 & nargout == 2
+if nargin == 1 && nargout == 2
     error(me,'meas output argument is not allowed with file name specified');
 end
 
@@ -361,7 +361,7 @@ end
 return;
 
     function [tag] = find_tag(node,findkind)
-        
+
         for p = 1:node.nent
             if node.dir(p).kind == findkind
                 tag = fiff_read_tag(fid,node.dir(p).pos);
