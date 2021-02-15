@@ -1224,8 +1224,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     DataType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType;
     RowNames = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames;
     
-    %disp(RowNames);
-    
     % ===== GET REGION POSITIONS AND HIERARCHY =====
     % Inialize variables
     sGroups = repmat(struct('Name', [], 'RowNames', [], 'Region', []), 0);
@@ -1400,8 +1398,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'RowLocs', RowLocs);
     bst_figures('SetFigureHandleField', hFig, 'RowColors', RowColors);
     
-    disp(size(RowNames));
-    disp(size(sGroups));
     %% ===== ORGANISE VERTICES @NOTE: DONE=====    
     if DisplayInCircle
         [Vertices Paths Names] = OrganiseNodeInCircle(hFig, RowNames, sGroups);
@@ -1608,6 +1604,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     All_u = [];
     All_v = [];
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+    
     for i = 1:length(DataPair) %for each link
         
         % node positions (rescaled to *unit* circle)
@@ -1636,6 +1633,41 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
             x = linspace(levelScale*u(1),levelScale*v(1),100);
             y = linspace(levelScale*u(2),levelScale*v(2),100);
+            
+            % check if this line has a bidirectional equivalent that would
+            % overlap
+            for j = 1:length(All_u)-1
+                if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2))
+                    
+                    % return to scaled position values
+                    start_x = AllNodes(node1).Position(1);
+                    stop_x = AllNodes(node2).Position(1);
+                    start_y = AllNodes(node1).Position(2);
+                    stop_y = AllNodes(node2).Position(2);
+                    
+                    p = [(start_x-stop_x) (start_y-stop_y)];          % horde vector
+                    H = norm(p);                                % horde length
+                    R = 1.2*H;                                  % arc radius
+                    v = [-p(2) p(1)]/H;                         % perpendicular vector
+                    L = sqrt(R*R-H*H/4);						% distance to circle (from horde)
+                    p = [(start_x+stop_x) (start_y+stop_y)];          % vector center horde
+                    p0(1,:) = p/2 + v*L;                        % circle center 1
+                    p0(2,:) = p/2 - v*L;                        % circle center 2
+                    d = sqrt(sum(p0.^2,2));                     % distance to circle center
+                    [~,ix] = max( d );                          % get max (circle outside)
+                    p0 = p0(ix,:);
+                    
+                    % generate arc points
+                    vx = linspace(start_x,stop_x,100);				% horde points
+                    vy = linspace(start_y,stop_y,100);
+                    vx = vx - p0(1);
+                    vy = vy - p0(2);
+                    v = sqrt(vx.^2+vy.^2);
+                    x = p0(1) + vx./v*R;
+                    y = p0(2) + vy./v*R;
+                end
+            end
+            
             l = line(...
                 x,...
                 y,...
@@ -1648,6 +1680,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
             y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
             r  = sqrt(x0^2 + y0^2 - 1);
+                        
             thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
             thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
             
@@ -1670,41 +1703,32 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             for j = 1:length(All_u)-1
                 if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2))
                     
-                    sample_n = 100;
-                    curve = 0.95;
-                    x1 = [u(1), ...
-                        curve*mean([u(1), v(1)]), v(1)];
+                    % return to scaled position values
+                    start_x = AllNodes(node1).Position(1);
+                    stop_x = AllNodes(node2).Position(1);
+                    start_y = AllNodes(node1).Position(2);
+                    stop_y = AllNodes(node2).Position(2);
                     
-                    y1 = [u(2), ...
-                        curve*mean([u(2), v(2)]), v(2)];
+                    p = [(start_x-stop_x) (start_y-stop_y)];          % horde vector
+                    H = norm(p);                                % horde length
+                    R = 1.2*H;                                  % arc radius
+                    v = [-p(2) p(1)]/H;                         % perpendicular vector
+                    L = sqrt(R*R-H*H/4);						% distance to circle (from horde)
+                    p = [(start_x+stop_x) (start_y+stop_y)];          % vector center horde
+                    p0(1,:) = p/2 + v*L;                        % circle center 1
+                    p0(2,:) = p/2 - v*L;                        % circle center 2
+                    d = sqrt(sum(p0.^2,2));                     % distance to circle center
+                    [~,ix] = max( d );                          % get max (circle outside)
+                    p0 = p0(ix,:);
                     
-                    xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
-                    if abs(x1(1) - x1(end)) < abs(y1(1) - y1(end))
-                        y2 = x1;
-                        x1 = y1;
-                        y1 = y2;
-                        xx = [linspace(x1(1),x1(2),sample_n/2), linspace(x1(2),x1(end),sample_n/2)];
-                        yy = interp1(x1, y1, xx);
-                        if any(yy.^2 + xx.^2 > 1)
-                            xx = linspace(x1(1), x1(end) ,sample_n);
-                            yy = linspace(y1(1), y1(end),sample_n);
-                        end
-                        %l = line(levelScale*yy,levelScale*xx);
-                        y = levelScale*xx;
-                        x = levelScale*yy;
-                        
-                    else
-                        [x1, uniqIdx, ~] = unique(x1);
-                        y1 = y1(uniqIdx);
-                        yy = interp1(x1, y1, xx);
-                        if any(yy.^2 + xx.^2 > 1)
-                            xx = linspace(x1(1), x1(end), sample_n);
-                            yy = linspace(y1(1), y1(end), sample_n);
-                        end
-                        %l = line(levelScale*xx, levelScale*yy);
-                        x = levelScale*xx;
-                        y = levelScale*yy;
-                    end
+                    % generate arc points
+                    vx = linspace(start_x,stop_x,100);				% horde points
+                    vy = linspace(start_y,stop_y,100);
+                    vx = vx - p0(1);
+                    vy = vy - p0(2);
+                    v = sqrt(vx.^2+vy.^2);
+                    x = p0(1) + vx./v*R;
+                    y = p0(2) + vy./v*R;
                 end
             end
 
@@ -1735,7 +1759,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         
         % add link to list
         if(i==1)
-            Links = l;
+            Links(i) = l;
         else
             Links(end+1) = l;
         end
