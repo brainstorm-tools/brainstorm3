@@ -21,7 +21,7 @@ function varargout = process_extract_scout( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -474,7 +474,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Scout was not found: Error
                 if isempty(sScout)
                     bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
-                    return;
+                    continue;
                 end
                 % Get scout function
                 if ~isempty(ScoutFunc)
@@ -682,6 +682,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                 end
             end
+        end
+        % If nothing was found
+        if isempty(scoutValues)
+            return;
         end
         
         % === OUTPUT STRUCTURE ===
