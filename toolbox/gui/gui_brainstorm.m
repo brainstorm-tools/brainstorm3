@@ -60,7 +60,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     % Clone control
     if isequal(GlobalData.Program.CloneLock, 1)
         bst_splash('hide');
-        GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        % GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        GlobalData.Program.CloneLock = ~CloneProble(bst_get('BrainstormHomeDir'));
         if isequal(GlobalData.Program.CloneLock, 1)
             GUI = [];
             return;
@@ -172,6 +173,21 @@ function GUI = CreateWindow() %#ok<DEFNU>
             jMenuOpenmeeg.addSeparator();
             gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
         end
+        if (GlobalData.Program.GuiLevel == 1) && ~(exist('isdeployed', 'builtin') && isdeployed)
+            jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
+            if process_nst_install('status')
+                % Add nirstorm function folder in matlab path
+                addpath(bst_fullfile( bst_get('BrainstormUserDir'), 'nirstorm' ));
+                
+                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
+                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)process_nst_install('uninstall'), fontSize);
+            else
+                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
+            end    
+            
+            gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
+
+        end       
         
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
@@ -1469,8 +1485,6 @@ function DownloadOpenmeeg()
     catch
     end
 end
-
-
 %% ===== DOWNLOAD FILE =====
 function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
     errMsg = [];
@@ -1480,11 +1494,25 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
     end
     % Headless mode: use Matlab base functions
     if (bst_get('GuiLevel') == -1)
-        % Matlab >= 2014b: websave
-        if (bst_get('MatlabVersion') >= 804)
-            websave(destFile, srcUrl);
+        errMsg = bst_websave(destFile, srcUrl);
+    % Github: Problem with our downloaded: use websave instead
+    elseif (length(srcUrl) > 18) && strcmpi(srcUrl(1:18), 'https://github.com')
+        % Open progress bar
+        isProgress = bst_progress('isVisible');
+        if ~isProgress
+            bst_progress('start', wndTitle, ['Downloading: ' srcUrl]);
         else
-            urlwrite(srcUrl, destFile);
+            bst_progress('text', ['Downloading: ' srcUrl]);
+        end
+        % Create folder if needed
+        if ~isdir(bst_fileparts(destFile))
+            mkdir(bst_fileparts(destFile));
+        end
+        % Download file
+        errMsg = bst_websave(destFile, srcUrl);
+        % Close progress bar
+        if ~isProgress
+            bst_progress('stop');
         end
     else
         % Get system proxy definition, if available
@@ -1574,3 +1602,55 @@ function ShowGuidelines(ScenarioName)
     SetSelectedTab(panelName, 0, 'Process');
 end
 
+
+%% ===== CLONE PROBE =====
+function status = CloneProble(bstDir)
+    status = -1;
+    % Check if there are any GIT files in the folder
+    if ~file_exist(bst_fullfile(bstDir, 'LICENSE')) && ~file_exist(bst_fullfile(bstDir, 'README.md'))
+        status = 1;
+        return;
+    end
+    % If Matlab version too old: try using the older Java login
+    if (bst_get('MatlabVersion') < 901)
+        status = org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        return;
+    end
+    % Allow multiple trials
+    while (status == -1)
+        % Get username and password
+        res = java_dialog('input', ...
+            {['<HTML>You got this version of Brainstorm from GitHub.<BR><BR>' 10 10 ...
+             'Please take a minute to register on our website before using the software:<BR>' 10 ...
+             'https://neuroimage.usc.edu/brainstorm > Download > Create an account now<BR><BR><FONT color="#999999">' ... 
+             'This project is supported by public grants. Keeping track of usage demographics <BR>' ...
+             'is key to document the impact of Brainstorm and obtain continued support.<BR>' ...
+             'Please take a moment to create a free account - thank you.</FONT><BR><BR>' ...
+             'Email or username:'], 'Password:'}, 'Brainstorm login');
+        % If user aborted
+        if isempty(res) || (length(res) ~= 2)
+            status = 0;
+            return;
+        end
+        % Connect
+        bst_progress('start', 'Brainstorm login', 'Contacting server');
+        try
+            % Send connect request
+            header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            options = matlab.net.http.HTTPOptions();
+            request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',res{1},'&mdp=',res{2}]);
+            resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
+            % Check server response
+            if isempty(resp) || isempty(resp.Body) || ~isa(resp.Body, 'matlab.net.http.MessageBody')
+                status = 0;
+            elseif strcmp(resp.Body.Data, '1')
+                status = 1;
+            else
+                bst_error('Invalid username or password.', 'Brainstorm login', 0);
+            end
+        catch
+            status = 0;
+        end
+        bst_progress('stop');
+    end
+end

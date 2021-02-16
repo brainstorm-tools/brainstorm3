@@ -22,7 +22,7 @@ function varargout = process_corr1n_time( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -31,17 +31,18 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Time-resolved correlation NxN [test]';
+    sProcess.Comment     = 'Time-resolved correlation NxN';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 680;
+    sProcess.Index       = 653;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-
+    sProcess.isSeparator = 1;
+    
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
     % Time window
@@ -97,7 +98,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     end
     % Metric options
     OPTIONS.Method     = 'corr';
-    OPTIONS.pThresh    = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
     OPTIONS.isSave     = 0;
     % Time windows options
@@ -110,8 +111,12 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     sfreq        = round(1/(TimeVector(2) - TimeVector(1)));
     winLen       = round(sfreq * EstTimeWinLen);
     overlapSamps = round(Overlap * winLen);
-    SampTimeWin  = bst_closest(OPTIONS.TimeWindow, TimeVector); % number of baseline sample to ignore
-    timeSamps    = [SampTimeWin(1),winLen+SampTimeWin(1)];  
+    if ~isempty(OPTIONS.TimeWindow)
+        SampTimeWin = bst_closest(OPTIONS.TimeWindow, TimeVector); % number of baseline sample to ignore
+    else
+        SampTimeWin = [1, length(TimeVector)];
+    end
+    timeSamps = [SampTimeWin(1),winLen+SampTimeWin(1)];  
     iTime = 1;
     % Error management
     if (timeSamps(2) >= SampTimeWin(2))

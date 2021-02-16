@@ -19,7 +19,7 @@ function bst_userstat(isSave)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2021
 
 % Parse inputs
 if (nargin < 1) || isempty(isSave)
@@ -36,16 +36,10 @@ hf = 230;
 hFig = [];
 % Output folder for images
 ImgDir = 'C:\Work\Doc\Brainstorm\site\stat';
-% Reading function: urlread replaced with webread in Matlab 2014b
-if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @urlread;
-else
-    url_read_fcn = @webread;
-end
 
 % ===== NUMBER OF USERS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+str = bst_webread('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);
@@ -62,7 +56,7 @@ hFig(end+1) = fig_report(year, nUsersTotal, 0, ...
        
 % ===== LOG ANALYSIS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+str = bst_webread('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
 % Extract values
 c = textscan(str, '%02d%02d%c');
 dates = double([c{1}, c{2}]);
@@ -72,7 +66,7 @@ action = c{3};
 iUpdate = find((action == 'A') | (action == 'L') | (action == 'D'));
 [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
 % Look for all dates in the current year (exclude current month)
-iAvg = find((xUpdate >= 2019) & (xUpdate < 2020));
+iAvg = find((xUpdate >= 2020) & (xUpdate < 2021));
 % Remove invalid data
 iBad = ((nUpdate < 100) | (nUpdate > 4000));
 nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
@@ -80,7 +74,7 @@ nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
 % Plot number of downloads
 [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
            [2005, max(xUpdate(1:end-1))], [], ...
-           sprintf('Downloads per month: Avg(2019)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+           sprintf('Downloads per month: Avg(2020)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
            [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
        
 % % Create histograms
@@ -95,7 +89,7 @@ nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
 
 % ===== NUMBER OF FORUM POSTS =====
 % Read list of users
-str = url_read_fcn('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+str = bst_webread('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
 % Extract values
 dates = textscan(str, '%d %d');
 dates = double([dates{1}, dates{2}]);
@@ -110,9 +104,9 @@ hFig(end+1) = fig_report(year(1:end-1), nPosts(1:end-1), 0, ...
 
 % ===== PUBLICATIONS =====
 % Hard coded list of publications
-year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019]; 
-nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  225  300];
-nPubliCurYear = 14;
+year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020]; 
+nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  225  300  352];
+nPubliCurYear = 13;
 % Plot figure
 hFig(end+1) = fig_report(year, nPubli, 1, ...
            [2000 max(year)], [], ...

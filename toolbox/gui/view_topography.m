@@ -97,6 +97,10 @@ end
 
 %% ===== LOAD DATA =====
 bst_progress('start', 'Topography', 'Loading data file...');
+% Force short file names
+if ~isempty(DataFile) && file_exist(DataFile)
+    DataFile = file_short(DataFile);   
+end
 % Get DataFile type
 fileType = file_gettype(DataFile);
 % Load file
@@ -187,7 +191,7 @@ switch(fileType)
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType)
             ColormapType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType;
-        elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'corr','cohere','spgranger','granger','plv','plvt'})
+        elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'corr','cohere','spgranger','granger','plv','plvt','henv'})
             ColormapType = 'connect1';
         elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'pac'})
             ColormapType = 'pac';
@@ -452,8 +456,6 @@ end
 % Set figure visible
 set(hFig, 'Visible', 'on');
 bst_progress('stop');
-
-
 
 
 

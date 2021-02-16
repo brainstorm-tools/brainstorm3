@@ -53,6 +53,13 @@ FigData.AxesLegend = {};
 % Get figure description
 [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
 Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
+% Check downsampling factor
+if Handles.DownsampleFactor
+    error(['The signals were downsampled before being displayed and cannot be exported from the figure.' 10 ...
+        'For continuous files: import the recordings first.' 10 ...
+        'For imported time series: read directly the corresponding .mat files.' 10 ...
+        'For scouts: use the proces "Extract > Scout time series".' ]);
+end
 % Get y-factor and offsets
 Factor = Handles(1).DisplayFactor;
 if isfield(Handles(1), 'ChannelOffsets')

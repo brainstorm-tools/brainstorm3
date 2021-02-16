@@ -1152,6 +1152,14 @@ function DeleteMontage(MontageName)
     global GlobalData;
     % Get montage index
     [sMontage, iMontage] = GetMontage(MontageName);
+    if isempty(sMontage)
+        disp(['BST> Error: Montage "' MontageName '" was not found.']);
+        return;
+    elseif (length(sMontage) >= 2)
+        disp(['BST> Error: Mulitple montages "' MontageName '" were found. Deleting only the first one.']);
+        sMontage = sMontage(1);
+        iMontage = iMontage(1);
+    end
     % If this is a non-editable montage: error
     if ismember(sMontage.Name, {'Bad channels', 'Average reference', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'})
         return;
@@ -2344,8 +2352,12 @@ end
 %% ===== ADD AUTO MONTAGES: PROJECTORS =====
 % USAGE:  panel_montage('AddAutoMontagesProj', ChannelMat)
 %         panel_montage('AddAutoMontagesProj')              % Loads montage for currently selected file
-function AddAutoMontagesProj(ChannelMat)
+function AddAutoMontagesProj(ChannelMat, isInteractive)
     global GlobalData;
+    % Non-interactive mode by default
+    if (nargin < 2) || isempty(isInteractive)
+        isInteractive = 0;
+    end
     % Get current channels
     if (nargin < 1) || isempty(ChannelMat)
         iDS = panel_record('GetCurrentDataset');
@@ -2355,6 +2367,7 @@ function AddAutoMontagesProj(ChannelMat)
         ChannelMat = in_bst_channel(GlobalData.DataSet(iDS).ChannelFile);
     end
     % Loop on all the projectors available
+    nNewMontages = 0;
     for iProj = 1:length(ChannelMat.Projector)
         % Get selected channels
         sCat = ChannelMat.Projector(iProj);
@@ -2399,6 +2412,16 @@ function AddAutoMontagesProj(ChannelMat)
         sMontage.Matrix    = W;
         % Add montage: orig
         panel_montage('SetMontage', sMontage.Name, sMontage);
+        nNewMontages = nNewMontages + 1;
+    end
+    % Display report
+    if isInteractive
+        if (nNewMontages > 0)
+            strMsg = sprintf('%d ICA/SSP projectors now available as montages.', nNewMontages);
+        else
+            strMsg = 'No ICA/SSP projectors found for these recordings.';
+        end
+        java_dialog('msgbox', strMsg, 'Load projectors as montages.');
     end
 end
 

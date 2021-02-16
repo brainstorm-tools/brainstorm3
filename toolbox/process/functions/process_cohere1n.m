@@ -22,7 +22,7 @@ function varargout = process_cohere1n( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014; Hossein Shahabi, 2019
+% Authors: Francois Tadel, 2012-2020; Hossein Shahabi, 2019-2020
 
 eval(macro_method);
 end
@@ -34,14 +34,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Coherence NxN';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 654;
+    sProcess.Index       = 656;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
 
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
@@ -49,9 +48,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
-    % === TITLE
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
+    sProcess.options.removeevoked.Group   = 'input';
     % === COHERENCE METHOD
     sProcess.options.cohmeasure.Comment = {...
         ['<B>Magnitude-squared Coherence</B><BR>' ...
@@ -77,24 +74,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
     sProcess.options.maxfreq.Type    = 'value';
     sProcess.options.maxfreq.Value   = {60,'Hz',2};
-%     % === P-VALUE THRESHOLD
-%     sProcess.options.pthresh.Comment = 'Metric significativity: &nbsp;&nbsp;&nbsp;&nbsp;p&lt;';
-%     sProcess.options.pthresh.Type    = 'value';
-%     sProcess.options.pthresh.Value   = {0.05,'',4};
-%     % === IS FREQ BANDS
-%     sProcess.options.isfreqbands.Comment = 'Group by frequency bands (name/freqs/function):';
-%     sProcess.options.isfreqbands.Type    = 'checkbox';
-%     sProcess.options.isfreqbands.Value   = 0;
-%     % === FREQ BANDS
-%     sProcess.options.freqbands.Comment = '';
-%     sProcess.options.freqbands.Type    = 'groupbands';
-%     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -119,7 +103,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
     OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
-    OPTIONS.pThresh       = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh       = 0.05;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
 
     % Change the overlap if it is specified
@@ -127,19 +111,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
        iscell(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value) && ~isempty(sProcess.options.overlap.Value{1})
         OPTIONS.CohOverlap = sProcess.options.overlap.Value{1}/100 ; 
     end
-%     switch (sProcess.options.overlap.Value)
-%         case 1,  OPTIONS.CohOverlap = 0;
-%         case 2,  OPTIONS.CohOverlap = 0.25;
-%         case 3,  OPTIONS.CohOverlap = 0.50;
-%         case 4,  OPTIONS.CohOverlap = 0.75;
-%     end
-%     % Frequency bands
-%     isFreqBands = sProcess.options.isfreqbands.Value;
-%     if isFreqBands
-%         OPTIONS.Freqs = sProcess.options.freqbands.Value;
-%     else
-%         OPTIONS.Freqs = [];
-%     end
 
     % Compute metric
     OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);

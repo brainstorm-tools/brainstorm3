@@ -34,7 +34,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2021
 
 %% ===== PARSE INPUTS =====
 if (nargin < 6)
@@ -45,7 +45,7 @@ if (nargin < 5)
 end
 TimeVector = [];
 % Read channel ranges for faster access
-isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'KDF', 'EEG-EDF', 'EEG-BDF', 'BST-BIN', 'EEG-CURRY', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-MICROMED', 'EEG-NEURONE', 'EEG-NK'});
+isChanRange = ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS', 'KDF', 'EEG-EDF', 'EEG-BDF', 'BST-BIN', 'EEG-CURRY', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-MICROMED', 'EEG-NEURONE', 'EEG-NK', 'EEG-OEBIN'});
 if isChanRange
     if isempty(iChannels)
         ChannelRange = [];
@@ -97,6 +97,8 @@ switch (sFile.format)
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'EEG-ADICHT'
+        F = in_fread_adicht(sFile, iEpoch, iChannels, SamplesBounds);
     case 'EEG-ANT-CNT'
         F = in_fread_ant(sFile, SamplesBounds);
         if ~isempty(iChannels)
@@ -143,7 +145,7 @@ switch (sFile.format)
             F = F(iChannels,:);
         end
     case 'EEG-EGI-MFF'
-        F = in_fread_mff(sFile, iEpoch, SamplesBounds);
+        F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions);
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
@@ -175,10 +177,14 @@ switch (sFile.format)
         end
     case 'EEG-NICOLET'
         F = in_fread_nicolet(sFile, iEpoch, SamplesBounds, iChannels);
+    case 'EEG-OEBIN'
+        F = in_fread_oebin(sFile, sfid, SamplesBounds, ChannelRange);
     case 'EEG-NK'
         F = in_fread_nk(sFile, sfid, iEpoch, SamplesBounds, ChannelRange);
     case 'EEG-SMR'
         F = in_fread_smr(sFile, sfid, SamplesBounds, iChannels);
+    case 'EEG-SMRX'
+        F = in_fread_smrx(sFile, SamplesBounds, iChannels);
     case 'EYELINK'
         [F, TimeVector] = in_fread_eyelink(sFile, iEpoch, SamplesBounds, iChannels);
     case 'NIRS-BRS'

@@ -25,28 +25,18 @@ function hFig = view_mri_histogram( MriFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2010
+% Authors: Francois Tadel, 2006-2020
 
 %% ===== COMPUTE HISTOGRAM =====
 % Display progress bar
 bst_progress('start', 'View MRI historgram', 'Computing histogram...');
-% Load histogram (if exist)
-warning off
-MRI = load(MriFile, 'Histogram');
-warning on
-% Histogram not computed yet
-if ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram)
-    % Load full MRI
-    MRI = load(MriFile);
-    % Compute histogram
-    Histogram = mri_histogram(MRI.Cube(:,:,:,1));
-    % Save histogram
-    s.Histogram = Histogram;
-    bst_save(MriFile, s, 'v7', 1);
-else
-    Histogram = MRI.Histogram;
-end
-clear MRI
+% Load full MRI
+MRI = load(MriFile);
+% Compute histogram
+Histogram = mri_histogram(MRI.Cube(:,:,:,1));
+% Save histogram
+s.Histogram = Histogram;
+bst_save(MriFile, s, 'v7', 1);
 
 
 %% ===== DISPLAY HISTOGRAM =====
@@ -93,8 +83,8 @@ ylim(yLimits);
 % Display background and white matter thresholds
 line([Histogram.bgLevel, Histogram.bgLevel], yLimits, 'Color','b');
 line([Histogram.whiteLevel, Histogram.whiteLevel], yLimits, 'Color','y');
-h = legend('MRI hist.','Smoothed hist.','Cumulated hist.','Maxima','Minima',...
-    'Grey m thresh.','White m thresh.');
+h = legend('MRI hist.','Smoothed hist.','Cumulative hist.','Maxima','Minima',...
+    'Scalp or grey thresh.','White m thresh.');
 set(h, 'FontSize',  bst_get('FigFont'), ...
        'FontUnits', 'points');
 

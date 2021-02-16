@@ -1,4 +1,50 @@
 ---------------------------------------------------------------
+January 2021
+- Anatomy: MNI normalization with SPM12 Segment
+- Anatomy: Prepared a list of standard MNI atlases: AAL2, AAL3, AICHA, 
+| Brainnetome, Hammers, Neuromorphometrics, Julich-Brain, Schaefer2018
+- Distrib: New plugin manager bst_plugin
+- IO: Added support for ADInstruments LabChart EEG (.adicht)
+- IO: Added again NWB support
+---------------------------------------------------------------
+December 2020
+- Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)
+- Anatomy: Import and reslices MNI atlases using linear/nonlinear reg
+- Distrib: Updated NIRSTORM installation scripts
+---------------------------------------------------------------
+November 2020
+- Python: New integration with Python and MNE-Python based on CPython
+- Distrib: Compiled version now includes NIRSTORM, Brain2Mesh and Iso2Mesh
+- Anatomy: Updated CAT12 to version r1733
+- Anatomy: Support for volume atlases in the database and the MRI viewer
+- Anatomy: Import all volume atlases from FreeSurfer, CAT, BrainVISA, BrainSuite
+- Anatomy: New automated import (15000 vertices, MNI fiducials)
+- FEM: Add SEEG/ECOG support in DUNEuro & other improvements
+---------------------------------------------------------------
+October 2020
+- Major bug fix: Changed units in PSD computation
+- New process: Simulate recordings from dipoles
+- Anatomy: Standard EEG caps included with infant templates
+- Anatomy: FreeSurfer import now loads all the .annot files in /label
+- ephys: Phase locking circular plots 
+- Process: Apply montage: Include processing of headmodels
+- Python: More generic initialization, using pyenv when available
+---------------------------------------------------------------
+September 2020
+- GUI: Added Y-log scale for spectrum figures
+- IO: Added export to TSV, with optional transposition for CSV/TSV/Excel
+- IO: Import Nicolet exported events (.txt)
+- Simulations: New tutorial and developments
+- MNE-Python: Wrapper for mne.preprocessing.maxwell_filter
+---------------------------------------------------------------
+August 2020
+- Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
+- IO: Support for Spike2 .smrx files
+- IO: Removed NWB support (not stable enough)
+- IO: Support for Open Ephys flat binary file (.dat/.oebin)
+- Connectivity: New envelope correction process (henv - H.Shahabi)
+- FOOF: Fitting Oscillations and One-Over-F
+---------------------------------------------------------------
 July 2020
 - Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
 - Anatomy: Use custom background threshold for head surface generation

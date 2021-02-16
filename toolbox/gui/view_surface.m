@@ -123,7 +123,7 @@ setappdata(hFig, 'SubjectFile',  SubjectFile);
     
 %% ===== DISPLAY SURFACE =====
 % Add surface to figure
-iSurf = panel_surface('AddSurface', hFig, SurfaceFile);
+[iSurf, TessInfo] = panel_surface('AddSurface', hFig, SurfaceFile);
 if isempty(iSurf)
     return
 end
@@ -149,7 +149,7 @@ end
 bst_figures('SetCurrentFigure', hFig, '3D');
 % If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
 sAtlas = panel_scout('GetAtlas', SurfaceFile);
-if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'})
+if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'}) && isequal(TessInfo(iSurf).Name, 'Cortex')
     panel_scout('SetCurrentAtlas', 1);
 end
 % Show all scouts for this surface (for cortex only)

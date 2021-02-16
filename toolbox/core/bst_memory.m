@@ -67,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -147,6 +147,21 @@ function [sMri,iMri] = LoadMri(MriFile)
             end
         end
         
+        % === REFERENCE VOLUME ===
+        % Copy SCS and NCS fields from reference volume
+        if ~isempty(sSubject.iAnatomy) && ~file_compare(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName) && ...
+            (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || ~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC))
+            % Load reference volume for this subject
+            sMriRef = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            % Copy SCS field
+            if (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS)) && isfield(sMriRef, 'SCS') && ~isempty(sMriRef.SCS) && ~isempty(sMriRef.SCS.NAS)
+                sMri.SCS = sMriRef.SCS;
+            end
+            % Copy NCS field
+            if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC)) && isfield(sMriRef, 'NCS') && ~isempty(sMriRef.NCS) && ~isempty(sMriRef.NCS.AC)
+                sMri.NCS = sMriRef.NCS;
+            end
+        end
         % === REGISTER NEW MRI ===
         % Add MRI to loaded MRIs in this protocol
         iMri = length(GlobalData.Mri) + 1;
@@ -1767,7 +1782,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.TF,1) < length(Timefreq.RowNames)^2)
         Timefreq.TF = process_compress_sym('Expand', Timefreq.TF, length(Timefreq.RowNames));
     end
-    % Store new Results structure in GlobalData
+    % Store new Timefreq structure in GlobalData
     if isempty(iTimefreq)
         iTimefreq = length(GlobalData.DataSet(iDS).Timefreq) + 1;
     end
@@ -2228,16 +2243,22 @@ end
 
 
 %% ===== GET TIME-FREQ VALUES =====
-% USAGE:  [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime,              Function, RefRowName)
+% USAGE:  [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime,              Function, RefRowName, FooofDisp)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, 'UserTimeWindow')
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, 'CurrentTimeIndex')
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, 'firstrow', ...)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq)
-function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime, Function, RefRowName)
+function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime, Function, RefRowName, FooofDisp)
     global GlobalData;
     % ===== PARSE INPUTS =====
+    if (nargin < 8) || isempty(FooofDisp)
+        FooofDisp = [];
+        isFooof = false;
+    else
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
+    end
     % Default RefRowName: all
     if (nargin < 7) || isempty(RefRowName)
         RefRowName = [];
@@ -2344,9 +2365,51 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     
     % ===== GET VALUES =====
     % Extract values
-    if isequal(Function, 'maxpac')
-        Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
-        isApplyFunction = 0;
+    % FOOOF: Swap TF data for relevant FOOOF data
+    if isFooof && ~isequal(FooofDisp, 'spectrum')
+        isFooofFreq = ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.freqs);
+        if isequal(FooofDisp, 'overlay')
+            nFooofRow = 4;
+        else
+            nFooofRow = numel(iRow);
+        end
+        Values = NaN([nFooofRow, size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF, [2,3])]);
+        nFooofFreq = sum(isFooofFreq);
+        % Check for old structure format with extra .FOOOF. level.
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data, 'FOOOF')
+            for iiRow = 1:numel(iRow)
+                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).fooofed_spectrum = ...
+                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.fooofed_spectrum;
+                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).ap_fit = ...
+                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.ap_fit;
+                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).peak_fit = ...
+                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.peak_fit;
+            end
+        end
+        % Get requested FOOOF measure
+        switch FooofDisp
+            case 'overlay'
+                Values(1,1,:) = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, 1, :);
+                Values(4,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
+                Values(2,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
+                % Peaks are fit in log space, so they are multiplicative in linear space and not in the same scale, show difference instead. 
+                Values(3,1,isFooofFreq) = Values(4,1,isFooofFreq) - Values(2,1,isFooofFreq); 
+                %Values(3,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
+                % Use TF min as cut-off level for peak display.
+                YLowLim = min(Values(1,1,:));
+                Values(3,1,Values(3,1,:) < YLowLim) = NaN;
+            case 'model'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
+            case 'aperiodic'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
+            case 'peaks'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
+            case 'error'
+                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]);
+            otherwise
+                error('Unknown FOOOF display option.');
+        end
+        isApplyFunction = ~isempty(Function);
     elseif isequal(Function, 'pacflow')
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestingFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
@@ -2354,6 +2417,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestedFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
     elseif isempty(Function) || ~ismember(Function, {'power', 'magnitude', 'log', 'phase', 'none'}) || ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'power', 'magnitude', 'log', 'phase', 'none'})
+        % includes 'maxpac'
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
         isApplyFunction = 0;
     else
@@ -2408,7 +2472,12 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     % If a measure is asked, different from what is saved in the file
     if isApplyFunction
         % Convert
-        [Values, isError] = process_tf_measure('Compute', Values, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, Function);
+        if isFooof
+            isKeepNan = true;
+        else
+            isKeepNan = false;
+        end
+        [Values, isError] = process_tf_measure('Compute', Values, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, Function, isKeepNan);
         % If conversion is impossible
         if isError
             error(['Invalid measure conversion: ' GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, ' => ' Function]);
@@ -2516,6 +2585,11 @@ function DataMinMax = GetTimefreqMaximum(iDS, iTimefreq, Function) %#ok<DEFNU>
     end
     % Store minimum and maximum of displayed data
     DataMinMax = [min(values(:)), max(values(:))];
+    % Ignore infinite values, possible due to log.
+    if any(isinf(DataMinMax))
+        isNotInf = ~isinf(values(:));
+        DataMinMax = [min(values(isNotInf)), max(values(isNotInf))];
+    end
     % Display warning message if analysis time was more than 3s
     t = toc;
     if (t > 3)
@@ -3402,10 +3476,11 @@ function UnloadMri(MriFile) %#ok<DEFNU>
     MriFile = file_short(MriFile);
     % Check if MRI is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
-    % If it is: unload it
-    if ~isempty(iMri)
-        GlobalData.Mri(iMri) = [];
+    if isempty(iMri)
+        return;
     end
+    % Unload MRI
+    GlobalData.Mri(iMri) = [];
     % Get subject
     sSubject = bst_get('MriFile', MriFile);
     % Unload subject

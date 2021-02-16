@@ -70,6 +70,11 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputsA, 'Not enough files in input.');
         return;
     end
+    % Check that channel files are available
+    if any(cellfun(@isempty, {sInputsA.ChannelFile, sInputsB.ChannelFile}))
+        bst_report('Error', sProcess, sInputsA, 'Channel files are missing for the input files.');
+        return;
+    end
     
     % ===== GET OPTIONS =====
     OPT = process_ft_timelockstatistics('GetStatOptions', sProcess);

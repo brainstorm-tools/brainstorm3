@@ -20,6 +20,7 @@ function varargout = process_pte1n( varargin )
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2017
+%          Francois Tadel, 2020
 
 eval(macro_method);
 end
@@ -31,39 +32,29 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Phase Transfer Entropy NxN';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 670;
+    sProcess.Index       = 690;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
 
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
     % === FREQ BANDS
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
     sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
     sProcess.options.freqbands.Type    = 'groupbands';
     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
-    % === Mirror
-    sProcess.options.mirror.Comment = 'Mirror signal before filtering (not recommended)';
-    sProcess.options.mirror.Type    = 'checkbox';
-    sProcess.options.mirror.Value   = 0;
     % === Normalize
     sProcess.options.normalized.Comment = 'Return normalized phase transfer entropy';
     sProcess.options.normalized.Type    = 'checkbox';
     sProcess.options.normalized.Value   = 1;
-    % === OUTPUT
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     % === OUTPUT MODE
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
-
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -86,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.FileType = sInputA(1).FileType;
     % Filtering bands options
     OPTIONS.Freqs = sProcess.options.freqbands.Value;
-    OPTIONS.isMirror = sProcess.options.mirror.Value;
+    OPTIONS.isMirror = 0;
     OPTIONS.isNormalized = sProcess.options.normalized.Value;
 
     % Compute metric

@@ -90,13 +90,14 @@ if isempty(hFig)
     FigureId.SubType  = '';
     FigureId.Modality = '';
     % Create figure
-    [hFig, iFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
+    [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
     if isempty(hFig)
         bst_error('Cannot create figure', 'View surface', 0);
         return;
     end
 else
     [iDS, iFig] = bst_figures('GetFigure', hFig);
+    isNewFig = 0;
 end
 
 % ===== Create a pseudo-surface =====
@@ -120,6 +121,8 @@ if ~isempty(sSurf)
     sLoadedSurf.VertConn    = sSurf.VertConn;
     sLoadedSurf.VertNormals = sSurf.VertNormals;
     sLoadedSurf.SulciMap    = sSurf.SulciMap;
+    [tmp, sLoadedSurf.VertArea] = tess_area(sLoadedSurf.Vertices, sLoadedSurf.Faces);
+    sLoadedSurf.Atlas       = panel_scout('FixAtlasStruct', sSurf.Atlas);
 else
     % Do not compute normals or sulci map for FEM tetrahedral meshes
     if isFem
@@ -172,8 +175,28 @@ setappdata(hFig, 'iSurface', iSurface);
 hLight = findobj(hFig, 'type', 'light');
 % Update figure selection
 bst_figures('SetCurrentFigure', hFig, '3D');
+
+% Display scouts
+if ~isempty(sLoadedSurf.Atlas)
+    % If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
+    sAtlas = panel_scout('GetAtlas', SurfaceFile);
+    if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'})
+        panel_scout('SetCurrentAtlas', 1);
+    end
+    % Show all scouts for this surface (for cortex only)
+    if (iSurface > 1)
+        panel_scout('ReloadScouts', hFig);
+    else
+        panel_scout('SetDefaultOptions');
+        panel_scout('PlotScouts', [], hFig);
+        panel_scout('UpdateScoutsDisplay', hFig);
+    end
+end
+
 % Camera basic orientation
-figure_3d('SetStandardView', hFig, 'top');
+if isNewFig
+    figure_3d('SetStandardView', hFig, 'top');
+end
 % Set figure visible
 set(hFig, 'Visible', 'on');
 if isProgress
@@ -181,5 +204,10 @@ if isProgress
 end
 % Update "surface" panel
 panel_surface('UpdatePanel');
+% Select surface tab
+if isNewFig
+    gui_brainstorm('SetSelectedTab', 'Surface');
+end
+
 
 end

@@ -86,6 +86,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
         return;
     end
+    % Not available for Matlab <= 2014b
+    if (bst_get('MatlabVersion') < 803)
+        bst_report('Error', sProcess, sInputs, 'This function is not available for Matlab versions older than 2014b.');
+        return;
+    end
     % Check the number of files in input
     if length(sInputs) < 2
         bst_report('Error', sProcess, sInputs, 'Not enough files in input.');

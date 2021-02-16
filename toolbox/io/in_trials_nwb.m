@@ -21,6 +21,8 @@ function [sFile, nEpochs] = in_trials_nwb(sFile, nwb2)
 %
 % Authors: Konstantinos Nasiotis, 2019
 
+error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
+
 % Check if there are trials present
 if isempty(nwb2.intervals_trials)
     nEpochs = 1;

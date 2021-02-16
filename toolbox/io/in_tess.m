@@ -1,13 +1,14 @@
-function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
+function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
 % IN_TESS: Detect file format and load tesselation file.
 %
-% USAGE:  TessMat = in_tess(TessFile, FileFormat='ALL', sMri=[], Offset=[]);
+% USAGE:  TessMat = in_tess(TessFile, FileFormat='ALL', sMri=[], Offset=[], SelLabels=[all]);
 %
 % INPUT: 
 %     - TessFile   : full path to a tesselation file
 %     - FileFormat : String that describes the surface file format : {TRI, DFS, DSGL, MESH, BST, ALL ...}
 %     - sMri       : Loaded MRI structure
 %     - OffsetMri  : (x,y,z) values to add to the coordinates of the surface before converting it to SCS
+%     - SelLabels  : Cell-array of labels, when importing atlases
 %
 % OUTPUT:
 %     - TessMat:  Brainstorm tesselation structure with fields:
@@ -36,9 +37,9 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri)
 % Authors: Francois Tadel, 2008-2020
 
 %% ===== PARSE INPUTS =====
-% Initialize returned variables
-TessMat = [];
-% Try to get the associate MRI filename (already imported in BST)
+if (nargin < 5) || isempty(SelLabels)
+    SelLabels = [];
+end
 if (nargin < 4) || isempty(OffsetMri)
     OffsetMri = [];
 end
@@ -49,6 +50,8 @@ if (nargin < 2) || isempty(FileFormat)
     FileFormat = 'ALL';
 end
 isConvertScs = 1;
+% Initialize returned variables
+TessMat = [];
 
 
 %% ===== DETECT FILE FORMAT ====
@@ -191,8 +194,8 @@ switch (FileFormat)
         TessMat = in_tess_simnibs(TessFile);
         % World/voxel => SCS coordinates
         if ~isempty(sMri)
-            TessMat.Vertices=TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
-            TessMat.Vertices = cs_convert(sMri, 'voxel', 'mri', TessMat.Vertices);
+            TessMat.Vertices = TessMat.Vertices+0.5; %we compensate for half a pixel mismatch in x,y and z between simnibs and bst.
+            TessMat.Vertices = TessMat.Vertices ./ 1000;
             TessMat.Vertices = cs_convert(sMri, 'world', 'scs', TessMat.Vertices);
         end
         isConvertScs = 0;
@@ -211,10 +214,10 @@ switch (FileFormat)
         end
         
     case 'MRI-MASK'
-        TessMat = in_tess_mrimask(TessFile, 0);
+        TessMat = in_tess_mrimask(TessFile, 0, SelLabels);
         
     case 'MRI-MASK-MNI'
-        TessMat = in_tess_mrimask(TessFile, 1);
+        TessMat = in_tess_mrimask(TessFile, 1, SelLabels);
         % Convert from MNI coordinates back to SCS
         if ~isempty(sMri) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'NAS') && ~isempty(sMri.SCS.NAS)
             for iTess = 1:length(TessMat)

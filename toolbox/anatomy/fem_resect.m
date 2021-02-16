@@ -52,9 +52,9 @@ end
 bst_progress('start', 'Resect FEM mesh', ['Loading file "' FemFile '"...']);
 % Load MRI
 sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-% If the MNI normalization is not available: compute it now
+% If the linear MNI normalization is not available: compute it now
 if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || ~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T))
-    [sMri, errMsg] = bst_normalize_mni(sMri);
+    [sMri, errMsg] = bst_normalize_mni(sMri, 'maff8');
     if ~isempty(errMsg)
         error(errMsg);
     end
@@ -65,7 +65,8 @@ end
 FemFile = file_fullpath(FemFile);
 FemMat = load(FemFile);
 
-% Get MNI transformation
+bst_progress('text', 'Removing elements...');
+% Get linear MNI transformation
 vox2mni = cs_convert(sMri, 'scs', 'mni');
 % Get cut plane in MRI coordinates
 cutPlane = MNIplane * vox2mni;
@@ -87,23 +88,7 @@ elseif (length(iElemCut) == nElem)
 end
 
 % Remove elements
-FemMat.Elements(iElemCut, :) = [];
-FemMat.Tissue(iElemCut) = [];
-if isfield(FemMat, 'Tensors') && ~isempty(FemMat.Tensors)
-    FemMat.Tensors(iElemCut, :) = [];
-end
-
-% Find vertices to remove
-nVert = size(FemMat.Vertices, 1);
-iVertCut = setdiff(1:nVert, unique(FemMat.Elements(:)));
-% Re-numbering matrix
-iVertKept = setdiff(1:nVert, iVertCut);
-iVertMap = zeros(1, nVert);
-iVertMap(iVertKept) = 1:length(iVertKept);
-% Remove vertices
-FemMat.Vertices(iVertCut,:) = [];
-% Renumber vertices in elements list
-FemMat.Elements = iVertMap(FemMat.Elements);
+FemMat = fem_remove_elem(FemMat, iElemCut);
 
 
 % ===== SAVE NEW FILE =====

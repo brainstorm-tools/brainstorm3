@@ -48,9 +48,9 @@ if isstruct(InputFile)
     % Add sub-category for timefreq files
     fileSubType = '';
     if ismember(fileType, {'timefreq', 'ptimefreq'})
-        if ismember(lower(sMat.Method), {'corr', 'cohere', 'granger', 'spgranger', 'plv', 'plvt', 'aec', 'pte'})
+        if ismember(lower(sMat.Method), {'corr', 'cohere', 'granger', 'spgranger', 'plv', 'plvt', 'aec', 'pte','henv'})
             if isfield(sMat,'Options') && isfield(sMat.Options, 'ProcessName') && ~isempty(sMat.Options.ProcessName)
-                if ismember(sMat.Options.ProcessName, {'process_corr1n', 'process_cohere1n', 'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_aec1n', 'process_pte1n'})
+                if ismember(sMat.Options.ProcessName, {'process_corr1n', 'process_cohere1n', 'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_aec1n', 'process_pte1n','process_henv1n'})
                     fileSubType = ['connectn_', lower(sMat.Method), '_'];
                 else
                     fileSubType = ['connect1_', lower(sMat.Method), '_'];

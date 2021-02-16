@@ -184,6 +184,15 @@ switch(lower(msgType))
         java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.ERROR_MESSAGE);
         isCancel = 0;
         res = 1;
+    case 'errorhelp'
+        if isempty(msgTitle)
+            msgTitle = 'Error';
+        end
+        if ~java_call('org.brainstorm.dialogs.MsgServer', 'dlgErrorHelp', 'Ljava.awt.Component;Ljava.lang.String;Ljava.lang.String;[Ljava.lang.String;Ljava.lang.String;', jParent, msg, msgTitle);
+            web('https://neuroimage.usc.edu/forums/', '-browser');
+        end
+        isCancel = 0;
+        res = 1;
     case 'warning'
         if isempty(msgTitle)
             msgTitle = 'Warning';

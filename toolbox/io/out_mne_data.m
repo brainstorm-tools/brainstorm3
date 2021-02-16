@@ -31,7 +31,7 @@ function [mneObj, DataMat, ChannelMat, iChannels] = out_mne_data(DataFiles, ObjT
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2020
 
 
 %% ===== PARSE INPUTS =====
@@ -59,6 +59,17 @@ end
 % Only 'Epoched' objects can have multiple data files in input
 if (length(DataFiles) > 1) && ~strcmpi(ObjType, 'Epoched')
     error('Only "Epoched" objects accept multiple input files.');
+end
+% Check that data files are available in the database
+if ~isempty(DataFiles)
+    sStudy = bst_get('DataFile', DataFiles{1});
+    if isempty(sStudy)
+        error(['File not found: ' DataFiles{1}]);
+    end
+    % Get study date
+    MeasDate = sStudy.DateOfStudy;
+else
+    MeasDate = [];
 end
 
 
@@ -112,6 +123,10 @@ if ~isempty(DataFiles)
             UseSsp = 1;
             [tmpData.F, tmpData.Time] = panel_record('ReadRawBlock', sFile, ChannelMat, 1, tmpData.Time([1 end]), 0, 1, RemoveBaseline, UseSsp, iChannels);
             tmpData.Events = sFile.events;
+            % Get date
+            if isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+                MeasDate = sFile.acq_date;
+            end
         % Imported data: Keep only selected 
         else
             tmpData.F = tmpData.F(iChannels,:);
@@ -161,6 +176,19 @@ end
 for iProj = 1:length(mneInfo{'projs'})
     mneInfo{'projs'}{iProj}{'active'} = py.bool(true);
 end
+% Measurement date
+if ~isempty(MeasDate)
+    try
+        % Read date string to a py.datetime object
+        dt = py.dateutil.parser.parse(MeasDate);
+        % Convert to UTC
+        tz = py.datetime.datetime.now().astimezone().tzinfo;
+        dt = dt.replace(pyargs('tzinfo', tz));
+        dt = dt.astimezone(py.datetime.timezone(py.datetime.timedelta(0)));
+        mneInfo{'meas_date'} = dt;
+    catch
+    end
+end
 
 % Object: Raw
 switch ObjType
@@ -169,6 +197,24 @@ switch ObjType
         % Create Raw object
         first_samp = round(DataMat.Time(1) .* mneInfo{'sfreq'});
         mneObj = py.mne.io.RawArray(bst_mat2py(DataMat.F), mneInfo, first_samp);
+        
+        % Add events
+        for iEvt = 1:length(DataMat.Events)
+            % No occurrences: skip
+            if isempty(DataMat.Events(iEvt).times)
+                continue;
+            end
+            % Get onsets
+            annotOnset = DataMat.Events(iEvt).times(1,:);
+            % Extended events / simple events
+            if (size(DataMat.Events(iEvt).times,1) == 2)
+                annotDuration = DataMat.Events(iEvt).times(2,:) - DataMat.Events(iEvt).times(1,:);
+            else
+                annotDuration = 0 .* annotOnset;
+            end
+            % Add annotations to MNE objet
+            mneObj.annotations.append(annotOnset, annotDuration, repmat({DataMat.Events(iEvt).label}, 1, size(annotOnset,2)));
+        end
         
     case 'Epoched'
         % Sort trials by type, based on the comment of the files
@@ -181,36 +227,14 @@ switch ObjType
                 event_id{uniqueTypes{iType}} = uint32(iType);
             end
         end
-        % Create Epoched object
-        mneObj = py.mne.EpochsArray(bst_mat2py(DataMat.F), ...  % Concatenated trials
-            mneInfo, bst_mat2py(events), DataMat.Time(1), event_id);
+        % Create Epoched object from concatenated trials
+%         mneObj = py.mne.EpochsArray(bst_mat2py(DataMat.F), mneInfo, bst_mat2py(events), DataMat.Time(1), event_id);
+        mneObj = py.mne.EpochsArray(DataMat.F, mneInfo, bst_mat2py(events), DataMat.Time(1), event_id);
         
     case 'Evoked'
         % Create Evoked object
-        mneObj = py.mne.EvokedArray(bst_mat2py(DataMat.F), mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));
-end
-
-
-%% ===== EVENTS =====
-% Events
-if ~isempty(DataMat.Events)
-    % Add each event type separately
-    for iEvt = 1:length(DataMat.Events)
-        % No occurrences: skip
-        if isempty(DataMat.Events(iEvt).times)
-            continue;
-        end
-        % Get onsets
-        annotOnset = DataMat.Events(iEvt).times(1,:);
-        % Extended events / simple events
-        if (size(DataMat.Events(iEvt).times,1) == 2)
-            annotDuration = DataMat.Events(iEvt).times(2,:) - DataMat.Events(iEvt).times(1,:);
-        else
-            annotDuration = 0 .* annotOnset;
-        end
-        % Add annotations to MNE objet
-        mneObj.annotations.append(annotOnset, annotDuration, repmat({DataMat.Events(iEvt).label}, 1, size(annotOnset,2)));
-    end
+%         mneObj = py.mne.EvokedArray(bst_mat2py(DataMat.F), mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));
+        mneObj = py.mne.EvokedArray(DataMat.F, mneInfo, DataMat.Time(1), DataMat.Comment, uint32(DataMat.nAvg));
 end
 
 

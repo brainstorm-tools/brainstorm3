@@ -238,6 +238,11 @@ for iGroup = 1:nGroup
             end
             % Unconstrained sources: Make a flat map
             if (ResultsMat.nComponents ~= 1)
+                % Display warning before flattening, as this is not obvious
+                strWarn = 'Unconstrained source maps are flattened (norm of the three orientations) before projection.';
+                bst_report('Warning', 'process_project_sources', ResultsFile, strWarn);
+                disp(['BST> Warning: ' strWarn]);
+                % Apply norm of the three orientations
                 ResultsMat = process_source_flat('Compute', ResultsMat);
             % Compute absolute values
             elseif isAbsoluteValues

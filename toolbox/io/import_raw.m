@@ -128,6 +128,10 @@ for iFile = 1:length(RawFiles)
         bst_progress('stop');
         return;
     end
+    % Files not read correctly
+    if ~isfield(sFile, 'prop') || ~isfield(sFile.prop, 'sfreq') || isempty(sFile.prop.sfreq) || (sFile.prop.sfreq == 0)
+        error('Could not open file (see errors in command window).');
+    end
     % Review imported files works only for single files (not for multiple trials)
     if (length(DataMat) > 1)
         error(['Cannot open multiple trials as continuous files.' 10 'Use the menu "Import MEG/EEG" instead.']);
@@ -172,7 +176,7 @@ for iFile = 1:length(RawFiles)
         sSubject = bst_get('Subject', iSubject, 1);
     end
     % Do not allow automatic registration with head points when using the default anatomy
-    if (sSubject.UseDefaultAnat)
+    if (sSubject.UseDefaultAnat) || isempty(sSubject.Anatomy) || any(~cellfun(@(c)isempty(strfind(lower(sSubject.Anatomy(sSubject.iAnatomy).Comment), c)), {'icbm152', 'colin27', 'bci-dni', 'uscbrain', 'fsaverage', 'oreilly', 'kabdebon'}))
         ImportOptions.ChannelAlign = 0;
     end
 

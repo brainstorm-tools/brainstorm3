@@ -115,18 +115,18 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE CIVET FOLDER =====
 bst_progress('start', 'Import CIVET folder', 'Parsing folder...');
 % Find MRI
-MriFile = file_find(sprintf('%s/native',CivetDir), '*_t1.mnc');
-if isempty(MriFile)
+T1File = file_find(sprintf('%s/native',CivetDir), '*_t1.mnc');
+if isempty(T1File)
     errorMsg = [errorMsg 'native MRI file was not found: *_t1.mnc' 10];
     if isInteractive
         bst_error(['Could not import CIVET folder: ' 10 10 errorMsg], 'Import CIVET folder', 0);        
     end
     return;
-elseif iscell(MriFile)
-    MriFile = MriFile{1};
+elseif iscell(T1File)
+    T1File = T1File{1};
 end
 % Get study prefix
-[tmp, StudyPrefix] = bst_fileparts(MriFile);
+[tmp, StudyPrefix] = bst_fileparts(T1File);
 StudyPrefix = strrep(StudyPrefix, '_t1', '');
 % Find surfaces
 TessLhFile = file_find(CivetDir, [StudyPrefix '_gray_surface_left_*.obj']);
@@ -159,16 +159,14 @@ end
 
 %% ===== IMPORT MRI =====
 % Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile);
-if isempty(BstMriFile)
+[BstT1File, sMri] = import_mri(iSubject, T1File);
+if isempty(BstT1File)
     errorMsg = 'Could not import CIVET folder: MRI was not imported properly';
     if isInteractive
         bst_error(errorMsg, 'Import CIVET folder', 0);
     end
     return;
 end
-% Size of the volume
-cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
 
 
 %% ===== DEFINE FIDUCIALS =====
@@ -204,12 +202,6 @@ if ~isInteractive || ~isempty(FidFile)
         % Already loaded
     % Compute them from MNI transformation
     elseif isempty(sFid)
-%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-%         AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-%         PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-%         IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
         NAS = [];
         LPA = [];
         RPA = [];
@@ -217,7 +209,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -236,19 +228,17 @@ if ~isInteractive || ~isempty(FidFile)
     end
 % Define with the MRI Viewer
 else
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
-    % Display help message: ask user to select fiducial points
-    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
-    % Close help window
-    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
-sMri = load(BstMriFile, 'SCS', 'NCS');
+warning('off','MATLAB:load:variableNotFound');
+sMri = load(BstT1File, 'SCS', 'NCS');
+warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import CIVET folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -261,7 +251,7 @@ end
 %% ===== MNI NORMALIZATION =====
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     % Error handling
     errorMsg = [errorMsg errCall];
 end

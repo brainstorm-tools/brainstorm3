@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2020
 
 
 %% ===== READ HEADER =====
@@ -30,7 +30,7 @@ if ~isdir(ds_directory)
     ds_directory = bst_fileparts(ds_directory);
 end
 % Get dataset name and file paths
-[DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = ctf_get_files( ds_directory );
+[DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory );
 % Read header file
 [header, ChannelMat] = ctf_read_res4(res4_file);
 if isempty(header)
@@ -160,6 +160,25 @@ end
 % Read markers file
 if ~isempty(marker_file)
     sFile.events = in_events_ctf(sFile, marker_file);
+end
+% Read bad segments as events
+if ~isempty(badseg_file)
+    try
+        badsegment = load(badseg_file);
+    catch
+        disp(['Warning: Error reading bad segments from file: ' badseg_file]);
+    end
+    if ~isempty(badsegment)
+        iEvt = length(sFile.events) + 1;
+        sFile.events(iEvt).label      = 'BAD';
+        sFile.events(iEvt).color      = [1,0,0];
+        sFile.events(iEvt).epochs     = badsegment(:,1)';
+        sFile.events(iEvt).times      = badsegment(:,2:3)';
+        sFile.events(iEvt).reactTimes = [];
+        sFile.events(iEvt).select     = 1;
+        sFile.events(iEvt).channels   = cell(1, size(badsegment,1));
+        sFile.events(iEvt).notes      = cell(1, size(badsegment,1));
+    end
 end
 
 

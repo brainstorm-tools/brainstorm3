@@ -7,6 +7,7 @@ function ChannelMats = channel_apply_transf(ChannelFiles, Transf, iChannels, isH
 % INPUT:
 %     - ChannelFiles : List of channel files to process (string or cell array of strings)
 %     - Transf       : [4x4] transformation matrix to apply to the sensors
+%                      or function handle that converts a set of coordinates [Nx3]
 %     - iChannels    : List of sensor indices to update
 %     - isHeadPoints : Update the digitized head points
 
@@ -28,8 +29,7 @@ function ChannelMats = channel_apply_transf(ChannelFiles, Transf, iChannels, isH
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
-
+% Authors: Francois Tadel, 2017-2020
 
 % Parse inputs
 if (nargin < 4) || isempty(isHeadPoints)
@@ -44,8 +44,13 @@ end
 % Output variable
 ChannelMats = {};
 % Get the transformation rotation and translation
-R = Transf(1:3,1:3);
-T = Transf(1:3,4);
+if isnumeric(Transf)
+    R = Transf(1:3,1:3);
+    T = Transf(1:3,4);
+    Transf = @(Loc)(R * Loc + T * ones(1, size(Loc,2)));
+else
+    R = [];
+end
 
 % Loop on input files
 for iFile = 1:length(ChannelFiles)
@@ -75,24 +80,26 @@ for iFile = 1:length(ChannelFiles)
     for i = 1:length(iChan)
         Loc = ChannelMat.Channel(iChan(i)).Loc;
         Orient = ChannelMat.Channel(iChan(i)).Orient;
-        nCoils = size(Loc, 2);
         % Update location
         if ~isempty(Loc) && ~isequal(Loc, [0;0;0])
-            ChannelMat.Channel(iChan(i)).Loc = R * Loc + T * ones(1, nCoils);
+            ChannelMat.Channel(iChan(i)).Loc = Transf(Loc);
         end
         % Update orientation
         if ~isempty(Orient) && ~isequal(Orient, [0;0;0])
-            ChannelMat.Channel(iChan(i)).Orient = R * Orient;
+            if ~isempty(R)
+                ChannelMat.Channel(iChan(i)).Orient = R * Orient;
+            else
+                error('Cannot apply a non-linear transformation to the orientation of MEG sensors.');
+            end
         end
     end
     % If needed: transform the digitized head points
     if isHeadPoints && ~isempty(ChannelMat.HeadPoints.Loc)
-        nPoints = size(ChannelMat.HeadPoints.Loc,2);
-        ChannelMat.HeadPoints.Loc = R * ChannelMat.HeadPoints.Loc + T * ones(1, nPoints);
+        ChannelMat.HeadPoints.Loc = Transf(ChannelMat.HeadPoints.Loc);
     end
 
     % If a TransfMeg field with translations/rotations available
-    if ~isempty(iMeg)
+    if ~isempty(iMeg) && ~isempty(R)
         if ~isfield(ChannelMat, 'TransfMeg') || ~iscell(ChannelMat.TransfMeg)
             ChannelMat.TransfMeg = {};
         end
@@ -104,7 +111,7 @@ for iFile = 1:length(ChannelFiles)
         ChannelMat.TransfMegLabels{end+1} = 'manual correction';
     end
     % If also need to apply it to the EEG
-    if ~isempty(iEeg)
+    if ~isempty(iEeg) && ~isempty(R)
         if ~isfield(ChannelMat, 'TransfEeg') || ~iscell(ChannelMat.TransfEeg)
             ChannelMat.TransfEeg = {};
         end
@@ -115,12 +122,14 @@ for iFile = 1:length(ChannelFiles)
         ChannelMat.TransfEegLabels{end+1} = 'manual correction';
     end
 
-    % History: Align channel files manually
-    ChannelMat = bst_history('add', ChannelMat, 'align', 'Align channels manually:');
     % History: Rotation + translation
-    ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Rotation: [%1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f]', R'));
-    ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Translation: [%1.3f,%1.3f,%1.3f]', T));
-    
+    if ~isempty(R)
+        ChannelMat = bst_history('add', ChannelMat, 'align', 'Align channels manually:');
+        ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Rotation: [%1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f; %1.3f,%1.3f,%1.3f]', R'));
+        ChannelMat = bst_history('add', ChannelMat, 'transform', sprintf('Translation: [%1.3f,%1.3f,%1.3f]', T));
+    else
+        ChannelMat = bst_history('add', ChannelMat, 'align', 'Non-linear transformation');
+    end
     % Save new positions
     if isSave
         bst_save(file_fullpath(ChannelFiles{iFile}), ChannelMat, 'v7');

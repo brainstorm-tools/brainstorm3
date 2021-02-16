@@ -1,7 +1,7 @@
 function F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision)
 % IN_FREAD_BLACKROCK Read a block of recordings from a Blackrock NeuroPort file (.nev and .nsX)
 %
-% USAGE:  F = in_fread_blackrock(sFile, SamplesBounds=[], iChannels=[])
+% USAGE:  F = in_fread_blackrock(sFile, SamplesBounds=[], iChannels=[], precision='double')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -48,7 +48,10 @@ else
 end
 
 % Read the corresponding recordings
-rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, strPrecision);
+rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, strPrecision, 'uV');
+if iscell(rec.Data)
+    rec.Data = [rec.Data{:}];
+end
 if strcmp(precision, 'single')
     rec.Data = single(rec.Data);
 end

@@ -146,14 +146,20 @@ function UpdatePanel(varargin)
     [timeUnit, isRaw, precision] = GetTimeUnit();
     % There is data : display values
     if ~isempty(GlobalData.UserTimeWindow.Time)
+        % For lower sampling frequencies: display decimals
+        if (1 / GlobalData.UserTimeWindow.SamplingRate < 100)
+            strSmp = sprintf('%1.2f', 1 / GlobalData.UserTimeWindow.SamplingRate);
+        else
+            strSmp = sprintf('%d', round(1 / GlobalData.UserTimeWindow.SamplingRate));
+        end
         % Time window to display
         if isRaw 
             TimeBounds = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1 end]);
-            strSmp = sprintf('Sampling: %d Hz ', round(1 / GlobalData.UserTimeWindow.SamplingRate));
+            strSmp = sprintf('Sampling: %s Hz', strSmp);
         else
             TimeBounds = GlobalData.UserTimeWindow.Time;
             if (GlobalData.UserTimeWindow.NumberOfSamples > 2)
-                strSmp = sprintf('Sampling: %d Hz    %d samples', round(1 / GlobalData.UserTimeWindow.SamplingRate), GlobalData.UserTimeWindow.NumberOfSamples);
+                strSmp = sprintf('Sampling: %s Hz    %d samples', strSmp, GlobalData.UserTimeWindow.NumberOfSamples);
             else
                 strSmp = 'Time average';
             end

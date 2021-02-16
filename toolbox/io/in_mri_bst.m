@@ -82,7 +82,10 @@ if ~isfield(MriMat, 'NCS') || ~isfield(MriMat.NCS, 'AC')
     MriMat.NCS = db_template('NCS');
     UpdateFile = 1;
 end
-    
+if ~isfield(MriMat, 'Labels') || isempty(MriMat.Labels)
+    MriMat.Labels = [];
+end
+
 % If need to update file
 if UpdateFile
     bst_save(MriFile, MriMat, 'v7');

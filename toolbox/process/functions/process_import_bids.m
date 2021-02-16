@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2019; Martin Cousineau, 2018
+% Authors: Francois Tadel, 2016-2021; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -405,7 +405,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             else
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
-                    % Compute MNI transformation
+                    % Compute MNI normalization
                     [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
@@ -625,7 +625,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 EventsFile = [baseName, '_events.tsv'];
                 if file_exist(EventsFile)
                     bst_process('CallProcess', 'process_evt_import', newFiles, [], ...
-                        'evtfile', {EventsFile, 'BIDS'});
+                        'evtfile', {EventsFile, 'BIDS'}, ...
+                        'delete',  1);
                 end
                 
                 % Load _channels.tsv

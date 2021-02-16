@@ -81,24 +81,30 @@ end
 %% ===== ACTION =====
 switch lower(action)
     case 'add'
-        % If event to add is already an history cell list
-        if iscell(eventType)
-            cellHistory = eventType;
-            % Add prefix to description, if specified
-            if ~isempty(eventDesc)
-                cellHistory(:,3) = cellfun(@(c)cat(2, eventDesc, c), cellHistory(:,3), 'UniformOutput', 0);
+        try
+            % If event to add is already an history cell list
+            if iscell(eventType)
+                cellHistory = eventType;
+                % Add prefix to description, if specified
+                if ~isempty(eventDesc)
+                    cellHistory(:,3) = cellfun(@(c)cat(2, eventDesc, c), cellHistory(:,3), 'UniformOutput', 0);
+                end
+            else
+                eventTime = datestr(now);
+                cellHistory = {eventTime, eventType, eventDesc};
             end
-        else
-            eventTime = datestr(now);
-            cellHistory = {eventTime, eventType, eventDesc};
+            % Add history line
+            if ~isfield(FileMat, 'History') || isempty(FileMat.History)
+                FileMat.History = cellHistory;
+            else
+                FileMat.History = cat(1, FileMat.History, cellHistory);
+            end
+            isModified = 1;
+        catch
+            disp('BST> Error: Cannot edit file history.');
+            disp(['BST> ' lasterr]);
+            isModified = 0;
         end
-        % Add history line
-        if ~isfield(FileMat, 'History') || isempty(FileMat.History)
-            FileMat.History = cellHistory;
-        else
-            FileMat.History = cat(1, FileMat.History, cellHistory);
-        end
-        isModified = 1;
         
     case 'view'
         if ~isfield(FileMat, 'History') || isempty(FileMat.History)

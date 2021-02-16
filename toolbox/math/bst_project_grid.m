@@ -53,8 +53,8 @@ end
 % Get destination MRI
 MriFileDest = sSubjectDest.Anatomy(sSubjectDest.iAnatomy).FileName;
 sMriDest = in_mri_bst(MriFileDest);
-if isempty(sMriDest) || ~isfield(sMriDest, 'NCS') || ~isfield(sMriDest.NCS, 'R') || isempty(sMriDest.NCS.R)
-    errMsg = 'You should compute the MNI transformation for the destination MRI first.';
+if isempty(sMriDest) || ~isfield(sMriDest, 'NCS') || ((~isfield(sMriDest.NCS, 'R') || isempty(sMriDest.NCS.R)) && (~isfield(sMriDest.NCS, 'y') || isempty(sMriDest.NCS.y)))
+    errMsg = 'You should compute the MNI normalization for the destination MRI first.';
     ResultsFiles = [];
 end
     
@@ -84,8 +84,8 @@ for iRes = 1:length(ResultsFiles)
     % Get destination MRI
     MriFileSrc = sSubjectSrc.Anatomy(sSubjectSrc.iAnatomy).FileName;
     sMriSrc = in_mri_bst(MriFileSrc);
-    if isempty(sMriSrc) || ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || isempty(sMriSrc.NCS.R)
-        errMsg = 'You should compute the MNI transformation for the source MRI first.';
+    if isempty(sMriSrc) || ~isfield(sMriSrc, 'NCS') || ((~isfield(sMriSrc.NCS, 'R') || isempty(sMriSrc.NCS.R)) && (~isfield(sMriSrc.NCS, 'y') || isempty(sMriSrc.NCS.y)))
+        errMsg = 'You should compute the MNI normalization for the source MRI first.';
         ResultsFiles = [];
         break;
     end

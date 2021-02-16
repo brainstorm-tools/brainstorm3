@@ -1,5 +1,6 @@
 function varargout = process_simulate_ar( varargin )
 % PROCESS_SIMULATE_AR: Simulate source signals with an auto-regressive model
+% Using this ARfit toolbox: https://climate-dynamics.org/software/#arfit
 %
 % USAGE:   OutputFiles = process_simulate_ar('Run', sProcess, sInputA)
 %               signal = process_simulate_ar('Compute', b, A, C, nsamples)
@@ -32,7 +33,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Simulate AR signals';
+    sProcess.Comment     = 'Simulate AR signals (ARfit)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Simulate'; 
     sProcess.Index       = 902; 

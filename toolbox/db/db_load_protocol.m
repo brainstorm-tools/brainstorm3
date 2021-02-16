@@ -44,6 +44,21 @@ for i = 1:length(iProtocols)
         isReload = 1;
     end
     
+    % Check if Brainstorm needs to be updated in order to load this
+    % protocol (new version of the database)
+    SqlFile = bst_fullfile(GlobalData.DataBase.ProtocolInfo(iProtocols(i)).STUDIES, 'protocol.db');
+    if file_exist(SqlFile)
+        res = java_dialog('question', ['This protocol seems to have been ' ...
+            'created with a newer version of the software.' 10 ...
+            'We strongly recommend you update Brainstorm before you continue.' ...
+            10 'Do you want to update the software now?'], 'Load protocol');
+        if strcmpi(res, 'yes')
+            bst_update();
+        else
+            isReload = 1;
+        end
+    end
+    
     % ===== LOAD PROTOCOL.MAT =====
     if ~isReload
         try

@@ -99,6 +99,8 @@ if ~isempty(OverlayFile)
             OverlayType = 'Surface';
         case 'subjectimage'
             OverlayType = 'Anatomy';
+        case 'headmodel'
+            OverlayType = 'HeadModel';
         otherwise
             error('To do: See view_mri.m');
     end

@@ -131,7 +131,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || (length(sMri.SCS.NAS)~=3) || (length(sMri.SCS.LPA)~=3) || (length(sMri.SCS.RPA)~=3) || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'T') || isempty(sMri.SCS.T)
         % Issue warning
         errMsg = 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.'; 
-        % Compute MNI transformation
+        % Compute MNI normalization
         [sMri, errNorm] = bst_normalize_mni(MriFileBst);
         % Handle errors
         if ~isempty(errNorm)

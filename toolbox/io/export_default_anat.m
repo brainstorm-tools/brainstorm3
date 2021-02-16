@@ -1,7 +1,7 @@
-function export_default_anat(iSubject, DefaultName)
+function export_default_anat(iSubject, DefaultName, IncludeChannels)
 % EXPORT_DEFAULT_ANAT: Export a subject anatomy as a user template in a .zip file.
 %
-% USAGE:  export_mri( iSubject, DefaultName=[ask] )
+% USAGE:  export_mri( iSubject, DefaultName=[ask], IncludeChannels=[ask] )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,9 +21,11 @@ function export_default_anat(iSubject, DefaultName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013
+% Authors: Francois Tadel, 2013-2020
 
 % ===== GET DEFAULT NAME =====
+% Get subject 
+sSubject = bst_get('Subject', iSubject);
 % Ask template name
 if (nargin < 2) || isempty(DefaultName)
     DefaultName = java_dialog('input', [...
@@ -31,10 +33,14 @@ if (nargin < 2) || isempty(DefaultName)
         '$HOME/.brainstorm/defaults/anatomy/TemplateName.zip' 10 10 ...
         'To use it afterwards from the interface: ' 10 ...
         'Right-click on a subject > Use default > TemplateName' 10 10 ...
-        'Enter the name of the new default anatomy:'], 'Create new template', [], 'NewTemplate');
+        'Enter the name of the new default anatomy:'], 'Create new template', [], sSubject.Name);
     if isempty(DefaultName)
         return;
     end
+end
+% Ask channels
+if (nargin < 3) || isempty(IncludeChannels)
+    IncludeChannels = [];
 end
 % Standardize file name
 DefaultName = file_standardize(DefaultName);
@@ -47,8 +53,6 @@ end
 % ===== PROCESS FILES =====
 % Show progress bar
 bst_progress('start', 'Export template', ['Creating template "' DefaultName '"...']);
-% Get subject 
-sSubject = bst_get('Subject', iSubject);
 % Initialize list of files to export
 AllFiles = {file_fullpath(sSubject.FileName)};
 % Clean MRIs
@@ -89,7 +93,7 @@ for i = 1:length(sSubject.Surface)
         sTessNew.Atlas = sTess.Atlas;
     end
     % Select "user scouts" (for cortex) or "structures" (for aseg)
-    if ~isempty(strfind(sTessNew.Comment, 'aseg'))
+    if ~isempty(strfind(sTessNew.Comment, 'aseg')) || ~isempty(strfind(sTessNew.Comment, 'subcortical'))
         sTessNew.iAtlas = find(strcmpi({sTessNew.Atlas.Name}, 'Structures'));
     else
         sTessNew.iAtlas = 1;
@@ -114,9 +118,30 @@ for i = 1:length(dirTxt)
     AllFiles{end+1} = bst_fullfile(SubjectPath, dirTxt(i).name);
 end
 
+% Get channel files associated with this subject
+iChanStudies = bst_get('ChannelStudiesWithSubject', iSubject);
+ChannelFiles = {};
+for i = 1:length(iChanStudies)
+    sChanStudy = bst_get('Study', iChanStudies(i));
+    if ~isempty(sChanStudy.Channel)
+        ChannelFiles{end+1} = sChanStudy.Channel(1).FileName;
+    end
+end
+% Add channel files
+if ~sSubject.UseDefaultChannel && ~isempty(ChannelFiles) 
+    if isempty(IncludeChannels)
+        IncludeChannels = java_dialog('confirm', ['Include the channel files in the template?' 10 10 sprintf('%s\n', ChannelFiles{:}) 10], 'Create new template');
+    end
+    if IncludeChannels
+        AllFiles = cat(2, AllFiles, file_fullpath(ChannelFiles));
+    end
+end
+
 % Zip all the files in $HOME/.brainstorm/defaults/anatomy/DefaultName.zip
 ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [DefaultName '.zip']);
 zip(ZipFile, AllFiles);
+% Display file name
+disp(['BST> New template saved in: ' ZipFile]);
 
 % Hide progress bar
 bst_progress('stop');

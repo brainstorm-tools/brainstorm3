@@ -129,18 +129,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if sProcess.options.isscalp.Value
         OPTIONS.layers{end+1} = 'scalp';
         OPTIONS.nVertices(end+1) = sProcess.options.nvertscalp.Value{1};
-        if ~exist('imfill','file')
-            bst_report('Error', sProcess, [], 'Extracting the scalp requires the Image Processing toolbox.');
-            return;
-        end
     end
     if sProcess.options.isskull.Value
         OPTIONS.layers{end+1} = 'skull';
         OPTIONS.nVertices(end+1) = sProcess.options.nvertskull.Value{1};
-        if ~exist('imdilate','file')
-            bst_report('Error', sProcess, [], 'Extracting the skull requires the Image Processing toolbox.');
-            return;
-        end
     end
     if sProcess.options.iscsf.Value
         OPTIONS.layers{end+1} = 'csf';
@@ -205,6 +197,12 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     isOk = 0;
     errMsg = '';
     TissueFile = [];
+    
+    % ===== CHECK DEPENDENCIES =====
+    if any(ismember({'skull','scalp'}, OPTIONS.layers)) && (~exist('imdilate','file') || ~exist('imfill','file'))
+        errMsg = 'Extracting the skull and scalp requires the Image Processing toolbox.';
+        return;
+    end
     
     % ===== DEFAULT OPTIONS =====
     Def_OPTIONS = GetDefaultOptions();
@@ -314,6 +312,8 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     end
 
     % ===== SAVE TISSUE ATLAS =====
+    % Add basic labels
+    sMriTissue.Labels = mri_getlabels('tissues5');
     % Set comment
     sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
     % Copy some fields from the original MRI

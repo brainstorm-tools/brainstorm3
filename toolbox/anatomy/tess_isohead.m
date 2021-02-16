@@ -67,7 +67,7 @@ end
 %% ===== ASK PARAMETERS =====
 % Ask user to set the parameters if they are not set
 if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
-    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', 'Background intensity threshold:'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
+    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
     % If user cancelled: return
     if isempty(res)
         return
@@ -77,6 +77,9 @@ if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
     erodeFactor = str2num(res{2});
     fillFactor  = str2num(res{3});
     bgLevel     = str2num(res{4});
+    if isempty(bgLevel)
+        bgLevel = sMri.Histogram.bgLevel;
+    end
 else
     bgLevel = sMri.Histogram.bgLevel;
 end

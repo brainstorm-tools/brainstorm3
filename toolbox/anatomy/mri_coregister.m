@@ -1,5 +1,5 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
-% MRI_COREGISTER: Compute the MNI transformation on both input volumes, then register the first on the second.
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
+% MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
 %            [sMriReg, errMsg, fileTag] = mri_coregister(sMriSrc,    sMriRef, ...)
@@ -11,6 +11,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - sMriRef    : Brainstorm MRI structure used as a reference
 %    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
+%    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -39,6 +40,10 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % Authors: Francois Tadel, 2016-2020
 
 % ===== LOAD INPUTS =====
+% Parse inputs
+if (nargin < 5) || isempty(isAtlas)
+    isAtlas = 0;
+end
 % Initialize returned variables
 MriFileReg = [];
 errMsg = [];
@@ -67,11 +72,11 @@ elseif ischar(MriFileSrc)
 else
     error('Invalid call.');
 end
-% Not available for multiple volumes
-if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
-    errMsg = 'The input files cannot contain multiple volumes.';
-    return;
-end
+% % Not available for multiple volumes
+% if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
+%     errMsg = 'The input files cannot contain multiple volumes.';
+%     return;
+% end
 % Inialize various variables
 isUpdateScs = 0;
 isUpdateNcs = 0;
@@ -172,11 +177,11 @@ switch lower(Method)
         % === COMPUTE MNI TRANSFORMATIONS ===
         % Source MRI
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         % Reference MRI
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         % Handle errors
         if ~isempty(errMsg)
@@ -189,7 +194,7 @@ switch lower(Method)
         % === RESLICE VOLUME ===
         if isReslice
             % Reslice the volume
-            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, TransfSrc, TransfRef);
+            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, TransfSrc, TransfRef, isAtlas);
         else
             % Save the original input volume
             sMriReg = sMriSrc;
@@ -205,18 +210,19 @@ switch lower(Method)
         % Nothing to do, just reslice if needed
         if isReslice
             % Reslice the volume
-            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras');
+            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
+            % Output file tag
+            if ~isempty(strfind(sMriSrc.Comment, '_spm'))
+                fileTag = '';
+            else
+                fileTag = '_vox2ras';
+            end
         else
             % Save the original input volume
             sMriReg = sMriSrc;
             isUpdateScs = 1;
             isUpdateNcs = 1;
-        end
-        % Output file tag
-        if ~isempty(strfind(sMriSrc.Comment, '_spm'))
             fileTag = '';
-        else
-            fileTag = '_vox2ras';
         end
 end
 % Handle errors

@@ -458,6 +458,9 @@ for iFile = 1:length(DataFiles)
         % Do not align data coming from Brainstorm exported files (already aligned)
         if strcmpi(FileFormat, 'BST-BIN')
             ImportOptions.ChannelAlign = 0;
+        % Do not allow automatic registration with head points when using the default anatomy
+        elseif (sSubject.UseDefaultAnat) || isempty(sSubject.Anatomy) || any(~cellfun(@(c)isempty(strfind(lower(sSubject.Anatomy(sSubject.iAnatomy).Comment), c)), {'icbm152', 'colin27', 'bci-dni', 'uscbrain', 'fsaverage', 'oreilly', 'kabdebon'}))
+            ImportOptions.ChannelAlign = 0;
         end
         % Save channel file in all the target studies (need user confirmation for overwrite)
         for i = 1:length(iStudyCopyChannel)

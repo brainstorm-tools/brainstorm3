@@ -36,8 +36,9 @@ function [hFig, iDS, iFig] = view_spectrum(TimefreqFile, DisplayMode, RowName, i
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012; Martin Cousineau, 2017
-
+% Authors: Francois Tadel, 2012-2019
+%          Martin Cousineau, 2017
+%          Marc Lalancette, 2020
 
 %% ===== INITIALIZATION =====
 % GlobalData : create if not existing yet
@@ -126,6 +127,20 @@ elseif ismember(TfMethod, {'fft', 'psd'})
 else
     TfInfo.Function = process_tf_measure('GetDefaultFunction', GlobalData.DataSet(iDS).Timefreq(iTimefreq));
 end
+% Check if this TF is normalized. For older spectrum files, look in file name.
+if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'Normalized') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized)
+    TfInfo.Normalized = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Normalized;
+elseif ~isempty(strfind(TfInfo.FileName, 'relative2020'))
+    TfInfo.Normalized = 'relative2020';
+elseif ~isempty(strfind(TfInfo.FileName, 'relative'))
+    TfInfo.Normalized = 'relative';
+elseif ~isempty(strfind(TfInfo.FileName, 'multiply2020'))
+    TfInfo.Normalized = 'multiply2020';
+elseif ~isempty(strfind(TfInfo.FileName, 'multiply'))
+    TfInfo.Normalized = 'multiply';
+else
+    TfInfo.Normalized = 'none';
+end
 % Frequency selection: depends on the display type
 if isStaticFreq || strcmpi(DisplayMode, 'Spectrum')
     TfInfo.iFreqs = [];
@@ -152,6 +167,11 @@ TsInfo.ShowYGrid = bst_get('ShowYGrid');
 TsInfo.ShowZeroLines = bst_get('ShowZeroLines');
 TsInfo.ShowEventsMode = bst_get('ShowEventsMode');
 TsInfo.XScale = bst_get('XScale');
+if isequal(TfInfo.Function, 'log') || any(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:) <= 0)
+    TsInfo.YScale = 'linear';
+else
+    TsInfo.YScale = bst_get('YScale');
+end
 setappdata(hFig, 'TsInfo', TsInfo);
 
 % Display options panel
