@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+February 2021
+- SimMEEG: Simulate MEG/EEG signals with SimMEEG
+---------------------------------------------------------------
 January 2021
 - Anatomy: MNI normalization with SPM12 Segment
 - Anatomy: Prepared a list of standard MNI atlases: AAL2, AAL3, AICHA, 

@@ -309,23 +309,23 @@ switch(lower(msgType))
         if ~isempty(buttonList)
             jPanel = gui_river([2,2], [3,3,3,3]);
             jCheck = javaArray('javax.swing.JCheckBox', length(buttonList));
+            isLongText = any(cellfun(@length, buttonList) > 20);
             for i = 1:length(buttonList)
                 % Create check box
                 jCheck(i) = javax.swing.JCheckBox(buttonList{i});
-                % Box size
-                isLongText = (length(buttonList{i}) > 10);
-                if ~isLongText
-                    jCheck(i).setPreferredSize(java_scaled('dimension', 80, 20));
-                end
                 % Default value
                 if ~isempty(defaultVal)
                     jCheck(i).setSelected(defaultVal(i));
                 end
                 % Add: right after of on the next row ?
-                if (mod(i-1, 5) == 0) || isLongText
+                if isLongText
                     jPanel.add('br', jCheck(i));
                 else
-                    jPanel.add(jCheck(i));
+                    if (mod(i-1, 5) == 0)
+                        jPanel.add('tab br', jCheck(i));
+                    else
+                        jPanel.add('tab', jCheck(i));
+                    end
                 end
             end
         end
