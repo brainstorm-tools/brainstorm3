@@ -481,8 +481,6 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
             if isRaw
                 DataMat = in_bst_data(sInputs(iIn).FileName, {'F'});
                 DataMat = DataMat.F;
-                % % From in_bst_data
-                % DataMat.Time = panel_time('GetRawTimeVector', DataMat);
             else
                 DataMat = in_bst_data(sInputs(iIn).FileName, {'Events', 'Time'});
                 DataMat.events = DataMat.Events;
@@ -817,7 +815,7 @@ function M = GeoMedian(X, Precision)
     % (if at any iteration the approximation of M equals a data point).
     %
     %
-    % © Copyright 2018 Marc Lalancette
+    % (c) Copyright 2018 Marc Lalancette
     % The Hospital for Sick Children, Toronto, Canada
     %
     % This file is part of a free repository of Matlab tools for MEG
