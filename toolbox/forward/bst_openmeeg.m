@@ -286,7 +286,9 @@ for i = 1:length(OPTIONS.BemFiles)
         errMsg = sprintf(['WARNING: %d dipole(s) outside the BEM layer "%s".\n' ...
                           'The leadfield for these dipoles could be incorrect.\n\n'], length(iDipOutside), OPTIONS.BemNames{i});
         if strcmpi(OPTIONS.HeadModelType, 'surface')
-            errMsg = [errMsg, 'To fix the cortex surface:', 10, 'Right-click on the surface file > Force inside skull.'];
+            errMsg = [errMsg, 'First, try to recompute BEM surfaces with more vertices.' 10 ...
+                'Otherwise, right-click on the cortex file > Force inside skull.' 10 ...
+                'See the OpenMEEG BEM tutorial, section "Warning: dipoles outside".'];
         end
         disp([10 errMsg 10]);
         if OPTIONS.Interactive
