@@ -1350,6 +1350,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     hAxes     = setdiff(findobj(hFig, '-depth', 1, 'Type', 'axes'), hColorbar);
     hConnect  = getappdata(hFig, 'OpenGLDisplay');
+    if strcmpi(ColormapType, 'connectn') && isempty(hConnect)
+        hConnect = hAxes;
+        hAxes = [];
+    end
     % If a colorbar is defined
     if ~isempty(hColorbar)
         fFactor = [];

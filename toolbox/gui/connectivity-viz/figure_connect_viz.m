@@ -2562,9 +2562,9 @@ function UpdateColormap(hFig)
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')
-            CLim = ThresholdMinMax;
+            CLim = DataMinMax;
             if sColormap.isAbsoluteValues
-                CLim = abs(CLim);            
+                CLim = [0, abs(CLim(2))];
             end
         else
             if sColormap.isAbsoluteValues
