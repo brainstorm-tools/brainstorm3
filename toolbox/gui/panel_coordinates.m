@@ -499,18 +499,10 @@ function ViewInMriViewer(varargin)
     if isempty(sSubject) || isempty(sSubject.iAnatomy)
         return 
     end
-    % Progress bar
-    bst_progress('start', 'MRI Viewer', 'Opening MRI Viewer...');
-    % Get protocol directories
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % MRI full filename
-    MriFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(MriFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
-    % Close progress bar
-    bst_progress('stop');
 end
 
 

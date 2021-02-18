@@ -11,6 +11,7 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('FigureKeyPressedCallback',   hFig, keyEvent)   
 %                 figure_3d('ResetView',                  hFig)
 %                 figure_3d('SetStandardView',            hFig, viewNames)
+%                 figure_3d('SetLocationMri',             hFig, cs, XYZ)
 %                 figure_3d('DisplayFigurePopup',         hFig)
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
@@ -4491,6 +4492,29 @@ function JumpMaximum(hFig)
     end
     % Convert index to voxel indices
     [XYZ(1), XYZ(2), XYZ(3)] = ind2sub(size(TessInfo(iAnatomy).OverlayCube), iMax(1));
+    % Set new position
+    TessInfo(iAnatomy).CutsPosition = XYZ;
+    UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
+end
+
+
+%% ===== SET LOCATION MRI =====
+function SetLocationMri(hFig, cs, XYZ)
+    % Get MRI in figure
+    [sMri, TessInfo, iAnatomy] = panel_surface('GetSurfaceMri', hFig);
+    if isempty(sMri) || isempty(TessInfo) || isempty(iAnatomy)
+        return;
+    end
+    % Convert if necessary
+    if ~strcmpi(cs, 'voxel')
+        XYZ = cs_convert(sMri, cs, 'voxel', XYZ);
+    end
+    % Get that values are inside volume bounds
+    XYZ(1) = bst_saturate(XYZ(1), [1, size(sMri.Cube,1)]);
+    XYZ(2) = bst_saturate(XYZ(2), [1, size(sMri.Cube,2)]);
+    XYZ(3) = bst_saturate(XYZ(3), [1, size(sMri.Cube,3)]);
+    % Round coordinates
+    XYZ = round(XYZ);
     % Set new position
     TessInfo(iAnatomy).CutsPosition = XYZ;
     UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
