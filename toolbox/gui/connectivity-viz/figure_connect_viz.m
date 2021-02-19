@@ -1243,7 +1243,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     Atlas = [];
     % Technique to get the hierarchy depends on the data type
     switch (DataType)
-        case 'data' % n x n graph
+        case 'data' 
             % ===== CHANNEL =====
             % Get selections
             sSelect = panel_montage('GetMontagesForFigure', hFig);
@@ -1313,14 +1313,14 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
                 end
             end
             % Sensors positions
-%             selChan = zeros(1, length(RowNames));
-%             for iRow = 1:length(RowNames)
-%                 % Get indice in the 
-%                 selChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
-%             end
-%             RowLocs = figure_3d('GetChannelPositions', iDS, selChan);
+            selChan = zeros(1, length(RowNames));
+            for iRow = 1:length(RowNames)
+                % Get indice in the 
+                selChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
+            end
+            RowLocs = figure_3d('GetChannelPositions', iDS, selChan);
  
-        case {'results', 'matrix'} % when building 1 x n graph
+        case {'results', 'matrix'}
             % Get the file information file
             SurfaceFile = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SurfaceFile;
             Atlas       = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Atlas;
@@ -1691,7 +1691,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 y,...
                 'LineWidth', 1.5,...
                 'Color', [AllNodes(node1).Color 0.00],...
-                'PickableParts','none',...
+                'PickableParts','all',...
                 'Visible','off'); % not visible as default;
 
         else % else, draw an arc
@@ -1758,15 +1758,16 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 y,...
                 'LineWidth', 1.5,...
                 'Color', [AllNodes(node1).Color 0.00],...
-                'PickableParts','none',...
-                'Visible','off'); % not visible as default;
+                'PickableParts','visible',...
+                'Visible','off',...
+                'Selected', 0,...
+                'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
         end
             
         % arrows for directional links
         if (IsDirectionalData)
             
-            [arrow1, arrow2, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50);
-            
+            MeasureDistance = bst_figures('GetFigureHandleField', hFig, 'MeasureDistance');
             if (MeasureDistance(i) <= 40.0)
           
                 [arrow1, ~, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 60, 0);
@@ -1835,6 +1836,22 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     end
     
 end
+
+function LinkButtonDownFcn(src,~)
+    src.Selected = ~src.Selected;
+    current_size = src.LineWidth;
+   
+    SelectLink(src, current_size)
+end
+
+function SelectLink(link, current_size)
+    if (link.Selected == 1)
+        set(link, 'LineWidth', 1.5*current_size);
+    else
+        set(link, 'LineWidth', current_size/1.5);
+    end
+end
+
 
 %% ARROWH   Draws a solid 2D arrow head in current plot.
 %	 ARROWH(X,Y,COLOR,SIZE,LOCATION) draws a  solid arrow  head into
@@ -2962,8 +2979,6 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         DisplayInwardMeasure = getappdata(hFig, 'DisplayInwardMeasure');
         DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
         
-        %disp(DisplayOutwardMeasure);
-        
         if (DisplayOutwardMeasure)
             OutMask = ismember(DataToFilter(:,1), iNodes);
             NodeDirectionMask = NodeDirectionMask | OutMask;
@@ -3011,6 +3026,8 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             MeasureLinks = getappdata(hFig,'MeasureLinks');
             
             if (isSelected)
+                
+                %TODO: increase linewidth when selected
                 set(MeasureLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
