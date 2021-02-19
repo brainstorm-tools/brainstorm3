@@ -156,14 +156,24 @@ function Dispose(hFig) %#ok<DEFNU>
         rmappdata(hFig,'RegionLinks');
     end
     
-    if (isappdata(hFig,'MeasureArrows'))
-        delete(getappdata(hFig,'MeasureArrows'));
-        rmappdata(hFig,'MeasureArrows');
+    if (isappdata(hFig,'MeasureArrows1'))
+        delete(getappdata(hFig,'MeasureArrows1'));
+        rmappdata(hFig,'MeasureArrows1');
     end
     
-    if (isappdata(hFig,'RegionArrows'))
-        delete(getappdata(hFig,'RegionArrows'));
-        rmappdata(hFig,'RegionArrows');
+    if (isappdata(hFig,'MeasureArrows2'))
+        delete(getappdata(hFig,'MeasureArrows2'));
+        rmappdata(hFig,'MeasureArrows2');
+    end
+    
+    if (isappdata(hFig,'RegionArrows1'))
+        delete(getappdata(hFig,'RegionArrows1'));
+        rmappdata(hFig,'RegionArrows1');
+    end
+    
+    if (isappdata(hFig,'RegionArrows2'))
+        delete(getappdata(hFig,'RegionArrows2'));
+        rmappdata(hFig,'RegionArrows2');
     end
 
     %===old===
@@ -1566,9 +1576,13 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             delete(getappdata(hFig,'MeasureLinks'));
             rmappdata(hFig,'MeasureLinks');
         end
-        if (isappdata(hFig,'MeasureArrows'))
-            delete(getappdata(hFig,'MeasureArrows'));
-            rmappdata(hFig,'MeasureArrows');
+        if (isappdata(hFig,'MeasureArrows1'))
+            delete(getappdata(hFig,'MeasureArrows1'));
+            rmappdata(hFig,'MeasureArrows1');
+        end
+        if (isappdata(hFig,'MeasureArrows2'))
+            delete(getappdata(hFig,'MeasureArrows2'));
+            rmappdata(hFig,'MeasureArrows2');
         end
     else
         levelScale = getappdata(hFig, 'RegionLevelDistance'); % typically 3.5 for region nodes to display region links
@@ -1577,9 +1591,13 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             delete(getappdata(hFig,'RegionLinks'));
             rmappdata(hFig,'RegionLinks');
         end
-        if (isappdata(hFig,'RegionArrows'))
-            delete(getappdata(hFig,'RegionArrows'));
-            rmappdata(hFig,'RegionArrows');
+        if (isappdata(hFig,'RegionArrows1'))
+            delete(getappdata(hFig,'RegionArrows1'));
+            rmappdata(hFig,'RegionArrows1');
+        end
+        if (isappdata(hFig,'RegionArrows2'))
+            delete(getappdata(hFig,'RegionArrows2'));
+            rmappdata(hFig,'RegionArrows2');
         end
     end
     
@@ -1647,7 +1665,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                     
                     p = [(start_x-stop_x) (start_y-stop_y)];          % horde vector
                     H = norm(p);                                % horde length
-                    R = 1.2*H;                                  % arc radius
+                    R = 0.63*H;                                  % arc radius
                     v = [-p(2) p(1)]/H;                         % perpendicular vector
                     L = sqrt(R*R-H*H/4);						% distance to circle (from horde)
                     p = [(start_x+stop_x) (start_y+stop_y)];          % vector center horde
@@ -1696,7 +1714,6 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             % rescale onto our graph circle
             x = levelScale*r*cos(theta)+levelScale*x0;
             y = levelScale*r*sin(theta)+levelScale*y0;
-            
 
             % check if this line has a bidirectional equivalent that would
             % overlap
@@ -1711,7 +1728,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                     
                     p = [(start_x-stop_x) (start_y-stop_y)];          % horde vector
                     H = norm(p);                                % horde length
-                    R = 1.2*H;                                  % arc radius
+                    R = 0.63*H;                                  % arc radius
                     v = [-p(2) p(1)]/H;                         % perpendicular vector
                     L = sqrt(R*R-H*H/4);						% distance to circle (from horde)
                     p = [(start_x+stop_x) (start_y+stop_y)];          % vector center horde
@@ -1747,13 +1764,50 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             
         % arrows for directional links
         if (IsDirectionalData)
-            % create arrowhead
-            arrow = arrowh(x,y,AllNodes(node1).Color,100, 100);
-
-            if(i==1)
-                Arrows = arrow;
+            
+            [arrow1, arrow2, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50);
+            
+            if (MeasureDistance(i) <= 40.0)
+          
+                [arrow1, ~, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 60, 0);
+            
+                % return point on the line closest to the desired location of
+                % the second arrowhead (tip of second arrowhead should be at
+                % the base of the first one)
+                pts_line = [x(:), y(:)];            
+                dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
+                [distances, index] = min(dist2);
+            
+                % if more than one index is found, return the one closest to 70
+                if (size(index) > 1)
+                    index = min(60 - index);
+                end
+                
+                % redraw the first arrow so that both arrows are closer to
+                % the center of the link            
+                x_trim = pts_line(1:index,1);
+                y_trim = pts_line(1:index,2);
+            
+                % overwrite arrowhead2
+                if (length(x_trim) > 1 & length(y_trim) > 1)
+                    [arrow2, ~, ~,~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100, 0);
+                end
+            % for longer links
             else
-                Arrows(end+1) = arrow;
+                [arrow1, arrow2, ~, ~] = arrowh(x, y, AllNodes(node1).Color, 100, 50, 1);
+            end
+            
+            % store arrows
+            if(i==1)
+                Arrows1 = arrow1;            
+                if (~isempty(arrow2))
+                    Arrows2 = arrow2;
+                end
+            else
+                Arrows1(end+1) = arrow1;
+                if (~isempty(arrow2))
+                    Arrows2(end+1) = arrow2;
+                end
             end
         end
         
@@ -1769,12 +1823,14 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     if (isMeasureLink)
         setappdata(hFig,'MeasureLinks',Links);
         if (IsDirectionalData)
-            setappdata(hFig,'MeasureArrows',Arrows);
+            setappdata(hFig,'MeasureArrows1',Arrows1);
+            setappdata(hFig,'MeasureArrows2',Arrows2);
         end
     else
         setappdata(hFig,'RegionLinks',Links);
         if (IsDirectionalData)
-            setappdata(hFig,'RegionArrows',Arrows);
+            setappdata(hFig,'RegionArrows1',Arrows1);
+            setappdata(hFig,'RegionArrows2',Arrows2);
         end
     end
     
@@ -1886,7 +1942,7 @@ end
 %	 send me an email!  This is my very  first "public" program  and
 %	 I'd  like to  improve it where  I can -- your  help is  kindely
 %	 appreciated! Thank you!
-function handle = arrowh(x,y,clr,ArSize,Where)
+function [handle1, handle2, new_x, new_y] = arrowh(x,y,clr,ArSize,Where,Flag)
 %-- errors
 if nargin < 2
 	error('Please give enough coordinates !');
@@ -1903,7 +1959,8 @@ end
 if nargin <= 3
 	ArSize = [100,100];
 end
-handle = [];
+handle1 = [];
+handle2 = [];
 %-- check if variables left empty, deal width ArSize and Color
 if isempty(clr)
 	clr = 'b'; nonsolid = false;
@@ -1957,7 +2014,8 @@ for Loop = 1:length(Where),
 	else %-- just two points given - take those
 		x1 = x(1); x2 = (1-Where/100)*x(1)+Where/100*x(2);
 		y1 = y(1); y2 = (1-Where/100)*y(1)+Where/100*y(2);
-	end
+    end
+    
 	%-- get axe ranges and their norm
 	OriginalAxis = axis;
 	Xextend = abs(OriginalAxis(2)-OriginalAxis(1));
@@ -1996,15 +2054,29 @@ for Loop = 1:length(Where),
 	xd = xd*Xextend*ArSize/10000;
 	yd = yd*Yextend*ArSize/10000;
 	%-- move the triangle to the location where it's needed
-	xd = xd + x2;
-	yd = yd + y2;
+	xd1 = xd + x2;
+	yd1 = yd + y2;
     
     
-	%-- draw the actual triangle
+    %%%% Added Feb 18: Visibility %%%%%
     
-    % Added Feb : Visibility
-	handle(Loop) = patch(xd,yd,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
-	if nonsolid, set(handle(Loop),'facecolor','none'); end
+    % tip of the second arrow
+    new_x = (xd1(2)+xd1(3))/2;
+    new_y = (yd1(2)+yd1(3))/2;
+    xd2 = xd + new_x;
+	yd2 = yd + new_y;
+    
+    
+	%-- draw the actual triangles
+ 	handle1(Loop) = patch(xd1,yd1,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
+    
+    if (Flag == 1)
+        handle2(Loop) = patch(xd2,yd2,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
+    else
+        handle2 = [];
+    end
+    
+	if nonsolid, set(handle1(Loop),'facecolor','none'); end
 end % Loops
 
 %-- restore original axe ranges and hold status
@@ -2158,7 +2230,7 @@ function UpdateFigurePlot(hFig)
     % Set background color
     SetBackgroundColor(hFig, GetBackgroundColor(hFig));
     % Update colormap
-    UpdateColormap(hFig);
+%     UpdateColormap(hFig);
     % Redraw selected nodes
     SetSelectedNodes(hFig, selNodes, 1, 1);
     % Update panel
@@ -2621,8 +2693,10 @@ function UpdateColormap(hFig)
         VisibleLinks = MeasureLinks(iData).';
         
         if (IsDirectionalData)
-            MeasureArrows = getappdata(hFig, 'MeasureArrows');
-            VisibleArrows = MeasureArrows(iData).';
+            MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
+            MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
+            VisibleArrows1 = MeasureArrows1(iData).';
+            VisibleArrows2 = MeasureArrows2(iData).';
         end
         
         % set desired colors to each link (4th column is transparency)
@@ -2630,7 +2704,10 @@ function UpdateColormap(hFig)
             if (IsDirectionalData)
                 set(VisibleLinks(i), 'Color', color_viz(i,:));
                 %set(VisibleLinks(i), 'MarkerFaceColor', color_viz(i,:));
-                set(VisibleArrows(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
+                set(VisibleArrows1(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
+                %set(VisibleArrows1(i), 'EdgeColor', color_viz(i,:), 'FaceColor', [1 1 1]);
+                set(VisibleArrows2(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
+                %set(VisibleArrows(i), 'EdgeColor', color_viz(i,:));
             else 
                 set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
             end 
@@ -2643,12 +2720,14 @@ function UpdateColormap(hFig)
                 OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 % Remaining links that are not bidirectional
-                set(MeasureLinks(:), 'LineStyle', '--');
+                %set(MeasureLinks(:), 'LineStyle', '--');
                 % Bidirectional links are solid;        
-                set(MeasureLinks(OutIndex | InIndex), 'LineStyle', '-');
+                %set(MeasureLinks(OutIndex | InIndex), 'LineStyle', '-');
+                %CurrentSize = getappdata(hFig, 'LinkSize');
+                %set(MeasureLinks(OutIndex | InIndex), 'LineWidth', 3*CurrentSize);
             else
                 % revert back to dashed lines if user selected "In" or "Out"
-                set(MeasureLinks(:), 'LineStyle', '--');            
+                %set(MeasureLinks(:), 'LineStyle', '--');            
             end 
         end
     end
@@ -2675,8 +2754,10 @@ function UpdateColormap(hFig)
         VisibleLinks_region = RegionLinks(iData).';
         
         if (IsDirectionalData)
-            RegionArrows = getappdata(hFig, 'RegionArrows');
-            VisibleArrows = RegionArrows(iData).';
+            RegionArrows1 = getappdata(hFig, 'RegionArrows1');
+            RegionArrows2 = getappdata(hFig, 'RegionArrows2');
+            VisibleArrows1 = RegionArrows1(iData).';
+            VisibleArrows2 = RegionArrows2(iData).';
         end
         
         % set desired colors to each link (4th column is transparency)
@@ -2684,7 +2765,9 @@ function UpdateColormap(hFig)
             if (IsDirectionalData)
                 set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
                 %set(VisibleLinks_region(i), 'MarkerFaceColor', color_viz_region(i,:));
-                set(VisibleArrows(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
+                set(VisibleArrows1(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
+                set(VisibleArrows2(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
+                %set(VisibleArrows(i), 'EdgeColor', color_viz_region(i,:));
             else 
                 set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
             end
@@ -2698,12 +2781,12 @@ function UpdateColormap(hFig)
                 OutIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 InIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
                 % Remaining links that are not bidirectional
-                set(RegionLinks(:), 'LineStyle', '--');
+                %set(RegionLinks(:), 'LineStyle', '--');
                 % Bidirectional links are solid;            
-                set(RegionLinks(OutIndex | InIndex), 'LineStyle', '-');
+                %set(RegionLinks(OutIndex | InIndex), 'LineStyle', '-');
             else
                 % revert back to dashed lines if user selected "In" or "Out"
-                set(RegionLinks(:), 'LineStyle', '--');
+                %set(RegionLinks(:), 'LineStyle', '--');
             end
         end
     end
@@ -2930,14 +3013,18 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             if (isSelected)
                 set(MeasureLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
-                    MeasureArrows = getappdata(hFig, 'MeasureArrows');
-                    set(MeasureArrows(iData), 'Visible', 'on');
+                    MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
+                    MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
+                    set(MeasureArrows1(iData), 'Visible', 'on');
+                    set(MeasureArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(MeasureLinks(iData), 'Visible', 'off');
                 if (IsDirectionalData)
-                    MeasureArrows = getappdata(hFig, 'MeasureArrows');
-                    set(MeasureArrows(iData), 'Visible', 'off');
+                    MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
+                    MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
+                    set(MeasureArrows1(iData), 'Visible', 'off');
+                    set(MeasureArrows2(iData), 'Visible', 'off');
                 end
             end
             
@@ -2947,14 +3034,18 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             if (isSelected)
                 set(RegionLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
-                    RegionArrows = getappdata(hFig, 'RegionArrows');
-                    set(RegionArrows(iData), 'Visible', 'on');
+                    RegionArrows1 = getappdata(hFig, 'RegionArrows1');
+                    RegionArrows2 = getappdata(hFig, 'RegionArrows2');
+                    set(RegionArrows1(iData), 'Visible', 'on');
+                    set(RegionArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(RegionLinks(iData), 'Visible', 'off');
                 if (IsDirectionalData)
-                    RegionArrows = getappdata(hFig, 'RegionArrows');
-                    set(RegionArrows(iData), 'Visible', 'off');
+                    RegionArrows1 = getappdata(hFig, 'RegionArrows1');
+                    RegionArrows2 = getappdata(hFig, 'RegionArrows2');
+                    set(RegionArrows1(iData), 'Visible', 'off');
+                    set(RegionArrows2(iData), 'Visible', 'off');
                 end
             end
         end
@@ -3193,19 +3284,24 @@ function SetLinkSize(hFig, LinkSize)
     end
 
     MeasureLinks = getappdata(hFig,'MeasureLinks');
-    MeasureArrows = getappdata(hFig,'MeasureArrows');
+    MeasureArrows1 = getappdata(hFig,'MeasureArrows1');
+    MeasureArrows2 = getappdata(hFig,'MeasureArrows2');
+    
     RegionLinks = getappdata(hFig,'RegionLinks');
-    RegionArrows = getappdata(hFig,'RegionArrows');
+    RegionArrows1 = getappdata(hFig,'RegionArrows1');
+    RegionArrows2 = getappdata(hFig,'RegionArrows2');
     
     MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
     RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
     
     if (MeasureLinksIsVisible)
         set(MeasureLinks, 'LineWidth', LinkSize);
-        set(MeasureArrows, 'LineWidth', LinkSize);
+        set(MeasureArrows1, 'LineWidth', LinkSize);
+        set(MeasureArrows2, 'LineWidth', LinkSize);
     else
         set(RegionLinks, 'LineWidth', LinkSize);
-        set(RegionArrows, 'LineWidth', LinkSize);
+        set(RegionArrows1, 'LineWidth', LinkSize);
+        set(RegionArrows2, 'LineWidth', LinkSize);
     end
     
     setappdata(hFig, 'LinkSize', LinkSize);
@@ -3229,8 +3325,10 @@ function SetLinkTransparency(hFig, LinkTransparency)
             VisibleLinks = MeasureLinks(iData).';
             
             if (IsDirectionalData)
-                MeasureArrows = getappdata(hFig,'MeasureArrows');
-                VisibleArrows = MeasureArrows(iData).';
+                MeasureArrows1 = getappdata(hFig,'MeasureArrows1');
+                MeasureArrows2 = getappdata(hFig,'MeasureArrows2');
+                VisibleArrows1 = MeasureArrows1(iData).';
+                VisibleArrows2 = MeasureArrows2(iData).';
             end
     
             % set desired colors to each link
@@ -3240,7 +3338,8 @@ function SetLinkTransparency(hFig, LinkTransparency)
                 set(VisibleLinks(i), 'Color', current_color);
                 
                 if (IsDirectionalData)
-                    set(VisibleArrows(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
+                    set(VisibleArrows1(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
+                    set(VisibleArrows2(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
                 end
             end
         end
@@ -3254,8 +3353,10 @@ function SetLinkTransparency(hFig, LinkTransparency)
             VisibleLinks_region = RegionLinks(iData).';
             
             if (IsDirectionalData)
-                RegionArrows = getappdata(hFig,'RegionArrows');
-                VisibleArrows = RegionArrows(iData).';
+                RegionArrows1 = getappdata(hFig,'RegionArrows1');
+                RegionArrows2 = getappdata(hFig,'RegionArrows2');
+                VisibleArrows1 = RegionArrows1(iData).';
+                VisibleArrows2 = RegionArrows2(iData).';
             end
         
             for i=1:length(VisibleLinks_region)
@@ -3264,7 +3365,8 @@ function SetLinkTransparency(hFig, LinkTransparency)
                 set(VisibleLinks_region(i), 'Color', current_color);
                 
                 if (IsDirectionalData)
-                    set(VisibleArrows(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
+                    set(VisibleArrows1(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
+                    set(VisibleArrows2(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
                 end
             end
         end
@@ -3685,14 +3787,24 @@ function ClearAndAddNodes(hFig, V, Names)
         rmappdata(hFig,'RegionLinks');
     end
     
-    if (isappdata(hFig,'MeasureArrows'))
-        delete(getappdata(hFig,'MeasureArrows'));
-        rmappdata(hFig,'MeasureArrows');
+    if (isappdata(hFig,'MeasureArrows1'))
+        delete(getappdata(hFig,'MeasureArrows1'));
+        rmappdata(hFig,'MeasureArrows1');
     end
     
-    if (isappdata(hFig,'RegionArrows'))
-        delete(getappdata(hFig,'RegionArrows'));
-        rmappdata(hFig,'RegionArrows');
+    if (isappdata(hFig,'MeasureArrows2'))
+        delete(getappdata(hFig,'MeasureArrows2'));
+        rmappdata(hFig,'MeasureArrows2');
+    end
+    
+    if (isappdata(hFig,'RegionArrows1'))
+        delete(getappdata(hFig,'RegionArrows1'));
+        rmappdata(hFig,'RegionArrows1');
+    end
+    
+    if (isappdata(hFig,'RegionArrows2'))
+        delete(getappdata(hFig,'RegionArrows2'));
+        rmappdata(hFig,'RegionArrows2');
     end
     
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
