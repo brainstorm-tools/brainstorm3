@@ -102,7 +102,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === CUT EMPTY SLICES
     sProcess.options.iscut.Comment = 'Cut empty slices';
     sProcess.options.iscut.Type    = 'checkbox';
-    sProcess.options.iscut.Value   = 1;
+    sProcess.options.iscut.Value   = 0;
 end
 
 
@@ -363,6 +363,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % === BUILD OUTPUT VOLUME ===
             if isVolume
                 sMriOut = sMri;
+                % Reset nifti field, so that the header is not reused as is
+                sMriOut.Header = [];
                 % Build interpolated cube
                 sMriOut.Cube = tess_interp_mri_data(MriInterp, size(sMri.Cube(:,:,:,1)), sInput.Data(:,i), isVolumeGrid);
                 % Downsample volume
@@ -389,9 +391,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                     sMriOut.SCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.SCS.(fidname{1}), VolDownsample);
                                 end
                             end
-%                             sMriOut.SCS.T = [];
-%                             sMriOut.SCS.R = [];
-%                             sMriOut.SCS.Origin = [];
+                            sMriOut.SCS.T = [];
+                            sMriOut.SCS.R = [];
+                            sMriOut.SCS.Origin = [];
                         end
                         if isfield(sMriOut, 'NCS') 
                             for fidname = {'AC','PC','IH','T','Origin'}
@@ -399,10 +401,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                     sMriOut.NCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.NCS.(fidname{1}), VolDownsample);
                                 end
                             end
-%                             sMriOut.NCS.T = [];
-%                             sMriOut.NCS.R = [];
-%                             sMriOut.NCS.Origin = [];
+                            sMriOut.NCS.T = [];
+                            sMriOut.NCS.R = [];
+                            sMriOut.NCS.Origin = [];
                         end
+                        % Remove the initial transformation
+                        sMriOut.InitTransf = [];
                     end
                 end
             end

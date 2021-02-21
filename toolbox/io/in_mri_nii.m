@@ -342,12 +342,13 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
         nifti.qform = [qMdc*D P0; 0 0 0 1];
 
         % Build final transformation matrix
-        if (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3)) && ~isequal(nifti.sform(1:3,1:3),eye(3))
+        % For SFORM, accept only NIFTI_XFORM_ALIGNED_ANAT (2)
+        if (nifti.sform_code == 2) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3)) && ~isequal(nifti.sform(1:3,1:3),eye(3))
             nifti.vox2ras = nifti.sform;
         elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3)) && ~isequal(nifti.qform(1:3,1:3),eye(3))
             nifti.vox2ras = nifti.qform;
         % Same thing, but accept identity rotations
-        elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
+        elseif (nifti.sform_code == 2) && ~isempty(nifti.sform) && ~isequal(nifti.sform(1:3,1:3),zeros(3))
             nifti.vox2ras = nifti.sform;
         elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
             nifti.vox2ras = nifti.qform;
