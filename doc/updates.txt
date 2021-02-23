@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 February 2021
 - SimMEEG: Simulate MEG/EEG signals with SimMEEG
+- Distrib: Continued development of the plugin manager
 ---------------------------------------------------------------
 January 2021
 - Anatomy: MNI normalization with SPM12 Segment
