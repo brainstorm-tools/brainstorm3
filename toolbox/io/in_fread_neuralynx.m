@@ -21,7 +21,7 @@ function F = in_fread_neuralynx(sFile, SamplesBounds, iChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2021
 
 % Parse inputs
 if (nargin < 3) || isempty(iChannels)
@@ -38,9 +38,9 @@ F = zeros(length(iChannels), nReadSamples);
 % Loop on the channels to read (one file per channel)
 for iChan = 1:length(iChannels)
     % Get header for this channel
-    hdr = sFile.header.chan_headers{iChan};
+    hdr = sFile.header.chan_headers{iChannels(iChan)};
     % Open file
-    ChanFile = bst_fullfile(sFile.header.BaseFolder, sFile.header.chan_files{iChan});
+    ChanFile = bst_fullfile(sFile.header.BaseFolder, sFile.header.chan_files{iChannels(iChan)});
     sfid = fopen(ChanFile, 'r', sFile.byteorder);
     if (sfid < 0)
         error(['Cannot open file: ' ChanFile]);
