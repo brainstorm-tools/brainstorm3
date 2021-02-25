@@ -147,6 +147,7 @@ switch type
             iResult = iResult + 1;
         end
         resultSet.close();
+        pstmt.close();
         
         % Print query for debugging
         if debug
@@ -325,6 +326,7 @@ switch type
         resultSet = pstmt.executeQuery();
         result = resultSet.getInt('total');
         resultSet.close();
+        pstmt.close();
         
         % Print query for debugging
         if debug

@@ -21,7 +21,7 @@ function sqlConn = sql_connect(dbInfo)
 %
 % Authors: Martin Cousineau, 2020
 
-debug = 0;
+debug = 1;
 if nargin < 1 || isempty(dbInfo)
     dbInfo = sql_get_info();
 end

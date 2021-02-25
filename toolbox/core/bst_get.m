@@ -2542,6 +2542,7 @@ switch contextName
             end
             FileNames{i} = sFile.FileName;
         end
+        sql_close(sqlConn);
         argout1 = FileNames;
 
         
