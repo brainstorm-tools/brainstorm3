@@ -2533,16 +2533,18 @@ switch contextName
         iItems = varargin{3};
         DataType = varargin{4};
         FileNames = cell(1, length(iStudies));
-        sqlConn = sql_connect();
-        for i = 1:length(iItems)
-            sFile = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', ...
-                struct('Id', iItems(i), 'Study', iStudies(i), 'Type', DataType));
-            if isempty(sFile)
-                continue;
+        if ~isempty(iItems)
+            sqlConn = sql_connect();
+            for i = 1:length(iItems)
+                sFile = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', ...
+                    struct('Id', iItems(i), 'Study', iStudies(i), 'Type', DataType));
+                if isempty(sFile)
+                    continue;
+                end
+                FileNames{i} = sFile.FileName;
             end
-            FileNames{i} = sFile.FileName;
+            sql_close(sqlConn);
         end
-        sql_close(sqlConn);
         argout1 = FileNames;
 
         
