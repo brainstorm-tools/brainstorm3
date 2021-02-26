@@ -202,14 +202,10 @@ end
 if ~isempty(bstOptions)
     % Add its contents in root app data
     if isfield(bstOptions, 'iProtocol')
-        GlobalData.DataBase.iProtocol          = bstOptions.iProtocol;
-        GlobalData.DataBase.ProtocolInfo       = bstOptions.ProtocolsListInfo;
-        GlobalData.DataBase.BrainstormDbDir    = bstOptions.BrainStormDbDir;
-        if isfield(bstOptions, 'isProtocolLoaded') && ~isempty(bstOptions.isProtocolLoaded)
-            GlobalData.DataBase.isProtocolLoaded = bstOptions.isProtocolLoaded;
-        else
-            GlobalData.DataBase.isProtocolLoaded = ones(1, length(bstOptions.ProtocolsListInfo));
-        end
+        GlobalData.DataBase.iProtocol        = bstOptions.iProtocol;
+        GlobalData.DataBase.ProtocolInfo     = bstOptions.ProtocolsListInfo;
+        GlobalData.DataBase.BrainstormDbDir  = bstOptions.BrainStormDbDir;
+        GlobalData.DataBase.isProtocolLoaded = zeros(1, length(bstOptions.ProtocolsListInfo));
         isDbLoaded = 1;
     end
     % Get saved colormaps
