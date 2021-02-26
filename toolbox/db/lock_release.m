@@ -21,6 +21,10 @@ function lock_release(sqlConnection, LockIds)
 %
 % Authors: Martin Cousineau, 2020
 
+if isempty(LockIds)
+    return;
+end
+
 if isempty(sqlConnection)
     closeConnection = 1;
     sqlConnection = sql_connect();
