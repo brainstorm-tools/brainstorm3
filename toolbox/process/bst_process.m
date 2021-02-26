@@ -130,6 +130,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
             bst_report('Warning', sProcesses(iProc), [], 'The subjects are not in the same order in FilesA and FilesB.');
         end
         % Apply process #iProc
+        ProcessName = func2str(sProcesses(iProc).Function);
         switch lower(sProcesses(iProc).Category)
             case {'filter', 'filter2'}
                 % Make sure that file type is indentical for both sets
@@ -148,7 +149,6 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     % Capture process crashes
                     try
                         % Acquire lock on input files
-                        ProcessName = func2str(sProcesses(iProc).Function);
                         LockIds = lock_acquire(ProcessName, ...
                             sInputs(iInput).SubjectName, ...
                             sInputs(iInput).iStudy, ...
@@ -175,12 +175,11 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                         end
                     catch
                         strError = bst_error();
-                        if strcmpi(sProcesses(iProc).Category, 'filter')
+                        if isProcess1
                             bst_report('Error', sProcesses(iProc), sInputs(iInput), strError);
                         else
                             bst_report('Error', sProcesses(iProc), [sInputs(iInput), sInputs2(iInput)], strError);
                         end
-                        continue;
                     end
                     
                     % Release locks
@@ -215,22 +214,45 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Process each input file
                 for iInput = 1:length(sInputs)
+                    isProcess1 = strcmpi(sProcesses(iProc).Category, 'file');
+                    tmpFiles = [];
                     % Capture process crashes
                     try
-                        if strcmpi(sProcesses(iProc).Category, 'file')
+                        % Acquire lock on input files
+                        LockIds = lock_acquire(ProcessName, ...
+                            sInputs(iInput).SubjectName, ...
+                            sInputs(iInput).iStudy, ...
+                            sInputs(iInput).iItem);
+                        if isempty(LockIds)
+                            error(['Could not acquire lock on file ' sInputs(iInput).FileName]);
+                        end
+                        if ~isProcess1
+                            LockId2 = lock_acquire(ProcessName, ...
+                                sInputs2(iInput).SubjectName, ...
+                                sInputs2(iInput).iStudy, ...
+                                sInputs2(iInput).iItem);
+                            if isempty(LockId2)
+                                error(['Could not acquire lock on file ' sInputs2(iInput).FileName]);
+                            end
+                            LockIds(end + 1) = LockId2;
+                        end
+                        
+                        if isProcess1
                             tmpFiles = sProcesses(iProc).Function('Run', sProcesses(iProc), sInputs(iInput));
                         else
                             tmpFiles = sProcesses(iProc).Function('Run', sProcesses(iProc), sInputs(iInput), sInputs2(iInput));
                         end
                     catch
                         strError = bst_error();
-                        if strcmpi(sProcesses(iProc).Category, 'file')
+                        if isProcess1
                             bst_report('Error', sProcesses(iProc), sInputs(iInput), strError);
                         else
                             bst_report('Error', sProcesses(iProc), [sInputs(iInput), sInputs2(iInput)], strError);
                         end
-                        continue;
                     end
+                    
+                    % Release locks
+                    lock_release([], LockIds);
                     % Add new files to the final list of output files
                     if ~isempty(tmpFiles)
                         OutputFiles = [OutputFiles, tmpFiles];
