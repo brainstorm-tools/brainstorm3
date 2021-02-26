@@ -122,13 +122,29 @@ switch (lower(action))
             % Selecting a file in a condition
             case {'data', 'rawdata', 'datalist', 'channel', 'headmodel', 'noisecov', 'ndatacov', 'results', 'kernel', 'matrix', 'matrixlist', 'dipoles', 'timefreq', 'spectrum', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'pmatrix', 'link', 'image', 'video', 'videolink'}
                 nodeStudy = bstNodes(1);
-                iFile = nodeStudy.getItemIndex();
-                % Mark file as "read"
-                ProtocolInfo.iReadFiles(iFile) = uint32(nodeStudy.getLastModified());
                 % Go up in the ancestors, until we get a study file
                 while ~isempty(nodeStudy) && ~any(strcmpi(nodeStudy.getType(), conditionTypes))
                     nodeStudy = nodeStudy.getParent();
                 end
+        end
+        
+        
+        % Make sure the node is not already read
+        iFile = bstNodes(1).getItemIndex();
+        isRead = isKey(ProtocolInfo.iReadFiles, iFile);
+        if isRead
+            % Check if node was modified since last read
+            isRead = ProtocolInfo.iReadFiles(iFile) == bstNodes(1).getLastModified();
+        end
+        % Mark node as "read"
+        if ~isRead
+            ProtocolInfo.iReadFiles(iFile) = uint32(bstNodes(1).getLastModified());
+            comment = char(bstNodes(1).getComment());
+            % Strip HTML
+            if strncmp(comment, '<HTML><B>', 9)
+                comment = comment(10:end-4);
+                bstNodes(1).setComment(comment);
+            end
         end
                 
         % If study selected changed 
