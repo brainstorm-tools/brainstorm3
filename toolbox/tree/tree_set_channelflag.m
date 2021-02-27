@@ -33,31 +33,16 @@ if (nargin < 2)
     error('Usage:  tree_set_channelflag(bstNodes, action);');
 end
 
+iStudies = [];
+iFiles   = [];
+
 % If processing tree nodes
 if isjava(bstNodes)
-    % If processing results
-    nodeType = char(bstNodes(1).getType());
-    isResults = ismember(nodeType, {'results', 'link'});
-    isStat    = ismember(nodeType, {'pdata'});
-    if isResults
-        iStudies = [];
-        iResults = [];
-        for i = 1:length(bstNodes)
-            % Get results filename
-            ResultsFile = file_resolve_link(char(bstNodes(i).getFileName()));
-            ResultsFile = file_short(ResultsFile);
-            % Get results file study and indice
-            [sStudy, iStudy, iRes] = bst_get('ResultsFile', ResultsFile);
-            if ~isempty(iRes)
-                iStudies = [iStudies, iStudy];
-                iResults = [iResults, iRes];
-            end
-        end
-    elseif isStat
-        [iStudies, iStats] = tree_dependencies(bstNodes, 'pdata');
-    else
-        % Get selected data files
-        [iStudies, iDatas] = tree_dependencies(bstNodes, 'data');
+    for i = 1:length(bstNodes)
+        iStudy = bstNodes(i).getStudyIndex();
+        iFile  = bstNodes(i).getItemIndex();
+        iStudies(end + 1) = iStudy;
+        iFiles(end + 1)   = iFile;
     end
 % Else: Processing data files
 else
@@ -69,14 +54,16 @@ else
     else
         error('Invalid call.');
     end
-    isResults = 0;
-    isStat = 0;
     % Get studies for files in input
-    iStudies = [];
-    iDatas = [];
+    sqlConn = sql_connect();
     for iFile = 1:length(DataFiles)
-        [tmp, iStudies(iFile), iDatas(iFile)] = bst_get('DataFile', DataFiles{iFile});
+        sFile = sql_query(sqlConn, 'select', 'FunctionalFile', {'Id', 'Study'}, struct('FileName', DataFiles{iFile}));
+        if ~isempty(sFile)
+            iStudies(end + 1) = sFile.Study;
+            iFiles(end + 1)   = sFile.Id;
+        end
     end
+    sql_close(sqlConn);
 end
 
 % No files found : return
@@ -129,37 +116,36 @@ strReport = '';
 isFirstError = 1;
 prevChanFile = [];
 iChan = [];
+
 % Process all the data files
+sqlConn = sql_connect();
 for i = 1:length(iStudies)
     % Get data file
     iStudy = iStudies(i);
-    sStudy = bst_get('Study', iStudy);
-    if isStat
-        sData = sStudy.Stat(iStats(i));
-        isRaw = 0;
-    elseif isResults
-        sData = sStudy.Result(iResults(i));
-        isRaw = 0;
-    else
-        sData = sStudy.Data(iDatas(i));
-        isRaw = strcmpi(sData.DataType, 'raw');
-        if isRaw && isDetectFlat
-            if isFirstError
-                bst_error('This process can only be applied on imported recordings.', 'Detect flat channels', 0);
-                isFirstError = 0;              
-            end
-            continue;
+    iFile  = iFiles(i);
+    sData = sql_query(sqlConn, 'select', 'FunctionalFile', ...
+        {'Type', 'FileName', 'Name', 'SubType'}, struct('Id', iFile));
+    if isempty(sData)
+        continue;
+    end
+    isRaw = strcmpi(sData.Type, 'data') && strcmpi(sData.SubType, 'raw');
+    if isRaw && isDetectFlat
+        if isFirstError
+            bst_error('This process can only be applied on imported recordings.', 'Detect flat channels', 0);
+            isFirstError = 0;
         end
+        continue;
     end
     DataFile = sData.FileName;
     DataFileFull = file_fullpath(DataFile);
     
     % Get channel file
-    ChannelFile = bst_get('ChannelFileForStudy', sStudy.FileName);
-    if isempty(ChannelFile)
+    sChannel = bst_get('ChannelForStudy', iStudy);
+    if isempty(sChannel)
         bst_error('No channel file available.', 'Set channel flag', 0);
         return;
     end
+    ChannelFile = sChannel.FileName;
     % Load channel file
     if ~isequal(prevChanFile, ChannelFile)
         ChannelMat = in_bst_channel(ChannelFile);
@@ -185,8 +171,6 @@ for i = 1:length(iStudies)
     % Progress bar
     bst_progress('inc', 1);
     bst_progress('text', ['Processing: ', DataFile]);
-    % Get subject
-    sSubject = bst_get('Subject', sStudy.BrainStormSubject);
     % Load data from file (ChannelFlag and/or data)
     if isDetectFlat
         DataMat = in_bst_data(DataFile, 'ChannelFlag', 'F', 'History');
@@ -202,12 +186,7 @@ for i = 1:length(iStudies)
     warning on MATLAB:load:variableNotFound
     
     % Build information string
-    strCond = [' - ' sSubject.Name];
-    if ~isempty(sStudy.Condition)
-        strCond = [strCond '/' sStudy.Condition{1}];
-    end
-    strCond = [strCond '/' sData.Comment ': '];
-
+    strCond = [' - ' bst_fileparts(sData.FileName) '/' sData.Name ': '];
     % Find bad channels
     iBad = find(DataMat.ChannelFlag == -1);
     % Add bad channels to string

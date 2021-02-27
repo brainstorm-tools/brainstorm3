@@ -235,7 +235,7 @@ function sFile = getFuncFileStruct(type, funcFile)
     % Extra fields
     switch lower(type)
         case 'data'
-            sFile.DataType = funcFile.ExtraStr1;
+            sFile.DataType = funcFile.SubType;
             sFile.BadTrial = funcFile.ExtraNum;
 
         case 'channel'

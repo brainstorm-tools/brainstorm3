@@ -129,8 +129,8 @@ switch contextName
                 % Extra fields
                 switch type
                     case 'data'
-                        functionalFile.ExtraStr1 = sFiles(iFile).DataType;
-                        functionalFile.ExtraNum  = sFiles(iFile).BadTrial;
+                        functionalFile.SubType  = sFiles(iFile).DataType;
+                        functionalFile.ExtraNum = sFiles(iFile).BadTrial;
 
                     case 'channel'
                         functionalFile.ExtraNum  = sFiles(iFile).nbChannels;

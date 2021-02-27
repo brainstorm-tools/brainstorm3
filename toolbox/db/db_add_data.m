@@ -56,9 +56,9 @@ switch (fileType)
     case 'data'
         % DataType
         if isfield(FileMat, 'DataType')
-            sNew.ExtraStr1 = FileMat.DataType;
+            sNew.SubType = FileMat.DataType;
         else
-            sNew.ExtraStr1 = 'recordings';
+            sNew.SubType = 'recordings';
         end
         % BadTrial
         sNew.ExtraNum = 0;

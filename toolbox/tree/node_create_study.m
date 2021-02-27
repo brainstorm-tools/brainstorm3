@@ -155,7 +155,7 @@ for i = 1:length(iDatas)
     iData = iDatas(i);
     % Node modifier (0=none, 1=bad trial)
     Modifier = sFiles(iData).ExtraNum;
-    DataType = sFiles(iData).ExtraStr1;
+    DataType = sFiles(iData).SubType;
     % Create node
     if strcmpi(DataType, 'raw')
         nodeType = 'rawdata';

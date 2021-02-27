@@ -1367,16 +1367,32 @@ switch contextName
             error('Invalid call to bst_get().');
         end
         % Get study in database
-        [sStudy, iStudy] = bst_get('Study', StudyFile);
+        sqlConn = sql_connect();
+        iStudy = [];
+        sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('FileName', StudyFile));
         % If data file instead on Study file
         if isempty(sStudy)
-            [sStudy, iStudy] = bst_get('AnyFile', StudyFile);
+            sFile = sql_query(sqlConn, 'select', 'FunctionalFile', 'Study', ...
+                struct('FileName', StudyFile));
+            if ~isempty(sFile)
+                iStudy = sFile.Study;
+            end
+        else
+            iStudy = sStudy.Id;
         end
+        sql_close(sqlConn);
+        if isempty(iStudy)
+            argout1 = [];
+            return;
+        end
+        
         sChannel = bst_get('ChannelForStudy', iStudy);
         if ~isempty(sChannel)
             argout1 = sChannel.FileName;
-            argout2 = sStudy;
-            argout3 = iStudy;
+            if nargout > 1
+                argout2 = bst_get('Study', iStudy);
+                argout3 = iStudy;
+            end
         else
             argout1 = [];
         end
@@ -1393,42 +1409,60 @@ switch contextName
         end
         iChanStudies = [];
         sListChannel = [];
+        sqlConn = sql_connect();
         for i = 1:length(iStudies)           
             % Get study 
             iStudy = iStudies(i);
-            sStudy = bst_get('Study', iStudy);
+            sStudy = sql_query(sqlConn, 'select', 'Study', ...
+                {'Id', 'Subject', 'Name', 'iChannel'}, struct('Id', iStudy));
             if isempty(sStudy)
                 continue;
             end
             iChanStudy = iStudy;
             % === Analysis-Inter node ===
-            iAnalysisInter      = -2;
-            iGlobalDefaultStudy = -3;
-            if (iStudy == iAnalysisInter)
+            if strcmpi(sStudy.Name, '@inter')
                 % If no channel file is defined in 'Analysis-intra' node: look in 
-                if isempty(sStudy.Channel)
+                if isempty(sStudy.iChannel)
                     % Get global default study
-                    sStudy = bst_get('Study', iGlobalDefaultStudy);
-                    iChanStudy = iGlobalDefaultStudy;
+                    sStudy = sql_query(sqlConn, 'select', 'Study', ...
+                        {'Id', 'Subject', 'iChannel'}, ...
+                        struct('Subject', 0, 'Name', '@default_study'));
+                    iChanStudy = -3;
                 end
             % === All other nodes ===
             else
                 % Get subject attached to study
-                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject, 1);
-                if isempty(sSubject)
-                    return;
-                end
+                sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', ...
+                    struct('Id', sStudy.Subject));
                 % Subject uses default channel/headmodel
-                if (sSubject.UseDefaultChannel ~= 0)
-                    [sStudy, iChanStudy] = bst_get('DefaultStudy', iSubject);
-                    if isempty(sStudy)
-                        return
+                if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
+                    sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
+                        struct('Subject', sStudy.Subject, 'Name', '@default_study'));
+                    if ~isempty(sStudy)
+                        iChanStudy = sStudy.Id;
                     end
                 end
             end
-            iChanStudies = [iChanStudies, iChanStudy];
-            sListChannel = [sListChannel, sStudy.Channel];
+            
+            if ~isempty(sStudy)
+                % If no channel selected, find first channel in study
+                if isempty(sStudy.iChannel)
+                    sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', ...
+                        'Id', struct('Study', sStudy.Id, 'Type', 'channel'));
+                    if ~isempty(sChannel)
+                        sStudy.iChannel = sChannel(1).Id;
+                    else
+                        continue;
+                    end
+                end
+                sChannel = db_get('FunctionalFile', sqlConn, 'channel', sStudy.iChannel);
+                if ~isempty(sChannel)
+                    iChanStudies = [iChanStudies, iChanStudy];
+                    sListChannel = [sListChannel, sChannel];
+                end
+            end
         end
+        sql_close(sqlConn);
         % Return Channel structure
         argout1 = sListChannel;
         argout2 = iChanStudies;
@@ -1437,13 +1471,16 @@ switch contextName
     % Usage: [Modalities, DispMod, DefMod] = bst_get('ChannelModalities', ChannelFile)
     %        [Modalities, DispMod, DefMod] = bst_get('ChannelModalities', DataFile/ResultsFile/TimefreqFile...)
     case 'ChannelModalities'
-        % Get input file
-        [sStudy, iStudy, iItem, DataType, sItem] = bst_get('AnyFile', varargin{2});
-        % If channel file
-        if strcmpi(DataType, 'channel')
-            sChannel = sItem;
+        % Get channel from input file
+        sqlConn = sql_connect();
+        sFile = sql_query(sqlConn, 'select', 'FunctionalFile', ...
+            {'Id', 'Study', 'Type'}, struct('FileName', varargin{2}));
+        if strcmpi(sFile.Type, 'channel')
+            sChannel = db_get('FunctionalFile', sqlConn, 'channel', sFile.Id);
+            sql_close(sqlConn);
         else
-            sChannel = bst_get('ChannelForStudy', iStudy);
+            sql_close(sqlConn);
+            sChannel = bst_get('ChannelForStudy', sFile.Study);
         end
         % Return modalities
         if ~isempty(sChannel)
