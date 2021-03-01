@@ -1704,9 +1704,21 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             
             % for arcs on the right-hand side, ensure they are drawn within the graph
             if (u(1) >= 0 && v(1) >= 0)
+                first = abs(pi - max(thetaLim));
+                second = abs(-pi - min(thetaLim));
+                fraction = floor((first/(first + second))*100);
+                remaining = 100 - fraction;
+                
                 % ensure the arc is within the unit disk
-                theta = [linspace(max(thetaLim),pi,50),...
-                    linspace(-pi,min(thetaLim),50)].';
+                
+                % direction: from thetaLim(1) to thetaLim(2)
+                if (max(thetaLim) == thetaLim(1))
+                    theta = [linspace(max(thetaLim),pi,fraction),...
+                        linspace(-pi,min(thetaLim),remaining)].';
+                else
+                    theta = [linspace(min(thetaLim),-pi,remaining),...
+                        linspace(pi,max(thetaLim),fraction)].';
+                end
             else
                 theta = linspace(thetaLim(1),thetaLim(2)).';
             end    
@@ -1768,39 +1780,34 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         if (IsDirectionalData)
             
             MeasureDistance = bst_figures('GetFigureHandleField', hFig, 'MeasureDistance');
-            if (MeasureDistance(i) <= 40.0)
-          
-                [arrow1, ~, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 60, 0);
+
+            [arrow1, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50);
             
-                % return point on the line closest to the desired location of
-                % the second arrowhead (tip of second arrowhead should be at
-                % the base of the first one)
-                pts_line = [x(:), y(:)];            
-                dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
-                [distances, index] = min(dist2);
+            % return point on the line closest to the desired location of
+            % the second arrowhead (tip of second arrowhead should be at
+            % the base of the first one)
+            pts_line = [x(:), y(:)];
+            dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
+            [distances, index] = min(dist2);
             
-                % if more than one index is found, return the one closest to 70
-                if (size(index) > 1)
-                    index = min(60 - index);
-                end
-                
-                % redraw the first arrow so that both arrows are closer to
-                % the center of the link            
-                x_trim = pts_line(1:index,1);
-                y_trim = pts_line(1:index,2);
+            % if more than one index is found, return the one closest to 70
+            if (size(index) > 1)
+                index = min(60 - index);
+            end
             
-                % overwrite arrowhead2
-                if (length(x_trim) > 1 & length(y_trim) > 1)
-                    [arrow2, ~, ~,~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100, 0);
-                end
-            % for longer links
-            else
-                [arrow1, arrow2, ~, ~] = arrowh(x, y, AllNodes(node1).Color, 100, 50, 1);
+            % redraw the first arrow so that both arrows are closer to
+            % the center of the link
+            x_trim = pts_line(1:index,1);
+            y_trim = pts_line(1:index,2);
+            
+            % overwrite arrowhead2
+            if (length(x_trim) > 1 && length(y_trim) > 1)
+                [arrow2, ~, ~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100);
             end
             
             % store arrows
             if(i==1)
-                Arrows1 = arrow1;            
+                Arrows1 = arrow1;
                 if (~isempty(arrow2))
                     Arrows2 = arrow2;
                 end
@@ -1838,6 +1845,8 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
 end
 
 function LinkButtonDownFcn(src,~)
+
+    disp(src.XData);
     src.Selected = ~src.Selected;
     current_size = src.LineWidth;
    
@@ -1959,7 +1968,7 @@ end
 %	 send me an email!  This is my very  first "public" program  and
 %	 I'd  like to  improve it where  I can -- your  help is  kindely
 %	 appreciated! Thank you!
-function [handle1, handle2, new_x, new_y] = arrowh(x,y,clr,ArSize,Where,Flag)
+function [handle, new_x, new_y] = arrowh(x,y,clr,ArSize,Where)
 %-- errors
 if nargin < 2
 	error('Please give enough coordinates !');
@@ -2023,10 +2032,10 @@ end
 %-- start for-loop in case several arrows are wanted
 for Loop = 1:length(Where),
 	%-- if vectors "longer" then 2 are given we're dealing with time series
-	if (length(x) == length(y)) && (length(x) > 2),
+	if (length(x) == length(y)) && (length(x) > 2),       
 		j = floor(length(x)*Where(Loop)/100); %-- determine that location
 		if j >= length(x), j = length(x) - 1; end
-		if j == 0, j = 1; end
+		if j == 0, j = 1; end        
 		x1 = x(j); x2 = x(j+1); y1 = y(j); y2 = y(j+1);
 	else %-- just two points given - take those
 		x1 = x(1); x2 = (1-Where/100)*x(1)+Where/100*x(2);
@@ -2085,15 +2094,9 @@ for Loop = 1:length(Where),
     
     
 	%-- draw the actual triangles
- 	handle1(Loop) = patch(xd1,yd1,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
+ 	handle(Loop) = patch(xd1,yd1,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
     
-    if (Flag == 1)
-        handle2(Loop) = patch(xd2,yd2,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
-    else
-        handle2 = [];
-    end
-    
-	if nonsolid, set(handle1(Loop),'facecolor','none'); end
+	if nonsolid, set(handle(Loop),'facecolor','none'); end
 end % Loops
 
 %-- restore original axe ranges and hold status
@@ -2611,6 +2614,8 @@ end
 function UpdateColormap(hFig)
     disp('Entered UpdateColormap');
     
+    MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
+    RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
     IsBinaryData = getappdata(hFig, 'IsBinaryData');
     DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
 
@@ -2689,6 +2694,7 @@ function UpdateColormap(hFig)
     LinkIntensity = 1.00 - LinkTransparency;  
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
+    
     if (sum(DataMask) > 0)
         % Normalize DataPair for Offset
         Max = max(DataPair(:,3));
@@ -2720,32 +2726,30 @@ function UpdateColormap(hFig)
         for i=1:size(VisibleLinks,1)
             if (IsDirectionalData)
                 set(VisibleLinks(i), 'Color', color_viz(i,:));
-                %set(VisibleLinks(i), 'MarkerFaceColor', color_viz(i,:));
                 set(VisibleArrows1(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
-                %set(VisibleArrows1(i), 'EdgeColor', color_viz(i,:), 'FaceColor', [1 1 1]);
                 set(VisibleArrows2(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
-                %set(VisibleArrows(i), 'EdgeColor', color_viz(i,:));
             else 
                 set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
             end 
         end
-        
-        if (IsDirectionalData)
-            if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)            
-                % Get Bidirectional data
-                Data_matrix = DataPair(DataMask,:);
-                OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                % Remaining links that are not bidirectional
-                %set(MeasureLinks(:), 'LineStyle', '--');
-                % Bidirectional links are solid;        
-                %set(MeasureLinks(OutIndex | InIndex), 'LineStyle', '-');
-                %CurrentSize = getappdata(hFig, 'LinkSize');
-                %set(MeasureLinks(OutIndex | InIndex), 'LineWidth', 3*CurrentSize);
-            else
-                % revert back to dashed lines if user selected "In" or "Out"
-                %set(MeasureLinks(:), 'LineStyle', '--');            
-            end 
+        % update visibility of arrowheads
+        if (MeasureLinksIsVisible)
+            if (IsDirectionalData)
+                if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)
+                    % Get Bidirectional data
+                    Data_matrix = DataPair(DataMask,:);
+                    OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                    InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                    
+                    % Second arrow is visible for bidirectional links;
+                    iData_mask = DataMask.';
+                    bidirectional = iData_mask & (OutIndex | InIndex);
+                    set(MeasureArrows2(bidirectional), 'Visible', 'on')
+                else
+                    % make all second arrows invisible if user selected "In" or "Out"
+                    set(MeasureArrows2(:), 'Visible', 'off');
+                end
+            end
         end
     end
     
@@ -2781,29 +2785,30 @@ function UpdateColormap(hFig)
         for i=1:size(VisibleLinks_region,1)
             if (IsDirectionalData)
                 set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
-                %set(VisibleLinks_region(i), 'MarkerFaceColor', color_viz_region(i,:));
                 set(VisibleArrows1(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
                 set(VisibleArrows2(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
-                %set(VisibleArrows(i), 'EdgeColor', color_viz_region(i,:));
             else 
                 set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
             end
         end  
         
-        if (IsDirectionalData)
-            % Make bidirectional links solid
-            if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)            
-                % Get Bidirectional data
-                Data_matrix = RegionDataPair(RegionDataMask,:);
-                OutIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                InIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                % Remaining links that are not bidirectional
-                %set(RegionLinks(:), 'LineStyle', '--');
-                % Bidirectional links are solid;            
-                %set(RegionLinks(OutIndex | InIndex), 'LineStyle', '-');
-            else
-                % revert back to dashed lines if user selected "In" or "Out"
-                %set(RegionLinks(:), 'LineStyle', '--');
+        % update arrowheads
+        if (RegionLinksIsVisible)
+            if (IsDirectionalData)
+                if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)
+                    % Get Bidirectional data
+                    Data_matrix = RegionDataPair(RegionDataMask,:);
+                    OutIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                    InIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                    
+                    % Second arrow is visible for bidirectional links;
+                    iData_mask = RegionDataMask.';
+                    bidirectional = iData_mask & (OutIndex | InIndex);
+                    set(RegionArrows2(bidirectional), 'Visible', 'on')
+                else
+                    % make all second arrows invisible if user selected "In" or "Out"
+                    set(RegionArrows2(:), 'Visible', 'off');
+                end
             end
         end
     end
@@ -3031,9 +3036,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
                 set(MeasureLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
-                    MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
                     set(MeasureArrows1(iData), 'Visible', 'on');
-                    set(MeasureArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(MeasureLinks(iData), 'Visible', 'off');
@@ -3052,9 +3055,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
                 set(RegionLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     RegionArrows1 = getappdata(hFig, 'RegionArrows1');
-                    RegionArrows2 = getappdata(hFig, 'RegionArrows2');
                     set(RegionArrows1(iData), 'Visible', 'on');
-                    set(RegionArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(RegionLinks(iData), 'Visible', 'off');
@@ -3067,7 +3068,6 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             end
         end
     end
-    
 
     % Redraw OpenGL
     if isRedraw
