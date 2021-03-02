@@ -1099,7 +1099,7 @@ function UpdateSurfaceProperties()
     % Enable/disable controls
     isOverlay = ~isempty(TessInfo(iSurface).DataSource.FileName);
     isOverlayStat = isOverlay && ismember(file_gettype(TessInfo(iSurface).DataSource.FileName), {'presults', 'pdata', 'ptimefreq'});
-    isOverlayLabel = isOverlay && ~isempty(TessInfo(iSurface).OverlayLabels);
+    isOverlayLabel = isOverlay && TessInfo(iSurface).isOverlayAtlas;
     gui_enable([ctrl.jLabelDataAlphaTitle, ctrl.jSliderDataAlpha, ctrl.jLabelDataAlpha], isOverlay, 0);
     gui_enable([ctrl.jLabelSizeTitle, ctrl.jLabelSize, ctrl.jSliderSize], isOverlay && ~isOverlayLabel, 0);
     gui_enable([ctrl.jLabelThreshTitle, ctrl.jSliderDataThresh, ctrl.jLabelDataThresh], isOverlay && ~isOverlayStat && ~isOverlayLabel, 0);

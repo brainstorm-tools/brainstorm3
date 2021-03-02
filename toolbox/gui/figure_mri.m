@@ -2150,12 +2150,11 @@ function UpdateVisibleLandmarks(sMri, Handles, slicesToUpdate)
         slicesToUpdate = ismember([1 2 3], slicesToUpdate);
     end
     slicesLoc = GetLocation('mri', sMri, Handles) .* 1000;
-    % Tolerance to display a point in a slice (in voxels)
-    nTol = 1;
     
+    % Tolerance to display a point in a slice => Voxel size (shows in at most 2 slices)
     function showPt(hPoint, locPoint)
         if ~isempty(locPoint) && ~isempty(hPoint) && all(ishandle(hPoint))
-            isVisible    = slicesToUpdate & (abs(locPoint - slicesLoc) <= nTol);
+            isVisible    = slicesToUpdate & (abs(locPoint - slicesLoc) < sMri.Voxsize);
             isNotVisible = slicesToUpdate & ~isVisible;
             set(hPoint(isVisible),    'Visible', 'on');
             set(hPoint(isNotVisible), 'Visible', 'off');

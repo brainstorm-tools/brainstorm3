@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+March 2021
+- IO: Bugfix export .nii qform/sform, especially after resampling
+---------------------------------------------------------------
 February 2021
 - SimMEEG: Simulate MEG/EEG signals with SimMEEG
 - Distrib: Continued development of the plugin manager

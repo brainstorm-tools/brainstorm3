@@ -33,7 +33,7 @@ function [fid, nifti] = out_mri_nii( sMri, OutputFile, typeMatlab, Nt )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 % ===== PARSE INPUTS =====
 % Write header of full file
@@ -101,10 +101,9 @@ switch (typeMatlab)
 end
 % Size of the volume
 volDim = size(sMri.Cube(:,:,:,1));
-pixDim = sMri.Voxsize;
 % Set up other field values
 hdr.dim    = [3 + (Nt > 1), volDim, Nt, 0, 0, 0];
-hdr.pixdim = [1 pixDim 1  0 0 0];
+hdr.pixdim = [1, sMri.Voxsize, 1, 0, 0, 0];
 hdr.glmax  = MaxVal;
 
 
@@ -115,13 +114,15 @@ if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.
 % Use transformation matrices from other formats than .nii
 else
     % === QFORM ===
-    % Scanner-based referential: from the vox2ras matrix
+    % XFORM_SCANNER: Scanner-based referential: from the vox2ras matrix
     if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && any(ismember(sMri.InitTransf(:,1), 'vox2ras'))
-        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
-        Transf = sMri.InitTransf{iTransf(1),2};
-        R = Transf(1:3, 1:3);
-        T = Transf(1:3, 4);
         nifti.qform_code = 1;  % NIFTI_XFORM_SCANNER_ANAT
+        % Use directly the unmodified vox2ras from the original file
+        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+        nifti.qform = sMri.InitTransf{iTransf(1),2};
+        % Convert from 4x4 transformations to quaternions
+        R = nifti.qform(1:3, 1:3);
+        T = nifti.qform(1:3, 4);
         a = 0.5  * sqrt(1 + R(1,1) + R(2,2) + R(3,3));
      	nifti.quatern_b = 0.25 * (R(3,2) - R(2,3)) / a;
      	nifti.quatern_c = 0.25 * (R(1,3) - R(3,1)) / a;
@@ -131,34 +132,54 @@ else
         nifti.qoffset_z = T(3);
     else
         nifti.qform_code = 0;
-        nifti.quatern_b = 0;
-        nifti.quatern_c = 0;
+     	nifti.quatern_b = 0;
+     	nifti.quatern_c = 0;
         nifti.quatern_d = 0;
         nifti.qoffset_x = 0;
         nifti.qoffset_y = 0;
         nifti.qoffset_z = 0;
     end
+
     % === SFORM ===
-    % Normalized MNI152 coordinates (NCS field)
-    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T) 
-        % Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
+    % XFORM_MNI_152: Normalized coordinates (NCS field)
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
         nifti.sform_code = 4;   % NIFTI_XFORM_MNI_152
-        nifti.srow_x     = [sMri.NCS.R(1,1:3), sMri.NCS.T(1)] * pixDim(1);
-        nifti.srow_y     = [sMri.NCS.R(2,1:3), sMri.NCS.T(2)] * pixDim(2);
-        nifti.srow_z     = [sMri.NCS.R(3,1:3), sMri.NCS.T(3)] * pixDim(3);
-    % If MNI normalization not available: Just center the image on AC or the middle of the volume
-    else
-        if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
-            Origin = sMri.NCS.Origin - [1 2 2];
-        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
-            Origin = sMri.NCS.AC + [0, -3, 4];
-        else
-            Origin = volDim / 2;
-        end
+        mri2world = cs_convert(sMri, 'mri', 'mni');
+    % XFORM_ALIGNED: If no scanner coordinates (qform) or MNI normalization (sform): Just center the image on AC or the middle of the volume
+    elseif (nifti.qform_code == 0)
         nifti.sform_code = 2;   % NIFTI_XFORM_ALIGNED_ANAT
-        nifti.srow_x     = [1, 0, 0, -Origin(1)] * pixDim(1);
-        nifti.srow_y     = [0, 1, 0, -Origin(2)] * pixDim(2);
-        nifti.srow_z     = [0, 0, 1, -Origin(3)] * pixDim(3);
+        if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
+            Origin = sMri.NCS.AC;
+        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
+            Origin = sMri.NCS.Origin;
+        else
+            Origin = volDim .* sMri.Voxsize / 2;
+        end
+        mri2world = [...
+            1, 0, 0, -Origin(1) ./ 1000; ...
+            0, 1, 0, -Origin(2) ./ 1000; ...
+            0, 0, 1, -Origin(3) ./ 1000; 
+            0, 0, 0, 1];
+    % No sform
+    else
+        nifti.sform_code = 0;
+        nifti.srow_x = [0 0 0 0];
+        nifti.srow_y = [0 0 0 0];
+        nifti.srow_z = [0 0 0 0];
+    end
+    % Convert Brainstorm transformation to nifti vox2ras
+    if (nifti.sform_code ~= 0)
+        % Convert from MRI(meters) to MRI(millimeters)
+        vox2ras = mri2world;
+        vox2ras(1:3,4) = vox2ras(1:3,4) .* 1000;
+        % Convert from MRI(mm) to voxels
+        vox2ras = vox2ras * diag([sMri.Voxsize, 1]);
+        % Change reference from (0,0,0) to (1,1,1)
+        nifti.sform = vox2ras * [1 0 0 1; 0 1 0 1; 0 0 1 1; 0 0 0 1];
+        % Saved in sform format
+        nifti.srow_x = nifti.sform(1,:);
+        nifti.srow_y = nifti.sform(2,:);
+        nifti.srow_z = nifti.sform(3,:);
     end
 end
 

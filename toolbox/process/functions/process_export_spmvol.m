@@ -22,7 +22,7 @@ function varargout = process_export_spmvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2020
+% Authors: Francois Tadel, 2013-2021
 
 eval(macro_method);
 end
@@ -369,7 +369,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sMriOut.Cube = tess_interp_mri_data(MriInterp, size(sMri.Cube(:,:,:,1)), sInput.Data(:,i), isVolumeGrid);
                 % Downsample volume
                 if (VolDownsample > 1)
-                    sMriOut = mri_downsample(sMriOut, VolDownsample);
+                    newCubeDim = [size(sMri.Cube,1), size(sMri.Cube,2), size(sMri.Cube,3)] ./ VolDownsample;
+                    newVoxsize = sMriOut.Voxsize .* VolDownsample;
+                    sMriOut = mri_resample(sMriOut, newCubeDim, newVoxsize);
                 end
                 % Cut the empty slices
                 if isCutEmpty
@@ -380,7 +382,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         isEmptySlice{3} = find(all(all(sMriOut.Cube == 0, 1), 2));
                     end
                     % Cut unused slices
-                    if isCutEmpty
+                    if ~isempty(isEmptySlice{1}) || ~isempty(isEmptySlice{2}) || ~isempty(isEmptySlice{3})
                         sMriOut.Cube(isEmptySlice{1},:,:) = [];
                         sMriOut.Cube(:,isEmptySlice{2},:) = [];
                         sMriOut.Cube(:,:,isEmptySlice{3}) = [];
@@ -407,6 +409,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         end
                         % Remove the initial transformation
                         sMriOut.InitTransf = [];
+                        sMriOut.Header = [];
                     end
                 end
             end

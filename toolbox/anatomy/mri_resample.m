@@ -34,7 +34,7 @@ function [sMriNew, Transf, errMsg] = mri_resample(MriFile, CubeDim, Voxsize)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2021
 
 % ===== PARSE INPUTS =====
 sMriNew = [];
@@ -89,6 +89,7 @@ if (nargin < 3) || isempty(CubeDim) || isempty(Voxsize)
     end
 end
 
+
 % ===== INTERPOLATE MRI VOLUME =====
 bst_progress('text', 'Resampling volume...');
 % Original position vectors
@@ -108,60 +109,94 @@ for i4 = 1:n4
     newCube{i4} = single(interp3(Y1, X1, Z1, double(sMri.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
 end
 newCube = cat(4, newCube{:});
-        
-
-% ===== TRANSFORM COORDINATES =====
-% Transformation: old MRI => new MRI   (millimeters, so no scaling)
-R = eye(3);
-T = - oldCubeDim ./2 .*sMri.Voxsize + CubeDim ./2 .*Voxsize;
-Transf = [R, T'; 0 0 0 1];
 % Initialize transformed structure
 sMriNew         = sMri;
 sMriNew.Cube    = newCube;
 sMriNew.Voxsize = Voxsize;
+
+
+% ===== UPDATE FIDUCIALS =====
+% Transformation: old MRI => new MRI   (millimeters, so no scaling)
+T = - oldCubeDim ./2 .*sMri.Voxsize + CubeDim ./2 .*Voxsize;
 % Update fiducials
-if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'NAS') && ~isempty(sMri.SCS.NAS)
-    sMriNew.SCS.NAS = sMri.SCS.NAS + T;
-end
-if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'LPA') && ~isempty(sMri.SCS.LPA)
-    sMriNew.SCS.LPA = sMri.SCS.LPA + T;
-end
-if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'RPA') && ~isempty(sMri.SCS.RPA)
-    sMriNew.SCS.RPA = sMri.SCS.RPA + T;
-end
-if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC)
-    sMriNew.NCS.AC = sMri.NCS.AC + T;
-end
-if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'PC') && ~isempty(sMri.NCS.PC)
-    sMriNew.NCS.PC = sMri.NCS.PC + T;
-end
-if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'IH') && ~isempty(sMri.NCS.IH)
-    sMriNew.NCS.IH = sMri.NCS.IH + T;
+if ~isequal(T, [0 0 0])
+    if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'NAS') && ~isempty(sMri.SCS.NAS)
+        sMriNew.SCS.NAS = sMri.SCS.NAS + T;
+    end
+    if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'LPA') && ~isempty(sMri.SCS.LPA)
+        sMriNew.SCS.LPA = sMri.SCS.LPA + T;
+    end
+    if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'RPA') && ~isempty(sMri.SCS.RPA)
+        sMriNew.SCS.RPA = sMri.SCS.RPA + T;
+    end
+    if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'Origin') && ~isempty(sMri.SCS.Origin)
+        sMriNew.SCS.Origin = sMri.SCS.Origin + T;
+    end
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC)
+        sMriNew.NCS.AC = sMri.NCS.AC + T;
+    end
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'PC') && ~isempty(sMri.NCS.PC)
+        sMriNew.NCS.PC = sMri.NCS.PC + T;
+    end
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'IH') && ~isempty(sMri.NCS.IH)
+        sMriNew.NCS.IH = sMri.NCS.IH + T;
+    end
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
+        sMriNew.NCS.Origin = sMri.NCS.Origin + T;
+    end
 end
 
-% Update SCS transformation
-if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R) && isfield(sMri.SCS, 'T') && ~isempty(sMri.SCS.T)
-    % Compute new transformation matrices to SCS
-    Tscs = [sMri.SCS.R, sMri.SCS.T; 0 0 0 1] * inv(Transf);
-    % Report in the new MRI structure
-    sMriNew.SCS.R = Tscs(1:3,1:3);
-    sMriNew.SCS.T = Tscs(1:3,4);
-end    
-% Update linear MNI transformation
-if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
-    % Compute new transformation matrices to SCS
-    Tncs = [sMri.NCS.R, sMri.NCS.T; 0 0 0 1] * inv(Transf);
-    % Report in the new MRI structure
-    sMriNew.NCS.R = Tncs(1:3,1:3);
-    sMriNew.NCS.T = Tncs(1:3,4);
+
+% ===== UPDATE TRANSFORMATIONS =====
+Transf = [eye(3), T'; 0 0 0 1];
+% Update Brainstorm transformations: SCS and NCS
+if ~isequal(Transf, eye(4))
+    % Update SCS transformation: MRI(mm)=>SCS
+    if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R) && isfield(sMri.SCS, 'T') && ~isempty(sMri.SCS.T)
+        % Compute new transformation matrices to SCS
+        Tscs = [sMri.SCS.R, sMri.SCS.T; 0 0 0 1] * inv(Transf);
+        % Report in the new MRI structure
+        sMriNew.SCS.R = Tscs(1:3,1:3);
+        sMriNew.SCS.T = Tscs(1:3,4);
+    end    
+    % Update linear MNI transformation: MRI(mm)=>NCS
+    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
+        % Compute new transformation matrices to SCS
+        Tncs = [sMri.NCS.R, sMri.NCS.T; 0 0 0 1] * inv(Transf);
+        % Report in the new MRI structure
+        sMriNew.NCS.R = Tncs(1:3,1:3);
+        sMriNew.NCS.T = Tncs(1:3,4);
+    end
 end
-% Remove non-linear MNI normalization
-if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y') && ~isempty(sMri.NCS.y) && isfield(sMri.NCS, 'iy') && ~isempty(sMri.NCS.iy)
-    sMri.NCS.iy = [];
-    sMri.NCS.y = [];
-    sMri.NCS.y_vox2ras = [];
-    sMri.NCS.y_method = [];
+% Update vox2ras: MRI(voxels)=>World(mm), see cs_convert for details on relations between this matrix and Brainstorm's NCS and SCS transformations
+if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && any(ismember(sMri.InitTransf(:,1), 'vox2ras'))
+    iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'), 1);
+    vox2ras = sMriNew.InitTransf{iTransf(1),2};
+    vox2ras(1:3,1:3) = vox2ras(1:3,1:3) * diag(Voxsize ./ sMri.Voxsize);
+    vox2ras(1:3,4) = vox2ras(1:3,4) - T';
+    sMriNew.InitTransf{iTransf(1),2} = vox2ras;
 end
+
+
+% ===== REMOVE OTHER FIELDS =====
+% Remove initial nifti header
+if isfield(sMri, 'Header')
+    sMriNew.Header = [];
+end
+% Remove non-linear transformations
+if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'iy') && ~isempty(sMri.NCS.iy)
+    sMriNew.NCS.iy = [];
+end
+if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y') && ~isempty(sMri.NCS.y)
+    sMriNew.NCS.y = [];
+end
+if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y_vox2ras') && ~isempty(sMri.NCS.y_vox2ras)
+    sMriNew.NCS.y_vox2ras = [];
+end
+if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'y_method') && ~isempty(sMri.NCS.y_method)
+    sMriNew.NCS.y_method = [];
+end
+
 
 % ===== SAVE NEW FILE =====
 % Save output
