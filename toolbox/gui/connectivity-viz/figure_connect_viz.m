@@ -331,6 +331,10 @@ function FigureMouseDownCallback(hFig, ev)
     % Note: Actual triggered events are applied at MouseUp or other points
     % (e.g. during mousedrag). This function gets information about the
     % click event to classify it
+    
+    % For link selection
+    global GlobalData;
+    MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
 
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
@@ -348,6 +352,16 @@ function FigureMouseDownCallback(hFig, ev)
             clickAction = 'ShiftClick'; % POTENTIAL node click, or mousemovecamera
         else % normal click
             clickAction = 'SingleClick'; % POTENTIAL node click!
+            
+            % in case the user selected a link, save arrowheads
+            if (MeasureLinksIsVisible)
+                GlobalData.FigConnect.Arrows1 = getappdata(hFig,'MeasureArrows1');
+                GlobalData.FigConnect.Arrows2 = getappdata(hFig,'MeasureArrows2');                
+            else
+                GlobalData.FigConnect.Arrows1 = getappdata(hFig,'RegionArrows1');
+                GlobalData.FigConnect.Arrows2 = getappdata(hFig,'RegionArrows2');
+            end
+            disp('Arrows saved');
         end
         clickPos = get(hFig, 'CurrentPoint');
 
@@ -434,8 +448,9 @@ function FigureMouseUpCallback(hFig, varargin)
     
     % clicked link
     LinkIndex = GlobalData.FigConnect.ClickedLinkIndex; 
-    LinkType = GlobalData.FigConnect.ClickedLinkType;
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
+    LinkType = getappdata(hFig, 'MeasureLinksIsVisible');
+    IsDirectional = getappdata(hFig, 'IsDirectionalData');
     
     % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
@@ -467,7 +482,7 @@ function FigureMouseUpCallback(hFig, varargin)
             end
             % if user had maintained a mouse click on a link
             if (LinkIndex>0)
-                LinkClickEvent(hFig,LinkIndex,LinkType);
+                LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
             end
         end
         
@@ -1443,7 +1458,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
-    GlobalData.FigConnect.ClickedLinkType = true;
+    GlobalData.FigConnect.Arrows1 = [];
+    GlobalData.FigConnect.Arrows2 = [];
     
     % background color : 
     %   White is for publications
@@ -1705,7 +1721,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','all',...
                 'Visible','off',...
-                'UserData',[i isMeasureLink],... % i is the index
+                'UserData',[i IsDirectionalData],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
 
         else % else, draw an arc
@@ -1786,7 +1802,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','visible',...
                 'Visible','off',...
-                'UserData',[i isMeasureLink],... % i is the index
+                'UserData',[i IsDirectionalData],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
         end
             
@@ -1818,7 +1834,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             if (length(x_trim) > 1 && length(y_trim) > 1)
                 [arrow2, ~, ~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100);
             end
-            
+
             % store arrows
             if(i==1)
                 Arrows1 = arrow1;
@@ -1831,7 +1847,6 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                     Arrows2(end+1) = arrow2;
                 end
             end
-            %set(l, 'UserData', [i isMeasureLink arrow1 arrow2]); 
         end
         
         % add link to list
@@ -1861,23 +1876,36 @@ end
 
 function LinkButtonDownFcn(src, ~)
     disp('Entered LinkButtonDownFcn');
-    %IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+    Index = src.UserData(1);
+    IsDirectional = src.UserData(2);
     
     global GlobalData;
     GlobalData.FigConnect.ClickedLinkIndex = src.UserData(1);
-    GlobalData.FigConnect.ClickedLinkType = src.UserData(2);
-    
-    
+
     % increase size on button down click
     current_size = src.LineWidth;
-    set(src, 'LineWidth', 3*current_size);  
+    set(src, 'LineWidth', 3.0*current_size); 
+    
+    if (IsDirectional)
+        Arrows1 = GlobalData.FigConnect.Arrows1;
+        Arrows2 = GlobalData.FigConnect.Arrows2;
+        
+        if (~isempty(Arrows1))
+            arrow1 = Arrows1(Index);
+            arrow2 = Arrows2(Index);
+            arrow_size = arrow1.LineWidth;
+            set(arrow1, 'LineWidth', 3.0*arrow_size);
+            set(arrow2, 'LineWidth', 3.0*arrow_size);
+        end       
+    end
     
     % Size is returned to original size when the mouse click is released in
     % FigureMouseUpCallback
 end
 
-function LinkClickEvent(hFig,LinkIndex,LinkType)
-    
+function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional)
+   disp('Entered LinkClickEvent');
+   
     % measure links
     if (LinkType)
         MeasureLinks = getappdata(hFig,'MeasureLinks');
@@ -1885,6 +1913,7 @@ function LinkClickEvent(hFig,LinkIndex,LinkType)
         current_size = Link.LineWidth;
 
         set(Link, 'LineWidth', current_size/3.0);
+        
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(LinkIndex);
@@ -1892,6 +1921,23 @@ function LinkClickEvent(hFig,LinkIndex,LinkType)
         
         set(Link, 'LineWidth', current_size/3.0);
     end   
+    
+    if (IsDirectional)
+        global GlobalData;
+        Arrows1 = GlobalData.FigConnect.Arrows1;
+        Arrows2 = GlobalData.FigConnect.Arrows2;
+        
+        if (~isempty(Arrows1) && ~isempty(Arrows2))      
+            arrow1 = Arrows1(LinkIndex);
+            arrow2 = Arrows2(LinkIndex);
+            arrow_size = arrow1.LineWidth;
+            set(arrow1, 'LineWidth', arrow_size/3.0);
+            set(arrow2, 'LineWidth', arrow_size/3.0);
+            
+            GlobalData.FigConnect.Arrows1 = [];
+            GlobalData.FigConnect.Arrows2 = [];
+        end  
+    end
 end
 
 %% ARROWH   Draws a solid 2D arrow head in current plot.
