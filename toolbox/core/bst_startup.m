@@ -472,6 +472,7 @@ else
     end
     % Save brainstorm directory
     bst_set('BrainstormDbDir', BrainstormDbDir);
+    disp(['BST> Database folder: ' BrainstormDbDir]);
 end
 % If folder is not defined yet: ask user to set it
 if isempty(BrainstormDbDir)
