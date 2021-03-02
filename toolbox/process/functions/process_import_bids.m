@@ -187,6 +187,13 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     end
     if isempty(subjDir)
         subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
+        % If the folders include the session: remove it
+        for i = 1:length(subjDir)
+            iUnder = find(subjDir(i).name == '_', 1);
+            if ~isempty(iUnder)
+                subjDir(i).name = subjDir(i).name(1:iUnder-1);
+            end
+        end
     end
     % Loop on the subjects
     SubjectName = {};
@@ -219,8 +226,13 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         % If there is one unique segmented anatomy: group all the sessions together
         [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);
         % If there is no segmented folder, try SUBJID_SESSID
-        if isempty(AnatDir) && (length(sessDir) == 1)
-            [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(1).name]);
+        if isempty(AnatDir)
+            for iSes = 1:length(sessDir)
+                [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(iSes).name]);
+                if ~isempty(AnatDir)
+                    break;
+                end
+            end
         end
         
         % Get all MRI files
@@ -816,16 +828,11 @@ end
 %% ===== SELECT COORDINATE SYSTEM =====
 % Tries to find the best coordinate system available: subject space, otherwise MNI space
 function [fileList, fileSpace] = SelectCoordSystem(fileList)
-    % Orig subject space
-    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-orig')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-head')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-subject')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-scanner')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-sform')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
+    % T1 subject space
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
-        fileSpace = 'orig';
+        fileSpace = 'Other';
         return;
     end
     % MNI
