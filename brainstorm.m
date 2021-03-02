@@ -357,11 +357,17 @@ switch action
         end
         % Execute script
         if ~isempty(ScriptFile)
-            % Start brainstorm in server mode
-            brainstorm server;
+            % Start brainstorm in server mode (local database or not)
+            if (length(varargin) > 1) && any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
+                brainstorm server local;
+                params = setdiff(varargin(2:end), 'local');
+            else
+                brainstorm server;
+                params = [];
+            end
             % Execute script
-            if (length(varargin) > 1)
-                panel_command('ExecuteScript', ScriptFile, varargin{2:end});
+            if ~isempty(params)
+                panel_command('ExecuteScript', ScriptFile, params{:});
             else
                 panel_command('ExecuteScript', ScriptFile);
             end
