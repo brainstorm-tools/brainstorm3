@@ -331,7 +331,7 @@ function FigureMouseDownCallback(hFig, ev)
     % Note: Actual triggered events are applied at MouseUp or other points
     % (e.g. during mousedrag). This function gets information about the
     % click event to classify it
-    
+
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
         return;
@@ -432,6 +432,11 @@ function FigureMouseUpCallback(hFig, varargin)
     NodeIndex = GlobalData.FigConnect.ClickedNodeIndex; 
     GlobalData.FigConnect.ClickedNodeIndex = 0; % clear stored index
     
+    % clicked link
+    LinkIndex = GlobalData.FigConnect.ClickedLinkIndex; 
+    LinkType = GlobalData.FigConnect.ClickedLinkType;
+    GlobalData.FigConnect.ClickedLinkIndex = 0; 
+    
     % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
     hasMoved = getappdata(hFig, 'hasMoved');
@@ -459,6 +464,10 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif (strcmpi(clickAction, 'SingleClick') || strcmpi(clickAction, 'ShiftClick'))
             if (NodeIndex>0)
                 NodeClickEvent(hFig,NodeIndex);
+            end
+            % if user had maintained a mouse click on a link
+            if (LinkIndex>0)
+                LinkClickEvent(hFig,LinkIndex,LinkType);
             end
         end
         
@@ -1433,6 +1442,9 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     ClearAndAddNodes(hFig, Vertices, Names);
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
+    GlobalData.FigConnect.ClickedLinkIndex = 0; 
+    GlobalData.FigConnect.ClickedLinkType = true;
+    
     % background color : 
     %   White is for publications
     %   Black for visualization (default)
@@ -1692,7 +1704,9 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'LineWidth', 1.5,...
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','all',...
-                'Visible','off'); % not visible as default;
+                'Visible','off',...
+                'UserData',[i isMeasureLink],... % i is the index
+                'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
 
         else % else, draw an arc
             x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
@@ -1772,7 +1786,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','visible',...
                 'Visible','off',...
-                'Selected', 0,...
+                'UserData',[i isMeasureLink],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
         end
             
@@ -1817,6 +1831,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                     Arrows2(end+1) = arrow2;
                 end
             end
+            %set(l, 'UserData', [i isMeasureLink arrow1 arrow2]); 
         end
         
         % add link to list
@@ -1844,23 +1859,40 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     
 end
 
-function LinkButtonDownFcn(src,~)
-
-    disp(src.XData);
-    src.Selected = ~src.Selected;
+function LinkButtonDownFcn(src, ~)
+    disp('Entered LinkButtonDownFcn');
+    %IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+    
+    global GlobalData;
+    GlobalData.FigConnect.ClickedLinkIndex = src.UserData(1);
+    GlobalData.FigConnect.ClickedLinkType = src.UserData(2);
+    
+    
+    % increase size on button down click
     current_size = src.LineWidth;
-   
-    SelectLink(src, current_size)
+    set(src, 'LineWidth', 3*current_size);  
+    
+    % Size is returned to original size when the mouse click is released in
+    % FigureMouseUpCallback
 end
 
-function SelectLink(link, current_size)
-    if (link.Selected == 1)
-        set(link, 'LineWidth', 1.5*current_size);
-    else
-        set(link, 'LineWidth', current_size/1.5);
-    end
-end
+function LinkClickEvent(hFig,LinkIndex,LinkType)
+    
+    % measure links
+    if (LinkType)
+        MeasureLinks = getappdata(hFig,'MeasureLinks');
+        Link = MeasureLinks(LinkIndex);
+        current_size = Link.LineWidth;
 
+        set(Link, 'LineWidth', current_size/3.0);
+    else % region links
+        RegionLinks = getappdata(hFig,'RegionLinks');
+        Link = RegionLinks(LinkIndex);
+        current_size = Link.LineWidth;
+        
+        set(Link, 'LineWidth', current_size/3.0);
+    end   
+end
 
 %% ARROWH   Draws a solid 2D arrow head in current plot.
 %	 ARROWH(X,Y,COLOR,SIZE,LOCATION) draws a  solid arrow  head into
