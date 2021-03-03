@@ -56,21 +56,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowScrollWheelFcn',  @(h,ev)FigureMouseWheelCallback(h,ev), ...
                   bst_get('ResizeFunction'), @(h,ev)ResizeCallback(h,ev));
     
-     % OGL SECTION -- TODO: REPLACE/REMOVE
-    % Create rendering panel
-   % [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
-    
-    % Resize callback
-   % set(hFig, bst_get('ResizeFunction'), @(h,ev)ResizeCallback(hFig, container));
-    
-    % Other figure (previously Java) callbacks
-%     set(OGL, 'MouseClickedCallback',    @(h,ev)JavaClickCallback(hFig,ev));
-%     set(OGL, 'MousePressedCallback',    @(h,ev)FigureMouseDownCallback(hFig,ev));
-%     set(OGL, 'MouseDraggedCallback',    @(h,ev)FigureMouseMoveCallback(hFig,ev));
-%     set(OGL, 'MouseReleasedCallback',   @(h,ev)FigureMouseUpCallback(hFig,ev));
-%     set(OGL, 'KeyPressedCallback',      @(h,ev)FigureKeyPressedCallback(hFig,ev));
-%     set(OGL, 'KeyReleasedCallback',     @(h,ev)FigureKeyReleasedCallback(hFig,ev));
-    
     % Prepare figure appdata
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
@@ -83,9 +68,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     % Time-freq specific appdata
     setappdata(hFig, 'Timefreq', db_template('TfInfo'));
     
-    % J3D Container
-   % setappdata(hFig, 'OpenGLDisplay', OGL);
-   % setappdata(hFig, 'OpenGLContainer', container);
+    % Display
     setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     setappdata(hFig, 'MeasureLinksIsVisible', 1);
@@ -134,14 +117,13 @@ end
  
  
 %% ===== DISPOSE FIGURE =====
-% NOTE: updated remove ogl
+% NOTE: updated and removed ogl
 function Dispose(hFig) %#ok<DEFNU>
     %NOTE: do not need to delete gcf (curr figure) because this is done in
     %bst_figures(DeleteFigure)
     
     %====Delete Graphics Objects and Clear Variables====
     if (isappdata(hFig,'AllNodes')) 
-%        delete(getappdata(hFig,'AllNodes')); % prev use with node.m
         deleteAllNodes(hFig);
         rmappdata(hFig,'AllNodes');
     end
@@ -178,28 +160,13 @@ function Dispose(hFig) %#ok<DEFNU>
 
     %===old===
     SetBackgroundColor(hFig, [1 1 1]); %[1 1 1]= white [0 0 0]= black
-    
-%     OGL = getappdata(hFig, 'OpenGLDisplay');
-%     set(OGL, 'MouseClickedCallback',    []);
-%     set(OGL, 'MousePressedCallback',    []);
-%     set(OGL, 'MouseDraggedCallback',    []);
-%     set(OGL, 'MouseReleasedCallback',   []);
-%     set(OGL, 'KeyReleasedCallback',     []);
-%     set(OGL, 'KeyPressedCallback',      []);
-%     set(OGL, 'MouseWheelMovedCallback', []);
-%     OGL.resetDisplay();
-%     delete(OGL);
-%     setappdata(hFig, 'OpenGLDisplay', []);
+   
 end
  
  
 %% ===== RESET DISPLAY =====
-% NOTE: ready, updated remove ogl
+% NOTE: ready, removed ogl
 function ResetDisplay(hFig)
-    % Reset display
-%     OGL = getappdata(hFig, 'OpenGLDisplay');
-%     OGL.resetDisplay();
-    
     % Default values
     setappdata(hFig, 'DisplayOutwardMeasure', 1);
     setappdata(hFig, 'DisplayInwardMeasure', 0);
@@ -234,27 +201,20 @@ function backgroundColor = GetBackgroundColor(hFig)
     end
 end
  
-%% ===== RESIZE CALLBACK =====
-function ResizeCallback(hFig, container)
+%% ===== RESIZE CALLBACK AND DISPLAY CONTAINER =====
+function ResizeCallback(hFig, ~)
     % Update Title     
     RefreshTitle(hFig);
-    % Update OpenGL container size
-    UpdateContainer(hFig, container);
+    % Update container
+    UpdateContainer(hFig);
 end
  
-%TODO: remove jogl container
-function UpdateContainer(hFig, container)
+%TODO: Check
+function UpdateContainer(hFig)
     % Get figure position
     figPos = get(hFig, 'Position');
     % Get colorbar handle
-    hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
-    % Get title handle
-    TitlesHandle = getappdata(hFig, 'TitlesHandle');
-    titleHeight = 0;
-    if (~isempty(TitlesHandle))
-        titlePos = get(TitlesHandle(1), 'Position'); 
-        titleHeight = titlePos(4);
-    end
+    hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');   
     % Scale figure
     Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
@@ -269,23 +229,7 @@ function UpdateContainer(hFig, container)
                                     marginHeight, ...
                                     colorbarWidth, ...
                                     max(1, min(90, figPos(4) - marginHeight - 3 .* Scaling))]);
-        % Reposition the container
-        marginAxes = 0;
-        if ~isempty(container)
-            
-%             set(container, 'Units',    'pixels', ...
-%                            'Position', [marginAxes, ...
-%                                         marginAxes, ...
-%                                         max(1, figPos(3) - colorbarWidth - marginWidth - marginAxes), ... 
-%                                         max(1, figPos(4) - 2*marginAxes - titleHeight)]);
-        end
         uistack(hColorbar,'top',1);
-    else
-        if ~isempty(container)
-            % Java container can take all the figure space
-%             set(container, 'Units',    'normalized', ...
-%                            'Position', [.05, .05, .9, .9]);
-        end
     end
 end
  
@@ -303,7 +247,7 @@ function HasTitle = RefreshTitle(hFig)
         hTitle = [];
         
         setappdata(hFig, 'TitlesHandle', hTitle);
-        UpdateContainer(hFig, getappdata(hFig, 'OpenGLContainer'));
+        UpdateContainer(hFig);
     end    
     HasTitle = size(Title,2) > 0;
 end
@@ -556,19 +500,8 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         case 'd' % upclear if needed (does not work in previous figure_connect either)
             ToggleDisplayMode(hFig);
         case 'm' % TODO: Toggle Region Links
-            ToggleMeasureToRegionDisplay(hFig)
-        case 'q' % TODO: unclear if needed
-            RenderInQuad = 1 - getappdata(hFig, 'RenderInQuad');
-            setappdata(hFig, 'RenderInQuad', RenderInQuad)
-            OGL = getappdata(hFig, 'OpenGLDisplay');
-            OGL.renderInQuad(RenderInQuad)
-            OGL.repaint();
-        case {'+', 'add'} % unclear if needed
-            panel_display('ConnectKeyCallback', keyEvent);
-        case {'-', 'subtract'} % unclear if needed
-            panel_display('ConnectKeyCallback', keyEvent);
+            ToggleMeasureToRegionDisplay(hFig);
     end
-      
 end
  
 %Note: ready
@@ -1488,23 +1421,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     %% ==== Create and Display Links =======
    
-    % Build path based on region %todo:remove
-    %MeasureLinks = BuildRegionPath(hFig, Paths, DataPair);
-    
-    % Compute spline based on MeasureLinks @todo:remove
-    %aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
-    %if ~isempty(aSplines)
-        %OGL.addPrecomputedMeasureLinks(aSplines);
-        % Get link size (type double)
-        %LinkSize = getappdata(hFig, 'LinkSize');
-        %disp(LinkSize);
-        % Set link width
-        %SetLinkSize(hFig, LinkSize);
-        % Set link transparency (if 3DDisplay, set to 0.75)
-        %SetLinkTransparency(hFig, 0.00);
-    %end
-    
-    %NEW Nov 10: create links from computed DataPair
+    % Create links from computed DataPair
     BuildLinks(hFig, DataPair, true);
     LinkSize = getappdata(hFig, 'LinkSize');
     SetLinkSize(hFig, LinkSize);
@@ -1557,21 +1474,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %% ===== Rendering option =====
     % Required: Select all on default
     SetSelectedNodes(hFig, [], 1);
-
-    % OpenGL Constant
-    % GL_LIGHTING = 2896
-    % GL_COLOR_MATERIAL 2903
-    % GL_DEPTH_TEST = 2929
-    
-    % These options are necessary for proper display
-   % OGL.OpenGLDisable(2896);
-  %  OGL.OpenGLDisable(2903);
     SetHierarchyNodeIsVisible(hFig, 1);
-    RenderInQuad = 1;
-    
-    % 
-   % OGL.renderInQuad(RenderInQuad);
-    setappdata(hFig, 'RenderInQuad', RenderInQuad);
     
     % Update colormap
     UpdateColormap(hFig);
@@ -2242,9 +2145,9 @@ function UpdateFigurePlot(hFig)
     % Get selected rows
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get OpenGL handle
-    OGL = getappdata(hFig, 'OpenGLDisplay');
+   % OGL = getappdata(hFig, 'OpenGLDisplay');
     % Clear links
-    OGL.clearLinks();
+  %  OGL.clearLinks();
  
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
@@ -2273,7 +2176,7 @@ function UpdateFigurePlot(hFig)
     
     if ~isempty(aSplines)
         % Add on Java side @TODO
-        OGL.addPrecomputedMeasureLinks(aSplines);
+       % OGL.addPrecomputedMeasureLinks(aSplines);
         % Set link width
         SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
         % Set link transparency
@@ -2320,8 +2223,8 @@ function UpdateFigurePlot(hFig)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
     
-    RenderInQuad = getappdata(hFig, 'RenderInQuad');
-    OGL.renderInQuad(RenderInQuad);
+ %   RenderInQuad = getappdata(hFig, 'RenderInQuad');
+ %   OGL.renderInQuad(RenderInQuad);
     
     RefreshTitle(hFig);
     
@@ -2337,10 +2240,8 @@ function UpdateFigurePlot(hFig)
     bst_progress('stop');
 end
  
-%TODO: update OGL
+%TODO: update
 function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
-    % Get OpenGL handle
-%   OGL = getappdata(hFig, 'OpenGLDisplay');
     % Update variable
     if (IsVisible == 0)
         IsVisible = -1;
@@ -2357,8 +2258,6 @@ function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     for i=1:size(Index,1)
       %  OGL.setNodeVisibility(Index(i) - 1, DisplayNode(Index(i)) > 0);
     end
-    % Redraw
-    %OGL.repaint();
 end
  
 % TODO: implement region max and mean links and functions
@@ -3033,10 +2932,8 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     % REQUIRED: Display selected nodes ('ON' or 'OFF')
     for i = 1:length(iNodes)
         if isSelected
-          %  AllNodes(iNodes(i)).Selected = true; % prev use with node.m
             SelectNode(AllNodes(iNodes(i)), true);
         else
-         %   AllNodes(iNodes(i)).Selected = false; % prev use with node.m
             SelectNode(AllNodes(iNodes(i)), false);
         end
     end
@@ -3310,16 +3207,6 @@ function ToggleTextDisplayMode(hFig)
     % Refresh
     RefreshTextDisplay(hFig);
 end
- 
-%% ===== BLENDING =====
-% Blending functions has defined by OpenGL
-% GL_SRC_COLOR = 768;
-% GL_ONE_MINUS_SRC_COLOR = 769;
-% GL_SRC_ALPHA = 770;
-% GL_ONE_MINUS_SRC_ALPHA = 771;
-% GL_ONE_MINUS_DST_COLOR = 775;
-% GL_ONE = 1;
-% GL_ZERO = 0;
 
 %% ===== NODE SIZE =====
      % NOTE: JAN 2020
@@ -3486,14 +3373,13 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
         if isappdata(hFig, 'AllNodes')
             AllNodes = getappdata(hFig, 'AllNodes');
             for i = 1:length(AllNodes)
-               % AllNodes(i).LabelColor = TextColor; % prev use with node.m
                set(AllNodes(i).TextLabel,'Color',TextColor);
             end
         end
     end
     
     setappdata(hFig, 'BgColor', BackgroundColor); %set app data for toggle
-    UpdateContainer(hFig, []);
+    UpdateContainer(hFig);
 end
  
 % NOTE: DONE OCT 2020
@@ -3596,6 +3482,7 @@ end
  
 %% ===== REFRESH TEXT VISIBILITY =====
 %TODO: Check text display modes 1,2,3
+%todo: isRedraw
 function RefreshTextDisplay(hFig, isRedraw)
     % 
     FigureHasText = getappdata(hFig, 'FigureHasText');
@@ -3623,17 +3510,13 @@ function RefreshTextDisplay(hFig, isRedraw)
             selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
             VisibleText(selNodes) = ValidNode(selNodes);
         end
-        % OpenGL Handle
-       % OGL = getappdata(hFig, 'OpenGLDisplay');
-       
+        
         % Update text visibility
         AllNodes = getappdata(hFig,'AllNodes');
         for i=1:length(VisibleText)
             if (VisibleText(i) == 1)
-                %AllNodes(i).LabelVisible = true; % prev use with node.m
                 AllNodes(i).TextLabel.Visible = 'on';
             else
-               % AllNodes(i).LabelVisible = false; % prev use with node.m
                AllNodes(i).TextLabel.Visible = 'off';
             end
         end
@@ -3867,7 +3750,6 @@ function ClearAndAddNodes(hFig, V, Names)
     
     % --- Clear any previous nodes or links ---- %
     if (isappdata(hFig,'AllNodes')) 
-       % delete(getappdata(hFig,'AllNodes')); % prev use with node.m
         deleteAllNodes(hFig);
         rmappdata(hFig,'AllNodes');
     end
