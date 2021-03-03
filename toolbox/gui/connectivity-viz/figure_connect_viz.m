@@ -295,17 +295,7 @@ function FigureMouseDownCallback(hFig, ev)
         elseif strcmpi(get(hFig, 'SelectionType'), 'extend') % SHIFT is held
             clickAction = 'ShiftClick'; % POTENTIAL node click, or mousemovecamera
         else % normal click
-            clickAction = 'SingleClick'; % POTENTIAL node click!
-            
-            % in case the user selected a link, save arrowheads
-            if (MeasureLinksIsVisible)
-                GlobalData.FigConnect.Arrows1 = getappdata(hFig,'MeasureArrows1');
-                GlobalData.FigConnect.Arrows2 = getappdata(hFig,'MeasureArrows2');                
-            else
-                GlobalData.FigConnect.Arrows1 = getappdata(hFig,'RegionArrows1');
-                GlobalData.FigConnect.Arrows2 = getappdata(hFig,'RegionArrows2');
-            end
-            disp('Arrows saved');
+            clickAction = 'SingleClick'; % POTENTIAL node click!        
         end
         clickPos = get(hFig, 'CurrentPoint');
 
@@ -1384,15 +1374,12 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     %% ===== Create Nodes =====
     %  This also defines some data-based display parameters
-    disp(size(Vertices));
-    disp(size(Names));
     
     ClearAndAddNodes(hFig, Vertices, Names);
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
+    GlobalData.FigConnect.Figure = hFig;
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
-    GlobalData.FigConnect.Arrows1 = [];
-    GlobalData.FigConnect.Arrows2 = [];
     
     % background color : 
     %   White is for publications
@@ -1622,9 +1609,9 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 y,...
                 'LineWidth', 1.5,...
                 'Color', [AllNodes(node1).Color 0.00],...
-                'PickableParts','all',...
+                'PickableParts','visible',...
                 'Visible','off',...
-                'UserData',[i IsDirectionalData],... % i is the index
+                'UserData',[i IsDirectionalData isMeasureLink],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
 
         else % else, draw an arc
@@ -1705,7 +1692,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','visible',...
                 'Visible','off',...
-                'UserData',[i IsDirectionalData],... % i is the index
+                'UserData',[i IsDirectionalData isMeasureLink],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
         end
             
@@ -1779,8 +1766,12 @@ end
 
 function LinkButtonDownFcn(src, ~)
     disp('Entered LinkButtonDownFcn');
+    global GlobalData;
+    hFig = GlobalData.FigConnect.Figure;
+    
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
+    isMeasureLink = src.UserData(3);
     
     global GlobalData;
     GlobalData.FigConnect.ClickedLinkIndex = src.UserData(1);
@@ -1790,20 +1781,18 @@ function LinkButtonDownFcn(src, ~)
     set(src, 'LineWidth', 3.0*current_size); 
     
     if (IsDirectional)
-        Arrows1 = GlobalData.FigConnect.Arrows1;
-        Arrows2 = GlobalData.FigConnect.Arrows2;
+        if (isMeasureLink)
+            Arrows1 = getappdata(hFig,'MeasureArrows1');
+            Arrows2 = getappdata(hFig,'MeasureArrows2');
         
-        if (~isempty(Arrows1))
             arrow1 = Arrows1(Index);
             arrow2 = Arrows2(Index);
             arrow_size = arrow1.LineWidth;
+            
             set(arrow1, 'LineWidth', 3.0*arrow_size);
             set(arrow2, 'LineWidth', 3.0*arrow_size);
-        end       
+        end
     end
-    
-    % Size is returned to original size when the mouse click is released in
-    % FigureMouseUpCallback
 end
 
 function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional)
@@ -1814,32 +1803,32 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional)
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         Link = MeasureLinks(LinkIndex);
         current_size = Link.LineWidth;
-
         set(Link, 'LineWidth', current_size/3.0);
+        
+        if (IsDirectional)
+            Arrows1 = getappdata(hFig,'MeasureArrows1');
+            Arrows2 = getappdata(hFig,'MeasureArrows2');   
+        end    
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(LinkIndex);
-        current_size = Link.LineWidth;
-        
+        current_size = Link.LineWidth;     
         set(Link, 'LineWidth', current_size/3.0);
+        
+        if (IsDirectional)
+            Arrows1 = getappdata(hFig,'RegionArrows1');
+            Arrows2 = getappdata(hFig,'RegionArrows2');   
+        end  
     end   
     
     if (IsDirectional)
-        global GlobalData;
-        Arrows1 = GlobalData.FigConnect.Arrows1;
-        Arrows2 = GlobalData.FigConnect.Arrows2;
-        
-        if (~isempty(Arrows1) && ~isempty(Arrows2))      
-            arrow1 = Arrows1(LinkIndex);
-            arrow2 = Arrows2(LinkIndex);
-            arrow_size = arrow1.LineWidth;
-            set(arrow1, 'LineWidth', arrow_size/3.0);
-            set(arrow2, 'LineWidth', arrow_size/3.0);
-            
-            GlobalData.FigConnect.Arrows1 = [];
-            GlobalData.FigConnect.Arrows2 = [];
-        end  
+        arrow1 = Arrows1(LinkIndex);
+        arrow2 = Arrows2(LinkIndex);
+        arrow_size = arrow1.LineWidth;
+
+        set(arrow1, 'LineWidth', arrow_size/3.0);
+        set(arrow2, 'LineWidth', arrow_size/3.0);
     end
 end
 
