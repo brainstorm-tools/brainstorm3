@@ -3866,8 +3866,10 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
         'ButtonDownFcn',@NodeButtonDownFcn,...
         'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
     
-    % Create label as Matlab Text obj
-    node.TextLabel = text(0,0,label, 'Interpreter', 'none', 'Color', [1 1 1]); % display with '_', default colour white
+    % Create label as Matlab Text obj 
+        % display with '_', default colour white, callback to allow clicked labels
+        % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
+    node.TextLabel = text(0,0,label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[index label xpos ypos]); 
     node.TextLabel.Position = 1.05*node.Position; %need offset factor so label doesn't overlap
     node.TextLabel.FontSize = node.TextLabel.FontSize-3; %default size too big
     
@@ -3925,8 +3927,23 @@ function NodeButtonDownFcn(src,~)
     
     disp("Node with label '" + src.UserData{2} + "' was clicked");
     disp("Node index: " + src.UserData{1});
-    disp("Node position: " + src.XData + " " + src.YData);
+    disp("Node position: " + src.UserData{3} + " " + src.UserData{4});
 end
+
+% Callback Fn for clicked node label on figure
+% NOTE: we use functions within NodeClickedEvent(), SetSelectedNodes(), and SelectNode() 
+    % to set actual node and link selection display.      
+    % All we need to do here is make sure that the correct index
+    % of the clicked nodelabel is stored for access 
+function LabelButtonDownFcn(src,~)
+    global GlobalData;
+    GlobalData.FigConnect.ClickedNodeIndex = src.UserData{1};
+    
+    disp("Node with label '" + src.UserData{2} + "' was clicked");
+    disp("Node index: " + src.UserData{1});
+    disp("Node position: " + src.UserData{3} + " " + src.UserData{4});
+end
+
 
 % Delete all node structs and associated graphics objs if exist
 function deleteAllNodes(hFig)
