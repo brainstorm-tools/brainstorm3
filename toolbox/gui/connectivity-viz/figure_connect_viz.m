@@ -414,9 +414,11 @@ function FigureMouseUpCallback(hFig, varargin)
             if (NodeIndex>0)
                 NodeClickEvent(hFig,NodeIndex);
             end
-            % if user had maintained a mouse click on a link
-            if (LinkIndex>0)
-                LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
+            if (strcmpi(clickAction, 'SingleClick'))
+                % if user had maintained a mouse click on a link
+                if (LinkIndex>0)
+                    LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
+                end
             end
         end
         
@@ -809,7 +811,7 @@ function DisplayFigurePopup(hFig)
             % Label
             gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
             % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
             jSliderContrast.setValue(round(NodeSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -939,7 +941,7 @@ function DisplayFigurePopup(hFig)
 end
  
 % Node size slider
-% NOTE: DONE JAN 2020
+% NOTE: DONE JAN 2021
 function NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
     disp('Entered NodeSizeSliderModifiersModifying_Callback'); % TODO: remove
     % Update Modifier value
@@ -1768,29 +1770,31 @@ function LinkButtonDownFcn(src, ~)
     disp('Entered LinkButtonDownFcn');
     global GlobalData;
     hFig = GlobalData.FigConnect.Figure;
+    clickAction = getappdata(hFig, 'clickAction');
     
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
     isMeasureLink = src.UserData(3);
-    
-    global GlobalData;
     GlobalData.FigConnect.ClickedLinkIndex = src.UserData(1);
-
-    % increase size on button down click
-    current_size = src.LineWidth;
-    set(src, 'LineWidth', 3.0*current_size); 
     
-    if (IsDirectional)
-        if (isMeasureLink)
-            Arrows1 = getappdata(hFig,'MeasureArrows1');
-            Arrows2 = getappdata(hFig,'MeasureArrows2');
+    % only works for left mouse clicks
+    if (strcmpi(clickAction, 'SingleClick'))    
+        % increase size on button down click
+        current_size = src.LineWidth;
+        set(src, 'LineWidth', 3.0*current_size);
         
-            arrow1 = Arrows1(Index);
-            arrow2 = Arrows2(Index);
-            arrow_size = arrow1.LineWidth;
-            
-            set(arrow1, 'LineWidth', 3.0*arrow_size);
-            set(arrow2, 'LineWidth', 3.0*arrow_size);
+        if (IsDirectional)
+            if (isMeasureLink)
+                Arrows1 = getappdata(hFig,'MeasureArrows1');
+                Arrows2 = getappdata(hFig,'MeasureArrows2');
+                
+                arrow1 = Arrows1(Index);
+                arrow2 = Arrows2(Index);
+                arrow_size = arrow1.LineWidth;
+                
+                set(arrow1, 'LineWidth', 3.0*arrow_size);
+                set(arrow2, 'LineWidth', 3.0*arrow_size);
+            end
         end
     end
 end
@@ -2921,9 +2925,9 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     % REQUIRED: Display selected nodes ('ON' or 'OFF')
     for i = 1:length(iNodes)
         if isSelected
-            SelectNode(AllNodes(iNodes(i)), true);
+            SelectNode(hFig, AllNodes(iNodes(i)), true);
         else
-            SelectNode(AllNodes(iNodes(i)), false);
+            SelectNode(hFig, AllNodes(iNodes(i)), false);
         end
     end
          
@@ -3213,8 +3217,11 @@ function SetNodeSize(hFig, NodeSize)
     end
 
     AllNodes = getappdata(hFig,'AllNodes');
-    % TODO: actually set the size in NodeMarker
-   % set(AllNodes.NodeMarker, 'MarkerSize', NodeSize);
+    
+    for i = 1:size(AllNodes,2)
+        node = AllNodes(i);
+        set(node.NodeMarker, 'MarkerSize', NodeSize);
+    end    
     setappdata(hFig, 'NodeSize', NodeSize);
 end
 %% ===== LABEL SIZE =====
@@ -3231,11 +3238,13 @@ function SetLabelSize(hFig, LabelSize)
     if isempty(LabelSize)
         LabelSize = 5; % set to default -3
     end
-
+    
     AllNodes = getappdata(hFig,'AllNodes');
-    % TODO: actually set the size in NodeMarker
-   % set(AllNodes.NodeMarker, 'MarkerSize', NodeSize);
-   %this.TextLabel.FontSize
+    
+    for i = 1:size(AllNodes,2)
+        node = AllNodes(i);
+        set(node.TextLabel, 'FontSize', LabelSize);
+    end    
     setappdata(hFig, 'LabelSize', LabelSize);
 end
     
@@ -3787,7 +3796,7 @@ function ClearAndAddNodes(hFig, V, Names)
         end
 
         % createNode(xpos, ypos, index, label, isAggregatingNode) 
-        AllNodes(i) = CreateNode(V(i,1),V(i,2),i,Names(i),isAgregatingNode);
+        AllNodes(i) = CreateNode(hFig,V(i,1),V(i,2),i,Names(i),isAgregatingNode);
     end 
     
     % Measure Nodes are color coded to their Scout counterpart
@@ -3837,7 +3846,7 @@ end
 %   NOTE: node.NodeMarker.Userdata = [{[index]} {label} ] to store useful node data
 %   so that we can ID the nodes when clicked! Can also retrieve xpos/ypos
 %   from the NodeMarker line obj using node.NodeMarker.XData/YData
-function node = CreateNode(xpos, ypos, index, label, isAgregatingNode)
+function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
     node.Position = [xpos,ypos];
     node.isAgregatingNode = isAgregatingNode;
     node.Color = [0.7 0.7 0.7];
@@ -3853,7 +3862,7 @@ function node = CreateNode(xpos, ypos, index, label, isAgregatingNode)
         'MarkerSize', 5,...                 # default (6) is too big
         'LineStyle','none',...
         'Visible','on',...
-        'PickableParts','all',...
+        'PickableParts','visible',...
         'ButtonDownFcn',@NodeButtonDownFcn,...
         'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
     
@@ -3877,21 +3886,29 @@ function node = CreateNode(xpos, ypos, index, label, isAgregatingNode)
     end
     
     % show node as 'selected' as default
-    SelectNode(node, true);
+    SelectNode(hFig, node, true);
 end
 
 % To visually change the appearance of sel/unsel nodes
-function SelectNode(node,isSelected)
+function SelectNode(hFig,node,isSelected)
+    disp('Entered SelectNode');
+    
+    % added March 2021: user can now adjust node size as desired
+    nodeSize = getappdata(hFig, 'NodeSize');
+    if (isempty(nodeSize))
+        nodeSize = 5;
+    end
+    
     if isSelected % node is SELECTED ("ON")
         % return to original node colour, shape, and size
         node.NodeMarker.Marker = 'o';
         node.NodeMarker.Color = node.NodeMarker.MarkerFaceColor;
-        node.NodeMarker.MarkerSize = 5;
+        node.NodeMarker.MarkerSize = nodeSize;
     else % node is NOT selected ("OFF")
         % display as a grey 'X' (slightly bigger/bolded to allow for easier clicking shape)
         node.NodeMarker.Marker = 'x';
         node.NodeMarker.Color =  [0.7 0.7 0.7]; % grey
-        node.NodeMarker.MarkerSize = 6;
+        node.NodeMarker.MarkerSize = nodeSize + 1;
     end
 end
 
