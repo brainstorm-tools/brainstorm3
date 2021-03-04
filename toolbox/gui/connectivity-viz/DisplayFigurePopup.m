@@ -119,6 +119,33 @@ function DisplayFigurePopup(hFig)
         
         % == LINK DISPLAY OPTIONS ==
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+            
+            % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            % uses node size to update text and slider
+            NodeSize = GetNodeSize(hFig);
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Node & label size');
+            % Slider
+            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(NodeSize * 2));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeLabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jDisplayMenu.add(jPanelModifiers);
+            if (~DisplayInRegion)
+                jDisplayMenu.addSeparator();
+            end
+            
             % == MODIFY LINK SIZE ==
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LinkSize = GetLinkSize(hFig);
@@ -350,6 +377,33 @@ function DisplayFigurePopup(hFig)
         jLinkBorder = java_scaled('titledborder', 'Link options');
         jLinkPanel.setBorder(jLinkBorder);
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+            
+            % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            % uses node size to update text and slider
+            NodeSize = GetNodeSize(hFig);
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Node & label size');
+            % Slider
+            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(NodeSize * 2));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeLabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jDisplayMenu.add(jPanelModifiers);
+            if (~DisplayInRegion)
+                jDisplayMenu.addSeparator();
+            end
+            
             % == MODIFY LINK SIZE ==
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LinkSize = GetLinkSize(hFig);
@@ -566,6 +620,32 @@ function DisplayFigurePopup(hFig)
         % == LINK DISPLAY OPTIONS ==
         jLinkMenu = gui_component('Menu', jDisplayMenu, [], 'Link options');
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+            % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            % uses node size to update text and slider
+            NodeSize = GetNodeSize(hFig);
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Node & label size');
+            % Slider
+            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(NodeSize * 2));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeLabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jDisplayMenu.add(jPanelModifiers);
+            if (~DisplayInRegion)
+                jDisplayMenu.addSeparator();
+            end
+            
             % == MODIFY LINK SIZE ==
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LinkSize = GetLinkSize(hFig);
@@ -810,6 +890,33 @@ function DisplayFigurePopup(hFig)
     % == LINK DISPLAY OPTIONS ==
     jLinkMenu = gui_component('Menu', jPopup, [], 'Link options');
     if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+        
+        % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+        jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+        % uses node size to update text and slider
+        NodeSize = GetNodeSize(hFig);
+        % Label
+        gui_component('label', jPanelModifiers, '', 'Node & label size');
+        % Slider
+        jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+        jSliderContrast.setValue(round(NodeSize * 2));
+        jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+        %jSliderContrast.setToolTipText(tooltipSliders);
+        jSliderContrast.setFocusable(0);
+        jSliderContrast.setOpaque(0);
+        jPanelModifiers.add('tab hfill', jSliderContrast);
+        % Value (text)
+        jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
+        jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+        jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+        jPanelModifiers.add(jLabelContrast);
+        % Slider callbacks
+        java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeLabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+        jDisplayMenu.add(jPanelModifiers);
+        if (~DisplayInRegion)
+            jDisplayMenu.addSeparator();
+        end
+        
         % == MODIFY LINK SIZE ==
         jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
         LinkSize = GetLinkSize(hFig);

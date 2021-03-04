@@ -321,7 +321,8 @@ end
  
 %% ===== FIGURE MOUSE MOVE CALLBACK =====
 function FigureMouseMoveCallback(hFig, ev)
-   % disp('Entered FigureMouseMoveCallback');
+    %disp('Entered FigureMouseMoveCallback');
+    
     % Get current mouse action
     clickAction = getappdata(hFig, 'clickAction');   
     clickSource = getappdata(hFig, 'clickSource');
@@ -414,8 +415,9 @@ function FigureMouseUpCallback(hFig, varargin)
             if (NodeIndex>0)
                 NodeClickEvent(hFig,NodeIndex);
             end
-            if (strcmpi(clickAction, 'SingleClick'))
-                % if user had maintained a mouse click on a link
+            
+            % left mouse click on a link
+            if (strcmpi(clickAction, 'SingleClick'))        
                 if (LinkIndex>0)
                     LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
                 end
@@ -428,6 +430,13 @@ function FigureMouseUpCallback(hFig, varargin)
             % Apply new colormap to all figures
             ColormapInfo = getappdata(hFig, 'Colormap');
             bst_colormaps('FireColormapChanged', ColormapInfo.Type);
+        end
+        
+        % left mouse click on a link
+        if (strcmpi(clickAction, 'SingleClick'))
+            if (LinkIndex>0)
+                LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
+            end
         end
     end
 end
@@ -770,7 +779,7 @@ function DisplayFigurePopup(hFig)
             % Label
             gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
             % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast = JSlider(1,20); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
             jSliderContrast.setValue(round(LabelSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -842,6 +851,33 @@ function DisplayFigurePopup(hFig)
         
         % == LINK DISPLAY OPTIONS ==
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
+            
+            % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            % uses node size to update text and slider
+            NodeSize = GetNodeSize(hFig);
+            % Label
+            gui_component('label', jPanelModifiers, '', 'Node & label size');
+            % Slider
+            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast.setValue(round(NodeSize * 2));
+            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
+            %jSliderContrast.setToolTipText(tooltipSliders);
+            jSliderContrast.setFocusable(0);
+            jSliderContrast.setOpaque(0);
+            jPanelModifiers.add('tab hfill', jSliderContrast);
+            % Value (text)
+            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
+            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
+            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+            jPanelModifiers.add(jLabelContrast);
+            % Slider callbacks
+            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeLabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
+            jDisplayMenu.add(jPanelModifiers);
+            if (~DisplayInRegion)
+                jDisplayMenu.addSeparator();
+            end
+        
             % == MODIFY LINK SIZE ==
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LinkSize = GetLinkSize(hFig);
@@ -939,7 +975,18 @@ function DisplayFigurePopup(hFig)
     % Display Popup menu
     gui_popup(jPopup, hFig);
 end
- 
+
+% Node AND label size slider
+function NodeLabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+    disp('Entered NodeLabelSizeSliderModifiersModifying_Callback'); % TODO: remove
+    % Update Modifier value
+    NodeValue = ev.getSource().getValue() / 2;
+    LabelValue = NodeValue * 1.4;
+    % Update text value
+    jLabel.setText(sprintf('%.0f', NodeValue * 2));
+    SetNodeLabelSize(hFig, NodeValue, LabelValue);
+end
+
 % Node size slider
 % NOTE: DONE JAN 2021
 function NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
@@ -3201,6 +3248,28 @@ function ToggleTextDisplayMode(hFig)
     RefreshTextDisplay(hFig);
 end
 
+%% ===== NODE & LABEL SIZE IN SIGNLE FUNCTION =====
+
+function SetNodeLabelSize(hFig, NodeSize, LabelSize)
+     if isempty(NodeSize)
+        NodeSize = 5; % default for 'on' is 5, default for off is '6'
+    end
+    if isempty(LabelSize)
+        LabelSize = 7; % set to default -3
+    end
+
+    AllNodes = getappdata(hFig,'AllNodes');
+    
+    for i = 1:size(AllNodes,2)
+        node = AllNodes(i);
+        set(node.NodeMarker, 'MarkerSize', NodeSize);
+        set(node.TextLabel, 'FontSize', LabelSize);
+    end     
+    
+    setappdata(hFig, 'NodeSize', NodeSize);
+    setappdata(hFig, 'LabelSize', LabelSize);
+end
+
 %% ===== NODE SIZE =====
      % NOTE: JAN 2020
 function NodeSize = GetNodeSize(hFig)
@@ -3224,19 +3293,20 @@ function SetNodeSize(hFig, NodeSize)
     end    
     setappdata(hFig, 'NodeSize', NodeSize);
 end
+
 %% ===== LABEL SIZE =====
      % NOTE: JAN 2020
 function LabelSize = GetLabelSize(hFig)
     LabelSize = getappdata(hFig, 'LabelSize');
     if isempty(LabelSize)
-        LabelSize = 5; % set to default -3
+        LabelSize = 7; % set to default -3
     end
 end
  
 function SetLabelSize(hFig, LabelSize)
     disp('Entered SetLabelSize');
     if isempty(LabelSize)
-        LabelSize = 5; % set to default -3
+        LabelSize = 7; % set to default -3
     end
     
     AllNodes = getappdata(hFig,'AllNodes');
@@ -3862,7 +3932,7 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
         'MarkerSize', 5,...                 # default (6) is too big
         'LineStyle','none',...
         'Visible','on',...
-        'PickableParts','visible',...
+        'PickableParts','all',...
         'ButtonDownFcn',@NodeButtonDownFcn,...
         'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
     
@@ -3871,7 +3941,7 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
         % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
     node.TextLabel = text(0,0,label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[index label xpos ypos]); 
     node.TextLabel.Position = 1.05*node.Position; %need offset factor so label doesn't overlap
-    node.TextLabel.FontSize = node.TextLabel.FontSize-3; %default size too big
+    node.TextLabel.FontSize = node.TextLabel.FontSize-3; % this gives size of 7 (default 10 is too big)
     
     %rotate and align labels
     t = atan2(node.Position(2),node.Position(1));
@@ -3894,7 +3964,7 @@ end
 
 % To visually change the appearance of sel/unsel nodes
 function SelectNode(hFig,node,isSelected)
-    disp('Entered SelectNode');
+    %disp('Entered SelectNode');
     
     % added March 2021: user can now adjust node size as desired
     nodeSize = getappdata(hFig, 'NodeSize');
