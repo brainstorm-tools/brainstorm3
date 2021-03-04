@@ -25,7 +25,8 @@ for k=1:length(chs)
     for p = 1:new.nent
         kind = new.dir(p).kind;
         if kind == FIFF.FIFF_CH_DACQ_NAME
-            data = fiff_read_tag(fid, new.dir(p).pos).data;
+            tag = fiff_read_tag(fid, new.dir(p).pos);
+            data = tag.data;
             ch_rename = [ch_rename; {ch.ch_name, data}];
             ch.ch_name = data;
             break
