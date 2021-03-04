@@ -25,7 +25,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -1096,12 +1096,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Build list of frequencies
                     if isempty(TfMat.Freqs)
                         comboList = {'Not available'};
+                        nList = 0;
                     elseif iscell(TfMat.Freqs)
                         comboList = TfMat.Freqs(:,1)';
+                        nList = size(TfMat.Freqs,1);
                     else
                         for ifr = 1:length(TfMat.Freqs)
                             comboList{ifr} = num2str(TfMat.Freqs(ifr));
                         end
+                        nList = length(TfMat.Freqs);
                     end
                     % Label
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -1110,8 +1113,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jCombo.setEditable(false);
                     jPanelOpt.add(jCombo);
                     % Select previously selected item
-                    if ~isempty(option.Value) && (option.Value <= length(comboList))
+                    if ~isempty(option.Value) && (option.Value <= nList)
                         jCombo.setSelectedIndex(option.Value - 1);
+                    % Otherwise, reset to the first element of the list
+                    else
+                        jCombo.setSelectedIndex(0);
+                        SetOptionValue(iProcess, optNames{iOpt}, 1);
                     end
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, ev.getSource().getSelectedIndex()+1));
