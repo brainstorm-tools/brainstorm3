@@ -384,6 +384,9 @@ function FigureMouseUpCallback(hFig, varargin)
     % clicked link
     LinkIndex = GlobalData.FigConnect.ClickedLinkIndex; 
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
+    ArrowIndex = GlobalData.FigConnect.ClickedArrowIndex; 
+    GlobalData.FigConnect.ClickedArrowIndex = 0; 
+    
     LinkType = getappdata(hFig, 'MeasureLinksIsVisible');
     IsDirectional = getappdata(hFig, 'IsDirectionalData');
     
@@ -421,6 +424,9 @@ function FigureMouseUpCallback(hFig, varargin)
                 if (LinkIndex>0)
                     LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
                 end
+                if (ArrowIndex>0)
+                    ArrowClickEvent(hFig,ArrowIndex,LinkType);
+                end
             end
         end
         
@@ -436,6 +442,9 @@ function FigureMouseUpCallback(hFig, varargin)
         if (strcmpi(clickAction, 'SingleClick'))
             if (LinkIndex>0)
                 LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
+            end
+            if (ArrowIndex>0)
+                ArrowClickEvent(hFig,ArrowIndex,LinkType);
             end
         end
     end
@@ -1750,7 +1759,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             
             MeasureDistance = bst_figures('GetFigureHandleField', hFig, 'MeasureDistance');
 
-            [arrow1, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50);
+            [arrow1, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50, 1, i, isMeasureLink);
             
             % return point on the line closest to the desired location of
             % the second arrowhead (tip of second arrowhead should be at
@@ -1771,7 +1780,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             
             % overwrite arrowhead2
             if (length(x_trim) > 1 && length(y_trim) > 1)
-                [arrow2, ~, ~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100);
+                [arrow2, ~, ~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100, 0, i, isMeasureLink);
             end
 
             % store arrows
@@ -1834,14 +1843,16 @@ function LinkButtonDownFcn(src, ~)
             if (isMeasureLink)
                 Arrows1 = getappdata(hFig,'MeasureArrows1');
                 Arrows2 = getappdata(hFig,'MeasureArrows2');
-                
-                arrow1 = Arrows1(Index);
-                arrow2 = Arrows2(Index);
-                arrow_size = arrow1.LineWidth;
-                
-                set(arrow1, 'LineWidth', 3.0*arrow_size);
-                set(arrow2, 'LineWidth', 3.0*arrow_size);
-            end
+            else
+                Arrows1 = getappdata(hFig,'RegionArrows1');
+                Arrows2 = getappdata(hFig,'RegionArrows2');
+            end    
+            arrow1 = Arrows1(Index);
+            arrow2 = Arrows2(Index);
+            arrow_size = arrow1.LineWidth;
+            
+            set(arrow1, 'LineWidth', 3.0*arrow_size);
+            set(arrow2, 'LineWidth', 3.0*arrow_size);
         end
     end
 end
@@ -1989,7 +2000,7 @@ end
 %	 send me an email!  This is my very  first "public" program  and
 %	 I'd  like to  improve it where  I can -- your  help is  kindely
 %	 appreciated! Thank you!
-function [handle, new_x, new_y] = arrowh(x,y,clr,ArSize,Where)
+function [handle, new_x, new_y] = arrowh(x,y,clr,ArSize,Where,Flag,Index,isMeasureLink)
 %-- errors
 if nargin < 2
 	error('Please give enough coordinates !');
@@ -2115,7 +2126,15 @@ for Loop = 1:length(Where),
     
     
 	%-- draw the actual triangles
- 	handle(Loop) = patch(xd1,yd1,clr,'EdgeColor',clr, 'FaceColor',clr, 'Visible', 'off');
+ 	handle(Loop) = patch(xd1,...
+                         yd1,...
+                         clr,...
+                         'EdgeColor',clr,...
+                         'FaceColor',clr,...
+                         'Visible', 'off',...
+                         'PickableParts','visible',...
+                         'UserData',[Flag Index isMeasureLink],... % flag == 1 when it's the first arrow, and 0 for the second one
+                         'ButtonDownFcn',@ArrowButtonDownFcn); 
     
 	if nonsolid, set(handle(Loop),'facecolor','none'); end
 end % Loops
@@ -2126,6 +2145,82 @@ if ~WasHold
 	hold off;
 end
 %-- work done. good bye.
+end
+
+function ArrowButtonDownFcn(src, ~)
+    disp('Entered ArrowButtonDownFcn');
+    global GlobalData;
+    hFig = GlobalData.FigConnect.Figure;
+    clickAction = getappdata(hFig, 'clickAction');
+    
+    ArrowType = src.UserData(1);
+    Index = src.UserData(2);
+    isMeasureLink = src.UserData(3);
+    GlobalData.FigConnect.ClickedArrowIndex = src.UserData(2);
+    
+    % only works for left mouse clicks
+    if (strcmpi(clickAction, 'SingleClick'))    
+        % increase size of the selected arrow
+        current_size = src.LineWidth;
+        set(src, 'LineWidth', 3.0*current_size);
+
+        if (isMeasureLink)
+            if (ArrowType) % first
+                Arrows = getappdata(hFig,'MeasureArrows2');
+            else
+                Arrows = getappdata(hFig,'MeasureArrows1');
+            end
+            otherArrow = Arrows(Index);
+            arrow_size = otherArrow.LineWidth;            
+            set(otherArrow, 'LineWidth', 3.0*arrow_size);
+            
+            AllLinks = getappdata(hFig,'MeasureLinks');
+            Link = AllLinks(Index);
+            link_size = Link.LineWidth;
+            set(Link, 'LineWidth', 3.0*link_size);
+        else
+            if (ArrowType) % first
+                Arrows = getappdata(hFig,'RegionArrows2');
+            else
+                Arrows = getappdata(hFig,'RegionArrows1');
+            end
+            otherArrow = Arrows(Index);
+            arrow_size = otherArrow.LineWidth;            
+            set(otherArrow, 'LineWidth', 3.0*arrow_size);
+            
+            AllLinks = getappdata(hFig,'RegionLinks');
+            Link = AllLinks(Index);
+            link_size = Link.LineWidth;
+            set(Link, 'LineWidth', 3.0*link_size);
+        end
+    end
+end
+
+function ArrowClickEvent(hFig,ArrowIndex,LinkType)
+   disp('Entered ArrowClickEvent');
+   
+    % measure links
+    if (LinkType)
+        MeasureLinks = getappdata(hFig,'MeasureLinks');
+        Link = MeasureLinks(ArrowIndex);
+        current_size = Link.LineWidth;
+        set(Link, 'LineWidth', current_size/3.0);   
+        
+    else % region links
+        RegionLinks = getappdata(hFig,'RegionLinks');
+        Link = RegionLinks(ArrowIndex);
+        current_size = Link.LineWidth;     
+        set(Link, 'LineWidth', current_size/3.0);   
+    end
+    
+    Arrows1 = getappdata(hFig,'MeasureArrows1');
+    Arrows2 = getappdata(hFig,'MeasureArrows2');
+    arrow1 = Arrows1(ArrowIndex);
+    arrow2 = Arrows2(ArrowIndex);
+    
+    arrow_size = arrow1.LineWidth;
+    set(arrow1, 'LineWidth', arrow_size/3.0);
+    set(arrow2, 'LineWidth', arrow_size/3.0);
 end
 
 
