@@ -3873,7 +3873,8 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
     
     %rotate and align labels
     t = atan2(node.Position(2),node.Position(1));
-    if (~node.isAgregatingNode)
+    tagFull = true;
+    if (~node.isAgregatingNode || tagFull)
         if abs(t) > pi/2
             node.TextLabel.Rotation = 180*(t/pi + 1);
         else
@@ -3992,20 +3993,40 @@ function Tag = ExtractSubRegion(Region)
 end
  
 function Tag = LobeIndexToTag(Index)
-    Tag = 'U';
-    switch (Index)
-        case 1
-            Tag = 'PF';
-        case 2
-            Tag = 'F';
-        case 3
-            Tag = 'C';            
-        case 4
-            Tag = 'T';
-        case 5
-            Tag = 'P';
-        case 6
-            Tag = 'O';
+    fullTag = true;
+    
+    if fullTag
+        Tag = 'Unknown';
+        switch (Index)
+            case 1
+                Tag = 'Pre-Frontal';
+            case 2
+                Tag = 'Frontal';
+            case 3
+                Tag = 'Cerebral';            
+            case 4
+                Tag = 'Temporal';
+            case 5
+                Tag = 'Parietal';
+            case 6
+                Tag = 'Occipital';
+        end
+    else
+        Tag = 'U';
+        switch (Index)
+            case 1
+                Tag = 'PF';
+            case 2
+                Tag = 'F';
+            case 3
+                Tag = 'C';            
+            case 4
+                Tag = 'T';
+            case 5
+                Tag = 'P';
+            case 6
+                Tag = 'O';
+        end
     end
 end
  
@@ -4108,12 +4129,11 @@ end
  
 % @NOTE: ready, no changed needed
 function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sGroups, RowLocs, UpdateStructureStatistics)
- 
     % Display options
     MeasureLevel = 4;
-    RegionLevel = 3.5;
-    LobeLevel = 2.5;
-    HemisphereLevel = 1.0;
+    RegionLevel = 2.75;       % currently invisible anyway    % moved lobe nodes in ward (previously 3.5) 
+    LobeLevel = 2.75;          % moved lobe nodes outward (previously 2.5) 
+    HemisphereLevel = 1.5;      % moved hem nodes outward (previously 1.0) 
     setappdata(hFig, 'MeasureLevelDistance', MeasureLevel);
     setappdata(hFig, 'RegionLevelDistance', RegionLevel);
     
