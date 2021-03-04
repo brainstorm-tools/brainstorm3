@@ -122,6 +122,31 @@ if isfield(nirs,'CondNames')
 end
 
 
+% Detect saturation
+if isfield(nirs,'brainsight') && ~isempty(find(nirs.brainsight.acquisition.saturation))
+    event = db_template('event');
+    
+    saturation = nirs.brainsight.acquisition.saturation > 0 & nirs.brainsight.acquisition.digitalSaturation > 0;
+    saturated_channels = unique(nirs.brainsight.acquisition.saturation(saturation));
+    
+    for i_chan = 1:length(saturated_channels)
+        
+        saturation_chan = nirs.brainsight.acquisition.saturation == saturated_channels(i_chan) & nirs.brainsight.acquisition.digitalSaturation == saturated_channels(i_chan);
+        evtTime     =  find(saturation_chan) ./ sFile.prop.sfreq;
+        channels_saturated = cell(1, length(evtTime));
+        channels_saturated{saturated_channels(i_chan)} = 'saturated channel';
+
+        % Events structure
+        event.label      = sprintf('Saturation %d',saturated_channels(i_chan));
+        event.times      = evtTime(:)';
+        event.epochs     = ones(1, length(evtTime));
+        event.notes      = cell(1, length(evtTime));
+        event.channels   = channels_saturated;
+        event.reactTimes = [];
+        sFile.events = [sFile.events event];
+    end    
+end
+
 
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
