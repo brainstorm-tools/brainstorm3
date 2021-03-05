@@ -24,24 +24,17 @@ function result = sql_query(sqlConnection, type, table, data, condition, addQuer
 % Set this to 1 if you want to print the query for debugging
 debug = 1;
 
-if isempty(sqlConnection)
-    closeConnection = 1;
-    sqlConnection = sql_connect();
-else
-    closeConnection = 0;
-end
-
 % Direct query
 if nargin < 3
+    if isempty(sqlConnection)
+        error('Cannot execute a direct query without an active SQL connection');
+    end
+    
     stmt = sqlConnection.createStatement();
     if strncmpi(type, 'select', 6) % SELECT query
         result = stmt.executeQuery(type);
     else % INSERT/UPDATE/DELETE query
         result = stmt.executeUpdate(type);
-    end
-    
-    if closeConnection
-        sql_close(sqlConnection);
     end
     
     if debug
@@ -53,6 +46,15 @@ if nargin < 3
     
     return;
 end
+
+if isempty(sqlConnection)
+    closeConnection = 1;
+    sqlConnection = sql_connect();
+else
+    closeConnection = 0;
+end
+
+
 % Get additional query part
 if nargin < 6 || isempty(addQuery)
     addQuery = '';
@@ -289,7 +291,7 @@ switch type
             disp(['Result: ' getNRows(result) ' deleted.']);
         end
         
-    case 'count'        
+    case 'count'
         % Get condition
         if nargin < 4 || isempty(data)
             condQry = '';
