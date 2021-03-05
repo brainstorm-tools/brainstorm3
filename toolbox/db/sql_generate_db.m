@@ -44,7 +44,7 @@ table = generateTable('Study', 0);
 table.Name = 'Study';
 editField('Id', 'AutoIncrement');
 editField('Name', 'NotNull');
-editField('Subject', 'ForeignKey', {'Study', 'Id'});
+editField('Subject', 'ForeignKey', {'Subject', 'Id'});
 editField('Subject', 'NotNull');
 editField('FileName', 'NotNull');
 table.PrimaryKey = 'Id';
@@ -118,15 +118,17 @@ end
 function table = generateTable(dbTemplate, NotNull)
     table = db_template('sqltable');
     table.Name = dbTemplate;
-    sStruct = db_template(dbTemplate, 'fields');
-    fields = fieldnames(sStruct);
+    sTypes  = db_template(dbTemplate, 'fields');
+    sValues = db_template(dbTemplate, 'values');
+    fields = fieldnames(sTypes);
     
     iNext = 1;
     for iField = 1:length(fields)
         field = db_template('sqlfield');
         field.Name = fields{iField};
-        field.Type = sStruct.(fields{iField});
+        field.Type = sTypes.(fields{iField});
         field.NotNull = NotNull;
+        field.DefaultValue = sValues.(fields{iField});
         if ~strcmpi(field.Type, 'skip')
             table.Fields(iNext) = field;
             iNext = iNext + 1;

@@ -21,8 +21,18 @@ function sql_create(sqlConnection, tables, dbInfo)
 %
 % Authors: Martin Cousineau, 2020
 
+% Set this to 1 if you want to print the query for debugging
+debug = 1;
+
 if nargin < 3 || isempty(dbInfo)
     dbInfo = sql_get_info();
+end
+
+if isempty(sqlConnection)
+    closeConnection = 1;
+    sqlConnection = sql_connect(dbInfo);
+else
+    closeConnection = 0;
 end
 
 % Find order in which to create tables that respects foreign keys
@@ -69,7 +79,7 @@ switch (dbInfo.Rdbms)
         % Generate SQLite CREATE TABLE query
         sqlQry = '';
         for iTable = 1:length(tables)
-            tblQry = ['CREATE TABLE "' tables(iTable).Name '" ('];
+            tblQry = ['CREATE TABLE IF NOT EXISTS "' tables(iTable).Name '" ('];
             foreignQry = '';
             foundPrimaryKey = 0;
             for iField = 1:length(tables(iTable).Fields)
@@ -119,11 +129,20 @@ switch (dbInfo.Rdbms)
             end
             
             tblQry = [tblQry foreignQry ');'];
+            
             % Execute CREATE query using JDBC
             stmt = sqlConnection.createStatement();
             stmt.execute(tblQry);
+            
+            if debug
+                disp(['Query: ' tblQry]);
+            end
         end
 
     otherwise
         error('Unsupported relational database management system.');
+end
+
+if closeConnection
+    sql_close(sqlConnection);
 end
