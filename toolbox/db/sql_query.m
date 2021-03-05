@@ -121,33 +121,33 @@ switch type
         % Special case: check only existence of row
         if checkExistence
             result = resultSet.next();
-            resultSet.close();
-            return;
-        end
-        
-        % Prepare output structure
-        defValues = db_template(table);
-        fieldTypes = db_template(table, 'fields');
-        if allFields
-            outputStruct = defValues;
-            data = fieldnames(defValues);
+            iResult = result;
         else
-            outputStruct = struct();
-            for iField = 1:length(data)
-                outputStruct.(data{iField}) = defValues.(data{iField});
+            % Prepare output structure
+            defValues = db_template(table);
+            fieldTypes = db_template(table, 'fields');
+            if allFields
+                outputStruct = defValues;
+                data = fieldnames(defValues);
+            else
+                outputStruct = struct();
+                for iField = 1:length(data)
+                    outputStruct.(data{iField}) = defValues.(data{iField});
+                end
+            end
+            result = repmat(outputStruct, 0);
+
+            % Retrieve rows
+            iResult = 1;
+            while resultSet.next()
+                for iField = 1:length(data)
+                    result(iResult).(data{iField}) = getResultField(resultSet, ...
+                        data{iField}, fieldTypes.(data{iField}));
+                end
+                iResult = iResult + 1;
             end
         end
-        result = repmat(outputStruct, 0);
         
-        % Retrieve rows
-        iResult = 1;
-        while resultSet.next()
-            for iField = 1:length(data)
-                result(iResult).(data{iField}) = getResultField(resultSet, ...
-                    data{iField}, fieldTypes.(data{iField}));
-            end
-            iResult = iResult + 1;
-        end
         resultSet.close();
         pstmt.close();
         
