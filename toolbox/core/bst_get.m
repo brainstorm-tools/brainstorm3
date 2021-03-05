@@ -661,7 +661,7 @@ switch contextName
                 end
             end
         end
-            
+        
         % ===== GET STUDY BY INDEX =====
         % Call: bst_get('Study', iStudies);
         if ~isempty(iStudies)
@@ -908,27 +908,29 @@ switch contextName
         end
         % Process all subjects
         iStudies = [];
+        sqlConn = sql_connect();
         for i=1:length(iSubjects)
             iSubject = iSubjects(i);
-            sSubject = bst_get('Subject', iSubject, 1);
+            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', iSubject));
             % No subject: error
             if isempty(sSubject) 
                 continue
             % If subject uses default channel file    
             elseif (sSubject.UseDefaultChannel ~= 0)
                 % Get default study for this subject
-                [tmp___, iStudiesNew] = bst_get('DefaultStudy', iSubject);
+                iStudiesNew = db_get('DefaultStudy', sqlConn, iSubject);
                 iStudies = [iStudies, iStudiesNew];
             % Else: get all the studies belonging to this subject
             else
                 if NoIntra
-                    [tmp___, iStudiesNew] = bst_get('StudyWithSubject', sSubject.FileName);
+                    iStudiesNew = db_get('StudiesFromSubject', sqlConn, iSubject);
                 else
-                    [tmp___, iStudiesNew] = bst_get('StudyWithSubject', sSubject.FileName, 'intra_subject');
+                    iStudiesNew = db_get('StudiesFromSubject', sqlConn, iSubject, 'intra_subject');
                 end
                 iStudies = [iStudies, iStudiesNew];
             end
         end
+        sql_close(sqlConn);
         argout1 = iStudies;
     
         

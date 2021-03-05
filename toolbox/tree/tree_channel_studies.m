@@ -132,8 +132,15 @@ for iNode = 1:length(bstNodes)
     end
 end
 % Get the channel files corresponding to these studies
-[sChannels, iStudies] = bst_get('ChannelForStudy', unique(iStudies));
 iStudies = unique(iStudies);
+iChanStudies = [];
+for i = 1:length(iStudies)
+    [sChannels, iChanStudy] = db_get('ChannelFromStudy', iStudies(i));
+    if ~isempty(iChanStudy)
+        iChanStudies(end + 1) = iChanStudy;
+    end
+end
+iStudies = unique(iChanStudies);
 
 end
 

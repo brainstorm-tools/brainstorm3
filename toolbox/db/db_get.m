@@ -83,37 +83,37 @@ switch contextName
             else
                 varargout{1} = sAnatFiles;
             end
-            return;
-        end
-
-        for iFile = 1:length(sAnatFiles)
-            sFile = db_template(sAnatFiles(iFile).Type);
-            sFile.Comment = sAnatFiles(iFile).Name;
-            sFile.FileName = sAnatFiles(iFile).FileName;
-
-            switch sAnatFiles(iFile).Type
-                case 'anatomy'
-                    if ~isempty(sSubject)
-                        sSubject.Anatomy(end + 1) = sFile;
-                    end
-                case 'surface'
-                    sFile.SurfaceType = sAnatFiles(iFile).SurfaceType;
-                    if ~isempty(sSubject)
-                        sSubject.Surface(end + 1) = sFile;
-                    end
-                otherwise
-                    error('Unsupported anatomy file type');
-            end
-
-            if isempty(sSubject)
-                sOutFiles(end + 1) = sFile;
-            end
-        end
-
-        if ~isempty(sSubject)
-            varargout{1} = sSubject;
         else
-            varargout{1} = sOutFiles;
+
+            for iFile = 1:length(sAnatFiles)
+                sFile = db_template(sAnatFiles(iFile).Type);
+                sFile.Comment = sAnatFiles(iFile).Name;
+                sFile.FileName = sAnatFiles(iFile).FileName;
+
+                switch sAnatFiles(iFile).Type
+                    case 'anatomy'
+                        if ~isempty(sSubject)
+                            sSubject.Anatomy(end + 1) = sFile;
+                        end
+                    case 'surface'
+                        sFile.SurfaceType = sAnatFiles(iFile).SurfaceType;
+                        if ~isempty(sSubject)
+                            sSubject.Surface(end + 1) = sFile;
+                        end
+                    otherwise
+                        error('Unsupported anatomy file type');
+                end
+
+                if isempty(sSubject)
+                    sOutFiles(end + 1) = sFile;
+                end
+            end
+
+            if ~isempty(sSubject)
+                varargout{1} = sSubject;
+            else
+                varargout{1} = sOutFiles;
+            end
         end
 
     % Usage: sFiles = db_get('FilesWithStudy', FileType (e.g. Data), StudyID)
@@ -219,52 +219,98 @@ switch contextName
         
         sStudy = sql_query(sqlConn, 'select', 'Study', ...
             {'Id', 'Subject', 'Name', 'iChannel'}, struct('Id', iStudy));
-        if isempty(sStudy)
-            return;
-        end
-        
-        iChanStudy = iStudy;
-        % === Analysis-Inter node ===
-        if strcmpi(sStudy.Name, '@inter')
-            % If no channel file is defined in 'Analysis-intra' node: look in 
-            if isempty(sStudy.iChannel)
-                % Get global default study
-                sStudy = sql_query(sqlConn, 'select', 'Study', ...
-                    {'Id', 'Subject', 'iChannel'}, ...
-                    struct('Subject', 0, 'Name', '@default_study'));
-                iChanStudy = -3;
-            end
-        % === All other nodes ===
-        else
-            % Get subject attached to study
-            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', ...
-                struct('Id', sStudy.Subject));
-            % Subject uses default channel/headmodel
-            if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
-                sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
-                    struct('Subject', sStudy.Subject, 'Name', '@default_study'));
-                if ~isempty(sStudy)
+        if ~isempty(sStudy)
+            iChanStudy = iStudy;
+            % === Analysis-Inter node ===
+            if strcmpi(sStudy.Name, '@inter')
+                % If no channel file is defined in 'Analysis-intra' node: look in 
+                if isempty(sStudy.iChannel)
+                    % Get global default study
+                    sStudy = sql_query(sqlConn, 'select', 'Study', ...
+                        {'Id', 'Subject', 'iChannel'}, ...
+                        struct('Subject', 0, 'Name', '@default_study'));
                     iChanStudy = sStudy.Id;
+                end
+            % === All other nodes ===
+            else
+                % Get subject attached to study
+                sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', ...
+                    struct('Id', sStudy.Subject));
+                % Subject uses default channel/headmodel
+                if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
+                    sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
+                        struct('Subject', sStudy.Subject, 'Name', '@default_study'));
+                    if ~isempty(sStudy)
+                        iChanStudy = sStudy.Id;
+                    end
+                end
+            end
+
+            if ~isempty(sStudy)
+                % If no channel selected, find first channel in study
+                if isempty(sStudy.iChannel)
+                    sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', ...
+                        'Id', struct('Study', sStudy.Id, 'Type', 'channel'));
+                    if ~isempty(sChannel)
+                        sStudy.iChannel = sChannel(1).Id;
+                    end
+                end
+
+                if ~isempty(sStudy.iChannel)
+                    varargout{1} = sStudy.iChannel;
+                    varargout{2} = iChanStudy;
                 end
             end
         end
-
+        
+    % Usage: iStudies = db_get('StudiesFromSubject', iSubject) : WITHOUT the system studies ('intra_subject', 'default_study')
+    % Usage: iStudies = db_get('StudiesFromSubject', iSubject, 'intra_subject', 'default_study') : WITH the system studies
+    case 'StudiesFromSubject'
+        iSubject = args{1};
+        
+        addQuery = [];
+        if length(args) < 2 || ~ismember('intra_subject', args(2:end))
+            addQuery = [' AND Name <> "' bst_get('DirAnalysisIntra') '"'];
+        end
+        if length(args) < 2 || ~ismember('default_study', args(2:end))
+            addQuery = [addQuery ' AND Name <> "' bst_get('DirDefaultStudy') '"'];
+        end
+        
+        sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('Subject', iSubject), addQuery);
+        
         if isempty(sStudy)
-            return;
+            varargout{1} = [];
+        else
+            varargout{1} = [sStudy.Id];
         end
         
-        % If no channel selected, find first channel in study
-        if isempty(sStudy.iChannel)
-            sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-                'Id', struct('Study', sStudy.Id, 'Type', 'channel'));
-            if isempty(sChannel)
-                return;
+    % Usage: iStudy = db_get('DefaultStudy', iSubject)
+    case 'DefaultStudy'
+        iSubject = args{1};
+        varargout{1} = [];
+        defaultStudy = bst_get('DirDefaultStudy');
+        
+        % === DEFAULT SUBJECT ===
+        % => Return global default study
+        if iSubject == 0
+            % Return Global default study
+        % === NORMAL SUBJECT ===
+        else
+            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', iSubject));
+            % === GLOBAL DEFAULT STUDY ===
+            if sSubject.UseDefaultChannel == 2
+                % Return Global default study
+                iSubject = 0;
+            % === SUBJECT'S DEFAULT STUDY ===
+            elseif sSubject.UseDefaultChannel == 1
+                % Return subject's default study
             end
-            sStudy.iChannel = sChannel(1).Id;
         end
         
-        varargout{1} = sStudy.iChannel;
-        varargout{2} = iChanStudy;
+        sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('Subject', iSubject, 'Name', defaultStudy));
+        if ~isempty(sStudy)
+            varargout{1} = sStudy.Id;
+        end
         
     otherwise
         error('Invalid context : "%s"', contextName);
