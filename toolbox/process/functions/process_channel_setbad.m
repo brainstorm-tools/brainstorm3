@@ -43,6 +43,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = '';
     sProcess.options.sensortypes.InputTypes = {'data', 'raw'};
+    % === Whether process is run interactively
+    sProcess.options.isInteractive.Comment = 'Is interactive?';
+    sProcess.options.isInteractive.Type    = 'checkbox';
+    sProcess.options.isInteractive.Value   = 0;
+    sProcess.options.isInteractive.Hidden  = 1;
 end
 
 
@@ -57,12 +62,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % Get options
     BadList = sProcess.options.sensortypes.Value;
-    if isempty(BadList)
+    isInteractive = sProcess.options.isInteractive.Value;
+    if isempty(BadList) && ~isInteractive
         bst_report('Error', sProcess, [], 'Empty list of bad channels.');
         return
     end
     % Add bad channels
-    tree_set_channelflag({sInputs.FileName}, 'AddBad', BadList);
+    if isInteractive && isempty(BadList)
+        tree_set_channelflag({sInputs.FileName}, 'AddBad');
+    else
+        tree_set_channelflag({sInputs.FileName}, 'AddBad', BadList);
+    end
     % Return all the files in input
     OutputFiles = {sInputs.FileName};
 end

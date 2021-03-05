@@ -2505,10 +2505,17 @@ end % END SWITCH( ACTION )
 %% ===== MENU: GOOD/BAD CHANNELS =====
     function jMenu = fcnPopupMenuGoodBad()
         import org.brainstorm.icon.*;
+        
+        DataFiles = {};
+        for iNode = 1:length(bstNodes)
+            DataFiles{end + 1} = char(bstNodes(iNode).getFileName());
+        end
+        
         jMenu = gui_component('Menu', jPopup, [], 'Good/bad channels', IconLoader.ICON_GOODBAD, [], []);
         gui_component('MenuItem', jMenu, [], 'Mark some channels as good...', IconLoader.ICON_GOOD, [], @(h,ev)tree_set_channelflag(bstNodes, 'ClearBad'));
         gui_component('MenuItem', jMenu, [], 'Mark all channels as good',     IconLoader.ICON_GOOD, [], @(h,ev)tree_set_channelflag(bstNodes, 'ClearAllBad'));
-        gui_component('MenuItem', jMenu, [], 'Mark some channels as bad...',  IconLoader.ICON_BAD,  [], @(h,ev)tree_set_channelflag(bstNodes, 'AddBad'));
+        gui_component('MenuItem', jMenu, [], 'Mark some channels as bad...',  IconLoader.ICON_BAD,  [], ...
+            @(h,ev)bst_process('CallProcess', 'process_channel_setbad', DataFiles, [], 'sensortypes', [], 'isInteractive', 1));
         gui_component('MenuItem', jMenu, [], 'Mark flat channels as bad',     IconLoader.ICON_BAD,  [], @(h,ev)tree_set_channelflag(bstNodes, 'DetectFlat'));
         gui_component('MenuItem', jMenu, [], 'View all bad channels',         IconLoader.ICON_BAD,  [], @(h,ev)tree_set_channelflag(bstNodes, 'ShowBad'));
     end

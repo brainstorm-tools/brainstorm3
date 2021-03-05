@@ -1413,53 +1413,11 @@ switch contextName
         for i = 1:length(iStudies)           
             % Get study 
             iStudy = iStudies(i);
-            sStudy = sql_query(sqlConn, 'select', 'Study', ...
-                {'Id', 'Subject', 'Name', 'iChannel'}, struct('Id', iStudy));
-            if isempty(sStudy)
-                continue;
-            end
-            iChanStudy = iStudy;
-            % === Analysis-Inter node ===
-            if strcmpi(sStudy.Name, '@inter')
-                % If no channel file is defined in 'Analysis-intra' node: look in 
-                if isempty(sStudy.iChannel)
-                    % Get global default study
-                    sStudy = sql_query(sqlConn, 'select', 'Study', ...
-                        {'Id', 'Subject', 'iChannel'}, ...
-                        struct('Subject', 0, 'Name', '@default_study'));
-                    iChanStudy = -3;
-                end
-            % === All other nodes ===
-            else
-                % Get subject attached to study
-                sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', ...
-                    struct('Id', sStudy.Subject));
-                % Subject uses default channel/headmodel
-                if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
-                    sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
-                        struct('Subject', sStudy.Subject, 'Name', '@default_study'));
-                    if ~isempty(sStudy)
-                        iChanStudy = sStudy.Id;
-                    end
-                end
-            end
-            
-            if ~isempty(sStudy)
-                % If no channel selected, find first channel in study
-                if isempty(sStudy.iChannel)
-                    sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-                        'Id', struct('Study', sStudy.Id, 'Type', 'channel'));
-                    if ~isempty(sChannel)
-                        sStudy.iChannel = sChannel(1).Id;
-                    else
-                        continue;
-                    end
-                end
-                sChannel = db_get('FunctionalFile', sqlConn, 'channel', sStudy.iChannel);
-                if ~isempty(sChannel)
-                    iChanStudies = [iChanStudies, iChanStudy];
-                    sListChannel = [sListChannel, sChannel];
-                end
+            [iChannel, iChanStudy] = db_get('ChannelFromStudy', sqlConn, iStudy);
+            sChannel = db_get('FunctionalFile', sqlConn, 'channel', iChannel);
+            if ~isempty(sChannel)
+                iChanStudies = [iChanStudies, iChanStudy];
+                sListChannel = [sListChannel, sChannel];
             end
         end
         sql_close(sqlConn);
