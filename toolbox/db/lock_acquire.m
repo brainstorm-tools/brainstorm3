@@ -102,7 +102,7 @@ while isFirst || isLocked
     end
 
     % Check whether a lock already exists on this object
-    sLock = lock_get(sqlConnection, SubjectId, StudyId, FileId);
+    sLock = lock_read(sqlConnection, SubjectId, StudyId, FileId);
     isLocked = ~isempty(sLock);
     if isLocked
         continue;
@@ -126,7 +126,7 @@ while isFirst || isLocked
     LockId = sql_query(sqlConnection, 'insert', 'lock', LockData);
 
     % Query again to make sure lock is still unique!
-    sLock = lock_get(sqlConnection, SubjectId, StudyId, FileId, LockId);
+    sLock = lock_read(sqlConnection, SubjectId, StudyId, FileId, LockId);
     isLocked = ~isempty(sLock);
 
     if isLocked

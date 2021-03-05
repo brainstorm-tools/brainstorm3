@@ -1,10 +1,10 @@
-function sLock = lock_get(sqlConnection, SubjectId, StudyId, FileId, ExcludeLockId)
-% LOCK_GET: Gets an active lock on a given subject/study/file.
+function sLock = lock_read(sqlConnection, SubjectId, StudyId, FileId, ExcludeLockId)
+% LOCK_READ: Reads an active lock on a given subject/study/file.
 %
-% USAGE: sSubjectLock   = lock_get(sqlConn, SubjectId)
-%        sStudyLock     = lock_get(sqlConn, SubjectId, StudyId)
-%        sFileLock      = lock_get(sqlConn, SubjectId, StudyId, FileId)
-%        sDifferentLock = lock_get(sqlConn, SubjectId, StudyId, FileId, ExistingLockId)
+% USAGE: sSubjectLock   = lock_read(sqlConn, SubjectId)
+%        sStudyLock     = lock_read(sqlConn, SubjectId, StudyId)
+%        sFileLock      = lock_read(sqlConn, SubjectId, StudyId, FileId)
+%        sDifferentLock = lock_read(sqlConn, SubjectId, StudyId, FileId, ExistingLockId)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
