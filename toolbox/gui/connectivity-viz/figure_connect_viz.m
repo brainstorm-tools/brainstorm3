@@ -387,6 +387,11 @@ function FigureMouseUpCallback(hFig, varargin)
     ArrowIndex = GlobalData.FigConnect.ClickedArrowIndex; 
     GlobalData.FigConnect.ClickedArrowIndex = 0; 
     
+%     node1Link = GlobalData.FigConnect.ClickedNode1Index; 
+%     GlobalData.FigConnect.ClickedNode1Index = 0;
+%     node2Link = GlobalData.FigConnect.ClickedNode2Index; 
+%     GlobalData.FigConnect.ClickedNode2Index = 0;
+    
     LinkType = getappdata(hFig, 'MeasureLinksIsVisible');
     IsDirectional = getappdata(hFig, 'IsDirectionalData');
     
@@ -422,10 +427,20 @@ function FigureMouseUpCallback(hFig, varargin)
             % left mouse click on a link
             if (strcmpi(clickAction, 'SingleClick'))        
                 if (LinkIndex>0)
-                    LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
+                    node1 = GlobalData.FigConnect.ClickedNode1Index;
+                    GlobalData.FigConnect.ClickedNode1Index = 0;
+                    node2 = GlobalData.FigConnect.ClickedNode2Index;
+                    GlobalData.FigConnect.ClickedNode2Index = 0;
+                    
+                    LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1,node2);
                 end
                 if (ArrowIndex>0)
-                    ArrowClickEvent(hFig,ArrowIndex,LinkType);
+                    node1 = GlobalData.FigConnect.ClickedNode1Index;
+                    GlobalData.FigConnect.ClickedNode1Index = 0;
+                    node2 = GlobalData.FigConnect.ClickedNode2Index;
+                    GlobalData.FigConnect.ClickedNode2Index = 0;
+                    
+                    ArrowClickEvent(hFig,ArrowIndex,LinkType,node1,node2);
                 end
             end
         end
@@ -441,10 +456,10 @@ function FigureMouseUpCallback(hFig, varargin)
         % left mouse click on a link
         if (strcmpi(clickAction, 'SingleClick'))
             if (LinkIndex>0)
-                LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional);
+                LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1,node2);
             end
             if (ArrowIndex>0)
-                ArrowClickEvent(hFig,ArrowIndex,LinkType);
+                ArrowClickEvent(hFig,ArrowIndex,LinkType,node1,node2);
             end
         end
     end
@@ -1439,6 +1454,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     GlobalData.FigConnect.Figure = hFig;
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
     GlobalData.FigConnect.ClickedArrowIndex = 0;
+    GlobalData.FigConnect.ClickedNode1Index = 0;
+    GlobalData.FigConnect.ClickedNode2Index = 0;
     
     % background color : 
     %   White is for publications
@@ -1760,7 +1777,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             
             MeasureDistance = bst_figures('GetFigureHandleField', hFig, 'MeasureDistance');
 
-            [arrow1, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50, 1, i, isMeasureLink);
+            [arrow1, new_x, new_y] = arrowh(x, y, AllNodes(node1).Color, 100, 50, 1, i, isMeasureLink, node1, node2);
             
             % return point on the line closest to the desired location of
             % the second arrowhead (tip of second arrowhead should be at
@@ -1781,7 +1798,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             
             % overwrite arrowhead2
             if (length(x_trim) > 1 && length(y_trim) > 1)
-                [arrow2, ~, ~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100, 0, i, isMeasureLink);
+                [arrow2, ~, ~] = arrowh(x_trim, y_trim, AllNodes(node1).Color, 100, 100, 0, i, isMeasureLink, node1, node2);
             end
 
             % store arrows
@@ -1833,7 +1850,10 @@ function LinkButtonDownFcn(src, ~)
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
     isMeasureLink = src.UserData(3);
+    
     GlobalData.FigConnect.ClickedLinkIndex = src.UserData(1);
+    GlobalData.FigConnect.ClickedNode1Index = src.UserData(4); 
+    GlobalData.FigConnect.ClickedNode2Index = src.UserData(5); 
     
     % only works for left mouse clicks
     if (strcmpi(clickAction, 'SingleClick'))    
@@ -1845,10 +1865,11 @@ function LinkButtonDownFcn(src, ~)
         label1 = node1.TextLabel;
         node2 = AllNodes(src.UserData(5));
         label2 = node2.TextLabel;
-%         current_labelSize = label1.FontSize;
-%         set(label1, 'FontWeight', 'bold');
-%         set(label1, 'FontSize', current_labelSize + 2);
-%         set(label2, 'FontWeight', 'bold');
+        current_labelSize = label1.FontSize;
+        set(label1, 'FontWeight', 'bold');
+        set(label2, 'FontWeight', 'bold');
+        set(label1, 'FontSize', current_labelSize + 2);
+        set(label2, 'FontSize', current_labelSize + 2);
         
         if (IsDirectional)
             if (isMeasureLink)
@@ -1868,7 +1889,7 @@ function LinkButtonDownFcn(src, ~)
     end
 end
 
-function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional)
+function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2Index)
    disp('Entered LinkClickEvent');
    
     % measure links
@@ -1903,6 +1924,18 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional)
         set(arrow1, 'LineWidth', arrow_size/3.0);
         set(arrow2, 'LineWidth', arrow_size/3.0);
     end
+    
+    AllNodes = getappdata(hFig, 'AllNodes');
+    node1 = AllNodes(node1Index);
+    node2 = AllNodes(node2Index);
+    label1 = node1.TextLabel;
+    label2 = node2.TextLabel;
+    current_labelSize = label1.FontSize;
+    
+    set(label1, 'FontWeight', 'normal');
+    set(label2, 'FontWeight', 'normal');
+    set(label1, 'FontSize', current_labelSize - 2);
+    set(label2, 'FontSize', current_labelSize - 2);
 end
 
 %% ARROWH   Draws a solid 2D arrow head in current plot.
@@ -2011,7 +2044,7 @@ end
 %	 send me an email!  This is my very  first "public" program  and
 %	 I'd  like to  improve it where  I can -- your  help is  kindely
 %	 appreciated! Thank you!
-function [handle, new_x, new_y] = arrowh(x,y,clr,ArSize,Where,Flag,Index,isMeasureLink)
+function [handle, new_x, new_y] = arrowh(x,y,clr,ArSize,Where,Flag,Index,isMeasureLink,node1,node2)
 %-- errors
 if nargin < 2
 	error('Please give enough coordinates !');
@@ -2144,7 +2177,7 @@ for Loop = 1:length(Where),
                          'FaceColor',clr,...
                          'Visible', 'off',...
                          'PickableParts','visible',...
-                         'UserData',[Flag Index isMeasureLink],... % flag == 1 when it's the first arrow, and 0 for the second one
+                         'UserData',[Flag Index isMeasureLink node1,node2],... % flag == 1 when it's the first arrow, and 0 for the second one
                          'ButtonDownFcn',@ArrowButtonDownFcn); 
     
 	if nonsolid, set(handle(Loop),'facecolor','none'); end
@@ -2163,17 +2196,30 @@ function ArrowButtonDownFcn(src, ~)
     global GlobalData;
     hFig = GlobalData.FigConnect.Figure;
     clickAction = getappdata(hFig, 'clickAction');
+    AllNodes = getappdata(hFig, 'AllNodes');
     
     ArrowType = src.UserData(1);
     Index = src.UserData(2);
     isMeasureLink = src.UserData(3);
     GlobalData.FigConnect.ClickedArrowIndex = src.UserData(2);
+    GlobalData.FigConnect.ClickedNode1Index = src.UserData(4); 
+    GlobalData.FigConnect.ClickedNode2Index = src.UserData(5);
     
     % only works for left mouse clicks
     if (strcmpi(clickAction, 'SingleClick'))    
         % increase size of the selected arrow
         current_size = src.LineWidth;
         set(src, 'LineWidth', 3.0*current_size);
+        
+        node1 = AllNodes(src.UserData(4));
+        label1 = node1.TextLabel;
+        node2 = AllNodes(src.UserData(5));
+        label2 = node2.TextLabel;
+        current_labelSize = label1.FontSize;
+        set(label1, 'FontWeight', 'bold');
+        set(label2, 'FontWeight', 'bold');
+        set(label1, 'FontSize', current_labelSize + 2);
+        set(label2, 'FontSize', current_labelSize + 2);
 
         if (isMeasureLink)
             if (ArrowType) % first
@@ -2207,7 +2253,7 @@ function ArrowButtonDownFcn(src, ~)
     end
 end
 
-function ArrowClickEvent(hFig,ArrowIndex,LinkType)
+function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
    disp('Entered ArrowClickEvent');
    
     % measure links
@@ -2232,6 +2278,18 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType)
     arrow_size = arrow1.LineWidth;
     set(arrow1, 'LineWidth', arrow_size/3.0);
     set(arrow2, 'LineWidth', arrow_size/3.0);
+    
+    AllNodes = getappdata(hFig, 'AllNodes');   
+    node1 = AllNodes(Node1Index);
+    label1 = node1.TextLabel;
+    node2 = AllNodes(Node2Index);
+    label2 = node2.TextLabel;
+    current_labelSize = label1.FontSize;
+    
+    set(label1, 'FontWeight', 'normal');
+    set(label2, 'FontWeight', 'normal');
+    set(label1, 'FontSize', current_labelSize - 2);
+    set(label2, 'FontSize', current_labelSize - 2);
 end
 
 
