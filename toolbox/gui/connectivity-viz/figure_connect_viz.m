@@ -1585,7 +1585,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             rmappdata(hFig,'MeasureArrows2');
         end
     else
-        levelScale = getappdata(hFig, 'RegionLevelDistance'); % typically 3.5 for region nodes to display region links
+        levelScale = getappdata(hFig, 'RegionLevelDistance');
         
         if (isappdata(hFig,'RegionLinks'))
             delete(getappdata(hFig,'RegionLinks'));
@@ -1630,12 +1630,6 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         node2 = DataPair(i,2);
         u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/levelScale;
         v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;    
-        
-        % Added Feb 10: Make nodes at level 3.5 invisible
-        if (~isMeasureLink)
-            AllNodes(node1).NodeMarker.Visible = 'off';
-            AllNodes(node2).NodeMarker.Visible = 'off';
-        end    
         
         % check if 2 bidirectional links overlap
         if(i==1)
@@ -2662,7 +2656,7 @@ end
  
 function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{2};
+    Regions = Levels{3};
     NumberOfNode = size(Regions,1);
     mMeanDataPair = zeros(NumberOfNode*NumberOfNode,3);
     %
@@ -2685,7 +2679,7 @@ end
  
 function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{2};
+    Regions = Levels{3};
     NumberOfRegions = size(Regions,1);
     mMaxDataPair = zeros(NumberOfRegions*NumberOfRegions,3);
     
@@ -4070,6 +4064,14 @@ function ClearAndAddNodes(hFig, V, Names)
         
     setappdata(hFig, 'AllNodes', AllNodes); % Very important!
     
+    % hide all level 2 nodes (previous region nodes for region links)
+    Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
+    Regions = Levels{2};
+    for i=1:length(Regions)
+        AllNodes(Regions(i)).NodeMarker.Visible = 'off';
+        AllNodes(Regions(i)).TextLabel.Visible = 'off';
+    end
+    
     % refresh display extent
     axis image; %fit display to all objects in image
     ax = hFig.CurrentAxes; %z-axis on default
@@ -4125,7 +4127,7 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
         'PickableParts','all',...
         'ButtonDownFcn',@NodeButtonDownFcn,...
         'UserData',[index node.Label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
-
+    
     % Create label as Matlab Text obj 
     % display with '_', default colour white, callback to allow clicked labels
     % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
@@ -4151,6 +4153,7 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
     
     % show node as 'selected' as default
     SelectNode(hFig, node, true);
+   
 end
 
 % To visually change the appearance of sel/unsel nodes
@@ -4411,11 +4414,11 @@ end
 function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sGroups, RowLocs, UpdateStructureStatistics)
     % Display options
     MeasureLevel = 4;
-    RegionLevel = 2.75;       % currently invisible anyway    % moved lobe nodes in ward (previously 3.5) 
+    RegionLevel = 3.5;         % currently invisible anyway (unused/hidden region nodes)
     LobeLevel = 2.75;          % moved lobe nodes outward (previously 2.5) 
     HemisphereLevel = 1.5;      % moved hem nodes outward (previously 1.0) 
     setappdata(hFig, 'MeasureLevelDistance', MeasureLevel);
-    setappdata(hFig, 'RegionLevelDistance', RegionLevel);
+    setappdata(hFig, 'RegionLevelDistance', LobeLevel);
     
     % Some values are Hardcoded for Display consistency
     NumberOfMeasureNodes = size(aNames,1);
