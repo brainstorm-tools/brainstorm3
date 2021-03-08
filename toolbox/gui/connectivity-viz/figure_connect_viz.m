@@ -1438,6 +1438,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     GlobalData.FigConnect.Figure = hFig;
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
+    GlobalData.FigConnect.ClickedArrowIndex = 0;
     
     % background color : 
     %   White is for publications
@@ -1669,7 +1670,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','visible',...
                 'Visible','off',...
-                'UserData',[i IsDirectionalData isMeasureLink],... % i is the index
+                'UserData',[i IsDirectionalData isMeasureLink node1 node2],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
 
         else % else, draw an arc
@@ -1750,7 +1751,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','visible',...
                 'Visible','off',...
-                'UserData',[i IsDirectionalData isMeasureLink],... % i is the index
+                'UserData',[i IsDirectionalData isMeasureLink node1 node2],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
         end
             
@@ -1827,6 +1828,7 @@ function LinkButtonDownFcn(src, ~)
     global GlobalData;
     hFig = GlobalData.FigConnect.Figure;
     clickAction = getappdata(hFig, 'clickAction');
+    AllNodes = getappdata(hFig, 'AllNodes');
     
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
@@ -1838,6 +1840,15 @@ function LinkButtonDownFcn(src, ~)
         % increase size on button down click
         current_size = src.LineWidth;
         set(src, 'LineWidth', 3.0*current_size);
+        
+        node1 = AllNodes(src.UserData(4));
+        label1 = node1.TextLabel;
+        node2 = AllNodes(src.UserData(5));
+        label2 = node2.TextLabel;
+%         current_labelSize = label1.FontSize;
+%         set(label1, 'FontWeight', 'bold');
+%         set(label1, 'FontSize', current_labelSize + 2);
+%         set(label2, 'FontWeight', 'bold');
         
         if (IsDirectional)
             if (isMeasureLink)
@@ -4032,11 +4043,12 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
         'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
     
     % Create label as Matlab Text obj 
-        % display with '_', default colour white, callback to allow clicked labels
-        % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
+    % display with '_', default colour white, callback to allow clicked labels
+    % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
     node.TextLabel = text(0,0,label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[index label xpos ypos]); 
     node.TextLabel.Position = 1.05*node.Position; %need offset factor so label doesn't overlap
     node.TextLabel.FontSize = node.TextLabel.FontSize-3; % this gives size of 7 (default 10 is too big)
+    node.TextLabel.FontWeight = 'normal'; % not bold by default
     
     %rotate and align labels
     t = atan2(node.Position(2),node.Position(1));
