@@ -1871,6 +1871,11 @@ function LinkButtonDownFcn(src, ~)
         set(label1, 'FontSize', current_labelSize + 2);
         set(label2, 'FontSize', current_labelSize + 2);
         
+%         set(label1, 'EdgeColor', 'y');
+%         set(label1, 'Margin', 1);
+%         set(label2, 'EdgeColor', 'y');
+%         set(label2, 'Margin', 1);
+        
         if (IsDirectional)
             if (isMeasureLink)
                 Arrows1 = getappdata(hFig,'MeasureArrows1');
@@ -1936,6 +1941,9 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
     set(label2, 'FontWeight', 'normal');
     set(label1, 'FontSize', current_labelSize - 2);
     set(label2, 'FontSize', current_labelSize - 2);
+    
+%     set(label1, 'EdgeColor', 'none');
+%     set(label2, 'EdgeColor', 'none');
 end
 
 %% ARROWH   Draws a solid 2D arrow head in current plot.
