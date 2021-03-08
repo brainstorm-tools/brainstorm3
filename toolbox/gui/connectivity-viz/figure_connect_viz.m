@@ -174,6 +174,7 @@ function ResetDisplay(hFig)
     setappdata(hFig, 'DataThreshold', 0.5);
     setappdata(hFig, 'DistanceThreshold', 0);
     setappdata(hFig, 'TextDisplayMode', [1 2]);
+    setappdata(hFig, 'LobeFullLabel', 1); % 1 for displaying full label (e.g. 'Pre-Frontal') 0 for abbr tag ('PF')
     setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     if isappdata(hFig, 'DataPair')
@@ -490,7 +491,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             ToggleRegionSelection(hFig, -1);
         
         % ---NODE LABELS DISPLAY---  
-        case 'l'            % DONE: Toggle Lobe Labels
+        case 'l'            % DONE: Toggle Lobe Labels and abbr type
             ToggleTextDisplayMode(hFig); 
         
         % ---TOGGLE BACKGROUND---  
@@ -522,8 +523,8 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
             HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
             SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
-        case 'd' % upclear if needed (does not work in previous figure_connect either)
-            ToggleDisplayMode(hFig);
+      %  case 'd' % upclear if needed (does not work in previous figure_connect either)
+         %   ToggleDisplayMode(hFig); % should be to toggle bi/in/out/all for directional graphs
         case 'm' % TODO: Toggle Region Links
             ToggleMeasureToRegionDisplay(hFig);
     end
@@ -820,7 +821,12 @@ function DisplayFigurePopup(hFig)
             jDisplayMenu.add(jPanelModifiers);
         end
         
-            % === TOGGLE LABEL OPTIONS ===
+            % === TOGGLE LABELS ===
+            % Lobe label abbreviations
+            if (DisplayInRegion)
+                jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Abbreviate lobe labels', [], [], @(h, ev)ToggleLobeLabels(hFig));
+                jItem.setSelected(~getappdata(hFig,'LobeFullLabel'));
+            end
             TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
             % Measure (outer) node labels
             jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show scout labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
@@ -2306,6 +2312,7 @@ function test(hFig)
    AllNodes = getappdata(hFig,'AllNodes');
    MeasureLinks = getappdata(hFig,'MeasureLinks');
    RegionLinks = getappdata(hFig,'RegionLinks');
+   % Lobe Nodes have can have full label (e.g. 'Pre-Frontal') or abbr 'PF'
 end
  
  
@@ -3405,14 +3412,22 @@ function SetTextDisplayMode(hFig, DisplayMode)
 end
  
 %% == Toggle label displays for lobes === 
-    % NOTE: done Oct 2020
+    % toggle order:
+    % show measure node labels and FULL agg node labels
+    % show measure node labels and ABBRV agg node labels
+    % show measure node labels only
 function ToggleTextDisplayMode(hFig)
     % Get display mode
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
-    if (TextDisplayMode == 1)
-        TextDisplayMode = [TextDisplayMode 2];
-    else
+    LobeFullLabel = getappdata(hFig, 'LobeFullLabel');
+    
+    if (isequal(TextDisplayMode,[1 2]) && LobeFullLabel)
+        ToggleLobeLabels(hFig);
+    elseif (isequal(TextDisplayMode,[1 2]))
         TextDisplayMode = 1;
+        ToggleLobeLabels(hFig);
+    else
+        TextDisplayMode = [1 2];
     end
     % Add display mode
     setappdata(hFig, 'TextDisplayMode', TextDisplayMode);
@@ -3420,6 +3435,36 @@ function ToggleTextDisplayMode(hFig)
     RefreshTextDisplay(hFig);
 end
 
+function ToggleLobeLabels(hFig) 
+    AllNodes = getappdata(hFig, 'AllNodes');
+    if (getappdata(hFig, 'LobeFullLabel'))
+        % toggle to abbr form and hor angle
+        for i = 1:length(AllNodes)
+            if (AllNodes(i).isAgregatingNode)
+                AllNodes(i).TextLabel.String = AllNodes(i).Label;
+                AllNodes(i).TextLabel.Rotation = 0;
+            end
+        end
+         
+        %update appdata
+        setappdata(hFig, 'LobeFullLabel', 0);
+    else
+        % toggle to full form and radial angle
+        for i = 1:length(AllNodes)
+            if (AllNodes(i).isAgregatingNode)
+                AllNodes(i).TextLabel.String = LobeTagToFullTag(AllNodes(i).Label);
+                t = atan2(AllNodes(i).Position(2),AllNodes(i).Position(1));
+                if abs(t) > pi/2
+                    AllNodes(i).TextLabel.Rotation = 180*(t/pi + 1);
+                else
+                    AllNodes(i).TextLabel.Rotation = t*180/pi;
+                end
+            end
+        end
+        %update appdata
+        setappdata(hFig, 'LobeFullLabel', 1);
+    end
+end
 %% ===== NODE & LABEL SIZE IN SIGNLE FUNCTION =====
 
 function SetNodeLabelSize(hFig, NodeSize, LabelSize)
@@ -3634,41 +3679,13 @@ function ToggleBackground(hFig)
     SetBackgroundColor(hFig, BackgroundColor, TextColor)
 end
  
-%%
+%% Binary Data
 function SetIsBinaryData(hFig, IsBinaryData)
     % Update variable
     setappdata(hFig, 'IsBinaryData', IsBinaryData);
     setappdata(hFig, 'UserSpecifiedBinaryData', 1);
     % Update colormap
     UpdateColormap(hFig);
-end
- 
-function ToggleDisplayMode(hFig)
-    % Get display mode
-    DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
-    DisplayInwardMeasure = getappdata(hFig, 'DisplayInwardMeasure');
-    % Toggle value
-    if (DisplayInwardMeasure == 0 && DisplayOutwardMeasure == 0)
-        DisplayOutwardMeasure = 1;
-        DisplayInwardMeasure = 1;
-        DisplayBidirectionalMeasure = 0;
-    elseif (DisplayInwardMeasure == 0 && DisplayOutwardMeasure == 1)
-        DisplayOutwardMeasure = 0;
-        DisplayInwardMeasure = 1;
-        DisplayBidirectionalMeasure = 0;
-    elseif (DisplayInwardMeasure == 1 && DisplayOutwardMeasure == 0)
-        DisplayOutwardMeasure = 1;
-        DisplayInwardMeasure = 1;
-        DisplayBidirectionalMeasure = 1;
-    else
-        DisplayOutwardMeasure = 0;
-        DisplayInwardMeasure = 0;
-        DisplayBidirectionalMeasure = 1;
-    end
-    % Update display
-    setDisplayMeasureMode(DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
-    % UI refresh candy
-    RefreshBinaryStatus(hFig);
 end
  
 function setDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure, Refresh)
@@ -3724,21 +3741,20 @@ end
 %TODO: Check text display modes 1,2,3
 %todo: isRedraw
 function RefreshTextDisplay(hFig, isRedraw)
-    % 
     FigureHasText = getappdata(hFig, 'FigureHasText');
     if FigureHasText
-        % 
+
         if nargin < 2
             isRedraw = 1;
         end
-        % 
+
         AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
         MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         ValidNode = bst_figures('GetFigureHandleField', hFig, 'ValidNode');
-        %
+
         nVertices = size(AgregatingNodes,2) + size(MeasureNodes,2);
         VisibleText = zeros(nVertices,1);
-        %
+
         TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
         if ismember(1,TextDisplayMode)
             VisibleText(MeasureNodes) = ValidNode(MeasureNodes);
@@ -4093,6 +4109,8 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
     node.isAgregatingNode = isAgregatingNode;
     node.Color = [0.7 0.7 0.7];
     
+    node.Label = label;
+
     % Mark the node as a Matlab Line graphic object
     node.NodeMarker = line(...
         node.Position(1),...
@@ -4106,29 +4124,29 @@ function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
         'Visible','on',...
         'PickableParts','all',...
         'ButtonDownFcn',@NodeButtonDownFcn,...
-        'UserData',[index label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
-    
+        'UserData',[index node.Label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
+
     % Create label as Matlab Text obj 
     % display with '_', default colour white, callback to allow clicked labels
     % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
-    node.TextLabel = text(0,0,label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[index label xpos ypos]); 
+    node.TextLabel = text(0,0,node.Label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[index node.Label xpos ypos]); 
     node.TextLabel.Position = 1.05*node.Position; %need offset factor so label doesn't overlap
     node.TextLabel.FontSize = node.TextLabel.FontSize-3; % this gives size of 7 (default 10 is too big)
     node.TextLabel.FontWeight = 'normal'; % not bold by default
+
+    % default full labels for lobes (user can toggle with 'l' shortcut and
+    % popup menu)
+    if (isAgregatingNode)
+        node.TextLabel.String = LobeTagToFullTag(node.Label);
+    end
     
     %rotate and align labels
     t = atan2(node.Position(2),node.Position(1));
-    tagFull = true;
-    if (~node.isAgregatingNode || tagFull)
-        if abs(t) > pi/2
-            node.TextLabel.Rotation = 180*(t/pi + 1);
-        else
-            node.TextLabel.Rotation = t*180/pi;
-        end
-    end
-
     if abs(t) > pi/2
+        node.TextLabel.Rotation = 180*(t/pi + 1);
         node.TextLabel.HorizontalAlignment = 'right';
+    else
+        node.TextLabel.Rotation = t*180/pi;
     end
     
     % show node as 'selected' as default
@@ -4164,7 +4182,6 @@ end
     % All we need to do here is make sure that the correct index
     % of the clicked node is stored for access 
 function NodeButtonDownFcn(src,~)
-    % node.UserData = [{[index]} {label} ]
     global GlobalData;
     GlobalData.FigConnect.ClickedNodeIndex = src.UserData{1};
     
@@ -4253,40 +4270,40 @@ function Tag = ExtractSubRegion(Region)
 end
  
 function Tag = LobeIndexToTag(Index)
-    fullTag = true;
-    
-    if fullTag
-        Tag = 'Unknown';
-        switch (Index)
-            case 1
-                Tag = 'Pre-Frontal';
-            case 2
-                Tag = 'Frontal';
-            case 3
-                Tag = 'Cerebral';            
-            case 4
-                Tag = 'Temporal';
-            case 5
-                Tag = 'Parietal';
-            case 6
-                Tag = 'Occipital';
-        end
+    Tag = 'U';
+    switch (Index)
+        case 1
+            Tag = 'PF';
+        case 2
+            Tag = 'F';
+        case 3
+            Tag = 'C';            
+        case 4
+            Tag = 'T';
+        case 5
+            Tag = 'P';
+        case 6
+            Tag = 'O';
+    end
+end
+ 
+function FullTag = LobeTagToFullTag(Tag)
+    if strcmp(Tag,'PF')
+        FullTag = 'Pre-Frontal';
+    elseif strcmp(Tag,'F')
+        FullTag = 'Frontal';
+    elseif strcmp(Tag,'C')
+        FullTag = 'Cerebral';       
+    elseif strcmp(Tag,'T')
+        FullTag = 'Temporal';
+    elseif strcmp(Tag,'P')
+        FullTag = 'Parietal';
+    elseif strcmp(Tag,'O')
+        FullTag = 'Occipital';
+    elseif strcmp(Tag, 'U')
+        FullTag = 'Unknown';
     else
-        Tag = 'U';
-        switch (Index)
-            case 1
-                Tag = 'PF';
-            case 2
-                Tag = 'F';
-            case 3
-                Tag = 'C';            
-            case 4
-                Tag = 'T';
-            case 5
-                Tag = 'P';
-            case 6
-                Tag = 'O';
-        end
+        FullTag = Tag;
     end
 end
  
