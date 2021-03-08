@@ -3117,11 +3117,9 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     
     % Define node properties
     if isSelected
-       % SelectedNodeColor = [0.95, 0.0, 0.0]; %selection is indicated by
        % marker type now (x or O)
         selNodes = union(selNodes, iNodes);
     else
-        %SelectedNodeColor = getappdata(hFig, 'BgColor');
         selNodes = setdiff(selNodes, iNodes);
     end
     
@@ -3466,7 +3464,6 @@ function ToggleLobeLabels(hFig)
     end
 end
 %% ===== NODE & LABEL SIZE IN SIGNLE FUNCTION =====
-
 function SetNodeLabelSize(hFig, NodeSize, LabelSize)
      if isempty(NodeSize)
         NodeSize = 5; % default for 'on' is 5, default for off is '6'
@@ -3658,7 +3655,11 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
         if isappdata(hFig, 'AllNodes')
             AllNodes = getappdata(hFig, 'AllNodes');
             for i = 1:length(AllNodes)
-               set(AllNodes(i).TextLabel,'Color',TextColor);
+                % only update text color for selected nodes (keep rest as
+                % grey)
+                if (AllNodes(i).TextLabel.Color ~= [0.5 0.5 0.5])
+                    set(AllNodes(i).TextLabel,'Color', TextColor);
+                end
             end
         end
     end
@@ -4066,7 +4067,7 @@ function ClearAndAddNodes(hFig, V, Names)
             AllNodes(nAgregatingNodes+i).NodeMarker.MarkerFaceColor = RowColors(i,:); % set marker fill color
         end 
     end
-    
+        
     setappdata(hFig, 'AllNodes', AllNodes); % Very important!
     
     % refresh display extent
@@ -4107,8 +4108,7 @@ end
 function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
     node.Position = [xpos,ypos];
     node.isAgregatingNode = isAgregatingNode;
-    node.Color = [0.7 0.7 0.7];
-    
+    node.Color = [0.5 0.5 0.5];
     node.Label = label;
 
     % Mark the node as a Matlab Line graphic object
@@ -4168,11 +4168,14 @@ function SelectNode(hFig,node,isSelected)
         node.NodeMarker.Marker = 'o';
         node.NodeMarker.Color = node.NodeMarker.MarkerFaceColor;
         node.NodeMarker.MarkerSize = nodeSize;
+        node.TextLabel.Color =  ~GetBackgroundColor(hFig);
     else % node is NOT selected ("OFF")
         % display as a grey 'X' (slightly bigger/bolded to allow for easier clicking shape)
+        % node labels also greyed out
         node.NodeMarker.Marker = 'x';
-        node.NodeMarker.Color =  [0.7 0.7 0.7]; % grey
+        node.NodeMarker.Color =  [0.5 0.5 0.5]; % grey marker
         node.NodeMarker.MarkerSize = nodeSize + 1;
+        node.TextLabel.Color = [0.5 0.5 0.5]; % grey label
     end
 end
 
