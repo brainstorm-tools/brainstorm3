@@ -468,7 +468,7 @@ end
  
  
 %% ===== FIGURE KEY PRESSED CALLBACK =====
-    %TODO: Implement/check 'OTHER' key shortcut events
+% NOTE: DONE
 function FigureKeyPressedCallback(hFig, keyEvent)
     % Convert to Matlab key event
     [keyEvent, isControl, isShift] = gui_brainstorm('ConvertKeyEvent', keyEvent);
@@ -492,8 +492,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         
         % ---NODE LABELS DISPLAY---  
         case 'l'            % DONE: Toggle Lobe Labels and abbr type
-            ToggleTextDisplayMode(hFig); 
-        
+            if (getappdata(hFig, 'HierarchyNodeIsVisible'))
+                ToggleTextDisplayMode(hFig); 
+            end
         % ---TOGGLE BACKGROUND---  
         case 'b'            % DONE: Toggle Background
             ToggleBackground(hFig);
@@ -519,14 +520,14 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             end
         
         % ---OTHER---        
-        case 'h' % TODO: Toggle visibility of hierarchy/region nodes (unclear if needed)
+        case 'h' % DONE: Toggle visibility of hierarchy/region nodes
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
             HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
             SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
-      %  case 'd' % upclear if needed (does not work in previous figure_connect either)
-         %   ToggleDisplayMode(hFig); % should be to toggle bi/in/out/all for directional graphs
-        case 'm' % TODO: Toggle Region Links
-            ToggleMeasureToRegionDisplay(hFig);
+        case 'm' % DONE: Toggle Region Links
+            if (getappdata(hFig, 'HierarchyNodeIsVisible'))
+                ToggleMeasureToRegionDisplay(hFig);
+            end
     end
 end
  
@@ -560,9 +561,9 @@ function NextNode = getNextCircularRegion(hFig, Node, Inc)
     skip = []; % default skip nothing
     if (DisplayInRegion)
         if (RegionLinksIsVisible) 
-            skip = [1 2]; % skip Levels{1} and Levels{2} if in region links mode, 
+            skip = [1 3]; % skip Levels{1} and Levels{3} if in region links mode, 
         else
-            skip = 2; % skip Levels{2} if in measure links mode
+            skip = 3; % skip Levels{3} if in measure links mode
         end 
     end
     
@@ -572,7 +573,9 @@ function NextNode = getNextCircularRegion(hFig, Node, Inc)
         end
     end
     
-    CircularIndex(~ismember(CircularIndex,DisplayNode)) = [];
+  %  CircularIndex(~ismember(CircularIndex,DisplayNode)) = []; % comment
+  %  out to allow toggling when region nodes are hidden
+    
     if isempty(Node)
         NextIndex = 1;
     else
@@ -605,7 +608,9 @@ function ToggleRegionSelection(hFig, Inc)
         SelectedNode = selNodes(1);
         %
         NextNode = getNextCircularRegion(hFig, SelectedNode, Inc);
+        
     end
+
     % Is the next node an agregating node?
     isAgregatingNode = ismember(NextNode, AgregatingNodes);
     if (isAgregatingNode)
@@ -757,7 +762,6 @@ end
  
 %% ===== POPUP MENU V1: Display Options menu with no sub-menus=====
 %TODO: Saved image to display current values from Display Panel filters 
-%TODO: Remove '(in dev)' for features once fully functional
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -802,7 +806,7 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LabelSize = GetLabelSize(hFig);
             % Label
-            gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
+            gui_component('label', jPanelModifiers, '', 'Label size');
             % Slider
             jSliderContrast = JSlider(1,20); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
             jSliderContrast.setValue(round(LabelSize * 2));
@@ -826,6 +830,7 @@ function DisplayFigurePopup(hFig)
             if (DisplayInRegion)
                 jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Abbreviate lobe labels', [], [], @(h, ev)ToggleLobeLabels(hFig));
                 jItem.setSelected(~getappdata(hFig,'LobeFullLabel'));
+                jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
             end
             TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
             % Measure (outer) node labels
@@ -835,6 +840,7 @@ function DisplayFigurePopup(hFig)
             if (DisplayInRegion)
                 jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show region labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
                 jItem.setSelected(ismember(2,TextDisplayMode));
+                jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
             end
             % Selected Nodes' labels only
             jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show labels for selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
@@ -848,7 +854,7 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             NodeSize = GetNodeSize(hFig);
             % Label
-            gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
+            gui_component('label', jPanelModifiers, '', 'Node size');
             % Slider
             jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
             jSliderContrast.setValue(round(NodeSize * 2));
@@ -868,15 +874,6 @@ function DisplayFigurePopup(hFig)
             if (~DisplayInRegion)
                 jDisplayMenu.addSeparator();
             end
-        end
-
-        if (DisplayInRegion)
-            % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
-            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Hide region nodes (in dev)', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
-            jItem.setSelected(~HierarchyNodeIsVisible);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
-            jDisplayMenu.addSeparator();
         end
         
         % == LINK DISPLAY OPTIONS ==
@@ -985,20 +982,31 @@ function DisplayFigurePopup(hFig)
         jPopup.addSeparator();
 
         if (DisplayInRegion)
+            % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
+            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+            jItem.setSelected(~HierarchyNodeIsVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
+            jPopup.addSeparator();
+        end
+        
+        if (DisplayInRegion)
             % === TOGGLE DISPLAY REGION LINKS ===
             % TODO: IMPLEMENT REGION LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction ' (in dev)'], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
+            jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
 
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function (in dev)');
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
+            jLabelMenu.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -1550,7 +1558,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % Refresh Text Display Mode default set in CreateFigure
     RefreshTextDisplay(hFig);
     % Last minute hiding
-    HideLonelyRegionNode(hFig);
+    HideExtraLobeNode(hFig);
     % Position camera
     DefaultCamera(hFig);
     % display final figure on top
@@ -2462,47 +2470,36 @@ function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
     DisplayNode(NodeIndex) = DisplayNode(NodeIndex) + IsVisible;
     bst_figures('SetFigureHandleField', hFig, 'DisplayNode', DisplayNode);
-    % Update java
+    % Update Visibility
+    AllNodes = getappdata(hFig,'AllNodes');
     if (IsVisible <= 0)       
         Index = find(DisplayNode <= 0);
     else
         Index = find(DisplayNode > 0);
     end
     for i=1:size(Index,1)
-      %  OGL.setNodeVisibility(Index(i) - 1, DisplayNode(Index(i)) > 0);
+        if DisplayNode(Index(i))
+            AllNodes(Index(i)).NodeMarker.Visible = 'on';
+            AllNodes(Index(i)).TextLabel.Visible = 'on';
+        else
+            AllNodes(Index(i)).NodeMarker.Visible = 'off';
+            AllNodes(Index(i)).TextLabel.Visible = 'off';
+        end
     end
 end
  
-% TODO: implement region max and mean links and functions
-function HideLonelyRegionNode(hFig)
-    %
+% Hides the extra lobe nodes at Level 3
+function HideExtraLobeNode(hFig)
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
+    
+    % hide all level 3 nodes (previous lobe nodes are in Level 2 already)
     if (DisplayInRegion)
-        % Get Nodes
-        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-%        MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
-        ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
-        for i=1:size(AgregatingNodes,2)
-            % Hide nodes with only one measure node
-            Search = find(ChannelData(i,:) ~= 0, 1, 'first');
-            if (~isempty(Search))
-%             Sum = sum(ismember(ChannelData(MeasureNodes,Search), ChannelData(i,Search)));
-%             if ~isempty(Sum)
-%                 if (Sum <= 1)
-%                     OGL.setNodeVisibility(i - 1, 0);
-%                    % DisplayNode(i) = 0;
-%                 end
-%             end
-                % Hide nodes with only one region node
-                Member = ismember(ChannelData(AgregatingNodes,Search), ChannelData(i,Search));
-                SameHemisphere = ismember(ChannelData(AgregatingNodes,3), ChannelData(i,3));
-                Member = Member & SameHemisphere;
-                Member(i) = 0;
-                % If there's only one sub-region, hide it
-                if (sum(Member)== 1)
-                    SetDisplayNodeFilter(hFig, find(Member), 0);
-                end
-            end
+        AllNodes = getappdata(hFig, 'AllNodes');
+        Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
+        Regions = Levels{3};
+        for i=1:length(Regions)
+            AllNodes(Regions(i)).NodeMarker.Visible = 'off';
+            AllNodes(Regions(i)).TextLabel.Visible = 'off';
         end
     end
 end
@@ -2656,7 +2653,7 @@ end
  
 function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{3};
+    Regions = Levels{2};
     NumberOfNode = size(Regions,1);
     mMeanDataPair = zeros(NumberOfNode*NumberOfNode,3);
     %
@@ -2679,7 +2676,7 @@ end
  
 function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{3};
+    Regions = Levels{2};
     NumberOfRegions = size(Regions,1);
     mMaxDataPair = zeros(NumberOfRegions*NumberOfRegions,3);
     
@@ -3122,24 +3119,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     
     % =================== DISPLAY SELECTED NODES =========================
     AllNodes = getappdata(hFig,'AllNodes');
-    
-    % old code - Agregating nodes are not visually selected
-   % AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-    %NoColorNodes = ismember(iNodes,AgregatingNodes);
-    %if (sum(~NoColorNodes) > 0)
-        %sets current visibility type and updates display marker
-       % allIdx = iNodes(~NoColorNodes);  
-       % for i = 1:length(allIdx)
- 
-         %  testNodes(allIdx(i)).Visible = true;
-          % testNodes(allIdx(i)).isAgregatingNode = true;
-       % end
-  %  else
-      %  for i = 1:length(allIdx)
-          % testNodes(allIdx(i)).Visible = false;
-      %  end
-  %  end
-  
+   
     % REQUIRED: Display selected nodes ('ON' or 'OFF')
     for i = 1:length(iNodes)
         if isSelected
@@ -3148,8 +3128,6 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             SelectNode(hFig, AllNodes(iNodes(i)), false);
         end
     end
-         
-    RefreshTextDisplay(hFig, isRedraw);
     
     % Get data
     MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
@@ -3275,23 +3253,26 @@ end
  
  
 %% SHOW/HIDE REGION NODES FROM DISPLAY
-%TODO - allow hiding region nodes (lobes + hem nodes) from display
-%TODO - hidden nodes should not be clickable
-%TODO - hidden nodes should not have options to show/hide text labels
+%DONE - show/hide region nodes (lobes + hem nodes) from display
+%hidden nodes should not be clickable
+%hidden nodes result in disabled options to show/hide text region labels 
+%hidden nodes do not have region max/min options
 function SetHierarchyNodeIsVisible(hFig, isVisible)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     if (HierarchyNodeIsVisible ~= isVisible)
+        % show/hide region nodes (lobes + hem nodes) from display
         AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-        if (isVisible)
-            %ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode'));
-            %AgregatingNodes(ismember(AgregatingNodes,ValidNode)) = [];
-        end
         SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
+        % rehide extra lobe nodes (level 3)
+        HideExtraLobeNode(hFig);
         % Update variable
         setappdata(hFig, 'HierarchyNodeIsVisible', isVisible);
+        %hidden nodes do not have region max/min options
+        if(~isVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
+            ToggleMeasureToRegionDisplay(hFig);
+        end
+            
     end
-    % Make sure they are invisible
-    HideLonelyRegionNode(hFig);
 end
  
  
@@ -3401,13 +3382,14 @@ function SetTextDisplayMode(hFig, DisplayMode)
     setappdata(hFig, 'TextDisplayMode', TextDisplayMode);
     % Refresh
     RefreshTextDisplay(hFig);
+    HideExtraLobeNode(hFig);
 end
  
 %% == Toggle label displays for lobes === 
-    % toggle order:
-    % show measure node labels and FULL agg node labels
-    % show measure node labels and ABBRV agg node labels
-    % show measure node labels only
+% toggle order:
+% show measure node labels and FULL agg node labels
+% show measure node labels and ABBRV agg node labels
+% show measure node labels only
 function ToggleTextDisplayMode(hFig)
     % Get display mode
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -3425,6 +3407,7 @@ function ToggleTextDisplayMode(hFig)
     setappdata(hFig, 'TextDisplayMode', TextDisplayMode);
     % Refresh
     RefreshTextDisplay(hFig);
+    HideExtraLobeNode(hFig);
 end
 
 function ToggleLobeLabels(hFig) 
@@ -3479,7 +3462,7 @@ function SetNodeLabelSize(hFig, NodeSize, LabelSize)
 end
 
 %% ===== NODE SIZE =====
-     % NOTE: JAN 2020
+     % NOTE: JAN 2021
 function NodeSize = GetNodeSize(hFig)
     NodeSize = getappdata(hFig, 'NodeSize');
     if isempty(NodeSize)
@@ -3503,7 +3486,7 @@ function SetNodeSize(hFig, NodeSize)
 end
 
 %% ===== LABEL SIZE =====
-     % NOTE: JAN 2020
+     % NOTE: JAN 2021
 function LabelSize = GetLabelSize(hFig)
     LabelSize = getappdata(hFig, 'LabelSize');
     if isempty(LabelSize)
@@ -3738,7 +3721,6 @@ end
 function RefreshTextDisplay(hFig, isRedraw)
     FigureHasText = getappdata(hFig, 'FigureHasText');
     if FigureHasText
-
         if nargin < 2
             isRedraw = 1;
         end
@@ -3754,10 +3736,10 @@ function RefreshTextDisplay(hFig, isRedraw)
         if ismember(1,TextDisplayMode)
             VisibleText(MeasureNodes) = ValidNode(MeasureNodes);
         end
-        if ismember(2,TextDisplayMode)
+        if ismember(2,TextDisplayMode) 
             VisibleText(AgregatingNodes) = ValidNode(AgregatingNodes);
         end
-        if ismember(3,TextDisplayMode)
+        if ismember(3,TextDisplayMode) 
             selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
             VisibleText(selNodes) = ValidNode(selNodes);
         end
@@ -4063,14 +4045,6 @@ function ClearAndAddNodes(hFig, V, Names)
     end
         
     setappdata(hFig, 'AllNodes', AllNodes); % Very important!
-    
-    % hide all level 2 nodes (previous region nodes for region links)
-    Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{2};
-    for i=1:length(Regions)
-        AllNodes(Regions(i)).NodeMarker.Visible = 'off';
-        AllNodes(Regions(i)).TextLabel.Visible = 'off';
-    end
     
     % refresh display extent
     axis image; %fit display to all objects in image
@@ -4414,11 +4388,11 @@ end
 function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sGroups, RowLocs, UpdateStructureStatistics)
     % Display options
     MeasureLevel = 4;
-    RegionLevel = 3.5;         % currently invisible anyway (unused/hidden region nodes)
-    LobeLevel = 2.75;          % moved lobe nodes outward (previously 2.5) 
+    RegionLevel = 2.75;         % currently invisible anyway (unused/hidden region nodes)
+    LobeLevel = 2;          % moved lobe nodes outward (previously 2.5) 
     HemisphereLevel = 1.5;      % moved hem nodes outward (previously 1.0) 
     setappdata(hFig, 'MeasureLevelDistance', MeasureLevel);
-    setappdata(hFig, 'RegionLevelDistance', LobeLevel);
+    setappdata(hFig, 'RegionLevelDistance', RegionLevel);
     
     % Some values are Hardcoded for Display consistency
     NumberOfMeasureNodes = size(aNames,1);
@@ -4556,7 +4530,7 @@ function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sG
                 end
                 Mean = Mean / norm(Mean);
                 Vertices(RegionIndex, 1:2) = Mean * RegionLevel;
-                Names(RegionIndex) = {ExtractSubRegion(Region)};
+                Names(RegionIndex) = {LobeTag}; % previously = {ExtractSubRegion(Region)};
                 Paths(RegionIndex) = {[RegionIndex LobeIndex 2 1]};
                 ChannelData(RegionIndex,:) = [RegionIndex Lobes(Lobe) 1];
                 % Update current angle
@@ -4619,7 +4593,7 @@ function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sG
                 end
                 Mean = Mean / norm(Mean);
                 Vertices(RegionIndex, 1:2) = Mean * RegionLevel;
-                Names(RegionIndex) = {ExtractSubRegion(Region)};
+                Names(RegionIndex) = {LobeTag}; % previously = {ExtractSubRegion(Region)};
                 Paths(RegionIndex) = {[RegionIndex LobeIndex 3 1]};
                 ChannelData(RegionIndex,:) = [RegionIndex Lobes(Lobe) 2];
                 % Update current angle
