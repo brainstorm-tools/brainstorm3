@@ -1895,16 +1895,18 @@ function LinkButtonDownFcn(src, ~)
             if (isMeasureLink)
                 Arrows1 = getappdata(hFig,'MeasureArrows1');
                 Arrows2 = getappdata(hFig,'MeasureArrows2');
+                scale = 3.0;
             else
                 Arrows1 = getappdata(hFig,'RegionArrows1');
                 Arrows2 = getappdata(hFig,'RegionArrows2');
+                scale = 10.0;
             end    
             arrow1 = Arrows1(Index);
             arrow2 = Arrows2(Index);
             arrow_size = arrow1.LineWidth;
             
-            set(arrow1, 'LineWidth', 3.0*arrow_size);
-            set(arrow2, 'LineWidth', 3.0*arrow_size);
+            set(arrow1, 'LineWidth', scale*arrow_size);
+            set(arrow2, 'LineWidth', scale*arrow_size);
         end
     end
 end
@@ -1921,7 +1923,8 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
         
         if (IsDirectional)
             Arrows1 = getappdata(hFig,'MeasureArrows1');
-            Arrows2 = getappdata(hFig,'MeasureArrows2');   
+            Arrows2 = getappdata(hFig,'MeasureArrows2');
+            scale = 3.0;
         end    
         
     else % region links
@@ -1932,7 +1935,8 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
         
         if (IsDirectional)
             Arrows1 = getappdata(hFig,'RegionArrows1');
-            Arrows2 = getappdata(hFig,'RegionArrows2');   
+            Arrows2 = getappdata(hFig,'RegionArrows2'); 
+            scale = 10.0;
         end  
     end   
     
@@ -1941,8 +1945,8 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
         arrow2 = Arrows2(LinkIndex);
         arrow_size = arrow1.LineWidth;
 
-        set(arrow1, 'LineWidth', arrow_size/3.0);
-        set(arrow2, 'LineWidth', arrow_size/3.0);
+        set(arrow1, 'LineWidth', arrow_size/scale);
+        set(arrow2, 'LineWidth', arrow_size/scale);
     end
     
     AllNodes = getappdata(hFig, 'AllNodes');
@@ -2230,7 +2234,7 @@ function ArrowButtonDownFcn(src, ~)
     if (strcmpi(clickAction, 'SingleClick'))    
         % increase size of the selected arrow
         current_size = src.LineWidth;
-        set(src, 'LineWidth', 3.0*current_size);
+        %set(src, 'LineWidth', 6.0*current_size);
         
         node1 = AllNodes(src.UserData(4));
         label1 = node1.TextLabel;
@@ -2249,8 +2253,9 @@ function ArrowButtonDownFcn(src, ~)
                 Arrows = getappdata(hFig,'MeasureArrows1');
             end
             otherArrow = Arrows(Index);
-            arrow_size = otherArrow.LineWidth;            
-            set(otherArrow, 'LineWidth', 3.0*arrow_size);
+            arrow_size = otherArrow.LineWidth;
+            scale = 3.0;
+            %set(otherArrow, 'LineWidth', 3.0*arrow_size);
             
             AllLinks = getappdata(hFig,'MeasureLinks');
             Link = AllLinks(Index);
@@ -2263,14 +2268,18 @@ function ArrowButtonDownFcn(src, ~)
                 Arrows = getappdata(hFig,'RegionArrows1');
             end
             otherArrow = Arrows(Index);
-            arrow_size = otherArrow.LineWidth;            
-            set(otherArrow, 'LineWidth', 3.0*arrow_size);
+            arrow_size = otherArrow.LineWidth;  
+            scale = 10.0;
+            %set(otherArrow, 'LineWidth', 6.0*arrow_size);
             
             AllLinks = getappdata(hFig,'RegionLinks');
             Link = AllLinks(Index);
             link_size = Link.LineWidth;
             set(Link, 'LineWidth', 3.0*link_size);
         end
+        
+        set(src, 'LineWidth', scale*current_size);
+        set(otherArrow, 'LineWidth', scale*arrow_size);       
     end
 end
 
@@ -2286,6 +2295,7 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
         
         Arrows1 = getappdata(hFig,'MeasureArrows1');
         Arrows2 = getappdata(hFig,'MeasureArrows2');
+        scale = 3.0;
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
@@ -2295,14 +2305,15 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
         
         Arrows1 = getappdata(hFig,'RegionArrows1');
         Arrows2 = getappdata(hFig,'RegionArrows2');
+        scale = 10.0;
     end
     
     arrow1 = Arrows1(ArrowIndex);
     arrow2 = Arrows2(ArrowIndex);
     
     arrow_size = arrow1.LineWidth;
-    set(arrow1, 'LineWidth', arrow_size/3.0);
-    set(arrow2, 'LineWidth', arrow_size/3.0);
+    set(arrow1, 'LineWidth', arrow_size/scale);
+    set(arrow2, 'LineWidth', arrow_size/scale);
     
     AllNodes = getappdata(hFig, 'AllNodes');   
     node1 = AllNodes(Node1Index);
