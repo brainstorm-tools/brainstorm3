@@ -457,9 +457,19 @@ function FigureMouseUpCallback(hFig, varargin)
         % left mouse click on a link
         if (strcmpi(clickAction, 'SingleClick'))
             if (LinkIndex>0)
+                node1 = GlobalData.FigConnect.ClickedNode1Index;
+                GlobalData.FigConnect.ClickedNode1Index = 0;
+                node2 = GlobalData.FigConnect.ClickedNode2Index;
+                GlobalData.FigConnect.ClickedNode2Index = 0;
+                    
                 LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1,node2);
             end
             if (ArrowIndex>0)
+                node1 = GlobalData.FigConnect.ClickedNode1Index;
+                GlobalData.FigConnect.ClickedNode1Index = 0;
+                node2 = GlobalData.FigConnect.ClickedNode2Index;
+                GlobalData.FigConnect.ClickedNode2Index = 0;
+                    
                 ArrowClickEvent(hFig,ArrowIndex,LinkType,node1,node2);
             end
         end
@@ -1863,6 +1873,8 @@ function LinkButtonDownFcn(src, ~)
     GlobalData.FigConnect.ClickedNode1Index = src.UserData(4); 
     GlobalData.FigConnect.ClickedNode2Index = src.UserData(5); 
     
+    disp(GlobalData.FigConnect.ClickedLinkIndex);
+    
     % only works for left mouse clicks
     if (strcmpi(clickAction, 'SingleClick'))    
         % increase size on button down click
@@ -1878,11 +1890,6 @@ function LinkButtonDownFcn(src, ~)
         set(label2, 'FontWeight', 'bold');
         set(label1, 'FontSize', current_labelSize + 2);
         set(label2, 'FontSize', current_labelSize + 2);
-        
-%         set(label1, 'EdgeColor', 'y');
-%         set(label1, 'Margin', 1);
-%         set(label2, 'EdgeColor', 'y');
-%         set(label2, 'Margin', 1);
         
         if (IsDirectional)
             if (isMeasureLink)
@@ -1950,8 +1957,6 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
     set(label1, 'FontSize', current_labelSize - 2);
     set(label2, 'FontSize', current_labelSize - 2);
     
-%     set(label1, 'EdgeColor', 'none');
-%     set(label2, 'EdgeColor', 'none');
 end
 
 %% ARROWH   Draws a solid 2D arrow head in current plot.
@@ -2277,17 +2282,21 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         Link = MeasureLinks(ArrowIndex);
         current_size = Link.LineWidth;
-        set(Link, 'LineWidth', current_size/3.0);   
+        set(Link, 'LineWidth', current_size/3.0);
+        
+        Arrows1 = getappdata(hFig,'MeasureArrows1');
+        Arrows2 = getappdata(hFig,'MeasureArrows2');
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(ArrowIndex);
         current_size = Link.LineWidth;     
-        set(Link, 'LineWidth', current_size/3.0);   
+        set(Link, 'LineWidth', current_size/3.0);  
+        
+        Arrows1 = getappdata(hFig,'RegionArrows1');
+        Arrows2 = getappdata(hFig,'RegionArrows2');
     end
     
-    Arrows1 = getappdata(hFig,'MeasureArrows1');
-    Arrows2 = getappdata(hFig,'MeasureArrows2');
     arrow1 = Arrows1(ArrowIndex);
     arrow2 = Arrows2(ArrowIndex);
     
