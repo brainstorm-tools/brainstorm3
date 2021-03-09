@@ -39,31 +39,6 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: 2D LAYOUT (DISPLAY OPTIONS)====
     jDisplayMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
         
-        % === LABEL DISPLAY OPTIONS ===
-        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            % === MODIFY LABEL SIZE (Jan 2021) ===
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            LabelSize = GetLabelSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(LabelSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LabelSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jDisplayMenu.add(jPanelModifiers);
-        end
-        
             % === TOGGLE LABEL OPTIONS ===
             TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
             % Measure (outer) node labels
@@ -79,34 +54,6 @@ function DisplayFigurePopup(hFig)
             jItem.setSelected(ismember(3,TextDisplayMode));
         
         jDisplayMenu.addSeparator();
-        
-        % === NODE DISPLAY OPTIONS ===
-        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            % === MODIFY NODE SIZE (Jan 2021)===
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            NodeSize = GetNodeSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(NodeSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jDisplayMenu.add(jPanelModifiers);
-            if (~DisplayInRegion)
-                jDisplayMenu.addSeparator();
-            end
-        end
 
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
@@ -293,30 +240,6 @@ function DisplayFigurePopup(hFig)
         jLabelPanel.setLayout(BoxLayout(jLabelPanel, BoxLayout.Y_AXIS));
         jLabelBorder = java_scaled('titledborder', 'Label options');
         jLabelPanel.setBorder(jLabelBorder);
-
-        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            % === MODIFY LABEL SIZE (Jan 2021) ===
-            LabelSize = GetLabelSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(LabelSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LabelSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jLabelPanel.add(jPanelModifiers);
-        end
         
         % === TOGGLE LABEL OPTIONS ===
         TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -338,29 +261,6 @@ function DisplayFigurePopup(hFig)
         jNodePanel.setLayout(BoxLayout(jNodePanel, BoxLayout.Y_AXIS));
         jNodeBorder = java_scaled('titledborder', 'Node options');
         jNodePanel.setBorder(jNodeBorder);
-        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            % === MODIFY NODE SIZE (Jan 2021)===
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            NodeSize = GetNodeSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(NodeSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jNodePanel.add(jPanelModifiers);
-        end
 
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
@@ -545,29 +445,6 @@ function DisplayFigurePopup(hFig)
         
         % === LABEL DISPLAY OPTIONS ===
         jLabelMenu = gui_component('Menu', jDisplayMenu, [], 'Label options');
-        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            % === MODIFY LABEL SIZE (Jan 2021) ===
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            LabelSize = GetLabelSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(LabelSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LabelSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jLabelMenu.add(jPanelModifiers);
-        end
         
             % === TOGGLE LABEL OPTIONS ===
             TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -585,29 +462,6 @@ function DisplayFigurePopup(hFig)
         
         % === NODE DISPLAY OPTIONS ===
         jNodeMenu = gui_component('Menu', jDisplayMenu, [], 'Node options');
-        if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            % === MODIFY NODE SIZE (Jan 2021)===
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            NodeSize = GetNodeSize(hFig);
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
-            % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-            jSliderContrast.setValue(round(NodeSize * 2));
-            jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
-            jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-            jNodeMenu.add(jPanelModifiers);
-        end
 
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
@@ -815,30 +669,7 @@ function DisplayFigurePopup(hFig)
     % === LABEL DISPLAY OPTIONS ===
     jPopup.addSeparator()
     jLabelMenu = gui_component('Menu', jPopup, [], 'Label options');
-    if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-        % === MODIFY LABEL SIZE (Jan 2021) ===
-        jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-        LabelSize = GetLabelSize(hFig);
-        % Label
-        gui_component('label', jPanelModifiers, '', 'Label size (in dev)');
-        % Slider
-        jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for label sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-        jSliderContrast.setValue(round(LabelSize * 2));
-        jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-        %jSliderContrast.setToolTipText(tooltipSliders);
-        jSliderContrast.setFocusable(0);
-        jSliderContrast.setOpaque(0);
-        jPanelModifiers.add('tab hfill', jSliderContrast);
-        % Value (text)
-        jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(LabelSize * 2)));
-        jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-        jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-        jPanelModifiers.add(jLabelContrast);
-        % Slider callbacks
-        java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-        jLabelMenu.add(jPanelModifiers);
-    end
-
+    
         % === TOGGLE LABEL OPTIONS ===
         TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
         % Measure (outer) node labels
@@ -855,29 +686,6 @@ function DisplayFigurePopup(hFig)
 
     % === NODE DISPLAY OPTIONS ===
     jNodeMenu = gui_component('Menu', jPopup, [], 'Node options');
-    if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-        % === MODIFY NODE SIZE (Jan 2021)===
-        jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-        NodeSize = GetNodeSize(hFig);
-        % Label
-        gui_component('label', jPanelModifiers, '', 'Node size (in dev)');
-        % Slider
-        jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
-        jSliderContrast.setValue(round(NodeSize * 2));
-        jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
-        %jSliderContrast.setToolTipText(tooltipSliders);
-        jSliderContrast.setFocusable(0);
-        jSliderContrast.setOpaque(0);
-        jPanelModifiers.add('tab hfill', jSliderContrast);
-        % Value (text)
-        jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f', round(NodeSize * 2)));
-        jLabelContrast.setPreferredSize(java_scaled('dimension',50,23));
-        jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-        jPanelModifiers.add(jLabelContrast);
-        % Slider callbacks
-        java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h,ev)NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabelContrast));
-        jNodeMenu.add(jPanelModifiers);
-    end
 
     if (DisplayInRegion)
         % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
