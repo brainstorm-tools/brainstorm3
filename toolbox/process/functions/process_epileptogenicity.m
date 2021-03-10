@@ -23,7 +23,7 @@ function varargout = process_epileptogenicity( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2020
+% Authors: Francois Tadel, 2017-2021
 
 eval(macro_method);
 end
@@ -96,7 +96,11 @@ end
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
     % Initialize SPM
-    bst_spm_init(0);
+    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     % Get all the options

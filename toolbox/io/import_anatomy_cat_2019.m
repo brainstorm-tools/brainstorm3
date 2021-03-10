@@ -37,7 +37,7 @@ function errorMsg = import_anatomy_cat_2019(iSubject, CatDir, nVertices, isInter
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2020
+% Authors: Francois Tadel, 2019-2021
 
 %% ===== PARSE INPUTS =====
 % Import tissues
@@ -145,8 +145,13 @@ if isempty(TessRhFile)
     errorMsg = [errorMsg 'Surface file was not found: rh.central' 10];
 end
 
+% Initialize SPM12+CAT12
+[isInstalled, errorMsg, PlugCat] = bst_plugin('Install', 'cat12', isInteractive, 1728);
+if ~isInstalled
+    return;
+end
+CatExeDir = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
 % FSAverage surfaces in CAT12 program folder
-CatExeDir = bst_fullfile(bst_get('SpmDir'), 'toolbox', 'cat12');
 FsAvgLhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'lh.central.freesurfer.gii');
 FsAvgRhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'rh.central.freesurfer.gii');
 Fs32kLhFile = bst_fullfile(CatExeDir, 'templates_surfaces_32k', 'lh.central.freesurfer.gii');

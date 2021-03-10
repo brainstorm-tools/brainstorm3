@@ -23,37 +23,14 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % =============================================================================@
 %
 % Author: Konstantinos Nasiotis 2019-2021
+%         Francois Tadel, 2020-2021
 
 
 %% ===== INSTALL NWB LIBRARY =====
-% Not available in the compiled version
-if (exist('isdeployed', 'builtin') && isdeployed)
-    error('Reading NWB files is not available in the compiled version of Brainstorm.');
+[isInstalled, errMsg] = bst_plugin('Install', 'nwb');
+if ~isInstalled
+    error(errMsg);
 end
-% Check if the NWB builder has already been downloaded
-NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
-% Install toolbox
-if exist(bst_fullfile(NWBDir, 'generateCore.m'),'file') ~= 2
-    % Does not work with Matlab < 2016b
-    if (bst_get('MatlabVersion') < 901)
-        error('The NWB SDK does not work with Matlab versions older than 2016b.');
-    end
-    % Confirm install
-    isOk = java_dialog('confirm', ...
-        ['The NWB SDK is not installed on your computer.' 10 10 ...
-             'Download and install the latest version?'], 'Neurodata Without Borders');
-    if ~isOk
-        bst_report('Error', sProcess, sInputs, 'This process requires the Neurodata Without Borders SDK.');
-        return;
-    end
-    downloadNWB();
-% If installed: add folder to path
-elseif isempty(strfind(NWBDir, path))
-    addpath(genpath(NWBDir));
-end
-
-%% Remove cached Schemas from the path - Use only the needed version on demand
-rmpath(genpath(bst_fullfile(bst_get('BrainstormHomeDir'), 'external', 'nwb')));
 
 
 %% ===== READ DATA HEADERS =====
@@ -237,70 +214,6 @@ if ~isempty(events)
     sFile = import_events(sFile, [], events);
 end
 
-end
-
-
-function downloadNWB()
-
-    %% Download and extract the necessary files
-    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');
-    NWBTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB_tmp');
-    url = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
-    % If folders exists: delete
-    if isdir(NWBDir)
-        file_delete(NWBDir, 1, 3);
-    end
-    if isdir(NWBTmpDir)
-        file_delete(NWBTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(NWBTmpDir);
-    % Download file
-    zipFile = bst_fullfile(NWBTmpDir, 'NWB.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
-    
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
-        % Try to download until the timeout is reached
-        pause(0.1);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'NWB download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
-        error(['Impossible to download NWB.' 10 errMsg]);
-    end
-    
-    % Unzip file
-    bst_progress('start', 'NWB', 'Installing NWB...');
-    unzip(zipFile, NWBTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(NWBTmpDir);
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newNWBDir = bst_fullfile(NWBTmpDir, diropen(idir).name);
-    % Move NWB directory to proper location
-    file_move(newNWBDir, NWBDir);
-    % Delete unnecessary files
-    file_delete(NWBTmpDir, 1, 3);
-    
-    
-    % Matlab needs to restart before initialization
-    NWB_initialized = 0;
-    save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
-    
-    
-    % Once downloaded, we need to restart Matlab to refresh the java path
-    java_dialog('warning', ...
-        ['The NWB importer was successfully downloaded.' 10 10 ...
-         'Both Brainstorm AND Matlab need to be restarted in order to load the JAR file.'], 'NWB');
-    error('Please restart Matlab to reload the Java path.');
-    
-    
 end
 
 

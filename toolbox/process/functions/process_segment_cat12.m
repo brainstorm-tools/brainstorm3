@@ -23,7 +23,7 @@ function varargout = process_segment_cat12( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2020
+% Authors: Francois Tadel, 2019-2021
 
 eval(macro_method);
 end
@@ -148,6 +148,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     elseif ~isempty(errMsg)
         bst_report('Warning', sProcess, [], errMsg);
     end
+    % Remove CAT logo
+    bst_progress('removeimage');
     % Return an empty structure
     OutputFiles = {'import'};
 end
@@ -156,9 +158,13 @@ end
 %% ===== COMPUTE CAT12 SEGMENTATION =====
 function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isVolumeAtlases, isExtraMaps, isCerebellum)
     isOk = 0;
-    errMsg = '';
-    % Initialize SPM
-    bst_spm_init(isInteractive, 'cat12');
+    % Initialize SPM12+CAT12
+    [isInstalled, errMsg, PlugCat] = bst_plugin('Install', 'cat12', isInteractive, 1728);
+    if ~isInstalled
+        return;
+    end
+    % Set progress bar image
+    bst_progress('setimage', 'plugins/cat12_logo.gif');
     % Check if SPM is in the path
     if ~exist('spm_jobman', 'file')
         errMsg = 'SPM must be in the Matlab path to use this feature.';
@@ -359,10 +365,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== PROJECT ATLASES =====
     TessLhFile = file_find(catDir, 'lh.central.*.gii', 2);
     if exist('cat_surf_map_atlas', 'file') && file_exist(TessLhFile)
-        % Get SPM dir
-        SpmDir = bst_get('SpmDir');
+        % Get CAT12 dir
+        CatDir = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
         % List of parcellations to project
-        AnnotLhFiles = file_find(bst_fullfile(SpmDir, 'toolbox', 'cat12', 'atlases_surfaces'), 'lh.*.annot', 2, 0);
+        AnnotLhFiles = file_find(bst_fullfile(CatDir, 'atlases_surfaces'), 'lh.*.annot', 2, 0);
         % Import atlases (cat_surf_map_atlas calls both hemispheres at once)
         for iAnnot = 1:length(AnnotLhFiles)
             [fAnnotPath, fAnnotName] = bst_fileparts(AnnotLhFiles{iAnnot});
@@ -415,7 +421,6 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     % Open progress bar
     bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');
-    bst_progress('setimage', 'logo_cat.gif');
     % Run CAT12
     TpmNii = bst_get('SpmTpmAtlas');
     isInteractive = 1;

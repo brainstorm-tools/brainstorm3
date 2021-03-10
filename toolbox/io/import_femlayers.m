@@ -68,7 +68,7 @@ subjectSubDir = bst_fileparts(sSubject.FileName);
 
 %% ===== INSTALL ISO2MESH =====
 % Install/load iso2mesh plugin
-[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1, isInteractive);
+[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
 if ~isInstalled
     error(errMsg);
 end

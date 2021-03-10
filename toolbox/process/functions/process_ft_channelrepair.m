@@ -70,8 +70,12 @@ end
 function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Initialize returned list of files
     OutputFiles = {};
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     % Get option values
     MaxDist = sProcess.options.maxdist.Value{1} / 100;   % Convert from centimeters to meters
     SensorTypes = sProcess.options.sensortypes.Value;

@@ -152,8 +152,11 @@ try
             
         % SPM12 SEGMENT 
         case 'segment'
-            % Check SPM installation
-            bst_spm_init(0);
+            % Initialize SPM
+            [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+            if ~isInstalled
+                return;
+            end
             % Progress bar
             bst_progress('text', 'Running SPM batch... (see command window)');
             % Compute non-linear registration to MNI space

@@ -39,7 +39,7 @@ end
 
 %% ===== INSTALL ADI-SDK =====
 if ~exist('adi', 'file')
-    [isInstalled, errMsg] = bst_plugin('Install', 'adi-sdk', 1, 1);
+    [isInstalled, errMsg] = bst_plugin('Install', 'adi-sdk');
     if ~isInstalled
         error(errMsg); 
     end

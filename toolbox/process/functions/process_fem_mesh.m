@@ -7,7 +7,6 @@ function varargout = process_fem_mesh( varargin )
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
-%                 errMsg = process_fem_mesh('InstallRoast', isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -331,7 +330,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
         case 'iso2mesh'
             % Install/load iso2mesh plugin
-            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1, isInteractive);
+            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
             if ~isInstalled
                 error(errMsg);
             end
@@ -453,13 +452,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         case 'brain2mesh'
             disp([10 'FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File 10]);
-            % Initialize SPM
-            if ~bst_spm_init(isInteractive)
-                errMsg = 'SPM12 must be in the Matlab path for using this feature.';
-                return;
-            end
             % Install/load brain2mesh plugin
-            [isInstalled, errMsg] = bst_plugin('Install', 'brain2mesh', 1, isInteractive);
+            [isInstalled, errMsg] = bst_plugin('Install', 'brain2mesh', isInteractive);
             if ~isInstalled
                 return;
             end
@@ -672,13 +666,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         case 'roast'                      
             disp(['FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File]);
-            % Install ROAST if needed
-            if ~exist('roast', 'file')
-                errMsg = InstallRoast(isInteractive);
-                if ~isempty(errMsg) || ~exist('roast', 'file')
-                    return;
-                end
-            end            
+            % Install/load ROAST plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'roast', isInteractive);
+            if ~isInstalled
+                return;
+            end
+            
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
@@ -693,7 +686,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 end
             end            
             % === SAVE T1 MRI AS NII ===
-            bst_progress('setimage', 'logo_roast.gif');
+            bst_progress('setimage', 'plugins/roast_logo.gif');
             bst_progress('text', 'Exporting MRI...');
             % Empty temporary folder, otherwise it may reuse previous files in the folder
             gui_brainstorm('EmptyTempFolder');
@@ -973,106 +966,6 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     end
     % Close progress bar
     bst_progress('stop');
-end
-
-
-
-%% ===== INSTALL ROAST =====
-function errMsg = InstallRoast(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Download URL
-    url = 'https://www.parralab.org/roast/roast-3.0.zip';
-
-    % Check if already available in path
-    if exist('roast', 'file')
-        disp([10, 'ROAST path: ', bst_fileparts(which('roast')), 10]);
-        return;
-    end
-    % Local folder where to install ROAST
-    roastDir = bst_fullfile(bst_get('BrainstormUserDir'), 'roast');
-    exePath = bst_fullfile(roastDir, 'roast-3.0', 'roast.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(roastDir)
-        roastDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'roast');
-        if isdir(roastDirMaster)
-            roastDir = roastDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(roastDir, 'url');
-    % Read the previous download url information
-    if isdir(roastDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If file doesnt exist: download
-    if ~isdir(roastDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(roastDir)
-            file_delete(roastDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(roastDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 roastDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['ROAST is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of ROAST?'], 'ROAST');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(roastDir, 'roast.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download ROAST');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download ROAST:' 10 errMsg1];
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing ROAST...');
-        % Unzip file
-        cd(roastDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add roast to path
-    if ~exist('roast', 'file')
-        % Add ROAST to the path
-        exeDir = bst_fileparts(exePath);
-        addpath(exeDir);
-        disp([10, 'ROAST path: ', exeDir, 10]);
-        % Add dependent libraries to the path
-        if ~exist('spm.m', 'file')
-            addpath(fullfile(exeDir, 'lib', 'spm12'));
-        end
-        if ~exist('iso2meshver.m', 'file')
-            addpath(fullfile(exeDir, 'lib', 'iso2mesh'));
-        end
-        addpath(fullfile(exeDir, 'lib', 'cvx'));
-        addpath(fullfile(exeDir, 'lib', 'ncs2daprox'));
-        addpath(fullfile(exeDir, 'lib', 'NIFTI_20110921'));
-        % If the executable is still not accessible
-    else
-        errMsg = ['ROAST could not be installed in: ' roastDir];
-    end
 end
 
 

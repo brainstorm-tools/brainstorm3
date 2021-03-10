@@ -226,8 +226,11 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     ftMri = out_fieldtrip_mri(sMri);
 
     % ===== CALL FIELDTRIP =====
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        return;
+    end
     % Replace CSF with BRAIN if white/grey not needed
     if ~any(ismember({'white','gray'}, OPTIONS.layers)) && ismember('csf', OPTIONS.layers)
         OPTIONS.layers{ismember(OPTIONS.layers, {'csf'})} = 'brain';

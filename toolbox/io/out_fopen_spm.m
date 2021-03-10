@@ -19,13 +19,12 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2020
+% Authors: Francois Tadel, 2017-2021
 
-% Check SPM installation
-bst_spm_init();
-% Check if SPM is in the path
-if ~exist('file_array', 'file')
-    error('SPM must be in the Matlab path to use this feature.');
+% Initialize SPM12+CAT12
+[isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+if ~isInstalled
+    error(errMsg);
 end
 
 % Get the two output file names: .mat and .dat

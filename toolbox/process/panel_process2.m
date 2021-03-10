@@ -130,22 +130,6 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
         return
     end
     
-    % Check if FieldTrip needs to be added in the path
-    isFieldTrip = 0;
-    for i = 1:length(sProcesses)
-        if ~isempty(strfind(func2str(sProcesses(i).Function), 'process_ft_'))
-            isFieldTrip = 1;
-            break;
-        end
-    end
-    % Add FieldTrip in the path
-    if isFieldTrip
-        isOk = bst_ft_init(1);
-        if ~isOk
-            return;
-        end
-    end
-    
     % Call process function
     sOutputs = bst_process('Run', sProcesses, sFilesA, sFilesB, 1);
     

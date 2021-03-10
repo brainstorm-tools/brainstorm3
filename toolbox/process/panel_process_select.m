@@ -2583,7 +2583,8 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     % Get the contents of sub-folder "functions"
     bstList = dir(bst_fullfile(bst_fileparts(mfilename('fullpath')), 'functions', 'process_*.m'));
     bstFunc = {bstList.name};
-    % Get the contents of user's custom processes (~user/.brainstorm/process)
+    
+    % Get the contents of user's custom processes ($HOME/.brainstorm/process)
     usrList = dir(bst_fullfile(bst_get('UserProcessDir'), 'process_*.m'));
     usrFunc = {usrList.name};
     % Display warning for overridden processes
@@ -2591,8 +2592,23 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     for i = 1:length(override)
         disp(['BST> ' override{i} ' overridden by user (' bst_get('UserProcessDir') ')']);
     end
-    % Final list of processes
-    bstFunc = union(usrFunc, bstFunc);
+    % Add user processes to list of processes
+    if ~isempty(usrFunc)
+        bstFunc = union(usrFunc, bstFunc);
+    end
+    
+    % Get processes from installed plugins ($HOME/.brainstorm/plugins/*)
+    plugFunc = {};
+    PlugAll = bst_plugin('GetInstalled');
+    for iPlug = 1:length(PlugAll)
+        if ~isempty(PlugAll(iPlug).Processes)
+            plugFunc = cat(2, plugFunc, PlugAll(iPlug).Processes);
+        end
+    end
+    % Add plugin processes to list of processes
+    if ~isempty(plugFunc)
+        bstFunc = union(plugFunc, bstFunc);
+    end
 
     % ===== CHECK FOR MODIFICATIONS =====
     % Build a signature for both folders
@@ -2602,6 +2618,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     for i = 1:length(usrList)
         sig = [sig, usrList(i).name, usrList(i).date, num2str(usrList(i).bytes)];
+    end
+    for i = 1:length(plugFunc)
+        sig = [sig, plugFunc{i}];
     end
     % If signature is same as previously: do not reload all the files
     if ~isForced
@@ -2624,8 +2643,19 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         if length(bstFunc{iFile} > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
         end
+        % Split function names: regular process=only function name; plugin process=full path
+        [fPath, fName, fExt] = bst_fileparts(bstFunc{iFile});
+        % Switch folder if needed
+        if ~isempty(fPath)
+            curDir = pwd;
+            cd(fPath);
+        end
         % Get function handle
-        Function = str2func(strrep(bstFunc{iFile}, '.m', ''));
+        Function = str2func(fName);
+        % Restore previous dir
+        if ~isempty(fPath)
+            cd(curDir);
+        end
         % Call description function
         try
             desc = Function('GetDescription');

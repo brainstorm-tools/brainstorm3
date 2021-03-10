@@ -11,6 +11,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('BrainstormDefaultsDir') : Defaults folder folder of the Brainstorm distribution (may vary in compiled versions)
+%    - bst_get('BrainstormPluginDir')   : User home directory for brainstorm (<home>/.brainstorm/)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
@@ -27,8 +28,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('LastUsedDirs')          : Structure with all the last used directories (last used)
 %    - bst_get('OsType', isMatlab=1)    : Get a string that describes the operating system (if isMatlab=1 return the Matlab/JVM platform, else return the real host system)
 %    - bst_get('FileFilters', DataType) : Get the list of import filters for a specific data type
-%    - bst_get('FieldTripDir')          : Full path to a local installation of FieldTrip
-%    - bst_get('SpmDir')                : Full path to a local installation of SPM
+%    - bst_get('PluginCustomPath')      : Full custom path to all plugins
 %    - bst_get('BrainSuiteDir')         : Full path to a local installation of BrainSuite
 %    - bst_get('SpmTpmAtlas')           : Full path to the SPM atlas TPM.nii
 %    - bst_get('PythonExe')             : Path to the python executable
@@ -201,7 +201,6 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
-%    - bst_get('MffJarFile')              : Get the path to the MFF JAR file and whether it exists
 %    - bst_get('ExportBidsOptions')       : Additional metadata for BIDS export
 %
 % SEE ALSO bst_set
@@ -278,7 +277,7 @@ switch contextName
             Release = str_vers(ipar(1)+1:ipar(2)-1);
         end
         argout1 = Release;
-                     
+
     case 'JavaVersion'
         strver = char(java.lang.System.getProperty('java.version'));
         iDot = find(strver == '.');
@@ -450,6 +449,16 @@ switch contextName
             end
         end
         argout1 = defDir;
+        
+    case 'UserPluginsDir'
+        pluginsDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plugins');
+        if ~isdir(pluginsDir)
+            res = mkdir(pluginsDir);
+            if ~res
+                error(['Cannot create plugins directory: "' pluginsDir '".']); 
+            end
+        end
+        argout1 = pluginsDir;
         
     case 'BrainstormDbFile'
         argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'brainstorm.mat');
@@ -2741,24 +2750,9 @@ switch contextName
             argout1 = 'butterfly';
         end 
 
-    case 'FieldTripDir'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'FieldTripDir') && ~isempty(GlobalData.Preferences.FieldTripDir)
-            if isdir(GlobalData.Preferences.FieldTripDir) && file_exist(bst_fullfile(GlobalData.Preferences.FieldTripDir, 'ft_defaults.m'))
-                argout1 = GlobalData.Preferences.FieldTripDir;
-            else
-                argout1 = [];
-            end
-        else
-            argout1 = [];
-        end
-        
-    case 'SpmDir'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'SpmDir') && ~isempty(GlobalData.Preferences.SpmDir)
-            if isdir(GlobalData.Preferences.SpmDir) && file_exist(bst_fullfile(GlobalData.Preferences.SpmDir, 'spm.m'))
-                argout1 = GlobalData.Preferences.SpmDir;
-            else
-                argout1 = [];
-            end
+    case 'PluginCustomPath'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'PluginCustomPath') && ~isempty(GlobalData.Preferences.PluginCustomPath)
+            argout1 = GlobalData.Preferences.PluginCustomPath;
         else
             argout1 = [];
         end
@@ -2790,20 +2784,22 @@ switch contextName
             return;
         end
         % If it does not exist: check in spm12 folder
-        spmDir = bst_get('SpmDir');
-        if ~isempty(spmDir)
-            tpmSpm = bst_fullfile(spmDir, 'tpm', 'TPM.nii');
+        PlugSpm = bst_plugin('GetInstalled', 'spm12');
+        if ~isempty(PlugSpm)
+            tpmSpm = bst_fullfile(PlugSpm.Path, PlugSpm.SubFolder, 'tpm', 'TPM.nii');
             if file_exist(tpmSpm)
                 argout1 = tpmSpm;
                 disp(['SPM12 template found: ' tpmSpm]);
                 return;
             end
+        else
+            tpmSpm = '';
         end
         % Not found...
         disp('SPM12 template not found in any of the following folders:');
         disp([' - ' tpmUser]);
         disp([' - ' tpmDistrib]);
-        if ~isempty(spmDir)
+        if ~isempty(tpmSpm)
             disp([' - ' tpmSpm]);
         end
         % Return the preferred location: .brainstorm/defaults/spm/TPM.nii
@@ -3328,10 +3324,6 @@ switch contextName
         catch
             argout3 = '';
         end
-    
-    case 'MffJarFile'
-        argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabio', 'MFF-1.2.2-jar-with-dependencies.jar');
-        argout2 = exist(argout1, 'file') == 2;
 
     case 'KlustersExecutable'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'KlustersExecutable')

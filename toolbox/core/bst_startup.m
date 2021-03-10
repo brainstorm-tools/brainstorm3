@@ -27,7 +27,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2018
+%          Francois Tadel, 2008-2021
 
 
 %% ===== MATLAB CHECK =====
@@ -146,7 +146,7 @@ gui_brainstorm('EmptyTempFolder');
 
 
 %% ===== EMPTY REPORTS DIRECTORY =====
-% Get temporary directory
+% Get reports directory
 reportsDir = bst_get('UserReportsDir');
 % If directory exists
 if isdir(reportsDir)
@@ -285,9 +285,9 @@ if ~bst_get('AutoUpdates')
 elseif isMatlabRunning && (GuiLevel == 1)
     % Check internect connection
     fprintf(1, 'BST> Checking internet connectivity... ');
-    [isInternet, onlineRel] = bst_check_internet();
+    [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
     % If no internet connection
-    if ~isInternet
+    if ~GlobalData.Program.isInternet
         disp('failed');
         disp('BST> Could not check for Brainstorm updates.')
     else
@@ -392,7 +392,7 @@ end
 
 %% ===== PARSE PROCESS FOLDER =====
 % Parse process folder
-disp('BST> Reading plugins folder...');
+disp('BST> Reading process folder...');
 panel_process_select('ParseProcessFolder', 1);
 
 
@@ -468,7 +468,7 @@ if isempty(BrainstormDbDir)
 % If database folder was passed in input
 else
     if isequal(BrainstormDbDir, 'local')
-        BrainstormDbDir = bst_fullfile(bst_get('BrainstormUserDir'), 'local_db');
+        BrainstormDbDir = bst_fullfile(BrainstormUserDir, 'local_db');
     end
     % Save brainstorm directory
     bst_set('BrainstormDbDir', BrainstormDbDir);
@@ -550,9 +550,35 @@ hMutex = bst_mutex('get', 'Brainstorm');
 set(hMutex, 'Visible', 'off');
 
 
+%% ===== DELETE OLD PLUGINS =====
+% Get user dir
+BrainstormUserDir = bst_get('BrainstormUserDir');
+% Start with GUI
+if (GuiLevel == 1)
+    % Find old versions of the plugins
+    AllPlugs = bst_plugin('GetSupported');
+    % Add bst_duneuro (now called 'duneuro')
+    AllPlugs(end+1).Name = 'bst_duneuro';
+    iOldInstall = find(cellfun(@(c)exist(fullfile(BrainstormUserDir,c),'file'), {AllPlugs.Name}));
+    % Some old plugins were detected: ask user
+    if ~isempty(iOldInstall)
+        OldPlugPath = cellfun(@(c)fullfile(BrainstormUserDir,c), {AllPlugs(iOldInstall).Name}, 'UniformOutput', 0);
+        isConfirm = java_dialog('confirm', ['The plugin system was updated.' 10 10 ...
+            'All the Brainstorm plugins are now managed from the menu "Plugins".' 10 ...
+            'The old plugins cannot be used anymore and need to be deleted.' 10 ...
+            'Next time you need them, they will be downloaded again automatically.' 10 10 ...
+            'Delete the old plugins listed below?' 10 ...
+            sprintf(' - %s\n', OldPlugPath{:})], 'Plugin manager');
+        if isConfirm
+            file_delete(OldPlugPath, 1, 3);
+        end
+    end
+end
+
+
 %% ===== RELOAD ALL DATABASE =====
 % Create file to indicate that Brainstorm was started
-StartFile = bst_fullfile(bst_get('BrainstormUserDir'), 'is_started.txt');
+StartFile = bst_fullfile(BrainstormUserDir, 'is_started.txt');
 % If import database was mandatory
 if isImportDb
     disp('BST> Reloading database...');
