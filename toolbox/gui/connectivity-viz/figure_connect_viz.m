@@ -388,10 +388,10 @@ function FigureMouseUpCallback(hFig, varargin)
     ArrowIndex = GlobalData.FigConnect.ClickedArrowIndex; 
     GlobalData.FigConnect.ClickedArrowIndex = 0; 
     
-%     node1Link = GlobalData.FigConnect.ClickedNode1Index; 
-%     GlobalData.FigConnect.ClickedNode1Index = 0;
-%     node2Link = GlobalData.FigConnect.ClickedNode2Index; 
-%     GlobalData.FigConnect.ClickedNode2Index = 0;
+    node1 = GlobalData.FigConnect.ClickedNode1Index;
+    GlobalData.FigConnect.ClickedNode1Index = 0;
+    node2 = GlobalData.FigConnect.ClickedNode2Index;
+    GlobalData.FigConnect.ClickedNode2Index = 0;
     
     LinkType = getappdata(hFig, 'MeasureLinksIsVisible');
     IsDirectional = getappdata(hFig, 'IsDirectionalData');
@@ -428,19 +428,9 @@ function FigureMouseUpCallback(hFig, varargin)
             % left mouse click on a link
             if (strcmpi(clickAction, 'SingleClick'))        
                 if (LinkIndex>0)
-                    node1 = GlobalData.FigConnect.ClickedNode1Index;
-                    GlobalData.FigConnect.ClickedNode1Index = 0;
-                    node2 = GlobalData.FigConnect.ClickedNode2Index;
-                    GlobalData.FigConnect.ClickedNode2Index = 0;
-                    
                     LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1,node2);
                 end
                 if (ArrowIndex>0)
-                    node1 = GlobalData.FigConnect.ClickedNode1Index;
-                    GlobalData.FigConnect.ClickedNode1Index = 0;
-                    node2 = GlobalData.FigConnect.ClickedNode2Index;
-                    GlobalData.FigConnect.ClickedNode2Index = 0;
-                    
                     ArrowClickEvent(hFig,ArrowIndex,LinkType,node1,node2);
                 end
             end
@@ -457,19 +447,9 @@ function FigureMouseUpCallback(hFig, varargin)
         % left mouse click on a link
         if (strcmpi(clickAction, 'SingleClick'))
             if (LinkIndex>0)
-                node1 = GlobalData.FigConnect.ClickedNode1Index;
-                GlobalData.FigConnect.ClickedNode1Index = 0;
-                node2 = GlobalData.FigConnect.ClickedNode2Index;
-                GlobalData.FigConnect.ClickedNode2Index = 0;
-                    
                 LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1,node2);
             end
             if (ArrowIndex>0)
-                node1 = GlobalData.FigConnect.ClickedNode1Index;
-                GlobalData.FigConnect.ClickedNode1Index = 0;
-                node2 = GlobalData.FigConnect.ClickedNode2Index;
-                GlobalData.FigConnect.ClickedNode2Index = 0;
-                    
                 ArrowClickEvent(hFig,ArrowIndex,LinkType,node1,node2);
             end
         end
@@ -1532,6 +1512,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     
     % get pre-created nodes
     AllNodes = getappdata(hFig, 'AllNodes');
+    IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     % clear any previous links
     % and get scaling distance from nodes to unit circle
@@ -1567,138 +1548,42 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     end
     
     % Note: DataPair computation already removed diagonal and capped at max 5000
-    % pairs
-    
-    % Draw Links on the Poincare hyperbolic disk.
-    %
-    % Equation of the circles on the disk (u,v points on boundary):
-    % x^2 + y^2 
-    % + 2*(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1))*x
-    % - 2*(u(1)-v(1))/(u(1)*v(2)-u(2)*v(1))*y + 1 = 0,
-    %
-    % Standard form of equation of a circle:
-    % (x - x0)^2 + (y - y0)^2 = r^2
-    %
-    % Therefore we can identify:
-    % x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-    % y0 = (u(1)-v(1))/(u(1)*v(2)-u(2)*v(1));
-    % r^2 = x0^2 + y0^2 - 1
-    
-    All_u = [];
-    All_v = [];
-    IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
-    
+    % pairs 
     for i = 1:length(DataPair) %for each link
+        
+        overlap = false;
         
         % node positions (rescaled to *unit* circle)
         node1 = DataPair(i,1);
         node2 = DataPair(i,2);
         u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/levelScale;
-        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;    
-        
-        % check if 2 bidirectional links overlap
-        if(i==1)
-            All_u(1,:) = u.';
-            All_v(1,:) = v.';
-        else
-            All_u(end+1,:) = u.';
-            All_v(end+1,:) = v.';
-        end
-
-        % diametric points: draw a straight line
-        % can adjust the error margin (currently 0.2)
-        if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
-            x = linspace(levelScale*u(1),levelScale*v(1),100);
-            y = linspace(levelScale*u(2),levelScale*v(2),100);
+        v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;
+    
+        % for directional graphs, draw elliptical arc if an overlap is found
+        if (IsDirectionalData)
             
-            % check if this line has a bidirectional equivalent that would
-            % overlap
-            for j = 1:length(All_u)-1
-                if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2))
-                    
-                    % return to scaled position values
-                    start_x = AllNodes(node1).Position(1);
-                    stop_x = AllNodes(node2).Position(1);
-                    start_y = AllNodes(node1).Position(2);
-                    stop_y = AllNodes(node2).Position(2);
-                    
-                    p = [(start_x-stop_x) (start_y-stop_y)];          % horde vector
-                    H = norm(p);                                % horde length
-                    R = 0.63*H;                                  % arc radius
-                    v = [-p(2) p(1)]/H;                         % perpendicular vector
-                    L = sqrt(R*R-H*H/4);						% distance to circle (from horde)
-                    p = [(start_x+stop_x) (start_y+stop_y)];          % vector center horde
-                    p0(1,:) = p/2 + v*L;                        % circle center 1
-                    p0(2,:) = p/2 - v*L;                        % circle center 2
-                    d = sqrt(sum(p0.^2,2));                     % distance to circle center
-                    [~,ix] = max( d );                          % get max (circle outside)
-                    p0 = p0(ix,:);
-                    
-                    % generate arc points
-                    vx = linspace(start_x,stop_x,100);				% horde points
-                    vy = linspace(start_y,stop_y,100);
-                    vx = vx - p0(1);
-                    vy = vy - p0(2);
-                    v = sqrt(vx.^2+vy.^2);
-                    x = p0(1) + vx./v*R;
-                    y = p0(2) + vy./v*R;
-                end
-            end
-            
-            l = line(...
-                x,...
-                y,...
-                'LineWidth', 1.5,...
-                'Color', [AllNodes(node1).Color 0.00],...
-                'PickableParts','visible',...
-                'Visible','off',...
-                'UserData',[i IsDirectionalData isMeasureLink node1 node2],... % i is the index
-                'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
-
-        else % else, draw an arc
-            x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
-            y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
-            r  = sqrt(x0^2 + y0^2 - 1);
-                        
-            thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
-            thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
-            
-            % for arcs on the right-hand side, ensure they are drawn within the graph
-            if (u(1) >= 0 && v(1) >= 0)
-                first = abs(pi - max(thetaLim));
-                second = abs(-pi - min(thetaLim));
-                fraction = floor((first/(first + second))*100);
-                remaining = 100 - fraction;
-                
-                % ensure the arc is within the unit disk
-                
-                % direction: from thetaLim(1) to thetaLim(2)
-                if (max(thetaLim) == thetaLim(1))
-                    theta = [linspace(max(thetaLim),pi,fraction),...
-                        linspace(-pi,min(thetaLim),remaining)].';
-                else
-                    theta = [linspace(min(thetaLim),-pi,remaining),...
-                        linspace(pi,max(thetaLim),fraction)].';
-                end
+            % check if 2 bidirectional links overlap
+            if(i==1)
+                All_u(1,:) = u.';
+                All_v(1,:) = v.';
             else
-                theta = linspace(thetaLim(1),thetaLim(2)).';
-            end    
-                
-            % rescale onto our graph circle
-            x = levelScale*r*cos(theta)+levelScale*x0;
-            y = levelScale*r*sin(theta)+levelScale*y0;
-
+                All_u(end+1,:) = u.';
+                All_v(end+1,:) = v.';
+            end
+            
             % check if this line has a bidirectional equivalent that would
             % overlap
             for j = 1:length(All_u)-1
                 if (v(1) == All_u(j,1) & v(2) == All_u(j,2) & u(1) == All_v(j,1) & u(2) == All_v(j,2))
-                    
+                
+                    overlap = true;
+                
                     % return to scaled position values
                     start_x = AllNodes(node1).Position(1);
                     stop_x = AllNodes(node2).Position(1);
                     start_y = AllNodes(node1).Position(2);
                     stop_y = AllNodes(node2).Position(2);
-                    
+                
                     p = [(start_x-stop_x) (start_y-stop_y)];          % horde vector
                     H = norm(p);                                % horde length
                     R = 0.63*H;                                  % arc radius
@@ -1710,7 +1595,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                     d = sqrt(sum(p0.^2,2));                     % distance to circle center
                     [~,ix] = max( d );                          % get max (circle outside)
                     p0 = p0(ix,:);
-                    
+                
                     % generate arc points
                     vx = linspace(start_x,stop_x,100);				% horde points
                     vy = linspace(start_y,stop_y,100);
@@ -1721,12 +1606,53 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                     y = p0(2) + vy./v*R;
                 end
             end
+        end  
+        
+        % if no overlaps were found or if non directional graph
+        if (~IsDirectionalData || ~overlap)
 
-            % Create the link as a line object
-            % default colour for now, will be updated in updateColormap
-            % Link Size set to 1.5 by default
-            % line with no arrow marker
-            l = line(...
+            % diametric points: draw a straight line
+            % can adjust the error margin (currently 0.2)
+            if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
+                x = linspace(levelScale*u(1),levelScale*v(1),100);
+                y = linspace(levelScale*u(2),levelScale*v(2),100);  
+                
+            else % draw an arc
+                x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
+                y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
+                r  = sqrt(x0^2 + y0^2 - 1);
+                
+                thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
+                thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
+                
+                % for arcs on the right-hand side, ensure they are drawn within the graph
+                if (u(1) >= 0 && v(1) >= 0)
+                    first = abs(pi - max(thetaLim));
+                    second = abs(-pi - min(thetaLim));
+                    fraction = floor((first/(first + second))*100);
+                    remaining = 100 - fraction;
+                    
+                    % ensure the arc is within the unit disk
+                    % direction: from thetaLim(1) to thetaLim(2)
+                    if (max(thetaLim) == thetaLim(1))
+                        theta = [linspace(max(thetaLim),pi,fraction),...
+                            linspace(-pi,min(thetaLim),remaining)].';
+                    else
+                        theta = [linspace(min(thetaLim),-pi,remaining),...
+                            linspace(pi,max(thetaLim),fraction)].';
+                    end
+                else
+                    theta = linspace(thetaLim(1),thetaLim(2)).';
+                end
+                
+                % rescale onto our graph circle
+                x = levelScale*r*cos(theta)+levelScale*x0;
+                y = levelScale*r*sin(theta)+levelScale*y0;
+            end
+        end
+        
+        % draw actual line
+        l = line(...
                 x,...
                 y,...
                 'LineWidth', 1.5,...
@@ -1735,8 +1661,14 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 'Visible','off',...
                 'UserData',[i IsDirectionalData isMeasureLink node1 node2],... % i is the index
                 'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
+        
+        % add link to list
+        if(i==1)
+            Links(i) = l;
+        else
+            Links(end+1) = l;
         end
-            
+ 
         % arrows for directional links
         if (IsDirectionalData)
             
@@ -1769,23 +1701,13 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             % store arrows
             if(i==1)
                 Arrows1 = arrow1;
-                if (~isempty(arrow2))
-                    Arrows2 = arrow2;
-                end
+                Arrows2 = arrow2;
             else
                 Arrows1(end+1) = arrow1;
-                if (~isempty(arrow2))
-                    Arrows2(end+1) = arrow2;
-                end
+                Arrows2(end+1) = arrow2;
             end
         end
-        
-        % add link to list
-        if(i==1)
-            Links(i) = l;
-        else
-            Links(end+1) = l;
-        end
+        %toc;
     end
     
     % Store Links into figure  % Very important!
@@ -1801,8 +1723,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             setappdata(hFig,'RegionArrows1',Arrows1);
             setappdata(hFig,'RegionArrows2',Arrows2);
         end
-    end
-    
+    end   
 end
 
 function LinkButtonDownFcn(src, ~)
@@ -2017,6 +1938,7 @@ end
 %	 I'd  like to  improve it where  I can -- your  help is  kindely
 %	 appreciated! Thank you!
 function [handle, new_x, new_y] = arrowh(x,y,clr,ArSize,Where,Flag,Index,isMeasureLink,node1,node2)
+tic;
 %-- errors
 if nargin < 2
 	error('Please give enough coordinates !');
@@ -2160,6 +2082,7 @@ axis(OriginalAxis);
 if ~WasHold
 	hold off;
 end
+toc
 %-- work done. good bye.
 end
 
