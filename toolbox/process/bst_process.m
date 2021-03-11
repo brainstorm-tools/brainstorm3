@@ -271,7 +271,41 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Capture process crashes
                 try
-                    if strcmpi(sProcesses(iProc).Category, 'custom')
+                    isProcess1 = strcmpi(sProcesses(iProc).Category, 'custom');
+                    % Acquire lock on input files
+                    LockIds = [];
+                    if ~isempty(sInputs)
+                        for iInput = 1:length(sInputs)
+                            LockId = lock_acquire(ProcessName, ...
+                                sInputs(iInput).SubjectName, ...
+                                sInputs(iInput).iStudy, ...
+                                sInputs(iInput).iItem);
+                            if isempty(LockId)
+                                error(['Could not acquire lock on file ' sInputs(iInput).FileName]);
+                            end
+                            LockIds(end + 1) = LockId;
+                        end
+                    end
+                    if ~isempty(sInputs2)
+                        for iInput = 1:length(sInputs2)
+                            LockId = lock_acquire(ProcessName, ...
+                                sInputs2(iInput).SubjectName, ...
+                                sInputs2(iInput).iStudy, ...
+                                sInputs2(iInput).iItem);
+                            if isempty(LockId)
+                                error(['Could not acquire lock on file ' sInputs2(iInput).FileName]);
+                            end
+                            LockIds(end + 1) = LockId;
+                        end
+                    end
+                    
+                    %TODO: Lock entire study or more, see GetOutputStudy
+                    % Lock studies of all inputs
+                    % If using default channel: lock default subject
+                    % If multiple subjects as input: lock inter-subject
+                    
+                        
+                    if isProcess1
                         if isempty(sInputs2)
                             OutputFiles = sProcesses(iProc).Function('Run', sProcesses(iProc), sInputs);
                         else
@@ -286,6 +320,9 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     OutputFiles  = {};
                     OutputFiles2 = {};
                 end
+                
+                % Release locks
+                lock_release([], LockIds);
         end
         % Remove empty filenames
         if iscell(OutputFiles)
