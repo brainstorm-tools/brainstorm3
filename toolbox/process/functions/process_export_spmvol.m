@@ -100,7 +100,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isabs.Value      = 1;
     sProcess.options.isabs.InputTypes = {'results'};
     % === CUT EMPTY SLICES
-    sProcess.options.iscut.Comment = 'Cut empty slices';
+    sProcess.options.iscut.Comment = 'Cut empty slices <FONT color="#707070"><I>(not recommended)</I></FONT>';
     sProcess.options.iscut.Type    = 'checkbox';
     sProcess.options.iscut.Value   = 0;
 end
