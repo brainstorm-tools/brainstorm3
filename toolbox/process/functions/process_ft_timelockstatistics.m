@@ -233,8 +233,12 @@ end
 function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Initialize returned variable 
     sOutput = [];
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== CHECK INPUTS =====
     % Make sure that file type is indentical for both sets

@@ -90,8 +90,12 @@ end
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFile = [];
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     SensorTypes = sProcess.options.sensortypes.Value;

@@ -2,8 +2,6 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % BST_OPENMEEG: Call OpenMEEG to compute a BEM solution for Brainstorm.
 %
 % USAGE:  [Gain, errMsg] = bst_openmeeg(OPTIONS)
-%            OpenmeegDir = bst_openmeeg('update')
-%            OpenmeegDir = bst_openmeeg('download')
 %
 % INPUT: 
 %     - OPTIONS: structure with the following fields
@@ -40,183 +38,48 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel & Alexandre Gramfort, 2011-2019
+% Authors: Francois Tadel & Alexandre Gramfort, 2011-2021
 
 
 %% ===== PARSE INPUTS =====
-% Is trying to update the program
-isUpdate   = isequal(OPTIONS, 'update');
-isDownload = isequal(OPTIONS, 'download');
+
 % Intialize variables
 Gain = [];
 errMsg = '';
 % Save current folder
 curdir = pwd;
 
-
-%% ===== DOWNLOAD OPENMEEG =====
-% Get openmeeg folder 
-osType = bst_get('OsType', 0);
-OpenmeegDir = bst_fullfile(bst_get('BrainstormUserDir'), 'openmeeg', osType);
-% If openmeeg dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-if ~isdir(OpenmeegDir)
-    OpenmeegDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'openmeeg', osType);
-    if isdir(OpenmeegDirMaster)
-        OpenmeegDir = OpenmeegDirMaster;
-    end
-end
-% URL file defines the current version
-urlFile = bst_fullfile(OpenmeegDir, 'url');
-% Force manual update: select tar.gz file
-if isUpdate
-    % Display information message
-    java_dialog('msgbox', 'Please select the package (.tar.gz) download from the OpenMEEG website.', 'Install OpenMEEG');
-    % Ask for file to install
-    tgzFile = java_getfile('open', 'Select OpenMEEG package', '', 'single', 'files', ...
-                           {{'.gz','.tgz'}, 'OpenMEEG package (*.tar.gz)', 'TGZ'}, 1);
-    if isempty(tgzFile)
-        return
-    end
-else
-    tgzFile = [];
-end
-% Get default url
-switch(osType)
-    case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
-    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
-    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
-    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
-    case 'sol64',    error('Solaris system is not supported');
-    case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
-    otherwise,       error('OpenMEEG software does not exist for your operating system.');
-end
-% Read the previous download url information
-if isdir(OpenmeegDir) && file_exist(urlFile)
-    fid = fopen(urlFile, 'r');
-    prevUrl = fread(fid, [1 Inf], '*char');
-    fclose(fid);
-else
-    prevUrl = '';
-end
-
-% Bug workaround: FT Jul-2018/OM2.4: Change of behavior of OpenMEEG2.4 binaries on macos:
-% Before, all the bin and lib files were moved to $HOME/.brainstorm/openmeeg/mac64, the folder was added to DYLD_LIBRARY_PATH, and it was working.
-% With OM2.4, the dylib files must stay in the /lib subfolder or the OM binaries do not properly find them...
-if strcmpi(osType, 'mac64') && ~isdir(bst_fullfile(OpenmeegDir, 'lib'))
-    prevUrl = '';
-end
-
-% If binary file doesnt exist: download
-if isUpdate || ...
-   ((bst_get('AutoUpdates') || isempty(prevUrl)) && ...
-    (~isdir(OpenmeegDir) || (~strcmpi(osType, 'mac64') && isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*')))) || ~strcmpi(prevUrl, url)))
-    % If folder exists: delete
-    if isdir(OpenmeegDir)
-        file_delete(OpenmeegDir, 1, 3);
-    end
-    % Create folder
-    res = mkdir(OpenmeegDir);
-    if ~res
-        errMsg = ['Error: Cannot create folder' 10 OpenmeegDir];
-        return
-    end
-    % Download file from URL if not done already by user
-    if isempty(tgzFile)
-        % Message
-        if ~isDownload && OPTIONS.Interactive
-            isOk = java_dialog('confirm', ...
-                ['OpenMEEG software is not installed on your computer (or out-of-date).' 10 10 ...
-                 'Download and the latest version?'], 'OpenMEEG');
-            if ~isOk
-                return;
-            end
-        end
-        % Download file
-        tgzFile = bst_fullfile(OpenmeegDir, 'openmeeg.tar.gz');
-        errMsg = gui_brainstorm('DownloadFile', url, tgzFile, 'OpenMEEG update');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download OpenMEEG:' 10 errMsg];
-            return;
-        end
-    % Copy TGZ file to download folder
-    else
-        origTgzFile = tgzFile;
-        [fPath, fName, fExt] = bst_fileparts(origTgzFile);
-        tgzFile = bst_fullfile(OpenmeegDir, [fName, fExt]);
-        file_copy(origTgzFile, tgzFile);
-    end
-    % Display again progress bar
-    bst_progress('start', 'OpenMEEG', 'Installing OpenMEEG...');
-    % Unzip file
-    if ispc
-        untar(tgzFile, OpenmeegDir);
-    else
-        cd(fileparts(tgzFile));
-        system(['tar -xf ' tgzFile]);
-        cd(curdir);
-    end
-    % Get parent folder of the unzipped files
-    diropen = dir(fullfile(OpenmeegDir, 'OpenMEEG*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    unzipDir = bst_fullfile(OpenmeegDir, diropen(idir).name);
-    % Move all files to OpenmeegDir
-    % Bug workaround: FT Jul-2018/OM2.4: On MacOS, the files must keep their original bin/ and lib/ subfolders
-    if strcmpi(osType, 'mac64')
-        file_move(bst_fullfile(unzipDir, 'bin'), OpenmeegDir);
-        file_move(bst_fullfile(unzipDir, 'lib'), OpenmeegDir);
-        try
-            file_move(bst_fullfile(unzipDir, 'doc'), OpenmeegDir);
-        catch
-        end
-    % Other systems: Move all the files from all the subfolders to the same openmeeg folder
-    else
-        file_move(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
-        file_move(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
-        try
-            file_move(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
-        catch
-        end
-    end
-    % Delete files
-    file_delete({tgzFile, unzipDir}, 1, 3);
-    % Save download URL in OpenMEEG folder
-    fid = fopen(urlFile, 'w');
-    fwrite(fid, url);
-    fclose(fid);
-end
-% If only updating or downloading: exit
-if isUpdate || isDownload
-    Gain = OpenmeegDir;
-    bst_progress('stop');
+%% ===== SET UP OPENMEEG =====
+% Install/Load OpenMEEG
+[isOk, errMsg, PlugDesc] = bst_plugin('Install', 'openmeeg', OPTIONS.Interactive);
+if ~isOk
     return;
 end
-
-
-%% ===== OPENMEEG LIBRARY PATH =====
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'logo_openmeeg.gif');
+bst_progress('setimage', 'plugins/openmeeg_logo.gif');
 bst_progress('setlink', 'http://openmeeg.github.io');
-% Library path
+% Binary path
+OpenmeegDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
+binDir = bst_fullfile(OpenmeegDir, 'bin');
+% Library path: Linux and MacOS
 if ~ispc
-    if ismember(osType, {'linux32', 'linux64', 'sol64'})
-        varname = 'LD_LIBRARY_PATH';
-        libDir = OpenmeegDir;
-        binDir = OpenmeegDir;
-    else
+    % Get variable name
+    if strcmpi(bst_get('OsType'), 'mac64')
         varname = 'DYLD_LIBRARY_PATH';
-        libDir = bst_fullfile(OpenmeegDir, 'lib');
-        binDir = bst_fullfile(OpenmeegDir, 'bin');
+    else
+        varname = 'LD_LIBRARY_PATH';
     end
+    libDir = bst_fullfile(OpenmeegDir, 'lib');
+    % Get current library path
     libpath = getenv(varname);
-    if ~isempty(libpath)
-        libpath = [libpath ':'];
+    % If OpenMEEG is not already in the env variable
+    if isempty(strfind(libpath, libDir))
+        if ~isempty(libpath)
+            libpath = [libpath ':'];
+        end
+        setenv(varname, [libpath, OpenmeegDir, ':', libDir]);
     end
-    setenv(varname, [libpath  OpenmeegDir]);
-else
-    binDir = OpenmeegDir;
 end
 % Set number of cores used
 try

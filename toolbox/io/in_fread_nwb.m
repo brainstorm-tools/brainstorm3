@@ -28,12 +28,20 @@ function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isCont
 if (nargin < 3) || isempty(selectedChannels)
     selectedChannels = 1:length(sFile.channelflag);
 end
-
 nTotalChannels = length(selectedChannels);
 
+% Install/load NWB library
+[isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'nwb');
+if ~isInstalled
+    error(errMsg);
+end
+NWBDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
+
+
 %% Load everything from the NWB directory
+
 previous_directory = pwd;
-cd(bst_fullfile(bst_get('BrainstormUserDir'),'NWB'));
+cd(NWBDir);
 
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch

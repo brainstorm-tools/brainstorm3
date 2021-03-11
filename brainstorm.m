@@ -101,68 +101,6 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     if ~isempty(jarfile)
         javaaddpath([BrainstormHomeDir '/java/' jarfile]);
     end
-    
-    % === INITIALIZE MFFMATLABIO LIBRARY ===
-    [mffJarPath, mffJarExists] = bst_get('MffJarFile');
-    mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
-    if isdir(mffDirTmp)
-        % A new library version is available, install it
-        mffDir = fileparts(mffJarPath);
-        if isdir(mffDir)
-            rmdir(mffDir, 's');
-        end
-        mkdir(mffDir);
-        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
-        file_move(libDir, mffDir);
-        rmdir(mffDirTmp, 's');
-        mffJarExists = 1;
-    end
-    % Add MFF JAR file if present
-    if mffJarExists
-        javaaddpath(mffJarPath);
-    end
-    
-    % === INITIALIZE NWB LIBRARY ===
-    % This JAVA object needs to be initialized every time before Brainstorm
-    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');  
-    if exist(NWBDir, 'dir')
-        % The generateCore needs to run from the NWB folder
-        current_path = pwd;
-        cd(NWBDir);
-        % Add NWB to Matlab path
-        addpath(genpath(NWBDir));
-        % Generate the NWB Schema
-        try
-            generateCore()
-        catch
-            disp('Error: Could not initialize NWB library.');
-        end
-        cd(current_path);
-    end
-    
-    % === INITIALIZE NWB-ECoG LIBRARY ===
-    NWB_ECoGDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB', 'ECoG');        
-    initialization_flag_file = bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat');
-    if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file);
-        if ~NWB_ECoGinitialized
-            disp('Installing NWB - ECoG library...');
-            % The generateCore needs to run from a specific folder
-            current_path = pwd;
-            cd(NWB_ECoGDir);
-            % Add NWB to Matlab path
-            addpath(genpath(NWB_ECoGDir));
-            % Generate the NWB Schema (First time run)
-            generateCore(bst_fullfile('ecog.namespace.yaml'))
-            % Update Initialization flag
-            NWB_ECoGinitialized = 1;
-            save(bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat'), 'NWB_ECoGinitialized');
-            cd(current_path);
-        end
-    end
-    
-    
-
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
 if exist('isdeployed', 'builtin') && isdeployed
@@ -293,7 +231,7 @@ switch action
         % Message
         java_dialog('msgbox', 'Brainstorm will now download additional files needed for the workshop.', 'Workshop');
         % Downloads OpenMEEG
-        bst_openmeeg('download');
+        bst_plugin('Install', 'openmeeg', 1);
         % Downloads the TMP.nii SPM atlas
         bst_normalize_mni('install');
         % Message

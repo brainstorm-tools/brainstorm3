@@ -37,7 +37,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2020
+% Authors: Francois Tadel, 2016-2021
 
 % ===== LOAD INPUTS =====
 % Parse inputs
@@ -88,12 +88,9 @@ switch lower(Method)
     
     % ===== METHOD: SPM =====
     case 'spm'
-        % === SPM INITIALIZATION ===
-        % Check SPM installation
-        bst_spm_init();
-        % Check if SPM is in the path
-        if ~exist('spm_jobman', 'file')
-            errMsg = 'SPM must be in the Matlab path to use this feature.';
+        % Initialize SPM
+        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalled
             return;
         end
         

@@ -161,8 +161,11 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     ftMri = rmfield(ftMri, 'anatomy');
         
     % ===== CALL FIELDTRIP =====
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        return;
+    end
     % Call: ft_prepare_mesh
     cfg = [];
     cfg.method = 'hexahedral';

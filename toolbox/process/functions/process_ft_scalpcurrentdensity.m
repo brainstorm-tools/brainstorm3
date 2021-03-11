@@ -100,8 +100,12 @@ end
 function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Initialize returned list of files
     OutputFiles = {};
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     Conductivity = 0.33; % Default value

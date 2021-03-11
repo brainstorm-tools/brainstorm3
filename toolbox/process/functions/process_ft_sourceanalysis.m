@@ -64,8 +64,12 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     % Inverse options

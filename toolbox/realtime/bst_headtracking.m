@@ -71,8 +71,13 @@ bst_dir =       bst_get('BrainstormHomeDir');
 % bst_db_dir =    bst_get('BrainstormDbDir');
 tmp_dir =       bst_get('BrainstormTmpDir');
 
-% Initialize fieldtrip
-ft_dir = bst_get('FieldTripDir');
+% Initialize FieldTrip
+[isInstalled, errMsg, PlugFt] = bst_plugin('Install', 'fieldtrip');
+if ~isInstalled
+    return;
+end
+ft_dir = bst_fileparts(which(PlugFt.TestFile));
+% Add fieldtrip buffer to path
 ft_rtbuffer = bst_fullfile(ft_dir, 'realtime', 'src', 'buffer', 'matlab');
 ft_io = bst_fullfile(ft_dir, 'fileio');
 if exist(ft_rtbuffer, 'dir') && exist(ft_io, 'dir')

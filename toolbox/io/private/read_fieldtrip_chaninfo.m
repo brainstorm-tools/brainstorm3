@@ -19,7 +19,7 @@ function ChannelMat = read_fieldtrip_chaninfo(ChannelMat, ftMat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2021
 
 %% ===== FIND INFO FIELDS =====
 % Get EEG info structure (FieldTrip or SPM)
@@ -43,8 +43,11 @@ end
 %% ===== REBUILD COIL-CHANNEL CORRESPONDANCE =====
 projList = {};
 if ~isempty(grad)
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        error(errMsg);
+    end
     % Fix glitches in the structure
     grad = ft_datatype_sens(grad);
     

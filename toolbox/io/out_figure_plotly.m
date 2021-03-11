@@ -21,22 +21,10 @@ function out_figure_plotly(hFig)
 %
 % Authors: Martin Cousineau, 2017
 
-% Ensure we are including the Plotly folder in the Matlab path
-plotlyDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plotly');
-if exist(plotlyDir, 'file')
-    addpath(genpath(plotlyDir));
-end
-
-% Install Plotly if missing
-if ~exist('plotlyfig', 'file')
-    rmpath(genpath(plotlyDir));
-    isOk = java_dialog('confirm', ...
-        ['The Plotly Matlab wrapper is not installed on your computer.' 10 10 ...
-             'Download and install the latest version?'], 'Plotly');
-    if ~isOk
-        return;
-    end
-    downloadAndInstallPlotly();
+% Install/load plotly library
+[isInstalled, errMsg] = bst_plugin('Install', 'plotly');
+if ~isInstalled
+    error(errMsg);
 end
 
 % Confirm Plotly credentials
@@ -153,38 +141,4 @@ disp(['Plotly figure available at: ', response.url]);
 
 end
 
-%% ===== DOWNLOAD AND INSTALL PLOTLY TOOLBOX =====
-function downloadAndInstallPlotly()
-    plotlyDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plotly');
-    plotlyTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plotly_tmp');
-    url = 'https://github.com/plotly/MATLAB-Online/archive/master.zip';
-    % If folders exists: delete
-    if isdir(plotlyDir)
-        file_delete(plotlyDir, 1, 3);
-    end
-    if isdir(plotlyTmpDir)
-        file_delete(plotlyTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(plotlyTmpDir);
-    % Download file
-    zipFile = bst_fullfile(plotlyTmpDir, 'plotly.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Plotly download');
-    if ~isempty(errMsg)
-        error(['Impossible to download Plotly: ' errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'Plotly', 'Installing Plotly...');
-    unzip(zipFile, plotlyTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(plotlyTmpDir, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newPlotlyDir = bst_fullfile(plotlyTmpDir, diropen(idir).name, 'plotly');
-    % Move plotly directory to proper location
-    file_move(newPlotlyDir, plotlyDir);
-    % Delete unnecessary files
-    file_delete(plotlyTmpDir, 1, 3);
-    % Add Plotly to Matlab path
-    addpath(genpath(plotlyDir));
-end
 

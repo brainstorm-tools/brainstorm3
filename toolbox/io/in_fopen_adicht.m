@@ -23,7 +23,7 @@ function [sFile, ChannelMat] = in_fopen_adicht(DataFile, isInteractive)
 
 
 %% ===== INSTALL ADI-SDK =====
-[isInstalled, errMsg] = bst_plugin('Install', 'adi-sdk', 1, 1);
+[isInstalled, errMsg] = bst_plugin('Install', 'adi-sdk', isInteractive);
 if ~isInstalled
     error(errMsg); 
 end

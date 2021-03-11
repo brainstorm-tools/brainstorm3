@@ -31,13 +31,13 @@ end
 function NewFiles = GUI(iStudy)
     NewFiles = {};
     % Install/load SimMEEG plugin
-    [isOk, errMsg] = bst_plugin('InstallInteractive', 'simmeeg', 1);
+    [isOk, errMsg] = bst_plugin('InstallInteractive', 'simmeeg');
     if ~isOk
         return;
     end
     % Progress bar
     bst_progress('start', 'SimMEEG', 'Initializing...');
-    bst_progress('setimage', 'logo_simmeeg.gif');
+    bst_progress('setimage', 'plugins/simmeeg_logo.gif');
     bst_progress('setlink', 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/');
     % Load anatomy + sensors + headmodel
     bst = LoadInputs(iStudy);
@@ -74,14 +74,20 @@ end
 
 
 %% ===== LOAD INPUTS =====
+% Set all fields requested in sm_bst2ft_anatomy_from_bst_files
 function bst = LoadInputs(iStudy)
     % Get study and subject info
     ProtocolInfo = bst_get('ProtocolInfo');
     sStudy = bst_get('Study', iStudy);
     sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-    % Set all fields requested in sm_bst2ft_anatomy_from_bst_files
+    % Initialize FieldTrip
+    [isInstalled, errMsg, PlugFt] = bst_plugin('Install', 'fieldtrip', 1, '20200911');
+    if ~isInstalled
+        bst_error(errMsg, 'Plugin manager', 0);
+        return;
+    end
     % Folders
-    bst.FieldTrip_dir = bst_get('FieldTripDir');  % (only "fieldtrip-20200911" tested)
+    bst.FieldTrip_dir = bst_fileparts(which(PlugFt.TestFile));  % (only "fieldtrip-20200911" tested)
     bst.subj_anat_dir = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sStudy.BrainStormSubject));
     bst.subj_data_dir = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sStudy.FileName));
     % MRI file

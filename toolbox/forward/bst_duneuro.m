@@ -21,19 +21,25 @@ function [Gain, errMsg] = bst_duneuro(cfg)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Takfarinas Medani, Juan Garcia-Prieto, 2019-2020
-%          Francois Tadel 2020
+% Authors: Takfarinas Medani, Juan Garcia-Prieto, 2019-2021
+%          Francois Tadel 2020-2021
 
 % Initialize returned values
 Gain = [];
-% Empty temp folder
-gui_brainstorm('EmptyTempFolder');
-% Install bst_duneuro if needed
-[DuneuroExe, errMsg] = duneuro_install(cfg.Interactive);
-if ~isempty(errMsg) || isempty(DuneuroExe)
+% Install/load duneuro plugin
+[isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'duneuro', cfg.Interactive);
+if ~isInstalled
     return;
 end
-disp([10, 'DUNEURO> Installation path: ', DuneuroExe]);
+% Get DUNEuro executable
+DuneuroExe = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'bin', ['bst_duneuro_meeg_', bst_get('OsType')]);
+if ispc
+    DuneuroExe = [DuneuroExe, '.exe'];
+else
+    DuneuroExe = [DuneuroExe, '.app'];
+end
+% Empty temp folder
+gui_brainstorm('EmptyTempFolder');
 % Get temp folder
 TmpDir = bst_get('BrainstormTmpDir');
 % Display message
@@ -198,7 +204,7 @@ switch (cfg.HeadModelType)
         iWM = find(panel_duneuro('CheckType', FemMat.TissueLabels, 'white'), 1);
         if cfg.SrcForceInGM && ~isempty(iGM)
             % Install/load iso2mesh plugin
-            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1, cfg.Interactive);
+            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', cfg.Interactive);
             if ~isInstalled
                 return;
             end

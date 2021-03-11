@@ -9,10 +9,9 @@ function bst_set( varargin )
 %    - bst_set('BrainstormTmpDir',  BrainstormTmpDir)
 %    - bst_set('BrainstormDbDir',   BrainstormDbDir)
 %    - bst_set('LastUsedDirs',      sDirectories)
-%    - bst_set('FieldTripDir',      FieldTripDir)
-%    - bst_set('SpmDir',            SpmDir)
 %    - bst_set('BrainSuiteDir',     BrainSuiteDir)
 %    - bst_set('PythonExe',         PythonExe)
+%    - bst_set('PluginCustomPath',  PluginCustomPath)
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_set('iProtocol',         iProtocol)
@@ -105,7 +104,8 @@ function bst_set( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2021
+%          Martin Cousineau, 2017
 
 global GlobalData;
 
@@ -259,7 +259,7 @@ switch contextName
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
           'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'BrainSuiteDir', 'PythonExe', ...
+          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
           'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
