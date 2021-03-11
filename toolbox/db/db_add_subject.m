@@ -1,4 +1,4 @@
-function sSubject = db_add_subject( varargin )
+function [sSubject, iSubject] = db_add_subject( varargin )
 % DB_ADD_SUBJECT: Add a subject to data base.
 %
 % USAGE:                        db_add_subject(sSubject)
@@ -49,6 +49,7 @@ elseif ischar(varargin{1})
     % Create a new empty subject
     sSubject = db_template('Subject');
     sSubject.Name              = SubjectName;
+    sSubject.FileName          = bst_fullfile(SubjectName, 'brainstormsubject.mat');
     sSubject.UseDefaultAnat    = ProtocolInfo.UseDefaultAnat;
     sSubject.UseDefaultChannel = ProtocolInfo.UseDefaultChannel;
 else
@@ -71,6 +72,7 @@ if sql_row_exists(sqlConn, 'Subject', struct('Name', sSubject.Name))
     % A subject with the same Name is found : display an error box and return to 'Subject editor' window
     bst_error(sprintf('Subject "%s" already exists in protocol.', sSubject.Name), 'Subject editor', 0);
     sSubject = [];
+    iSubject = [];
     sql_close(sqlConn);
     return
 end
@@ -95,8 +97,11 @@ try
 catch
     bst_error(sprintf('Error : cannot save subject file "%s".', sSubject.Name), 'Subject editor');
     sSubject = [];
+    iSubject = [];
     return
 end
+
+iSubject = sSubject.Id;
 
 % === Create extra system conditions ===
 % Add conditions: analysis_intra and default_study

@@ -58,8 +58,6 @@ end
 ConditionName = file_standardize(ConditionName, 1);
 % Get protocol subjects database
 ProtocolInfo     = bst_get('ProtocolInfo');
-ProtocolSubjects = bst_get('ProtocolSubjects');
-ProtocolStudies  = bst_get('ProtocolStudies');
 % Returned value
 iStudies = [];
 isModified = 0;
@@ -83,10 +81,12 @@ end
 
 
 %% ===== CREATE STUDIES =====
+sqlConn = sql_connect();
 for iSubject = iSubjectsList
     % Get subject definition
-    SubjectFile = ProtocolSubjects.Subject(iSubject).FileName;
-    SubjectName = ProtocolSubjects.Subject(iSubject).Name;
+    sSubject = sql_query(sqlConn, 'select', 'Subject', {'Name', 'FileName'}, struct('Id', iSubject));
+    SubjectFile = sSubject.FileName;
+    SubjectName = sSubject.Name;
     % Get conditions for this subject
     [sSubjStudies, iSubjStudies] = bst_get('StudyWithSubject', SubjectFile,'intra_subject', 'default_study');
     
@@ -115,23 +115,21 @@ for iSubject = iSubjectsList
 
     % === Create Study db structure ===
     sNewStudy = db_template('Study');
+    sNewStudy.Subject           = iSubject;
     sNewStudy.Name              = StudyMat.Name;
     sNewStudy.FileName          = file_win2unix(StudyFile);
     sNewStudy.DateOfStudy       = StudyMat.DateOfStudy;
-    sNewStudy.BrainStormSubject = SubjectFile;
-    sNewStudy.Condition         = str_split(ConditionName);
+    sNewStudy.Condition         = ConditionName;
     % Add study to Brainstorm database
-    iNewStudy = length(ProtocolStudies.Study) + 1;
-    ProtocolStudies.Study(iNewStudy) = sNewStudy;
+    iNewStudy = sql_query(sqlConn, 'insert', 'Study', sNewStudy);
     % Add to returned indices list
     iStudies = [iStudies iNewStudy];
     isModified = 1;
 end
+sql_close(sqlConn);
 
 %% ===== REFRESH DISPLAY =====
 if isModified
-    % Save modifications to Brainstorm database
-    bst_set('ProtocolStudies', ProtocolStudies);
     % Set default study to the last added study
     ProtocolInfo.iStudy = iStudies(end);
     bst_set('ProtocolInfo', ProtocolInfo);

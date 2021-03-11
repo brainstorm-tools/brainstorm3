@@ -571,7 +571,7 @@ switch contextName
         end
         
         sqlConn = sql_connect();
-        argout1.Study = sql_query(sqlConn, 'select', 'study', '*', [], 'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")');
+        argout1.Study = db_get('Studies', sqlConn);
         defaultStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Subject', 0, 'Name', '@default_study'));
         analysisStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Name', '@inter'));
         
@@ -671,13 +671,10 @@ switch contextName
             for iStudy = iStudies
                 if iStudy == iAnalysisStudy
                     sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Name', '@inter'));
-                    iOutStudy = iAnalysisStudy;
                 elseif iStudy == iDefaultStudy
                     sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Subject', 0, 'Name', '@default_study'));
-                    iOutStudy = iDefaultStudy;
                 else
                     sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Id', iStudy));
-                    iOutStudy = iStudy;
                 end
                 
                 if isempty(sStudy)
@@ -696,7 +693,7 @@ switch contextName
                 sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
                 
                 argout1(iNext) = sStudy;
-                argout2(iNext) = iOutStudy;
+                argout2(iNext) = sStudy.Id;
                 iNext = iNext + 1;
             end
             sql_close(sqlConn);
@@ -817,21 +814,16 @@ switch contextName
         ConditionPath = varargin{2};
         % Get list of current protocol description
         ProtocolInfo    = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
-        ProtocolStudies = GlobalData.DataBase.ProtocolStudies(GlobalData.DataBase.iProtocol);
-        if isempty(ProtocolStudies) || isempty(ProtocolInfo)
+        if isempty(ProtocolInfo)
             return;
         end
 
         % ConditionPath = @inter
         if strcmpi(ConditionPath, '@inter')
-            iStudy     = -2;
-            argout2   = iStudy;
-            argout1 = bst_get('Study', iStudy);
+            [argout1, argout2] = bst_get('Study', -2);
         % ConditionPath = @default_study
         elseif strcmpi(ConditionPath, '@default_study')
-            iStudy     = -3;
-            argout2   = iStudy;
-            argout1 = bst_get('Study', iStudy);
+            [argout1, argout2] = bst_get('Study', -3);
         % ConditionPath = SubjectName/ConditionName
         else 
             % Get subject and condition names
@@ -841,54 +833,44 @@ switch contextName
             end
             SubjectName = condSplit{1};
             ConditionName = condSplit{2};
-
+            
+            qry = 'SELECT Study.Id AS StudyId FROM Study ';
             % If first element is '*', search for condition in all the studies
             if (SubjectName(1) == '*')
-                iStudies = 1:length(ProtocolStudies.Study);
+                qry = [qry 'WHERE'];
             % Else : search for condition only in studies that are linked to the subject specified in the ConditionPath
             else
-                % Get subject
-                sSubject = bst_get('Subject', SubjectName, 1);
-                if isempty(sSubject)
-                    return;
-                end
-                iStudies = find(file_compare({ProtocolStudies.Study.BrainStormSubject}, sSubject.FileName));
+                qry = [qry 'LEFT JOIN Subject on Subject.Id = Study.Subject ' ...
+                    'WHERE Subject.Name = "' SubjectName '" AND'];
             end
+            qry = [qry ' Study.Condition = "' ConditionName '"'];
+
+            iStudies = [];
+            sqlConn = sql_connect();
+            result = sql_query(sqlConn, qry);
+            while result.next()
+                iStudies(end + 1) = result.getInt('StudyId');
+            end
+            result.close();
+            sql_close(sqlConn);
+            
             % Nothing to search
             if isempty(iStudies)
                 return
             end
 
-            % Search all the current protocol's studies
-            iStudies = iStudies(cellfun(@(c)isequal(ConditionName, c), [ProtocolStudies.Study(iStudies).Condition]));
             % Return results
             if ~isempty(iStudies)
-                % Remove "analysis_intra" and "default_study" studies from list
-                if ~strcmpi(ConditionName, '@intra')
-                    iStudies(strcmpi({ProtocolStudies.Study(iStudies).Condition}, bst_get('DirAnalysisIntra'))) = [];
-                end
-                if ~strcmpi(ConditionName, '@default_study')
-                    iStudies(strcmpi({ProtocolStudies.Study(iStudies).Condition}, bst_get('DirDefaultStudy'))) = [];
-                end
-                % Sort by subject
-                if (length(iStudies) > 1)
-                    SubjNameList = cell(1,length(iStudies));
-                    % For each study, get subject name
-                    for i = 1:length(iStudies)
-                        sSubject = bst_get('Subject', ProtocolStudies.Study(iStudies(i)).BrainStormSubject);
-                        SubjNameList{i} = sSubject.Name;
-                    end
-                    % Sort subjects names
-                    [sortSubjList, iSort] = sort(SubjNameList);
-                    % Apply same sorting to studies
-                    iStudies = iStudies(iSort);
+                sStudies = repmat(db_template('Study'), 1, length(iStudies));
+                for i = length(iStudies)
+                    sStudies(i) = db_get('Study', iStudies(i));
                 end
                 % Return studies
-                argout1 = ProtocolStudies.Study(iStudies);
-                argout2   = iStudies;
+                argout1 = sStudies;
+                argout2 = iStudies;
             else
                 argout1 = repmat(db_template('Study'), 0);
-                argout2   = [];
+                argout2 = [];
             end
         end
 

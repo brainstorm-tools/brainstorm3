@@ -274,7 +274,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     isProcess1 = strcmpi(sProcesses(iProc).Category, 'custom');
                     % Acquire lock on input files
                     LockIds = [];
-                    if ~isempty(sInputs)
+                    if ~isempty(sInputs) && ~(length(sInputs) == 1 && strcmp(sInputs.Comment, 'import'))
                         for iInput = 1:length(sInputs)
                             LockId = lock_acquire(ProcessName, ...
                                 sInputs(iInput).SubjectName, ...

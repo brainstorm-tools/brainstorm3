@@ -265,23 +265,36 @@ switch contextName
         
     % Usage: iStudies = db_get('StudiesFromSubject', iSubject) : WITHOUT the system studies ('intra_subject', 'default_study')
     % Usage: iStudies = db_get('StudiesFromSubject', iSubject, 'intra_subject', 'default_study') : WITH the system studies
+    % Usage: iStudies = db_get('StudiesFromSubject', SubjectName)
     case 'StudiesFromSubject'
         iSubject = args{1};
         
         addQuery = [];
         if length(args) < 2 || ~ismember('intra_subject', args(2:end))
-            addQuery = [' AND Name <> "' bst_get('DirAnalysisIntra') '"'];
+            addQuery = [' AND Study.Name <> "' bst_get('DirAnalysisIntra') '"'];
         end
         if length(args) < 2 || ~ismember('default_study', args(2:end))
-            addQuery = [addQuery ' AND Name <> "' bst_get('DirDefaultStudy') '"'];
+            addQuery = [addQuery ' AND Study.Name <> "' bst_get('DirDefaultStudy') '"'];
         end
         
-        sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('Subject', iSubject), addQuery);
-        
-        if isempty(sStudy)
-            varargout{1} = [];
+        % Special case: Subject name rather than ID specified
+        if ischar(iSubject)
+            result = sql_query(sqlConn, ['SELECT Study.Id AS StudyId FROM Subject ' ...
+                'LEFT JOIN Study ON Subject.Id = Study.Subject ' ...
+                'WHERE Subject.Name = "' iSubject '"' addQuery]);
+            iStudies = [];
+            while result.next()
+                iStudies(end + 1) = result.getInt('StudyId');
+            end
+            result.close();
+            varargout{1} = iStudies;
         else
-            varargout{1} = [sStudy.Id];
+            sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('Subject', iSubject), addQuery);
+            if isempty(sStudy)
+                varargout{1} = [];
+            else
+                varargout{1} = [sStudy.Id];
+            end
         end
         
     % Usage: iStudy = db_get('DefaultStudy', iSubject)
@@ -311,6 +324,22 @@ switch contextName
         if ~isempty(sStudy)
             varargout{1} = sStudy.Id;
         end
+        
+    case 'Study'
+        iStudy = args{1};
+        varargout{1} = sql_query(sqlConn, 'select', 'Study', '*', struct('Id', iStudy));
+        
+    % Usage: sStudy = db_get('Studies')
+    % Usage: sStudy = db_get('Studies', {'Id', 'Name'})
+    case 'Studies'
+        if length(args) > 0
+            fields = args{1};
+        else
+            fields = '*';
+        end
+        
+        varargout{1} = sql_query(sqlConn, 'select', 'Study', fields, [], ...
+            'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")');
         
     otherwise
         error('Invalid context : "%s"', contextName);
