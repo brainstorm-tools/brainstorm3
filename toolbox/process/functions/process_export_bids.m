@@ -705,7 +705,7 @@ end
 function CreateMegJson(jsonFile, metadata)
     fid = fopen(jsonFile, 'wt');
     jsonText = bst_jsonencode(metadata);
-    fprintf(fid, jsonText);
+    fprintf(fid, strrep(jsonText, '%', '%%'));
     fclose(fid);
 end
 
