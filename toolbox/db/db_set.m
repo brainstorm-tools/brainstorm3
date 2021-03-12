@@ -43,7 +43,12 @@ switch contextName
         iSubject = args{3};
         nFiles = length(sFiles);
         if length(args) > 3
-            selFile = args{4};
+            if iscell(args{4})
+                selFile = args{4};
+            else
+                selFile = args(4);
+            end
+            out2 = cell(1, length(selFile));
         else
             selFile = [];
         end
@@ -76,17 +81,20 @@ switch contextName
                 out1(iFile) = anatomyFile;
 
                 if ~isempty(selFile)
-                    if strcmpi(anatomyFile.FileName, selFile)
-                        out2 = anatomyFile.Id;
+                    iSel = find(strcmpi(anatomyFile.FileName, selFile));
+                    if ~isempty(iSel)
+                        out2{iSel} = anatomyFile.Id;
                     end
                 end
             end
         end
-
+        
     % db_set('FilesWithStudy', FileType, db_template('data/timefreq/etc'), StudyID)
+    % db_set('FilesWithStudy', sStudy, [selectedChannel/HeadModel])
     case 'FilesWithStudy'
+        selFile = [];
         % Special case: db_set('FilesWithStudy', sStudy)
-        if length(args) == 1
+        if length(args) < 3
             sStudy = args{1};
             iStudy = sStudy.Id;
             % Note: Order important here, as potential parent files (Data, Matrix, Result)
@@ -98,6 +106,16 @@ switch contextName
             parentFiles = struct('data', repmat(fileIds, 0), ...
                 'matrix', repmat(fileIds, 0), ...
                 'result', repmat(fileIds, 0));
+            
+            % Return IDs of selected files if requested
+            if length(args) > 1
+                if iscell(args{2})
+                    selFile = args{2};
+                else
+                    selFile = args(2);
+                end
+                out1 = cell(1, length(selFile));
+            end
         else
             types  = {lower(args{1})};
             sFiles = args{2};
@@ -194,6 +212,12 @@ switch contextName
                     end
                 else
                     FileId = ModifyFunctionalFile(sqlConn, 'insert', functionalFile);
+                    if ~isempty(selFile)
+                        iSel = find(strcmpi(functionalFile.FileName, selFile));
+                        if ~isempty(iSel)
+                            out1{iSel} = FileId;
+                        end
+                    end
                     
                     % Save inserted ID if this is a potential parent file
                     if ~isempty(sStudy) && ismember(type, {'data', 'matrix', 'result', 'results'})

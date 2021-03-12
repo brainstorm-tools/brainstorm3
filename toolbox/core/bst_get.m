@@ -1108,15 +1108,19 @@ switch contextName
                             
         % Call: bst_get('subject');   => looking for current subject 
         elseif (nargin < 2)
-            % Get current subject filename in current study
-            sStudy = bst_get('Study');
-            if isempty(sStudy)
-                return
+            % Get currently selected subject
+            ProtocolInfo = bst_get('ProtocolInfo');
+            if ~isempty(ProtocolInfo.iSubject)
+                iSubject = ProtocolInfo.iSubject;
+                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('Id', iSubject));
             end
-            SubjectName = sStudy.BrainStormSubject;
-            % If study's subject is not defined, get DefaultSubject
-            if isempty(SubjectName)
-                SubjectName = '@default_subject';
+            
+            if isempty(ProtocolInfo.iSubject) || isempty(sSubject)
+                sql_close(sqlConn);
+                argout1 = [];
+                argout2 = [];
+                return;
             end
         else
             error('Invalid call to bst_get()');

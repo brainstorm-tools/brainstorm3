@@ -167,34 +167,33 @@ switch contextName
             end
             
             % Extract selected anat/surf files to get inserted ID later
-            selAnatomy = [];
-            if ~isempty(sSubject.iAnatomy)
-                if ischar(sSubject.iAnatomy)
-                    selAnatomy = sSubject.iAnatomy;
-                elseif sSubject.iAnatomy > 0 && sSubject.iAnatomy < length(sSubject.Anatomy)
-                    selAnatomy = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+            categories = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'};
+            selectedFiles = cell(1, length(categories));
+            for iCat = 1:length(categories)
+                field = ['i' categories{iCat}];
+                if ~isempty(sSubject.(field)) && ischar(sSubject.(field))
+                    selectedFiles{iCat} = sSubject.(field);
+                    sSubject.(field) = [];
+                else
+                    selectedFiles{iCat} = [];
                 end
-                sSubject.iAnatomy = [];
             end
-            %TODO: all iSurfaces
             
             % Insert subject
             SubjectId = sql_query(sqlConn, 'insert', 'subject', sSubject);
             
             % Insert anatomy & surface files
-            [sAnatomy, selAnatomy] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, SubjectId, selAnatomy);
-            [sSurface, selSurface] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, SubjectId, []);
+            [sAnatomy, selectedFiles(1)] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, SubjectId, selectedFiles(1));
+            [sSurface, selectedFiles(2:end)] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, SubjectId, selectedFiles(2:end));
             
             % Update subject entry to add selected anat/surf files, if any
             hasSelFiles = 0;
             selFiles = struct();
-            if ~isempty(selAnatomy)
-                selFiles.iAnatomy = selAnatomy;
-                hasSelFiles = 1;
-            end
-            if ~isempty(selSurface)
-                selFiles.iSurface = selSurface;
-                hasSelFiles = 1;
+            for iCat = 1:length(categories)
+                if ~isempty(selectedFiles{iCat})
+                    hasSelFiles = 1;
+                    selFiles.(['i' categories{iCat}]) = selectedFiles{iCat};
+                end
             end
             if hasSelFiles
                 sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', SubjectId));
@@ -205,10 +204,6 @@ switch contextName
         
     case 'ProtocolStudies'
         sqlConn = sql_connect();
-        
-        % Delete existing studies and functional files
-        sql_query(sqlConn, 'delete', 'study');
-        sql_query(sqlConn, 'delete', 'functionalfile');
         
         for iStudy = -1:length(contextValue.Study)
             if iStudy == -1
@@ -229,18 +224,61 @@ switch contextName
                 continue
             end
             
+            % If study exists: save its metadata and delete its files
+            categories = {'Channel', 'HeadModel'};
+            if ~isempty(sStudy.Id)
+                for iCat = 1:length(categories)
+                    field = ['i' categories{iCat}];
+                    if ~isempty(sStudy.(field)) && isnumeric(sStudy.(field))
+                        sFile = sql_query(sqlConn, 'select', 'FunctionalFile', ...
+                            'FileName', struct('Id', sStudy.(field)));
+                        if ~isempty(sFile)
+                            sStudy.(field) = sFile.FileName;
+                        end
+                    end
+                end
+                
+                sql_query(sqlConn, 'delete', 'functionalfile', struct('Study', sStudy.Id));
+                sql_query(sqlConn, 'delete', 'study', struct('Id', sStudy.Id));
+            end
+            
             % Get ID of parent subject
             sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudy.BrainStormSubject));
             sStudy.Id = [];
             sStudy.Subject = sSubject.Id;
             sStudy.Condition = char(sStudy.Condition);
             
+            % Extract selected channel/head model to get inserted ID later
+            selectedFiles = cell(1, length(categories));
+            for iCat = 1:length(categories)
+                category = categories{iCat};
+                field = ['i' category];
+                if ~isempty(sStudy.(field)) && ischar(sStudy.(field))
+                    selectedFiles{iCat} = sStudy.(field);
+                elseif isempty(sStudy.(field)) && ~isempty(sStudy.(category))
+                    selectedFiles{iCat} = sStudy.(category)(1).FileName;
+                end
+            end
+            
             % Insert study
             StudyId = sql_query(sqlConn, 'insert', 'study', sStudy);
             sStudy.Id = StudyId;
             
             % Insert functional files
-            db_set(sqlConn, 'FilesWithStudy', sStudy);
+            selectedFiles = db_set(sqlConn, 'FilesWithStudy', sStudy, selectedFiles);
+            
+            % Update study entry to add selected functional files, if any
+            hasSelFiles = 0;
+            selFiles = struct();
+            for iCat = 1:length(categories)
+                if ~isempty(selectedFiles{iCat})
+                    hasSelFiles = 1;
+                    selFiles.(['i' categories{iCat}]) = selectedFiles{iCat};
+                end
+            end
+            if hasSelFiles
+                sql_query(sqlConn, 'update', 'Study', selFiles, struct('Id', StudyId));
+            end
         end
         
         sql_close(sqlConn);
@@ -265,11 +303,24 @@ switch contextName
             sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Id', iSubject));
         end
         
+        % Extract selected anat/surf files to get inserted ID later
+        categories = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'};
+        selectedFiles = cell(1, length(categories));
+        for iCat = 1:length(categories)
+            field = ['i' categories{iCat}];
+            if ~isempty(sSubject.(field)) && ischar(sSubject.(field))
+                selectedFiles{iCat} = sSubject.(field);
+                sSubject.(field) = [];
+            else
+                selectedFiles{iCat} = [];
+            end
+        end
+        
         % If subject exists, UPDATE query
         if ~isempty(sExistingSubject)
             sSubject.Id = sExistingSubject.Id;
             result = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', sExistingSubject.Id));
-            if ~result
+            if result
                 argout1 = sExistingSubject.Id;
             end
         else
@@ -283,9 +334,24 @@ switch contextName
         if ~isempty(argout1)
             % Delete existing anatomy files
             sql_query(sqlConn, 'delete', 'anatomyfile', struct('Subject', argout1));
+            
             % Insert new anatomy files
-            db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, argout1);
-            db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, argout1);
+            [sAnatomy, selectedFiles(1)] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, argout1, selectedFiles(1));
+            [sSurface, selectedFiles(2:end)] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, argout1, selectedFiles(2:end));
+            
+            % Update subject entry to add selected anat/surf files, if any
+            hasSelFiles = 0;
+            selFiles = struct();
+            for iCat = 1:length(categories)
+                if ~isempty(selectedFiles{iCat})
+                    hasSelFiles = 1;
+                    selFiles.(['i' categories{iCat}]) = selectedFiles{iCat};
+                end
+            end
+            if hasSelFiles
+                sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', argout1));
+            end
+            
         end
         sql_close(sqlConn);
         
@@ -315,6 +381,27 @@ switch contextName
             sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudies(i).BrainStormSubject));
             sStudies(i).Subject = sSubject.Id;
             
+            % Extract selected channel/head model to get inserted ID later
+            categories = {'Channel', 'HeadModel'};
+            selectedFiles = cell(1, length(categories));
+            for iCat = 1:length(categories)
+                category = categories{iCat};
+                field = ['i' category];
+                if ~isempty(sStudies(i).(field)) && ischar(sStudies(i).(field))
+                    selectedFiles{iCat} = sStudies(i).(field);
+                elseif ~isempty(sStudies(i).(field)) && isnumeric(sStudies(i).(field))
+                    % Get FileName with previous file ID before it's deleted
+                    sFile = sql_query(sqlConn, 'select', 'FunctionalFile', ...
+                        'FileName', struct('Id', sStudies(i).(field)));
+                    if ~isempty(sFile)
+                        selectedFiles{iCat} = sFile.FileName;
+                    end
+                end
+                if isempty(selectedFiles{iCat}) && ~isempty(sStudies(i).(category))
+                    selectedFiles{iCat} = sStudies(i).(category)(1).FileName;
+                end
+            end
+            
             % If study exists, UPDATE query
             if ~isempty(sExistingStudy)
                 sStudies(i).Id = sExistingStudy.Id;
@@ -337,7 +424,20 @@ switch contextName
             % Insert functional files
             if ~isempty(iStudy)
                 sql_query(sqlConn, 'delete', 'functionalfile', struct('Study', iStudy));
-                db_set(sqlConn, 'FilesWithStudy', sStudies(i));
+                selectedFiles = db_set(sqlConn, 'FilesWithStudy', sStudies(i), selectedFiles);
+            
+                % Update study entry to add selected functional files, if any
+                hasSelFiles = 0;
+                selFiles = struct();
+                for iCat = 1:length(categories)
+                    if ~isempty(selectedFiles{iCat})
+                        hasSelFiles = 1;
+                        selFiles.(['i' categories{iCat}]) = selectedFiles{iCat};
+                    end
+                end
+                if hasSelFiles
+                    sql_query(sqlConn, 'update', 'Study', selFiles, struct('Id', iStudy));
+                end
             end
         end
         sql_close(sqlConn);

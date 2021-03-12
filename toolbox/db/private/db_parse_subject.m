@@ -192,8 +192,7 @@ if ~isempty(subjMat)
     % ==== ANATOMY ====
     % By default : use the first anatomy in list
     if ~isempty(sSubject(1).Anatomy)
-        % sSubject(1).iAnatomy = length(sSubject(1).Anatomy);
-        sSubject(1).iAnatomy = 0;
+        sSubject(1).iAnatomy = sSubject(1).Anatomy(1).FileName;
     else
         sSubject(1).iAnatomy = [];
     end

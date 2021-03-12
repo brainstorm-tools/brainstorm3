@@ -345,6 +345,12 @@ end
 
 % Select study defaults in the processed files
 if ~isempty(studyMat)
+    % Channel: first file
+    if ~isempty(sStudy(1).Channel)
+        sStudy(1).iChannel = sStudy(1).Channel(1).FileName;
+    else
+        sStudy(1).iChannel = [];
+    end
     % HeadModel : last file
     if ~isempty(sStudy(1).HeadModel)
         sStudy(1).iHeadModel = sStudy(1).HeadModel(end).FileName;
