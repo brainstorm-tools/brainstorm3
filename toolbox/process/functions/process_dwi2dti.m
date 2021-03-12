@@ -133,7 +133,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % ===== COMPUTE DTI =====
     % Compute DTI tensors
-    [DtiFile, errMsg] = Compute(iSubject, DwiFile, BvalFile, BvecFile);
+    [DtiFile, errMsg] = Compute(iSubject, [], DwiFile, BvalFile, BvecFile);
     % Error handling
     if ~isempty(errMsg)
         if isempty(DtiFile)
