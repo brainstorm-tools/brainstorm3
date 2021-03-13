@@ -1541,9 +1541,9 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc)
     end
     
     % === UNLOAD PLUGIN ===
-    matlabPath = str_split(path, ';');
+    matlabPath = str_split(path, {';',':'});
     % Remove plugin folder and subfolders from path
-    allSubFolders = str_split(genpath(PlugPath), ';');
+    allSubFolders = str_split(genpath(PlugPath), {';',':'});
     for i = 1:length(allSubFolders)
         if ismember(allSubFolders{i}, matlabPath)
             rmpath(allSubFolders{i});
