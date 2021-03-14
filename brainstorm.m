@@ -268,21 +268,12 @@ switch action
         % Remove .brainstorm from the path
         rmpath(bst_get('UserMexDir'));
         rmpath(bst_get('UserProcessDir'));
-        % Build the name of the deployment function
-        bst_deploy_java = str2func(['bst_deploy_java_' ReleaseName(2:end)]);
         % Update
         if (nargin > 1)
             bst_deploy_java(varargin{2:end});
         else
             bst_deploy_java();
         end
-        
-    case 'packagebin'
-        bst_set_path(BrainstormHomeDir);
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
-        bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        bst_package_bin(varargin{2:end});
         
     otherwise
         % Check if trying to execute a script

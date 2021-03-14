@@ -1,4 +1,4 @@
-function bst_extract_fieldtrip_spm()
+function bst_deploy_spmtrip()
 % BST_EXTRACT_FIELDTRIP_SPM Make a copy of some of the FieldTrip and SPM
 % functions used by Brainstorm in the deployment folder, aimed to be included in
 % the MCC compilation of Brainstorm.
@@ -54,12 +54,13 @@ function bst_extract_fieldtrip_spm()
 
 
 % ===== CONFIGURATION =====
-
+% Warning SPM
+disp('Warning: Make sure you executed spm_make_standalone first.');
 % Source folders 
 FieldTripDir ='C:\Users\franc\.brainstorm\plugins\fieldtrip\fieldtrip-20210311';
 SpmDir = 'C:\Users\franc\.brainstorm\plugins\spm12\spm12';
 % Destination folder
-IncludeDir = 'C:\Work\Dev\brainstorm3_deploy\spmtrip_2020a';
+IncludeDir = 'C:\Work\Dev\brainstorm3_deploy\spmtrip';
 % PrivateDir = fullfile(IncludeDir, 'private');
 
 % List required functions
@@ -310,6 +311,11 @@ system(['xcopy "' fullfile(SpmDir, 'config'), '" "', fullfile(IncludeDir, 'confi
 system(['xcopy "' fullfile(SpmDir, 'matlabbatch'), '" "', fullfile(IncludeDir, 'matlabbatch'), '" /s /e /y /q /i']);
 % Copy all the dependency files
 for i = 1:length(listDep)
+    % If file not found: ignore
+    if ~file_exist(listDep{i})
+        disp(['File not found: ' listDep{i}]);
+        continue;
+    end
     % If file shadows a Matlab builtin function: skip
     [fPath, fBase, fExt] = fileparts(listDep{i});
     if exist(fBase, 'builtin')
@@ -324,7 +330,7 @@ for i = 1:length(listDep)
     else
         destDir = IncludeDir;
     end
-    if ~isir(destDir)
+    if ~isdir(destDir)
         mkdir(destDir);
         if isempty(strfind(listDep{i}, 'private'))
             disp(['Created: ' destDir]);

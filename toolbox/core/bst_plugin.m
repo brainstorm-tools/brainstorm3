@@ -237,7 +237,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/';
     PlugDesc(end).TestFile       = 'SimMEEG_GUI_v21a.m';
     PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
-    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
     % === STATISTICS: LIBSVM ===
