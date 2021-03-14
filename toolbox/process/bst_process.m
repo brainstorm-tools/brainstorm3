@@ -271,41 +271,67 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Capture process crashes
                 try
-                    isProcess1 = strcmpi(sProcesses(iProc).Category, 'custom');
                     % Acquire lock on input files
                     LockIds = [];
                     if ~isempty(sInputs) && ~(length(sInputs) == 1 && strcmp(sInputs.Comment, 'import'))
-                        for iInput = 1:length(sInputs)
-                            LockId = lock_acquire(ProcessName, ...
-                                sInputs(iInput).SubjectName, ...
-                                sInputs(iInput).iStudy, ...
-                                sInputs(iInput).iItem);
-                            if isempty(LockId)
-                                error(['Could not acquire lock on file ' sInputs(iInput).FileName]);
-                            end
-                            LockIds(end + 1) = LockId;
-                        end
-                    end
-                    if ~isempty(sInputs2)
-                        for iInput = 1:length(sInputs2)
-                            LockId = lock_acquire(ProcessName, ...
-                                sInputs2(iInput).SubjectName, ...
-                                sInputs2(iInput).iStudy, ...
-                                sInputs2(iInput).iItem);
-                            if isempty(LockId)
-                                error(['Could not acquire lock on file ' sInputs2(iInput).FileName]);
-                            end
-                            LockIds(end + 1) = LockId;
-                        end
-                    end
-                    
-                    %TODO: Lock entire study or more, see GetOutputStudy
-                    % Lock studies of all inputs
-                    % If using default channel: lock default subject
-                    % If multiple subjects as input: lock inter-subject
-                    
+                        iStudies = [];
+                        LastSubject = [];
+                        hasMultipleSubs = 0;
+                        hasDefaultSubject = 0;
+                        IsDefaultSubject = @(x) strncmp(x, bst_get('DirDefaultSubject'), length(bst_get('DirDefaultSubject')));
                         
-                    if isProcess1
+                        % Lock entire studies
+                        if ~isempty(sInputs2)
+                            sAllInputs = [sInputs, sInputs2];
+                        else
+                            sAllInputs = sInputs;
+                        end
+                        for iInput = 1:length(sAllInputs)
+                            if ~ismember(sInputs(iInput).iStudy, iStudies)
+                                LockId = lock_acquire(ProcessName, ...
+                                    sInputs(iInput).SubjectName, ...
+                                    sInputs(iInput).iStudy);
+                                if isempty(LockId)
+                                    error(['Could not acquire lock on file ' sInputs(iInput).FileName]);
+                                end
+                                LockIds(end + 1) = LockId;
+                                iStudies(end + 1) = sInputs(iInput).iStudy;
+                                
+                                if ~hasMultipleSubs
+                                    if isempty(LastSubject)
+                                        LastSubject = sInputs(iInput).SubjectName;
+                                    elseif ~strcmp(LastSubject, sInputs(iInput).SubjectName)
+                                        hasMultipleSubs = 1;
+                                    end
+                                end
+                                if IsDefaultSubject(sInputs(iInput).ChannelFile)
+                                    hasDefaultSubject = 1;
+                                end
+                            end
+                        end
+                        
+                        % If multiple subjects as input: lock inter-subject
+                        if hasMultipleSubs
+                            LockId = lock_acquire(ProcessName, ...
+                                bst_get('DirAnalysisInter'));
+                            if isempty(LockId)
+                                error('Could not acquire lock on inter-subject.');
+                            end
+                            LockIds(end + 1) = LockId;
+                        end
+                        
+                        % If using default channel: lock default subject
+                        if hasDefaultSubject
+                            LockId = lock_acquire(ProcessName, ...
+                                bst_get('DirDefaultSubject'));
+                            if isempty(LockId)
+                                error('Could not acquire lock on default subject.');
+                            end
+                            LockIds(end + 1) = LockId;
+                        end
+                    end
+                        
+                    if strcmpi(sProcesses(iProc).Category, 'custom')
                         if isempty(sInputs2)
                             OutputFiles = sProcesses(iProc).Function('Run', sProcesses(iProc), sInputs);
                         else
