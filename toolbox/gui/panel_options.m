@@ -490,7 +490,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %         end
 %         % New python path
 %         if ~isempty(PythonConfig.PythonPath)
-%             newPath = [PythonConfig.PythonPath ';' addDir];
+%             newPath = [PythonConfig.PythonPath, pathsep, addDir];
 %         else
 %             newPath = addDir;
 %         end
@@ -675,9 +675,9 @@ function PATH = SystemPathRemove(rmPath, PATH)
     end
     % Get system path
     PATH = getenv('PATH');
-    PATH_split = str_split(PATH, ';');
+    PATH_split = str_split(PATH, pathsep);
     % Find elements to remove
-    rm_split = str_split(rmPath, ';');
+    rm_split = str_split(rmPath, pathsep);
     iRm = find(ismember(PATH_split, rm_split));
     if isempty(iRm)
         return;
@@ -693,7 +693,7 @@ function PATH = SystemPathRemove(rmPath, PATH)
         if (i == 1)
             PATH = PATH_split{i};
         else
-            PATH = [PATH, ';', PATH_split{i}];
+            PATH = [PATH, pathsep, PATH_split{i}];
         end
     end
     % Update system path
@@ -715,12 +715,12 @@ function PATH = SystemPathAdd(addPath, PATH)
         isSystemPath = 0;
     end
     % Get system path
-    PATH_split = str_split(PATH, ';');
+    PATH_split = str_split(PATH, pathsep);
     % Check which folders are not yet in the system path
-    add_split = str_split(addPath, ';');
+    add_split = str_split(addPath, pathsep);
     for iPath = 1:length(add_split)
         if isdir(add_split{iPath}) && ~ismember(add_split{iPath}, PATH_split)
-            PATH = [PATH ';' add_split{iPath}];
+            PATH = [PATH, pathsep, add_split{iPath}];
             disp(['BST> Added to system path: ' add_split{iPath}]);
         end
     end

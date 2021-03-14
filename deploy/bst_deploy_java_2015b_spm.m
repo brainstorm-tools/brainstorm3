@@ -140,10 +140,10 @@ end
 
 %% ===== GET ALL DIRECTORIES =====
 % Get all the Brainstorm subdirectories
-bstPath = [bstDir, ';', GetPath(bstDir)];
+bstPath = [bstDir, pathsep, GetPath(bstDir)];
 % Split string
 jPath = java.lang.String(bstPath);
-jSplitPath = jPath.split(';');
+jSplitPath = jPath.split(pathsep);
 
 
 %% ===== UPDATE VERSION.TXT =====

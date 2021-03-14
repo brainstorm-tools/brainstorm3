@@ -200,11 +200,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
             disp(['BST> Adding to system path: ' BsBinDir]);
             disp(['BST> Adding to system path: ' BsBdpDir]);
-            if ispc
-                setenv('PATH', [getenv('PATH'), ';', BsBinDir, ';', BsBdpDir]);
-            else
-                setenv('PATH', [getenv('PATH'), ':', BsBinDir, ':', BsBdpDir]);
-            end
+            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
             % Check again
             status = system('bdp --version');
         end

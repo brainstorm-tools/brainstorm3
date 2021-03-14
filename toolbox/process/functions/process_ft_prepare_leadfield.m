@@ -147,7 +147,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Make sure that OpenMEEG is already installed
         OpenmeegDir = bst_openmeeg('download');
         % Add the OpenMEEG folder to the system path
-        setenv('path', [getenv('path') ';' OpenmeegDir ';']);
+        setenv('path', [getenv('path'), pathsep, OpenmeegDir, pathsep]);
     end
 
     % ===== GET STUDIES =====

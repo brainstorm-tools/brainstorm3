@@ -557,7 +557,7 @@ function PlugDesc = GetInstalled(SelPlug)
     % Custom plugin paths
     PluginCustomPath = bst_get('PluginCustomPath');
     % Matlab path
-    matlabPath = str_split(path, ';');
+    matlabPath = str_split(path, pathsep);
     
     % === LOOK FOR SUPPORTED PLUGINS ===
     % Empty plugin structure
@@ -855,7 +855,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             if isempty(PlugCheck)
                 installPlugs{end+1} = PlugDesc.RequiredPlugs{iPlug,1};
                 installVer{end+1} = [];
-                strInstall = [strInstall, '<B>' installPlugs{end} '/B> '];
+                strInstall = [strInstall, '<B>' installPlugs{end} '</B> '];
             % Plugin installed: check version
             elseif (size(PlugDesc.RequiredPlugs,2) == 2) 
                 minVerDep = PlugDesc.RequiredPlugs{iPlug,2};
@@ -1564,9 +1564,9 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc)
     end
     
     % === UNLOAD PLUGIN ===
-    matlabPath = str_split(path, ';');
+    matlabPath = str_split(path, pathsep);
     % Remove plugin folder and subfolders from path
-    allSubFolders = str_split(genpath(PlugPath), ';');
+    allSubFolders = str_split(genpath(PlugPath), pathsep);
     for i = 1:length(allSubFolders)
         if ismember(allSubFolders{i}, matlabPath)
             rmpath(allSubFolders{i});

@@ -151,7 +151,7 @@ end
 bstPath = GetPath(bstDir);
 % Split string
 jPath = java.lang.String(bstPath);
-jSplitPath = jPath.split(';');
+jSplitPath = jPath.split(pathsep);
 
 
 %% ===== UPDATE VERSION.TXT =====

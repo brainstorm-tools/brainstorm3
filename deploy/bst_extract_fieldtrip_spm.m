@@ -50,15 +50,16 @@ function bst_extract_fieldtrip_spm()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2021
 
 
 % ===== CONFIGURATION =====
+
 % Source folders 
-FieldTripDir ='C:\Work\Dev\Divers\fieldtrip-20190211';
-SpmDir = 'C:\Work\Dev\Divers\spm12';
+FieldTripDir ='C:\Users\franc\.brainstorm\plugins\fieldtrip\fieldtrip-20210311';
+SpmDir = 'C:\Users\franc\.brainstorm\plugins\spm12\spm12';
 % Destination folder
-IncludeDir = 'C:\Work\Dev\brainstorm3_deploy\spmtrip';
+IncludeDir = 'C:\Work\Dev\brainstorm3_deploy\spmtrip_2020a';
 % PrivateDir = fullfile(IncludeDir, 'private');
 
 % List required functions
@@ -219,13 +220,19 @@ extraFiles = {...
 
 % ===== SET PATH =====
 % Path spmtrip
+warning off
 rmpath(genpath(IncludeDir));
+warning on
 % Initalize FieldTrip
 tic;
 addpath(FieldTripDir);
 ft_defaults;
-addpath('C:\Work\Dev\Divers\fieldtrip-20190211\compat\matlablt2016b');
-addpath('C:\Work\Dev\Divers\fieldtrip-20190211\compat\matlablt2017b');
+if ~exist('contains', 'builtin')
+    addpath(fullfile(FieldTripDir, 'compat', 'matlablt2016b'));
+end
+if ~exist('isfolder', 'builtin')
+    addpath(fullfile(FieldTripDir, 'compat', 'matlablt2017b'));
+end
 % Initalize SPM
 addpath(SpmDir);
 addpath(fullfile(SpmDir, 'config'));
@@ -317,7 +324,7 @@ for i = 1:length(listDep)
     else
         destDir = IncludeDir;
     end
-    if ~file_exist(destDir)
+    if ~isir(destDir)
         mkdir(destDir);
         if isempty(strfind(listDep{i}, 'private'))
             disp(['Created: ' destDir]);
@@ -348,7 +355,7 @@ end
 
 % Print list of input directories
 disp([10 'Add to bst_javabuilder_2015b_spm.prj:']);
-dirList = str_split(genpath(IncludeDir), ';');
+dirList = str_split(genpath(IncludeDir), pathsep);
 for i = 1:length(dirList)
     disp(['      <file>' dirList{i} '</file>']);
 end
