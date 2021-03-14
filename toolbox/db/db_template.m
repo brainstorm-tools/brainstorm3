@@ -1168,6 +1168,7 @@ switch lower(structureName)
             'Category',      '', ...  % Sub-menu in which the plugin is listed
             'Version',       '', ...  % String with the version name
             'AutoUpdate',     1, ...  % If 1, plugin is updated automatically when there is a new version available
+            'AutoLoad',       0, ...  % If 1, plugin is loaded automatically at Brainstorm startup
             'URLzip',        '', ...  % Download URL (zip file accessible over HTTP/HTTPS/FTP)
             'URLinfo',       '', ...  % Information URL: Software website
             'ExtraMenus',    [], ...  % Cell matrix {Nx2} with list of entries to add to the plugins menu, eg. {'Download page', 'web(''http://...'')'; 'Tutorial', 'web(''http://...'')'}

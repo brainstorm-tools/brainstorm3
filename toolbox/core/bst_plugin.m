@@ -65,7 +65,7 @@ function PlugDesc = GetSupported(SelPlug)
     
     % ================================================================================================================
     % === ANATOMY: BRAIN2MESH ===
-    PlugDesc(end+1).Name         = 'brain2mesh';
+    PlugDesc(end+1)              = GetStruct('brain2mesh');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).URLzip         = 'https://github.com/fangq/brain2mesh/archive/master.zip';
@@ -76,7 +76,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).RequiredPlugs  = {'spm12'; 'iso2mesh'};
 
     % === ANATOMY: CAT12 ===
-    PlugDesc(end+1).Name         = 'cat12';
+    PlugDesc(end+1)              = GetStruct('cat12');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
@@ -92,7 +92,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
     
     % === ANATOMY: ISO2MESH ===
-    PlugDesc(end+1).Name         = 'iso2mesh';
+    PlugDesc(end+1)              = GetStruct('iso2mesh');
     PlugDesc(end).Version        = '1.9.2';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
@@ -110,7 +110,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
     
     % === ANATOMY: ROAST ===
-    PlugDesc(end+1).Name         = 'roast';
+    PlugDesc(end+1)              = GetStruct('roast');
     PlugDesc(end).Version        = '3.0';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
@@ -123,7 +123,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
     
     % === FORWARD: OPENMEEG ===
-    PlugDesc(end+1).Name         = 'openmeeg';
+    PlugDesc(end+1)              = GetStruct('openmeeg');
     PlugDesc(end).Version        = '2.4.1';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 1;
@@ -149,7 +149,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'bin', 'lib'};
     
     % === FORWARD: DUNEURO ===
-    PlugDesc(end+1).Name         = 'duneuro';
+    PlugDesc(end+1)              = GetStruct('duneuro');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 1;
@@ -160,7 +160,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'bin'};
     
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
-    PlugDesc(end+1).Name         = 'adi-sdk';
+    PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
     switch (OsType)
@@ -171,7 +171,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
    
     % === I/O: MFF ===
-    PlugDesc(end+1).Name         = 'mff';
+    PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
     PlugDesc(end).URLzip         = 'https://github.com/arnodelorme/mffmatlabio/archive/master.zip';
@@ -185,7 +185,7 @@ function PlugDesc = GetSupported(SelPlug)
     % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
     % === I/O: NWB ===
-    PlugDesc(end+1).Name         = 'nwb';
+    PlugDesc(end+1)              = GetStruct('nwb');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
     PlugDesc(end).URLzip         = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
@@ -198,7 +198,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = @Configure;
 
     % === I/O: PLOTLY ===
-    PlugDesc(end+1).Name         = 'plotly';
+    PlugDesc(end+1)              = GetStruct('plotly');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
     PlugDesc(end).URLzip         = 'https://github.com/plotly/plotly-graphing-library-for-matlab/archive/master.zip';
@@ -210,7 +210,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/Plotly'', ''-browser'')'};
                                
     % === I/O: TDT-SDK ===      Tucker-Davis Technologies Matlab SDK
-    PlugDesc(end+1).Name         = 'tdt-sdk';
+    PlugDesc(end+1)              = GetStruct('tdt-sdk');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'I/O';
     PlugDesc(end).URLzip         = 'https://www.tdt.com/files/examples/TDTMatlabSDK.zip';
@@ -220,7 +220,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     
 %     % === I/O: PLEXON-SDK ===
-%     PlugDesc(end+1).Name         = 'plexon';
+%     PlugDesc(end+1)              = GetStruct('plexon');
 %     PlugDesc(end).Version        = 'latest';
 %     PlugDesc(end).Category       = 'I/O';
 %     PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
@@ -229,7 +229,7 @@ function PlugDesc = GetSupported(SelPlug)
 %     PlugDesc(end).CompiledStatus = 0;
     
     % === SIMULATION: SIMMEEG ===
-    PlugDesc(end+1).Name         = 'simmeeg';
+    PlugDesc(end+1)              = GetStruct('simmeeg');
     PlugDesc(end).Version        = '21a';
     PlugDesc(end).Category       = 'Simulation';
     PlugDesc(end).AutoUpdate     = 1;
@@ -241,7 +241,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
     % === STATISTICS: LIBSVM ===
-    PlugDesc(end+1).Name         = 'libsvm';
+    PlugDesc(end+1)              = GetStruct('libsvm');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Statistics';
     PlugDesc(end).URLzip         = 'https://github.com/cjlin1/libsvm/archive/master.zip';
@@ -254,7 +254,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).InstalledFcn   = 'make';
     
     % === FIELDTRIP ===
-    PlugDesc(end+1).Name         = 'fieldtrip';
+    PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
     PlugDesc(end).URLzip         = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20210212.zip';
@@ -268,7 +268,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = 'ft_defaults;';
     
     % === SPM12 ===
-    PlugDesc(end+1).Name         = 'spm12';
+    PlugDesc(end+1)              = GetStruct('spm12');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
     PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
@@ -281,7 +281,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
     
 %     % === BRAINENTROPY ===
-%     PlugDesc(end+1).Name        = 'brainentropy';
+%     PlugDesc(end+1)             = GetStruct('brainentropy');
 %     PlugDesc(end).Version       = '2.7.1';
 %     PlugDesc(end).URLzip        = 'https://github.com/multi-funkim/best-brainstorm/archive/2.7.1.zip';
 %     PlugDesc(end).URLinfo       = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
@@ -290,7 +290,7 @@ function PlugDesc = GetSupported(SelPlug)
 %     PlugDesc(end).LoadFolders   = {'*'};
     
 %     % === NIRSTORM ===
-%     PlugDesc(end+1).Name        = 'nirstorm';
+%     PlugDesc(end+1)             = GetStruct('nirstorm');
 %     PlugDesc(end).Version       = 'github-master';
 %     PlugDesc(end).URLzip        = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
 %     PlugDesc(end).URLinfo       = 'https://github.com/Nirstorm/nirstorm';
@@ -316,6 +316,13 @@ function PlugDesc = GetSupported(SelPlug)
             PlugDesc = [];
         end
     end
+end
+
+
+%% ===== PLUGIN STRUCT =====
+function s = GetStruct(PlugName)
+    s = db_template('PlugDesc');
+    s.Name = PlugName;
 end
 
 
@@ -536,9 +543,9 @@ end
 
 
 %% ===== GET INSTALLED PLUGINS =====
-% USAGE:  PlugDesc = bst_plugin('GetInstalled', PlugName/PlugDesc)  % Get one installed plugin
-%         PlugDesc = bst_plugin('GetInstalled')                     % Get all installed plugins
-function PlugDesc = GetInstalled(SelPlug)
+% USAGE:  [PlugDesc, SearchPlugs] = bst_plugin('GetInstalled', PlugName/PlugDesc)  % Get one installed plugin
+%         [PlugDesc, SearchPlugs] = bst_plugin('GetInstalled')                     % Get all installed plugins
+function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     % Parse inputs
     if (nargin < 1) || isempty(SelPlug)
         SelPlug = [];
@@ -625,7 +632,7 @@ function PlugDesc = GetInstalled(SelPlug)
         end
         % Add plugin to list
         iPlug = length(PlugDesc) + 1;
-        PlugDesc(iPlug).Name      = PlugList(iDir).name;
+        PlugDesc(iPlug)           = GetStruct(PlugList(iDir).name);
         PlugDesc(iPlug).Path      = PlugDir;
         PlugDesc(iPlug).isManaged = 1;
         PlugDesc(iPlug).isLoaded  = ismember(PlugDir, matlabPath);
@@ -821,7 +828,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         return;
     end
     % Compiled version
-    if (exist('isdeployed', 'builtin') && isdeployed) && isequal(Plug.CompiledStatus, 0)
+    if (exist('isdeployed', 'builtin') && isdeployed) && (Plug.CompiledStatus == 0)
         errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
         return;
     end
@@ -895,7 +902,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             isUpdate = 1;
             strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
         % If an update is available and auto-updates are requested
-        elseif isequal(PlugDesc.AutoUpdate, 1) && bst_get('AutoUpdates') && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)
+        elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)
             isUpdate = 1;
             strUpdate = 'an update is available online.';
         else
@@ -1714,7 +1721,7 @@ function j = MenuCreate(jMenu, fontSize)
             continue;
         end
         % Skip if not supported in compiled version
-        if (exist('isdeployed', 'builtin') && isdeployed) && isequal(Plug.CompiledStatus, 0)
+        if (exist('isdeployed', 'builtin') && isdeployed) && (Plug.CompiledStatus == 0)
             continue;
         end
         % Category=submenu

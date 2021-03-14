@@ -390,6 +390,19 @@ if (GuiLevel >= 0)
     end
 end
 
+
+%% ===== LOAD PLUGINS =====
+% Get installed plugins
+[InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
+% Find plugins that should be loaded automatically at startup
+if ~isempty(InstPlugs)
+    iPlugLoad = find([InstPlugs.AutoLoad] & ~[InstPlugs.isLoaded]);
+    for iPlug = iPlugLoad
+        bst_plugin('Load', InstPlugs(iPlug)); 
+    end
+end
+
+
 %% ===== PARSE PROCESS FOLDER =====
 % Parse process folder
 disp('BST> Reading process folder...');
@@ -555,8 +568,6 @@ set(hMutex, 'Visible', 'off');
 BrainstormUserDir = bst_get('BrainstormUserDir');
 % Start with GUI
 if (GuiLevel == 1)
-    % Find old versions of the plugins
-    AllPlugs = bst_plugin('GetSupported');
     % Add bst_duneuro (now called 'duneuro')
     AllPlugs(end+1).Name = 'bst_duneuro';
     iOldInstall = find(cellfun(@(c)exist(fullfile(BrainstormUserDir,c),'file'), {AllPlugs.Name}));
