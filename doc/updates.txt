@@ -1,5 +1,6 @@
 ---------------------------------------------------------------
 March 2021
+- New plugins manager: first release
 - IO: Bugfix export .nii qform/sform, especially after resampling
 ---------------------------------------------------------------
 February 2021

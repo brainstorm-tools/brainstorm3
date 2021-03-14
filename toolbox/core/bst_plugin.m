@@ -65,35 +65,37 @@ function PlugDesc = GetSupported(SelPlug)
     
     % ================================================================================================================
     % === ANATOMY: BRAIN2MESH ===
-    PlugDesc(end+1).Name        = 'brain2mesh';
-    PlugDesc(end).Version       = 'github-master';
-    PlugDesc(end).Category      = 'Anatomy';
-    PlugDesc(end).URLzip        = 'https://github.com/fangq/brain2mesh/archive/master.zip';
-    PlugDesc(end).URLinfo       = 'http://mcx.space/brain2mesh/';
-    PlugDesc(end).TestFile      = 'brain2mesh.m';
-    PlugDesc(end).ReadmeFile    = 'README.md';
-    PlugDesc(end).RequiredPlugs = {'spm12'; 'iso2mesh'};
+    PlugDesc(end+1).Name         = 'brain2mesh';
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/brain2mesh/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'http://mcx.space/brain2mesh/';
+    PlugDesc(end).TestFile       = 'brain2mesh.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs  = {'spm12'; 'iso2mesh'};
 
     % === ANATOMY: CAT12 ===
-    PlugDesc(end+1).Name        = 'cat12';
-    PlugDesc(end).Version       = 'latest';
-    PlugDesc(end).Category      = 'Anatomy';
-    PlugDesc(end).AutoUpdate    = 1;
-    PlugDesc(end).URLzip        = 'http://www.neuro.uni-jena.de/cat12/cat12_latest.zip';
-    PlugDesc(end).URLinfo       = 'http://www.neuro.uni-jena.de/cat/';
-    PlugDesc(end).TestFile      = 'cat_version.m';
-    PlugDesc(end).ReadmeFile    = 'Contents.txt';
-    PlugDesc(end).RequiredPlugs = {'spm12'};
-    PlugDesc(end).GetVersionFcn = 'bst_getoutvar(2, @cat_version)';
-    PlugDesc(end).InstalledFcn  = 'LinkCatSpm(1);';
-    PlugDesc(end).UninstalledFcn= 'LinkCatSpm(0);';
-    PlugDesc(end).ExtraMenus    = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
+    PlugDesc(end+1).Name         = 'cat12';
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'http://www.neuro.uni-jena.de/cat12/cat12_latest.zip';
+    PlugDesc(end).URLinfo        = 'http://www.neuro.uni-jena.de/cat/';
+    PlugDesc(end).TestFile       = 'cat_version.m';
+    PlugDesc(end).ReadmeFile     = 'Contents.txt';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).RequiredPlugs  = {'spm12'};
+    PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
+    PlugDesc(end).InstalledFcn   = 'LinkCatSpm(1);';
+    PlugDesc(end).UninstalledFcn = 'LinkCatSpm(0);';
+    PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
     
     % === ANATOMY: ISO2MESH ===
-    PlugDesc(end+1).Name        = 'iso2mesh';
-    PlugDesc(end).Version       = '1.9.2';
-    PlugDesc(end).Category      = 'Anatomy';
-    PlugDesc(end).AutoUpdate    = 1;
+    PlugDesc(end+1).Name         = 'iso2mesh';
+    PlugDesc(end).Version        = '1.9.2';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
     switch (OsType)
         case 'linux64', PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-linux64.zip';
         case 'mac32',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx32.zip';
@@ -101,170 +103,182 @@ function PlugDesc = GetSupported(SelPlug)
         case 'win32',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
         case 'win64',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
     end
-    PlugDesc(end).URLinfo       = 'http://iso2mesh.sourceforge.net';
-    PlugDesc(end).TestFile      = 'iso2meshver.m';
-    PlugDesc(end).ReadmeFile    = 'README.txt';
-    PlugDesc(end).LoadedFcn     = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
+    PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
+    PlugDesc(end).TestFile       = 'iso2meshver.m';
+    PlugDesc(end).ReadmeFile     = 'README.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
     
     % === ANATOMY: ROAST ===
-    PlugDesc(end+1).Name        = 'roast';
-    PlugDesc(end).Version       = '3.0';
-    PlugDesc(end).Category      = 'Anatomy';
-    PlugDesc(end).AutoUpdate    = 1;
-    PlugDesc(end).URLzip        = 'https://www.parralab.org/roast/roast-3.0.zip';
-    PlugDesc(end).URLinfo       = 'https://www.parralab.org/roast/';
-    PlugDesc(end).TestFile      = 'roast.m';
-    PlugDesc(end).ReadmeFile    = 'README.md';
-    PlugDesc(end).UnloadPlugs   = {'spm12', 'iso2mesh'};
-    PlugDesc(end).LoadFolders   = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
+    PlugDesc(end+1).Name         = 'roast';
+    PlugDesc(end).Version        = '3.0';
+    PlugDesc(end).Category       = 'Anatomy';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://www.parralab.org/roast/roast-3.0.zip';
+    PlugDesc(end).URLinfo        = 'https://www.parralab.org/roast/';
+    PlugDesc(end).TestFile       = 'roast.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
+    PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
     
     % === FORWARD: OPENMEEG ===
-    PlugDesc(end+1).Name        = 'openmeeg';
-    PlugDesc(end).Version       = '2.4.1';
-    PlugDesc(end).Category      = 'Forward';
-    PlugDesc(end).AutoUpdate    = 1;
+    PlugDesc(end+1).Name         = 'openmeeg';
+    PlugDesc(end).Version        = '2.4.1';
+    PlugDesc(end).Category       = 'Forward';
+    PlugDesc(end).AutoUpdate     = 1;
     switch(OsType)
         case 'linux64'
-            PlugDesc(end).URLzip = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
-            PlugDesc(end).TestFile  = 'libOpenMEEG.so';
+            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
+            PlugDesc(end).TestFile = 'libOpenMEEG.so';
         case 'mac64'
-            PlugDesc(end).URLzip = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
-            PlugDesc(end).TestFile  = 'libOpenMEEG.1.1.0.dylib';
+            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+            PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
-            PlugDesc(end).URLzip = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-            PlugDesc(end).TestFile  = 'om_assemble.exe';
+            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
+            PlugDesc(end).TestFile = 'om_assemble.exe';
         case 'win64'
-            PlugDesc(end).URLzip = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
-            PlugDesc(end).TestFile  = 'om_assemble.exe';
+            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
+            PlugDesc(end).TestFile = 'om_assemble.exe';
     end
-    PlugDesc(end).LoadFolders   = {'bin', 'lib'};
-    PlugDesc(end).URLinfo       = 'https://openmeeg.github.io/';
-    PlugDesc(end).ExtraMenus    = {'Alternate versions', 'web(''http://openmeeg.gforge.inria.fr/download/'', ''-browser'')'; ...
-                                   'Download Visual C++', 'web(''http://www.microsoft.com/en-us/download/details.aspx?id=14632'', ''-browser'')'; ...
-                                   'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
-
+    PlugDesc(end).URLinfo        = 'https://openmeeg.github.io/';
+    PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''http://openmeeg.gforge.inria.fr/download/'', ''-browser'')'; ...
+                                    'Download Visual C++', 'web(''http://www.microsoft.com/en-us/download/details.aspx?id=14632'', ''-browser'')'; ...
+                                    'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
+    PlugDesc(end).CompiledStatus = 1;
+    PlugDesc(end).LoadFolders    = {'bin', 'lib'};
+    
     % === FORWARD: DUNEURO ===
-    PlugDesc(end+1).Name        = 'duneuro';
-    PlugDesc(end).Version       = 'latest';
-    PlugDesc(end).Category      = 'Forward';
-    PlugDesc(end).AutoUpdate    = 1;
-    PlugDesc(end).URLzip        = 'http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_210305.zip';
-    PlugDesc(end).URLinfo       = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro';
-    PlugDesc(end).TestFile      = 'bst_duneuro_meeg_win64.exe';
-    PlugDesc(end).LoadFolders   = {'bin'};
+    PlugDesc(end+1).Name         = 'duneuro';
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'Forward';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_210305.zip';
+    PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro';
+    PlugDesc(end).TestFile       = 'bst_duneuro_meeg_win64.exe';
+    PlugDesc(end).CompiledStatus = 1;
+    PlugDesc(end).LoadFolders    = {'bin'};
     
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
-    PlugDesc(end+1).Name        = 'adi-sdk';
-    PlugDesc(end).Version       = 'github-master';
-    PlugDesc(end).Category      = 'I/O';
+    PlugDesc(end+1).Name         = 'adi-sdk';
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
     switch (OsType)
         case 'win64', PlugDesc(end).URLzip = 'https://github.com/JimHokanson/adinstruments_sdk_matlab/archive/master.zip';
     end
-    PlugDesc(end).URLinfo       = 'https://github.com/JimHokanson/adinstruments_sdk_matlab';
-    PlugDesc(end).TestFile      = 'adi.m';
+    PlugDesc(end).URLinfo        = 'https://github.com/JimHokanson/adinstruments_sdk_matlab';
+    PlugDesc(end).TestFile       = 'adi.m';
+    PlugDesc(end).CompiledStatus = 0;
    
     % === I/O: MFF ===
-    PlugDesc(end+1).Name        = 'mff';
-    PlugDesc(end).Version       = 'github-master';
-    PlugDesc(end).Category      = 'I/O';
-    PlugDesc(end).URLzip        = 'https://github.com/arnodelorme/mffmatlabio/archive/master.zip';
-    PlugDesc(end).URLinfo       = 'https://github.com/arnodelorme/mffmatlabio';
-    PlugDesc(end).TestFile      = 'eegplugin_mffmatlabio.m';
-    PlugDesc(end).ReadmeFile    = 'README.md';
-    PlugDesc(end).MinMatlabVer  = 803;   % 2014a
-    PlugDesc(end).GetVersionFcn = @eegplugin_mffmatlabio;
-    PlugDesc(end).LoadedFcn     = @Configure;
+    PlugDesc(end+1).Name         = 'mff';
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/arnodelorme/mffmatlabio/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/arnodelorme/mffmatlabio';
+    PlugDesc(end).TestFile       = 'eegplugin_mffmatlabio.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).GetVersionFcn  = @eegplugin_mffmatlabio;
+    PlugDesc(end).LoadedFcn      = @Configure;
     % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
     % === I/O: NWB ===
-    PlugDesc(end+1).Name        = 'nwb';
-    PlugDesc(end).Version       = 'github-master';
-    PlugDesc(end).Category      = 'I/O';
-    PlugDesc(end).URLzip        = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
-    PlugDesc(end).URLinfo       = 'https://github.com/NeurodataWithoutBorders/matnwb';
-    PlugDesc(end).TestFile      = 'nwbRead.m';
-    PlugDesc(end).ReadmeFile    = 'README.md';
-    PlugDesc(end).MinMatlabVer  = 901;   % 2016b
-    PlugDesc(end).LoadFolders   = {'*'};
-    PlugDesc(end).LoadedFcn     = @Configure;
+    PlugDesc(end+1).Name         = 'nwb';
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/NeurodataWithoutBorders/matnwb/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/NeurodataWithoutBorders/matnwb';
+    PlugDesc(end).TestFile       = 'nwbRead.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).MinMatlabVer   = 901;   % 2016b
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).LoadedFcn      = @Configure;
 
     % === I/O: PLOTLY ===
-    PlugDesc(end+1).Name        = 'plotly';
-    PlugDesc(end).Version       = 'github-master';
-    PlugDesc(end).Category      = 'I/O';
-    PlugDesc(end).URLzip        = 'https://github.com/plotly/plotly-graphing-library-for-matlab/archive/master.zip';
-    PlugDesc(end).URLinfo       = 'https://plotly.com/matlab/';
-    PlugDesc(end).TestFile      = 'plotlysetup.m';
-    PlugDesc(end).ReadmeFile    = 'README.mkdn';
-    PlugDesc(end).LoadFolders   = {'*'};
-    PlugDesc(end).ExtraMenus    = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/Plotly'', ''-browser'')'};
+    PlugDesc(end+1).Name         = 'plotly';
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/plotly/plotly-graphing-library-for-matlab/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://plotly.com/matlab/';
+    PlugDesc(end).TestFile       = 'plotlysetup.m';
+    PlugDesc(end).ReadmeFile     = 'README.mkdn';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/Plotly'', ''-browser'')'};
                                
     % === I/O: TDT-SDK ===      Tucker-Davis Technologies Matlab SDK
-    PlugDesc(end+1).Name        = 'tdt-sdk';
-    PlugDesc(end).Version       = 'latest';
-    PlugDesc(end).Category      = 'I/O';
-    PlugDesc(end).URLzip        = 'https://www.tdt.com/files/examples/TDTMatlabSDK.zip';
-    PlugDesc(end).URLinfo       = 'https://www.tdt.com/support/matlab-sdk/';
-    PlugDesc(end).TestFile      = 'TDT_Matlab_Tools.pdf';
-    PlugDesc(end).LoadFolders   = {'*'};
+    PlugDesc(end+1).Name         = 'tdt-sdk';
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://www.tdt.com/files/examples/TDTMatlabSDK.zip';
+    PlugDesc(end).URLinfo        = 'https://www.tdt.com/support/matlab-sdk/';
+    PlugDesc(end).TestFile       = 'TDT_Matlab_Tools.pdf';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
     
 %     % === I/O: PLEXON-SDK ===
-%     PlugDesc(end+1).Name        = 'plexon';
-%     PlugDesc(end).Version       = 'latest';
-%     PlugDesc(end).Category      = 'I/O';
-%     PlugDesc(end).URLzip        = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
-%     PlugDesc(end).URLinfo       = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
-%     PlugDesc(end).TestFile      = '';
+%     PlugDesc(end+1).Name         = 'plexon';
+%     PlugDesc(end).Version        = 'latest';
+%     PlugDesc(end).Category       = 'I/O';
+%     PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
+%     PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
+%     PlugDesc(end).TestFile       = '';
+%     PlugDesc(end).CompiledStatus = 0;
     
     % === SIMULATION: SIMMEEG ===
-    PlugDesc(end+1).Name        = 'simmeeg';
-    PlugDesc(end).Version       = '21a';
-    PlugDesc(end).Category      = 'Simulation';
-    PlugDesc(end).AutoUpdate    = 1;
-    PlugDesc(end).URLzip        = 'https://github.com/docath/BRANELab/raw/SimMEEG/SimMEEG_v21a.zip';
-    PlugDesc(end).URLinfo       = 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/';
-    PlugDesc(end).TestFile      = 'SimMEEG_GUI_v21a.m';
-    PlugDesc(end).ReadmeFile    = 'SIMMEEG_TERMS_OF_USE.txt';
-    PlugDesc(end).RequiredPlugs = {'fieldtrip', '20200911'};
+    PlugDesc(end+1).Name         = 'simmeeg';
+    PlugDesc(end).Version        = '21a';
+    PlugDesc(end).Category       = 'Simulation';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/docath/BRANELab/raw/SimMEEG/SimMEEG_v21a.zip';
+    PlugDesc(end).URLinfo        = 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/';
+    PlugDesc(end).TestFile       = 'SimMEEG_GUI_v21a.m';
+    PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
     
     % === STATISTICS: LIBSVM ===
-    PlugDesc(end+1).Name        = 'libsvm';
-    PlugDesc(end).Version       = 'github-master';
-    PlugDesc(end).Category      = 'Statistics';
-    PlugDesc(end).URLzip        = 'https://github.com/cjlin1/libsvm/archive/master.zip';
-    PlugDesc(end).URLinfo       = 'https://www.csie.ntu.edu.tw/~cjlin/libsvm/';
-    PlugDesc(end).TestFile      = 'svm.cpp';
-    PlugDesc(end).ReadmeFile    = 'README';
-    PlugDesc(end).MinMatlabVer  = 803;   % 2014a
-    PlugDesc(end).LoadFolders   = {'*'};
-    PlugDesc(end).InstalledFcn  = 'make';
+    PlugDesc(end+1).Name         = 'libsvm';
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/cjlin1/libsvm/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://www.csie.ntu.edu.tw/~cjlin/libsvm/';
+    PlugDesc(end).TestFile       = 'svm.cpp';
+    PlugDesc(end).ReadmeFile     = 'README';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).InstalledFcn   = 'make';
     
     % === FIELDTRIP ===
-    PlugDesc(end+1).Name        = 'fieldtrip';
-    PlugDesc(end).Version       = 'latest';
-    %PlugDesc(end).Category      = 'Toolbox';
-    PlugDesc(end).AutoUpdate    = 0;
-    PlugDesc(end).URLzip        = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20210212.zip';
-    PlugDesc(end).URLinfo       = 'http://www.fieldtriptoolbox.org';
-    PlugDesc(end).TestFile      = 'ft_defaults.m';
-    PlugDesc(end).ReadmeFile    = 'README';
-    PlugDesc(end).UnloadPlugs   = {'spm12', 'roast'};
-    PlugDesc(end).LoadFolders   = {'specest', 'preproc', 'forward', 'src', 'utilities', 'external/stats'};
-    PlugDesc(end).GetVersionFcn = 'ft_version';
-    PlugDesc(end).LoadedFcn     = 'ft_defaults;';
+    PlugDesc(end+1).Name         = 'fieldtrip';
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20210212.zip';
+    PlugDesc(end).URLinfo        = 'http://www.fieldtriptoolbox.org';
+    PlugDesc(end).TestFile       = 'ft_defaults.m';
+    PlugDesc(end).ReadmeFile     = 'README';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).UnloadPlugs    = {'spm12', 'roast'};
+    PlugDesc(end).LoadFolders    = {'specest', 'preproc', 'forward', 'src', 'utilities', 'external/stats'};
+    PlugDesc(end).GetVersionFcn  = 'ft_version';
+    PlugDesc(end).LoadedFcn      = 'ft_defaults;';
     
     % === SPM12 ===
-    PlugDesc(end+1).Name        = 'spm12';
-    PlugDesc(end).Version       = 'latest';
-    %PlugDesc(end).Category      = 'Toolbox';
-    PlugDesc(end).AutoUpdate    = 0;
-    PlugDesc(end).URLzip        = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
-    PlugDesc(end).URLinfo       = 'https://www.fil.ion.ucl.ac.uk/spm/';
-    PlugDesc(end).TestFile      = 'spm.m';
-    PlugDesc(end).ReadmeFile    = 'README.md';
-    PlugDesc(end).UnloadPlugs   = {'fieldtrip', 'roast'};
-    PlugDesc(end).GetVersionFcn = 'bst_getoutvar(2, @spm, ''Ver'')';
-    PlugDesc(end).LoadedFcn     = 'spm(''defaults'',''EEG'');';
+    PlugDesc(end+1).Name         = 'spm12';
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'https://www.fil.ion.ucl.ac.uk/spm/download/restricted/eldorado/spm12.zip';
+    PlugDesc(end).URLinfo        = 'https://www.fil.ion.ucl.ac.uk/spm/';
+    PlugDesc(end).TestFile       = 'spm.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).UnloadPlugs    = {'fieldtrip', 'roast'};
+    PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
+    PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
     
 %     % === BRAINENTROPY ===
 %     PlugDesc(end+1).Name        = 'brainentropy';
@@ -806,6 +820,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         errMsg = ['No download URL for ', bst_get('OsType', 0), ': ', PlugName ''];
         return;
     end
+    % Compiled version
+    if (exist('isdeployed', 'builtin') && isdeployed) && isequal(Plug.CompiledStatus, 0)
+        errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
+        return;
+    end
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
@@ -816,6 +835,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     [newVersion, newURLzip] = GetVersionOnline(PlugName);
     if ~isempty(newVersion)
         PlugDesc.Version = newVersion;
+    end
+    if ~isempty(newURLzip)
         PlugDesc.URLzip = newURLzip;
     end
       
@@ -1275,6 +1296,8 @@ function [isOk, errMsg] = UpdateInteractive(PlugName)
     [newVersion, newURLzip] = GetVersionOnline(PlugName);
     if ~isempty(newVersion)
         PlugRef.Version = newVersion;
+    end
+    if ~isempty(newURLzip)
         PlugRef.URLzip = newURLzip;
     end
     % User confirmation
@@ -1690,6 +1713,10 @@ function j = MenuCreate(jMenu, fontSize)
         if ~isempty(Plug.MinMatlabVer) && (Plug.MinMatlabVer > 0) && (MatlabVersion < Plug.MinMatlabVer)
             continue;
         end
+        % Skip if not supported in compiled version
+        if (exist('isdeployed', 'builtin') && isdeployed) && isequal(Plug.CompiledStatus, 0)
+            continue;
+        end
         % Category=submenu
         if ~isempty(Plug.Category)
             if isempty(jSub) || ~ismember(Plug.Category, jSub(:,1))
@@ -1913,8 +1940,13 @@ end
 function LinkCatSpm(isSet)
     % Get SPM12 plugin
     PlugSpm = GetInstalled('spm12');
-    if isempty(PlugSpm) || ~PlugSpm.isLoaded
+    if isempty(PlugSpm)
         error('Plugin SPM12 is not loaded.');
+    elseif ~PlugSpm.isLoaded
+        [isOk, errMsg, PlugSpm] = Load('spm12');
+        if ~isOk
+            error('Plugin SPM12 cannot be loaded.');
+        end
     end
     % Get CAT12 plugin
     PlugCat = GetInstalled('cat12');

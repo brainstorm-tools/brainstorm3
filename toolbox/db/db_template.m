@@ -1175,6 +1175,7 @@ switch lower(structureName)
             'ReadmeFile',    '', ...  % Text filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_readme.txt
             'LogoFile',      '', ...  % Logo filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
             'MinMatlabVer',   0, ...  % Minimum Matlab version, as returned by bst_get('MatlabVersion')
+            'CompiledStatus', 0, ...  % 0=Not available in the compiled version, 1=Available for download, 2=Compiled with Brainstorm
             'RequiredPlugs', [], ...  % Cell-array of required plugin names, to install/load before this one: {Nx2}=>{'plugname','version';...} or {Nx1}=>{'plugname';...}
             'UnloadPlugs',   [], ...  % Cell-array of incompatible plugin names, to remove from path before adding
             'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up (use {'*'} to load all subfolders)
