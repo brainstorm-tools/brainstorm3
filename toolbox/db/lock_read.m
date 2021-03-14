@@ -77,6 +77,23 @@ if isempty(sLock) && ~isempty(FileId)
     sLock = sql_query(sqlConnection, 'select', 'lock', '*', struct('File', FileId), IdQuery);
 end
 
+% Check for parent file lock
+if isempty(sLock) && ~isempty(FileId)
+    ParentId = FileId;
+    while 1
+        sParent = sql_query(sqlConnection, 'select', 'FunctionalFile', 'ParentFile', struct('Id', ParentId));
+        if isempty(sParent) || isempty(sParent.ParentFile)
+            break;
+        end
+        
+        ParentId = sParent.ParentFile;
+        sLock = sql_query(sqlConnection, 'select', 'lock', '*', struct('File', ParentId), IdQuery);
+        if ~isempty(sLock)
+            break;
+        end
+    end
+end
+
 if closeConnection
     sql_close(sqlConnection);
 end
