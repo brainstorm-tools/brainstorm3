@@ -4,12 +4,12 @@ function varargout = process_pac_dynamic_sur2( varargin )
 % DOCUMENTATION
 
 % @=============================================================================
-% This software is part of the Brainstorm software:
-% http://neuroimage.usc.edu/brainstorm
+% This function is part of the Brainstorm software:
+% https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2013 Brainstorm by the University of Southern California
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
-% as published by the Free Software Foundation. Further details on the GPL
+% as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
