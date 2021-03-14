@@ -138,16 +138,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     isVerbose = sProcess.options.verbose.Value;
     % FieldTrip option: Not supported in compiled version
     if exist('isdeployed', 'builtin') && isdeployed && strcmpi(SurfaceMethod, 'fieldtrip')
-        error(['FieldTrip segmentation not supported in compiled version yet, use Brainstorm BEM surfaces instead.' 10 ...
-               'Post a message on the forum if you need this feature implemented.']);
+        bst_report('Error', sProcess, sInputs, ['FieldTrip segmentation not supported in compiled version yet, use Brainstorm BEM surfaces instead.' 10 'Post a message on the forum if you need this feature implemented.']);
+        return;
     end
     
     % ===== INSTALL OPENMEEG =====
     if ismember('openmeeg', allMethods) && (system('om_assemble') ~= 0)
-        % Make sure that OpenMEEG is already installed
-        OpenmeegDir = bst_openmeeg('download');
-        % Add the OpenMEEG folder to the system path
-        setenv('path', [getenv('path'), pathsep, OpenmeegDir, pathsep]);
+        % Install/load OpenMEEG
+        [isOk, errMsg, PlugDesc] = bst_plugin('Install', 'openmeeg');
+        if ~isOk
+            bst_report('Error', sProcess, sInputs, ['Error installing OpenMEEG: ' 10 errMsg]);
+            return;
+        end
+        % Add the OpenMEEG bin folder to the system path
+        binDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'bin');
+        setenv('path', [getenv('path'), pathsep, binDir, pathsep]);
     end
 
     % ===== GET STUDIES =====
