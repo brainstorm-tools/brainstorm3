@@ -1948,11 +1948,6 @@ function LinkCatSpm(isSet)
             error('Plugin SPM12 cannot be loaded.');
         end
     end
-    % Get CAT12 plugin
-    PlugCat = GetInstalled('cat12');
-    if isempty(PlugCat) || ~PlugCat.isLoaded
-        error('Plugin CAT12 is not loaded.');
-    end
     % Get SPM plugin path
     if ~isempty(PlugSpm.SubFolder)
         spmToolboxDir = bst_fullfile(PlugSpm.Path, PlugSpm.SubFolder, 'toolbox');
@@ -1984,6 +1979,11 @@ function LinkCatSpm(isSet)
     end
     % Create new link
     if isSet
+        % Get CAT12 plugin
+        PlugCat = GetInstalled('cat12');
+        if isempty(PlugCat) || ~PlugCat.isLoaded
+            error('Plugin CAT12 is not loaded.');
+        end
         % Define source and target for the link
         if ~isempty(PlugCat.SubFolder)
             linkTarget = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
