@@ -283,7 +283,8 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo       = 'https://github.com/Nirstorm/nirstorm';
     PlugDesc(end).LoadFolders   = {'bst_plugin/core','bst_plugin/forward','bst_plugin/GLM', 'bst_plugin/inverse' , 'bst_plugin/io','bst_plugin/math' ,'bst_plugin/mbll' ,'bst_plugin/misc', 'bst_plugin/OM', 'bst_plugin/preprocessing', 'bst_plugin/ppl'};
     PlugDesc(end).TestFile      = 'nst_install.m';
-    PlugDesc(end).ReadmeFile    = 'README.md';    
+    PlugDesc(end).ReadmeFile    = 'README.md'; 
+    PlugDesc(end).MinMatlabVer  = 803;   % 2014a
     % ================================================================================================================
     
     % Select only one plugin
@@ -405,6 +406,12 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
                 URLzip = ['http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' Version '.zip'];
+            case 'NIRSTORM'
+                bst_progress('text', ['Checking latest online version for ' PlugName '...']);
+                disp(['BST> Checking latest online version for ' PlugName '...']);
+                str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
+                Version = str(9:end);
+                URLzip = ['https://github.com/Nirstorm/nirstorm/archive/master.zip'];
             otherwise
                 return;
         end
@@ -543,7 +550,7 @@ function PlugDesc = GetInstalled(SelPlug)
     % Custom plugin paths
     PluginCustomPath = bst_get('PluginCustomPath');
     % Matlab path
-    matlabPath = str_split(path, ';');
+    matlabPath = str_split(path, {';',':'});
     
     % === LOOK FOR SUPPORTED PLUGINS ===
     % Empty plugin structure
@@ -834,7 +841,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             if isempty(PlugCheck)
                 installPlugs{end+1} = PlugDesc.RequiredPlugs{iPlug,1};
                 installVer{end+1} = [];
-                strInstall = [strInstall, '<B>' installPlugs{end} '/B> '];
+                strInstall = [strInstall, '<B>' installPlugs{end} '</B> '];
             % Plugin installed: check version
             elseif (size(PlugDesc.RequiredPlugs,2) == 2) 
                 minVerDep = PlugDesc.RequiredPlugs{iPlug,2};
