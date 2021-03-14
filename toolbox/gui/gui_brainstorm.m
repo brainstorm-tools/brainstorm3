@@ -161,20 +161,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
     if ~isCompiled
         jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
-        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
-        % UPDATE NIRSTORM
-        if (GlobalData.Program.GuiLevel == 1)
-            jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
-            if process_nst_install('status')
-                % Add nirstorm function folder in matlab path
-                addpath(bst_fullfile( bst_get('BrainstormUserDir'), 'nirstorm' ));
-                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
-                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)process_nst_install('uninstall'), fontSize);
-            else
-                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
-            end
-            gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
-        end       
+        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);  
     end
     
     % ==== Menu PLUGINS ====
