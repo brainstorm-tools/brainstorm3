@@ -94,9 +94,7 @@ switch (lower(action))
         switch lower(nodeType)
             % Selecting a subject
             case 'subject'
-                %nodeSubject = bstNodes(1);
-                ProtocolInfo = bst_get('ProtocolInfo');
-                ProtocolInfo.iSubject = nodeSubject.getItemIndex();
+                ProtocolInfo.iSubject = bstNodes(1).getStudyIndex();
                 ProtocolInfo.iStudy = [];
                 bst_set('ProtocolInfo', ProtocolInfo);
             % Selecting a condition
@@ -126,25 +124,24 @@ switch (lower(action))
                 while ~isempty(nodeStudy) && ~any(strcmpi(nodeStudy.getType(), conditionTypes))
                     nodeStudy = nodeStudy.getParent();
                 end
-        end
-        
-        
-        % Make sure the node is not already read
-        iFile = bstNodes(1).getItemIndex();
-        isRead = isKey(ProtocolInfo.iReadFiles, iFile);
-        if isRead
-            % Check if node was modified since last read
-            isRead = ProtocolInfo.iReadFiles(iFile) == bstNodes(1).getLastModified();
-        end
-        % Mark node as "read"
-        if ~isRead
-            ProtocolInfo.iReadFiles(iFile) = uint32(bstNodes(1).getLastModified());
-            comment = char(bstNodes(1).getComment());
-            % Strip HTML
-            if strncmp(comment, '<HTML><B>', 9)
-                comment = comment(10:end-4);
-                bstNodes(1).setComment(comment);
-            end
+                
+                % Make sure the node is not already read
+                iFile = bstNodes(1).getItemIndex();
+                isRead = isKey(ProtocolInfo.iReadFiles, iFile);
+                if isRead
+                    % Check if node was modified since last read
+                    isRead = ProtocolInfo.iReadFiles(iFile) == bstNodes(1).getLastModified();
+                end
+                % Mark node as "read"
+                if ~isRead
+                    ProtocolInfo.iReadFiles(iFile) = uint32(bstNodes(1).getLastModified());
+                    comment = char(bstNodes(1).getComment());
+                    % Strip HTML
+                    if strncmp(comment, '<HTML><B>', 9)
+                        comment = comment(10:end-4);
+                        bstNodes(1).setComment(comment);
+                    end
+                end
         end
                 
         % If study selected changed 
@@ -717,6 +714,7 @@ switch (lower(action))
                         if (length(bstNodes) == 1) && ~isRaw
                             gui_component('MenuItem', jPopup, [], 'Import MEG/EEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@import_data, [], [], [], iStudy, iSubject));
                             gui_component('MenuItem', jPopup, [], 'Import dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)bst_call(@import_dipoles, iStudy));
+                            gui_component('MenuItem', jPopup, [], 'New subfolder', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@db_add_subfolder, iStudy));
                             AddSeparator(jPopup);
                         end
                         % If not Default Channel

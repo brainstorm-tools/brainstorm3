@@ -131,7 +131,7 @@ end
 
 
 %% ===== FOLDERS =====
-iFolders = find(strcmp('folder', allTypes), 1);
+iFolders = find(strcmp('folder', allTypes));
 for i = 1:length(iFolders)
     iFolder = iFolders(i);
     CreateNode(nodeParent, 'folder', sFiles(iFolder).Name, ...
