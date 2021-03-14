@@ -582,14 +582,23 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             iPlug = length(PlugDesc) + 1;
             PlugDesc(iPlug) = SearchPlugs(iSearch);
             PlugDesc(iPlug).isLoaded = 1;
-            % Check if the file is inside the Brainstorm user folder (where it is supposed to be)
+            % Check if the file is inside the Brainstorm user folder (where it is supposed to be) => Managed plugin
             if ~isempty(strfind(TestFilePath, PlugPath))
-                PlugDesc(iPlug).Path = PlugPath;
                 PlugDesc(iPlug).isManaged = 1;
+            % Otherwise: Custom installation
             else
-                PlugDesc(iPlug).Path = TestFilePath;
+                % If the test file was found in a defined subfolder: remove the subfolder from the plugin path
+                PlugPath = TestFilePath;
+                for iSub = 1:length(PlugDesc(iPlug).LoadFolders)
+                    subDir = strrep(PlugDesc(iPlug).LoadFolders{iSub}, '/', filesep);
+                    if (length(PlugPath) > length(subDir)) && isequal(PlugPath(end-length(subDir)+1:end), subDir)
+                    	PlugPath = PlugPath(1:end - length(subDir) - 1);
+                        break;
+                    end
+                end
                 PlugDesc(iPlug).isManaged = 0;
             end
+            PlugDesc(iPlug).Path = PlugPath;
         % Plugin installed: Managed by Brainstorm
         elseif isdir(PlugPath) && file_exist(bst_fullfile(PlugPath, 'plugin.mat'))
             iPlug = length(PlugDesc) + 1;
