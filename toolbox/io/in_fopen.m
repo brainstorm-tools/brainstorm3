@@ -190,7 +190,7 @@ switch (FileFormat)
     case 'FT-TIMELOCK'
         [DataMat, ChannelMat] = in_data_fieldtrip(DataFile);
         % Check that time is linear
-        if any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
+        if (length(DataMat(1).Time) > 2) && any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
             error(['The input file has a non-linear time vector.' 10 'This is currently not supported, interpolate your recordings on continuous time vector first.']);
         end
     case 'NIRS-SNIRF'
@@ -199,6 +199,15 @@ switch (FileFormat)
         error('Unknown file format');
 end
 
+% Replicate data points if only one
+if ~isempty(DataMat)
+    for i = 1:length(DataMat)
+        if (length(DataMat(i).Time) == 1)
+            DataMat(i).Time = DataMat(i).Time + [0, 0.001];
+            DataMat(i).F = [DataMat(i).F, DataMat(i).F];
+        end
+    end
+end
 % File can only be read in one block (imported data)
 if isempty(sFile) && ~isempty(DataMat)
     sFile = in_fopen_bstmat(DataMat);
