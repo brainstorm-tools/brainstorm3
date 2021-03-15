@@ -147,7 +147,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_210305.zip';
+    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro.zip';
     PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro';
     PlugDesc(end).TestFile       = 'bst_duneuro_meeg_win64.exe';
     PlugDesc(end).CompiledStatus = 1;
@@ -419,7 +419,6 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
-                URLzip = ['http://neuroimage.usc.edu/bst/getupdate.php?d=bst_duneuro_' Version '.zip'];
             otherwise
                 return;
         end
@@ -764,7 +763,7 @@ function ReadmeFile = GetReadmeFile(PlugDesc)
     end
     % Search for default readme
     if isempty(ReadmeFile)
-        tmpFile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'plugins', [PlugDesc.Name '_readme.txt']);
+        tmpFile = bst_fullfile(bst_get('BrainstormDocDir'), 'plugins', [PlugDesc.Name '_readme.txt']);
         if file_exist(tmpFile)
             ReadmeFile = tmpFile;
         end
@@ -796,13 +795,13 @@ function LogoFile = GetLogoFile(PlugDesc)
     end
     % Search for default logo
     if isempty(LogoFile)
-        tmpFile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'plugins', [PlugDesc.Name '_logo.gif']);
+        tmpFile = bst_fullfile(bst_get('BrainstormDocDir'), 'plugins', [PlugDesc.Name '_logo.gif']);
         if file_exist(tmpFile)
             LogoFile = tmpFile;
         end
     end
     if isempty(LogoFile)
-        tmpFile = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'plugins', [PlugDesc.Name '_logo.png']);
+        tmpFile = bst_fullfile(bst_get('BrainstormDocDir'), 'plugins', [PlugDesc.Name '_logo.png']);
         if file_exist(tmpFile)
             LogoFile = tmpFile;
         end
