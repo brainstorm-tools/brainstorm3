@@ -43,15 +43,15 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2021
 
 % Make sure that "more" is off
 more off
 
 % Compiled version
-if exist('isdeployed', 'builtin') && isdeployed
+isCompiled = bst_iscompiled();
+if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
-    %disp(['Running from: ' BrainstormHomeDir]);
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));
@@ -103,7 +103,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     end
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
-if exist('isdeployed', 'builtin') && isdeployed
+if isCompiled
     % Find the entry in the classpath
     if ~isempty(jarfile)
         jarfileRemove = setdiff({'brainstorm_jogl1.jar', 'brainstorm_jogl2.jar', 'brainstorm_jogl2.3.jar'}, jarfile);
@@ -339,7 +339,7 @@ end
 %% ===== SET PATH =====
 function bst_set_path(BrainstormHomeDir)
     % Cancel add path in case of deployed application
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         return
     end
     % Brainstorm folder itself

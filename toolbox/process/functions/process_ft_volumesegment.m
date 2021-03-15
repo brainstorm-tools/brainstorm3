@@ -105,7 +105,7 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
     % Not supported in compiled version
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
     end
 

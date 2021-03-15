@@ -37,7 +37,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
-    isCompiled = exist('isdeployed', 'builtin') && isdeployed;
     
     % Create main main panel
     jPanelNew = gui_river();

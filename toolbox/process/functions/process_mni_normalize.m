@@ -126,7 +126,7 @@ function sMri = ComputeInteractive(MriFile, Method, isUnload)
     % Ask method
     if isempty(Method)
         % Compiled: only MAFF8 available
-        if exist('isdeployed', 'builtin') && isdeployed
+        if bst_iscompiled()
             Method = 'maff8';
         else
             sProcess = GetDescription();

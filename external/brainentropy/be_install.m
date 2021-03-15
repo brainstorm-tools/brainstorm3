@@ -3,7 +3,7 @@ function [errMsg, warnMsg, version, last_update]   =   be_install( varargin )
 
 %% ===== DOWNLOAD SETTINGS =====
 % Not available in the compiled version
-if (exist('isdeployed', 'builtin') && isdeployed)
+if bst_iscompiled()
     error('This function is not available in the compiled version of Brainstorm.');
 end
 % Get openmeeg folder

@@ -56,7 +56,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         return;
     end
     % Compiled distribution
-    isCompiled = exist('isdeployed', 'builtin') && isdeployed;
+    isCompiled = bst_iscompiled();
     
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control

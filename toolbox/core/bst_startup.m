@@ -41,9 +41,9 @@ if (MatlabVersion < 701)
     error('Brainstorm needs a version of Matlab >= 7.1');
 end
 % Is Matlab running (if not it is a compiled version)
-isMatlabRunning = ~(exist('isdeployed', 'builtin') && isdeployed);
+isCompiled = bst_iscompiled();
 % Compiled version: Force system look and feel
-if ~isMatlabRunning
+if isCompiled
     try
         javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
     catch
@@ -282,7 +282,7 @@ if ~bst_get('AutoUpdates')
     disp('BST> Warning: Automatic updates are disabled.');
     disp('BST> Warning: Make sure your version of Brainstorm is up to date.');
 % Matlab is running: check for updates
-elseif isMatlabRunning && (GuiLevel == 1)
+elseif ~isCompiled && (GuiLevel == 1)
     % Check internect connection
     fprintf(1, 'BST> Checking internet connectivity... ');
     [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
@@ -654,7 +654,7 @@ end
 
 
 %% ===== COMPILED MODE: WAIT =====
-if ~isMatlabRunning
+if isCompiled
     %     % Loop to wait for the end
     %     while brainstorm('status')
     %         pause(2);

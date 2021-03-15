@@ -55,7 +55,7 @@ end
 % Initialize return variable
 jPopup = [];
 % Is Matlab running (if not it is a compiled version)
-isMatlabRunning = ~(exist('isdeployed', 'builtin') && isdeployed);
+isCompiled = bst_iscompiled();
 
 
 %% ===== GET ALL THE NEEDED OBJECTS =====
@@ -2323,11 +2323,11 @@ switch (lower(action))
                 end
             end
             % ===== EXPORT TO MATLAB VARIABLE =====
-            if isfile && isMatlabRunning && ~ismember(nodeType, {'study', 'studysubject', 'defaultstudy', 'condition', 'rawcondition', 'subject', 'datalist', 'matrixlist', 'image'})
+            if isfile && ~isCompiled && ~ismember(nodeType, {'study', 'studysubject', 'defaultstudy', 'condition', 'rawcondition', 'subject', 'datalist', 'matrixlist', 'image'})
                 gui_component('MenuItem', jMenuFile, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)export_matlab(bstNodes));
             end
             % ===== IMPORT FROM MATLAB VARIABLE =====
-            if ~bst_get('ReadOnly') && isone && isMatlabRunning
+            if ~bst_get('ReadOnly') && isone && ~isCompiled
                 if isstudy
                     gui_component('MenuItem', jMenuFile, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)db_add(iStudy));
                     gui_component('MenuItem', jMenuFile, [], 'Import source maps', IconLoader.ICON_RESULTS, [], @(h,ev)import_sources(iStudy));
@@ -2452,7 +2452,7 @@ switch (lower(action))
                 gui_component('MenuItem', jMenuFile, [], 'Copy file path to clipboard', IconLoader.ICON_COPY, [], @(h,ev)clipboard('copy', filenameFull));
 
                 % ===== GO TO THIS DIRECTORY ======
-                if isMatlabRunning
+                if ~isCompiled
                     gui_component('MenuItem', jMenuFile, [], 'Go to this directory (Matlab)', IconLoader.ICON_MATLAB, [], @(h,ev)cd(destfolder));
                 end
                 % ===== LOCATE ON DISK =====

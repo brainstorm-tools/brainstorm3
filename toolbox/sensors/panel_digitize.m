@@ -142,7 +142,7 @@ function Start() %#ok<DEFNU>
     ResetDataCollection();
     
     % Load beep sound
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         wavfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private', 'bst_beep_wav.mat');
         filemat = load(wavfile, 'wav');
         Digitize.BeepWav = filemat.wav;
@@ -1423,7 +1423,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     % Beep at each click AND not for headshape points
     if DigitizeOptions.isBeep 
         % Beep not working in compiled version, replacing with this:
-        if exist('isdeployed', 'builtin') && isdeployed && (Digitize.Mode ~= 8)
+        if bst_iscompiled() && (Digitize.Mode ~= 8)
             sound(Digitize.BeepWav(6000:2:16000,1), 22000);
         else
             beep on;

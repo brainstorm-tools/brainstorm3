@@ -89,14 +89,14 @@ switch lower(compType)
         jComp   = java_scaled('textarea', 6, 12);
         jScroll = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jComp);
         callbackName = 'FocusLostCallback';
-        if isempty(jFont) && exist('isdeployed', 'builtin') && isdeployed
+        if isempty(jFont) && bst_iscompiled()
             jFont = bst_get('Font', 11, 'Arial');
         end
     case 'textarea'
         jComp   = java_scaled('textarea', 15, 30);
         jScroll = java_create('javax.swing.JScrollPane', 'Ljava.awt.Component;', jComp);
         callbackName = 'FocusLostCallback';
-        if isempty(jFont) && exist('isdeployed', 'builtin') && isdeployed
+        if isempty(jFont) && bst_iscompiled()
             jFont = bst_get('Font', 11, 'Arial');
         end
     case 'text'

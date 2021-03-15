@@ -70,7 +70,7 @@ switch lower(action)
         end
         
         % Is new mutex visible
-        if exist('isdeployed', 'builtin') && isdeployed
+        if bst_iscompiled()
             isVisible = 'on';
         else
             isVisible = 'off';

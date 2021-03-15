@@ -26,7 +26,7 @@ function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
 
 
 % Not available in the compiled version
-if (exist('isdeployed', 'builtin') && isdeployed)
+if bst_iscompiled()
     error('Reading TDT files is not available in the compiled version of Brainstorm.');
 end
 % Install/load TDT-SDK library

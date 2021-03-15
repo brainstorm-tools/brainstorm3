@@ -137,7 +137,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Display intermediate results
     isVerbose = sProcess.options.verbose.Value;
     % FieldTrip option: Not supported in compiled version
-    if exist('isdeployed', 'builtin') && isdeployed && strcmpi(SurfaceMethod, 'fieldtrip')
+    if bst_iscompiled() && strcmpi(SurfaceMethod, 'fieldtrip')
         bst_report('Error', sProcess, sInputs, ['FieldTrip segmentation not supported in compiled version yet, use Brainstorm BEM surfaces instead.' 10 'Post a message on the forum if you need this feature implemented.']);
         return;
     end
