@@ -301,8 +301,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [sMriT1, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
-                errMsg = ['Error trying to compute the MNI transformation for T1: ' 10 errNorm 10 'Disable the option to cut the neck.'];
-                return;
+                errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10];
+                % Do not return: This is only a warning
             end
         elseif (OPTIONS.Zneck > 0)
             errMsg = 'Invalid neck MNI Z coordinate (must be negative or zero).';
@@ -318,8 +318,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [sMriT2, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
-                errMsg = ['Error trying to compute the MNI transformation for T2: ' 10 errNorm 10 'Disable the option to cut the neck.'];
-                return;
+                errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10 10];
+                % Do not return: This is only a warning
             end
         end
     end
@@ -330,9 +330,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
         case 'iso2mesh'
             % Install/load iso2mesh plugin
-            [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
+            [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
             if ~isInstalled
-                error(errMsg);
+                errMsg = [errMsg, errInstall];
+                return;
             end
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
@@ -343,7 +344,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                         sSubject.Surface(sSubject.iScalp).FileName};
                     TissueLabels = {'brain', 'skull', 'scalp'};
                 else
-                    errMsg = ['Method "' OPTIONS.Method '" requires three surfaces: head, inner skull and outer skull.' 10 ...
+                    errMsg = [errMsg, 'Method "' OPTIONS.Method '" requires three surfaces: head, inner skull and outer skull.' 10 ...
                         'Create them with process "Generate BEM surfaces" first.'];
                     return;
                 end
@@ -395,7 +396,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     try
                         [newnode, newelem] = mergesurf(bemMerge{:});
                     catch
-                        errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
+                        errMsg = [errMsg, 'Problem with the function MergeSurf. You can try with MergeMesh.'];
                         bst_progress('stop');
                         return;
                     end
@@ -435,7 +436,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Check labelling from 1 to nBem
             allLabels = unique(elem(:,5));
             if ~isequal(allLabels(:)', 1:nBem)
-                errMsg = ['Problem with Tetget: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
+                errMsg = [errMsg, 'Problem with Tetget: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
                 bst_progress('stop');
                 return;
             end
@@ -453,8 +454,9 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             disp([10 'FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File 10]);
             % Install/load brain2mesh plugin
-            [isInstalled, errMsg] = bst_plugin('Install', 'brain2mesh', isInteractive);
+            [isInstalled, errInstall] = bst_plugin('Install', 'brain2mesh', isInteractive);
             if ~isInstalled
+                errMsg = [errMsg, errInstall];
                 return;
             end
             % Get TPM.nii template
@@ -480,7 +482,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 out_mri_nii(sMriT2, T2Nii);
                 % Check the size of the volumes
                 if ~isequal(size(sMriT1.Cube), size(sMriT2.Cube)) || ~isequal(size(sMriT1.Voxsize), size(sMriT2.Voxsize))
-                    errMsg = ['Input images have different dimension, you must register and reslice them first.' 10 ...
+                    errMsg = [errMsg, 'Input images have different dimension, you must register and reslice them first.' 10 ...
                               sprintf('T1:(%d x %d x %d),   T2:(%d x %d x %d)', size(sMriT1.Cube), size(sMriT2.Cube))];
                     return;
                 end
@@ -537,7 +539,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Check for success
             testFile = bst_fullfile(tempDir, ['c5' subjid 'T1.nii']);
             if ~file_exist(testFile)
-                errMsg = ['SPM12 segmentation failed: missing output file "' testFile '".'];
+                errMsg = [errMsg, 'SPM12 segmentation failed: missing output file "' testFile '".'];
                 return;
             end
             % Read outputs
@@ -557,7 +559,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [node,elem] = brain2mesh(seg);
             % Handle errors
             if isempty(elem)
-                errMsg = 'Mesh generation with Brain2Mesh/tetgen1.5 failed.';
+                errMsg = [errMsg, 'Mesh generation with Brain2Mesh/tetgen1.5 failed.'];
                 return;
             end
             % Remove unwanted tissues (label <= 0)
@@ -578,7 +580,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Check for SimNIBS installation
             status = system('headreco --version');
             if (status ~= 0)
-                errMsg = ['SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
+                errMsg = [errMsg, 'SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
                 return;
             end
 
@@ -591,7 +593,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)
-                    errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
+                    errMsg = [errMsg, 'Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end
@@ -631,7 +633,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             cd(curDir);
             % If SimNIBS returned an error
             if (status ~= 0)
-                errMsg = ['SimNIBS call: ', strrep(strCall, ' "', [10 '      "']),  10 10 ...
+                errMsg = [errMsg, 'SimNIBS call: ', strrep(strCall, ' "', [10 '      "']),  10 10 ...
                           'SimNIBS error #' num2str(status) ': See command window.'];
                 return;
             end
@@ -640,7 +642,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], 0, 1);
             % Handle errors
             if ~isempty(errorImport)
-                errMsg = ['Error trying to import the SimNIBS output: ' 10 errorImport];
+                errMsg = [errMsg, 'Error trying to import the SimNIBS output: ' 10 errorImport];
                 return;
             end
             % Only tetra could be generated from this method
@@ -650,16 +652,18 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Segmentation process
             OPTIONS.layers     = {'white','gray','csf','skull','scalp'};
             OPTIONS.isSaveTess = 0;
-            [isOk, errMsg, TissueFile] = process_ft_volumesegment('Compute', iSubject, iT1, OPTIONS);
+            [isOk, errFt, TissueFile] = process_ft_volumesegment('Compute', iSubject, iT1, OPTIONS);
             if ~isOk
+                errMsg = [errMsg, errFt];
                 return;
             end
             TissueLabels = OPTIONS.layers;
             % Get index of tissue file
             [sSubject, iSubject, iTissue] = bst_get('MriFile', TissueFile);
             % Mesh process
-            [isOk, errMsg, FemFile] = process_ft_prepare_mesh_hexa('Compute', iSubject, iTissue, OPTIONS);
+            [isOk, errFt, FemFile] = process_ft_prepare_mesh_hexa('Compute', iSubject, iTissue, OPTIONS);
             if ~isOk
+                errMsg = [errMsg, errFt];
                 return;
             end
 
@@ -667,8 +671,9 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             disp(['FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File]);
             % Install/load ROAST plugin
-            [isInstalled, errMsg] = bst_plugin('Install', 'roast', isInteractive);
+            [isInstalled, errInstall] = bst_plugin('Install', 'roast', isInteractive);
             if ~isInstalled
+                errMsg = [errMsg, errInstall];
                 return;
             end
             
@@ -681,7 +686,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)
-                    errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
+                    errMsg = [errMsg, 'Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end            
@@ -718,7 +723,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 close all;
                 % Error handling
                 if ~file_exist(segNii)
-                    errMsg = 'ROAST: MRI segmentation (SPM) failed.';
+                    errMsg = [errMsg, 'ROAST: MRI segmentation (SPM) failed.'];
                     return;
                 end
             end
@@ -733,7 +738,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 segTouchup(T1Nii, T2Nii);
                 % Error handling
                 if ~file_exist(touchNii)
-                    errMsg = 'ROAST: MRI segmentation touchup failed.';
+                    errMsg = [errMsg, 'ROAST: MRI segmentation touchup failed.'];
                     return;
                 end
                 % Save to the database
@@ -753,7 +758,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [node,elem] = cgalv2m(sMasks.Cube, meshOpt, maxvol);
             % Error handling
             if isempty(elem)
-                errMsg = 'Mesh generation failed (iso2mesh/cgalv2m).';
+                errMsg = [errMsg, 'Mesh generation failed (iso2mesh/cgalv2m).'];
                 return;
             end
             % Fix for voxel space
@@ -780,7 +785,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             node = no; % need to updates the new list         
             
         otherwise
-            errMsg = ['Invalid method "' OPTIONS.Method '".'];
+            errMsg = [errMsg, 'Invalid method "' OPTIONS.Method '".'];
             return;
     end
 
