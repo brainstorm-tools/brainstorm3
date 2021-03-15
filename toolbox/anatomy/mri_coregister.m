@@ -93,6 +93,7 @@ switch lower(Method)
         if ~isInstalled
             return;
         end
+        bst_plugin('SetProgressLogo', 'spm12');
         
         % === SAVE FILES IN TMP FOLDER ===
         % Save source MRI in .nii format
@@ -153,6 +154,8 @@ switch lower(Method)
         [sMriReg, vox2ras] = in_mri(NiiRegFile, 'ALL', 0, 0);
         % Output file tag
         fileTag = '_spm';
+        % Remove logo
+        bst_plugin('SetProgressLogo', []);
         
         % === UPDATE FIDUCIALS ===
         if isReslice

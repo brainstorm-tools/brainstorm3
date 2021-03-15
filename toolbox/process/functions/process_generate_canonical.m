@@ -98,6 +98,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     if ~isInstalled
         return;
     end
+    bst_plugin('SetProgressLogo', 'spm12');
 
     % ===== GET SUBJECT =====
     % Get subject 
@@ -176,7 +177,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, Resolution, isInteractive)
     % Save cortex
     bst_save(SpmCortexFile, sCortex, 'v7');
     db_add_surface(iSubject, SpmCortexFile, sCortex.Comment);
-
+    
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
     isOk = 1;
 end
 

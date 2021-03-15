@@ -57,8 +57,8 @@ if ~isOk
 end
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'plugins/openmeeg_logo.gif');
-bst_progress('setlink', 'http://openmeeg.github.io');
+bst_plugin('SetProgressLogo', 'openmeeg');
+
 % Binary path
 OpenmeegDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
 binDir = bst_fullfile(OpenmeegDir, 'bin');
@@ -420,7 +420,7 @@ if ~OPTIONS.isAdjoint && ~isempty(hmfile)
 end
 file_delete(cat(2, trifiles, allfiles), 1);
 % Remove OpenMEEG image
-bst_progress('removeimage');
+bst_plugin('SetProgressLogo', []);
 
 
 

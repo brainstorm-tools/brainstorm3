@@ -27,7 +27,7 @@ function [sFile, ChannelMat] = in_fopen_adicht(DataFile, isInteractive)
 if ~isInstalled
     error(errMsg); 
 end
-
+bst_plugin('SetProgressLogo', 'adi-sdk');
 
 %% ===== READ HEADER =====
 % Read file header

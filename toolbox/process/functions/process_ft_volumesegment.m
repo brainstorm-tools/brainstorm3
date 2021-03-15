@@ -104,10 +104,10 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
-    % Not supported in compiled version
-    if bst_iscompiled()
-        error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
-    end
+%     % Not supported in compiled version
+%     if bst_iscompiled()
+%         error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
+%     end
 
     % ===== GET OPTIONS =====
     % If data file in input: get the subject from the input
@@ -231,6 +231,7 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     if ~isInstalled
         return;
     end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     % Replace CSF with BRAIN if white/grey not needed
     if ~any(ismember({'white','gray'}, OPTIONS.layers)) && ismember('csf', OPTIONS.layers)
         OPTIONS.layers{ismember(OPTIONS.layers, {'csf'})} = 'brain';
@@ -384,6 +385,8 @@ function ComputeInteractive(iSubject, iMris) %#ok<DEFNU>
     else
         OPTIONS.nVertices = OPTIONS.nVertices(isSelect);
     end
+    % Remove fieldtrip logo
+    bst_plugin('SetProgressLogo', []);
     % Open progress bar
     bst_progress('start', 'Generate BEM mesh', 'Initialization...');
     % Generate BEM mesh

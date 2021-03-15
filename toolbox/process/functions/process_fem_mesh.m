@@ -335,6 +335,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
+            bst_plugin('SetProgressLogo', 'iso2mesh');
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
                 if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
@@ -459,6 +460,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
+            bst_plugin('SetProgressLogo', 'brain2mesh');
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
             if isempty(tpmFile) || ~file_exist(tpmFile)
@@ -676,6 +678,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
+            bst_plugin('SetProgressLogo', 'roast');
             
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
@@ -788,6 +791,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             errMsg = [errMsg, 'Invalid method "' OPTIONS.Method '".'];
             return;
     end
+    % Remove logos
+    bst_plugin('SetProgressLogo', []);
 
 
     % ===== SAVE FEM MESH =====

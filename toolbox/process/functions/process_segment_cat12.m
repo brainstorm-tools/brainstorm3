@@ -148,8 +148,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     elseif ~isempty(errMsg)
         bst_report('Warning', sProcess, [], errMsg);
     end
-    % Remove CAT logo
-    bst_progress('removeimage');
     % Return an empty structure
     OutputFiles = {'import'};
 end
@@ -163,8 +161,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     if ~isInstalled
         return;
     end
-    % Set progress bar image
-    bst_progress('setimage', 'plugins/cat12_logo.gif');
+    bst_plugin('SetProgressLogo', 'cat12');
     % Check if SPM is in the path
     if ~exist('spm_jobman', 'file')
         errMsg = 'SPM must be in the Matlab path to use this feature.';
@@ -386,6 +383,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
     % Delete temporary folder
     % file_delete(catDir, 1, 3);
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
     % Return success
     isOk = 1;
 end

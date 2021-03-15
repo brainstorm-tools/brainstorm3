@@ -129,6 +129,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     % Check for Signal Processing Toolbox when using DPSS
     if iscell(sProcess.options.mt_taper.Value)
         mt_taper = sProcess.options.mt_taper.Value{1};
@@ -141,6 +142,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Call TIME-FREQ process
     OutputFiles = process_timefreq('Run', sProcess, sInputs);
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
 end
 
 

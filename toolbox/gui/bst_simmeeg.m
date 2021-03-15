@@ -37,8 +37,7 @@ function NewFiles = GUI(iStudy)
     end
     % Progress bar
     bst_progress('start', 'SimMEEG', 'Initializing...');
-    bst_progress('setimage', 'plugins/simmeeg_logo.gif');
-    bst_progress('setlink', 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/');
+    bst_plugin('SetProgressLogo', 'simmeeg');
     % Load anatomy + sensors + headmodel
     bst = LoadInputs(iStudy);
     % Reset SimMEEG global variable h
@@ -54,7 +53,7 @@ function NewFiles = GUI(iStudy)
     end
     % Close progress bar
     bst_progress('stop');
-    bst_progress('removeimage');
+    bst_plugin('SetProgressLogo', []);
     % If the main figure was created
     if isfield(h, 'main_fig') && ~isempty(h.main_fig) && ishandle(h.main_fig)
         % Initialization successful: Wait for it to be closed

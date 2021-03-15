@@ -48,6 +48,7 @@ end
 % Progress bar
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'DICOM converter (SPM)', 'Loading DICOM headers...', 0, length(DicomFiles));
+bst_plugin('SetProgressLogo', 'spm12');
 
 % Read SPM DICOM dictionnary
 disp(['Openin: ' fullfile(spm('Dir'),'spm_dicom_dict.txt')])

@@ -150,6 +150,8 @@ end
 if ~isInstalled
     return;
 end
+bst_plugin('SetProgressLogo', 'cat12');
+% CAT path
 CatExeDir = bst_fullfile(PlugCat.Path, PlugCat.SubFolder);
 % FSAverage surfaces in CAT12 program folder
 FsAvgLhFile = bst_fullfile(CatExeDir, 'templates_surfaces', 'lh.central.freesurfer.gii');
@@ -629,6 +631,7 @@ if isInteractive
     figure_3d('SetStandardView', hFig, 'left');
 end
 % Close progress bar
+bst_plugin('SetProgressLogo', []);
 if ~isProgress
     bst_progress('stop');
 end
