@@ -49,7 +49,7 @@ function varargout = brainstorm( varargin )
 more off
 
 % Compiled version
-isCompiled = bst_iscompiled();
+isCompiled = exist('isdeployed', 'builtin') && isdeployed;
 if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
 else
