@@ -96,13 +96,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).Version        = '1.9.2';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    switch (OsType)
-        case 'linux64', PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-linux64.zip';
-        case 'mac32',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx32.zip';
-        case 'mac64',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx64.zip';
-        case 'win32',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
-        case 'win64',   PlugDesc(end).URLzip = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
-    end
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-allinone.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
@@ -565,12 +559,18 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     PluginCustomPath = bst_get('PluginCustomPath');
     % Matlab path
     matlabPath = str_split(path, pathsep);
+    % Compiled distribution
+    isCompiled = bst_iscompiled();
     
     % === LOOK FOR SUPPORTED PLUGINS ===
     % Empty plugin structure
     PlugDesc = repmat(db_template('PlugDesc'), 0);
     % Look for each plugin in the search list
     for iSearch = 1:length(SearchPlugs)
+        % Compiled: skip plugins that are not available
+        if isCompiled && (SearchPlugs(iSearch).CompiledStatus == 0)
+            continue;
+        end
         % Theoretical plugin path
         PlugName = SearchPlugs(iSearch).Name;
         PlugPath = bst_fullfile(UserPluginsDir, PlugName);
@@ -617,8 +617,11 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     end
     
     % === LOOK FOR UNREFERENCED PLUGINS ===
+    % Compiled: do not look for unreferenced plugins
+    if isCompiled
+        PlugList = [];
     % Get folders in Brainstorm user folder
-    if ~isempty(SelPlug)
+    elseif ~isempty(SelPlug)
         if ischar(SelPlug)
             PlugList = dir(bst_fullfile(UserPluginsDir, SelPlug));
         else
@@ -837,7 +840,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         return;
     end
     % Compiled version
-    if (exist('isdeployed', 'builtin') && isdeployed) && (Plug.CompiledStatus == 0)
+    isCompiled = bst_iscompiled();
+    if isCompiled && (PlugDesc.CompiledStatus == 0)
         errMsg = ['Plugin ', PlugName ' is not available in the compiled version of Brainstorm.'];
         return;
     end
@@ -928,8 +932,9 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
                 isConfirm = java_dialog('confirm', ...
                     ['<HTML>Plugin <B>' PlugName '</B>: ' strUpdate '<BR>' ...
                     'Download and install the latest version?<BR><BR>' strCompare], 'Plugin manager');
+                % If update not confirmed: simply load the existing plugin
                 if ~isConfirm
-                    errMsg = 'Installation aborted by user.';
+                    [isOk, errMsg, PlugDesc] = Load(PlugDesc);
                     return;
                 end
             end
@@ -1012,7 +1017,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % If file was not downloaded correctly
     if ~isempty(errMsg)
         errMsg = ['Impossible to download ' PlugName ' automatically:' 10 errMsg];
-        if ~exist('isdeployed', 'builtin') || ~isdeployed
+        if ~isCompiled
             errMsg = [errMsg 10 10 ...
                 'Alternative download solution:' 10 ...
                 '1) Copy the URL below from the Matlab command window: ' 10 ...
@@ -1472,24 +1477,28 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     else
         PlugHomeDir = PlugPath;
     end
-    addpath(PlugHomeDir);
-    disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
-    % Add specific subfolders to path
-    if ~isempty(PlugDesc.LoadFolders)
-        % Load all all subfolders
-        if isequal(PlugDesc.LoadFolders, '*') || isequal(PlugDesc.LoadFolders, {'*'})
-            disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, '*']);
-            addpath(genpath(PlugHomeDir));
-        % Load specific subfolders
-        else
-            for i = 1:length(PlugDesc.LoadFolders)
-                subDir = PlugDesc.LoadFolders{i};
-                if isequal(filesep, '\')
-                    subDir = strrep(subDir, '/', '\');
-                end
-                if isdir([PlugHomeDir, filesep, subDir])
-                    disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, subDir]);
-                    addpath([PlugHomeDir, filesep, subDir]);
+    % Do not modify path in compiled mode
+    isCompiled = bst_iscompiled();
+    if ~isCompiled
+        addpath(PlugHomeDir);
+        disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
+        % Add specific subfolders to path
+        if ~isempty(PlugDesc.LoadFolders)
+            % Load all all subfolders
+            if isequal(PlugDesc.LoadFolders, '*') || isequal(PlugDesc.LoadFolders, {'*'})
+                disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, '*']);
+                addpath(genpath(PlugHomeDir));
+            % Load specific subfolders
+            else
+                for i = 1:length(PlugDesc.LoadFolders)
+                    subDir = PlugDesc.LoadFolders{i};
+                    if isequal(filesep, '\')
+                        subDir = strrep(subDir, '/', '\');
+                    end
+                    if isdir([PlugHomeDir, filesep, subDir])
+                        disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, subDir]);
+                        addpath([PlugHomeDir, filesep, subDir]);
+                    end
                 end
             end
         end
@@ -1497,7 +1506,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     
     % === TEST FUNCTION ===
     % Check if test function is available on path
-    if ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
+    if ~isCompiled && ~isempty(PlugDesc.TestFile) && (exist(PlugDesc.TestFile, 'file') == 0)
         errMsg = ['Plugin ' PlugDesc.Name ' successfully loaded from:' 10 PlugHomeDir 10 10 ...
             'However, the function ' PlugDesc.TestFile ' is not accessible in the Matlab path.' 10 ...
             'Try restarting Matlab and Brainstorm.'];
@@ -1580,13 +1589,16 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc)
     end
     
     % === UNLOAD PLUGIN ===
-    matlabPath = str_split(path, pathsep);
-    % Remove plugin folder and subfolders from path
-    allSubFolders = str_split(genpath(PlugPath), pathsep);
-    for i = 1:length(allSubFolders)
-        if ismember(allSubFolders{i}, matlabPath)
-            rmpath(allSubFolders{i});
-            disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
+    % Do not modify path in compiled mode
+    if ~bst_iscompiled()
+        matlabPath = str_split(path, pathsep);
+        % Remove plugin folder and subfolders from path
+        allSubFolders = str_split(genpath(PlugPath), pathsep);
+        for i = 1:length(allSubFolders)
+            if ismember(allSubFolders{i}, matlabPath)
+                rmpath(allSubFolders{i});
+                disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
+            end
         end
     end
     
@@ -1719,10 +1731,11 @@ function j = MenuCreate(jMenu, fontSize)
     PlugDesc = GetSupported();
     % Get Matlab version
     MatlabVersion = bst_get('MatlabVersion');
+    isCompiled = bst_iscompiled();
     % Submenus
     jSub = {};
     % Process each plugin
-    j = repmat(struct(), 1, length(PlugDesc));
+    j = repmat(struct(), 0);
     for iPlug = 1:length(PlugDesc)
         Plug = PlugDesc(iPlug);
         % Skip if Matlab is too old
@@ -1730,7 +1743,7 @@ function j = MenuCreate(jMenu, fontSize)
             continue;
         end
         % Skip if not supported in compiled version
-        if (exist('isdeployed', 'builtin') && isdeployed) && (Plug.CompiledStatus == 0)
+        if isCompiled && (Plug.CompiledStatus == 0)
             continue;
         end
         % Category=submenu
@@ -1746,48 +1759,60 @@ function j = MenuCreate(jMenu, fontSize)
             jParent = jMenu;
         end
         % One menu per plugin
-        j(iPlug).name = Plug.Name;
-        j(iPlug).menu = gui_component('Menu', jParent, [], Plug.Name, [], [], [], fontSize);
-        % Version
-        j(iPlug).version = gui_component('MenuItem', j(iPlug).menu, [], 'Version', [], [], [], fontSize);
-        j(iPlug).versep = java_create('javax.swing.JSeparator');
-        j(iPlug).menu.add(j(iPlug).versep);
-        % Install
-        j(iPlug).install = gui_component('MenuItem', j(iPlug).menu, [], 'Install', IconLoader.ICON_DOWNLOAD, [], @(h,ev)InstallInteractive(Plug.Name), fontSize);
-        % Update
-        j(iPlug).update = gui_component('MenuItem', j(iPlug).menu, [], 'Update', IconLoader.ICON_RELOAD, [], @(h,ev)UpdateInteractive(Plug.Name), fontSize);
-        % Uninstall
-        j(iPlug).uninstall = gui_component('MenuItem', j(iPlug).menu, [], 'Uninstall', IconLoader.ICON_DELETE, [], @(h,ev)UninstallInteractive(Plug.Name), fontSize);
-        j(iPlug).menu.addSeparator();
-        % Custom install
-        j(iPlug).custom = gui_component('Menu', j(iPlug).menu, [], 'Custom install', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
-        j(iPlug).customset = gui_component('MenuItem', j(iPlug).custom, [], 'Select installation folder', [], [], @(h,ev)SetCustomPath(Plug.Name), fontSize);
-        j(iPlug).custompath = gui_component('MenuItem', j(iPlug).custom, [], 'Path not set', [], [], [], fontSize);
-        j(iPlug).custompath.setEnabled(0);
-        j(iPlug).menu.addSeparator();
-        % Load
-        j(iPlug).load = gui_component('MenuItem', j(iPlug).menu, [], 'Load', IconLoader.ICON_GOOD, [], @(h,ev)LoadInteractive(Plug.Name), fontSize);
-        j(iPlug).unload = gui_component('MenuItem', j(iPlug).menu, [], 'Unload', IconLoader.ICON_BAD, [], @(h,ev)UnloadInteractive(Plug.Name), fontSize);
-        j(iPlug).menu.addSeparator();
-        % Website
-        j(iPlug).web = gui_component('MenuItem', j(iPlug).menu, [], 'Website', IconLoader.ICON_EXPLORER, [], @(h,ev)web(Plug.URLinfo, '-browser'), fontSize);
-        % Extra menus
-        if ~isempty(Plug.ExtraMenus)
-            j(iPlug).menu.addSeparator();
-            for iMenu = 1:size(Plug.ExtraMenus,1)
-                j(iPlug).web = gui_component('MenuItem', j(iPlug).menu, [], Plug.ExtraMenus{iMenu,1}, IconLoader.ICON_EXPLORER, [], @(h,ev)bst_call(@eval, Plug.ExtraMenus{iMenu,2}), fontSize);
+        ij = length(j) + 1;
+        j(ij).name = Plug.Name;
+        % Compiled and included: Simple static menu
+        if isCompiled && (Plug.CompiledStatus == 2)
+            j(ij).menu = gui_component('MenuItem', jParent, [], Plug.Name, [], [], [], fontSize);
+        % Do not create submenus for compiled version
+        else
+            % Main menu
+            j(ij).menu = gui_component('Menu', jParent, [], Plug.Name, [], [], [], fontSize);
+            % Version
+            j(ij).version = gui_component('MenuItem', j(ij).menu, [], 'Version', [], [], [], fontSize);
+            j(ij).versep = java_create('javax.swing.JSeparator');
+            j(ij).menu.add(j(ij).versep);
+            % Install
+            j(ij).install = gui_component('MenuItem', j(ij).menu, [], 'Install', IconLoader.ICON_DOWNLOAD, [], @(h,ev)InstallInteractive(Plug.Name), fontSize);
+            % Update
+            j(ij).update = gui_component('MenuItem', j(ij).menu, [], 'Update', IconLoader.ICON_RELOAD, [], @(h,ev)UpdateInteractive(Plug.Name), fontSize);
+            % Uninstall
+            j(ij).uninstall = gui_component('MenuItem', j(ij).menu, [], 'Uninstall', IconLoader.ICON_DELETE, [], @(h,ev)UninstallInteractive(Plug.Name), fontSize);
+            j(ij).menu.addSeparator();
+            % Custom install
+            j(ij).custom = gui_component('Menu', j(ij).menu, [], 'Custom install', IconLoader.ICON_FOLDER_OPEN, [], [], fontSize);
+            j(ij).customset = gui_component('MenuItem', j(ij).custom, [], 'Select installation folder', [], [], @(h,ev)SetCustomPath(Plug.Name), fontSize);
+            j(ij).custompath = gui_component('MenuItem', j(ij).custom, [], 'Path not set', [], [], [], fontSize);
+            j(ij).custompath.setEnabled(0);
+            j(ij).menu.addSeparator();
+            % Load
+            j(ij).load = gui_component('MenuItem', j(ij).menu, [], 'Load', IconLoader.ICON_GOOD, [], @(h,ev)LoadInteractive(Plug.Name), fontSize);
+            j(ij).unload = gui_component('MenuItem', j(ij).menu, [], 'Unload', IconLoader.ICON_BAD, [], @(h,ev)UnloadInteractive(Plug.Name), fontSize);
+            j(ij).menu.addSeparator();
+            % Website
+            j(ij).web = gui_component('MenuItem', j(ij).menu, [], 'Website', IconLoader.ICON_EXPLORER, [], @(h,ev)web(Plug.URLinfo, '-browser'), fontSize);
+            % Extra menus
+            if ~isempty(Plug.ExtraMenus)
+                j(ij).menu.addSeparator();
+                for iMenu = 1:size(Plug.ExtraMenus,1)
+                    j(ij).web = gui_component('MenuItem', j(ij).menu, [], Plug.ExtraMenus{iMenu,1}, IconLoader.ICON_EXPLORER, [], @(h,ev)bst_call(@eval, Plug.ExtraMenus{iMenu,2}), fontSize);
+                end
             end
         end
     end
     % List
-    jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'List', IconLoader.ICON_EDIT, [], @(h,ev)List('Installed', 1), fontSize);
+    if ~isCompiled
+        jMenu.addSeparator();
+        gui_component('MenuItem', jMenu, [], 'List', IconLoader.ICON_EDIT, [], @(h,ev)List('Installed', 1), fontSize);
+    end
 end
 
 
 %% ===== MENUS: UPDATE =====
 function MenuUpdate(jPlugs)
     import org.brainstorm.icon.*;
+    % If compiled: disable most menus
+    isCompiled = bst_iscompiled();
     % Interface scaling
     InterfaceScaling = bst_get('InterfaceScaling');
     % Update all the plugins
@@ -1808,59 +1833,72 @@ function MenuUpdate(jPlugs)
         end
         isLoaded = isInstalled && Plug.isLoaded;
         isManaged = isInstalled && Plug.isManaged;
-        % Current version
-        if ~isInstalled
-            j.version.setText('<HTML><FONT color="#707070"><I>Not installed</I></FONT>');
-        elseif ~isManaged && ~isempty(Plug.Path)
-            j.version.setText('<HTML><FONT color="#707070"><I>Custom install</I></FONT>')
-        elseif ~isempty(Plug.Version) && ischar(Plug.Version)
-            j.version.setText(['<HTML><FONT color="#707070"><I>Installed version: ' Plug.Version '</I></FONT>'])
-        elseif isInstalled
-            j.version.setText('<HTML><FONT color="#707070"><I>Installed</I></FONT>');
-        end
-        % Main menu: Available/Not available
-        j.menu.setEnabled(isInstalled || ~isempty(Plug.URLzip));
-        % Main menu: Icon
-        if isLoaded   % Loaded
-            menuIcon = IconLoader.ICON_GOOD;
-        elseif isInstalled   % Not loaded
-            menuIcon = IconLoader.ICON_BAD;
+        % Compiled included: no submenus
+        if isCompiled && (PlugRef.CompiledStatus == 2)
+            j.menu.setEnabled(1);
+            if (InterfaceScaling ~= 100)
+                j.menu.setIcon(IconLoader.scaleIcon(IconLoader.ICON_GOOD, InterfaceScaling / 100));
+            else
+                j.menu.setIcon(IconLoader.ICON_GOOD);
+            end
+        % Otherwise: all available
         else
-            menuIcon = IconLoader.ICON_NEUTRAL;
+            % Main menu: Available/Not available
+            j.menu.setEnabled(isInstalled || ~isempty(Plug.URLzip));
+            % Current version
+            if ~isInstalled
+                j.version.setText('<HTML><FONT color="#707070"><I>Not installed</I></FONT>');
+            elseif ~isManaged && ~isempty(Plug.Path)
+                j.version.setText('<HTML><FONT color="#707070"><I>Custom install</I></FONT>')
+            elseif ~isempty(Plug.Version) && ischar(Plug.Version)
+                j.version.setText(['<HTML><FONT color="#707070"><I>Installed version: ' Plug.Version '</I></FONT>'])
+            elseif isInstalled
+                j.version.setText('<HTML><FONT color="#707070"><I>Installed</I></FONT>');
+            end
+            % Main menu: Icon
+            if isCompiled && isInstalled
+                menuIcon = IconLoader.ICON_GOOD;
+            elseif isLoaded   % Loaded
+                menuIcon = IconLoader.ICON_GOOD;
+            elseif isInstalled   % Not loaded
+                menuIcon = IconLoader.ICON_BAD;
+            else
+                menuIcon = IconLoader.ICON_NEUTRAL;
+            end
+            if (InterfaceScaling ~= 100)
+                j.menu.setIcon(IconLoader.scaleIcon(menuIcon, InterfaceScaling / 100));
+            else
+                j.menu.setIcon(menuIcon);
+            end
+            % Install
+            j.install.setEnabled(~isInstalled);
+            if ~isInstalled && ~isempty(PlugRef.Version) && ischar(PlugRef.Version)
+                j.install.setText(['<HTML>Install &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
+            else
+                j.install.setText('Install');
+            end
+            % Update
+            j.update.setEnabled(isManaged);
+            if isInstalled && ~isempty(PlugRef.Version) && ischar(PlugRef.Version)
+                j.update.setText(['<HTML>Update &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
+            else
+                j.update.setText('Update');
+            end
+            % Uninstall
+            j.uninstall.setEnabled(isManaged);
+            % Custom install
+            j.custom.setEnabled(~isManaged);
+            if ~isempty(Plug.Path)
+                j.custompath.setText(Plug.Path);
+            else
+                j.custompath.setText('Path not set');
+            end
+            % Load/Unload
+            j.load.setEnabled(isInstalled && ~isLoaded && ~isCompiled);
+            j.unload.setEnabled(isLoaded && ~isCompiled);
+            % Web
+            j.web.setEnabled(~isempty(Plug.URLinfo));
         end
-        if (InterfaceScaling ~= 100)
-            j.menu.setIcon(IconLoader.scaleIcon(menuIcon, InterfaceScaling / 100));
-        else
-            j.menu.setIcon(menuIcon);
-        end
-        % Install
-        j.install.setEnabled(~isInstalled);
-        if ~isInstalled && ~isempty(PlugRef.Version) && ischar(PlugRef.Version)
-            j.install.setText(['<HTML>Install &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
-        else
-            j.install.setText('Install');
-        end
-        % Update
-        j.update.setEnabled(isManaged);
-        if isInstalled && ~isempty(PlugRef.Version) && ischar(PlugRef.Version)
-            j.update.setText(['<HTML>Update &nbsp;&nbsp;&nbsp;<FONT color="#707070"><I>(' PlugRef.Version ')</I></FONT>'])
-        else
-            j.update.setText('Update');
-        end
-        % Uninstall
-        j.uninstall.setEnabled(isManaged);
-        % Custom install
-        j.custom.setEnabled(~isManaged);
-        if ~isempty(Plug.Path)
-            j.custompath.setText(Plug.Path);
-        else
-            j.custompath.setText('Path not set');
-        end
-        % Load/Unload
-        j.load.setEnabled(isInstalled && ~isLoaded);
-        j.unload.setEnabled(isLoaded);
-        % Web
-        j.web.setEnabled(~isempty(Plug.URLinfo));
     end
     j.menu.repaint()
     j.menu.getParent().repaint()
@@ -2022,4 +2060,31 @@ function LinkCatSpm(isSet)
 end
 
 
+%% ===== SET PROGRESS LOGO =====
+% USAGE:  SetProgressLogo(PlugDesc/PlugName)  % Set progress bar image
+%         SetProgressLogo([])                 % Remove progress bar image
+function SetProgressLogo(PlugDesc)
+    % Remove image
+    if (nargin < 1) || isempty(PlugDesc)
+        bst_progress('removeimage');
+        bst_progress('removelink');
+    % Set image
+    else
+        % Get plugin description
+        if ischar(PlugDesc)
+            PlugDesc = GetSupported(PlugDesc);
+        end
+        % Set logo file
+        if isempty(PlugDesc.LogoFile)
+            PlugDesc.LogoFile = GetLogoFile(PlugDesc);
+        end
+        if ~isempty(PlugDesc.LogoFile)
+            bst_progress('setimage', PlugDesc.LogoFile);
+        end
+        % Set link
+        if ~isempty(PlugDesc.URLinfo)
+            bst_progress('setlink', 'http://openmeeg.github.io');
+        end
+    end
+end
 
