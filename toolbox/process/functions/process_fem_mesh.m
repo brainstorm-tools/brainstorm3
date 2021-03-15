@@ -298,11 +298,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         sMriT1 = in_mri_bst(T1File);
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
-            [sMriT1, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
+            [sMriT1tmp, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
                 errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10];
                 % Do not return: This is only a warning
+            elseif ~isempty(sMriT1tmp)
+                sMriT1 = sMriT1tmp;
             end
         elseif (OPTIONS.Zneck > 0)
             errMsg = 'Invalid neck MNI Z coordinate (must be negative or zero).';
@@ -315,11 +317,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         sMriT2 = in_mri_bst(T2File);
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
-            [sMriT2, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
+            [sMriT2tmp, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
                 errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10 10];
                 % Do not return: This is only a warning
+            elseif ~isempty(sMriT2tmp)
+                sMriT2 = sMriT2tmp;
             end
         end
     end
