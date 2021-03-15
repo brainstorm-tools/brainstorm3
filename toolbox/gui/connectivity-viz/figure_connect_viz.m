@@ -2430,6 +2430,9 @@ function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
 end
  
 function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
+
+    %disp(mDataPair);
+    
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
     NumberOfRegions = size(Regions,1);
@@ -2443,19 +2446,32 @@ function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
     
     for i=1:NumberOfRegions
         for y=1:NumberOfRegions
-            if (i ~= y)
+            if (i ~= y)        
+                
+%                 disp(Regions(i));
+%                 disp(Regions(y));
+                
                 % Retrieve index
                 Index = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
+                
                 % If there is values
                 if (sum(Index) > 0)
+%                     if (Regions(i) == 14 | Regions(i) == 16)
+%                         disp('Indexes are');
+%                         disp(find(Index));
+%                     end
+                    
                     Max = max(mDataPair(Index,3));
                     mMaxDataPair(NumberOfRegions * (i - 1) + y, :) = [Regions(i) Regions(y) Max];
                 end
             end
         end
     end
+    %disp(mMaxDataPair);
+    
     % Eliminate empty data
     mMaxDataPair(mMaxDataPair(:,3) == 0,:) = [];
+    %disp(mMaxDataPair);
 end
  
  
@@ -2649,9 +2665,12 @@ function UpdateColormap(hFig)
         end
         % Interpolate
         [StartColor, EndColor] = InterpolateColorMap(hFig, DataPair(DataMask,:), CMap, CLim);
+        %StartColor = CMap(2,:);
+        %EndColor = CMap(end-1,:);
         
         % added on Dec 20
         color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
+        %color_viz = CLim(1) + Offset(:,:).*(CLim(2) - CLim(1));
         
         iData = find(DataMask == 1);
         MeasureLinks = getappdata(hFig, 'MeasureLinks');
@@ -2709,9 +2728,12 @@ function UpdateColormap(hFig)
         end
         % Normalize within the colormap range 
         [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
+%         StartColor = CMap(2,:);
+%         EndColor = CMap(end-1,:);
         
         % added on Dec 20
         color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
+        % color_viz_region = CLim(1) + Offset(:,:).*(CLim(2) - CLim(1));
         
         iData = find(RegionDataMask == 1);
         RegionLinks = getappdata(hFig,'RegionLinks');
@@ -2764,6 +2786,7 @@ function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, L
     % Normalize and interpolate
     a = (DataPair(:,3)' - Limit(1)) / (Limit(2) - Limit(1));
     b = linspace(0,1,size(ColorMap,1));
+    % b = linspace(Limit(1),Limit(2),size(ColorMap,1));
     m = size(a,2);
     n = size(b,2);
     [tmp,p] = sort([a,b]);
@@ -3047,6 +3070,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
                 RegionDataPair = ComputeMeanMeasureMatrix(hFig, DataPair);
             case 'max'
                 RegionDataPair = ComputeMaxMeasureMatrix(hFig, DataPair);
+                %disp(RegionDataPair);
             otherwise
                 disp('The region function specified is not yet supported. Default to mean.');
                 RegionFunction = 'mean';
