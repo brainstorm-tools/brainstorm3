@@ -2674,6 +2674,7 @@ function UpdateColormap(hFig)
                 set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
             end 
         end
+        
         % update visibility of arrowheads
         if (MeasureLinksIsVisible)
             if (IsDirectionalData)
@@ -2686,7 +2687,7 @@ function UpdateColormap(hFig)
                     % Second arrow is visible for bidirectional links;
                     iData_mask = DataMask.';
                     bidirectional = iData_mask & (OutIndex | InIndex);
-                    set(MeasureArrows2(bidirectional), 'Visible', 'on')
+                    set(MeasureArrows2(~bidirectional), 'Visible', 'off')
                 else
                     % make all second arrows invisible if user selected "In" or "Out"
                     set(MeasureArrows2(:), 'Visible', 'off');
@@ -2934,8 +2935,6 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         DataMask = DataMask & SelectedNodeMask;
     end
     
-    %disp(NodeDirectionMask);
-    
     % ==================== DISPLAY LINKS SELECTION ====================
     % Links are from valid node only
     ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode') > 0);
@@ -2950,12 +2949,12 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
             MeasureLinks = getappdata(hFig,'MeasureLinks');
             
             if (isSelected)
-                
-                %TODO: increase linewidth when selected
                 set(MeasureLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
+                    MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
                     set(MeasureArrows1(iData), 'Visible', 'on');
+                    set(MeasureArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(MeasureLinks(iData), 'Visible', 'off');
@@ -2974,7 +2973,9 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
                 set(RegionLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     RegionArrows1 = getappdata(hFig, 'RegionArrows1');
+                    RegionArrows2 = getappdata(hFig, 'RegionArrows2');
                     set(RegionArrows1(iData), 'Visible', 'on');
+                    set(RegionArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(RegionLinks(iData), 'Visible', 'off');
