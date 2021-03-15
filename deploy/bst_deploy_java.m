@@ -394,9 +394,12 @@ if IS_BIN
     try
         rmdir(baseDir, 's');
     catch
-        error(['Could not delete folder: "' baseDir '"']);
+        disp(['ERROR: Could not delete folder: "' baseDir '"']);
     end
 end
+
+% Close Brainstorm
+brainstorm stop;
 
 
 end

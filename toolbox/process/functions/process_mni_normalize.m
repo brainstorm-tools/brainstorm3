@@ -125,18 +125,13 @@ function sMri = ComputeInteractive(MriFile, Method, isUnload)
     end
     % Ask method
     if isempty(Method)
-        % Compiled: only MAFF8 available
-        if bst_iscompiled()
-            Method = 'maff8';
-        else
-            sProcess = GetDescription();
-            Method = java_dialog('question', ['<HTML>' sprintf('%s<BR><BR>', sProcess.options.method.Comment{1,:})], ...
-                'MNI normalization method', [], {sProcess.options.method.Comment{2,:}, 'Cancel'}, sProcess.options.method.Comment{2,1});
-            % Cancel
-            if isempty(Method) || strcmpi(Method, 'Cancel')
-                sMri = [];
-                return;
-            end
+        sProcess = GetDescription();
+        Method = java_dialog('question', ['<HTML>' sprintf('%s<BR><BR>', sProcess.options.method.Comment{1,:})], ...
+            'MNI normalization method', [], {sProcess.options.method.Comment{2,:}, 'Cancel'}, sProcess.options.method.Comment{2,1});
+        % Cancel
+        if isempty(Method) || strcmpi(Method, 'Cancel')
+            sMri = [];
+            return;
         end
     end
     % Open progress bar

@@ -2951,9 +2951,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
         % === GENERATE FEM ===
         if (length(iAnatomy) <= 2)   % T1 + optional T2
             jItemFem = gui_component('MenuItem', jMenu, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
-            if isempty(sSubject.iScalp)
-                jItemFem.setEnabled(0);
-            end
+            jItemFem.setEnabled(0);
         end
         % === SEGMENTATION ===
         if (length(iAnatomy) <= 1)

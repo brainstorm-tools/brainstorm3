@@ -104,11 +104,7 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
-%     % Not supported in compiled version
-%     if bst_iscompiled()
-%         error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
-%     end
-
+    
     % ===== GET OPTIONS =====
     % If data file in input: get the subject from the input
     if strcmpi(sInputs(1).FileType, 'data')

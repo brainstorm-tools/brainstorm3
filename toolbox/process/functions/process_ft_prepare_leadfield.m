@@ -137,12 +137,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SurfaceMethod = sProcess.options.surfaces.Value;
     % Display intermediate results
     isVerbose = sProcess.options.verbose.Value;
-%     % FieldTrip option: Not supported in compiled version
-%     if bst_iscompiled() && strcmpi(SurfaceMethod, 'fieldtrip')
-%         bst_report('Error', sProcess, sInputs, ['FieldTrip segmentation not supported in compiled version yet, use Brainstorm BEM surfaces instead.' 10 'Post a message on the forum if you need this feature implemented.']);
-%         return;
-%     end
-    
+
     % ===== INSTALL OPENMEEG =====
     if ismember('openmeeg', allMethods) && (system('om_assemble') ~= 0)
         % Install/load OpenMEEG

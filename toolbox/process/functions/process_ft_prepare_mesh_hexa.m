@@ -66,10 +66,6 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
     OPTIONS = struct();
-%     % Not supported in compiled version
-%     if bst_iscompiled()
-%         error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
-%     end
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
