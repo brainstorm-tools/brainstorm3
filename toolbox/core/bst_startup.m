@@ -319,6 +319,9 @@ elseif ~isCompiled && (GuiLevel == 1)
             end
         end
     end
+% Check online connectivity
+else
+    [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
 end
 
 
