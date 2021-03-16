@@ -2225,7 +2225,7 @@ function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
     NumberOfRegions = size(Regions,1);
-    mMaxDataPair = zeros(NumberOfRegions*NumberOfRegions,3);
+    mMaxDataPair = zeros((NumberOfRegions*NumberOfRegions-NumberOfRegions)/2,3);
     
     % Precomputing this saves on processing time
     NodesFromRegions = cell(NumberOfRegions,1);
@@ -2233,16 +2233,18 @@ function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
         NodesFromRegions{i} = getAgregatedNodesFrom(hFig, Regions(i));
     end
     
+    iMax = 1;
     for i=1:NumberOfRegions
-        for y=1:NumberOfRegions
-            if (i ~= y)
-                % Retrieve index
-                Index = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
-                % If there is values
-                if (sum(Index) > 0)
-                    Max = max(mDataPair(Index,3));
-                    mMaxDataPair(NumberOfRegions * (i - 1) + y, :) = [Regions(i) Regions(y) Max];
-                end
+        for y=i+1:NumberOfRegions
+            % Retrieve index
+            IndexItoY = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
+            IndexYtoI = ismember(mDataPair(:,1),NodesFromRegions{y}) & ismember(mDataPair(:,2),NodesFromRegions{i});
+            Index = IndexItoY | IndexYtoI;
+            % If there is values
+            if (sum(Index) > 0)
+                Max = max(mDataPair(Index,3));
+                mMaxDataPair(iMax, :) = [Regions(i) Regions(y) Max];
+                iMax = iMax + 1;
             end
         end
     end
