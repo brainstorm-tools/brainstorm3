@@ -436,7 +436,7 @@ end
 
 
 %% ===== OTHER DIGITALIZED POINTS =====
-if (length(info{'dig'}) > 0)
+if (length(info{'dig'}) > 0) && ~isa(info{'dig'}, 'py.NoneType')
     nbhs = length(info{'dig'});
     dk = cell(1, nbhs);
     di = cell(1, nbhs);

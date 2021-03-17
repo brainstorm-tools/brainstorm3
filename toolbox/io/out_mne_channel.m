@@ -127,10 +127,19 @@ if ~isempty(ChannelMat.TransfMeg) && ~isempty(ChannelMat.TransfMegLabels)
     if ~isempty(iNeuromagHead2Bst)
         tNeuromagHead2Bst = ChannelMat.TransfMeg{iNeuromagHead2Bst};
     end
-    % DEVICE=>NEUROMAG HEAD
+    % DEVICE=>NEUROMAG HEAD ('dev_head_t')
     iDev2NeuromagHead = find(strcmpi(ChannelMat.TransfMegLabels, 'neuromag_device=>neuromag_head'));
     if ~isempty(iDev2NeuromagHead)
         tDev2NeuromagHead = inv(ChannelMat.TransfMeg{iDev2NeuromagHead});
+        % Warning: We should NOT export 'dev_head_t', if it was not present initially in the dataset
+        %          In the FIF-reading function (in_channel_fif, in_channel_name, in_fopenmegscan), when the device=>head transformation 
+        %          transformation is missing (e.g. noise recordings), Brainstorm adds a default +4cm translation for display purproses.
+        %          This should not be exported, because it messes up the behavior of specific MNE functions (e.g. maxwell_filter)
+        isDefaultDev2head = isequal(ChannelMat.TransfMeg{iDev2NeuromagHead}, ...
+            [1   0   0   0; ...
+             0   1   0   0; ...
+             0   0   1 .04; ...
+             0   0   0   1]);
     end
 %     % CTF=>BST
 %     iCtfHead2Bst = find(strcmpi(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'));
@@ -157,7 +166,9 @@ if ~isempty(tNeuromagHead2Bst) && ~isempty(tDev2NeuromagHead)
     % NEUROMAG HEAD => NEUROMAG DEVICE (MEG ONLY)
     ChannelMat = ApplyTransformation(ChannelMat, inv(tDev2NeuromagHead), {'MEG', 'MEG REF', 'MEG GRAD', 'MEG MAG'}, 0);
     % Save in info structure
-    mneInfo{'dev_head_t'}{'trans'}.put(int16(0:15), bst_mat2py(tDev2NeuromagHead));
+    if ~isDefaultDev2head
+        mneInfo{'dev_head_t'}{'trans'}.put(int16(0:15), bst_mat2py(tDev2NeuromagHead));
+    end
     
 % ===== USE CTF/BRAINSTORM COORDINATES =====
 else
