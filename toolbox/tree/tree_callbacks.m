@@ -1811,7 +1811,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display on MRI (3D)', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'Mri3D'));
                     gui_component('MenuItem', jPopup, [], 'Display on cortex',   IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'Cortex'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Display in MRI Viewer', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'MriViewer'));
+                    gui_component('MenuItem', jPopup, [], 'Display density in MRI Viewer', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'MriViewer'));
                 else
                     gui_component('MenuItem', jPopup, [], 'Merge dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)dipoles_merge(GetAllFilenames(bstNodes)));
                 end
