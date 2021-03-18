@@ -2406,72 +2406,58 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
     end
 end
  
-function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
-    Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{2};
-    NumberOfNode = size(Regions,1);
-    mMeanDataPair = zeros(NumberOfNode*NumberOfNode,3);
-    %
-    for i=1:NumberOfNode
-        OutNode = getAgregatedNodesFrom(hFig, Regions(i));
-        for y=1:NumberOfNode
-            if (i ~= y)
-                InNode = getAgregatedNodesFrom(hFig, Regions(y));
-                Index = ismember(mDataPair(:,1),OutNode) & ismember(mDataPair(:,2),InNode);
-                nValue = sum(Index);
-                if (nValue > 0)
-                    Mean = sum(mDataPair(Index,3)) / sum(Index);
-                    mMeanDataPair(NumberOfNode * (i - 1) + y, :) = [Regions(i) Regions(y) Mean];
-                end
-            end
-        end
-    end
-    mMeanDataPair(mMeanDataPair(:,3) == 0,:) = [];
-end
- 
-function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
-
-    %disp(mDataPair);
-    
+function mFunctionDataPair = ComputeRegionFunction(hFig, mDataPair, RegionFunction)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
     NumberOfRegions = size(Regions,1);
-    mMaxDataPair = zeros(NumberOfRegions*NumberOfRegions,3);
     
     % Precomputing this saves on processing time
     NodesFromRegions = cell(NumberOfRegions,1);
     for i=1:NumberOfRegions
         NodesFromRegions{i} = getAgregatedNodesFrom(hFig, Regions(i));
+    end   
+    
+    % Bidirectional data ?
+    DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure'); 
+    if DisplayBidirectionalMeasure
+        nPairs = NumberOfRegions*NumberOfRegions-NumberOfRegions;
+    else
+        nPairs = (NumberOfRegions*NumberOfRegions-NumberOfRegions) / 2;   
     end
     
+    mFunctionDataPair = zeros(nPairs,3);   
+    iFunction = 1;
     for i=1:NumberOfRegions
-        for y=1:NumberOfRegions
-            if (i ~= y)        
-                
-%                 disp(Regions(i));
-%                 disp(Regions(y));
-                
-                % Retrieve index
+        if DisplayBidirectionalMeasure
+            yRange = 1 : NumberOfRegions;
+            yRange(i) = []; % skip i == y
+        else
+            yRange = i + 1 : NumberOfRegions;
+        end
+        for y=yRange
+            % Retrieve index
+            if DisplayBidirectionalMeasure
                 Index = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
-                
-                % If there is values
-                if (sum(Index) > 0)
-%                     if (Regions(i) == 14 | Regions(i) == 16)
-%                         disp('Indexes are');
-%                         disp(find(Index));
-%                     end
-                    
-                    Max = max(mDataPair(Index,3));
-                    mMaxDataPair(NumberOfRegions * (i - 1) + y, :) = [Regions(i) Regions(y) Max];
+            else
+                IndexItoY = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
+                IndexYtoI = ismember(mDataPair(:,1),NodesFromRegions{y}) & ismember(mDataPair(:,2),NodesFromRegions{i});
+                Index = IndexItoY | IndexYtoI;
+            end
+            % If there is values
+            if (sum(Index) > 0)
+                switch(RegionFunction)
+                    case 'max' 
+                        Value = max(mDataPair(Index,3));
+                    case 'mean'
+                        Value = mean(mDataPair(Index,3));
                 end
+                mFunctionDataPair(iFunction, :) = [Regions(i) Regions(y) Value];
+                iFunction = iFunction + 1;
             end
         end
     end
-    %disp(mMaxDataPair);
-    
     % Eliminate empty data
-    mMaxDataPair(mMaxDataPair(:,3) == 0,:) = [];
-    %disp(mMaxDataPair);
+    mFunctionDataPair(mFunctionDataPair(:,3) == 0,:) = [];
 end
  
  
@@ -2670,7 +2656,6 @@ function UpdateColormap(hFig)
         
         % added on Dec 20
         color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
-        %color_viz = CLim(1) + Offset(:,:).*(CLim(2) - CLim(1));
         
         iData = find(DataMask == 1);
         MeasureLinks = getappdata(hFig, 'MeasureLinks');
@@ -2733,7 +2718,6 @@ function UpdateColormap(hFig)
         
         % added on Dec 20
         color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
-        % color_viz_region = CLim(1) + Offset(:,:).*(CLim(2) - CLim(1));
         
         iData = find(RegionDataMask == 1);
         RegionLinks = getappdata(hFig,'RegionLinks');
@@ -3064,18 +3048,9 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
         % Get data
         DataPair = GetPairs(hFig);
-        % Which function
-        switch (RegionFunction)
-            case 'mean'
-                RegionDataPair = ComputeMeanMeasureMatrix(hFig, DataPair);
-            case 'max'
-                RegionDataPair = ComputeMaxMeasureMatrix(hFig, DataPair);
-                %disp(RegionDataPair);
-            otherwise
-                disp('The region function specified is not yet supported. Default to mean.');
-                RegionFunction = 'mean';
-                RegionDataPair = ComputeMeanMeasureMatrix(hFig, M);
-        end
+        
+        % Computes function across node pairs in region
+        RegionDataPair = ComputeRegionFunction(hFig, DataPair, RegionFunction);
        
         %New Feb 9: create region mean/max links from computed RegionDataPair
         BuildLinks(hFig, RegionDataPair, false); %Note: make sure to use isMeasureLink = false for this step
