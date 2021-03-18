@@ -96,7 +96,7 @@ switch lower(src)
         end
         RT1 = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
     case 'mni'
-        % Transformation of each point by indirection in the deformation field iy
+        % Transformation of each point by indirection in the deformation field y
         if ~isempty(P) && isfield(sMri,'NCS') && isfield(sMri.NCS,'y') && ~isempty(sMri.NCS.y)
             % Convert MNI => voxel space of the registration matrix
             P_reg = inv(sMri.NCS.y_vox2ras) * (P .* [1000;1000;1000;1]);
