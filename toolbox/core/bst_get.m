@@ -2515,18 +2515,29 @@ switch contextName
         iStudies = varargin{2};
         iItems = varargin{3};
         DataType = varargin{4};
-        FileNames = cell(1, length(iStudies));
+        FileNames = {};
         if ~isempty(iItems)
-            sqlConn = sql_connect();
-            for i = 1:length(iItems)
-                sFile = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', ...
-                    struct('Id', iItems(i), 'Study', iStudies(i), 'Type', DataType));
-                if isempty(sFile)
-                    continue;
+            % Try to optimize query here...
+            iItems = unique(iItems);
+            iFirst = min(iItems);
+            iLast = max(iItems);
+            
+            if (iLast - iFirst + 1) == length(iItems)
+                addQuery = ['AND Id >= ' num2str(iFirst) ' AND Id <= ' num2str(iLast)];
+            else
+                addQuery = 'AND Id IN (';
+                for i = 1:length(iItems)
+                    if i > 1
+                        addQuery = [addQuery ', '];
+                    end
+                    addQuery = [addQuery num2str(iItems(i))];
                 end
-                FileNames{i} = sFile.FileName;
+                addQuery = [addQuery ')'];
             end
-            sql_close(sqlConn);
+            
+            sFiles = sql_query([], 'select', 'FunctionalFile', 'FileName', ...
+                struct('Type', DataType), addQuery);
+            FileNames = {sFiles.FileName};
         end
         argout1 = FileNames;
 
