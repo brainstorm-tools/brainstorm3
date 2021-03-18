@@ -143,6 +143,16 @@ switch contextName
                 functionalFile.Type = type;
                 functionalFile.FileName = sFiles(iFile).FileName;
                 functionalFile.Name = sFiles(iFile).Comment;
+                
+                % Noise and data covariances used to share their type, with
+                % 1st one being noise and second one being data.
+                if strcmpi(type, 'NoiseCov')
+                    if iFile == 1
+                        functionalFile.Type = 'noisecov';
+                    else
+                        functionalFile.Type = 'ndatacov';
+                    end
+                end
 
                 % Extra fields
                 switch type
@@ -279,6 +289,26 @@ switch contextName
         
         out1 = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition);
 
+    case 'ParentCount'
+        iFile = args{1};
+        modifier = args{2};
+        count = args{3};
+        
+        qry = 'UPDATE FunctionalFile SET NumChildren = ';
+        
+        switch modifier
+            case '+'
+                qry = [qry 'NumChildren + ' num2str(count)];
+            case '-'
+                qry = [qry 'NumChildren - ' num2str(count)];
+            case '='
+                qry = num2str(count);
+            otherwise
+                error('Unsupported call.');
+        end
+        
+        sql_query(sqlConn, [qry ' WHERE Id = ' num2str(iFile)]);
+        
     otherwise
         error('Invalid context : "%s"', contextName);
 end

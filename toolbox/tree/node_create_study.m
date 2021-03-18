@@ -111,21 +111,36 @@ if ~UseDefaultChannel || isDefaultStudyNode
     end
 end
 
-%% ===== NOISE COV =====
+%% ===== NOISE/DATA COV =====
 iNoiseCovs = find(strcmp('noisecov', allTypes));
+iDataCovs  = find(strcmp('ndatacov', allTypes));
 % Display NoiseCov if : default node, or do not use default
-if (~UseDefaultChannel || isDefaultStudyNode) && ~isempty(iNoiseCovs)
+if (~UseDefaultChannel || isDefaultStudyNode)
     % Noise covariance
-    if ~isempty(sFiles(iNoiseCovs(1)).FileName)
+    if ~isempty(iNoiseCovs)
         CreateNode(nodeParent, 'noisecov', sFiles(iNoiseCovs(1)).Name, ...
             sFiles(iNoiseCovs(1)).FileName, sFiles(iNoiseCovs(1)).Id, iStudy, ...
             sFiles(iNoiseCovs(1)).NumChildren, sFiles(iNoiseCovs(1)).LastModified);
     end
     % Data covariance
-    if (length(iNoiseCovs) >= 2) && ~isempty(sFiles(iNoiseCovs(2)).FileName)
-        CreateNode(nodeParent, 'noisecov', sFiles(iNoiseCovs(2)).Name, ...
-            sFiles(iNoiseCovs(2)).FileName, sFiles(iNoiseCovs(2)).Id, iStudy, ...
-            sFiles(iNoiseCovs(2)).NumChildren, sFiles(iNoiseCovs(2)).LastModified);
+    if ~isempty(iDataCovs)
+        CreateNode(nodeParent, 'noisecov', sFiles(iDataCovs(1)).Name, ...
+            sFiles(iDataCovs(1)).FileName, sFiles(iDataCovs(1)).Id, iStudy, ...
+            sFiles(iDataCovs(1)).NumChildren, sFiles(iDataCovs(1)).LastModified);
+    end
+end
+
+%% ===== KERNELS =====
+iResults = find(strcmp('result', allTypes));
+for i = 1:length(iResults)
+    iResult = iResults(i);
+    isLink = sFiles(iResult).ExtraNum;
+    DataFile = sFiles(iResult).ExtraStr1;
+    
+    % Only add kernels at this point
+    if ~isLink && isempty(DataFile) && ~isempty(strfind(sFiles(iResult).FileName, 'KERNEL'))
+        CreateNode(nodeParent, 'kernel', sFiles(iResult).Name, sFiles(iResult).FileName, ...
+            sFiles(iResult).Id, iStudy, sFiles(iResult).NumChildren, sFiles(iResult).LastModified);
     end
 end
 
@@ -169,7 +184,6 @@ for i = 1:length(iDatas)
 end
 
 %% ===== RESULT =====
-iResults = find(strcmp('result', allTypes));
 for i = 1:length(iResults)
     iResult = iResults(i);
     isLink = sFiles(iResult).ExtraNum;
@@ -178,7 +192,8 @@ for i = 1:length(iResults)
     % Results or link
     if ~isLink
         if isempty(DataFile) && ~isempty(strfind(sFiles(iResult).FileName, 'KERNEL'))
-            nodeType = 'kernel';
+            % Kernels already added
+            continue;
         else
             nodeType = 'results';
         end

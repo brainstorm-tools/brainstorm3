@@ -138,17 +138,33 @@ switch contextName
             error('Invalid call.');
         end
 
-        cond = struct('Study', iStudy);
+        if length(args) > 2
+            cond = args{3};
+        else
+            cond = struct();
+        end
+        cond.Study = iStudy;
+        extraQry = 'ORDER BY Id';
         if isempty(sStudy)
-            cond.Type = types{1};
+            % Noise and data covariance used to be merged
+            if strcmpi(types{1}, 'noisecov')
+                extraQry = ['AND Type IN ("noisecov", "ndatacov") ' extraQry];
+            else
+                cond.Type = types{1};
+            end
         end
 
-        results = sql_query(sqlConn, 'select', 'functionalfile', '*', cond, 'ORDER BY Id');
+        results = sql_query(sqlConn, 'select', 'functionalfile', '*', cond, extraQry);
 
         for iFile = 1:length(results)
             type = results(iFile).Type;
             if ~isempty(sStudy)
-                iType = find(strcmpi(types, type), 1);
+                if strcmpi(type, 'ndatacov')
+                    iType = find(strcmpi(types, 'noisecov'), 1);
+                else
+                    iType = find(strcmpi(types, type), 1);
+                end
+                
                 if isempty(iType)
                     continue;
                 end
@@ -157,13 +173,43 @@ switch contextName
             sFile = getFuncFileStruct(type, results(iFile));
 
             if ~isempty(sStudy)
-                if isempty(sStudy.(types{iType}))
-                    sStudy.(types{iType}) = sFile;
+                % Special case to make sure noise and data covariances are
+                % in the expected order (1. noise, 2. data)
+                if strcmpi(type, 'noisecov')
+                    if isempty(sStudy.NoiseCov)
+                        sStudy.NoiseCov = sFile;
+                    else
+                        sStudy.NoiseCov(1) = sFile;
+                    end
+                elseif strcmpi(type, 'ndatacov')
+                    if isempty(sStudy.NoiseCov)
+                        sStudy.NoiseCov = repmat(db_template('NoiseCov'),1,2);
+                    end
+                    sStudy.NoiseCov(2) = sFile;
                 else
-                    sStudy.(types{iType})(end + 1) = sFile;
+                    if isempty(sStudy.(types{iType}))
+                        sStudy.(types{iType}) = sFile;
+                    else
+                        sStudy.(types{iType})(end + 1) = sFile;
+                    end
                 end
             else
-                sAnatFiles(end + 1) = sFile;
+                % Special case to make sure noise and data covariances are
+                % in the expected order (1. noise, 2. data)
+                if strcmpi(type, 'noisecov')
+                    if isempty(sAnatFiles)
+                        sAnatFiles = sFile;
+                    else
+                        sAnatFiles(1) = sFile;
+                    end
+                elseif strcmpi(type, 'ndatacov')
+                    if isempty(sAnatFiles)
+                        sAnatFiles = repmat(db_template('NoiseCov'),1,2);
+                    end
+                    sAnatFiles(2) = sFile;
+                else
+                    sAnatFiles(end + 1) = sFile;
+                end
             end
         end
 
@@ -340,6 +386,23 @@ switch contextName
         
         varargout{1} = sql_query(sqlConn, 'select', 'Study', fields, [], ...
             'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")');
+        
+    % Usage: iSubject = db_get('SubjectFromFunctionalFile', FileId/FileName)
+    case 'SubjectFromFunctionalFile'
+        qry = ['SELECT Subject FROM FunctionalFile ' ...
+            'LEFT JOIN Study ON Study.Id = FunctionalFile.Study WHERE FunctionalFile.'];
+        if ischar(args{1})
+            qry = [qry 'FileName = "' args{1} '"'];
+        else
+            qry = [qry 'Id = ' num2str(args{1})];
+        end
+        result = sql_query(sqlConn, qry);
+        if result.next()
+            varargout{1} = result.getInt('Subject');
+        else
+            varargout{1} = [];
+        end
+        result.close();
         
     otherwise
         error('Invalid context : "%s"', contextName);
