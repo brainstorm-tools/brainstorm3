@@ -93,7 +93,7 @@ switch(lower(extension))
         % Read image file
         [fid, message] = fopen(imgFilename, 'r', byteOrder);
         if fid == -1, disp(sprintf('in_mri_nii : %s', message)); return; end
-        data = nifti_read_img(fid, hdr);
+        data = nifti_read_img(fid, hdr, 0);
         fclose(fid);
         
     otherwise
