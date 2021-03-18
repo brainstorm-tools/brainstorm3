@@ -1682,7 +1682,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         % arrows for directional links
         if (IsDirectionalData)
             
-            [arrow1, arrow2] = arrowh(x, y, AllNodes(node1).Color, 100, 50, i, isMeasureLink, node1, node2, Xextend, Yextend);
+            [arrow1, arrow2] = arrowhead(x, y, AllNodes(node1).Color, 100, 50, i, isMeasureLink, node1, node2, Xextend, Yextend);
 
             % store arrows
             if(i==1)
@@ -1824,8 +1824,8 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
     
 end
 
-%% ARROWH   Draws a solid 2D arrow head in current plot.
-function [handle1, handle2] = arrowh(x,y,clr,ArSize,Where,Index,isMeasureLink,node1,node2,Xextend,Yextend)
+% Draws 2 solid arrowheads for each link
+function [handle1, handle2] = arrowhead(x,y,clr,ArSize,Where,Index,isMeasureLink,node1,node2,Xextend,Yextend)
 
 ArWidth = 0.75;
 
@@ -2712,9 +2712,9 @@ function UpdateColormap(hFig)
             Offset = (abs(RegionDataPair(RegionDataMask,3)) - Min) ./ (Max - Min);
         end
         % Normalize within the colormap range 
-        [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
-%         StartColor = CMap(2,:);
-%         EndColor = CMap(end-1,:);
+        % [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
+        StartColor = CMap(2,:);
+        EndColor = CMap(end-1,:);
         
         % added on Dec 20
         color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
