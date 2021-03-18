@@ -175,6 +175,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         if ismember(nodeType, {'condition', 'rawcondition', 'study', 'defaultstudy'})
             CreateStudyNode(nodeExpand);
             SelectStudyNode(nodeExpand);
+        elseif strcmp(nodeType, 'folder')
+            % Subfolder
+            CreateStudyNode(nodeExpand);
         elseif strcmp(nodeType, 'studysubject')
             CreateSubjectNode(nodeExpand, 0);
         elseif strcmp(nodeType, 'subject')
@@ -505,7 +508,13 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
             % Create node sub-tree
             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);
             isExpandTrials = 1;
-            node_create_study(nodeStudy, [], sStudy, iStudy, [], isExpandTrials, UseDefaultChannel, iSearch);
+            % Subfolder = ParentFile
+            if strcmp(nodeStudy.getType(), 'folder')
+                iFile = nodeStudy.getItemIndex();
+            else
+                iFile = [];
+            end
+            node_create_study(nodeStudy, [], sStudy, iStudy, iFile, isExpandTrials, UseDefaultChannel, iSearch);
         end
     end
     
@@ -936,10 +945,13 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
     if (nargin <= 2)
         % Find file in database
         FileName = nodeTypes;
-        [sStudy, iStudy, iFile, nodeTypes] = bst_get('AnyFile', FileName);
-        if isempty(sStudy)
+        sFile = sql_query([], 'select', 'FunctionalFile', {'Id', 'Study'}, struct('FileName', file_short(FileName)));
+        if isempty(sFile)
             return
         end
+        iFile = sFile.Id;
+        iStudy = sFile.Study;
+        nodeTypes = file_gettype(FileName);
         isExpand = 1;
     else
         isExpand = 0;
@@ -1003,8 +1015,12 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
         for i = 1:nodeStudy.getChildCount()
             % Get child node
             nodeChild = nodeStudy.getChildAt(i-1);
-            % If child node is a trial list: expand it and look again for data file
-            if ismember(char(nodeChild.getType()), {'datalist', 'matrixlist'})
+            % If child node is a trial list or subfolder: expand it and look again for data file
+            if strcmp(nodeChild.getType(), 'folder')
+                CreateStudyNode(nodeChild);
+                nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile );
+                return;
+            elseif ismember(char(nodeChild.getType()), {'datalist', 'matrixlist'})
                 UpdateNode('Study', iStudy, 1);
                 nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile );
                 return;
@@ -1117,9 +1133,6 @@ function destFile = PasteNode( targetNode )
     elseif (iTarget == 0)
         destFile = {};
         return;
-    else
-        sStudyTarget = bst_get('Study', iTarget);
-        [sSubjectTargetRaw, iSubjectTargetRaw] = bst_get('Subject', sStudyTarget.BrainStormSubject, 1);
     end
     % Channel/Headmodel/NoiseCov/Kernel: Make sure that target study is the right one
     if ismember(firstSrcType, {'channel', 'headmodel', 'noisecov', 'ndatacov', 'kernel'})
@@ -1145,14 +1158,26 @@ function destFile = PasteNode( targetNode )
         srcFile = char(srcNodes(i).getFileName());
         srcType = lower(char(srcNodes(i).getType()));
         iSrcStudy = srcNodes(i).getStudyIndex();
-        % Cannot copy (channel/noisecov/MRI) or move to the same folder
-        if (isCut || ismember(srcType, {'channel', 'noisecov', 'ndatacov', 'anatomy'})) && (iSrcStudy == iTarget)
-            bst_error('Source and destination folders are the same.', 'Clipboard', 0);
-            destFile = {};
-            return;
+        
+        % Special case if we're moving to a subfolder
+        if strcmpi(targetNode(1).getType(), 'folder')
+            % Cannot move channel, headmodel, kernel or noisecov to subfolder
+            if ismember(srcType, {'channel', 'noisecov', 'ndatacov', 'headmodel', 'kernel'})
+                bst_error('This type of file cannot be inside a subfolder.', 'Clipboard', 0);
+                destFile = {};
+                return;
+            end
+            destFile{i} = CopyFile(iTarget, srcFile, srcType, iSrcStudy, [], targetNode(1).getItemIndex());
+        else
+            % Cannot copy (channel/noisecov/MRI) or move to the same folder
+            if (isCut || ismember(srcType, {'channel', 'noisecov', 'ndatacov', 'anatomy'})) && (iSrcStudy == iTarget)
+                bst_error('Source and destination folders are the same.', 'Clipboard', 0);
+                destFile = {};
+                return;
+            end
+            % Copy file
+            destFile{i} = CopyFile(iTarget, srcFile, srcType, iSrcStudy);
         end
-        % Copy file
-        destFile{i} = CopyFile(iTarget, srcFile, srcType, iSrcStudy);
         if isempty(destFile{i})
             bst_progress('stop');
             return;
@@ -1162,16 +1187,11 @@ function destFile = PasteNode( targetNode )
             bst_progress('inc', 1);
         end
     end
-    % Reloading the target study
-    if isAnatomy
-        db_reload_subjects(iTarget);
-    else
-        db_reload_studies(iTarget);
-    end
     % If moving files instead of copying    
     if isCut
         % Delete source file
-        node_delete(srcNodes, 0);
+        %TODO: Implement node_delete
+        %node_delete(srcNodes, 0);
         % Empty clipboard after moving
         bst_set('Clipboard', []);
     end
@@ -1185,18 +1205,21 @@ end
 %% ===== COPY FILE =====
 % USAGE:   destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTargetRaw)
 %          destFile = CopyFile(iTarget, srcFile)
-function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTargetRaw)
+function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTargetRaw, ParentFile)
     % File info is not passed in input
-    if (nargin < 5)
-        [sStudySrc, iSrcStudy, iSrcFile, srcType] = bst_get('AnyFile', srcFile);
-        sStudyTarget = bst_get('Study', iTarget);
-        [sSubjectTargetRaw, iSubjectTargetRaw] = bst_get('Subject', sStudyTarget.BrainStormSubject, 1);
+    sqlConn = sql_connect();
+    if nargin < 5 || isempty(sSubjectTargetRaw)
+        iSubjectTargetRaw = db_get('SubjectFromFunctionalFile', sqlConn, srcFile);
+        sSubjectTargetRaw = db_get('Subject', sqlConn, iSubjectTargetRaw);
+    end
+    if nargin < 6
+        ParentFile = [];
     end
     isAnatomy = ismember(srcType, {'anatomy','cortex','scalp','innerskull','outerskull','fibers','fem','other'});
     % Get source subject
     if ~isAnatomy
-        sStudySrc   = bst_get('Study', iSrcStudy);
-        [sSubjectSrcRaw, iSubjectSrcRaw] = bst_get('Subject', sStudySrc.BrainStormSubject, 1);
+        iSubjectSrcRaw = db_get('SubjectFromStudy', sqlConn, iSrcStudy);
+        sSubjectSrcRaw = db_get('Subject', iSubjectSrcRaw);
         % Check if the subject changes
         UseDefaultAnatSrc    = (sSubjectSrcRaw.UseDefaultAnat == 1)    || (iSubjectSrcRaw == 0);
         UseDefaultAnatTarget = (sSubjectTargetRaw.UseDefaultAnat == 1) || (iSubjectTargetRaw == 0);
@@ -1209,6 +1232,7 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
         isSameSubjAnat = (iSrcStudy == iTarget);
         isSameSubjChan = (iSrcStudy == iTarget);
     end
+    sql_close(sqlConn);
     % Noise covariance: copy using db_set_noisecov
     if strcmpi(srcType, 'noisecov')
         destFile = db_set_noisecov(iSrcStudy, iTarget, 0);
@@ -1259,7 +1283,7 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
         src = srcFile;
     end
     % Copy file
-    destFile = db_add(iTarget, src, 0);
+    destFile = db_add(iTarget, src, 1, ParentFile);
     if isempty(destFile)
         return
     end

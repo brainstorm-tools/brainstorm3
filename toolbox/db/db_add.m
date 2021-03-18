@@ -1,4 +1,4 @@
-function OutputFile = db_add(iTarget, InputFile, isReload)
+function OutputFile = db_add(iTarget, InputFile, isReload, ParentFile)
 % DB_ADD: Create a new file in a given study.
 %
 % USAGE:  db_add(iStudy/iSubject, InputFile, isReload)
@@ -28,6 +28,9 @@ function OutputFile = db_add(iTarget, InputFile, isReload)
 %% ===== GET INPUT FILE =====
 if (nargin < 3) || isempty(isReload)
     isReload = 1;
+end
+if nargin < 4
+    ParentFile = [];
 end
 % USAGE:  db_add(iTarget)
 if (nargin < 2) || isempty(InputFile)
@@ -122,17 +125,28 @@ end
 % Get protocol folders
 ProtocolInfo = bst_get('ProtocolInfo');
 % Full output filename
+sqlConn = sql_connect();
 if isAnatomy
     % Get destination study
-    sSubject = bst_get('Subject', iTarget);
+    sSubject = sql_query(sqlConn, 'select', 'Subject', 'FileName', struct('Id', iTarget));
     % Build full filename
     OutputFileFull = file_unique(bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sSubject.FileName), OutputFile));
     OutputFile = file_short(OutputFileFull);
 else
-    % Get destination study
-    sStudy = bst_get('Study', iTarget);
+    % Get parent file
+    if ~isempty(ParentFile)
+        sParent = sql_query(sqlConn, 'select', 'FunctionalFile', {'FileName', 'Type'}, struct('Id', ParentFile));
+        if strcmpi(sParent.Type, 'folder')
+            ParentFolder = sParent.FileName;
+        else
+            ParentFolder = bst_fileparts(sParent.FileName);
+        end
+    else
+        sStudy = sql_query(sqlConn, 'select', 'Study', 'FileName', struct('Id', iTarget));
+        ParentFolder = bst_fileparts(sStudy.FileName);
+    end
     % Build full filename
-    OutputFileFull = file_unique(bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sStudy.FileName), OutputFile));
+    OutputFileFull = file_unique(bst_fullfile(ProtocolInfo.STUDIES, ParentFolder, OutputFile));
     OutputFile = file_short(OutputFileFull);
 end
 
@@ -148,16 +162,19 @@ if ismember(fileType, {'subjectimage', 'channel', 'noisecov', 'ndatacov'})
 %                 delfile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(1).FileName);
 %             end
         case 'channel'
-            if ~isempty(sStudy.Channel)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Channel(1).FileName);
+            sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Study', iTarget, 'Type', 'channel'));
+            if ~isempty(sChannel)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sChannel.FileName);
             end
         case 'noisecov'
-            if ~isempty(sStudy.NoiseCov) && ~isempty(sStudy.NoiseCov(1).FileName)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.NoiseCov(1).FileName);
+            sNoiseCov = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Study', iTarget, 'Type', 'noisecov'));
+            if ~isempty(sNoiseCov)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sNoiseCov(1).FileName);
             end
         case 'ndatacov'
-            if ~isempty(sStudy.NoiseCov) && (length(sStudy.NoiseCov) >= 2) && ~isempty(sStudy.NoiseCov(2).FileName)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sStudy.NoiseCov(2).FileName);
+            sDataCov = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Study', iTarget, 'Type', 'ndatacov'));
+            if ~isempty(sDataCov)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sDataCov(1).FileName);
             end
     end
     % Replace file
@@ -177,54 +194,44 @@ end
 %% ===== ADD COMMENT TAG =====
 matVer = 'v7';
 if isAnatomy
-    % Get subject structure
-    sSubject = bst_get('Subject', iTarget);
     % Update comment with a file tag, to make it unique
     switch (fileType)
         case 'subjectimage'
             % Nothing to do: file is replaced anyway
         case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers', 'fem'}
-            sMat.Comment = file_unique(sMat.Comment, {sSubject.Surface.Comment});
+            sFiles = sql_query(sqlConn, 'select', 'AnatomyFile', 'Name', struct('Subject', iTarget));
+            sMat.Comment = file_unique(sMat.Comment, {sFiles.Name});
     end
 else
     % Add comment if missing
     if isempty(sMat.Comment)
         [tmp__, sMat.Comment] = bst_fileparts(InputFile);
     end
-    % Get study structure
-    sStudy = bst_get('Study', iTarget);
-    % Update comment with a file tag, to make it unique
-    switch (fileType)
-        case 'data'
-            sMat.Comment = file_unique(sMat.Comment, {sStudy.Data.Comment});
-            matVer = 'v6';
-        case 'headmodel'
-            sMat.Comment = file_unique(sMat.Comment, {sStudy.HeadModel.Comment});
-        case 'results'
-            if ~isempty(sMat.DataFile)
-                iRes = find(file_compare(sMat.DataFile, {sStudy.Result.DataFile}));
-                if isempty(iRes)
-                    iRes = find(cellfun(@isempty, {sStudy.Result.DataFile}));
-                end
-                if ~isempty(iRes)
-                    sMat.Comment = file_unique(sMat.Comment, {sStudy.Result(iRes).Comment});
-                end
-            else
-                sMat.Comment = file_unique(sMat.Comment, {sStudy.Result.Comment});
-            end
-            matVer = 'v6';
-        case 'stat'
-            sMat.Comment = file_unique(sMat.Comment, {sStudy.Stat.Comment});
-            matVer = 'v6';
-        case 'dipoles'
-            sMat.Comment = file_unique(sMat.Comment, {sStudy.Dipoles.Comment});
-        case 'timefreq'
-            sMat.Comment = file_unique(sMat.Comment, {sStudy.Timefreq.Comment});
-            matVer = 'v6';
-        case 'matrix'
-            sMat.Comment = file_unique(sMat.Comment, {sStudy.Matrix.Comment});
-            matVer = 'v6';
+    
+    % Get names of other files in same folder to ensure it's unique
+    qryCond = struct('Study', iTarget, 'Type', fileType);
+    if isempty(ParentFile)
+        extraQry = 'AND ParentFile IS NULL';
+    else
+        qryCond.ParentFile = ParentFile;
+        extraQry = '';
     end
+    % Special case: only check result files with same parent data file
+    if strcmpi(fileType, 'results')
+        if ~isempty(sMat.DataFile)
+            qryCond.ExtraStr1 = sMat.DataFile;
+        else
+            extraQry = [extraQry ' AND ExtraStr1 IS NULL'];
+        end
+    end
+    sFiles = sql_query(sqlConn, 'select', 'FunctionalFile', 'Name', qryCond, extraQry);
+    
+    if ismember(fileType, {'data', 'results', 'stat', 'timefreq', 'matrix'})
+        matVer = 'v6';
+    end
+    
+    % Update comment with a file tag, to make it unique
+    sMat.Comment = file_unique(sMat.Comment, {sFiles.Name});
 end
 
 %% ===== ADD NEW FILE TO DATABASE =====
@@ -237,17 +244,42 @@ else
 end
 % Save new file
 bst_save(OutputFileFull, sMat, matVer);
+% Add to database
+if isAnatomy
+    sFile = db_template('AnatomyFile');
+    sFile.Subject = iTarget;
+    sFile.Type = fileType;
+    sFile.FileName = OutputFile;
+    sFile.Name = sMat.Comment;
+    %TODO: sFile.SurfaceType
+    sql_query(sqlConn, 'insert', 'AnatomyFile', sFile);
+else
+    sFile = db_template('FunctionalFile');
+    sFile.Study = iTarget;
+    sFile.ParentFile = ParentFile;
+    sFile.Type = fileType;
+    sFile.FileName = OutputFile;
+    sFile.Name = sMat.Comment;
+    switch fileType
+        case 'data'
+            sFile.SubType = sMat.DataType;
+            sFile.ExtraNum = 0; % BadTrial
+        otherwise
+            error('Unsupported for now.');
+    end
+    %TODO, get rest of metadata from file (see db_parse_study)
+    db_set(sqlConn, 'FunctionalFile', 'insert', sFile);
+    % Update count of parent file
+    db_set(sqlConn, 'ParentCount', ParentFile, '+', 1);
+end
+sql_close(sqlConn);
+
 % Close progress bar
 if ~isProgress
     bst_progress('stop');
 end
-% Reload output study
+% Refresh display
 if isReload
-    if isAnatomy
-        db_reload_subjects(iTarget);
-    else
-        db_reload_studies(iTarget);
-    end
     panel_protocols('UpdateTree');
     panel_protocols('SelectNode', [], OutputFileFull);
 end

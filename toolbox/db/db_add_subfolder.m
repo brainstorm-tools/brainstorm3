@@ -1,4 +1,4 @@
-function iItems = db_add_subfolder(iStudies, FolderName, isRefresh)
+function iItems = db_add_subfolder(iStudies, FolderName, iParent, isRefresh)
 % DB_ADD_SUBFOLDER: Add a subfolder to one or multiple studies
 %
 % USAGE:  iItems = db_add_subfolder(iStudies, FolderName, isRefresh)
@@ -8,6 +8,7 @@ function iItems = db_add_subfolder(iStudies, FolderName, isRefresh)
 %     - iStudies   : One or more study IDs
 %     - FolderName : String, name of the subfolder to add.
 %                    If empty or ommitted, asked to the user
+%     - iParent    : File ID of the parent folder, or empty if directly in study
 %     - isRefresh  : If 0, tree is not refreshed after adding condition
 %                    If 1, tree is refreshed
 % OUTPUT: 
@@ -37,8 +38,11 @@ function iItems = db_add_subfolder(iStudies, FolderName, isRefresh)
 
 %% ===== PARSE INPUTS =====
 iItems = [];
-if (nargin < 3) || isempty(isRefresh)
+if (nargin < 4) || isempty(isRefresh)
     isRefresh = 1;
+end
+if (nargin < 3)
+    iParent = [];
 end
 if (nargin < 2) || isempty(FolderName)
     FolderName = java_dialog('input', 'Folder name: ', 'New subfolder', [], 'NewFolder');
@@ -59,20 +63,29 @@ isModified = 0;
 %% ===== CREATE FOLDERS =====
 sqlConn = sql_connect();
 for iStudy = iStudies
-    % Get Subject & Study names
-    result = sql_query(sqlConn, ['SELECT Study.Name AS StudyName, Subject.Name AS SubjectName ' ...
-        'FROM Study LEFT JOIN Subject ON Subject.Id = Study.Subject ' ...
-        'WHERE Study.Id = ' num2str(iStudy)]);
-    result.next();
-    SubjectName = char(result.getString('SubjectName'));
-    StudyName   = char(result.getString('StudyName'));
-    result.close();
-    
     sFile = db_template('FunctionalFile');
     sFile.Study = iStudy;
     sFile.Type = 'folder';
     sFile.Name = FolderName;
-    sFile.FileName = bst_fullfile(SubjectName, StudyName, FolderName);
+    
+    if ~isempty(iParent)
+        sFile.ParentFile = iParent;
+        
+        % Get parent name
+        sParent = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Id', iParent));
+        sFile.FileName = bst_fullfile(sParent.FileName, FolderName);
+    else
+        % Get Subject & Study names
+        result = sql_query(sqlConn, ['SELECT Study.Name AS StudyName, Subject.Name AS SubjectName ' ...
+            'FROM Study LEFT JOIN Subject ON Subject.Id = Study.Subject ' ...
+            'WHERE Study.Id = ' num2str(iStudy)]);
+        result.next();
+        SubjectName = char(result.getString('SubjectName'));
+        StudyName   = char(result.getString('StudyName'));
+        result.close();
+    
+        sFile.FileName = bst_fullfile(SubjectName, StudyName, FolderName);
+    end
     
     % Create folder
     FolderPath = bst_fullfile(ProtocolInfo.STUDIES, sFile.FileName);

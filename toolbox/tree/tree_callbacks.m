@@ -2296,6 +2296,15 @@ switch (lower(action))
 %% ===== POPUP: MATRIX LIST =====
             case 'matrixlist'
                 % Nothing for now
+                
+%% ===== POPUP: SUBFOLDER =====
+            case 'folder'
+                if ~bst_get('ReadOnly')
+                    iStudy = bstNodes(1).getStudyIndex();
+                    iFolder = bstNodes(1).getItemIndex();
+                    gui_component('MenuItem', jPopup, [], 'New subfolder', IconLoader.ICON_FOLDER_NEW, [], @(h,ev)bst_call(@db_add_subfolder, iStudy, [], iFolder));
+                end
+                disp('todo');
         end
         
 %% ===== POPUP: COMMON MENUS =====

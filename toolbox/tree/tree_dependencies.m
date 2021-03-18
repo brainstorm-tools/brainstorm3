@@ -94,6 +94,7 @@ end
 try
     % Define target studies
     iTargetStudies = [];
+    iParentFiles   = [];
     iDepStudies = [];
     iDepItems   = [];
     % Process all the selected nodes
@@ -108,6 +109,7 @@ try
                 [uniqueSubjects, iUniqueSubjects] = sort({ProtocolSubjects.Subject.Name});
                 % Add inter-subject node
                 iTargetStudies = [iTargetStudies, -2];
+                iParentFiles = [iParentFiles, 0];
                 % Process each subject
                 for iSubj = 1:length(uniqueSubjects)
                     % Get subject filename
@@ -116,6 +118,7 @@ try
                     % Get all the studies for this subject
                     [sStudies, iStudies] = bst_get('StudyWithSubject', SubjectFile, 'intra_subject');
                     iTargetStudies = [iTargetStudies, iStudies];
+                    iParentFiles = [iParentFiles, 0];
                 end
 
             % ==== SUBJECT ====
@@ -125,10 +128,12 @@ try
                     % Get all the studies related to this subject
                     [sStudies, iStudies] = bst_get('StudyWithSubject', nodeFileNames{iNode}, 'intra_subject');
                     iTargetStudies = [iTargetStudies, iStudies];
+                    iParentFiles = [iParentFiles, 0];
                 % Else : study node (in condition/subject display, StudyIndex = 0)
                 else
                     % Just add the study
                     iTargetStudies = [iTargetStudies, nodeStudies(iNode)];
+                    iParentFiles = [iParentFiles, 0];
                 end
 
             % ==== STUDY ====
@@ -137,22 +142,33 @@ try
                 if (nodeStudies(iNode) == 0)
                     [sStudies, iStudies] = bst_get('StudyWithCondition', nodeFileNames{iNode});
                     iTargetStudies = [iTargetStudies, iStudies];
+                    iParentFiles = [iParentFiles, 0];
                 % Else: regular study
                 else
                     % Just add the study
                     iTargetStudies = [iTargetStudies, nodeStudies(iNode)];
+                    iParentFiles = [iParentFiles, 0];
                 end
             % ==== CONDITION ====
             case {'condition', 'rawcondition'}
                 % Get all the studies related with the condition name
                 [sStudies, iStudies] = bst_get('StudyWithCondition', nodeFileNames{iNode});
                 iTargetStudies = [iTargetStudies, iStudies];
+                iParentFiles = [iParentFiles, 0];
+                
+            % ==== SUBFOLDER ====
+            case 'folder'
+                %TODO
+                % Add the study and ParentFile
+                iTargetStudies = [iTargetStudies, nodeStudies(iNode)];
+                iParentFiles = [iParentFiles, nodeSubItems(iNode)];
 
             % ==== HEADMODEL ====
             case 'headmodel'
                 % If looking for headmodel in headmodel, return headmodel
                 if strcmpi(targetNodeType, 'headmodel')
                      iTargetStudies = [iTargetStudies, nodeStudies(iNode)];
+                     iParentFiles = [iParentFiles, 0];
                 end
 
             % ==== DATA ====
@@ -515,28 +531,25 @@ if ~isempty(iTargetStudies)
     iStudies = iTargetStudies;
     sStudies = bst_get('Study', iStudies);
     for i = 1:length(iStudies)
+        if iParentFiles(i) > 0
+            qryCond = struct('ParentFile', iParentFiles(i));
+        else
+            qryCond = struct();
+        end
         % Items to include depend on the node type to include
         switch lower(targetNodeType)
             case 'data'
+                qryCond.Type = 'data';
                 % Remove bad trials
                 if ~GetBadTrials
-                    iFoundData = find([sStudies(i).Data.BadTrial] == 0);
-                else
-                    iFoundData = 1:length(sStudies(i).Data);
+                    qryCond.ExtraNum = 0;
                 end
+                sFiles = sql_query([], 'select', 'FunctionalFile', 'Id', qryCond);
+                
                 % Add data files to list
-                if ~isempty(iFoundData)
-                    % Check file filters
-                    if ~isempty(NodelistOptions)
-                        % Get specific Data/RawData type
-                        FileType = {sStudies(i).Data(iFoundData).DataType};
-                        iRaw = strcmpi(FileType, 'raw');
-                        FileType(iRaw) = {'rawdata'};
-                        FileType(~iRaw) = {'data'};
-                        iFoundData = iFoundData(isFileSelected({sStudies(i).Data(iFoundData).FileName}, {sStudies(i).Data(iFoundData).Comment}, NodelistOptions, FileType));
-                    end
-                    iDepStudies = [iDepStudies, repmat(iStudies(i), 1, length(iFoundData))];
-                    iDepItems   = [iDepItems,   iFoundData];
+                if ~isempty(sFiles)
+                    iDepStudies = [iDepStudies, repmat(iStudies(i), 1, length(sFiles))];
+                    iDepItems   = [iDepItems,   [sFiles.Id]];
                 end
 
             case 'results'
