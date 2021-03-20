@@ -1900,12 +1900,20 @@ end
 % draw second arrow at tip of second half of the link
 x = pts_line(1:index,1);
 y = pts_line(1:index,2);
+
+if (size(x) < 2) 
+    x = pts_line(1:index+1,1);
+end
+if (size(y) < 2) 
+    y = pts_line(1:index+1,2);
+end
+
 Where = 100;
 
 % create second arrowhead
 j = floor(length(x)*Where/100); %-- determine that location
 if j >= length(x), j = length(x) - 1; end
-% 		if j == 0, j = 1; end
+if j == 0, j = 1; end
 x1 = x(j); x2 = x(j+1); y1 = y(j); y2 = y(j+1);
 
 %-- determine angle for the rotation of the triangle
@@ -3039,16 +3047,6 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
        
         %New Feb 9: create region mean/max links from computed RegionDataPair
         BuildLinks(hFig, RegionDataPair, false); %Note: make sure to use isMeasureLink = false for this step
-        
-        % update size and transparency
-        LinkSize = getappdata(hFig, 'LinkSize');
-        SetLinkSize(hFig, LinkSize);
-        if (isappdata(hFig,'LinkTransparency'))
-            transparency = getappdata(hFig,'LinkTransparency');
-        else
-            transparency = 0;
-        end
-        SetLinkTransparency(hFig, transparency);
 
         % Update figure value
         bst_figures('SetFigureHandleField', hFig, 'RegionDataPair', RegionDataPair);
@@ -3064,6 +3062,16 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         
         % Update color map
         UpdateColormap(hFig);
+        
+        % update size and transparency
+        LinkSize = getappdata(hFig, 'LinkSize');
+        SetLinkSize(hFig, LinkSize);
+        if (isappdata(hFig,'LinkTransparency'))
+            transparency = getappdata(hFig,'LinkTransparency');
+        else
+            transparency = 0;
+        end
+        SetLinkTransparency(hFig, transparency);
     end
 end
  
