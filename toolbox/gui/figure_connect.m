@@ -1649,7 +1649,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         OGL.addPrecomputedMeasureLinks(aSplines);
         % Get link size
         LinkSize = getappdata(hFig, 'LinkSize');
-        disp(LinkSize);
         % Set link width
         SetLinkSize(hFig, LinkSize);
         % Set link transparency

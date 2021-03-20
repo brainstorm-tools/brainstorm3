@@ -2113,17 +2113,13 @@ function sGroups = AssignGroupBasedOnCentroid(RowLocs, RowNames, sGroups, Surfac
     end
 end
  
-%TODO: update to same logic as loadFigurePlot
+% Completed March 20
 function UpdateFigurePlot(hFig)
     disp('Entered UpdateFigurePlot');
     % Progress bar
     bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected rows
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
-    % Get OpenGL handle
-   % OGL = getappdata(hFig, 'OpenGLDisplay');
-    % Clear links
-  %  OGL.clearLinks();
  
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
@@ -2147,17 +2143,14 @@ function UpdateFigurePlot(hFig)
     NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
     % Build Datapair path based on region
     MeasureLinks = BuildRegionPath(hFig, NodePaths, DataPair);
-    % Compute spline for MeasureLinks based on Vertices position
-    aSplines = ComputeSpline(hFig, MeasureLinks, Vertices);
+
+    %% ==== Re-Create and Display Links =======
     
-    if ~isempty(aSplines)
-        % Add on Java side @TODO
-       % OGL.addPrecomputedMeasureLinks(aSplines);
-        % Set link width
-        SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
-        % Set link transparency
-        SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
-    end
+    % Create links from computed DataPair
+    BuildLinks(hFig, DataPair, true);
+    LinkSize = getappdata(hFig, 'LinkSize');
+    SetLinkSize(hFig, LinkSize);
+    SetLinkTransparency(hFig, 0.00);
     
     %% ===== FILTERS =====
     Refresh = 0;
@@ -2199,15 +2192,12 @@ function UpdateFigurePlot(hFig)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
     
- %   RenderInQuad = getappdata(hFig, 'RenderInQuad');
- %   OGL.renderInQuad(RenderInQuad);
-    
     RefreshTitle(hFig);
     
     % Set background color
     SetBackgroundColor(hFig, GetBackgroundColor(hFig));
     % Update colormap
-%     UpdateColormap(hFig);
+    UpdateColormap(hFig);
     % Redraw selected nodes
     SetSelectedNodes(hFig, selNodes, 1, 1);
     % Update panel
@@ -2651,8 +2641,6 @@ function UpdateColormap(hFig)
         end
         % Interpolate
         [StartColor, EndColor] = InterpolateColorMap(hFig, DataPair(DataMask,:), CMap, CLim);
-        %StartColor = CMap(2,:);
-        %EndColor = CMap(end-1,:);
         
         % added on Dec 20
         color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
@@ -2712,9 +2700,7 @@ function UpdateColormap(hFig)
             Offset = (abs(RegionDataPair(RegionDataMask,3)) - Min) ./ (Max - Min);
         end
         % Normalize within the colormap range 
-        % [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
-        StartColor = CMap(2,:);
-        EndColor = CMap(end-1,:);
+        [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
         
         % added on Dec 20
         color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
@@ -2770,7 +2756,6 @@ function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, L
     % Normalize and interpolate
     a = (DataPair(:,3)' - Limit(1)) / (Limit(2) - Limit(1));
     b = linspace(0,1,size(ColorMap,1));
-    % b = linspace(Limit(1),Limit(2),size(ColorMap,1));
     m = size(a,2);
     n = size(b,2);
     [tmp,p] = sort([a,b]);
