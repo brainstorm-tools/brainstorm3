@@ -73,12 +73,18 @@ end
 
 %% Read the Spikes' events
 
-if ~isempty(nwb2.units.electrodes_index)
-	SpikesExist = 1;
+%% Read the Spikes' events
+if ~isempty(nwb2.units)
+    if ~isempty(nwb2.units.electrodes_index)
+        SpikesExist = 1;
+    else
+        warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.electrodes_index" that assigns spikes to specific electrodes is needed')
+        SpikesExist = 0;
+    end
 else
-    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.electrodes_index" that assigns spikes to specific electrodes is needed')
     SpikesExist = 0;
 end
+
 
 if SpikesExist  
     % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
