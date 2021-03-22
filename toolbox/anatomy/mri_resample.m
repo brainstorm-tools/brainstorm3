@@ -1,14 +1,15 @@
-function [sMriNew, Transf, errMsg] = mri_resample(MriFile, CubeDim, Voxsize)
+function [sMriNew, Transf, errMsg] = mri_resample(MriFile, CubeDim, Voxsize, Method)
 % MRI_RESAMPLE:  Reslice a volume using new dimensions and voxel resolution.
 %
-% USAGE:     [sMriNew, Transf, errMsg] = mri_resample(sMri,    CubeDim=[ask], Voxsize=[ask])
-%         [MriFileNew, Transf, errMsg] = mri_resample(MriFile, CubeDim=[ask], Voxsize=[ask])
+% USAGE:     [sMriNew, Transf, errMsg] = mri_resample(sMri,    CubeDim=[ask], Voxsize=[ask], Method='linear')
+%         [MriFileNew, Transf, errMsg] = mri_resample(MriFile, CubeDim=[ask], Voxsize=[ask], Method='linear')
 %
 % INPUTS:
 %    - MriFile : Relative path to a Brainstorm MRI file (containing a Braintsorm MRI structure)
 %    - sMri    : Brainstorm MRI structure (fields Cube, Voxsize, SCS, NCS...) 
 %    - CubeDim : Dimensions [x,y,z] in voxels of the output volume
 %    - Voxsize : Resolution [x,y,z] in millimeters of one voxel of the output volume
+%    - Method  : Interpolation method: {'linear', 'spline', 'cubic', 'nearest'}
 %
 % OUTPUTS:
 %    - MriFileNew : Relative path to the new Brainstorm MRI file (containing the structure sMriNew)
@@ -55,14 +56,18 @@ elseif ischar(MriFile)
 else
     error('Invalid call.');
 end
+% Resampling method
+if (nargin < 4) || isempty(Method)
+    Method = 'linear';
+end
 % Ask for destination sampling
 oldCubeDim = size(sMri.Cube(:,:,:,1));
 if (nargin < 3) || isempty(CubeDim) || isempty(Voxsize)
     % Default values: current ones
     oldVoxsize = sMri.Voxsize;
     % Ask for size and resolution
-    res = java_dialog('input', {'New MRI dimensions in voxels: [x,y,z]', 'New MRI resolution in millimeters: [x,y,z]'}, 'Resample MRI', [], ...
-                      {sprintf('[%d, %d, %d]', oldCubeDim), sprintf('[%1.4f, %1.4f, %1.4f]', oldVoxsize)});
+    res = java_dialog('input', {'New MRI dimensions in voxels: [x,y,z]', 'New MRI resolution in millimeters: [x,y,z]', 'Method: linear, spline, cubic, nearest'}, 'Resample MRI', [], ...
+                      {sprintf('[%d, %d, %d]', oldCubeDim), sprintf('[%1.4f, %1.4f, %1.4f]', oldVoxsize), 'linear'});
     % If user cancelled: return
     if isempty(res)
         if ~isProgress
@@ -73,6 +78,7 @@ if (nargin < 3) || isempty(CubeDim) || isempty(Voxsize)
     % Get new values
     CubeDim = str2num(res{1});
     Voxsize = str2num(res{2});
+    Method = res{3};
     if (length(CubeDim) ~= 3) || (length(Voxsize) ~= 3)
         errMsg = 'Invalid inputs.';
         if ~isProgress
@@ -82,6 +88,13 @@ if (nargin < 3) || isempty(CubeDim) || isempty(Voxsize)
     elseif (all(CubeDim == oldCubeDim) && all(Voxsize - oldVoxsize < 1e-4))
         sMriNew = sMri;
         errMsg = 'No modification.';
+        if ~isProgress
+            bst_progress('stop');
+        end
+        return;
+    elseif ~ismember(Method, {'linear', 'spline', 'cubic', 'nearest'})
+        sMriNew = sMri;
+        errMsg = ['Invalid method: ' Method];
         if ~isProgress
             bst_progress('stop');
         end
@@ -106,7 +119,7 @@ Z2 = (((0:CubeDim(3)-1) + 0.5) - CubeDim(3)/2) .* Voxsize(3);
 n4 = size(sMri.Cube,4);
 newCube = cell(1,n4);
 for i4 = 1:n4
-    newCube{i4} = single(interp3(Y1, X1, Z1, double(sMri.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
+    newCube{i4} = single(interp3(Y1, X1, Z1, double(sMri.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, Method, 0));
 end
 newCube = cat(4, newCube{:});
 % Initialize transformed structure

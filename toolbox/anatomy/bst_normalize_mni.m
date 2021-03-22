@@ -136,7 +136,7 @@ try
             bst_progress('text', 'Resampling MRI...');
             % Resample volume if needed
             if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
-                [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1]);
+                [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1], 'linear');
             else
                 sMriRes = sMri;
                 Tres = [];

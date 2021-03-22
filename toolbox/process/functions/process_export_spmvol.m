@@ -371,7 +371,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if (VolDownsample > 1)
                     newCubeDim = [size(sMri.Cube,1), size(sMri.Cube,2), size(sMri.Cube,3)] ./ VolDownsample;
                     newVoxsize = sMriOut.Voxsize .* VolDownsample;
-                    sMriOut = mri_resample(sMriOut, newCubeDim, newVoxsize);
+                    sMriOut = mri_resample(sMriOut, newCubeDim, newVoxsize, 'linear');
                 end
                 % Cut the empty slices
                 if isCutEmpty
