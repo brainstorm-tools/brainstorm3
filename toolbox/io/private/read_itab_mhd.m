@@ -147,7 +147,21 @@ for i=1:640
   mhd.ch(i).calib = fread(fid, [1 1], 'float');          %  calibration from mV to unit
   mhd.ch(i).unit = fread(fid, [1 6], 'uint8=>char');  %  unit label  (fT, uV, ...)
   pad = fread(fid, [1 2], 'uint8');
-  mhd.ch(i).ncoils = fread(fid, [1 1], 'int32');         %  number of coils building up one channel
+  
+  %  Calibration to Tesla for (MEG, MEG REF) or Volt for (EEG, EEG REF)
+  mhd.ch(i).unit = deblank(mhd.ch(i).unit);
+  switch (mhd.ch(i).unit)
+      case 'fT'
+          mhd.ch(i).calib = mhd.ch(i).calib / 1.E-15;
+      case 'pT'
+          mhd.ch(i).calib = mhd.ch(i).calib / 1.E-12;
+      case 'uV'
+          mhd.ch(i).calib = mhd.ch(i).calib / 1.E-6;
+      case 'mV'
+          mhd.ch(i).calib = mhd.ch(i).calib / 1.E-3;
+  end
+ 
+  mhd.ch(i).ncoils = fread(fid, [1 1], 'int32');     %  number of coils building up one channel
   mhd.ch(i).wgt = fread(fid, [1 10], 'float');       %  weight of coils
   %  position and orientation of coils
   for j=1:10
