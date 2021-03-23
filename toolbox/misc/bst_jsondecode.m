@@ -60,14 +60,15 @@ outStruct = struct();
 % States:
 STATE.START           = 0;
 STATE.START_FIELD     = 1;
-STATE.READ_NEXT_FIELD = 2;
+%STATE.READ_NEXT_FIELD = 2; % unused
 STATE.READ_FIELD      = 3;
 STATE.END_FIELD       = 4;
 STATE.START_VALUE     = 5;
-STATE.READ_NEXT_VALUE = 6;
+%STATE.READ_NEXT_VALUE = 6; % unused
 STATE.READ_VALUE      = 7;
 STATE.END_VALUE       = 8;
 STATE.START_LIST      = 9;
+STATE.END_LIST        = 10;
 
 % Supported value types:
 % Note: only lists of numbers or strings are supported
@@ -95,6 +96,8 @@ for iChar = 1:length(inString)
     if c == '{'
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            token = [token c];
         elseif state == STATE.START
             state = STATE.START_FIELD;
         elseif state == STATE.START_VALUE
@@ -107,7 +110,9 @@ for iChar = 1:length(inString)
     elseif c == '}'
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
-        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            token = [token c];
+        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE || state == STATE.END_LIST
             % Save if not done already (no comma at the end of group)
             if ~isempty(field)
                 outStruct = saveField(outStruct, path, field, value, valType);
@@ -130,22 +135,31 @@ for iChar = 1:length(inString)
             else
                 escape = 1;
             end
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            if escape
+                token = [token c];
+                escape = 0;
+            else
+                escape = 1;
+            end
         else
             err = 1;
         end
     elseif c == '"'
         if state == STATE.START || state == STATE.START_FIELD
-            state = STATE.READ_NEXT_FIELD;
+            state = STATE.READ_FIELD;
         elseif state == STATE.READ_FIELD
             state = STATE.END_FIELD;
         elseif state == STATE.START_VALUE && isempty(valType)
             valType = VAL.CHAR;
             state = STATE.READ_VALUE;
-        elseif (state == STATE.START_VALUE && valType == VAL.LIST_STR) ...
-                || (state == STATE.START_LIST && isempty(valType))
+        elseif state == STATE.START_LIST && isempty(valType)
             token = [];
             value = {};
             valType = VAL.LIST_STR;
+            state = STATE.READ_VALUE;
+        elseif state == STATE.START_VALUE && valType == VAL.LIST_STR
+            token = [];
             state = STATE.READ_VALUE;
         elseif state == STATE.READ_VALUE && valType == VAL.CHAR
             if escape
@@ -167,6 +181,8 @@ for iChar = 1:length(inString)
     elseif c == ':'
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            token = [token c];
         elseif state == STATE.READ_FIELD || state == STATE.END_FIELD
             valType = [];
             state = STATE.START_VALUE;
@@ -176,6 +192,8 @@ for iChar = 1:length(inString)
     elseif c == ','
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            token = [token c];
         elseif state == STATE.READ_VALUE && valType == VAL.LIST_INT
             if ~isempty(token) && ~isempty(num2str(token))
                 value(end + 1) = str2num(token);
@@ -186,7 +204,7 @@ for iChar = 1:length(inString)
         elseif state == STATE.END_VALUE && valType == VAL.LIST_STR
             value{end + 1} = token;
             state = STATE.START_VALUE;
-        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE
+        elseif state == STATE.READ_VALUE || state == STATE.END_VALUE || state == STATE.END_LIST
             % Save if not done already
             if ~isempty(field)
                 outStruct = saveField(outStruct, path, field, value, valType);
@@ -200,6 +218,8 @@ for iChar = 1:length(inString)
     elseif c == '['
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            token = [token c];
         elseif state == STATE.START_VALUE
             state = STATE.START_LIST;
             token = [];
@@ -210,6 +230,8 @@ for iChar = 1:length(inString)
     elseif c == ']'
         if state == STATE.READ_VALUE && valType == VAL.CHAR
             value = [value c];
+        elseif state == STATE.READ_VALUE && valType == VAL.LIST_STR
+            token = [token c];
         elseif state == STATE.READ_VALUE && valType == VAL.LIST_INT
             if ~isempty(token)
                 n = str2num(token);
@@ -220,24 +242,21 @@ for iChar = 1:length(inString)
                     err = 1;
                 end
             end
-            state = STATE.END_VALUE;
+            state = STATE.END_LIST;
         elseif state == STATE.END_VALUE && valType == VAL.LIST_STR
             value{end + 1} = token;
-            state = STATE.END_VALUE;
+            state = STATE.END_LIST;
         else
             err = 1;
         end
     elseif ~isspace(c)
         % Read non-special characters
-        if state == STATE.READ_NEXT_FIELD || state == STATE.READ_FIELD
-            state = STATE.READ_FIELD;
+        if state == STATE.READ_FIELD
             field = [field c];
-        elseif state == STATE.READ_NEXT_VALUE || state == STATE.READ_VALUE ...
-                || (state == STATE.START_LIST && isempty(valType))
+        elseif state == STATE.READ_VALUE || (state == STATE.START_LIST && isempty(valType))
             if state == STATE.START_LIST
                 valType = VAL.LIST_INT;
             end
-            
             state = STATE.READ_VALUE;
             if valType == VAL.LIST_INT || valType == VAL.LIST_STR
                 token = [token c];
@@ -256,7 +275,7 @@ for iChar = 1:length(inString)
         else
             err = 1;
         end
-    elseif isspace(c) && ~isempty(valType) && valType == VAL.CHAR && (state == STATE.READ_NEXT_VALUE || state == STATE.READ_VALUE)
+    elseif isspace(c) && ~isempty(valType) && (valType == VAL.CHAR || valType == VAL.LIST_STR) && state == STATE.READ_VALUE
         % Only read spaces for character values
         value = [value c];
     elseif c == char(10)
@@ -303,7 +322,7 @@ function outStruct = saveField(outStruct, path, field, value, valType)
             if iElem > 1
                 value = [value ','];
             end
-            value = [value '"' elems{iElem} '"'];
+            value = [value '''' strrep(elems{iElem}, '''', '''''') ''''];
         end
         value = [value '}'];
     elseif valType == VAL.BOOL
