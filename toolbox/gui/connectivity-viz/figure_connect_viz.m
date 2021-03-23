@@ -69,7 +69,6 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'Timefreq', db_template('TfInfo'));
     
     % Display
-    setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     setappdata(hFig, 'MeasureLinksIsVisible', 1);
     setappdata(hFig, 'RegionLinksIsVisible', 0);
@@ -175,7 +174,6 @@ function ResetDisplay(hFig)
     setappdata(hFig, 'DistanceThreshold', 0);
     setappdata(hFig, 'TextDisplayMode', [1 2]);
     setappdata(hFig, 'LobeFullLabel', 1); % 1 for displaying full label (e.g. 'Pre-Frontal') 0 for abbr tag ('PF')
-    setappdata(hFig, 'NodeDisplay', 1);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     if isappdata(hFig, 'DataPair')
         rmappdata(hFig, 'DataPair');
@@ -191,6 +189,76 @@ function ResetDisplay(hFig)
     end
     if isappdata(hFig, 'DataMinMax')
         rmappdata(hFig, 'DataMinMax');
+    end
+end
+
+% NEW MARCH 2021
+function ResetDisplayOptions(hFig)
+    % full lobe labels (not abbreviated)
+    if (~getappdata(hFig, 'LobeFullLabel'))
+        ToggleLobeLabels(hFig);
+    end
+    
+    % show scout and region labels
+    if (~isequal(getappdata(hFig, 'TextDisplayMode'),[1 2]))
+        setappdata(hFig, 'TextDisplayMode', [1 2]);
+        RefreshTextDisplay(hFig);
+        HideExtraLobeNode(hFig);
+    end
+  
+    % reset node+label size
+    if (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7)
+        SetNodeLabelSize(hFig, 5, 7);
+    end
+    
+    % reset link size
+    if (getappdata(hFig, 'LinkSize') ~= 1.5)
+        SetLinkSize(hFig, 1.5);
+    end
+    
+    % reset link transparency
+    if (getappdata(hFig, 'LinkTransparency') ~= 0)
+        SetLinkTransparency(hFig, 0);
+    end
+    
+    % reset to black background
+    if (~isequal(getappdata(hFig, 'BgColor'),[0 0 0]))
+        SetBackgroundColor(hFig, [0 0 0], [1 1 1])
+    end
+    
+    % ensure region nodes (hem and lobes) NOT hidden
+    if (~getappdata(hFig, 'HierarchyNodeIsVisible'))
+    	SetHierarchyNodeIsVisible(hFig, 1)
+    end
+    
+    % reset camera
+    DefaultCamera(hFig);
+end
+
+function IsDefault = CheckDisplayOptions(hFig)
+    IsDefault = true;
+
+    % check full lobe labels (not abbreviated)
+    if (~getappdata(hFig, 'LobeFullLabel'))
+        IsDefault = false;
+    % check showing scout and region labels   
+    elseif(~isequal(getappdata(hFig, 'TextDisplayMode'),[1 2]))
+        IsDefault = false;
+    % check node+label size
+    elseif (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7)
+        IsDefault = false;
+    % check link size
+    elseif (getappdata(hFig, 'LinkSize') ~= 1.5)
+        IsDefault = false;
+    % check link transparency
+    elseif (getappdata(hFig, 'LinkTransparency') ~= 0)
+        IsDefault = false;
+    % check black background
+    elseif (~isequal(getappdata(hFig, 'BgColor'),[0 0 0]))
+        IsDefault = false;
+    % check region nodes (hem and lobes) NOT hidden
+    elseif (~getappdata(hFig, 'HierarchyNodeIsVisible'))
+    	IsDefault = false;
     end
 end
  
@@ -276,10 +344,6 @@ function FigureMouseDownCallback(hFig, ev)
     % Note: Actual triggered events are applied at MouseUp or other points
     % (e.g. during mousedrag). This function gets information about the
     % click event to classify it
-    
-    % For link selection
-    global GlobalData;
-    MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
 
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig,'clickAction'), 'MouseDownNotConsumed')
@@ -461,7 +525,7 @@ end
 % NOTE: DONE
 function FigureKeyPressedCallback(hFig, keyEvent)
     % Convert to Matlab key event
-    [keyEvent, isControl, isShift] = gui_brainstorm('ConvertKeyEvent', keyEvent);
+    [keyEvent, isControl, ~] = gui_brainstorm('ConvertKeyEvent', keyEvent);
     if isempty(keyEvent.Key)
         return;
     end
@@ -518,6 +582,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             if (getappdata(hFig, 'HierarchyNodeIsVisible'))
                 ToggleMeasureToRegionDisplay(hFig);
             end
+        case 'r' % DONE: Reset display options to default
+            ResetDisplayOptions(hFig);
+            
     end
 end
  
@@ -902,6 +969,12 @@ function DisplayFigurePopup(hFig)
         isWhite = all(BackgroundColor == [1 1 1]);
         jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
         jItem.setSelected(isWhite);
+        
+        % === DEFAULT/RESET (NOTE: DONE)===
+        jDisplayMenu.addSeparator();
+        jItem = gui_component('MenuItem', jDisplayMenu, [], 'Reset display options', [], [], @(h, ev)ResetDisplayOptions(hFig));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0));
+        jItem.setEnabled(~CheckDisplayOptions(hFig));
   
  
     % ==== GRAPH OPTIONS ====
@@ -964,25 +1037,27 @@ end
 
 % Node size slider
 % NOTE: DONE JAN 2021
-function NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
-    disp('Entered NodeSizeSliderModifiersModifying_Callback'); % TODO: remove
-    % Update Modifier value
-    newValue = ev.getSource().getValue() / 2;
-    % Update text value
-    jLabel.setText(sprintf('%.0f', newValue * 2));
-    SetNodeSize(hFig, newValue);
-end
+% TODO: remove
+% function NodeSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+%     disp('Entered NodeSizeSliderModifiersModifying_Callback'); % TODO: remove
+%     % Update Modifier value
+%     newValue = ev.getSource().getValue() / 2;
+%     % Update text value
+%     jLabel.setText(sprintf('%.0f', newValue * 2));
+%     SetNodeSize(hFig, newValue);
+% end
 
 % Label size slider
 % NOTE: DONE JAN 2020
-function LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
-    disp('Entered LabelSizeSliderModifiersModifying_Callback'); % TODO: remove
-    % Update Modifier value
-    newValue = ev.getSource().getValue() / 2;
-    % Update text value
-    jLabel.setText(sprintf('%.0f', newValue * 2));
-    SetLabelSize(hFig, newValue);
-end
+% TODO: remove
+% function LabelSizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
+%     disp('Entered LabelSizeSliderModifiersModifying_Callback'); % TODO: remove
+%     % Update Modifier value
+%     newValue = ev.getSource().getValue() / 2;
+%     % Update text value
+%     jLabel.setText(sprintf('%.0f', newValue * 2));
+%     SetLabelSize(hFig, newValue);
+% end
 
 % Link transparency slider
 % NOTE: DONE DEC 2020
@@ -1509,7 +1584,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         disp('Entered BuildLinks. Creating MeasureLinks');
     else
         disp('Entered BuildLinks. Creating RegionLinks');
-    end;
+    end
     
     % get pre-created nodes
     AllNodes = getappdata(hFig, 'AllNodes');
@@ -2898,7 +2973,6 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     
     % Get data
     MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
-    RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
     
     if (MeasureLinksIsVisible)
         [DataToFilter, DataMask] = GetPairs(hFig);
@@ -3209,7 +3283,6 @@ function SetNodeLabelSize(hFig, NodeSize, LabelSize)
     end
 
     AllNodes = getappdata(hFig,'AllNodes');
-    
     for i = 1:size(AllNodes,2)
         node = AllNodes(i);
         set(node.NodeMarker, 'MarkerSize', NodeSize);
@@ -3289,6 +3362,9 @@ function SetLinkTransparency(hFig, LinkTransparency)
     % Note: update transparency for both measure and region links that are
     % "visible" because displayed links should reflect updated transparency if user toggles link type 
    
+    if isempty(LinkTransparency)
+        LinkTransparency = 0; % default
+    end
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     % MeasureLinks
@@ -3555,146 +3631,6 @@ function MeasureLinks = BuildRegionPath(hFig, mPaths, mDataPair)
                 end
             end
         end
-    end
-end
- 
-% @TODO: remove once not needed anymore
-function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
-    %
-    aSplines = [];
-    nMeasureLinks = size(MeasureLinks,1);
-    if (nMeasureLinks > 0)
-        % Define Spline Implementation details
-        Order = [3 4 5 6 7 8 9 10];
-        Weights = [
- {
-    [ 1.0000  0.8975  0.8006  0.7091  0.6233  0.5429  0.4681  0.3989  0.3352  0.2770  0.2244  0.1773  0.1357  0.0997  0.0693  0.0443  0.0249  0.0111  0.0028  0.0000 ;
-      0.0000  0.0997  0.1884  0.2659  0.3324  0.3878  0.4321  0.4654  0.4875  0.4986  0.4986  0.4875  0.4654  0.4321  0.3878  0.3324  0.2659  0.1884  0.0997  0.0000  ;
-      0.0000  0.0028  0.0111  0.0249  0.0443  0.0693  0.0997  0.1357  0.1773  0.2244  0.2770  0.3352  0.3989  0.4681  0.5429  0.6233  0.7091  0.8006  0.8975  1.0000 ]'
-}
- {
-    [ 1.0000  0.8503  0.7163  0.5972  0.4921  0.4001  0.3203  0.2519  0.1941  0.1458  0.1063  0.0746  0.0500  0.0315  0.0182  0.0093  0.0039  0.0012  0.0001  0.0000 ;
-      0.0000  0.1417  0.2528  0.3359  0.3936  0.4286  0.4435  0.4409  0.4234  0.3936  0.3543  0.3079  0.2572  0.2047  0.1531  0.1050  0.0630  0.0297  0.0079  0.0000 ;
-      0.0000  0.0079  0.0297  0.0630  0.1050  0.1531  0.2047  0.2572  0.3079  0.3543  0.3936  0.4234  0.4409  0.4435  0.4286  0.3936  0.3359  0.2528  0.1417  0.0000 ;
-      0.0000  0.0001  0.0012  0.0039  0.0093  0.0182  0.0315  0.0500  0.0746  0.1063  0.1458  0.1941  0.2519  0.3203  0.4001  0.4921  0.5972  0.7163  0.8503  1.0000 ]'
-}
- {
-    [ 1.0000  0.8055  0.6409  0.5029  0.3885  0.2948  0.2192  0.1591  0.1123  0.0767  0.0503  0.0314  0.0184  0.0099  0.0048  0.0020  0.0006  0.0001  0.0000  0.0000 ;
-      0.0000  0.1790  0.3016  0.3772  0.4144  0.4211  0.4046  0.3713  0.3268  0.2762  0.2238  0.1729  0.1263  0.0862  0.0537  0.0295  0.0133  0.0042  0.0006  0.0000 ;
-      0.0000  0.0149  0.0532  0.1061  0.1657  0.2256  0.2801  0.3249  0.3565  0.3729  0.3729  0.3565  0.3249  0.2801  0.2256  0.1657  0.1061  0.0532  0.0149  0.0000 ;
-      0.0000  0.0006  0.0042  0.0133  0.0295  0.0537  0.0862  0.1263  0.1729  0.2238  0.2762  0.3268  0.3713  0.4046  0.4211  0.4144  0.3772  0.3016  0.1790  0.0000 ;
-      0.0000  0.0000  0.0001  0.0006  0.0020  0.0048  0.0099  0.0184  0.0314  0.0503  0.0767  0.1123  0.1591  0.2192  0.2948  0.3885  0.5029  0.6409  0.8055  1.0000 ]'
-}
- {
-    [ 1.0000  0.7631  0.5734  0.4235  0.3067  0.2172  0.1500  0.1005  0.0650  0.0404  0.0238  0.0132  0.0068  0.0031  0.0013  0.0004  0.0001  0.0000  0.0000  0.0000 ;
-      0.0000  0.2120  0.3373  0.3970  0.4089  0.3879  0.3460  0.2931  0.2365  0.1817  0.1325  0.0910  0.0582  0.0340  0.0177  0.0078  0.0026  0.0005  0.0000  0.0000 ;
-      0.0000  0.0236  0.0794  0.1489  0.2181  0.2770  0.3194  0.3420  0.3440  0.3271  0.2944  0.2502  0.1995  0.1474  0.0989  0.0582  0.0279  0.0093  0.0013  0.0000 ;
-      0.0000  0.0013  0.0093  0.0279  0.0582  0.0989  0.1474  0.1995  0.2502  0.2944  0.3271  0.3440  0.3420  0.3194  0.2770  0.2181  0.1489  0.0794  0.0236  0.0000 ;
-      0.0000  0.0000  0.0005  0.0026  0.0078  0.0177  0.0340  0.0582  0.0910  0.1325  0.1817  0.2365  0.2931  0.3460  0.3879  0.4089  0.3970  0.3373  0.2120  0.0000 ;
-      0.0000  0.0000  0.0000  0.0001  0.0004  0.0013  0.0031  0.0068  0.0132  0.0238  0.0404  0.0650  0.1005  0.1500  0.2172  0.3067  0.4235  0.5734  0.7631  1.0000 ]'
-}
- {
-    [ 1.0000  0.7230  0.5131  0.3566  0.2421  0.1600  0.1026  0.0635  0.0377  0.0213  0.0113  0.0056  0.0025  0.0010  0.0003  0.0001  0.0000  0.0000  0.0000  0.0000 ;
-      0.0000  0.2410  0.3622  0.4012  0.3874  0.3430  0.2841  0.2221  0.1643  0.1148  0.0753  0.0460  0.0257  0.0129  0.0056  0.0020  0.0005  0.0001  0.0000  0.0000 ;
-      0.0000  0.0335  0.1065  0.1881  0.2583  0.3062  0.3278  0.3240  0.2988  0.2583  0.2092  0.1580  0.1102  0.0698  0.0391  0.0184  0.0066  0.0015  0.0001  0.0000 ;
-      0.0000  0.0025  0.0167  0.0470  0.0918  0.1458  0.2017  0.2520  0.2897  0.3099  0.3099  0.2897  0.2520  0.2017  0.1458  0.0918  0.0470  0.0167  0.0025  0.0000 ;
-      0.0000  0.0001  0.0015  0.0066  0.0184  0.0391  0.0698  0.1102  0.1580  0.2092  0.2583  0.2988  0.3240  0.3278  0.3062  0.2583  0.1881  0.1065  0.0335  0.0000 ;
-      0.0000  0.0000  0.0001  0.0005  0.0020  0.0056  0.0129  0.0257  0.0460  0.0753  0.1148  0.1643  0.2221  0.2841  0.3430  0.3874  0.4012  0.3622  0.2410  0.0000 ;
-      0.0000  0.0000  0.0000  0.0000  0.0001  0.0003  0.0010  0.0025  0.0056  0.0113  0.0213  0.0377  0.0635  0.1026  0.1600  0.2421  0.3566  0.5131  0.7230  1.0000 ]'
-}
- {
-    [ 1.0000  0.6849  0.4591  0.3003  0.1911  0.1179  0.0702  0.0401  0.0218  0.0112  0.0054  0.0023  0.0009  0.0003  0.0001  0.0000  0.0000  0.0000  0.0000  0.0000 ;
-      0.0000  0.2664  0.3780  0.3942  0.3568  0.2948  0.2268  0.1637  0.1110  0.0705  0.0416  0.0226  0.0111  0.0047  0.0017  0.0005  0.0001  0.0000  0.0000  0.0000 ;
-      0.0000  0.0444  0.1334  0.2217  0.2854  0.3159  0.3140  0.2864  0.2422  0.1903  0.1387  0.0931  0.0569  0.0309  0.0144  0.0054  0.0015  0.0002  0.0000  0.0000 ;
-      0.0000  0.0041  0.0262  0.0693  0.1269  0.1880  0.2416  0.2785  0.2935  0.2854  0.2569  0.2135  0.1625  0.1115  0.0672  0.0338  0.0130  0.0031  0.0002  0.0000 ;
-      0.0000  0.0002  0.0031  0.0130  0.0338  0.0672  0.1115  0.1625  0.2135  0.2569  0.2854  0.2935  0.2785  0.2416  0.1880  0.1269  0.0693  0.0262  0.0041  0.0000 ;
-      0.0000  0.0000  0.0002  0.0015  0.0054  0.0144  0.0309  0.0569  0.0931  0.1387  0.1903  0.2422  0.2864  0.3140  0.3159  0.2854  0.2217  0.1334  0.0444  0.0000 ;
-      0.0000  0.0000  0.0000  0.0001  0.0005  0.0017  0.0047  0.0111  0.0226  0.0416  0.0705  0.1110  0.1637  0.2268  0.2948  0.3568  0.3942  0.3780  0.2664  0.0000 ;
-      0.0000  0.0000  0.0000  0.0000  0.0000  0.0001  0.0003  0.0009  0.0023  0.0054  0.0112  0.0218  0.0401  0.0702  0.1179  0.1911  0.3003  0.4591  0.6849  1.0000 ]'
-}
- {
-    [ 1.0000  0.6489  0.4107  0.2529  0.1509  0.0869  0.0480  0.0253  0.0126  0.0059  0.0025  0.0010  0.0003  0.0001  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000 ;
-      0.0000  0.2884  0.3866  0.3793  0.3219  0.2483  0.1773  0.1181  0.0734  0.0424  0.0225  0.0109  0.0047  0.0017  0.0005  0.0001  0.0000  0.0000  0.0000  0.0000 ;
-      0.0000  0.0561  0.1592  0.2489  0.3005  0.3103  0.2865  0.2412  0.1869  0.1335  0.0876  0.0523  0.0279  0.0130  0.0050  0.0015  0.0003  0.0000  0.0000  0.0000 ;
-      0.0000  0.0062  0.0375  0.0934  0.1602  0.2217  0.2644  0.2814  0.2719  0.2404  0.1947  0.1438  0.0958  0.0563  0.0283  0.0114  0.0033  0.0005  0.0000  0.0000 ;
-      0.0000  0.0004  0.0055  0.0219  0.0534  0.0990  0.1526  0.2052  0.2472  0.2704  0.2704  0.2472  0.2052  0.1526  0.0990  0.0534  0.0219  0.0055  0.0004  0.0000 ;
-      0.0000  0.0000  0.0005  0.0033  0.0114  0.0283  0.0563  0.0958  0.1438  0.1947  0.2404  0.2719  0.2814  0.2644  0.2217  0.1602  0.0934  0.0375  0.0062  0.0000 ;
-      0.0000  0.0000  0.0000  0.0003  0.0015  0.0050  0.0130  0.0279  0.0523  0.0876  0.1335  0.1869  0.2412  0.2865  0.3103  0.3005  0.2489  0.1592  0.0561  0.0000 ;
-      0.0000  0.0000  0.0000  0.0000  0.0001  0.0005  0.0017  0.0047  0.0109  0.0225  0.0424  0.0734  0.1181  0.1773  0.2483  0.3219  0.3793  0.3866  0.2884  0.0000 ;
-      0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0001  0.0003  0.0010  0.0025  0.0059  0.0126  0.0253  0.0480  0.0869  0.1509  0.2529  0.4107  0.6489  1.0000 ]'
-}
- {
-    [ 1.0000  0.6147  0.3675  0.2130  0.1191  0.0640  0.0329  0.0160  0.0073  0.0031  0.0012  0.0004  0.0001  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000 ;
-      0.0000  0.3074  0.3891  0.3594  0.2859  0.2058  0.1365  0.0839  0.0478  0.0251  0.0120  0.0051  0.0019  0.0006  0.0002  0.0000  0.0000  0.0000  0.0000  0.0000 ;
-      0.0000  0.0683  0.1831  0.2695  0.3050  0.2940  0.2520  0.1959  0.1391  0.0904  0.0534  0.0283  0.0132  0.0053  0.0017  0.0004  0.0001  0.0000  0.0000  0.0000 ;
-      0.0000  0.0089  0.0503  0.1179  0.1898  0.2450  0.2714  0.2666  0.2361  0.1898  0.1383  0.0908  0.0529  0.0267  0.0112  0.0036  0.0008  0.0001  0.0000  0.0000 ;
-      0.0000  0.0007  0.0089  0.0332  0.0759  0.1313  0.1879  0.2333  0.2576  0.2562  0.2306  0.1873  0.1361  0.0867  0.0469  0.0202  0.0062  0.0010  0.0000  0.0000 ;
-      0.0000  0.0000  0.0010  0.0062  0.0202  0.0469  0.0867  0.1361  0.1873  0.2306  0.2562  0.2576  0.2333  0.1879  0.1313  0.0759  0.0332  0.0089  0.0007  0.0000 ;
-      0.0000  0.0000  0.0001  0.0008  0.0036  0.0112  0.0267  0.0529  0.0908  0.1383  0.1898  0.2361  0.2666  0.2714  0.2450  0.1898  0.1179  0.0503  0.0089  0.0000 ;
-      0.0000  0.0000  0.0000  0.0001  0.0004  0.0017  0.0053  0.0132  0.0283  0.0534  0.0904  0.1391  0.1959  0.2520  0.2940  0.3050  0.2695  0.1831  0.0683  0.0000 ;
-      0.0000  0.0000  0.0000  0.0000  0.0000  0.0002  0.0006  0.0019  0.0051  0.0120  0.0251  0.0478  0.0839  0.1365  0.2058  0.2859  0.3594  0.3891  0.3074  0.0000 ;
-      0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0000  0.0001  0.0004  0.0012  0.0031  0.0073  0.0160  0.0329  0.0640  0.1191  0.2130  0.3675  0.6147  1.0000 ]'
-}
-];
-        LinkDetail = 20;
-        Spread = linspace(0,1,LinkDetail);
-        % Bundling factor
-        Bundling = 0.9;
-        
-        
-        % Compute spline for each MeasureLinks
-        MaxDist = max(max(Vertices(:,:))) * 2;
-        aSplines = zeros(nMeasureLinks * 8 * 10 * 3,1);
-        
-        Index = 1;
-        for i=1:nMeasureLinks
-            % Link
-            Link = MeasureLinks{i};
-            % Number of control points (CP)
-            nFrames = size(Link,2);
-            % Get the positions of CP
-            Frames = Vertices(Link(:),:);
-            % Last minute display candy
-            if (nFrames == 3)
-                % We assume that 3 frames are nodes near each others
-                % and force an arc between the nodes
-                Dist = sqrt(sum(abs(Frames(end,:) - Frames(1,:)).^2));
-                Dist = abs(0.9 - Dist / MaxDist);
-                Middle = (Frames(1,:) + Frames(end,:)) / 2;
-                Frames(2,:) = Middle * Dist;
-            end
-            % 
-            if (nFrames == 2)
-                aSplines(Index) = 2;
-                aSplines(Index+1:Index + 2 * 3) = reshape(Frames(1:2,:)',[],1);
-                Index = Index + 2 * 3 + 1;
-            else
-                % Bundling property (Higher beta very bundled)
-                % Beta = 0.7 + 0.2 * sin(0:pi/(nFrames-1):pi);
-                Beta = Bundling * ones(1,nFrames);
-                
-                % Prototype: Corpus Callosum influence
-                % N = nFrames;
-                % t = 0:1/(N-1):1;
-                % Beta = Bundling + 0.1 * cos((2 * pi) / (N / 2) * (t * N));
-                
-                for y=2:nFrames-1
-                    Frames(y,:) = Beta(y) * Frames(y,:) + (1 - Beta(y)) * (Frames(1,:) + y / (nFrames - 1) * (Frames(end,:) - Frames(1,:)));
-                end
-                %
-                W = Weights{Order == nFrames};
-                % 
-                Spline = W * Frames;
-                % Specifiy link length for Java
-                aSplines(Index) = LinkDetail;
-                % Assign spline vertices in a one dimension structure
-                aSplines(Index+1:Index + (LinkDetail) * 3) = reshape(Spline',[],1);
-                % Update index
-                Index = Index + (LinkDetail) * 3 + 1;
-            end
-        end
-        % Truncate unused data
-        aSplines = aSplines(1:Index-1);
     end
 end
  
