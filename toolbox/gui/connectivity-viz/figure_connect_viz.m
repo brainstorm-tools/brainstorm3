@@ -823,7 +823,7 @@ function DisplayFigurePopup(hFig)
             % Label
             gui_component('label', jPanelModifiers, '', 'Node & label size');
             % Slider
-            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast = JSlider(5,25); % uses factor of 2 for node sizes 2.5 to 12.5 with increments of 0.5 in actuality
             jSliderContrast.setValue(round(NodeSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -848,7 +848,7 @@ function DisplayFigurePopup(hFig)
             % Label
             gui_component('label', jPanelModifiers, '', 'Link size');
             % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for link sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast = JSlider(1,20); % uses factor of 2 for link sizes 0.5 to 10.0 with increments of 0.5 in actuality
             jSliderContrast.setValue(round(LinkSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -1740,7 +1740,7 @@ function LinkButtonDownFcn(src, ~)
     if (strcmpi(clickAction, 'SingleClick'))    
         % increase size on button down click
         current_size = src.LineWidth;
-        set(src, 'LineWidth', 3.0*current_size);
+        set(src, 'LineWidth', 2.0*current_size);
         
         node1 = AllNodes(src.UserData(4));
         label1 = node1.TextLabel;
@@ -1756,11 +1756,11 @@ function LinkButtonDownFcn(src, ~)
             if (isMeasureLink)
                 Arrows1 = getappdata(hFig,'MeasureArrows1');
                 Arrows2 = getappdata(hFig,'MeasureArrows2');
-                scale = 3.0;
+                scale = 2.0;
             else
                 Arrows1 = getappdata(hFig,'RegionArrows1');
                 Arrows2 = getappdata(hFig,'RegionArrows2');
-                scale = 10.0;
+                scale = 2.0;
             end    
             arrow1 = Arrows1(Index);
             arrow2 = Arrows2(Index);
@@ -1780,24 +1780,24 @@ function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2In
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         Link = MeasureLinks(LinkIndex);
         current_size = Link.LineWidth;
-        set(Link, 'LineWidth', current_size/3.0);
+        set(Link, 'LineWidth', current_size/2.0);
         
         if (IsDirectional)
             Arrows1 = getappdata(hFig,'MeasureArrows1');
             Arrows2 = getappdata(hFig,'MeasureArrows2');
-            scale = 3.0;
+            scale = 2.0;
         end    
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(LinkIndex);
         current_size = Link.LineWidth;     
-        set(Link, 'LineWidth', current_size/3.0);
+        set(Link, 'LineWidth', current_size/2.0);
         
         if (IsDirectional)
             Arrows1 = getappdata(hFig,'RegionArrows1');
             Arrows2 = getappdata(hFig,'RegionArrows2'); 
-            scale = 10.0;
+            scale = 2.0;
         end  
     end   
     
@@ -1999,12 +1999,12 @@ function ArrowButtonDownFcn(src, ~)
             end
             otherArrow = Arrows(Index);
             arrow_size = otherArrow.LineWidth;
-            scale = 3.0;
+            scale = 2.0;
             
             AllLinks = getappdata(hFig,'MeasureLinks');
             Link = AllLinks(Index);
             link_size = Link.LineWidth;
-            set(Link, 'LineWidth', 3.0*link_size);
+            set(Link, 'LineWidth', 2.0*link_size);
         else
             if (ArrowType) % first
                 Arrows = getappdata(hFig,'RegionArrows2');
@@ -2013,12 +2013,12 @@ function ArrowButtonDownFcn(src, ~)
             end
             otherArrow = Arrows(Index);
             arrow_size = otherArrow.LineWidth;  
-            scale = 10.0;
+            scale = 2.0;
             
             AllLinks = getappdata(hFig,'RegionLinks');
             Link = AllLinks(Index);
             link_size = Link.LineWidth;
-            set(Link, 'LineWidth', 3.0*link_size);
+            set(Link, 'LineWidth', 2.0*link_size);
         end
         
         set(src, 'LineWidth', scale*current_size);
@@ -2034,21 +2034,21 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         Link = MeasureLinks(ArrowIndex);
         current_size = Link.LineWidth;
-        set(Link, 'LineWidth', current_size/3.0);
+        set(Link, 'LineWidth', current_size/2.0);
         
         Arrows1 = getappdata(hFig,'MeasureArrows1');
         Arrows2 = getappdata(hFig,'MeasureArrows2');
-        scale = 3.0;
+        scale = 2.0;
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(ArrowIndex);
         current_size = Link.LineWidth;     
-        set(Link, 'LineWidth', current_size/3.0);  
+        set(Link, 'LineWidth', current_size/2.0);  
         
         Arrows1 = getappdata(hFig,'RegionArrows1');
         Arrows2 = getappdata(hFig,'RegionArrows2');
-        scale = 10.0;
+        scale = 2.0;
     end
     
     arrow1 = Arrows1(ArrowIndex);
@@ -2665,12 +2665,17 @@ function UpdateColormap(hFig)
         end
         
         % set desired colors to each link (4th column is transparency)
-        for i=1:size(VisibleLinks,1)
-            if (IsDirectionalData)
-                set(VisibleLinks(i), 'Color', color_viz(i,:));
-                set(VisibleArrows1(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
+        if (IsDirectionalData)
+            for i=1:length(VisibleLinks)
+                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]); %link color and transparency
+                set(VisibleArrows1(i), 'EdgeColor',color_viz(i,:), 'FaceColor', color_viz(i,:)); %arrow color
                 set(VisibleArrows2(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
-            else 
+            end 
+            %also set arrow transparency all at once
+            set(VisibleArrows1, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+            set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+        else
+            for i=1:length(VisibleLinks)
                 set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
             end 
         end
@@ -2723,17 +2728,23 @@ function UpdateColormap(hFig)
             VisibleArrows1 = RegionArrows1(iData).';
             VisibleArrows2 = RegionArrows2(iData).';
         end
-        
+
         % set desired colors to each link (4th column is transparency)
-        for i=1:size(VisibleLinks_region,1)
-            if (IsDirectionalData)
-                set(VisibleLinks_region(i), 'Color', color_viz_region(i,:));
-                set(VisibleArrows1(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
+        if (IsDirectionalData)
+            for i=1:length(VisibleLinks_region)
+                set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]); %link color and transparency
+                set(VisibleArrows1(i), 'EdgeColor',color_viz_region(i,:), 'FaceColor', color_viz_region(i,:)); %arrow color
                 set(VisibleArrows2(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
-            else 
+            end 
+            %also set arrow transparency all at once
+            set(VisibleArrows1, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+            set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+        else
+            for i=1:length(VisibleLinks_region)
                 set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
-            end
-        end  
+            end 
+        end
+         
         
         % update arrowheads
         if (RegionLinksIsVisible)
@@ -3232,24 +3243,33 @@ function SetLinkSize(hFig, LinkSize)
         LinkSize = 1.5; % default
     end
 
-    MeasureLinks = getappdata(hFig,'MeasureLinks');
-    MeasureArrows1 = getappdata(hFig,'MeasureArrows1');
-    MeasureArrows2 = getappdata(hFig,'MeasureArrows2');
-    
-    RegionLinks = getappdata(hFig,'RegionLinks');
-    RegionArrows1 = getappdata(hFig,'RegionArrows1');
-    RegionArrows2 = getappdata(hFig,'RegionArrows2');
-    
-    MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
-    RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
-    
-    if (MeasureLinksIsVisible)
+    if (isappdata(hFig,'MeasureLinks'))
+        MeasureLinks = getappdata(hFig,'MeasureLinks');
         set(MeasureLinks, 'LineWidth', LinkSize);
+    end
+    
+    if (isappdata(hFig,'MeasureArrows1'))
+        MeasureArrows1 = getappdata(hFig,'MeasureArrows1');
         set(MeasureArrows1, 'LineWidth', LinkSize);
+    end
+    
+    if (isappdata(hFig,'MeasureArrows2'))
+        MeasureArrows2 = getappdata(hFig,'MeasureArrows2');
         set(MeasureArrows2, 'LineWidth', LinkSize);
-    else
+    end
+    
+    if (isappdata(hFig,'RegionLinks'))
+        RegionLinks = getappdata(hFig,'RegionLinks');
         set(RegionLinks, 'LineWidth', LinkSize);
+    end
+    
+    if (isappdata(hFig,'RegionArrows1'))
+        RegionArrows1 = getappdata(hFig,'RegionArrows1');
         set(RegionArrows1, 'LineWidth', LinkSize);
+    end
+    
+    if (isappdata(hFig,'RegionArrows2'))
+        RegionArrows2 = getappdata(hFig,'RegionArrows2');
         set(RegionArrows2, 'LineWidth', LinkSize);
     end
     
@@ -3257,69 +3277,74 @@ function SetLinkSize(hFig, LinkSize)
 end
  
 %% ===== LINK TRANSPARENCY =====
-    % NOTE: DONE DEC 2020
+    
+    
+    
 function SetLinkTransparency(hFig, LinkTransparency)
     disp('Entered SetLinkTransparency');
+    % Note: only need to update for "visible" links on graph (under the
+    % thresholds selected) because when filters change, color +
+    % transparency are updated in UpdateColormap
     
-    MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
-    RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
+    % Note: update transparency for both measure and region links that are
+    % "visible" because displayed links should reflect updated transparency if user toggles link type 
+   
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
-    if (MeasureLinksIsVisible)
+    % MeasureLinks
+    if (isappdata(hFig,'MeasureLinks'))
         MeasureLinks = getappdata(hFig,'MeasureLinks');
+            
         [DataPair, DataMask] = GetPairs(hFig); 
         iData = find(DataMask == 1); % - 1;
- 
+    
+        % set desired transparency to each link
         if (~isempty(iData))
             VisibleLinks = MeasureLinks(iData).';
             
+            for i=1:length(VisibleLinks)
+                VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
+            end
+                
             if (IsDirectionalData)
                 MeasureArrows1 = getappdata(hFig,'MeasureArrows1');
                 MeasureArrows2 = getappdata(hFig,'MeasureArrows2');
                 VisibleArrows1 = MeasureArrows1(iData).';
                 VisibleArrows2 = MeasureArrows2(iData).';
-            end
-    
-            % set desired colors to each link
-            for i=1:length(VisibleLinks)
-                current_color = VisibleLinks(i).Color;
-                current_color(4) = 1.00 - LinkTransparency;
-                set(VisibleLinks(i), 'Color', current_color);
                 
-                if (IsDirectionalData)
-                    set(VisibleArrows1(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
-                    set(VisibleArrows2(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
-                end
+                set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
+                set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
             end
         end
-    % region links
-    else
+    end
+    
+    % RegionLinks
+    if (isappdata(hFig,'RegionLinks'))
         RegionLinks = getappdata(hFig,'RegionLinks'); 
         [DataToFilter, DataMask] = GetRegionPairs(hFig);
         iData = find(DataMask == 1); % - 1;
- 
+        
+        % set desired transparency to each link
+        % set desired transparency to each link
         if (~isempty(iData))
-            VisibleLinks_region = RegionLinks(iData).';
+            VisibleLinks = RegionLinks(iData).';
             
+            for i=1:length(VisibleLinks)
+                VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
+            end
+                
             if (IsDirectionalData)
                 RegionArrows1 = getappdata(hFig,'RegionArrows1');
                 RegionArrows2 = getappdata(hFig,'RegionArrows2');
                 VisibleArrows1 = RegionArrows1(iData).';
                 VisibleArrows2 = RegionArrows2(iData).';
-            end
-        
-            for i=1:length(VisibleLinks_region)
-                current_color = VisibleLinks_region(i).Color;
-                current_color(4) = 1.00 - LinkTransparency;              
-                set(VisibleLinks_region(i), 'Color', current_color);
                 
-                if (IsDirectionalData)
-                    set(VisibleArrows1(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
-                    set(VisibleArrows2(i), 'EdgeAlpha', current_color(4), 'FaceAlpha', current_color(4));
-                end
+                set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
+                set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
             end
         end
     end
+    
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
 end
  
