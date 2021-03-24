@@ -604,8 +604,8 @@ switch (lower(action))
                     % Get list of templates registered in Brainstorm
                     sMniAtlases = bst_get('MniAtlasDefaults');
                     jMenuSchaefer = [];
-                    % Add MNI atlases
-                    jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI atlas', IconLoader.ICON_ANATOMY, [], []);
+                    % Add MNI parcellation
+                    jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI parcellation', IconLoader.ICON_ANATOMY, [], []);
                     for i = 1:length(sMniAtlases)
                         % Local or download?
                         if ~isempty(strfind(sMniAtlases(i).FilePath, 'http://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'https://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'ftp://'))

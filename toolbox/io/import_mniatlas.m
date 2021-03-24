@@ -1,12 +1,12 @@
 function [MriFileMni, sMriMni] = import_mniatlas(iSubject, sTemplate, isInteractive)
-% IMPORT_MNIATLAS: Add a MNI atlas to the selected subject.
+% IMPORT_MNIATLAS: Add a MNI parcellation to the selected subject.
 %
 % USAGE:  [MriFileMni, sMriMni] = import_mniatlas(iSubject, sTemplate, isInteractive=1);
-%         [MriFileMni, sMriMni] = import_mniatlas(iSubject);     % Import MNI atlas from file on the hard drive
+%         [MriFileMni, sMriMni] = import_mniatlas(iSubject);     % Import MNI parcellation from file on the hard drive
 %
 % INPUT: 
 %    - iSubject      : Subject indice in protocol definition (default anatomy: iSubject=0)
-%    - sTemplate     : Reference to the MNI atlas (zip file or URL)
+%    - sTemplate     : Reference to the MNI parcellation (zip file or URL)
 %    - isInteractive : If 1, asks for confirmation and open the MRI Viewer for fiducials verification (default is 1)
 
 % @=============================================================================
@@ -52,7 +52,7 @@ if isempty(sTemplate)
         'Import MRI...', ...              % Window title
         LastUsedDirs.ImportAnat, ...      % Default directory
         'single', 'files', ...            % Selection mode
-        {{'.nii', '.gz'}, 'Volume atlas (MNI space)', 'ALL-MNI-ATLAS'}, 'ALL-MNI-ATLAS');
+        {{'.nii', '.gz'}, 'Volume parcellation (MNI space)', 'ALL-MNI-ATLAS'}, 'ALL-MNI-ATLAS');
     % If no file was selected: exit
     if isempty(AtlasFile)
         return
@@ -70,7 +70,7 @@ if isempty(sTemplate)
     
 %% ===== GET TEMPLATE =====
 else
-    % Get MNI atlas directory
+    % Get MNI parcellation directory
     atlasDir = bst_fullfile(bst_get('UserDefaultsDir'), 'mniatlas');
     if ~file_exist(atlasDir)
         mkdir(atlasDir);
@@ -81,22 +81,22 @@ else
         % Output file
         ZipFile = bst_fullfile(tmpDir, [lower(sTemplate.Name) '.zip']);
         % Download file
-        errMsg = gui_brainstorm('DownloadFile', sTemplate.FilePath, ZipFile, 'Download MNI atlas');
+        errMsg = gui_brainstorm('DownloadFile', sTemplate.FilePath, ZipFile, 'Download MNI parcellation');
         if ~isempty(errMsg)
-            error(['Impossible to download atlas:' 10 errMsg]);
+            error(['Impossible to download parcellation:' 10 errMsg]);
         end
         % Progress bar
-        bst_progress('start', 'Download atlas', 'Unzipping file...');
+        bst_progress('start', 'Download parcellation', 'Unzipping file...');
         % URL: Download zip file
         try
             UnzippedFiles = unzip(ZipFile, atlasDir);
         catch
-            error(['Could not unzip atlas: ' 10 10 lasterr]);
+            error(['Could not unzip parcellation: ' 10 10 lasterr]);
         end
         if (length(UnzippedFiles) > 3)
-            error('Multiple atlases were downloaded, please select one of them.');
+            error('Multiple parcellations were downloaded, please select one of them.');
         end
-        % Look for atlas volume
+        % Look for parcellation volume
         sTemplate.FilePath = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.nii.gz']);
     end
     % Check the existence of MNI volume
@@ -116,7 +116,7 @@ end
 sSubject = bst_get('Subject', iSubject);
 % Check existing anatomy
 if isempty(sSubject.Anatomy)
-    error('You must import a reference MRI or anatomy template before adding extra atlases.');
+    error('You must import a reference MRI or anatomy template before adding extra parcellations.');
 end
 % Compute linear MNI registration if not available
 MriFileRef = sSubject.Anatomy(sSubject.iAnatomy).FileName;

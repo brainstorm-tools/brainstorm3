@@ -69,7 +69,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sphreg.Type    = 'checkbox';
     sProcess.options.sphreg.Value   = 1;
     % Option: Volume atlases
-    sProcess.options.vol.Comment = 'Compute volume atlases';
+    sProcess.options.vol.Comment = 'Compute volume parcellations';
     sProcess.options.vol.Type    = 'checkbox';
     sProcess.options.vol.Value   = 1;
     % Option: Import extra map
@@ -404,7 +404,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     nVertices = str2double(nVertices);
     % Ask for volume atlases
-    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Import anatomical atlases?' 10 10 ...
+    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Import anatomical parcellations?' 10 10 ...
         ' - AAL3', 10 ...
         ' - Anatomy v3', 10 ...
         ' - CoBrALab' 10 ...
@@ -414,7 +414,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
         ' - LPBA40' 10 ...
         ' - Mori', 10 ...
         ' - Neuromorphometrics' 10 ...
-        ' - Schaefer2018', 10 10], 'Anatomical atlases');
+        ' - Schaefer2018', 10 10], 'Anatomical parcellations');
     if isCancel
         return
     end
