@@ -2994,8 +2994,12 @@ function SetVolumeAtlas(hFig, AnatAtlas)
             AnatAtlas = MriOptions.DefaultAtlas;
         elseif ismember('aparc.DKTatlas+aseg', AtlasNames)
             AnatAtlas = 'aparc.DKTatlas+aseg';
-        elseif ismember('aparc.a2009s+aseg.mgz', AtlasNames)
-            AnatAtlas = 'aparc.a2009s+aseg.mgz';
+        elseif ismember('aparc.a2009s+aseg', AtlasNames)
+            AnatAtlas = 'aparc.a2009s+aseg';
+        elseif ismember('DKT', AtlasNames)
+            AnatAtlas = 'DKT';
+        elseif ismember('Destrieux', AtlasNames)
+            AnatAtlas = 'Destrieux';
         else
             AnatAtlas = AtlasNames{1};
         end

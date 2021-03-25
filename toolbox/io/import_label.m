@@ -617,14 +617,14 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Destrieux';
         case {'lh.aparc', 'rh.aparc'}
             AtlasName = 'Desikan-Killiany';
-        case {'lh.BA', 'rh.BA', 'lh.BA_exvivo', 'rh.BA_exvivo'}
+        case {'lh.ba', 'rh.ba', 'lh.ba_exvivo', 'rh.ba_exvivo'}
             AtlasName = 'Brodmann';
         case {'lh.ba.thresh', 'rh.ba.thresh', 'lh.ba_exvivo.thresh', 'rh.ba_exvivo.thresh'}
             AtlasName = 'Brodmann-thresh';
         case {'lh.aparc.dktatlas40', 'rh.aparc.dktatlas40'}
-            AtlasName = 'Mindboggle';
+            AtlasName = 'DKT40';
         case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas'}
-            AtlasName = 'Mindboggle6';
+            AtlasName = 'DKT';
         case {'lh.pals_b12_brodmann', 'rh.pals_b12_brodmann'}
             AtlasName = 'PALS-B12 Brodmann';
         case {'lh.pals_b12_Lobes', 'rh.pals_b12_lobes'}

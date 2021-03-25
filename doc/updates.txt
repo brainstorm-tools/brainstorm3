@@ -3,6 +3,7 @@ March 2021
 - New plugins manager: first release
 - Distrib: Reorganized compilation system to include plugins
 - IO: Bugfix export .nii qform/sform, especially after resampling
+- Anatomy: Mindboggle atlas renamed DKT atlas
 ---------------------------------------------------------------
 February 2021
 - SimMEEG: Simulate MEG/EEG signals with SimMEEG
