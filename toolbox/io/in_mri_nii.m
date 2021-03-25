@@ -352,6 +352,9 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
             nifti.vox2ras = nifti.sform;
         elseif (nifti.qform_code ~= 0) && ~isempty(nifti.qform) && ~isequal(nifti.qform(1:3,1:3),zeros(3))
             nifti.vox2ras = nifti.qform;
+        % Last chance: accept other SFORM codes
+        elseif (nifti.sform_code ~= 0) && ~isempty(nifti.sform)
+            nifti.vox2ras = nifti.sform;
         else
             nifti.vox2ras = [];
         end
