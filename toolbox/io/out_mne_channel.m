@@ -25,7 +25,7 @@ function mneInfo = out_mne_channel(ChannelFile, iChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2021
 
 
 %% ===== PARSE INPUT =====
@@ -119,7 +119,7 @@ mneInfo{'creator'} = ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'];
 % Get existing transformation
 tNeuromagHead2Bst = [];
 tDev2NeuromagHead = [];
-tBst2CtfHead = [];
+% tBst2CtfHead = [];
 tCtfHead2Dev = [];
 if ~isempty(ChannelMat.TransfMeg) && ~isempty(ChannelMat.TransfMegLabels)
     % NEUROMAG=>BST
@@ -130,12 +130,12 @@ if ~isempty(ChannelMat.TransfMeg) && ~isempty(ChannelMat.TransfMegLabels)
     % DEVICE=>NEUROMAG HEAD ('dev_head_t')
     iDev2NeuromagHead = find(strcmpi(ChannelMat.TransfMegLabels, 'neuromag_device=>neuromag_head'));
     if ~isempty(iDev2NeuromagHead)
-        tDev2NeuromagHead = inv(ChannelMat.TransfMeg{iDev2NeuromagHead});
+        tDev2NeuromagHead = ChannelMat.TransfMeg{iDev2NeuromagHead};
         % Warning: We should NOT export 'dev_head_t', if it was not present initially in the dataset
         %          In the FIF-reading function (in_channel_fif, in_channel_name, in_fopenmegscan), when the device=>head transformation 
         %          transformation is missing (e.g. noise recordings), Brainstorm adds a default +4cm translation for display purproses.
         %          This should not be exported, because it messes up the behavior of specific MNE functions (e.g. maxwell_filter)
-        isDefaultDev2head = isequal(ChannelMat.TransfMeg{iDev2NeuromagHead}, ...
+        isDefaultDev2head = isequal(tDev2NeuromagHead, ...
             [1   0   0   0; ...
              0   1   0   0; ...
              0   0   1 .04; ...
@@ -165,9 +165,13 @@ if ~isempty(tNeuromagHead2Bst) && ~isempty(tDev2NeuromagHead)
     ChannelMat = ApplyTransformation(ChannelMat, inv(tNeuromagHead2Bst), [], 1);
     % NEUROMAG HEAD => NEUROMAG DEVICE (MEG ONLY)
     ChannelMat = ApplyTransformation(ChannelMat, inv(tDev2NeuromagHead), {'MEG', 'MEG REF', 'MEG GRAD', 'MEG MAG'}, 0);
-    % Save in info structure
+    % If there is a Neuromag head transformation available: add it to the file
     if ~isDefaultDev2head
         mneInfo{'dev_head_t'}{'trans'}.put(int16(0:15), bst_mat2py(tDev2NeuromagHead));
+    % Otherwise: Brainstorm added a transformation that did not exist initially 
+    % => do not add it to the python object + remove the default identity transformation in mneInfo
+    else
+        mneInfo{'dev_head_t'} = py.NoneType;
     end
     
 % ===== USE CTF/BRAINSTORM COORDINATES =====
