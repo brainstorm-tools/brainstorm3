@@ -207,7 +207,7 @@ function ResetDisplayOptions(hFig)
     end
   
     % reset node+label size
-    if (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7)
+    if (GetNodeSize(hFig)~= 5 || ~isappdata(hFig, 'LabelSize') || getappdata(hFig, 'LabelSize')~= 7)
         SetNodeLabelSize(hFig, 5, 7);
     end
     
@@ -245,7 +245,7 @@ function IsDefault = CheckDisplayOptions(hFig)
     elseif(~isequal(getappdata(hFig, 'TextDisplayMode'),[1 2]))
         IsDefault = false;
     % check node+label size
-    elseif (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7)
+    elseif (GetNodeSize(hFig)~= 5 || ~isappdata(hFig, 'LabelSize') || getappdata(hFig, 'LabelSize')~= 7)
         IsDefault = false;
     % check link size
     elseif (getappdata(hFig, 'LinkSize') ~= 1.5)
@@ -3804,11 +3804,7 @@ function SelectNode(hFig,node,isSelected)
     %disp('Entered SelectNode');
     
     % added March 2021: user can now adjust node size as desired
-    nodeSize = getappdata(hFig, 'NodeSize');
-    if (isempty(nodeSize))
-        nodeSize = 5;
-    end
-    
+    nodeSize = GetNodeSize(hFig);    
     if isSelected % node is SELECTED ("ON")
         % return to original node colour, shape, and size
         node.NodeMarker.Marker = 'o';
