@@ -82,7 +82,7 @@ end
 
 % Histogram calculation
 if (intensityMax < 128)
-    bins = linspace(0, intensityMax, 256);
+    bins = linspace(0, double(intensityMax), 256);
 else
     bins = 0:double(intensityMax);
 end
