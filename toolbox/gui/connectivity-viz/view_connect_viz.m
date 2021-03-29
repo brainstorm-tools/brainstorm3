@@ -32,14 +32,9 @@ function [hFig, iDS, iFig] = view_connect_viz(TimefreqFile, DisplayMode, hFig)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2019; Helen Lin &
-% Yaqi Li, 2020
-
-
+% Yaqi Li, 2020-2021
 
 %% ===== PARSE INPUTS =====
-
-disp('view_connect_viz.m reached') % @TODO: remove test
-disp(nargin);
 if (nargin < 2)
     DisplayMode = 'GraphFull';
 end
@@ -56,14 +51,7 @@ global GlobalData;
 iDS = [];
 iFig = [];
 
-% @TODO: remove once OpenGL is no longer needed
-% Check if OpenGL is activated
 if (strcmpi(DisplayMode, 'GraphFull'))
-%     if (bst_get('DisableOpenGL') == 1)
-%         bst_error(['Connectivity graphs require the OpenGL rendering to be enabled.' 10 ...
-%                    'Please go to File > Edit preferences...'], 'View connectivity matrix', 0);
-%         return;
-%     else
     if ~exist('org.brainstorm.connect.GraphicsFramework', 'class')
         bst_error(['The OpenGL connectivity graph is not available for your version of Matlab.' 10 10 ...
                    'You can use these tools by running the compiled version: ' 10 ...

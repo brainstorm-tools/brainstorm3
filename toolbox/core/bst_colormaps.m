@@ -1640,7 +1640,6 @@ end
 
 %% ===== APPLY COLORMAP MODIFIERS =====
 function sColormap = ApplyColormapModifiers(sColormap)
-    disp('Entered ApplyColormapModifiers');
     
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps

@@ -1,6 +1,5 @@
 %% ===== POPUP MENU V1: Display Options menu with no sub-menus=====
 %TODO: Saved image to display current values from Display Panel filters 
-%TODO: Remove '(in dev)' for features once fully functional
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -58,7 +57,7 @@ function DisplayFigurePopup(hFig)
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Hide region nodes (in dev)', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
             jItem.setSelected(~HierarchyNodeIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
             jDisplayMenu.addSeparator();
@@ -67,14 +66,14 @@ function DisplayFigurePopup(hFig)
         % == LINK DISPLAY OPTIONS ==
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
             
-            % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+            % === MODIFY NODE AND LINK SIZE===
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             % uses node size to update text and slider
             NodeSize = GetNodeSize(hFig);
             % Label
             gui_component('label', jPanelModifiers, '', 'Node & label size');
             % Slider
-            jSliderContrast = JSlider(1,15); % changed Jan 3 2020 (uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast = JSlider(1,15); % uses factor of 2 for node sizes 0.5 to 5.0 with increments of 0.5 in actuality
             jSliderContrast.setValue(round(NodeSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -99,7 +98,7 @@ function DisplayFigurePopup(hFig)
             % Label
             gui_component('label', jPanelModifiers, '', 'Link size');
             % Slider
-            jSliderContrast = JSlider(1,10); % changed Jan 3 2020 (uses factor of 2 for link sizes 0.5 to 5.0 with increments of 0.5 in actuality)
+            jSliderContrast = JSlider(1,10); % uses factor of 2 for link sizes 0.5 to 5.0 with increments of 0.5 in actuality
             jSliderContrast.setValue(round(LinkSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension',100,23));
             %jSliderContrast.setToolTipText(tooltipSliders);
@@ -147,7 +146,7 @@ function DisplayFigurePopup(hFig)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
             end
         
-        % === BACKGROUND OPTIONS (NOTE: DONE)===
+        % === BACKGROUND OPTIONS ===
         jDisplayMenu.addSeparator();
         BackgroundColor = getappdata(hFig, 'BgColor');
         isWhite = all(BackgroundColor == [1 1 1]);
@@ -156,7 +155,7 @@ function DisplayFigurePopup(hFig)
   
  
     % ==== GRAPH OPTIONS ====
-    % NOTE: now all 'Graph Options' are directly shown in main pop-up menu
+    % NOTE: all 'Graph Options' are directly shown in main pop-up menu
         jPopup.addSeparator();
         % === SELECT ALL THE NODES ===
         jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
@@ -171,19 +170,18 @@ function DisplayFigurePopup(hFig)
 
         if (DisplayInRegion)
             % === TOGGLE DISPLAY REGION LINKS ===
-            % TODO: IMPLEMENT REGION LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction ' (in dev)'], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
 
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function (in dev)');
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -195,7 +193,6 @@ end
 % NOTE: titled subsections are jPanels, mouse interactions currently do not
 % work with them, need improving.
 %TODO: Saved image to display current values from Display Panel filters 
-%TODO: Remove '(in dev)' for features once fully functional
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -265,7 +262,7 @@ function DisplayFigurePopup(hFig)
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jNodePanel, [], 'Hide region nodes (in dev)', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+            jItem = gui_component('CheckBoxMenuItem', jNodePanel, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
             jItem.setSelected(~HierarchyNodeIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         end
@@ -359,7 +356,7 @@ function DisplayFigurePopup(hFig)
             end
         jDisplayMenu.add(jLinkPanel);
         
-        % === BACKGROUND OPTIONS (NOTE: DONE)===
+        % === BACKGROUND OPTIONS ===
         BackgroundColor = getappdata(hFig, 'BgColor');
         isWhite = all(BackgroundColor == [1 1 1]);
         jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
@@ -367,7 +364,7 @@ function DisplayFigurePopup(hFig)
   
  
     % ==== GRAPH OPTIONS ====
-    % NOTE: now all 'Graph Options' are directly shown in main pop-up menu
+    % all 'Graph Options' are directly shown in main pop-up menu
         jPopup.addSeparator();
         % === SELECT ALL THE NODES ===
         jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
@@ -382,19 +379,18 @@ function DisplayFigurePopup(hFig)
 
         if (DisplayInRegion)
             % === TOGGLE DISPLAY REGION LINKS ===
-            % TODO: IMPLEMENT REGION LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction ' (in dev)'], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
 
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function (in dev)');
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -404,7 +400,6 @@ end
 
 %% ===== POPUP MENU V3: Display Options menu with sub-menus for Label, Node, Link=====
 %TODO: Saved image to display current values from Display Panel filters 
-%TODO: Remove '(in dev)' for features once fully functional
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -466,7 +461,7 @@ function DisplayFigurePopup(hFig)
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jNodeMenu, [], 'Hide region nodes (in dev)', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+            jItem = gui_component('CheckBoxMenuItem', jNodeMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
             jItem.setSelected(~HierarchyNodeIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         end
@@ -554,7 +549,7 @@ function DisplayFigurePopup(hFig)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
             end
         
-        % === BACKGROUND OPTIONS (NOTE: DONE)===
+        % === BACKGROUND OPTIONS ===
         BackgroundColor = getappdata(hFig, 'BgColor');
         isWhite = all(BackgroundColor == [1 1 1]);
         jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
@@ -562,7 +557,7 @@ function DisplayFigurePopup(hFig)
   
  
     % ==== GRAPH OPTIONS ====
-    % NOTE: now all 'Graph Options' are directly shown in main pop-up menu
+    % All 'Graph Options' are directly shown in main pop-up menu
         jPopup.addSeparator();
         % === SELECT ALL THE NODES ===
         jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
@@ -577,19 +572,18 @@ function DisplayFigurePopup(hFig)
 
         if (DisplayInRegion)
             % === TOGGLE DISPLAY REGION LINKS ===
-            % TODO: IMPLEMENT REGION LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction ' (in dev)'], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
 
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function (in dev)');
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -599,7 +593,6 @@ end
 
 %% ===== POPUP MENU V4: No Display Options Menu =====
 %TODO: Saved image to display current values from Display Panel filters 
-%TODO: Remove '(in dev)' for features once fully functional
 function DisplayFigurePopup(hFig)
     import java.awt.event.KeyEvent;
     import java.awt.Dimension;
@@ -635,7 +628,7 @@ function DisplayFigurePopup(hFig)
     jPopup.add(jMenuSave);
     
     % ==== GRAPH OPTIONS ====
-    % NOTE: now all 'Graph Options' are directly shown in main pop-up menu
+    % All 'Graph Options' are directly shown in main pop-up menu
         jPopup.addSeparator();
         % === SELECT ALL THE NODES ===
         jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
@@ -650,19 +643,18 @@ function DisplayFigurePopup(hFig)
 
         if (DisplayInRegion)
             % === TOGGLE DISPLAY REGION LINKS ===
-            % TODO: IMPLEMENT REGION LINKS
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction ' (in dev)'], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
 
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function (in dev)');
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max (in dev)', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
                 jItem.setSelected(~IsMean);
         end
     
@@ -690,7 +682,7 @@ function DisplayFigurePopup(hFig)
     if (DisplayInRegion)
         % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
         HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-        jItem = gui_component('CheckBoxMenuItem', jNodeMenu, [], 'Hide region nodes (in dev)', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+        jItem = gui_component('CheckBoxMenuItem', jNodeMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
         jItem.setSelected(~HierarchyNodeIsVisible);
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
     end
@@ -779,7 +771,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
         end
 
-    % === BACKGROUND OPTIONS (NOTE: DONE)===
+    % === BACKGROUND OPTIONS ===
     BackgroundColor = getappdata(hFig, 'BgColor');
     isWhite = all(BackgroundColor == [1 1 1]);
     jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));

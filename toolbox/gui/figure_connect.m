@@ -1061,7 +1061,6 @@ end
 
 % Link size slider
 function SizeSliderModifiersModifying_Callback(hFig, ev, jLabel)
-    disp('Entered SizeSliderModifiersModifying_Callback');
     % Update Modifier value
     newValue = ev.getSource().getValue();
     % Update text value
@@ -1788,7 +1787,6 @@ end
 
 
 function UpdateFigurePlot(hFig)
-    disp('Entered UpdateFigurePlot');
     % Progress bar
     bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected rows
@@ -2346,7 +2344,6 @@ end
 
 %% ===== UPDATE COLORMAP =====
 function UpdateColormap(hFig)
-    disp('Entered UpdateColormap');
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
@@ -2917,7 +2914,6 @@ function LinkSize = GetLinkSize(hFig)
 end
 
 function SetLinkSize(hFig, LinkSize)
-    disp('Entered SetLinkSize');
     % Get display
     OGL = getappdata(hFig,'OpenGLDisplay');
     % Get # of data to update
