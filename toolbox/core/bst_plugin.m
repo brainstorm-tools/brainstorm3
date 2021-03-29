@@ -965,9 +965,15 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     else
         % Get user confirmation
         if isInteractive
+            if ~isempty(PlugDesc.Version) && ~isequal(PlugDesc.Version, 'github-master') && ~isequal(PlugDesc.Version, 'latest')
+                strVer = ['<FONT color="#707070">Latest version: ' PlugDesc.Version '</FONT><BR><BR>'];
+            else
+                strVer = '';
+            end
             isConfirm = java_dialog('confirm', ...
                 ['<HTML>Plugin <B>' PlugName '</B> is not installed on your computer.<BR>' ...
                 '<B>Download</B> the latest version of ' PlugName ' now?<BR><BR>' ...
+                strVer, ...
                 '<FONT color="#707070">If this program is available on your computer,<BR>' ...
                 'cancel this installation and use the menu: Plugins > <BR>' ...
                 PlugName ' > Custom install > Set installation folder.</FONT><BR><BR>'], 'Plugin manager');
@@ -1068,21 +1074,11 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         bst_progress('removeimage');
         return;
     end
+    
+    % === SAVE PLUGIN.MAT ===
     % Get readme and logo
     PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
     PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-    % Get installed version
-    if ~isempty(PlugDesc.GetVersionFcn)
-        try
-            if ischar(PlugDesc.GetVersionFcn)
-                PlugDesc.Version = eval(PlugDesc.GetVersionFcn);
-            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
-                PlugDesc.Version = feval(PlugDesc.GetVersionFcn);
-            end
-        catch
-            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
-        end
-    end
     % Update plugin.mat after loading
     PlugDescSave = rmfield(PlugDesc, {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'});
     bst_save(PlugMatFile, PlugDescSave, 'v6');
@@ -1091,6 +1087,27 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
     if ~isOk
         return;
+    end
+    
+    % === GET INSTALLED VERSION ===
+    % Get installed version
+    if ~isempty(PlugDesc.GetVersionFcn)
+        testVer = [];
+        try
+            if ischar(PlugDesc.GetVersionFcn)
+                testVer = eval(PlugDesc.GetVersionFcn);
+            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
+                testVer = feval(PlugDesc.GetVersionFcn);
+            end
+        catch
+            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
+        end
+        if ~isempty(testVer)
+            PlugDesc.Version = testVer;
+            % Update plugin.mat
+            PlugDescSave.Version = testVer;
+            bst_save(PlugMatFile, PlugDescSave, 'v6');
+        end
     end
     
     % === SHOW PLUGIN INFO ===

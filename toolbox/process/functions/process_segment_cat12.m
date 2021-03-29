@@ -249,6 +249,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
 
     % ===== SAVE MRI AS NII =====
+    bst_progress('text', 'Saving temporary files...');
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
     % Create temporay folder for CAT12 output
@@ -274,6 +275,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
 
     % ===== CALL CAT12 SEGMENTATION =====
+    bst_progress('text', '<HTML>Starting SPM batch... &nbsp;&nbsp;&nbsp;<FONT COLOR="#707070"><I>(see command window)</I></FONT>');
     % Create SPM batch
     matlabbatch{1}.spm.tools.cat.estwrite.data = {[NiiFile ',1']};
     matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = {''};
