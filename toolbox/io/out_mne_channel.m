@@ -171,7 +171,7 @@ if ~isempty(tNeuromagHead2Bst) && ~isempty(tDev2NeuromagHead)
     % Otherwise: Brainstorm added a transformation that did not exist initially 
     % => do not add it to the python object + remove the default identity transformation in mneInfo
     else
-        mneInfo{'dev_head_t'} = py.NoneType;
+        mneInfo{'dev_head_t'} = py.None;
     end
     
 % ===== USE CTF/BRAINSTORM COORDINATES =====
@@ -360,7 +360,7 @@ if ~isempty(ChannelMat.Projector)
             pyProj{'data'}              = py.dict();
             pyProj{'data'}{'nrow'}      = py.int(1);
             pyProj{'data'}{'ncol'}      = py.int(length(iChannels));
-            pyProj{'data'}{'row_names'} = py.NoneType;
+            pyProj{'data'}{'row_names'} = py.None;
             pyProj{'data'}{'col_names'} = py.list({ChannelMat.Channel(iChannels).Name});
             pyProj{'data'}{'data'}      = py.numpy.array(ChannelMat.Projector(iProj).Components(iChannels,selComp(iComp))', pyargs('ndmin', py.int(2)));
             % Add to list of projectors
