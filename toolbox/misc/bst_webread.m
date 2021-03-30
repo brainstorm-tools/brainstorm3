@@ -36,7 +36,7 @@ catch
     try
         str = url_read_alt(url);
     catch
-        disp(['BST> ERROR: webread and urlread failed reading URL: ' url]);
+        % disp(['BST> ERROR: webread and urlread failed reading URL: ' url]);
         str = '';
     end
 end
