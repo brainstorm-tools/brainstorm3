@@ -173,6 +173,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     bst_save(OutputFile, sDataB_aligned, 'v7');
     % Register in database
     db_add_data(sInputsB.iStudy, OutputFile, sDataB_aligned);
-    OutputFiles{1} = OutputFile;
+    OutputFiles{2} = OutputFile;
     
 end    
