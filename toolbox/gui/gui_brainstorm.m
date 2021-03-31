@@ -165,7 +165,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % UPDATE NIRSTORM
         if (GlobalData.Program.GuiLevel == 1)
             jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
-            if process_nst_install('status')
+            if exist('process_nst_install', 'file') && process_nst_install('status')
                 % Add nirstorm function folder in matlab path
                 addpath(bst_fullfile( bst_get('BrainstormUserDir'), 'nirstorm' ));
                 gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)process_nst_install('install',[],[],1), fontSize);
