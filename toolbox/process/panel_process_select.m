@@ -3025,7 +3025,7 @@ end
 function [procTimeVector, nFiles] = GetProcessFileVector(sProcesses, FileTimeVector, nFiles)
     % Default value
     procTimeVector = FileTimeVector;
-    if isempty(sProcesses)
+    if isempty(sProcesses) || (length(procTimeVector) < 2)
         return;
     end
     % Look for an epoching process that changes the time vector of the files
