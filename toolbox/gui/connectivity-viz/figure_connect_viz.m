@@ -507,6 +507,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         % ---NODE SELECTIONS---
         case 'a'            % Select All Nodes
             SetSelectedNodes(hFig, [], 1, 1);
+            UpdateColormap(hFig);
         case 'leftarrow'    % Select Previous Region
             ToggleRegionSelection(hFig, 1);
         case 'rightarrow'   % Select Next Region
@@ -2939,7 +2940,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
                     RegionArrows1 = getappdata(hFig, 'RegionArrows1');
                     RegionArrows2 = getappdata(hFig, 'RegionArrows2');
                     set(RegionArrows1(iData), 'Visible', 'on');
-                    set(RegionArrows2(iData), 'Visible', 'on');
+                    set(RegionArrows2(iData), 'Visible', 'off');
                 end
             else
                 set(RegionLinks(iData), 'Visible', 'off');

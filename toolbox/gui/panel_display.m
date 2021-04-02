@@ -1330,7 +1330,7 @@ function SetConnectivityDisplayOptions(sOptions, DisplayButton)
         FigureId = getappdata(hFig, 'FigureId');
         isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
         if isConnectViz
-            figure_connect_viz('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
+            figure_connect_viz('SetDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
             figure_connect_viz('UpdateColormap', hFig);
         else
             figure_connect('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
