@@ -616,7 +616,12 @@ function NextNode = GetNextCircularRegion(hFig, Node, Inc)
     % 
     NextNode = CircularIndex(NextIndex);
 end
- 
+
+function SelectAllNodes(hFig)
+    SetSelectedNodes(hFig, [], 1, 1);
+    UpdateColormap(hFig);
+end
+
 function ToggleRegionSelection(hFig, Inc)
     % Get selected nodes
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
@@ -633,7 +638,7 @@ function ToggleRegionSelection(hFig, Inc)
         SelectedNode = selNodes(1);
         %
         NextNode = GetNextCircularRegion(hFig, SelectedNode, Inc);
-        
+        UpdateColormap(hFig);
     end
 
     % Is the next node an agregating node?
@@ -644,10 +649,12 @@ function ToggleRegionSelection(hFig, Inc)
         if (~isempty(AgregatedNodeIndices))
             % Select all nodes associated to NextNode
             SetSelectedNodes(hFig, AgregatedNodeIndices, 1, 1);
+            UpdateColormap(hFig);
         end    
     else
         % Select next node
         SetSelectedNodes(hFig, NextNode, 1, 1);
+        UpdateColormap(hFig);
     end
 end
  
@@ -937,7 +944,7 @@ function DisplayFigurePopup(hFig)
     % 'Graph Options' are directly shown in main pop-up menu
         jPopup.addSeparator();
         % === SELECT ALL THE NODES ===
-        jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SetSelectedNodes(hFig, [], 1, 1));
+        jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SelectAllNodes(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0));
         % === SELECT NEXT REGION ===
         jItem = gui_component('MenuItem', jPopup, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
