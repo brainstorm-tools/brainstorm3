@@ -919,15 +919,6 @@ function DisplayFigurePopup(hFig)
             jDisplayMenu.add(jPanelModifiers);
         end
         
-            % === TOGGLE BINARY LINK STATUS ===
-            Method = getappdata(hFig, 'Method');
-            if ismember(Method, {'granger'}) || ismember(Method, {'spgranger'})
-                IsBinaryData = getappdata(hFig, 'IsBinaryData');
-                jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Binary Link Display', IconLoader.ICON_CHANNEL_LABEL, [], @(h, ev)SetIsBinaryData(hFig, 1 - IsBinaryData));
-                jItem.setSelected(IsBinaryData);
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
-            end
-        
         % === BACKGROUND OPTIONS ===
         jDisplayMenu.addSeparator();
         BackgroundColor = getappdata(hFig, 'BgColor');
