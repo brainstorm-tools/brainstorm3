@@ -692,11 +692,13 @@ function NodeClickEvent(hFig, NodeIndex)
                 % then we want to select only this new one
                 SetSelectedNodes(hFig, [], 0); % first unselect all nodes
                 AlreadySelected = 0;
+                UpdateColormap(hFig); % required for directional graphs with arrowheads!!
 
             % If it's the only already selected node then select
             % all and return
             elseif (length(selNodes) == 1)
                 SetSelectedNodes(hFig, [], 1); 
+                UpdateColormap(hFig);
                 return;
             end
 
@@ -712,6 +714,7 @@ function NodeClickEvent(hFig, NodeIndex)
                 % return
                 if (sum(NodeAlreadySelected) == size(selNodes,1))
                     SetSelectedNodes(hFig, [], 1);
+                    UpdateColormap(hFig);
                     return;
                 end
             end
@@ -730,6 +733,7 @@ function NodeClickEvent(hFig, NodeIndex)
         if (isempty(isShift) || ~isShift)
             SetSelectedNodes(hFig, selNodes, 0, 1); % Deselect all
             Select = 1; % Select picked node
+            UpdateColormap(hFig);
         end
 
         % 4. APPLY DE/SELECTIONS
@@ -738,9 +742,11 @@ function NodeClickEvent(hFig, NodeIndex)
             SetSelectedNodes(hFig, [SelectNodeIndex(:); NodeIndex], Select); %set the selection
             % Go up the hierarchy
             UpdateHierarchySelection(hFig, NodeIndex, Select);
+            UpdateColormap(hFig);
         else
             SetSelectedNodes(hFig, NodeIndex, Select);
-        end                
+            UpdateColormap(hFig);
+        end 
     end
 end
 
