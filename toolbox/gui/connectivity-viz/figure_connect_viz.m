@@ -1517,8 +1517,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     AllNodes = getappdata(hFig, 'AllNodes');
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
-    % clear any previous links
-    % and get scaling distance from nodes to unit circle
+    % clear any previous links and get scaling distance from nodes to unit circle
     if (isMeasureLink)
         levelScale = getappdata(hFig, 'MeasureLevelDistance');
         if (isappdata(hFig,'MeasureLinks'))
@@ -1549,10 +1548,8 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         end
     end
     
+    % for arrowheads get axis ranges and hold status, toggle if necessary
     if (IsDirectionalData)
-        % for arrowheads
-        %-- get axe ranges and their norm
-        %-- determine and remember the hold status, toggle if necessary
         if ishold
             WasHold = 1;
         else
@@ -1566,59 +1563,51 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs 
-    for i = length(DataPair):-1:1 %for each link (loop backwards to pre-allocate links)
+    
+    %for each link (loop backwards to pre-allocate links)
+    for i = length(DataPair):-1:1 
         overlap = false;
         
         % node positions (rescaled to *unit* circle)
-        node1 = DataPair(i,1);
-        node2 = DataPair(i,2);
+        node1 = DataPair(i,1); node2 = DataPair(i,2);
         u  = [AllNodes(node1).Position(1);AllNodes(node1).Position(2)]/levelScale;
         v  = [AllNodes(node2).Position(1);AllNodes(node2).Position(2)]/levelScale;
     
-        % draw elliptical arc if an overlap is found
-        % check if 2 bidirectional links overlap
-        All_u(i,:) = u.';
-        All_v(i,:) = v.';
-        
-        % check if this line has a bidirectional equivalent that would
-        % overlap
+        % draw elliptical arc if 2 bidirectional links overlap
+        All_u(i,:) = u.'; All_v(i,:) = v.';
         for j = 1:length(All_u)-1
             if (v(1) == All_u(j,1) && v(2) == All_u(j,2) && u(1) == All_v(j,1) && u(2) == All_v(j,2))
-                
                 overlap = true;
                 
                 p = [(AllNodes(node1).Position(1)-AllNodes(node2).Position(1)) (AllNodes(node1).Position(2)-AllNodes(node2).Position(2))];          % horde vector
-                H = norm(p);                                % horde length
-                R = 0.63*H;                                  % arc radius
-                v = [-p(2) p(1)]/H;                         % perpendicular vector
-                L = sqrt(R*R-H*H/4);						% distance to circle (from horde)
+                H = norm(p);            % horde length
+                R = 0.63*H;             % arc radius
+                v = [-p(2) p(1)]/H;     % perpendicular vector
+                L = sqrt(R*R-H*H/4);	% distance to circle (from horde)
                 p = [(AllNodes(node1).Position(1)+AllNodes(node2).Position(1)) (AllNodes(node1).Position(2)+AllNodes(node2).Position(2))];          % vector center horde
-                p0(1,:) = p/2 + v*L;                        % circle center 1
-                p0(2,:) = p/2 - v*L;                        % circle center 2
-                d = sqrt(sum(p0.^2,2));                     % distance to circle center
-                [~,ix] = max( d );                          % get max (circle outside)
+                p0(1,:) = p/2 + v*L;	% circle center 1
+                p0(2,:) = p/2 - v*L;	% circle center 2
+                d = sqrt(sum(p0.^2,2));	% distance to circle center
+                [~,ix] = max( d );      % get max (circle outside)
                 p0 = p0(ix,:);
                 
                 % generate arc points
-                vx = linspace(AllNodes(node1).Position(1),AllNodes(node2).Position(1),100);				% horde points
-                vy = linspace(AllNodes(node1).Position(2),AllNodes(node2).Position(2),100);
-                vx = vx - p0(1);
-                vy = vy - p0(2);
+                vx = linspace(AllNodes(node1).Position(1),AllNodes(node2).Position(1),100) - p0(1);
+                vy = linspace(AllNodes(node1).Position(2),AllNodes(node2).Position(2),100) - p0(2);
                 v = sqrt(vx.^2+vy.^2);
                 x = p0(1) + vx./v*R;
                 y = p0(2) + vy./v*R;
             end
         end
         
-        % if no overlaps were found
+        % Otherwise, follow Poincare Hyperbolic Disk model 
         if (~overlap)
-            % diametric points: draw a straight line
-            % can adjust the error margin (currently 0.2)
+            % diametric points (w error margin): draw a straight line 
             if (abs(u(1)+v(1))<0.2 && abs(u(2)+v(2))<0.2)
                 x = linspace(levelScale*u(1),levelScale*v(1),100);
-                y = linspace(levelScale*u(2),levelScale*v(2),100);  
-                
-            else % draw an arc
+                y = linspace(levelScale*u(2),levelScale*v(2),100);    
+            % otherwise, draw an arc
+            else 
                 x0 = -(u(2)-v(2))/(u(1)*v(2)-u(2)*v(1));
                 y0 =  (u(1)-v(1))/(u(1)*v(2)-u(2)*v( 1));
                 r  = sqrt(x0^2 + y0^2 - 1);
@@ -1626,14 +1615,14 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 thetaLim(1) = atan2(u(2)-y0,u(1)-x0);
                 thetaLim(2) = atan2(v(2)-y0,v(1)-x0);
                 
-                % for arcs on the right-hand side, ensure they are drawn within the graph
+                % ensure arcs on right-hand side are drawn within the graph
                 if (u(1) >= 0 && v(1) >= 0)
                     first = abs(pi - max(thetaLim));
                     second = abs(-pi - min(thetaLim));
                     fraction = floor((first/(first + second))*100);
                     remaining = 100 - fraction;
                     
-                    % ensure the arc is within the unit disk
+                    % ensure arc is within the unit disk
                     % ensure correct direction: from thetaLim(1) to thetaLim(2)
                     if (max(thetaLim) == thetaLim(1))
                         theta = [linspace(max(thetaLim),pi,fraction),...
@@ -1652,30 +1641,24 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             end
         end
         
-        % draw actual line
-        l = line(...
+        % create line graphics object
+        Links(i) = line(...
                 x,...
                 y,...
                 'LineWidth', 1.5,...
                 'Color', [AllNodes(node1).Color 0.00],...
                 'PickableParts','visible',...
-                'Visible','off',...
-                'UserData',[i IsDirectionalData isMeasureLink node1 node2],... % i is the index
-                'ButtonDownFcn',@LinkButtonDownFcn); % not visible as default;
-        
-        % add link to list
-        Links(i) = l; 
+                'Visible','off',...                                             % not visible as default;
+                'UserData',[i IsDirectionalData isMeasureLink node1 node2],...  % i is the link index
+                'ButtonDownFcn',@LinkButtonDownFcn); 
 
-        % arrows for directional links
+        % create arrows for directional links
         if (IsDirectionalData)
-            [arrow1, arrow2] = Arrowhead(x, y, AllNodes(node1).Color, 100, 50, i, isMeasureLink, node1, node2, Xextend, Yextend);
-            % store arrows
-            Arrows1(i) = arrow1;
-            Arrows2(i) = arrow2;
+            [Arrows1(i), Arrows2(i)] = Arrowhead(x, y, AllNodes(node1).Color, 100, 50, i, isMeasureLink, node1, node2, Xextend, Yextend);
         end
     end
     
-    % Store Links into figure  
+    % Store new links and arrows into figure  
     if (isMeasureLink)
         setappdata(hFig,'MeasureLinks',Links);
         if (IsDirectionalData)
@@ -1816,55 +1799,61 @@ end
 % Draws 2 solid arrowheads for each link
 % based on: https://www.mathworks.com/matlabcentral/fileexchange/4538-arrowhead
 function [handle1, handle2] = Arrowhead(x,y,clr,ArSize,Where,Index,isMeasureLink,node1,node2,Xextend,Yextend)
+    % determine location of first arrowhead
     ArWidth = 0.75;
-    j = floor(length(x)*Where/100); %-- determine that location
+    j = floor(length(x)*Where/100); 
     
-    if j >= length(x), j = length(x) - 1; end
+    if j >= length(x)
+        j = length(x) - 1;
+    end
     x1 = x(j); x2 = x(j+1); y1 = y(j); y2 = y(j+1);
 
-    %-- determine angle for the rotation of the triangle
-    if x2 == x1 %-- line vertical, no need to calculate slope
+    % the arrow is made of a transformed "template triangle"
+    
+    % determine rotation angle for the triangle
+    if x2 == x1 % line vertical, no need to calculate slope
         if y2 > y1
             p = pi/2;
         else
             p= -pi/2;
         end
-    else %-- line not vertical, go ahead and calculate slope
-        %-- using normed differences (looks better like that)
+    else % line not vertical,calculate slope using normed differences
         m = ( (y2 - y1)/Yextend ) / ( (x2 - x1)/Xextend );
-        if x2 > x1 %-- now calculate the resulting angle
+        if x2 > x1
             p = atan(m);
         else
             p = atan(m) + pi;
         end
     end
-    
-    %-- the arrow is made of a transformed "template triangle".
-    %-- it will be created, rotated, moved, resized and shifted.
-    %-- the template triangle (it points "east", centered in (0,0)):
+
+    % template triangle (points "east", centered in (0,0)):
     xt = [1	-sin(pi/6)	-sin(pi/6)];
     yt = ArWidth*[0	 cos(pi/6)	-cos(pi/6)];
-    %-- rotate it by the angle determined above:
+    
+    % rotate by angle determined above
     xd = []; yd = [];
     for i = 3:-1:1 % loop backwards to pre-allocate
         xd(i) = cos(p)*xt(i) - sin(p)*yt(i);
         yd(i) = sin(p)*xt(i) + cos(p)*yt(i);
     end
-    %-- move the triangle so that its "head" lays in (0,0):
+    
+    % move the triangle so that its "head" lays in (0,0):
     xd = xd - cos(p);
     yd = yd - sin(p);
-    %-- stretch/deform the triangle to look good on the current axes:
+    
+    % stretch/deform to look good on the current axes:
     xd = xd*Xextend*ArSize/10000;
     yd = yd*Yextend*ArSize/10000;
-    %-- move the triangle to the location where it's needed
+    
+    % move to the location desired
     xd1 = xd + x2;
     yd1 = yd + y2;
-    
+ 
     % tip of the second arrow
     new_x = (xd1(2)+xd1(3))/2;
     new_y = (yd1(2)+yd1(3))/2;
     
-    %-- draw the first triangle
+    % draw first triangle
     handle1 = patch(xd1,...
         yd1,...
         clr,...
@@ -1872,12 +1861,11 @@ function [handle1, handle2] = Arrowhead(x,y,clr,ArSize,Where,Index,isMeasureLink
         'FaceColor',clr,...
         'Visible', 'off',...
         'PickableParts','visible',...
-        'UserData',[1 Index isMeasureLink node1,node2],... % flag == 1 when it's the first arrow, and 0 for the second one
+        'UserData',[1 Index isMeasureLink node1,node2],... % flag == 1 for first arrow
         'ButtonDownFcn',@ArrowButtonDownFcn);
     
-    % return point on the line closest to the desired location of
-    % the second arrowhead (tip of second arrowhead should be at
-    % the base of the first one)
+    % find point on the line closest to the desired location of
+    % the second arrowhead (tip of second at base of the first)
     pts_line = [x(:), y(:)];
     dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
     [~, index] = min(dist2);
@@ -1890,59 +1878,57 @@ function [handle1, handle2] = Arrowhead(x,y,clr,ArSize,Where,Index,isMeasureLink
     % draw second arrow at tip of second half of the link
     x = pts_line(1:index,1);
     y = pts_line(1:index,2);
-    
     if (size(x) < 2)
         x = pts_line(1:index+1,1);
     end
     if (size(y) < 2)
         y = pts_line(1:index+1,2);
     end
-    
+
+    % determine location of the second arrowhead
     Where = 100;
-    
-    % create second arrowhead
-    j = floor(length(x)*Where/100); %-- determine that location
-    if j >= length(x), j = length(x) - 1; end
-    if j == 0, j = 1; end
+    j = floor(length(x)*Where/100);
+    if j >= length(x)
+        j = length(x) - 1;
+    end
+    if j == 0
+        j = 1
+    end
     x1 = x(j); x2 = x(j+1); y1 = y(j); y2 = y(j+1);
     
-    % determine angle for the rotation of the triangle
+    % determine rotation angle
     if x2 == x1 %line vertical, no need to calculate slope
         if y2 > y1
             p = pi/2;
         else
             p= -pi/2;
         end
-    else %-- line not vertical, go ahead and calculate slope
-        %-- using normed differences (looks better like that)
+    else %-- line not vertical, calculate slope using normed differences
         m = ( (y2 - y1)/Yextend ) / ( (x2 - x1)/Xextend );
-        if x2 > x1 %-- now calculate the resulting angle
+        if x2 > x1
             p = atan(m);
         else
             p = atan(m) + pi;
         end
     end
     
-    % 	%-- the arrow is made of a transformed "template triangle".
-    % 	%-- it will be created, rotated, moved, resized and shifted.
-    %-- rotate it by the angle determined above:
+    % rotation
     xd = []; yd = [];
-    for i = 3:-1:1 % loop backwards to pre-allocate
+    for i = 3:-1:1
         xd(i) = cos(p)*xt(i) - sin(p)*yt(i);
         yd(i) = sin(p)*xt(i) + cos(p)*yt(i);
     end
-    
-    %-- move the triangle so that its "head" lays in (0,0):
+    % move the triangle so that its "head" lays in (0,0):
     xd = xd - cos(p);
     yd = yd - sin(p);
-    %-- stretch/deform the triangle to look good on the current axes:
+    % stretch/deform
     xd = xd*Xextend*ArSize/10000;
     yd = yd*Yextend*ArSize/10000;
-    %-- move the triangle to the location where it's needed
+    % move to desired location
     xd1 = xd + x2;
     yd1 = yd + y2;
     
-    %-- draw the second triangle
+    % draw the second triangle
     handle2 = patch(xd1,...
         yd1,...
         clr,...
@@ -1950,7 +1936,7 @@ function [handle1, handle2] = Arrowhead(x,y,clr,ArSize,Where,Index,isMeasureLink
         'FaceColor',clr,...
         'Visible', 'off',...
         'PickableParts','visible',...
-        'UserData',[0 Index isMeasureLink node1,node2],... % flag == 1 when it's the first arrow, and 0 for the second one
+        'UserData',[0 Index isMeasureLink node1,node2],... % flag == 0 for second arrow
         'ButtonDownFcn',@ArrowButtonDownFcn);
 end
 
