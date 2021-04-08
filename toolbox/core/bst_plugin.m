@@ -294,6 +294,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders   = {'bst_plugin/core','bst_plugin/forward','bst_plugin/GLM', 'bst_plugin/inverse' , 'bst_plugin/io','bst_plugin/math' ,'bst_plugin/mbll' ,'bst_plugin/misc', 'bst_plugin/OM', 'bst_plugin/preprocessing', 'bst_plugin/ppl'};
     PlugDesc(end).TestFile      = 'nst_install.m';
     PlugDesc(end).ReadmeFile    = 'README.md'; 
+    PlugDesc(end).GetVersionFcn  = 'nst_get_version';
     PlugDesc(end).MinMatlabVer  = 803;   % 2014a
     
     
