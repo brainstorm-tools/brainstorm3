@@ -338,7 +338,11 @@ function FigureMouseDownCallback(hFig, ev)
         elseif strcmpi(get(hFig, 'SelectionType'), 'extend') % SHIFT is held
             clickAction = 'ShiftClick'; % POTENTIAL node click, or mousemovecamera
         else % normal click
-            clickAction = 'SingleClick'; % POTENTIAL node click!        
+            clickAction = 'SingleClick'; % POTENTIAL node click!
+            
+            % store figure being clicked when clicking on a link
+            global GlobalData;
+            GlobalData.FigConnect.Figure = hFig;
         end
         clickPos = get(hFig, 'CurrentPoint');
 
@@ -1411,7 +1415,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     ClearAndAddNodes(hFig, Vertices, Names);
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
     
-    GlobalData.FigConnect.Figure = hFig;
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
     GlobalData.FigConnect.ClickedArrowIndex = 0;
     GlobalData.FigConnect.ClickedNode1Index = 0;
