@@ -65,7 +65,10 @@ for iStudy = iStudies
         return
     end
     % Try to reuse the existing selection of headmodel (which is not saved on the hard drive)
-    if ~isempty(sStudy.iHeadModel) && (sStudy.iHeadModel <= length(sStudyNew.HeadModel))
+    if ~isempty(sStudy.HeadModel) && ~isempty(sStudy.iHeadModel) && ~isempty(sStudyNew.HeadModel)
+        sStudyNew.iHeadModel = find(strcmp(sStudy.HeadModel(sStudy.iHeadModel).FileName, {sStudyNew.HeadModel.FileName}));
+    end
+    if ~isempty(sStudy.iHeadModel) && (sStudy.iHeadModel <= length(sStudyNew.HeadModel)) && isempty(sStudyNew.iHeadModel)
         sStudyNew.iHeadModel = sStudy.iHeadModel;
     end
     % Else study was reloaded
