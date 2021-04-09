@@ -28,7 +28,7 @@ function strA = str_format( A, isCode, nIndent )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2021
 
 % Parse inputs
 if (nargin < 2) || isempty(isCode)
@@ -119,9 +119,11 @@ function structString = DisplayStruct(s, isCode, nIndent)
             for iField = 1:length(MatFields)
                 % Format value
                 strField = FormatValue(s(iElem).(MatFields{iField}), isCode, nIndent+1);
-                % Replace { and } with {{ and }}
-                strField = strrep(strField, '{', '{{');
-                strField = strrep(strField, '}', '}}');
+                % Replace { and } with {{ and }} (so that struct() doesn't interpret them as array of struct)
+                if iscell(s(iElem).(MatFields{iField}))
+                    strField = strrep(strField, '{', '{{');
+                    strField = strrep(strField, '}', '}}');
+                end
                 % Pad with spaces after the option name so that all the values line up nicely
                 strPad = repmat(' ', 1, maxLength - length(MatFields{iField}));
                 % Add: 'fieldname', 'fieldvalue'
