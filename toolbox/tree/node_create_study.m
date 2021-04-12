@@ -64,7 +64,7 @@ end
 
 % Nodes considered new are less than an hour old
 bstStartTime = bst_get('ProgramStartTime');
-newNodeTime  = bst_get('CurrentUnixTime') - bst_get('NewFileTime') * 60;
+newNodeTime  = bst_get('CurrentUnixTime') - 3600;
 ProtocolInfo = bst_get('ProtocolInfo');
 
 % Query database to get all functional files

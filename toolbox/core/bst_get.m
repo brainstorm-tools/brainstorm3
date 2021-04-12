@@ -2744,14 +2744,6 @@ switch contextName
             end
         end
         
-    case 'NewFileTime'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'NewFileTime')
-            argout1 = GlobalData.Preferences.NewFileTime;
-        else
-            % Default: 1 hour
-            argout1 = 60;
-        end
-        
     case 'JOGLVersion'
         % If JOGL1 is available
         if exist('javax.media.opengl.GLCanvas', 'class')

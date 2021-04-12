@@ -98,26 +98,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jPanelScaling.add('hfill', jSliderScaling);
     jPanelLeft.add('br hfill', jPanelScaling);
     
-    % ===== LEFT: NEW MODIFIED FILES =====
-    jPanelModFile = gui_river([5 2], [0 0 5 0], 'How old are modified files considered new?');
-        % Slider labels
-        labelTable = java.util.Hashtable();
-        labelTable.put(uint32(1), gui_component('label',[],'','10 min'));
-        labelTable.put(uint32(2), gui_component('label',[],'','30 min'));
-        labelTable.put(uint32(3), gui_component('label',[],'','1 hour'));
-        labelTable.put(uint32(4), gui_component('label',[],'','6 hours'));
-        labelTable.put(uint32(5), gui_component('label',[],'','1 day'));
-        labelTable.put(uint32(6), gui_component('label',[],'','1 week'));
-        labelTable.put(uint32(7), gui_component('label',[],'','1 month'));
-        % Slider config
-        jSliderModFile = JSlider(1,7,1);
-        jSliderModFile.setLabelTable(labelTable);
-        jSliderModFile.setPaintTicks(1);
-        jSliderModFile.setMajorTickSpacing(1);
-        jSliderModFile.setPaintLabels(1);
-        jPanelModFile.add('hfill', jSliderModFile);
-    jPanelLeft.add('br hfill', jPanelModFile);
-    
     % ===== LEFT: RESET =====
     if (GlobalData.Program.GuiLevel == 1)
         jPanelReset = gui_river([5 5], [0 15 15 15], 'Reset Brainstorm');
@@ -265,30 +245,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             case 300,       jSliderScaling.setValue(6);
             case 400,       jSliderScaling.setValue(7);
         end
-        % New file time
-        newFileTime = bst_get('NewFileTime');
-        if newFileTime < 15
-            % 10 minutes
-            jSliderModFile.setValue(1);
-        elseif newFileTime < 45
-            % 30 minutes
-            jSliderModFile.setValue(2);
-        elseif newFileTime < 3*60
-            % 1 hour
-            jSliderModFile.setValue(3);
-        elseif newFileTime < 12*60
-            % 6 hours
-            jSliderModFile.setValue(4);
-        elseif newFileTime < 3*24*60
-            % 1 day
-            jSliderModFile.setValue(5);
-        elseif newFileTime < 14*24*60
-            % 1 week
-            jSliderModFile.setValue(6);
-        else
-            % 1 month
-            jSliderModFile.setValue(7);
-        end
         % Directory
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
         if ~isempty(jTextFtDir)
@@ -377,18 +333,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             case 7,  InterfaceScaling = 400;
         end
         bst_set('InterfaceScaling', InterfaceScaling);
-        
-        % ===== NEW FILE TIME =====
-        switch (jSliderModFile.getValue())
-            case 1,  fileTime = 10;       % 10 minutes
-            case 2,  fileTime = 30;       % 30 minutes
-            case 3,  fileTime = 60;       % 1 hour
-            case 4,  fileTime = 6*60;     % 6 hours
-            case 5,  fileTime = 24*60;    % 1 day
-            case 6,  fileTime = 7*24*60;  % 1 week
-            case 7,  fileTime = 30*24*60; % 1 month
-        end
-        bst_set('NewFileTime', fileTime);
         
         % ===== DATA IMPORT =====
         % Temporary directory
