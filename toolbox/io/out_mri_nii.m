@@ -109,8 +109,9 @@ hdr.glmax  = MaxVal;
 
 % ===== TRANSORMATION MATRICES ======
 % Use existing matrices (from the header)
-if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
+if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'})) && isfield(sMri.Header, 'dim') && isfield(sMri.Header.dim, 'pixdim')
     nifti = sMri.Header.nifti;
+    hdr.pixdim = sMri.Header.dim.pixdim;
 % Use transformation matrices from other formats than .nii
 else
     % === QFORM ===
