@@ -429,7 +429,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
-                Version = str(9:end);
+                Version = strtrim(str(9:end));
             otherwise
                 return;
         end
