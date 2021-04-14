@@ -284,13 +284,19 @@ function PlugDesc = GetSupported(SelPlug)
 %     PlugDesc(end).LoadFolders   = {'*'};
     
 %     % === NIRSTORM ===
-%     PlugDesc(end+1)             = GetStruct('nirstorm');
-%     PlugDesc(end).Version       = 'github-master';
-%     PlugDesc(end).URLzip        = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
-%     PlugDesc(end).URLinfo       = 'https://github.com/Nirstorm/nirstorm';
-%     PlugDesc(end).TestFile      = 'nst_install.m';
-%     PlugDesc(end).ReadmeFile    = 'README.md';
-%     PlugDesc(end).LoadFolders   = {'*'};
+    PlugDesc(end+1)             = GetStruct('nirstorm');
+    PlugDesc(end).Version       = 'github-master';
+    PlugDesc(end).AutoUpdate    = 0;
+    PlugDesc(end).AutoLoad      = 1;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip        = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
+    PlugDesc(end).URLinfo       = 'https://github.com/Nirstorm/nirstorm';
+    PlugDesc(end).LoadFolders   = {'bst_plugin/core','bst_plugin/forward','bst_plugin/GLM', 'bst_plugin/inverse' , 'bst_plugin/io','bst_plugin/math' ,'bst_plugin/mbll' ,'bst_plugin/misc', 'bst_plugin/OM', 'bst_plugin/preprocessing', 'bst_plugin/ppl'};
+    PlugDesc(end).TestFile      = 'process_nst_mbll.m';
+    PlugDesc(end).ReadmeFile    = 'README.md'; 
+    PlugDesc(end).GetVersionFcn  = 'nst_get_version';
+    PlugDesc(end).MinMatlabVer  = 803;   % 2014a
+    
     
     % ================================================================================================================
     
@@ -419,6 +425,11 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
+           case 'nirstorm'
+                bst_progress('text', ['Checking latest online version for ' PlugName '...']);
+                disp(['BST> Checking latest online version for ' PlugName '...']);
+                str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
+                Version = str(9:end);
             otherwise
                 return;
         end
