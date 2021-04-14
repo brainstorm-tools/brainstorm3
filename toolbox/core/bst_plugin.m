@@ -284,7 +284,7 @@ function PlugDesc = GetSupported(SelPlug)
 %     PlugDesc(end).LoadFolders   = {'*'};
     
 %     % === NIRSTORM ===
-    PlugDesc(end+1)             = GetStruct('NIRSTORM');
+    PlugDesc(end+1)             = GetStruct('nirstorm');
     PlugDesc(end).Version       = 'github-master';
     PlugDesc(end).AutoUpdate    = 0;
     PlugDesc(end).AutoLoad      = 1;
@@ -425,7 +425,7 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
-           case 'NIRSTORM'
+           case 'nirstorm'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
