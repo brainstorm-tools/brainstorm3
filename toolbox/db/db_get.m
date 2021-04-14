@@ -249,14 +249,11 @@ switch contextName
             else
                 condQuery.Id = iFiles(i);
             end
-            if ~isempty(type)
-                condQuery.Type = type;
-            end
             sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
             if i == 1
-                sItems = repmat(db_template(sFiles(i).Type), 1, nFiles);
+                sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
             end        
-            sItems(i) = getFuncFileStruct(type, sFiles(i));
+            sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
         end
  
         varargout{1} = sFiles;
