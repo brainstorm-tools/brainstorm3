@@ -584,17 +584,17 @@ if (GuiLevel == 1)
             'Next time you need them, they will be downloaded again automatically.' 10 10 ...
             'Delete the old plugins listed below?' 10 ...
             sprintf(' - %s\n', OldPlugPath{:})], 'Plugin manager');
+        % Delete plugin
         if isConfirm
-            
+            % Delete files in $HOME/.brainstorm/plugname
             file_delete(OldPlugPath, 1, 3);
+            % NIRSTORM: Call uninstall function (it previously installed functions in various $HOME/.brainstorm subfolders)
             if any(strcmpi({AllPlugs(iOldInstall).Name},'nirstorm')) && exist('uninstall_nirstorm')
                 cur_dir=pwd;
                 cd(bst_get('UserProcessDir'));
-                
                 uninstall_nirstorm();
                 file_delete(fullfile(bst_get('UserProcessDir'),'uninstall_nirstorm.m'),1);
                 file_delete(fullfile(bst_get('UserProcessDir'),{'dg_voronoi.mexa64','dg_voronoi.mexglx'}),1);
-                
                 cd(cur_dir);
             end
         end     
