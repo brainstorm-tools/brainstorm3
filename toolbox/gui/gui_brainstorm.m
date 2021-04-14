@@ -1632,6 +1632,7 @@ function status = CloneProble(bstDir)
                 bst_error('Invalid username or password.', 'Brainstorm login', 0);
             end
         catch
+            bst_error('Could not establish a secure connection to Brainstorm server', 'Brainstorm login', 0);
             status = 0;
         end
         bst_progress('stop');
