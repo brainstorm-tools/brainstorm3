@@ -1545,8 +1545,6 @@ function sInputs = GetInputStruct(FileNames)
     end
     % Output structure
     sInputs = repmat(db_template('processfile'), 1, length(FileNames));
-    % Get file type for the first file
-    FileType = file_gettype(FileNames{1});
     % Remove the full path
     ProtocolInfo = bst_get('ProtocolInfo');
     FileNames = cellfun(@(c)strrep(c, [ProtocolInfo.STUDIES, filesep], ''), FileNames, 'UniformOutput', 0);
@@ -1588,7 +1586,7 @@ function sInputs = GetInputStruct(FileNames)
         [sInputs(iGroupFiles).SubjectFile] = deal(file_win2unix(SubjectFile));
         % Get channel file
         if iChannel ~= 0
-            sChannel = db_get('FunctionalFile', sqlConn, 'channel', iChannel);
+            [~, sChannel] = db_get('FunctionalFile', sqlConn, iChannel);
             [sInputs(iGroupFiles).ChannelFile]  = deal(file_win2unix(sChannel.FileName));
             [sInputs(iGroupFiles).ChannelTypes] = deal(sChannel.Modalities);
         end
@@ -1599,7 +1597,7 @@ function sInputs = GetInputStruct(FileNames)
         % Get item info
         for iItem = 1:length(iGroupFiles)
             iInput = iGroupFiles(iItem);
-            [sItem, sFile] = db_get('FunctionalFile', sqlConn, FileType, GroupFileNames{iItem});
+            [sFile, sItem] = db_get('FunctionalFile', sqlConn, GroupFileNames{iItem});
             
             % Skip if file not found in database
             if isempty(sItem)
@@ -1607,12 +1605,12 @@ function sInputs = GetInputStruct(FileNames)
             end
             
             % Extract input type
-            if strcmpi(FileType, 'data') && strcmpi(sItem.DataType, 'raw')
+            if strcmpi(sFile.Type, 'data') && strcmpi(sItem.DataType, 'raw')
                 InputType = 'raw';
-            elseif strcmpi(FileType, 'link')
+            elseif strcmpi(sFile.Type, 'link')
                 InputType = 'results';
             else
-                InputType = FileType;
+                InputType = sFile.Type;
             end
             
             % Fill structure

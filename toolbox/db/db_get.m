@@ -218,32 +218,51 @@ switch contextName
         else
             varargout{1} = sAnatFiles;
         end
-
-    % Usage: sFiles = db_get('FunctionalFile', FileType, FileIDs)
-    % Usage: sFiles = db_get('FunctionalFile', FileType, FileNames)
+        
+%% ==== FUNCTIONAL FILE ====
+    % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileIDs,   Fields)
+    % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileNames, Fields)
+    % Usage: [sFiles, sItems] = db_get('FunctionalFile', CondQuery, Fields)
     case 'FunctionalFile'
-        type = args{1};
-        iFiles = args{2};
+        % Parse inputs
+        iFiles = args{1};
+        fields = '*';
+        condQuery = struct();
+        if length(args) > 1
+           fields = {2};
+        end
+        
+        if isstruct(iFiles)
+            condQuery = CondQuery;           
+        end
+        
         if ischar(iFiles)
             iFiles = {iFiles};
         end
+        
         nFiles = length(iFiles);
         sFiles = repmat(db_template('FunctionalFile'), 1, nFiles);
-        sItems = repmat(db_template(type), 1, nFiles);
 
         for i = 1:nFiles
             if iscell(iFiles)
-                condQuery = struct('Type', type, 'FileName', iFiles{i});
+                condQuery.FileName = iFiles{i};
             else
-                condQuery = struct('Id', iFiles(i));
+                condQuery.Id = iFiles(i);
             end
-            sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', '*', condQuery);
+            if ~isempty(type)
+                condQuery.Type = type;
+            end
+            sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
+            if i == 1
+                sItems = repmat(db_template(sFiles(i).Type), 1, nFiles);
+            end        
             sItems(i) = getFuncFileStruct(type, sFiles(i));
         end
+ 
+        varargout{1} = sFiles;
+        varargout{2} = sItems;
 
-        varargout{1} = sItems;
-        varargout{2} = sFiles;
-
+%%
     % Usage: iSubject = db_get('SubjectFromStudy', iStudy)
     case 'SubjectFromStudy'
         iStudy = args{1};
@@ -414,6 +433,8 @@ if handleConn
     sql_close(sqlConn);
 end
 end
+
+%% ==== HELPERS ====
 
 % Get a specific functional file db_template structure from the generic
 % db_template('FunctionalFile') structure.
