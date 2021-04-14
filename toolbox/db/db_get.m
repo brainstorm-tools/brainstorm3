@@ -229,7 +229,7 @@ switch contextName
         fields = '*';
         condQuery = struct();
         if length(args) > 1
-           fields = {2};
+            fields = args{2};
         end
         
         if isstruct(iFiles)

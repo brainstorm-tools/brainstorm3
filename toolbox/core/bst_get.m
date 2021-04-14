@@ -1360,8 +1360,7 @@ switch contextName
         sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('FileName', StudyFile));
         % If data file instead on Study file
         if isempty(sStudy)
-            sFile = sql_query(sqlConn, 'select', 'FunctionalFile', 'Study', ...
-                struct('FileName', StudyFile));
+            sFile = db_get('FunctionalFile', sqlConn, StudyFile, 'Study');
             if ~isempty(sFile)
                 iStudy = sFile.Study;
             end

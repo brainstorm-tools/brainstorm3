@@ -55,6 +55,10 @@ else
         error('Invalid call.');
     end
     % Get studies for files in input
+    sFiles = db_get('FunctionalFile', bstNodes, {'Id', 'Study'});
+    iStudies = [sFiles(:).Study];
+    iFiles   = [sFiles(:).Id];
+    
     sqlConn = sql_connect();
     for iFile = 1:length(DataFiles)
         sFile = sql_query(sqlConn, 'select', 'FunctionalFile', {'Id', 'Study'}, struct('FileName', DataFiles{iFile}));
