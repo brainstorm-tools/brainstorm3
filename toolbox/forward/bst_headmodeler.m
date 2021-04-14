@@ -71,8 +71,6 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 % Authors: Sylvain Baillet, March 2002
 %          Francois Tadel, 2009-2019
 
-global nfv
-nfv = [];
 errMessage = [];
 
 %% ===== DEFAULTS ==================================================================================
