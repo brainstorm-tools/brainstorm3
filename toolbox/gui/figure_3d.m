@@ -2130,6 +2130,26 @@ function UpdateFigSelectedRows(iDS, iFig)
     DispChan = {GlobalData.DataSet(iDS).Channel(iDispChan).Name};
     % Remove spaces in channel names
     DispChan = cellfun(@(c)strrep(c,' ',''), DispChan, 'UniformOutput', 0);
+    
+    % If nirs -> transform S1D1 to S1 and D1 (also remove duplicates
+    tmp={};
+    if all( contains(DispChan,'S') & contains(DispChan,'D'))
+        for iChan = 1 :length(DispChan)
+            chan_info=regexp(DispChan{iChan}, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
+            source_name = sprintf('S%s',  chan_info{1}{1});
+            det_name = sprintf('D%s',  chan_info{1}{2});
+
+            if isempty(tmp) || ~any(contains( tmp, source_name))
+                tmp{end+1} = source_name;
+            end    
+            if ~any(contains( tmp,det_name))
+                tmp{end+1} = det_name;
+            end    
+        end 
+        DispChan = tmp;
+        iDispChan = 1: length(DispChan);
+    end 
+    DispChan = tmp;
     % Get the general list of selected rows
     SelChan = intersect(GlobalData.DataViewer.SelectedRows, DispChan);
     % Find row indices in the full list
@@ -3446,9 +3466,17 @@ function [chan_loc, markers_loc, vertices] = GetChannelPositions(iDS, selChan)
 %                 end
                 Factor = 1;
                 % Position of the channel: mid-way between source and detector, organized in layers by wavelength
-                chan_loc    = [chan_loc,    mean(Channel(i).Loc,2) .* Factor];
-                markers_loc = [markers_loc, mean(Channel(i).Loc,2) .* Factor];
-                vertices    = [vertices,    mean(Channel(i).Loc,2) .* Factor];
+                if ~any(all(chan_loc  ==  Channel(i).Loc(:,1)))
+                    chan_loc    = [chan_loc,   Channel(i).Loc(:,1).* Factor];
+                    markers_loc = [markers_loc, Channel(i).Loc(:,1).* Factor];
+                    vertices    = [vertices,    Channel(i).Loc(:,1).* Factor];
+                end
+                
+                if ~any(all(chan_loc  ==  Channel(i).Loc(:,2)))
+                    chan_loc    = [chan_loc,   Channel(i).Loc(:,2).* Factor];
+                    markers_loc = [markers_loc, Channel(i).Loc(:,2).* Factor];
+                    vertices    = [vertices,    Channel(i).Loc(:,2).* Factor];
+                end
             otherwise
                 chan_loc    = [chan_loc,    mean(Channel(i).Loc,2)];
                 markers_loc = [markers_loc, Channel(i).Loc(:,1)];
@@ -3579,6 +3607,9 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
         if isLabels && ~isempty(selChan)
             % Check if the channels are ECOG/SEEG
             isIntraEEG = ismember(upper(GlobalData.DataSet(iDS).Channel(selChan(1)).Type), {'SEEG', 'ECOG'});
+            % Check if the channels are NIRS
+            isNIRS = ismember(upper(GlobalData.DataSet(iDS).Channel(selChan(1)).Type), {'NIRS'});
+
             % 3DElectrodes: Bright green for higher readability
             hElectrodeObjects = [findobj(Figure.hFigure, 'Tag', 'ElectrodeGrid'); findobj(Figure.hFigure, 'Tag', 'ElectrodeDepth'); findobj(Figure.hFigure, 'Tag', 'ElectrodeWire')];
             if ~isempty(hElectrodeObjects)
@@ -3593,6 +3624,17 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
             if isIntraEEG
                 % Get the sensor groups available and simplify the names of the sensors
                 [iGroupEeg, GroupNames, displayNames] = panel_montage('GetEegGroups', GlobalData.DataSet(iDS).Channel(selChan), [], 1);
+            elseif isNIRS
+                [S,D,WL] = panel_montage('ParseNirsChannelNames',{GlobalData.DataSet(iDS).Channel(selChan).Name});
+                S = unique(S);
+                D = unique(D);
+                displayNames = {}; 
+                
+                for i=1:length(S)
+                    displayNames{end+1} = sprintf('S%d',S);
+                    displayNames{end+1} = sprintf('D%d',D);
+
+                end    
             else
                 displayNames = sensorNames;
             end
