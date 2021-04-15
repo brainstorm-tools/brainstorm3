@@ -58,16 +58,6 @@ else
     sFiles = db_get('FunctionalFile', bstNodes, {'Id', 'Study'});
     iStudies = [sFiles(:).Study];
     iFiles   = [sFiles(:).Id];
-    
-%     sqlConn = sql_connect();
-%     for iFile = 1:length(DataFiles)
-%         sFile = sql_query(sqlConn, 'select', 'FunctionalFile', {'Id', 'Study'}, struct('FileName', DataFiles{iFile}));
-%         if ~isempty(sFile)
-%             iStudies(end + 1) = sFile.Study;
-%             iFiles(end + 1)   = sFile.Id;
-%         end
-%     end
-%     sql_close(sqlConn);
 end
 
 % No files found : return

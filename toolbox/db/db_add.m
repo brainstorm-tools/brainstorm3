@@ -162,19 +162,19 @@ if ismember(fileType, {'subjectimage', 'channel', 'noisecov', 'ndatacov'})
 %                 delfile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(1).FileName);
 %             end
         case 'channel'
-            [~, sChannel] = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'channel'));
-            if ~isempty(sChannel)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sChannel.FileName);
+            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'channel'));
+            if ~isempty(sFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile.FileName);
             end
         case 'noisecov'
-            [~, sNoiseCov] = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'noisecov'));
-            if ~isempty(sNoiseCov)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sNoiseCov(1).FileName);
+            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'noisecov'));
+            if ~isempty(sFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
             end
         case 'ndatacov'
-            [~, sDataCov] = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'ndatacov'));
-            if ~isempty(sDataCov)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sDataCov(1).FileName);
+            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'ndatacov'));
+            if ~isempty(sFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
             end
     end
     % Replace file

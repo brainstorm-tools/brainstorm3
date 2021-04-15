@@ -177,9 +177,9 @@ try
                 % Check for bad trials
                 if ~GetBadTrials
                     % Get study
-                    [~, sItem] = db_get('FunctionalFile', nodeFileNames{iNode});
+                    [~, sData] = db_get('FunctionalFile', nodeFileNames{iNode});
                     % Ignore bad trials
-                    if sItem.BadTrial
+                    if sData.BadTrial
                         continue;
                     end
                 end
