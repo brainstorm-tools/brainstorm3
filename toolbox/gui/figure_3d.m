@@ -760,7 +760,31 @@ function FigureMouseUpCallback(hFig, varargin)
             % Select sensor
             if ~isempty(iSelChan)
                 % Get channel names
-                SelChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
+                
+                % If 3D viz of Nirs, we only return the name of the optodes
+                % (eg SX, or DY)
+                DispChan = {GlobalData.DataSet(iDS).Channel.Name};
+                if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type,'3DViz') && ...
+                     all( contains(DispChan,'S') & contains(DispChan,'D'))
+                    
+                    tmp={};
+                    for iChan = 1 :length(DispChan)
+                        chan_info=regexp(DispChan{iChan}, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
+                        source_name = sprintf('S%s',  chan_info{1}{1});
+                        det_name = sprintf('D%s',  chan_info{1}{2});
+
+                        if isempty(tmp) || ~any(contains( tmp, source_name))
+                            tmp{end+1} = source_name;
+                        end    
+                        if ~any(contains( tmp,det_name))
+                            tmp{end+1} = det_name;
+                        end    
+                    end 
+                    SelChan = tmp(iSelChan);
+                else
+                    SelChan = {GlobalData.DataSet(iDS).Channel(iSelChan).Name};
+                end
+
                 % SHIFT + CLICK: Display time-frequency map for the sensor
                 if strcmpi(get(hFig, 'SelectionType'), 'extend')
                     % Select only the last sensor
@@ -3629,26 +3653,19 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
                 
                 tmp={}; 
                 DispChan = {GlobalData.DataSet(iDS).Channel.Name};
-                if all( contains(DispChan,'S') & contains(DispChan,'D')) 
-                    for iChan = 1 :length(DispChan) 
-                        chan_info=regexp(DispChan{iChan}, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens'); 
-                        source_name = sprintf('S%s',  chan_info{1}{1}); 
-                        det_name = sprintf('D%s',  chan_info{1}{2}); 
+                for iChan = 1 :length(DispChan) 
+                    chan_info=regexp(DispChan{iChan}, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens'); 
+                    source_name = sprintf('S%s',  chan_info{1}{1}); 
+                    det_name = sprintf('D%s',  chan_info{1}{2}); 
 
-                        if isempty(tmp) || ~any(contains( tmp, source_name)) 
-                            tmp{end+1} = source_name; 
-                        end     
-                        if ~any(contains( tmp,det_name)) 
-                            tmp{end+1} = det_name; 
-                        end     
-                    end  
-                    DispChan = tmp; 
-                    iDispChan = 1: length(DispChan); 
+                    if isempty(tmp) || ~any(contains( tmp, source_name)) 
+                        tmp{end+1} = source_name; 
+                    end     
+                    if ~any(contains( tmp,det_name)) 
+                        tmp{end+1} = det_name; 
+                    end     
                 end  
                 displayNames = tmp; 
-                
-                
-                
             else
                 displayNames = sensorNames;
             end
