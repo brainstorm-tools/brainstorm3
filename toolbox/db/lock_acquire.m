@@ -54,7 +54,7 @@ end
 % Get file ID
 if nargin > 3
     if ischar(FileId)
-        sFile = sql_query(sqlConnection, 'select', 'functionalfile', 'Id', struct('FileName', FileId));
+        sFile = db_get('functionalfile', sqlConnection, FileId, 'Id');
         FileId = sFile.Id;
     end
 else

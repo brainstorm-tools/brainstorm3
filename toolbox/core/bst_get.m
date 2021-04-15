@@ -1418,8 +1418,7 @@ switch contextName
     case 'ChannelModalities'
         % Get channel from input file
         sqlConn = sql_connect();
-        sFile = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-            {'Id', 'Study', 'Type'}, struct('FileName', varargin{2}));
+        sFile = db_get('FunctionalFile', sqlConn, varargin{2}, {'Id', 'Study', 'Type'});
         if strcmpi(sFile.Type, 'channel')
             [~, sChannel] = db_get('FunctionalFile', sqlConn, sFile.Id);
             sql_close(sqlConn);

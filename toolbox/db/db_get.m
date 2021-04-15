@@ -226,23 +226,31 @@ switch contextName
     case 'FunctionalFile'
         % Parse inputs
         iFiles = args{1};
-        fields = '*';
-        condQuery = struct();
-        if length(args) > 1
-            fields = args{2};
-        end
-        
-        if isstruct(iFiles)
-            condQuery = CondQuery;           
-        end
-        
+        fields = '*';                              
+        templateStruct = db_template('FunctionalFile');
+
         if ischar(iFiles)
             iFiles = {iFiles};
+        elseif isstruct(iFiles)
+            condQuery = CondQuery;           
         end
-        
-        nFiles = length(iFiles);
-        sFiles = repmat(db_template('FunctionalFile'), 1, nFiles);
 
+        if length(args) > 1
+            fields = args{2};
+            if ischar(fields)
+                fields = {fields};
+            end
+            for i = 1 : length(fields)
+                resultStruct.(fields{i}) = templateStruct.(fields{i});
+            end
+        else
+            resultStruct = templateStruct;
+        end
+              
+        nFiles = length(iFiles);
+        sFiles = repmat(resultStruct, 1, nFiles);
+        sItems= [];
+        
         for i = 1:nFiles
             if iscell(iFiles)
                 condQuery.FileName = iFiles{i};
@@ -250,10 +258,12 @@ switch contextName
                 condQuery.Id = iFiles(i);
             end
             sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
-            if i == 1
-                sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
+            if strcmp(fields, '*')
+                if i == 1
+                    sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
+                end
+                sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
             end        
-            sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
         end
  
         varargout{1} = sFiles;
@@ -311,10 +321,9 @@ switch contextName
             if ~isempty(sStudy)
                 % If no channel selected, find first channel in study
                 if isempty(sStudy.iChannel)
-                    sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-                        'Id', struct('Study', sStudy.Id, 'Type', 'channel'));
-                    if ~isempty(sChannel)
-                        sStudy.iChannel = sChannel(1).Id;
+                    sFile = db_get('FunctionalFile', sqlConn, struct('Study', sStudy.Id, 'Type', 'channel'), 'Id');
+                    if ~isempty(sFile)
+                        sStudy.iChannel = sFile(1).Id;
                     end
                 end
 

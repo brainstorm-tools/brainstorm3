@@ -544,7 +544,7 @@ if ~isempty(iTargetStudies)
                 if ~GetBadTrials
                     qryCond.ExtraNum = 0;
                 end
-                sFiles = sql_query([], 'select', 'FunctionalFile', 'Id', qryCond);
+                sFiles = db_get('FunctionalFile', qryCond, 'Id');
                 
                 % Add data files to list
                 if ~isempty(sFiles)
