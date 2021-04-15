@@ -2131,9 +2131,10 @@ function UpdateFigSelectedRows(iDS, iFig)
     % Remove spaces in channel names
     DispChan = cellfun(@(c)strrep(c,' ',''), DispChan, 'UniformOutput', 0);
     
-    % If nirs -> transform S1D1 to S1 and D1 (also remove duplicates
-    tmp={};
-    if all( contains(DispChan,'S') & contains(DispChan,'D'))
+    
+    if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type,'3DViz') && ...
+         all( contains(DispChan,'S') & contains(DispChan,'D'))
+        tmp={};
         for iChan = 1 :length(DispChan)
             chan_info=regexp(DispChan{iChan}, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');
             source_name = sprintf('S%s',  chan_info{1}{1});
@@ -2148,8 +2149,8 @@ function UpdateFigSelectedRows(iDS, iFig)
         end 
         DispChan = tmp;
         iDispChan = 1: length(DispChan);
-    end 
-    DispChan = tmp;
+    end
+    
     % Get the general list of selected rows
     SelChan = intersect(GlobalData.DataViewer.SelectedRows, DispChan);
     % Find row indices in the full list
@@ -3625,16 +3626,29 @@ function ViewSensors(hFig, isMarkers, isLabels, isMesh, Modality)
                 % Get the sensor groups available and simplify the names of the sensors
                 [iGroupEeg, GroupNames, displayNames] = panel_montage('GetEegGroups', GlobalData.DataSet(iDS).Channel(selChan), [], 1);
             elseif isNIRS
-                [S,D,WL] = panel_montage('ParseNirsChannelNames',{GlobalData.DataSet(iDS).Channel(selChan).Name});
-                S = unique(S);
-                D = unique(D);
-                displayNames = {}; 
                 
-                for i=1:length(S)
-                    displayNames{end+1} = sprintf('S%d',S);
-                    displayNames{end+1} = sprintf('D%d',D);
+                tmp={}; 
+                DispChan = {GlobalData.DataSet(iDS).Channel.Name};
+                if all( contains(DispChan,'S') & contains(DispChan,'D')) 
+                    for iChan = 1 :length(DispChan) 
+                        chan_info=regexp(DispChan{iChan}, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens'); 
+                        source_name = sprintf('S%s',  chan_info{1}{1}); 
+                        det_name = sprintf('D%s',  chan_info{1}{2}); 
 
-                end    
+                        if isempty(tmp) || ~any(contains( tmp, source_name)) 
+                            tmp{end+1} = source_name; 
+                        end     
+                        if ~any(contains( tmp,det_name)) 
+                            tmp{end+1} = det_name; 
+                        end     
+                    end  
+                    DispChan = tmp; 
+                    iDispChan = 1: length(DispChan); 
+                end  
+                displayNames = tmp; 
+                
+                
+                
             else
                 displayNames = sensorNames;
             end

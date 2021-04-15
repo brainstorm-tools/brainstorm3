@@ -507,7 +507,7 @@ function isOk = PlotFigure(iDS, iFig, isReset) %#ok<DEFNU>
         return
     % 3D OPTODES: Separate function
     elseif strcmpi(TopoInfo.TopoType, '3DOptodes')
-        CreateTopo3dOptodes(iDS, iFig, Channel(selChan), markers_loc(selChan,:));
+        CreateTopo3dOptodes(iDS, iFig);
         return
     end
     
