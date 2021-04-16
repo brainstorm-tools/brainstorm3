@@ -232,7 +232,7 @@ switch contextName
         if ischar(iFiles)
             iFiles = {iFiles};
         elseif isstruct(iFiles)
-            condQuery = CondQuery;           
+            condQuery = args{1};           
         end
 
         if length(args) > 1
@@ -246,29 +246,35 @@ switch contextName
         else
             resultStruct = templateStruct;
         end
-              
-        nFiles = length(iFiles);
-        sFiles = repmat(resultStruct, 1, nFiles);
-        sItems= [];
-        
-        for i = 1:nFiles
-            if iscell(iFiles)
-                condQuery.FileName = iFiles{i};
-            else
-                condQuery.Id = iFiles(i);
-            end
-            sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
-            if strcmp(fields, '*')
-                if i == 1
-                    sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
+
+        % Input is FileIDs and FileNames
+        if ~isstruct(iFiles)
+            nFiles = length(iFiles);
+            sFiles = repmat(resultStruct, 1, nFiles);
+            for i = 1:nFiles
+                if iscell(iFiles)
+                    condQuery.FileName = iFiles{i};
+                else
+                    condQuery.Id = iFiles(i);
                 end
-                sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
-            end        
+                sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
+            end
+        else % Input is struct query
+            sFiles = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery(1));
         end
- 
+        sItems = [];
+        
+        % If output expeted, all field requested, and all sFiles are same Type     
+        if nargout > 1 && isequal(fields, '*') && length(unique({sFiles(:).Type})) == 1
+            nFiles = length(sFiles);
+            sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
+            for i = 1 : nFiles
+                sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
+            end
+        end        
+
         varargout{1} = sFiles;
         varargout{2} = sItems;
-
 %%
     % Usage: iSubject = db_get('SubjectFromStudy', iStudy)
     case 'SubjectFromStudy'
