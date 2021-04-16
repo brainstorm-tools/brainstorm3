@@ -2640,7 +2640,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     % Get description for each file
     for iFile = 1:length(bstFunc)
         % Skip python support functions
-        if length(bstFunc{iFile} > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
+        if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
         end
         % Split function names: regular process=only function name; plugin process=full path

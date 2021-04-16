@@ -265,6 +265,7 @@ if IS_BIN
                     disp(['WARNING: Plugin ' PlugDesc(iPlug).Name ' is not installed.']);
                 else
                     strOpt = [strOpt '      <file>' bst_fullfile(PlugInst.Path, PlugInst.SubFolder) '</file>' 10];
+                    strOpt = [strOpt '      <file>' bst_fullfile(PlugInst.Path, 'plugin.mat') '</file>' 10];
                 end
             end
         end

@@ -7,7 +7,6 @@ function varargout = bst_figures( varargin )
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        iDS,      FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        DataFile, FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        hFigure)
-
 %                   [hFigs] = bst_figures('GetAllFigures')
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile)
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile, DataFile, FigType, Modality)
@@ -54,7 +53,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 %          Martin Cousineau, 2017
 
 eval(macro_method);

@@ -595,6 +595,11 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             % Check if the file is inside the Brainstorm user folder (where it is supposed to be) => Managed plugin
             if ~isempty(strfind(TestFilePath, PlugPath))
                 PlugDesc(iPlug).isManaged = 1;
+            % Process compiled together with Brainstorm
+            elseif isCompiled && ~isempty(strfind(TestFilePath, ['.brainstorm' filesep 'plugins' filesep PlugName]))
+                compiledDir = ['.brainstorm' filesep 'plugins' filesep PlugName];
+                iPath = strfind(TestFilePath, compiledDir);
+                PlugPath = [TestFilePath(1:iPath-2), filesep, compiledDir];
             % Otherwise: Custom installation
             else
                 % If the test file was found in a defined subfolder: remove the subfolder from the plugin path

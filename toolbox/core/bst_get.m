@@ -16,6 +16,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
 %    - bst_get('UserDefaultsDir')       : User defaults directory (<home>/.brainstorm/defaults/)
+%    - bst_get('UserPluginsDir')        : User plugins directory (<home>/.brainstorm/plugins/)
 %    - bst_get('BrainstormDbFile')      : User brainstorm.mat file (<home>/.brainstorm/brainstorm.mat)
 %    - bst_get('BrainstormDbDir')       : User database directory (contains all the brainstorm protocols)
 %    - bst_get('DirDefaultSubject')     : Directory name of the default subject
