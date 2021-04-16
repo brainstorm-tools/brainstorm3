@@ -219,6 +219,48 @@ switch contextName
             varargout{1} = sAnatFiles;
         end
 
+%% ==== ANATOMY FILE ====
+    % Usage: [sFiles, sAnatomy] = db_get('AnatomyFile', FileIDs)
+    % Usage: [sFiles, sAnatomy] = db_get('AnatomyFile', FileNames)
+    % Usage: [sFiles, sAnatomy] = db_get('AnatomyFile', CondQuery)
+    case 'AnatomyFile'
+        iFiles = args{1};
+        fields = '*';                              
+        templateStruct = db_template('AnatomyFile');
+        
+        if ischar(iFiles)
+            iFiles = {iFiles};
+        end
+        
+        if ischar(iFiles)
+            iFiles = {iFiles};
+        elseif isstruct(iFiles)
+            condQuery = CondQuery;           
+        end       
+        
+        
+        nFiles = length(iFiles);
+        sFiles = repmat(templateStruct, 1, nFiles);
+        
+        for i = 1:nFiles
+            if iscell(iFiles)
+                condQuery.FileName = iFiles{i};
+            else
+                condQuery.Id = iFiles(i);
+            end
+            sFiles(i) = sql_query(sqlConn, 'select', 'AnatomyFile', fields, condQuery);
+        end
+
+        varargout{1} = sFiles;
+        
+%% ==== SURFACE FILE ====
+    % Usage : [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', SurfaceFile)
+    case 'SurfaceFile'
+        sFile = db_get('AnatomyFile', sqlConn, args{1}); 
+        varargout{1} = db_get('Subject', sqlConn, sFile.Subject);
+        varargout{2} = sFile.Subject;
+        varargout{3} = sFile.Id;
+    
     % Usage: sFiles = db_get('FunctionalFile', FileType, FileIDs)
     % Usage: sFiles = db_get('FunctionalFile', FileType, FileNames)
     case 'FunctionalFile'
