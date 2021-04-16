@@ -1247,7 +1247,7 @@ function SetStandardView(hFig, viewNames)
     % Displaying a surface: Load the SCS field from the MRI
     if isempty(Ranat) && ~isempty(TessInfo) && ~isempty(TessInfo(1).SurfaceFile)
         % Get subject
-        sSubject = bst_get('SurfaceFile', TessInfo(1).SurfaceFile);
+        sSubject = db_get('SurfaceFile', TessInfo(1).SurfaceFile);
         % If there is an MRI associated with it
         if ~isempty(sSubject) && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(sSubject.iAnatomy).FileName)
             % Load the SCS+MNI transformation from this file

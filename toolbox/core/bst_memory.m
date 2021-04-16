@@ -255,11 +255,12 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         SurfaceFile = sDbSurf.FileName;
     end
     % Get subject and surface type
-    [sSubject, iSubject, iSurfDb] = bst_get('SurfaceFile', SurfaceFile);
+    [sSubject, iSubject, iSurfDb] = db_get('SurfaceFile', SurfaceFile);
     if isempty(iSubject)
         SurfaceType = 'Other';
     else
-        SurfaceType = sSubject.Surface(iSurfDb).SurfaceType;
+        sAnatomy = db_get('AnatomyFile', iSurfDb);
+        SurfaceType = sAnatomy.SurfaceType;       
     end
             
     % ===== LOAD FILE =====
