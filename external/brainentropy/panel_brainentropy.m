@@ -60,16 +60,16 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
     end       
 
     % ====      CHECK INSTALLATION      ==== %
-    if firstCall        
-        [bug,warn,version,last_update]     =   be_install;
-        if ~isempty(bug)
-            fprintf('\n\n***\tError installing BEst\t***\n\t%s\n\n', bug)
-            return
-        end
-        if ~isempty(warn)
-            fprintf('\n\n***\tWarning: BEst\t***\n\t%s\n\tToolbox can still be used\n\n', warn)        
-        end 
-    end
+%     if firstCall        
+%        [bug,warn,version,last_update]     =   be_install;
+%       if ~isempty(bug)
+%            fprintf('\n\n***\tError installing BEst\t***\n\t%s\n\n', bug)
+%            return
+%         end
+%         if ~isempty(warn)
+%            fprintf('\n\n***\tWarning: BEst\t***\n\t%s\n\tToolbox can still be used\n\n', warn)        
+%         end 
+%     end
     
 	global MEMglobal
     % Java initializations
@@ -91,8 +91,8 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
         
         % Version
         if firstCall
-            OPTIONS.automatic.version       =   version;
-            OPTIONS.automatic.last_update   =   last_update;
+            OPTIONS.automatic.version       =   '2.7.2';
+            OPTIONS.automatic.last_update   =   '';
         end
         jTXTver =   JTextField(OPTIONS.automatic.version);
         jTXTupd =   JTextField(OPTIONS.automatic.last_update);
