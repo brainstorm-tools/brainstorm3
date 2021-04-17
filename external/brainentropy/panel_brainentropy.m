@@ -574,12 +574,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
         jBoxShow.setEnabled(0);
     jBoxNewC  = JCheckBox( 'Recompute covariance matrix' );
         jBoxNewC.setSelected(OPTIONS.solver.NoiseCov_recompute);
-        jBoxNewC.setToolTipText('<HTML><B>Noise covariance matrix</B>:<BR>The performance of the MEM is tied to<BR>a consistent estimation of this matrix<BR>(keep checked)</HTML>');            
-    jBoxERD  = JCheckBox( 'Use emptyroom noise' );
-        jBoxERD.setEnabled(0);
-        jBoxERD.setSelected(0);
-        jBoxERD.setToolTipText('<HTML><B>Empty room recordings</B>:<BR>we recommend these data for estimating<BR>the sensors noise covariance matrix<BR>This option is unlocked if any file in BST tree<BR>is labelled ''emptyroom''</HTML>');            
-        java_setcb(jBoxERD, 'ActionPerformedCallback', @(h,ev)load_emptyroom_noise );
+        jBoxNewC.setToolTipText('<HTML><B>Noise covariance matrix</B>:<BR>The performance of the MEM is tied to<BR>a consistent estimation of this matrix<BR>(keep checked)</HTML>');
     jBoxPara  = JCheckBox( 'Matlab parallel computing' );
         jBoxPara.setSelected(OPTIONS.solver.parallel_matlab);
         jBoxPara.setEnabled(0);        
@@ -735,8 +730,6 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
     gui_component('label', jPanelSensC, 'br', '');
     % Compute new matrix?
     jPanelSensC.add('p left', jBoxNewC);
-    % Use emptyroom noise?
-    jPanelSensC.add('p left', jBoxERD);
     % Matrix type
     jPanelSensC.add('p left', JLabel('Covariance matrix type') );
     jPanelSensC.add('tab tab', jTxtVCOV);
@@ -821,7 +814,6 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
                   'jradimp',              jRadioBslImport, ...
                   'jButOk',               JButOK, ...
                   'jBoxShow',             jBoxShow, ...
-                  'jBoxERD',              jBoxERD, ...
                   'jTXTver',              jTXTver, ...
                   'jTXTupd',              jTXTupd);              
       
@@ -957,7 +949,6 @@ function UpdatePanel(hObject, event)
 									
     ctrl.jCLSd.setEnabled(1);
     ctrl.jCLSs.setEnabled(1);
-    ctrl.jBoxERD.setEnabled(0);
     
     % ADVANCED
     if ctrl.jMEMdef.isSelected()
@@ -1001,7 +992,7 @@ function UpdatePanel(hObject, event)
     end
     
     % look for default baseline
-    [bsl, dum, ERD] = look_for_default(ctrl);
+    bsl = look_for_default(ctrl);
     if isempty(bsl)
         ctrl.jraddef.setEnabled(0);
     else
@@ -1011,11 +1002,6 @@ function UpdatePanel(hObject, event)
         end
     end
         
-    % emptyroom
-    if ~isempty(ERD)
-        ctrl.jBoxERD.setEnabled(1);
-    end
-    
     % refresh data time definition
     check_time('time', '', '', 'set_TF');   
     
@@ -1120,11 +1106,6 @@ function s = GetPanelContents(varargin) %#ok<DEFNU>
         MEMpaneloptions.optional.BaselineTime       = MEMglobal.BaselineTime;
         MEMpaneloptions.optional.BaselineChannels   = MEMglobal.BaselineChannels;
         MEMpaneloptions.optional.BaselineHistory    = MEMglobal.BaselineHistory;
-    end
-    % Get emptyroom
-    if ctrl.jBoxERD.isSelected()
-        MEMpaneloptions.optional.EmptyRoom_data     = MEMglobal.EmptyRoomData;
-        MEMpaneloptions.optional.EmptyRoom_channels = MEMglobal.EmptyRoomChannels;  
     end
     MEMpaneloptions.optional.display            = ctrl.jBoxShow.isSelected();
     MEMpaneloptions.optional.BaselineSegment    = [str2double(char(ctrl.jTextBSLStart.getText())) ...
@@ -1321,21 +1302,18 @@ end
 
 end
 
-function [TXT, found, iE] = look_for_default(ctrl)
+function TXT = look_for_default(ctrl)
 
 global MEMglobal
 
 ST = unique( MEMglobal.StudToProcess );
-iE = [];
 if numel(ST) == 0 | numel(ST)>1
     TXT = '';
     found = 0;
 else
     ST = bst_get('Study', ST);
     DT = cellfun( @(a) ~isempty(a), strfind({ST.Data.Comment}, 'baseline'), 'uni', false );
-    ER = cellfun( @(a) ~isempty(a), strfind({ST.Data.Comment}, 'emptyroom'), 'uni', false );
     iD = find( cell2mat(DT) );
-    iE = find( cell2mat(ER) );
     
     if numel(iD) == 0
         found = 0;
@@ -1353,45 +1331,6 @@ end
 
 MEMglobal.BSLinfo.comment   = TXT;
 MEMglobal.BSLinfo.file      = found;
-
-if numel(iE)
-    % Found one empty room data in study
-    MEMglobal.ERDinfo.file      =   {ST.Data(iE).FileName};
-    MEMglobal.ERDinfo.comment   =   ST.Data(iE).Comment;
-    MEMglobal.ERDinfo.found     =   numel(iE);
-
-else
-    if numel(ST) == 1
-        % Check if there are ER data in subject
-        [STDs]      =   bst_get('StudyWithSubject', ST.BrainStormSubject);
-        ALLdforS    =   cat(2, STDs.Data);
-        iE          =   cellfun(@(a) ~isempty(strfind(lower(a), 'emptyroom')), {ALLdforS.Comment}, 'uni', 0);
-        iE          =   find( cell2mat(iE) );
-    end
-
-    if ~isempty(iE)
-        MEMglobal.ERDinfo.comment   = ALLdforS( iE(1) ).Comment;         
-        MEMglobal.ERDinfo.file      = {ALLdforS( iE(1) ).FileName};
-        MEMglobal.ERDinfo.found     = numel(iE);
-        
-    else
-        % Check if there is a ER subject
-        ALLsub  =   bst_get('ProtocolSubjects');
-        iE      =   cellfun(@(a) ~isempty(strfind(lower(a), 'emptyroom')), {ALLsub.Subject.Name}, 'uni', 0);
-        iE      =   find( cell2mat( iE ) );
-        
-        if ~isempty(iE)
-            % found empty room subject
-            DTforS  =   bst_get('StudyWithSubject', ALLsub.Subject(iE(1)).FileName); 
-            MEMglobal.ERDinfo.comment   = DTforS(1).Comment;         
-            MEMglobal.ERDinfo.file      = {DTforS(1).FileName};
-            MEMglobal.ERDinfo.found     = numel(DTforS);
-        end
-        
-    end
-    
-end
-
 end
 
 function import_baseline(hObject, event)
@@ -1507,38 +1446,6 @@ MEMglobal.BaselineHistory{2}    = MEMglobal.BSLinfo.comment;
 MEMglobal.BaselineHistory{3}    = MEMglobal.BSLinfo.file;
 
 check_time('bsl', 'default', 'true');
-
-end
-
-function load_emptyroom_noise(varargin)
-
-global MEMglobal
-iP  =   bst_get('ProtocolInfo');
-
-% Get info
-if ~isfield(MEMglobal, 'EmptyRoomData') || isempty(MEMglobal.EmptyRoomData)
-    %load emptyroom noise
-    if numel(MEMglobal.ERDinfo.file)>1
-        fprintf('panel_brainentropy:\tfound more than 1 emptyroom data\n\tselection is arbitrary\n');
-    else
-        fprintf('panel_brainentropy:\tloading emptyroom noise\n')       
-    end
-    L           =   load( fullfile(iP.STUDIES, MEMglobal.ERDinfo.file{1}) );
-    [dum, iS]   =   bst_get('Study', fullfile( bst_fileparts(MEMglobal.ERDinfo.file{1}), 'brainstormstudy.mat' ) );
-    CH          =   bst_get('ChannelForStudy', iS);
-    if ~isempty(CH)
-        CH                              =   load( fullfile(iP.STUDIES, CH.FileName) );
-        MEMglobal.EmptyRoomData         =   L.F;
-        MEMglobal.EmptyRoomChannels     =   {CH.Channel.Name};
-    else
-        error('>>BEst error: could not find channel file for empty room data');
-        
-    end
-    
-else
-    MEMglobal.EmptyRoomData         = [];
-    
-end
 
 end
 
