@@ -173,43 +173,75 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
             jsep.setPreferredSize(Dimension(1,1));
             gui_component('label', JPanelparam, 'br', '');
             
-            % ===== TIME BASELINE =====
+
+            % ===== BASELINE =====
             JPanelparam.add('br', JLabel('Baseline'));
+            JPanelparam.add('br', JLabel(''));
             jButtonGroupBslType = ButtonGroup();
+            
+            
+            % - Baseline extracted within data
+            % -- Radio button
+            jRadioWithinBsl = JRadioButton('within data', 0);
+            java_setcb(jRadioWithinBsl, 'ActionPerformedCallback', @(h, ev) ...
+                check_time('bsl', 'within', 'true', 'checkOK'));
+            jRadioWithinBsl.setToolTipText(['<HTML><B>Within data</B>:', ...
+                '<BR>Extracts baseline from within the recording data ', ...
+                'used for source estimation.</HTML>']);
+            jButtonGroupBslType.add(jRadioWithinBsl);
+            JPanelparam.add(jRadioWithinBsl);
+            
+            % -- Separator
             JPanelparam.add('br', JLabel(''));
             
-            % Default
-            jRadioBslDefault = JRadioButton('default (baseline dataset)', 0);
-            java_setcb(jRadioBslDefault, 'ActionPerformedCallback', @(h,ev)load_default_baseline );
-            jRadioBslDefault.setToolTipText('<HTML><B>Default dataset</B>:<BR>Found a dataset named baseline in the same study</HTML>');
-            jButtonGroupBslType.add(jRadioBslDefault);
-            JPanelparam.add(jRadioBslDefault);
+            
+            % - Loads automatically a baseline file
+            % -- Radio button
+            jRadioLoadAutoBsl = JRadioButton('find', 0);
+            java_setcb(jRadioLoadAutoBsl, 'ActionPerformedCallback', ...
+                @(h, ev) UpdatePanel);
+            jRadioLoadAutoBsl.setToolTipText(['<HTML><B>Find baseline</B>:', ...
+                '<BR>Automatically loads a recording from the current ', ...
+                'protocol using the given substring.</HTML>']);
+            jButtonGroupBslType.add(jRadioLoadAutoBsl);
+            JPanelparam.add(jRadioLoadAutoBsl);
+            
+            % -- Text field
+            jTextLoadAutoBsl = JTextField('baseline name...');
+            jTextLoadAutoBsl.setToolTipText(['<HTML>Type in a substring ', ...
+                'contained in the name of the baseline file to load and ', ...
+                'tick the "find" button.</HTML>']);
+            JPanelparam.add('hfill', jTextLoadAutoBsl);
+            h = handle(jTextLoadAutoBsl, 'callbackproperties');
+            set(h, 'FocusLostCallback', @(src, ev) UpdatePanel);
+            
+            % -- Separator
             JPanelparam.add('br', JLabel(''));
             
-            % Within data
-            jRadioBslWithin = JRadioButton('within data', 0);
-            java_setcb(jRadioBslWithin, 'ActionPerformedCallback', @(h,ev)check_time('bsl', 'within', 'true', 'checkOK') );
-            jRadioBslWithin.setToolTipText('<HTML><B>Within data</B>:<BR>Please specify time window for baseline within data</HTML>');
-            jButtonGroupBslType.add(jRadioBslWithin);
-            JPanelparam.add(jRadioBslWithin);
+            
+            % - Import baseline from file path
+            % -- Radio button
+            jRadioImportBsl = JRadioButton('import', 0);
+            java_setcb(jRadioImportBsl, 'ActionPerformedCallback', @(h, ev) ...
+                import_baseline);
+            jRadioImportBsl.setToolTipText(['<HTML><B>Baseline file</B>:', ...
+                '<BR>Import baseline from a file.</HTML>']);
+            jButtonGroupBslType.add(jRadioImportBsl);
+            JPanelparam.add(jRadioImportBsl);
+            
+            % -- Text field
+            jTextPathBsl = JTextField('');
+            jTextPathBsl.setToolTipText(['<HTML>Tick the "import" button ', ...
+                'to open a GUI.</HTML>']);
+            jTextPathBsl.setEditable(0);
+            JPanelparam.add('hfill', jTextPathBsl);
+            
+            % -- Separator
             JPanelparam.add('br', JLabel(''));
             
-            % Import
-            jRadioBslImport = JRadioButton('', 0);
-            java_setcb(jRadioBslImport, 'ActionPerformedCallback', @(h,ev)import_baseline );
-            jBSLflnm = JTextField('Select file:');
-            jBSLflnm.setToolTipText('<HTML><B>Baseline file</B>:<BR>Type in complete filename here or import using GUI</HTML>');
-            jButtonGroupBslType.add(jRadioBslImport);
-            JPanelparam.add(jRadioBslImport);
-            JPanelparam.add('hfill', jBSLflnm);
-            jbslfl = gui_component('button', JPanelparam, '', 'import');
-            hndl    =   handle(jbslfl, 'callbackproperties');
-            set(hndl, 'ActionPerformedCallback', @import_baseline);
-            %set(jbslfl, 'ActionPerformedCallback', @import_baseline);
-            jbslfl.setPreferredSize(Dimension(TEXT_WIDTH+20, DEFAULT_HEIGHT+2));
             
-            JPanelparam.add('br', JLabel(''));
-            JPanelparam.add(JLabel('Window:         '));
+            % - Baseline time window
+            JPanelparam.add(JLabel('Time window: '));
             
             % Baseline START
             jTextBSLStart = JTextField( num2str(OPTIONS.optional.BaselineSegment(1)) );
@@ -308,15 +340,13 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
             jfakebutton = JRadioButton('fake', 0 );
             jTextTimeStart = jfakebutton;
             jTextTimeStop = jfakebutton;            
-            jRadioBslDefault = jfakebutton;
-            jRadioBslWithin = jfakebutton;
-            jRadioBslImport = jfakebutton;
-            jbslfl = jfakebutton;
+            jRadioWithinBsl = jfakebutton;
+            jRadioImportBsl = jfakebutton;
             jTextBSLStart = jfakebutton;
             jTextBSLStop = jfakebutton;
-            jBSLflnm    =   jfakebutton;
-											
-										   
+            jTextPathBsl    =   jfakebutton;
+            jRadioLoadAutoBsl = jfakebutton;
+            jTextLoadAutoBsl = jfakebutton;
 			
             
             % Add 'Method' panel to main panel (jPanelNew)
@@ -794,8 +824,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
                   'jTextBSLStop',         jTextBSLStop, ...
                   'jRadioSCRarb',         jRadioSCRarb, ...
                   'jRadioSCRfdr',         jRadioSCRfdr, ...
-                  'jButtonBSL',           jbslfl, ...
-                  'jTextBSL',             jBSLflnm, ...
+                  'jTextBSL',             jTextPathBsl, ...
                   'jCheckGRP',            jCheckGRP, ...
                   'jPanelTop',            jPanelNew, ...
                   'jMuMethod',            jTxtMuMet, ... 
@@ -809,14 +838,16 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
                   'jNewCOV',              jBoxNewC, ...
                   'jParallel',            jBoxPara, ...
                   'jButEXP',              JButEXP, ...
-                  'jradwit',              jRadioBslWithin, ...
-                  'jraddef',              jRadioBslDefault, ...
-                  'jradimp',              jRadioBslImport, ...
+                  'jradwit',              jRadioWithinBsl, ...
+                  'jRadioLoadAutoBsl', jRadioLoadAutoBsl, ...
+                  'jTextLoadAutoBsl', jTextLoadAutoBsl, ...
+                  'jradimp',              jRadioImportBsl, ...
                   'jButOk',               JButOK, ...
                   'jBoxShow',             jBoxShow, ...
                   'jTXTver',              jTXTver, ...
                   'jTXTupd',              jTXTupd);              
       
+
     if any( strcmp(OPTIONS.mandatory.pipeline, {'wMEM', 'rMEM'}) )
         ctrl.jWavType           =   jTxtWAVtp;
         ctrl.jWavVanish         =   jTxtWAVvm;
@@ -915,7 +946,7 @@ function [bstPanelNew, panelName] = CreatePanel(OPTIONS,varargin)  %#ok<DEFNU>
         
         % Replace old main panel with new one
         oldC        = get(bstPanelOld, 'sControls');
-        sControls.jraddef.setSelected( oldC.jraddef.isSelected() );
+        sControls.jRadioLoadAutoBsl.setSelected( oldC.jRadioLoadAutoBsl.isSelected() );
         sControls.jradwit.setSelected( oldC.jradwit.isSelected() );
         sControls.jradimp.setSelected( oldC.jradimp.isSelected() );
         jFrame.getContentPane().removeAll();
@@ -991,22 +1022,18 @@ function UpdatePanel(hObject, event)
         ctrl.jParallel.setSelected(0);
     end
     
-    % look for default baseline
-    bsl = look_for_default(ctrl);
-    if isempty(bsl)
-        ctrl.jraddef.setEnabled(0);
-    else
-        load_default_baseline;
-        if ~ctrl.jradwit.isSelected() && ~ctrl.jradimp.isSelected()
-            ctrl.jraddef.setSelected(1);
-        end
+    % Find baseline in the current protocol
+    if ctrl.jRadioLoadAutoBsl.isSelected() && ...
+            ~load_auto_bsl(char(ctrl.jTextLoadAutoBsl.getText()))
+        ctrl.jradwit.setSelected(1);
+        check_time('bsl', '', '');
     end
         
     % refresh data time definition
     check_time('time', '', '', 'set_TF');   
     
     % Conditions for enabling OK button
-    COND1   =   any([ctrl.jraddef.isSelected() ctrl.jradwit.isSelected() ctrl.jradimp.isSelected()]); % ONE METHOD FOR BASELINE IS SELECTED
+    COND1   =   any([ctrl.jRadioLoadAutoBsl.isSelected() ctrl.jradwit.isSelected() ctrl.jradimp.isSelected()]); % ONE METHOD FOR BASELINE IS SELECTED
     COND2   =   1; if ctrl.jMEMw.isSelected() && strcmp( char( ctrl.jWavScales.getSelectedItem() ), 'sig. too short (min 128 samples)'); COND2=0;end % AT LEAST 128 samples for wMEM
     COND3   =   1; if ctrl.jMEMr.isSelected() && strcmp( char( ctrl.jRDGrangeS.getSelectedItem() ), 'sig. too short (min 128 samples)'); COND3=0;end % AT LEAST 128 samples for rMEM
     
@@ -1101,11 +1128,27 @@ function s = GetPanelContents(varargin) %#ok<DEFNU>
     if ctrl.jradwit.isSelected()
         MEMpaneloptions.optional.Baseline = [];
         MEMpaneloptions.optional.BaselineHistory{1} = 'within';
-    elseif ctrl.jraddef.isSelected() || ctrl.jradimp.isSelected()
-        MEMpaneloptions.optional.Baseline           = MEMglobal.Baseline;
-        MEMpaneloptions.optional.BaselineTime       = MEMglobal.BaselineTime;
-        MEMpaneloptions.optional.BaselineChannels   = MEMglobal.BaselineChannels;
-        MEMpaneloptions.optional.BaselineHistory    = MEMglobal.BaselineHistory;
+    elseif ctrl.jRadioLoadAutoBsl.isSelected() || ctrl.jradimp.isSelected()
+        if isfield(MEMglobal, 'Baseline')
+            MEMpaneloptions.optional.Baseline = MEMglobal.Baseline;
+        else
+            MEMpaneloptions.optional.Baseline = [];
+        end
+        if isfield(MEMglobal, 'BaselineTime')
+            MEMpaneloptions.optional.BaselineTime = MEMglobal.BaselineTime;
+        else
+            MEMpaneloptions.optional.BaselineTime = [];
+        end
+        if isfield(MEMglobal, 'BaselineChannels')
+            MEMpaneloptions.optional.BaselineChannels = MEMglobal.BaselineChannels;
+        else
+            MEMpaneloptions.optional.BaselineChannels = [];
+        end
+        if isfield(MEMglobal, 'BaselineHistory')
+            MEMpaneloptions.optional.BaselineHistory = MEMglobal.BaselineHistory;
+        else
+            MEMpaneloptions.optional.BaselineHistory = [];
+        end
     end
     MEMpaneloptions.optional.display            = ctrl.jBoxShow.isSelected();
     MEMpaneloptions.optional.BaselineSegment    = [str2double(char(ctrl.jTextBSLStart.getText())) ...
@@ -1258,7 +1301,7 @@ else
                     if isfield(MEMglobal, 'BaselineTime') 
                         Time = MEMglobal.BaselineTime;
                     end
-                case {'default', 'import'}
+                case {'auto', 'import'}
                     Time = MEMglobal.BaselineTime;   
             end
     
@@ -1302,36 +1345,74 @@ end
 
 end
 
-function TXT = look_for_default(ctrl)
+function success = load_auto_bsl(bsl_name)
+% Look in the database for a recording with a given substring
+success = false;
 
+% This global variable should be removed, kept here for compatibility with
+% previous code
 global MEMglobal
+MEMglobal.BSLinfo.comment = '';
+MEMglobal.BSLinfo.file = '';
 
-ST = unique( MEMglobal.StudToProcess );
-if numel(ST) == 0 | numel(ST)>1
-    TXT = '';
-    found = 0;
-else
-    ST = bst_get('Study', ST);
-    DT = cellfun( @(a) ~isempty(a), strfind({ST.Data.Comment}, 'baseline'), 'uni', false );
-    iD = find( cell2mat(DT) );
-    
-    if numel(iD) == 0
-        found = 0;
-        TXT   = '';
-    elseif numel(iD) == 1
-        TXT = ST.Data(iD).Comment;
-        found = ST.Data(iD).FileName;
-    else
-        disp('MEM : more than one baseline found in workspace.')
-        disp('MEM : first file selected')
-        TXT = ST.Data(iD(1)).Comment;
-        found = ST.Data(iD(1)).FileName;
-    end    
+% Nothing to do
+if isempty(bsl_name)
+    disp('BEst> No baseline to find')
+    disp(['BEst> Type in a substring contained in the name of the ', ...
+        'baseline file to load and tick the "find" button.'])
+    return
 end
 
-MEMglobal.BSLinfo.comment   = TXT;
-MEMglobal.BSLinfo.file      = found;
+% Look through the studies of the current protocol
+% (why not giving precedence to the studies currently selected for analyses?)
+S = getfield(bst_get('ProtocolStudies'), 'Study');
+S = [S.Data];
+S(~strcmp({S.DataType}, 'recordings')) = [];
+
+% This should never happen
+if isempty(S)
+    disp('BEst> No study with recordings found in the current protocol.')
+    return
 end
+
+K = find(cellfun(@(k) ~isempty(k), strfind({S.Comment}, bsl_name)));
+
+% User should check the baseline name, beware case sensitivity
+if isempty(K)
+    disp(['BEst> No recording with ''', bsl_name, ''' in their name was ', ...
+        'found in the current protocol.'])
+    return
+end
+
+% A baseline has been found
+success = true;
+
+% Warning if multiple recordings are valid
+if (nnz(K) > 1)
+    disp(['BEst> Multiple recordings in the current protocol have ''', ...
+        bsl_name, ''' in their name'])
+end
+disp('BEst> Selecting the baseline file:')
+disp(['BEst>    ''', S(K(1)).FileName, ''''])
+
+% This should be revisited, only file paths should be returned, not the file
+% contents. 'be_main_call.m' should be able to load files.
+MEMglobal.BSLinfo.comment = S(K(1)).Comment;
+MEMglobal.BSLinfo.file = S(K(1)).FileName;
+if ~isfield(MEMglobal, 'BaselineHistory') || ~strcmp(MEMglobal.BSLinfo.file, ...
+        MEMglobal.BaselineHistory{3})
+    bsl = load(file_fullpath(MEMglobal.BSLinfo.file), 'F', 'Time');
+    MEMglobal.Baseline = bsl.F;
+    MEMglobal.BaselineTime = bsl.Time;
+    MEMglobal.BaselineChannels = load(file_fullpath(bst_get(...
+        'ChannelFileForStudy', MEMglobal.BSLinfo.file)));
+    MEMglobal.BaselineHistory{1} = 'auto';
+    MEMglobal.BaselineHistory{2} = MEMglobal.BSLinfo.comment;
+    MEMglobal.BaselineHistory{3} = MEMglobal.BSLinfo.file;
+end
+check_time('bsl', 'auto', 'true', 'checkOK');
+end
+
 
 function import_baseline(hObject, event)
 
@@ -1381,13 +1462,13 @@ else
         [BSL, BSLc] = in_data( Lst, Frmt, [], []);
         if numel(BSL)>1
             ctrl.jTextBSL.setText('loading only trial 1');
-            pause(1)
+            pause(2)
             ctrl.jTextBSL.setText(Lst);
         end    
         BSL = load(BSL(1).FileName);
     catch
         ctrl.jTextBSL.setText('File cannot be used. Select new file');
-        pause(1)
+        pause(2)
         ctrl.jTextBSL.setText('');
         ctrl.jradimp.setSelected(0);
         ctrl.jradwit.setSelected(1);        
@@ -1423,29 +1504,6 @@ VAL  =  min( VAL, rng(2) );
 
 % set value
 ctrl.(WTA).setText( num2str(VAL) );
-
-end
-
-function load_default_baseline(varargin)
-
-global MEMglobal
-
-if isfield(MEMglobal, 'BaselineHistory') && strcmp(MEMglobal.BSLinfo.file, MEMglobal.BaselineHistory{3})
-    check_time('bsl', 'default', 'true');
-    return
-end
-
-iP = bst_get('ProtocolInfo');
-FL = load( fullfile(iP.STUDIES, MEMglobal.BSLinfo.file) );
-BSLc    =   load( fullfile(iP.STUDIES, bst_get('ChannelFileForStudy', iP.iStudy) ));
-MEMglobal.Baseline              = FL.F;
-MEMglobal.BaselineTime          = FL.Time;
-MEMglobal.BaselineChannels      = BSLc;
-MEMglobal.BaselineHistory{1}    = 'default';
-MEMglobal.BaselineHistory{2}    = MEMglobal.BSLinfo.comment;
-MEMglobal.BaselineHistory{3}    = MEMglobal.BSLinfo.file;
-
-check_time('bsl', 'default', 'true');
 
 end
 
