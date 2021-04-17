@@ -1,5 +1,5 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
-% MRI_COREGISTER: Compute the MNI transformation on both input volumes, then register the first on the second.
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
+% MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
 % USAGE:  [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
 %            [sMriReg, errMsg, fileTag] = mri_coregister(sMriSrc,    sMriRef, ...)
@@ -11,6 +11,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - sMriRef    : Brainstorm MRI structure used as a reference
 %    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
+%    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -22,7 +23,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,12 +37,18 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2018
+% Authors: Francois Tadel, 2016-2021
 
 % ===== LOAD INPUTS =====
+% Parse inputs
+if (nargin < 5) || isempty(isAtlas)
+    isAtlas = 0;
+end
 % Initialize returned variables
-sMriReg = [];
+MriFileReg = [];
 errMsg = [];
+fileTag = '';
+sMriReg = [];
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -65,6 +72,11 @@ elseif ischar(MriFileSrc)
 else
     error('Invalid call.');
 end
+% % Not available for multiple volumes
+% if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
+%     errMsg = 'The input files cannot contain multiple volumes.';
+%     return;
+% end
 % Inialize various variables
 isUpdateScs = 0;
 isUpdateNcs = 0;
@@ -76,14 +88,12 @@ switch lower(Method)
     
     % ===== METHOD: SPM =====
     case 'spm'
-        % === SPM INITIALIZATION ===
-        % Check SPM installation
-        bst_spm_init();
-        % Check if SPM is in the path
-        if ~exist('spm_jobman', 'file')
-            errMsg = 'SPM must be in the Matlab path to use this feature.';
+        % Initialize SPM
+        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalled
             return;
         end
+        bst_plugin('SetProgressLogo', 'spm12');
         
         % === SAVE FILES IN TMP FOLDER ===
         % Save source MRI in .nii format
@@ -97,14 +107,14 @@ switch lower(Method)
         % Code initially coming from Olivier David's ImaGIN_anat_spm.m function
         % Initial translation according to centroids
         % Reference volume
-        Vref = spm_vol(NiiRefFile);
+        Vref = spm_vol([NiiRefFile, ',1']);
         [Iref,XYZref] = spm_read_vols(Vref);
         Iindex = find(Iref>max(Iref(:))/6);
         Zindex = find(max(XYZref(3,:))-XYZref(3,:)<200);
         index = intersect(Iindex,Zindex);
         CentroidRef = mean(XYZref(:,index),2);
         % Volume to register
-        V2 = spm_vol(NiiSrcFile);
+        V2 = spm_vol([NiiSrcFile, ',1']);
         [I2,XYZ2] = spm_read_vols(V2);
         Iindex = find(I2>max(I2(:))/6);
         Zindex = find(max(XYZ2(3,:))-XYZ2(3,:)<200);
@@ -119,8 +129,8 @@ switch lower(Method)
         % Create coregistration batch
         if isReslice
             % Coreg: Estimate and reslice
-            matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {NiiRefFile};
-            matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {NiiSrcFile};
+            matlabbatch{1}.spm.spatial.coreg.estwrite.ref      = {[NiiRefFile, ',1']};
+            matlabbatch{1}.spm.spatial.coreg.estwrite.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
             matlabbatch{1}.spm.spatial.coreg.estwrite.eoptions = spm_get_defaults('coreg.estimate');
             matlabbatch{1}.spm.spatial.coreg.estwrite.woptions = spm_get_defaults('coreg.write');
@@ -129,8 +139,8 @@ switch lower(Method)
             NiiRegFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'rspm_src.nii');
         else
             % Coreg: Estimate
-            matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {NiiRefFile};
-            matlabbatch{1}.spm.spatial.coreg.estimate.source   = {NiiSrcFile};
+            matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
+            matlabbatch{1}.spm.spatial.coreg.estimate.source   = {[NiiSrcFile, ',1']};
             matlabbatch{1}.spm.spatial.coreg.estimate.other    = {''};
             matlabbatch{1}.spm.spatial.coreg.estimate.eoptions = spm_get_defaults('coreg.estimate');
             % Output file
@@ -144,6 +154,8 @@ switch lower(Method)
         [sMriReg, vox2ras] = in_mri(NiiRegFile, 'ALL', 0, 0);
         % Output file tag
         fileTag = '_spm';
+        % Remove logo
+        bst_plugin('SetProgressLogo', []);
         
         % === UPDATE FIDUCIALS ===
         if isReslice
@@ -165,17 +177,14 @@ switch lower(Method)
         % === COMPUTE MNI TRANSFORMATIONS ===
         % Source MRI
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         % Reference MRI
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         % Handle errors
         if ~isempty(errMsg)
-            if ~isempty(MriFileSrc)
-                bst_error(errMsg, 'MRI reslice', 0);
-            end
             return;
         end
         % Get MNI transformations
@@ -185,7 +194,7 @@ switch lower(Method)
         % === RESLICE VOLUME ===
         if isReslice
             % Reslice the volume
-            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, TransfSrc, TransfRef);
+            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, TransfSrc, TransfRef, isAtlas);
         else
             % Save the original input volume
             sMriReg = sMriSrc;
@@ -201,28 +210,31 @@ switch lower(Method)
         % Nothing to do, just reslice if needed
         if isReslice
             % Reslice the volume
-            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras');
+            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
+            % Output file tag
+            if ~isempty(strfind(sMriSrc.Comment, '_spm'))
+                fileTag = '';
+            else
+                fileTag = '_vox2ras';
+            end
         else
             % Save the original input volume
             sMriReg = sMriSrc;
             isUpdateScs = 1;
             isUpdateNcs = 1;
-        end
-        % Output file tag
-        if ~isempty(strfind(sMriSrc.Comment, '_spm'))
             fileTag = '';
-        else
-            fileTag = '_vox2ras';
         end
 end
 % Handle errors
 if ~isempty(errMsg)
-    if ~isempty(MriFileSrc)
-        bst_error(errMsg, 'MRI reslice', 0);
-    end
     return;
 end
 
+% ===== REMOVE NEW NEGATIVE VALUES =====
+% If some negative values appeared just because of the registration/reslicing: remove them
+if any(sMriReg.Cube(:) < 0) && ~any(sMriSrc.Cube(:) < 0)
+    sMriReg.Cube(sMriReg.Cube < 0) = 0;
+end
 
 % ===== UPDATE FIDUCIALS =====
 if isUpdateScs || isUpdateNcs

@@ -8,7 +8,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2012-2020; Martin Cousineau, 2017; Hossein Shahabi, 2019-2020
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -36,7 +36,7 @@ Def_OPTIONS.IgnoreBad     = 0;             % For recordings: Ignore bad channels
 Def_OPTIONS.ScoutFunc     = 'all';         % Scout function {mean, max, pca, std, all}
 Def_OPTIONS.ScoutTime     = 'before';      % When to apply scout function: {before, after}
 Def_OPTIONS.RemoveMean    = 1;             % Option for Correlation
-Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary}
+Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary, 'icohere2019', 'lcohere2019'}
 Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.MaxFreq       = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.CohOverlap    = 0.50;          % Option for Coherence
@@ -100,7 +100,7 @@ if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && ismember(OPTION
 end
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
-    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
+    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec','henv'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
@@ -330,10 +330,10 @@ for iFile = 1:length(FilesA)
                 precision = '%1.1f';
             end
             % Output comment
-            Comment = sprintf(['Coh(' precision 'Hz,%dwin): '], fStep, OPTIONS.Nwin);
-            if strcmpi(OPTIONS.CohMeasure, 'icohere')
-                Comment = ['i', Comment];
-            end
+            Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
+%             if strcmpi(OPTIONS.CohMeasure, 'icohere')
+%                 Comment = ['i', Comment];
+%             end
 
         % ==== GRANGER ====
         case 'granger'
@@ -585,6 +585,23 @@ for iFile = 1:length(FilesA)
             % We don't want to compute again the frequency bands
             FreqBands = [];
             
+        % ==== henv ====
+        case 'henv'
+            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
+                size(sInputA.Data,1), size(sInputB.Data,1)));
+            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%1.2fs',OPTIONS.WinLength) ' | ' ...
+                sprintf('%1.2fs',OPTIONS.WinLength * OPTIONS.WinOverlap) ' | '] ;
+            
+            OPTIONS.SampleRate = sfreq;
+            OPTIONS.Freqs      = OPTIONS.Freqrange;
+
+            [R4d,timeSamples]       = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
+            sInputB.Time            = timeSamples + sInputB.Time(1) ;
+            [tmp1,tmp1,nTime,nBand] = size(R4d) ;
+            
+            % Rehaping a 4D matrix to 3 dim
+            R = reshape(R4d,[],nTime,nBand) ;
+                    
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
             return;
@@ -702,7 +719,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
         FileMat.HeadModelType = sInputB.HeadModelType;
     end
     % Time vector
-    if strcmpi(OPTIONS.Method, 'plvt')
+    if ismember(OPTIONS.Method, {'plvt','henv'})
         FileMat.Time      = sInputB.Time;
         FileMat.TimeBands = [];
     else

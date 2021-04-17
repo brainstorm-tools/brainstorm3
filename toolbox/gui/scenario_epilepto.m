@@ -5,7 +5,7 @@ function varargout = scenario_epilepto( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -374,7 +374,7 @@ function [isValidated, errMsg] = ValidateImportAnatomy()
             % Get the .nii transformation in both volumes
             iTransfPre  = find(strcmpi(sMriPre.InitTransf(:,1),  'vox2ras'));
             iTransfPost = find(strcmpi(sMriPostReg.InitTransf(:,1), 'vox2ras'));
-            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube), size(sMriPost.Cube)) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
+            if (isempty(iTransfPre) || isempty(iTransfPost)) && (~isequal(size(sMriPre.Cube(:,:,:,1)), size(sMriPost.Cube(:,:,:,1))) || ~isequal(sMriPre.Voxsize, sMriPostReg.Voxsize))
                 errMsg = 'The pre and post volumes are not registered or were not initially in .nii format.';
                 return;
             end
@@ -1467,8 +1467,6 @@ end
 function [isValidated, errMsg] = ValidateTimefreq()
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
-    % Add missing paths
-    bst_spm_init(1, 'ft_specest_mtmconvol');
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';

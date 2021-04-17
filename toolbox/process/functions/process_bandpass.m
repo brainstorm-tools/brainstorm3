@@ -10,7 +10,7 @@ function varargout = process_bandpass( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -349,6 +349,10 @@ if isempty(hFig)
 else
     clf(hFig);
     figure(hFig);
+end
+% Disable the Java-related warnings after 2019b
+if (bst_get('MatlabVersion') >= 907)
+    warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
 end
 
 % Plot frequency response

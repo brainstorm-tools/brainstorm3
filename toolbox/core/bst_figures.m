@@ -7,7 +7,6 @@ function varargout = bst_figures( varargin )
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        iDS,      FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        DataFile, FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        hFigure)
-
 %                   [hFigs] = bst_figures('GetAllFigures')
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile)
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile, DataFile, FigType, Modality)
@@ -40,7 +39,7 @@ function varargout = bst_figures( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,7 +53,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 %          Martin Cousineau, 2017
 
 eval(macro_method);
@@ -212,7 +211,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         GlobalData.DataSet(iDS).Figure(iFig).Id      = FigureId;
         GlobalData.DataSet(iDS).Figure(iFig).hFigure = hFig;
         GlobalData.DataSet(iDS).Figure(iFig).Handles = FigHandles;
-    end   
+    end
     
     % Find selected channels
     [selChan,errMsg] = GetChannelsForFigure(iDS, iFig);
@@ -423,7 +422,11 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality strMontage ': ' figureName];
         case 'ResultsTimeSeries'
             if ~isempty(figureNameModality)
-                figureName = [figureNameModality(1:end-2) ': ' figureName];
+                if ismember(figureNameModality, {'results/', 'sloreta/'})
+                    figureName = ['Scout: ' figureName];
+                else
+                    figureName = [figureNameModality(1:end-2) ': ' figureName];
+                end
             end
             % Matrix file: display the file name
             TsInfo = getappdata(hFig, 'TsInfo');
@@ -448,6 +451,11 @@ function UpdateFigureName(hFig)
                 else
                     figureName = [figureNameModality  'MriViewer: ' figureName];
                 end
+            end
+            % Add atlas name
+            AnatAtlas = getappdata(hFig, 'AnatAtlas');
+            if ~isempty(AnatAtlas) && ~strcmpi(AnatAtlas, 'none')
+                figureName = [figureName ' (' str_remove_parenth(AnatAtlas) ')'];
             end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];
@@ -1516,7 +1524,16 @@ function ViewTopography(hFig, UseSmoothing)
                 Modalities = {'MEG MAG', 'MEG GRAD2', 'MEG GRAD3'};
             else
                 Modalities = {FigMod};
-            end           
+            end
+            % Keep only the modalities that have valid data
+            iGoodMod = [];
+            for iMod = 1:length(Modalities)
+                iChan = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, Modalities{iMod});
+                if ~isempty(iChan)
+                    iGoodMod = [iGoodMod, iMod];
+                end
+            end
+            Modalities = Modalities(iGoodMod);
                 
         case {'Timefreq', 'Spectrum', 'Pac'}
             % Get time freq information
@@ -1907,12 +1924,14 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                 case 'Timefreq'
                     figure_timefreq('UpdateFigurePlot', Figure.hFigure, 1);
                 case 'Spectrum'
-                    figure_spectrum('UpdateFigurePlot', Figure.hFigure);
+                    figure_spectrum('UpdateFigurePlot', Figure.hFigure, 1);
                     UpdateFigureName(Figure.hFigure);
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);
                 case 'Connect'
-                    warning('todo: reload figure');
+                    bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
+                    figure_connect('UpdateFigurePlot', Figure.hFigure);
+                    bst_progress('stop');
                 case 'Image'
                     % ReloadCall only
                 case 'Video'

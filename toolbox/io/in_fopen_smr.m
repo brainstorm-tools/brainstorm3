@@ -5,7 +5,7 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,15 +20,15 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 % =============================================================================@
 %
 % Authors:  Malcolm Lidierth, 2006-2007, King's College London
-%           Adapted by Francois Tadel for Brainstorm, 2017
+%           Adapted by Francois Tadel for Brainstorm, 2017-2021
 
 
 %% ===== READ HEADER =====
 % Get file type
 [fPath, fBase, fExt]=fileparts(DataFile);
-if (strcmpi(fExt,'.smr') == 1)
+if strcmpi(fExt,'.smr') || strcmpi(fExt,'.smrx')
     byteorder = 'l';  % Spike2 for Windows source file: little-endian
-elseif strcmpi(fExt,'.son')==1
+elseif strcmpi(fExt,'.son')
     byteorder = 'b';  % Spike2 for Mac file: Big-endian
 else
     error('Not a Spike2 file.');
@@ -101,9 +101,9 @@ end
 
 
 %% ===== READ MARKER INFORMATION =====
-for iEvt = 1:length(iMarkerChan)
+for iChan = 1:length(iMarkerChan)
     % Read channel
-    [d,header] = SONGetChannel(fid, iMarkerChan(iEvt));
+    [d,header] = SONGetChannel(fid, iMarkerChan(iChan));
     if isempty(d) || isempty(header)
         continue;
     end
@@ -115,7 +115,12 @@ for iEvt = 1:length(iMarkerChan)
             timeEvt = d.timings(:)';
     end
     % Create event structure
-    sFile.events(iEvt).label    = header.title;
+    iEvt = length(sFile.events) + 1;
+    if ~isempty(header.title)
+        sFile.events(iEvt).label = header.title;
+    else
+        sFile.events(iEvt).label = sprintf('unknown_%02d', iEvt);
+    end
     sFile.events(iEvt).times    = round(double(timeEvt).* sFile.prop.sfreq) ./ sFile.prop.sfreq;
     sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
     sFile.events(iEvt).select   = 1;

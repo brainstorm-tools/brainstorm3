@@ -25,7 +25,7 @@ function [hFig, iDS, iFig, hPatch, hLight] = view_surface_matrix(Vertices, Faces
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -77,7 +77,10 @@ if (nargin < 7) || isempty(SurfaceFile)
 end
 
 % ===== Create new 3DViz figure =====
-bst_progress('start', 'View surface', 'Loading surface file...');
+isProgress = ~bst_progress('isVisible');
+if isProgress
+    bst_progress('start', 'View surface', 'Loading surface file...');
+end
 if isempty(hFig)
     % Create a new empty DataSet
     iDS = bst_memory('GetDataSetEmpty');
@@ -87,13 +90,14 @@ if isempty(hFig)
     FigureId.SubType  = '';
     FigureId.Modality = '';
     % Create figure
-    [hFig, iFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
+    [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
     if isempty(hFig)
         bst_error('Cannot create figure', 'View surface', 0);
         return;
     end
 else
     [iDS, iFig] = bst_figures('GetFigure', hFig);
+    isNewFig = 0;
 end
 
 % ===== Create a pseudo-surface =====
@@ -117,13 +121,16 @@ if ~isempty(sSurf)
     sLoadedSurf.VertConn    = sSurf.VertConn;
     sLoadedSurf.VertNormals = sSurf.VertNormals;
     sLoadedSurf.SulciMap    = sSurf.SulciMap;
+    [tmp, sLoadedSurf.VertArea] = tess_area(sLoadedSurf.Vertices, sLoadedSurf.Faces);
+    sLoadedSurf.Atlas       = panel_scout('FixAtlasStruct', sSurf.Atlas);
 else
-    sLoadedSurf.VertConn = tess_vertconn(Vertices, Faces);
     % Do not compute normals or sulci map for FEM tetrahedral meshes
     if isFem
+        sLoadedSurf.VertConn    = [];
         sLoadedSurf.VertNormals = [];
         sLoadedSurf.SulciMap    = [];
     else
+        sLoadedSurf.VertConn    = tess_vertconn(Vertices, Faces);
         sLoadedSurf.VertNormals = tess_normals(Vertices, Faces, sLoadedSurf.VertConn);
         sLoadedSurf.SulciMap    = tess_sulcimap(sLoadedSurf);
     end
@@ -168,12 +175,39 @@ setappdata(hFig, 'iSurface', iSurface);
 hLight = findobj(hFig, 'type', 'light');
 % Update figure selection
 bst_figures('SetCurrentFigure', hFig, '3D');
+
+% Display scouts
+if ~isempty(sLoadedSurf.Atlas)
+    % If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
+    sAtlas = panel_scout('GetAtlas', SurfaceFile);
+    if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'})
+        panel_scout('SetCurrentAtlas', 1);
+    end
+    % Show all scouts for this surface (for cortex only)
+    if (iSurface > 1)
+        panel_scout('ReloadScouts', hFig);
+    else
+        panel_scout('SetDefaultOptions');
+        panel_scout('PlotScouts', [], hFig);
+        panel_scout('UpdateScoutsDisplay', hFig);
+    end
+end
+
 % Camera basic orientation
-figure_3d('SetStandardView', hFig, 'top');
+if isNewFig
+    figure_3d('SetStandardView', hFig, 'top');
+end
 % Set figure visible
 set(hFig, 'Visible', 'on');
-bst_progress('stop');
+if isProgress
+    bst_progress('stop');
+end
 % Update "surface" panel
 panel_surface('UpdatePanel');
+% Select surface tab
+if isNewFig
+    gui_brainstorm('SetSelectedTab', 'Surface');
+end
+
 
 end

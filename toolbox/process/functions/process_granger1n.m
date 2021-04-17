@@ -5,7 +5,7 @@ function varargout = process_granger1n( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_granger1n( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -31,14 +31,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Bivariate Granger causality NxN';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 656;
+    sProcess.Index       = 661;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
@@ -46,22 +45,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
+    sProcess.options.removeevoked.Group   = 'input';
     % === GRANGER ORDER
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
     sProcess.options.grangerorder.Comment = 'Maximum Granger model order (default=10):';
     sProcess.options.grangerorder.Type    = 'value';
     sProcess.options.grangerorder.Value   = {10, '', 0};
-%     % === P-VALUE THRESHOLD
-%     sProcess.options.pthresh.Comment = 'Metric significativity: &nbsp;&nbsp;&nbsp;&nbsp;p&lt;';
-%     sProcess.options.pthresh.Type    = 'value';
-%     sProcess.options.pthresh.Value   = {0.05,'',4};
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)'};
+    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -84,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.Method = 'granger';
     OPTIONS.RemoveEvoked = sProcess.options.removeevoked.Value;
     OPTIONS.GrangerOrder = sProcess.options.grangerorder.Value{1};
-    OPTIONS.pThresh      = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh      = 0.05;
     OPTIONS.Freqs        = 0;
     
     % Compute metric
@@ -109,7 +102,7 @@ function Test() %#ok<DEFNU>
     bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
         'target',       11, ...  % Connectivity matrix (image)
         'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
-        'comment',      [sFile.Comment, ': ' sTmp.Comment]);
+        'Comment',      [sFile.Comment, ': ' sTmp.Comment]);
     % Save and display report
     ReportFile = bst_report('Save', sFile);
     bst_report('Open', ReportFile);

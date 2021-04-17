@@ -5,7 +5,7 @@ function varargout = process_evt_read( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_evt_read( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -53,6 +53,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.zero.Comment = 'Accept zeros as trigger values';
     sProcess.options.zero.Type    = 'checkbox';
     sProcess.options.zero.Value   = 0;
+    % Option: Min event duration
+    sProcess.options.min_duration.Comment = 'Reject events shorter than: ';
+    sProcess.options.min_duration.Type    = 'value';
+    sProcess.options.min_duration.Value   = {0, 'samples', 0};
 end
 
 
@@ -81,8 +85,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         case 3,  EventsTrackMode = 'ttl';
         case 4,  EventsTrackMode = 'rttl';
     end
-    % Accept zeros
+    % Other options
     isAcceptZero = sProcess.options.zero.Value;
+    MinDuration = sProcess.options.min_duration.Value{1};
     
     % ===== GET FILE DESCRIPTOR =====
     % Load the raw file descriptor
@@ -103,7 +108,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
         
     % ===== DETECTION =====
-    events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero);
+    events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
 
     % ===== SAVE RESULT =====
     % Only save changes if something was change
@@ -128,8 +133,11 @@ end
 
 
 %% ===== COMPUTE =====
-function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration)
     % Parse inputs
+    if (nargin < 6)
+        MinDuration = 0;
+    end
     if (nargin < 5)
         isAcceptZero = 0;
     end
@@ -188,17 +196,22 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
 
     % ===== ASK READ MODE =====
     if strcmpi(EventsTrackMode, 'ask')
-        res = java_dialog('question', ['Please select the interpretation mode at each time sample:' 10 10 ...
-                                       '- Value: detect the changes of value on the trigger channel' 10 ...
-                                       '- Bit: detect the changes for each bit of the channel independently' 10 ...
-                                       '- TTL: detect peaks of 5V/12V on an analog channel (baseline=0V)' 10 ...
-                                       '- RTTL: detect peaks of 0V on an analog channel (baseline!=0V)'], ...
-                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Cancel'}, 'value');
+        res = java_dialog('question', ['<HTML>Please select the interpretation mode at each time sample: <BR><BR>' ...
+                                       '- <B>Value</B>: detect the changes of value on the trigger channel<BR>' ...
+                                       '- <B>Bit</B>: detect the changes for each bit of the channel independently<BR>' ...
+                                       '- <B>TTL</B>: detect peaks of 5V/12V on an analog channel (baseline=0V)<BR>' ...
+                                       '- <B>RTTL</B>: detect peaks of 0V on an analog channel (baseline!=0V)<BR>' ...
+                                       '- <B>Ignore</B>: do not read trigger channel<BR><BR>'], ...
+                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Ignore','Cancel'}, 'value');
         if isempty(res) || strcmpi(res, 'Cancel')
             events = -1;
             return
         end
         EventsTrackMode = lower(res);
+    end
+    % Ignore trigger channel
+    if strcmpi(EventsTrackMode, 'ignore')
+        return;
     end
 
     % ===== READ STIM CHANNELS =====
@@ -222,17 +235,15 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
     nbBlocks = ceil(totalLength / blockLength);
     % Progress bar
     isProgressBar = bst_progress('isVisible');
-    if isProgressBar
-        bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
-    end
+    bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
 
     trackPrev = [];
+    nTooShort = 0;
     % For each block
     for iBlock = 1:nbBlocks
         % Increment progress bar
-        if isProgressBar
-            bst_progress('inc', 1);
-        end
+        bst_progress('inc', 1);
+
         % === READ BLOCK ===
         % Get samples indices for this block
         samplesBlock = samplesBounds(1) + [(iBlock - 1) * blockLength, iBlock * blockLength - 1];
@@ -300,6 +311,11 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
             end
             % Process each change individually
             for i = 1:length(iSmp)
+                % Skip if shorter than MinDuration
+                if (MinDuration > 0) && ((length(tracks) - iSmp(i) < MinDuration) || ~all(tracks(iSmp(i):iSmp(i)+MinDuration) == tracks(iSmp(i))))
+                    nTooShort = nTooShort + 1;
+                    continue;
+                end
                 % Build event name
                 switch lower(EventsTrackMode)
                     case 'bit'
@@ -340,9 +356,12 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
             end
         end
     end
-
+    % Display warning with removed events
+    if (nTooShort > 0)
+        disp(sprintf('BST> %d events shorter than %d sample(s) removed.', nTooShort, MinDuration));
+    end
     % Close progress bar
-    if isProgressBar
+    if ~isProgressBar
         bst_progress('stop');
     end
 end

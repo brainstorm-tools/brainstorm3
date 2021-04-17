@@ -5,7 +5,7 @@ function isLoaded = db_load_protocol(iProtocols)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -42,6 +42,21 @@ for i = 1:length(iProtocols)
     elseif ~file_attrib(ProtocolFile, 'r')
         disp(['BST> Error: Insufficient rights to read the protocol file "' ProtocolFile '".']);
         isReload = 1;
+    end
+    
+    % Check if Brainstorm needs to be updated in order to load this
+    % protocol (new version of the database)
+    SqlFile = bst_fullfile(GlobalData.DataBase.ProtocolInfo(iProtocols(i)).STUDIES, 'protocol.db');
+    if file_exist(SqlFile)
+        res = java_dialog('question', ['This protocol seems to have been ' ...
+            'created with a newer version of the software.' 10 ...
+            'We strongly recommend you update Brainstorm before you continue.' ...
+            10 'Do you want to update the software now?'], 'Load protocol');
+        if strcmpi(res, 'yes')
+            bst_update();
+        else
+            isReload = 1;
+        end
     end
     
     % ===== LOAD PROTOCOL.MAT =====

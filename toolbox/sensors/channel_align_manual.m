@@ -14,7 +14,7 @@ function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2020
 
 global GlobalData;
 
@@ -56,7 +56,7 @@ end
 
 % Is processing MEG?
 isMeg  = ismember(Modality, {'MEG', 'MEG GRAD', 'MEG MAG', 'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'RICOH'});
-isNirs = strcmpi(Modality, 'NIRS');
+isNirs = ismember(Modality, {'NIRS','NIRS-BRS'});
 isEeg  = ~isMeg && ~isNirs;
 % Get study
 sStudy = bst_get('ChannelFile', ChannelFile);
@@ -149,19 +149,29 @@ figure_3d('SetStandardView', hFig, 'left');
 if isMeg
     view_helmet(ChannelFile, hFig);
     hSensorsLabels = [];
-% EEG Electrodes / NIRS optodes
-elseif isNirs || isEeg
+    % Get sensors patch
+    hSensorsPatch = findobj(hFig, 'Tag', 'SensorsPatch');
+    hSensorsMarkers = findobj(hFig, 'Tag', 'SensorsMarkers');
+% EEG Electrodes
+elseif isEeg
     % View sensors
     view_channels(ChannelFile, Modality, 1, 1, hFig);
     % Hide sensors labels
     hSensorsLabels = findobj(hFig, 'Tag', 'SensorsLabels');
     set(hSensorsLabels, 'Visible', 'off');
+    % Get sensors patch
+    hSensorsPatch = findobj(hFig, 'Tag', 'SensorsPatch');
+    hSensorsMarkers = findobj(hFig, 'Tag', 'SensorsMarkers');
+% NIRS Optodes
+elseif isNirs
+    % View sensors
+    view_channels(ChannelFile, Modality, 0, 0, hFig);
+    % Get sensors patch
+    hSensorsLabels = findobj(hFig, 'Tag', 'NirsCapText');
+    hSensorsPatch = findobj(hFig, 'Tag', 'NirsCapPatch');
+    hSensorsMarkers = [];
 end
-
-% ===== GET SENSOR PATCH =====
-% Get sensors patch
-hSensorsPatch = findobj(hFig, 'Tag', 'SensorsPatch');
-hSensorsMarkers = findobj(hFig, 'Tag', 'SensorsMarkers');
+% Check that it was displayed correctly
 if (isempty(hSensorsPatch) || (~isempty(hSensorsPatch) && ~ishandle(hSensorsPatch(1)))) && ...
    (isempty(hSensorsMarkers) || (~isempty(hSensorsMarkers) && ~ishandle(hSensorsMarkers(1))))
     bst_error('Cannot display sensors patch', 'Align electrode contacts', 0);
@@ -290,9 +300,14 @@ end
 Channel = GlobalData.DataSet(gChanAlign.iDS).Channel;
 iChan = good_channel(Channel, [], Modality);
 gChanAlign.iGlobal2Local = zeros(1, length(Channel));
-gChanAlign.iGlobal2Local(iChan) = 1:size(gChanAlign.SensorsVertices,1);
-% EEG/NIRS: Get the labels of the electrodes
-if isEeg || isNirs
+if isNirs
+    gChanAlign.iGlobal2Local(iChan) = 1:size(iChan,2);
+    gChanAlign.SensorsLabels(iChan) = {GlobalData.DataSet(gChanAlign.iDS).Channel(iChan).Name};
+else    
+    gChanAlign.iGlobal2Local(iChan) = 1:size(gChanAlign.SensorsVertices,1);
+end    
+% EEG: Get the labels of the electrodes
+if isEeg
     iTextChan = length(gChanAlign.hSensorsLabels) - (1:length(iChan)) + 1;
     gChanAlign.SensorsLabels(iTextChan) = {GlobalData.DataSet(gChanAlign.iDS).Channel(iChan).Name};
 end
@@ -324,9 +339,12 @@ gChanAlign.isFirstAddWarning = 1;
 gChanAlign.isFirstRmWarning = 1;
 
 % Rotation/Translation buttons
+gChanAlign.hButtonLabels = [];
+gChanAlign.hButtonEditLabel = [];
+gChanAlign.hButtonHelmet = [];
 if gChanAlign.isMeg
     gChanAlign.hButtonHelmet = uitoggletool(hToolbar, 'CData', java_geticon('ICON_DISPLAY'), 'TooltipString', 'Show/Hide MEG helmet', 'ClickedCallback', @ToggleHelmet, 'State', 'on');
-else
+elseif gChanAlign.isEeg
     gChanAlign.hButtonLabels    = uitoggletool(hToolbar, 'CData', java_geticon('ICON_LABELS'), 'TooltipString', 'Show/Hide electrodes labels', 'ClickedCallback', @ToggleLabels);
     gChanAlign.hButtonEditLabel = uipushtool(  hToolbar, 'CData', java_geticon('ICON_EDIT'),   'TooltipString', 'Edit selected channel label', 'ClickedCallback', @EditLabel);
 end
@@ -336,7 +354,13 @@ gChanAlign.hButtonTransZ   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_
 gChanAlign.hButtonRotX     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_X'),    'TooltipString', 'Rotation/X: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation, 'separator', 'on');
 gChanAlign.hButtonRotY     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_Y'),    'TooltipString', 'Rotation/Y: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation);
 gChanAlign.hButtonRotZ     = uitoggletool(hToolbar, 'CData', java_geticon('ICON_ROTATION_Z'),    'TooltipString', 'Rotation/Z: Press right button and move mouse up/down',    'ClickedCallback', @SelectOperation);
-if gChanAlign.isMeg || gChanAlign.isNirs
+
+if gChanAlign.isMeg
+    gChanAlign.hButtonRefine   = uipushtool(hToolbar, 'CData', java_geticon('ICON_ALIGN_CHANNELS'), 'TooltipString', 'Refine registration using head points', 'ClickedCallback', @RefineWithHeadPoints, 'separator', 'on');
+    gChanAlign.hButtonMoveChan = [];
+    gChanAlign.hButtonProject = [];
+elseif gChanAlign.isNirs
+    gChanAlign.hButtonProject = uipushtool(  hToolbar, 'CData', java_geticon('ICON_PROJECT_ELECTRODES'), 'TooltipString', 'Project electrodes on surface', 'ClickedCallback', @ProjectElectrodesOnSurface, 'separator', 'on');
     gChanAlign.hButtonRefine   = uipushtool(hToolbar, 'CData', java_geticon('ICON_ALIGN_CHANNELS'), 'TooltipString', 'Refine registration using head points', 'ClickedCallback', @RefineWithHeadPoints, 'separator', 'on');
     gChanAlign.hButtonMoveChan = [];
     gChanAlign.hButtonProject = [];
@@ -595,10 +619,20 @@ function UpdatePoints(iSelChan)
     % Update sensor patch vertices
     SetSensorsVertices(gChanAlign.hSensorsPatch, gChanAlign.hSensorsMarkers, gChanAlign.SensorsVertices);
     if ~isempty(gChanAlign.hSensorsLabels)
-        for i = 1:length(iSelChan)
-            iTextChan = length(gChanAlign.hSensorsLabels) - iSelChan(i) + 1;
-            set(gChanAlign.hSensorsLabels(iTextChan), 'Position', ...
-                [1.05, 1.05, 1.03] .* gChanAlign.SensorsVertices(iSelChan(i),:));
+        if gChanAlign.isNirs
+            VertexLabels = get(gChanAlign.hSensorsPatch, 'UserData');
+            for i = 1:length(gChanAlign.hSensorsLabels)
+                iVert = find(strcmpi(VertexLabels, get(gChanAlign.hSensorsLabels(i), 'String')));
+                if ~isempty(iVert)
+                    set(gChanAlign.hSensorsLabels(i), 'Position', 1.08 .* mean(gChanAlign.SensorsVertices(iVert,:)));
+                end
+            end
+        else
+            for i = 1:length(iSelChan)
+                iTextChan = length(gChanAlign.hSensorsLabels) - iSelChan(i) + 1;
+                set(gChanAlign.hSensorsLabels(iTextChan), 'Position', ...
+                    [1.05, 1.05, 1.03] .* gChanAlign.SensorsVertices(iSelChan(i),:));
+            end
         end
     end
     % Update helmet patch vertices
@@ -811,9 +845,13 @@ end
 function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
-        % Ask user to save changes
-        SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
-                                       'Would you like to save changes? ' 10 10], 'Align sensors');
+        % Ask user to save changes (only if called as a callback)
+        if (nargin == 3)
+            SaveChanged = 1;
+        else
+            SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
+                                           'Would you like to save changes? ' 10 10], 'Align sensors');
+        end
         % Progress bar
         bst_progress('start', 'Align sensors', 'Updating channel file...');
         % Save changes and close figure
@@ -837,7 +875,7 @@ function AlignClose_Callback(varargin)
         SaveChanged = 0;
     end
     % Only close figure
-    gChanAlign.Figure3DCloseRequest_Bak(varargin{:});
+    gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
     % Apply to other recordings in the same subject
     if SaveChanged
         CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
@@ -1020,6 +1058,17 @@ end
 %% ===== PROJECT ELECTRODES =====
 function ProjectElectrodesOnSurface(varargin)
     global gChanAlign;
+    % NIRS: Need to close the current figure and reopen it
+    if gChanAlign.isNirs
+        bst_progress('start', 'Project sensors', 'Saving modifications...');
+        AlignClose_Callback(gChanAlign.hFig, [], 1);
+        bst_progress('start', 'Project sensors', 'Projecting sensors...');
+        process_channel_project('Compute', gChanAlign.ChannelFile, 'NIRS');
+        bst_progress('start', 'Project sensors', 'Opening results...');
+        channel_align_manual(gChanAlign.ChannelFile, gChanAlign.Modality, 1);
+        bst_progress('stop');
+        return;
+    end
     % Get the list of valid buttons
     hButtonList = [gChanAlign.hButtonTransX, gChanAlign.hButtonTransY, gChanAlign.hButtonTransZ, gChanAlign.hButtonLabels, ...
                    gChanAlign.hButtonRotX,   gChanAlign.hButtonRotY,   gChanAlign.hButtonRotZ,   gChanAlign.hButtonRefine, gChanAlign.hButtonOk];
@@ -1288,70 +1337,5 @@ function SetSensorsVertices(hSensorsPatch, hSensorsMarkers, SensorsVertices)
         end
     end
 end
-
-
-% %% ===== CREATE MONTAGE MENU =====
-% function ShowElectrodeMenu(hFig, Modality)
-%     import org.brainstorm.icon.*;
-%     % Create popup menu    
-%     jPopup = java_create('javax.swing.JPopupMenu');
-%     % Align SEEG electrodes
-%     if strcmpi(Modality, 'SEEG')
-%         jItem = gui_component('MenuItem', jPopup, [], 'Align all contacts in a group',              IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('all'), []);
-%         jItem = gui_component('MenuItem', jPopup, [], 'Define group with first and second contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('first_second'), []);
-%         jItem = gui_component('MenuItem', jPopup, [], 'Define group with first and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback('first_last'), []);
-%     elseif strcmpi(Modality, 'ECOG')
-%         jItem = gui_component('MenuItem', jPopup, [], 'Define strip: First and last contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(1), []);
-%         jItem = gui_component('MenuItem', jPopup, [], 'Define grid: First and last contacts',  IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(2), []);
-%         jItem = gui_component('MenuItem', jPopup, [], 'Define grid: 4 corner contacts',        IconLoader.ICON_CHANNEL, [], @(h,ev)FixIntraElectrodes_Callback(4), []);
-%     else
-%         return;
-%     end
-%     % Display Popup menu
-%     gui_popup(jPopup, hFig);
-% end
-
-% 
-% %% ===== FIX INTRA ELECTRODES =====
-% % SEEG:  FixIntraElectrodes_Callback(Method)     : Method={first_last, first_second, all}
-% % ECOG:  FixIntraElectrodes_Callback(nCorners)   : nCorners={1,2,4}
-% function FixIntraElectrodes_Callback(Method)
-%     global gChanAlign;
-%     % Parse inputs
-%     if (nargin < 1) || isempty(Method)
-%         error('Invalid call.');
-%     end
-%     % Progress bar
-%     bst_progress('start', 'Align electrode contacts', 'Updating electrode positions...');
-%     % Get channels to modify 
-%     ChannelMat = GetCurrentChannelMat(0);
-%     % Get modality channels
-%     iChannels = good_channel(ChannelMat.Channel, [], gChanAlign.Modality);
-%     Channels = ChannelMat.Channel(iChannels);
-%     % Call the function to align electodes
-%     switch (gChanAlign.Modality)
-%         case 'SEEG'
-%             Channels = panel_ieeg('AlignSeegElectrodes', Channels, Method);
-%         case 'ECOG'
-%             sSubject = bst_get('Subject', getappdata(gChanAlign.hFig, 'SubjectFile'));
-%             Channels = panel_ieeg('AlignEcogElectrodes', Channels, sSubject, Method);
-%         otherwise
-%             error('Unsupported modality.');
-%     end
-%     if isempty(Channels)
-%         bst_progress('stop');
-%         return;
-%     end
-%     % Process each sensor
-%     gChanAlign.SensorsVertices = [Channels.Loc]';
-%     % Update display 
-%     UpdatePoints(1:length(gChanAlign.hSensorsLabels));
-%     % Set modified flag
-%     gChanAlign.isChanged = 1;
-%     % Progress bar
-%     bst_progress('stop');
-% end
-
-
 
 

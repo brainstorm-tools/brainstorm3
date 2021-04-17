@@ -5,7 +5,7 @@ function varargout = process_inverse_2018( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -256,6 +256,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 errMessage = 'Cannot compute shared kernels with this method.';
                 return
             end
+            % % Install/load brainentropy plugin
+            % [isInstalled, errMessage] = bst_plugin('Install', 'brainentropy', 1);
+            % if ~isInstalled
+            %     return;
+            % end
             % Default options
             MethodOptions = be_main();
             % Interface to edit options
@@ -368,6 +373,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             for i = 1:length(iRelatedStudies)
                 % Get data file
                 sStudyRel = bst_get('Study', iRelatedStudies(i));
+                % If bad trial: don't take it into consideration
+                if (sStudyRel.Data(iRelatedData(i)).BadTrial)
+                    nAvgAll(i) = Inf;
+                    LeffAll(i) = Inf;
+                    continue;
+                end
                 % Read bad channels and nAvg
                 DataMat = in_bst_data(sStudyRel.Data(iRelatedData(i)).FileName, 'ChannelFlag', 'nAvg', 'Leff');
                 if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)

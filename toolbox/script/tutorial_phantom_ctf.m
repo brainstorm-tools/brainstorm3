@@ -11,7 +11,7 @@ function tutorial_phantom_ctf(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -109,7 +109,7 @@ bst_process('CallProcess', 'process_snapshot', [sFilesRun200Ds, sFilesRun20Ds], 
     'target',   1, ...  % Sensors/MRI registration
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 % ===== DETECT EVENTS =====
@@ -175,7 +175,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesNoiseDs, [], ...
 % Process: Snapshot: Noise covariance
 bst_process('CallProcess', 'process_snapshot', sFilesNoiseDs, [], ...
     'target',  3, ...  % Noise covariance
-    'comment', 'Noise covariance');
+    'Comment', 'Noise covariance');
 
 
 % ===== SOURCE ESTIMATION =====

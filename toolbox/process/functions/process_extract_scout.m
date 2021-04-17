@@ -7,7 +7,7 @@ function varargout = process_extract_scout( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_extract_scout( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -474,7 +474,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Scout was not found: Error
                 if isempty(sScout)
                     bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
-                    return;
+                    continue;
                 end
                 % Get scout function
                 if ~isempty(ScoutFunc)
@@ -522,10 +522,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                     % Do not accept volume atlases with non-volume head models
                     if ~isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
                         return;
                     elseif isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
                         return;
                     end
                     % Set the scout computation properties based on the information in the "Source model" atlas
@@ -633,8 +633,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
+                        tmpScoutStd = [];
                         for iBound = 1:size(sourceStd,4)
-                            tmpScoutStd(:,:,:,iBound) = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            if isempty(tmpScoutStd)
+                                tmpScoutStd = tmp;
+                            else
+                                tmpScoutStd = cat(4, tmpScoutStd, tmp);
+                            end
                         end
                         scoutStd = cat(1, scoutStd, tmpScoutStd);
                     end
@@ -676,6 +682,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                 end
             end
+        end
+        % If nothing was found
+        if isempty(scoutValues)
+            return;
         end
         
         % === OUTPUT STRUCTURE ===
@@ -876,6 +886,9 @@ function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs,
                 iAllScout = [];
                 % Search all the other atlases
                 for ia = 1:length(sSurf.Atlas)
+                    if isempty(sSurf.Atlas(ia).Scouts)
+                        continue;
+                    end
                     % Search for scout name
                     iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(ia).Scouts.Label}));
                     % Multiple scouts with the same name in an atlas: Error

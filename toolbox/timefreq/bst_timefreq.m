@@ -36,7 +36,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -78,6 +78,7 @@ Def_OPTIONS.SaveKernel      = 0;
 Def_OPTIONS.nComponents     = 1;
 Def_OPTIONS.NormalizeFunc   = 'none';
 Def_OPTIONS.ft_mtmconvol    = [];
+Def_OPTIONS.PowerUnits      = 'physical';
 
 % Return the default options
 if (nargin == 0)
@@ -122,6 +123,11 @@ isAddedCommentNorm = 0;
 % Cannot do average and "save kernel" at the same time
 if isAverage && OPTIONS.SaveKernel
     Messages = 'Incompatible options: 1)Keep the inversion kernel and 2)average trials';
+    isError = 1;
+    return;
+% Cannot use option "save kernel" with continuous raw files
+elseif OPTIONS.SaveKernel && ischar(Data{1}) && any(~cellfun(@(c)isempty(strfind(c, '@raw')), Data))
+    Messages = 'Cannot use the optimization option "save the inversion kernel" with continuous raw files.';
     isError = 1;
     return;
 end
@@ -239,7 +245,8 @@ for iData = 1:length(Data)
                     % Detect bad segments
                     sMat.events = sMat.Events;
                     sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
-                    BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
+                    isChannelEvtBad = 0;
+                    BadSegments = panel_record('GetBadSegments', sMat, isChannelEvtBad) - sMat.prop.sfreq * sMat.Time(1) + 1;
                 end
                 nAvg = sMat.nAvg;
                 OPTIONS.TimeVector = sMat.Time;
@@ -345,7 +352,8 @@ for iData = 1:length(Data)
                         % Detect bad segments
                         sMat.events = sMat.Events;
                         sMat.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
-                        BadSegments = panel_record('GetBadSegments', sMat) - sMat.prop.sfreq * sMat.Time(1) + 1;
+                        isChannelEvtBad = 0;
+                        BadSegments = panel_record('GetBadSegments', sMat, isChannelEvtBad) - sMat.prop.sfreq * sMat.Time(1) + 1;
                     end
                     % Get indices of channels for this results file
                     F = F(ResultsMat.GoodChannel, :);
@@ -437,6 +445,25 @@ for iData = 1:length(Data)
             else
                 nComponents = OPTIONS.nComponents(iData);
             end
+            
+            % PSD: we don't want the bad segments
+            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd') && ~isempty(sStudy.Result(iFile).DataFile)
+                % Load associated data file
+                sMat = in_bst_data(sStudy.Result(iFile).DataFile);
+                % Raw file
+                if isstruct(sMat.F)
+                    sFile = sMat.F;
+                else
+                    sFile = sMat;
+                    sFile.events = sMat.Events;
+                    sFile.prop.sfreq = 1 ./ (sMat.Time(2) - sMat.Time(1));
+                end
+                % Get list of bad segments in file
+                isChannelEvtBad = 0;
+                BadSegments = panel_record('GetBadSegments', sFile, isChannelEvtBad);
+                % Convert them to the beginning of the time section that is processed
+                BadSegments = BadSegments - sFile.prop.sfreq * sMat.Time(1) + 1;
+            end
         end
         nAvg = 1;
     end
@@ -481,30 +508,19 @@ for iData = 1:length(Data)
 
         % FFT: Matlab function fft
         case 'fft'
-            % Next power of 2 from length of signal
-            nTime = length(OPTIONS.TimeVector);
-            % NFFT = 2^nextpow2(nTime);    % Function fft() pads the signal with zeros before computing the FT
-            NFFT = nTime;                  % No zero-padding: Nfft = Ntime
-            % Positive frequency bins spanned by FFT
-            OPTIONS.Freqs = sfreq / 2 * linspace(0,1,NFFT/2+1);
+            % Use psd function, single window.
+            [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, [], 0, BadSegments, ImagingKernel, [], OPTIONS.PowerUnits);
             % Keep only first and last time instants
             OPTIONS.TimeVector = OPTIONS.TimeVector([1 end]);
-            % Remove mean of the signal
-            F = bst_bsxfun(@minus, F, mean(F,2));
-            % Apply a hamming window to signal
-            F = bst_bsxfun(@times, F, bst_window('hamming', size(F,2))');
-            % Compute FFT
-            Ffft = fft(F, NFFT, 2);
-            % Keep only first half
-            % (x2 to recover full power from negative frequencies)
-            TF = 2 * Ffft(:,1:NFFT/2+1) ./ nTime;
-            % Permute dimensions: time and frequency
-            TF = permute(TF, [1 3 2]);
+            % Imaging kernel is already applied: don't do it twice
+            ImagingKernel = [];
+            % Measure is already applied (power)
+            isMeasureApplied = 1;
             
         % PSD: Homemade computation based on Matlab's FFT
         case 'psd'
             % Calculate PSD/FFT
-            [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinStd);
+            [TF, OPTIONS.Freqs, Nwin, Messages] = bst_psd(F, sfreq, OPTIONS.WinLength, OPTIONS.WinOverlap, BadSegments, ImagingKernel, OPTIONS.WinStd, OPTIONS.PowerUnits);
             if isempty(TF)
                 continue;
             end
@@ -682,7 +698,7 @@ for iData = 1:length(Data)
     end
 
     % ===== NORMALIZE VALUES =====
-    if ~isempty(OPTIONS.NormalizeFunc) && strcmpi(OPTIONS.NormalizeFunc, 'multiply')
+    if ~isempty(OPTIONS.NormalizeFunc) && ismember(OPTIONS.NormalizeFunc, {'multiply', 'multiply2020'})
         % Call normalization function
         [TF, errorMsg] = process_tf_norm('Compute', TF, OPTIONS.Measure, OPTIONS.Freqs, OPTIONS.NormalizeFunc);
         % Error handling
@@ -694,7 +710,7 @@ for iData = 1:length(Data)
         % Add normalization comment
         if ~isAddedCommentNorm
             isAddedCommentNorm = 1;
-            OPTIONS.Comment = [OPTIONS.Comment ' | ' OPTIONS.NormalizeFunc];
+            OPTIONS.Comment = [OPTIONS.Comment ' | ' strrep(OPTIONS.NormalizeFunc, '2020', '')];
         end
     end
 
@@ -786,11 +802,13 @@ end
         % Options
         FileMat.Options.Method          = OPTIONS.Method;
         FileMat.Options.Measure         = OPTIONS.Measure;
+        FileMat.Options.Normalized      = OPTIONS.NormalizeFunc;
         FileMat.Options.Output          = OPTIONS.Output;
         FileMat.Options.RemoveEvoked    = OPTIONS.RemoveEvoked;
         FileMat.Options.MorletFc        = OPTIONS.MorletFc;
         FileMat.Options.MorletFwhmTc    = OPTIONS.MorletFwhmTc;
         FileMat.Options.ClusterFuncTime = OPTIONS.ClusterFuncTime;
+        FileMat.Options.PowerUnits      = OPTIONS.PowerUnits;
         % Compute edge effects mask
         if ismember(OPTIONS.Method, {'hilbert', 'morlet'})
             FileMat.TFmask = process_timefreq('GetEdgeEffectMask', FileMat.Time, FileMat.Freqs, FileMat.Options);
@@ -825,6 +843,8 @@ end
                 % Look for a trial tag in the filename
                 iTagStart = strfind(fBase, '_trial');
                 if ~isempty(iTagStart)
+                    % Extract the last occurrence in case it's also in the folder name
+                    iTagStart = iTagStart(end);
                     iTagStop = iTagStart + find(fBase(iTagStart+6:end) == '_',1) + 4;
                     if isempty(iTagStop)
                         iTagStop = length(fBase);
@@ -874,7 +894,8 @@ function [F, TimeVector, BadSegments] = ReadRawRecordings(sFile, TimeVector, Cha
     % PSD: we don't want the bad segments
     if strcmpi(OPTIONS.Method, 'psd')
         % Get list of bad segments in file
-        BadSegments = panel_record('GetBadSegments', sFile);
+        isChannelEvtBad = 0;
+        BadSegments = panel_record('GetBadSegments', sFile, isChannelEvtBad);
         % Convert them to the beginning of the time section that is processed
         BadSegments = BadSegments - SamplesBounds(1) + 1;
     else

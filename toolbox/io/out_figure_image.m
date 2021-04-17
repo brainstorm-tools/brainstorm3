@@ -14,7 +14,7 @@ function varargout = out_figure_image( hFig, imgFile, imgLegend)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -86,7 +86,7 @@ if (nargin <= 1) && (nargout == 0)
     bst_set('DefaultFormats',  DefaultFormats);
 elseif (nargout == 0)
     [fPath,fBase,fExt] = bst_fileparts(imgFile);
-    if isempty(fExt)
+    if ~isempty(fExt)
         FileFormat = upper(fExt(2:end));
     else
         FileFormat = '';
@@ -313,7 +313,7 @@ else
     else
         % frameGfx = getscreen(hFig);
         figPos = get(hFig, 'Position');
-        decoSize = gui_layout('GetDecorationSize');
+        decoSize = bst_get('DecorationSize');
         % Get the screen definition 
         ScreenDef = bst_get('ScreenDef');
         % Single screen (TODO: Handle the cases where the two screens are organized in different ways)

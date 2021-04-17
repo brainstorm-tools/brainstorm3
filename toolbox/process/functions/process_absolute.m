@@ -5,7 +5,7 @@ function varargout = process_absolute( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -60,8 +60,11 @@ end
 function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Opposite values
     sInput.A = abs(sInput.A);
+    % Warning if applying this process to raw recordings
+    if strcmpi(sInput.FileType, 'raw')
+        bst_report('Warning', sProcess, sInput, 'Applying an absolute value to raw recordigs is not indicated. Check your processing pipeline.');
     % Change DataType
-    if ~strcmpi(sInput.FileType, 'timefreq')
+    elseif ~strcmpi(sInput.FileType, 'timefreq')
         sInput.DataType = 'abs';
     end
 end

@@ -5,7 +5,7 @@ function varargout = process_import_data_event( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,6 +64,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sep2.Type    = 'separator';
     sProcess.options.sep2.Comment = ' ';
     % Event name
+    sProcess.options.labelevt.Comment = '<HTML><I><FONT color="#777777">To import multiple events: separate them with commas,<BR>or use regular expressions (eg. <B>evt.*</B> selects evt1, evtA, evtTest...) </FONT></I>';
+    sProcess.options.labelevt.Type    = 'label';
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
     sProcess.options.eventname.Value   = '';
@@ -79,7 +81,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
     % Create conditions
-    sProcess.options.createcond.Comment = 'Create one condition for each event type';
+    sProcess.options.createcond.Comment = 'Create a separate folder for each event type';
     sProcess.options.createcond.Type    = 'checkbox';
     sProcess.options.createcond.Value   = 1;
     % Ignore shorter epochs
@@ -279,16 +281,34 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             bst_report('Error', sProcess, [], ['No events in file: ' 10 FileNames{iFile}]);
             continue;
         end
-        % Initialize events structure
-        events = repmat(sFile.events, 0);
+
         % Get selected events
+        iSelEvents = [];
         for iSelEvt = 1:length(EvtNames)
             % Find input event in file
             iEvt = find(strcmpi(EvtNames{iSelEvt}, {sFile.events.label}));
+            % If not found with exact names, try searching interpreting strings as regular expressions
             if isempty(iEvt)
+                iEvt = find(~cellfun(@isempty, regexp({sFile.events.label}, EvtNames{iSelEvt})));
+            end
+            % Event found / not found
+            if ~isempty(iEvt)
+                iSelEvents = [iSelEvents, iEvt];
+            else
                 bst_report('Warning', sProcess, [], ['Event "' EvtNames{iSelEvt} '" does not exist in file: ' 10 FileNames{iFile}]);
                 continue;
             end
+        end
+        if isempty(iSelEvents)
+            bst_report('Error', sProcess, [], ['No events with matching names found in file: ' 10 FileNames{iFile}]);
+            continue;
+        end
+        % Exclude duplicates
+        iSelEvents = unique(iSelEvents);
+        % Initialize events structure
+        events = repmat(sFile.events, 0);
+        % Select all the the occurrences of all the events in the selected time window
+        for iEvt = iSelEvents
             newEvt = sFile.events(iEvt);
             % Find events that are in time window
             if ~isempty(ImportOptions.TimeRange)

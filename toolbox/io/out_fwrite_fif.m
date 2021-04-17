@@ -7,7 +7,7 @@ function out_fwrite_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels, F)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,13 @@ function out_fwrite_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels, F)
 isEpoched = ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw);
 % Missing SampleBounds: use the entire raw file
 if ~isempty(isEpoched) && isempty(SamplesBounds)
-    SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
+    % Multiple files
+    if isfield(sFile.header, 'fif_headers') && (length(sFile.header.fif_headers) > 1)
+        SamplesBounds = [sFile.header.fif_headers{1}.raw.first_samp, sFile.header.fif_headers{end}.raw.last_samp];
+    % Single file
+    else
+        SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
+    end
 end
 
 % === CALIBRATION ===

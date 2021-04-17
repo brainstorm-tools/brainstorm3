@@ -5,7 +5,7 @@ function varargout = process_import_data_epoch( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -59,7 +59,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportData', ...                      % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'multiple', ...                        % Selection mode: {single,multiple}
         'files_and_dirs', ...                  % Selection mode: {files,dirs,files_and_dirs}
-        bst_get('FileFilters', 'raw'), ...    % Get all the available file formats
+        bst_get('FileFilters', 'data'), ...    % Get all the available file formats
         'DataIn'};                             % Default file format (field name in DefaultFormats)
     % Epochs indices
     sProcess.options.iepochs.Comment = 'Epoch indices (empty=all):';
@@ -76,7 +76,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
     % Create conditions
-    sProcess.options.createcond.Comment = 'Create one condition for each trial type';
+    sProcess.options.createcond.Comment = 'Create a separate folder for each trial type';
     sProcess.options.createcond.Type    = 'checkbox';
     sProcess.options.createcond.Value   = 0;
     % Align sensors

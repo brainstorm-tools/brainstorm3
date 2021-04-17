@@ -14,7 +14,7 @@ function varargout = gui_brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 eval(macro_method);
 end
@@ -55,12 +55,15 @@ function GUI = CreateWindow() %#ok<DEFNU>
         GUI.nodelists = [];
         return;
     end
+    % Compiled distribution
+    isCompiled = bst_iscompiled();
     
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
     if isequal(GlobalData.Program.CloneLock, 1)
         bst_splash('hide');
-        GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        % GlobalData.Program.CloneLock = ~org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        GlobalData.Program.CloneLock = ~CloneProble(bst_get('BrainstormHomeDir'));
         if isequal(GlobalData.Program.CloneLock, 1)
             GUI = [];
             return;
@@ -137,7 +140,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
         % === EXECUTE SCRIPTS IN COMPILED VERSION ===
-        if exist('isdeployed', 'builtin') && isdeployed
+        if isCompiled
             gui_component('MenuItem', jMenuFile, [], 'Command window', IconLoader.ICON_TERMINAL, [], @(h,ev)gui_show('panel_command', 'JavaWindow', 'MATLAB command window', [], 0, 1, 0), fontSize);
             gui_component('MenuItem', jMenuFile, [], 'Execute script', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@panel_command, 'ExecuteScript'), fontSize);
             jMenuFile.addSeparator();
@@ -155,24 +158,17 @@ function GUI = CreateWindow() %#ok<DEFNU>
         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
 
     % ==== Menu UPDATE ====
-    jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
+    if ~isCompiled
+        jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
-        if ~(exist('isdeployed', 'builtin') && isdeployed)
-            gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
-        end
-        % UPDATE OPENMEEG
-        if (GlobalData.Program.GuiLevel == 1)
-            jMenuOpenmeeg = gui_component('Menu', jMenuUpdate, [], 'Update OpenMEEG', IconLoader.ICON_RELOAD, [], [], fontSize);
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'Download', [], [], @(h,ev)bst_call(@DownloadOpenmeeg), fontSize);
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'Install', [], [], @(h,ev)bst_call(@bst_openmeeg, 'update'), fontSize);
-            if strcmpi(bst_get('OsType',0), 'win64')
-                jMenuOpenmeeg.addSeparator();
-                gui_component('MenuItem', jMenuOpenmeeg, [], 'Download Visual C++', [], [], @(h,ev)web('http://www.microsoft.com/en-us/download/details.aspx?id=14632', '-browser'), fontSize);
-            end
-            jMenuOpenmeeg.addSeparator();
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
-        end
-        
+        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);     
+    end
+    
+    % ==== Menu PLUGINS ====
+    jMenuPlugins = gui_component('Menu', jMenuBar, [], 'Plugins', [], [], [], fontSize);
+        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, fontSize);
+        java_setcb(jMenuPlugins, 'MenuSelectedCallback', @(h,ev)bst_plugin('MenuUpdate', jMenusPlug));
+       
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
         % BUG REPORTS
@@ -249,6 +245,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jToolButtonSubject     = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_SUBJECTDB,    TB_DIM, jButtonGroup}, '<HTML><B>Anatomy</B>:<BR>MRI, surfaces</HTML>', [], []);
         jToolButtonStudiesSubj = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_SUBJ, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by subjects):<BR>channels, head models, recordings, results</HTML>', [], []);
         jToolButtonStudiesCond = gui_component('ToolbarToggle', jToolbarExpMode, [], [], {IconLoader.ICON_STUDYDB_COND, TB_DIM, jButtonGroup}, '<HTML><B>Functional data</B> (sorted by conditions):<BR>channels, head models, recordings, results</HTML>', [], []);
+        % Search button
+        jToolbarSearch      = gui_component('Toolbar', jPanelExplorerTop, java.awt.BorderLayout.EAST, []);
+        jToolSearchDatabase = gui_component('ToolbarButton', jToolbarSearch, [], [], {IconLoader.ICON_ZOOM, TB_DIM, jButtonGroup}, 'Search Database', @(h,ev)panel_protocols('MainPopupMenu', ev.getSource()), []);
     jPanelExplorer.add(jPanelExplorerTop, java.awt.BorderLayout.NORTH);
 
     % ==== TOOLS CONTAINER ====
@@ -461,6 +460,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
              'jToolButtonSubject',     jToolButtonSubject, ...
              'jToolButtonStudiesSubj', jToolButtonStudiesSubj, ...
              'jToolButtonStudiesCond', jToolButtonStudiesCond, ...
+             'jToolSearchDatabase',    jToolSearchDatabase, ...
              'jComboBoxProtocols',     jComboBoxProtocols, ...
              'jButtonRecordingsA',      jButtonRecordingsA, ...
              'jButtonSourcesA',         jButtonSourcesA, ...
@@ -493,6 +493,14 @@ function GUI = CreateWindow() %#ok<DEFNU>
 %  =================================================================================
 %% ===== CLOSE WINDOW =====
     function closeWindow_Callback(varargin)
+        % Check that global variables are still accessible
+        if ~exist('GlobalData', 'var') || isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || isempty(GlobalData.Program.GuiLevel)
+            disp('BST> Error: Brainstorm global variables were cleared.');
+            disp('BST> Never call "clear" in your scripts while Brainstorm is running.');
+            % Force deleting the window
+            jBstFrame.dispose();
+            return;
+        end
         % If GUI was displayed: save current position
         if (GlobalData.Program.GuiLevel >= 1)
             % Update main window size and position
@@ -537,7 +545,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
             % Update the Layout structure
             bst_set('Layout', 'ExplorationMode', ExplorationMode);
             % Update tree display
-            panel_protocols('UpdateTree');
+            panel_protocols('UpdateTree', 0);
         end
         % Empty clipboard
         bst_set('Clipboard', []);
@@ -603,9 +611,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jPopup = java_create('javax.swing.JPopupMenu');
         % What field to search for: {'FileName', 'Comment'}
         groupTarget = java_create('javax.swing.ButtonGroup');
-        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file names', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
-        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
-        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent comments',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
+        jRadioFilename = gui_component('RadioMenuItem', jPopup, [], 'Search file paths', groupTarget, [], @(h,ev)SetFilterOption('Target', 'FileName'), fontSize);
+        jRadioComment  = gui_component('RadioMenuItem', jPopup, [], 'Search names',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Comment'), fontSize);
+        jRadioParent   = gui_component('RadioMenuItem', jPopup, [], 'Search parent names',   groupTarget, [], @(h,ev)SetFilterOption('Target', 'Parent'), fontSize);
         jPopup.addSeparator();
         % What to do with the filtered files: {'Select', 'Exclude'}
         groupAction = java_create('javax.swing.ButtonGroup');
@@ -619,7 +627,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         switch (NodelistOptions.Target)
             case 'FileName', jRadioFilename.setSelected(1);
             case 'Comment',  jRadioComment.setSelected(1);
-            case 'Parent',   jRadioParent.setSelected(1);    
+            case 'Parent',   jRadioParent.setSelected(1);
         end
         switch (NodelistOptions.Action)
             case 'Select',  jRadioSelect.setSelected(1);
@@ -934,6 +942,8 @@ function SetCurrentProtocol(iProtocol)
         jComboBoxProtocols.repaint();
     end
     % ===== UPDATE GUI =====
+    % Close any active searches
+    panel_protocols('CloseAllDatabaseTabs');
     % Update tree model
     panel_protocols('UpdateTree');
     % Update "Time Window" 
@@ -1441,38 +1451,50 @@ function SetExplorationMode(ExplorationMode) %#ok<DEFNU>
 end
 
 
-%% ===== DOWNLOAD OPENMEEG =====
-function DownloadOpenmeeg()
-    % Display information message
-    java_dialog('msgbox', [...
-        'You will be directed to the OpenMEEG website:' 10 ...
-        ' - Download an installer adapted to your operating system (.tar.gz only)' 10 ...
-        ' - Click on the menu "Help > Update OpenMEEG > Install"' 10 ...
-        ' - Select the downloaded .tar.gz file'], 'Download OpenMEEG');
-    % Open web browser
-    try
-        web('http://openmeeg.gforge.inria.fr/download/', '-browser');
-    catch
-    end
-end
-
-
 %% ===== DOWNLOAD FILE =====
-function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
+function errMsg = DownloadFile(srcUrl, destFile, wndTitle, imgFile) %#ok<DEFNU>
     errMsg = [];
     % Parse inputs
+    if (nargin < 4) || isempty(imgFile)
+        imgFile = [];
+    end
     if (nargin < 3) || isempty(wndTitle)
         wndTitle = 'Download file';
     end
     % Headless mode: use Matlab base functions
     if (bst_get('GuiLevel') == -1)
-        % Matlab >= 2014b: websave
-        if (bst_get('MatlabVersion') >= 804)
-            websave(destFile, srcUrl);
+        errMsg = bst_websave(destFile, srcUrl);
+    % Github: Problem with our downloaded: use websave instead
+    elseif (length(srcUrl) > 18) && strcmpi(srcUrl(1:18), 'https://github.com')
+        % Open progress bar
+        isProgress = bst_progress('isVisible');
+        if ~isProgress
+            bst_progress('start', wndTitle, 'Downloading...');
         else
-            urlwrite(srcUrl, destFile);
+            bst_progress('text', 'Downloading...');
+        end
+        if ~isempty(imgFile)
+            bst_progress('setimage', imgFile);
+        end
+        % Create folder if needed
+        if ~isdir(bst_fileparts(destFile))
+            mkdir(bst_fileparts(destFile));
+        end
+        % Download file
+        errMsg = bst_websave(destFile, srcUrl);
+        % Close progress bar
+        if ~isProgress
+            bst_progress('stop');
+        end
+        if ~isempty(imgFile)
+            bst_progress('removeimage');
         end
     else
+        % Temporarily hides progress bar (Downloader opens another progress bar)
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            bst_progress('hide');
+        end
         % Get system proxy definition, if available
         if exist('com.mathworks.mlwidgets.html.HTMLPrefs', 'class') && exist('com.mathworks.webproxy.WebproxyFactory', 'class') && ismethod('com.mathworks.webproxy.WebproxyFactory', 'findProxyForURL')
             com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
@@ -1481,7 +1503,7 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
             proxy = [];
         end
         % Start the download
-        downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle);
+        downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle, imgFile);
         if ~isempty(proxy)
             downloadManager.download(proxy);
         else
@@ -1490,6 +1512,9 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
         % Wait for the termination of the thread
         while (downloadManager.getResult() == -1)
             pause(0.2);
+        end
+        if isProgress
+            bst_progress('show');
         end
         % If file was not downloaded correctly
         if (downloadManager.getResult() ~= 1)
@@ -1534,35 +1559,6 @@ function MakeProtocolPortable()
 end
 
 
-% %% ===== TEST CONNECTION =====
-% function TestConnection()
-%     % Test address
-%     srcUrl  = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015';
-%     % Get URL
-%     handler = sun.net.www.protocol.http.Handler;
-%     jUrl = java.net.URL([],srcUrl,handler);
-%     % Get proxy
-%     com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
-%     proxy = com.mathworks.webproxy.WebproxyFactory.findProxyForURL(java.net.URL(srcUrl));
-%     % Create connection
-%     if ~isempty(proxy)
-%         connection = jUrl.openConnection(proxy);
-%     else
-%         connection = jUrl.openConnection();
-%     end
-%     % Set connection properties
-%     connection.setRequestProperty('Range', 'bytes=0-');
-%     connection.setRequestProperty('User-Agent', 'MATLAB-Brainstorm');
-%     java.net.Authenticator.setDefault([]);
-%     % Open connection
-%     connection.connect();
-%     % Make sure response code is in the 200 range.
-%     connection.getResponseCode()
-%     % Check for valid content length.
-%     contentLength = connection.getContentLength();
-% end
-
-
 %% ===== SHOW GUIDELINES =====
 function ShowGuidelines(ScenarioName)
     % Close tab if it already exists
@@ -1589,3 +1585,56 @@ function ShowGuidelines(ScenarioName)
     SetSelectedTab(panelName, 0, 'Process');
 end
 
+
+%% ===== CLONE PROBE =====
+function status = CloneProble(bstDir)
+    status = -1;
+    % Check if there are any GIT files in the folder
+    if ~file_exist(bst_fullfile(bstDir, 'LICENSE')) && ~file_exist(bst_fullfile(bstDir, 'README.md'))
+        status = 1;
+        return;
+    end
+    % If Matlab version too old: try using the older Java login
+    if (bst_get('MatlabVersion') < 901)
+        status = org.brainstorm.dialogs.CloneControl.probe(bst_get('BrainstormHomeDir'));
+        return;
+    end
+    % Allow multiple trials
+    while (status == -1)
+        % Get username and password
+        res = java_dialog('input', ...
+            {['<HTML>You got this version of Brainstorm from GitHub.<BR><BR>' 10 10 ...
+             'Please take a minute to register on our website before using the software:<BR>' 10 ...
+             'https://neuroimage.usc.edu/brainstorm > Download > Create an account now<BR><BR><FONT color="#999999">' ... 
+             'This project is supported by public grants. Keeping track of usage demographics <BR>' ...
+             'is key to document the impact of Brainstorm and obtain continued support.<BR>' ...
+             'Please take a moment to create a free account - thank you.</FONT><BR><BR>' ...
+             'Email or username:'], 'Password:'}, 'Brainstorm login');
+        % If user aborted
+        if isempty(res) || (length(res) ~= 2)
+            status = 0;
+            return;
+        end
+        % Connect
+        bst_progress('start', 'Brainstorm login', 'Contacting server');
+        try
+            % Send connect request
+            header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
+            options = matlab.net.http.HTTPOptions();
+            request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',res{1},'&mdp=',res{2}]);
+            resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
+            % Check server response
+            if isempty(resp) || isempty(resp.Body) || ~isa(resp.Body, 'matlab.net.http.MessageBody')
+                status = 0;
+            elseif strcmp(resp.Body.Data, '1')
+                status = 1;
+            else
+                bst_error('Invalid username or password.', 'Brainstorm login', 0);
+            end
+        catch
+            bst_error('Could not establish a secure connection to Brainstorm server', 'Brainstorm login', 0);
+            status = 0;
+        end
+        bst_progress('stop');
+    end
+end

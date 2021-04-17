@@ -8,7 +8,7 @@ function varargout = process_select_tag( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === FILENAME / COMMENT
     sProcess.options.label1.Comment = 'Where to look for:';
     sProcess.options.label1.Type    = 'label';
-    sProcess.options.search.Comment = {'Search the file names', 'Search the file comments', 'Search the comments of the parent file'};
+    sProcess.options.search.Comment = {'Search the file paths', 'Search the file names', 'Search the names of the parent file'};
     sProcess.options.search.Type    = 'radio';
     sProcess.options.search.Value   = 2;
     % === SELECT / IGNORE
@@ -92,9 +92,9 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
         Comment = 'Ignore';
     end
     switch (Method)
-        case 'filename',  Comment = [Comment ' file names with tag: ' tag];
-        case 'comment',   Comment = [Comment ' file comments with tag: ' tag];
-        case 'parent',    Comment = [Comment ' parent comment with tag: ' tag];   
+        case 'filename',  Comment = [Comment ' file paths with tag: ' tag];
+        case 'comment',   Comment = [Comment ' file names with tag: ' tag];
+        case 'parent',    Comment = [Comment ' parent names with tag: ' tag];
     end
 end
 

@@ -8,7 +8,7 @@ function varargout = process_extract_values( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -317,7 +317,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
     end
     % Do not accept PAC files
     if ~isempty(strfind(sInputs(1).FileName, '_pac'))|| ~isempty(strfind(sInputs(1).FileName, '_dpac'))
-        bst_report('Error', sProcess, sInputs(1), 'Connectivity and PAC files are not supported yet. Ask on the forum if you need it.');
+        bst_report('Error', sProcess, sInputs(1), 'PAC files are not supported yet. Ask on the forum if you need it.');
         return;
     end
     

@@ -1,15 +1,16 @@
-function [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor, hFig)
+function [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor, Resect, hFig)
 % VIEW_SURFACE_FEM: Display a FEM mesh in a 3DViz figure.
 %
 % USAGE:  [hFig, iDS, iFig] = view_surface(SurfaceFile)
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, 'NewFigure')
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFig)
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, iDS)
+%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, Resect, 'NewFigure')
+%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, Resect, hFig)
+%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, Resect, iDS)
 %
 % INPUT:
 %     - SurfaceFile : full path to the surface file to display 
 %     - SurfAlpha   : [1,Ntissue] Surface transparency for each tissue (optional)
 %     - SurfColor   : [3,Ntissue] Surface color [r,g,b] for each tissue (optional)
+%     - Resect      : [x y z] Relative coordinates of the resection planes (default = [0 .1 0])
 %     - "NewFigure" : force new figure creation (do not re-use a previously created figure)
 %     - hFig        : Specify the figure in which to display the surface
 %     - iDS         : Specify which loaded dataset to use
@@ -24,7 +25,7 @@ function [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,7 +39,7 @@ function [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2020
 
 global GlobalData;
 
@@ -47,7 +48,7 @@ iDS  = [];
 iFig = [];
 NewFigure = 0;
 % Get options
-if (nargin < 4) || isempty(hFig)
+if (nargin < 5) || isempty(hFig)
     hFig = [];
 elseif ischar(hFig) && strcmpi(hFig, 'NewFigure')
     hFig = [];
@@ -59,6 +60,10 @@ elseif (round(hFig) == hFig) && (hFig <= length(GlobalData.DataSet))
     hFig = [];
 else
     error('Invalid figure handle.');
+end
+% Resection
+if (nargin < 4) || isempty(Resect)
+    Resect = [];
 end
 % Color & Transparency
 if (nargin < 3) || isempty(SurfColor)
@@ -96,7 +101,7 @@ end
 % Display progress bar
 isProgress = ~bst_progress('isVisible');
 if isProgress
-    bst_progress('start', 'View surface', 'Loading surface file...');
+    bst_progress('start', 'View surface', 'Loading FEM mesh...');
 end
 if isempty(hFig)
     % Prepare FigureId structure
@@ -125,71 +130,84 @@ setappdata(hFig, 'SubjectFile',  SubjectFile);
 %% ===== DISPLAY FEM MESH =====
 % Load the input file
 FemMat = load(file_fullpath(SurfaceFile));
+% Hexa => convert to tetra
+if (size(FemMat.Elements,2) == 8)
+    % Convert the mesh to tetra for diplay purpose
+    [tetraElem,tetraNode,tetraLabel] = hex2tet(double(FemMat.Elements), FemMat.Vertices, double(FemMat.Tissue), 3);
+    % Updates FemMat for display purpose
+    FemMat.Vertices = tetraNode;
+    FemMat.Elements = tetraElem(:, [2 1 3 4]);
+    FemMat.Tissue = tetraLabel;
+end
+
 if ~isfield(FemMat, 'Vertices') || ~isfield(FemMat, 'Elements') || ~isfield(FemMat, 'Tissue') || ~isfield(FemMat, 'TissueLabels')|| ~isfield(FemMat, 'Comment')
     error('Not a valid FEM mesh.');
 end
 % Get number of tissues in the file
 Ntissue = max(FemMat.Tissue);
+if isProgress
+    bst_progress('start', 'View surface', 'Loading FEM mesh...', 0, Ntissue+2);
+end
 % Transparency and color
 if (size(SurfColor,2) ~= Ntissue)
     ColorOrder = panel_scout('GetScoutsColorTable');
     SurfColor = ColorOrder(1:Ntissue, :);
     labels = lower(FemMat.TissueLabels);
-    % Default skin color
-    iSkin = find(ismember(labels, {'skin','scalp','head'}));
-    if ~isempty(iSkin)
-        SurfColor(iSkin,:) = [255 213 119]/255;
-    end
-    % Default bone color
-    iBone = find(ismember(labels, {'bone','skull','outer','outerskull'}));
-    if ~isempty(iBone)
-        SurfColor(iBone,:) = [140  85  85]/255;
-    end
-    % Default CSF color
-    iCSF = find(ismember(labels, 'csf'));
-    if ~isempty(iCSF)
-        SurfColor(iCSF,:) = [202 50 150]/255;
-    end
-    % Default grey matter color
-    iGrey = find(ismember(labels, {'gray','greymatter','gm','cortex','inner','innerskull'}));
-    if ~isempty(iGrey)
-        SurfColor(iGrey,:) = [150 150 150]/255;
-    end
-    % Default white matter color
-    iWhite = find(ismember(labels, {'gray','greymatter','gm','cortex'}));
-    if ~isempty(iWhite)
-        SurfColor(iWhite,:) = [250 250 250]/255;
+    % Get default color for each layer
+    for iTissue = 1:Ntissue
+        switch process_fem_mesh('GetFemLabel', labels{iTissue})
+            case 'white'
+                % SurfColor(iTissue,:) = [250 250 250]/255;
+                SurfColor(iTissue,:) = [220, 220, 220] ./ 255;
+            case 'gray'
+                % SurfColor(iTissue,:) = [150 150 150]/255;
+                SurfColor(iTissue,:) = [130, 130, 130] ./ 255;
+            case 'csf'
+                % SurfColor(iTissue,:) = [202 50 150]/255;
+                SurfColor(iTissue,:) = [44, 152, 254]/255;
+            case 'skull'
+                % SurfColor(iTissue,:) = [140  85  85]/255;
+                SurfColor(iTissue,:) = [255 255 255] ./ 255;
+            case 'scalp'
+                % SurfColor(iTissue,:) = [255 213 119]/255;
+                SurfColor(iTissue,:) = [255, 205, 184] ./ 255;
+        end
     end
 end
 if (size(SurfAlpha,2) ~= Ntissue)
     SurfAlpha = zeros(1,Ntissue);
 end
+if (size(Resect,2) ~= Ntissue)
+    Resect = [0, 0.01, 0];
+end
 % Plot each tissue as a patch object
 for iTissue = 1:Ntissue
-    % Remove unused vertices
-    iSelElem = find(FemMat.Tissue == iTissue);
-    iRemoveVert = setdiff(1:size(FemMat.Vertices,1), unique(reshape(FemMat.Elements(iSelElem,:), [], 1)));
-    [Vertices, tetraMesh] = tess_remove_vert(FemMat.Vertices, FemMat.Elements(iSelElem,:), iRemoveVert);
-    % Convert to triangular mesh
-    Faces = [...
-        tetraMesh(:,[2,1,3]);
-        tetraMesh(:,[1,2,4]);
-        tetraMesh(:,[3,1,4]);
-        tetraMesh(:,[2,3,4])];
-    % Plot as a new surface
+    % Progress bar
     MeshName = [SurfaceFile, '(', FemMat.TissueLabels{iTissue}, ')'];
-    [tmp_, tmp_, tmp_, hPatch, hLight] = view_surface_matrix(Vertices, Faces, SurfAlpha(iTissue), SurfColor(iTissue,:), hFig, 1, MeshName);
+    if isProgress
+        bst_progress('text', ['Creating surface: ' MeshName '...']);
+        bst_progress('inc', 1);
+    end
+    % Select elements of this tissue
+    Elements = FemMat.Elements(FemMat.Tissue == iTissue, 1:4);
+    % Create a surface for the outside surface of this tissue
+    Faces = tess_voledge(FemMat.Vertices, Elements, Resect);
+    % Plot as a new surface
+    [tmp_, tmp_, tmp_, hPatch, hLight] = view_surface_matrix(FemMat.Vertices, Faces, SurfAlpha(iTissue), SurfColor(iTissue,:), hFig, 1, MeshName);
     % Remove specular lighting
     set(hPatch, 'FaceLighting', 'flat', ...
                 'EdgeLighting', 'flat', ...
                 'AmbientStrength',  0.5, ...
                 'DiffuseStrength',  0.3, ...
                 'SpecularStrength', 0.1, ...
-                'SpecularExponent', 0.3);
+                'SpecularExponent', 0.3, ...
+                'UserData',         Elements);
     % Show edges
     panel_surface('SetSurfaceEdges', hFig, iTissue, 1);
-    % Set reset to half-way through the head (mid-sagittal)
-    panel_surface('ResectSurface', hFig, iTissue, 2, 0.01);
+end
+if isProgress
+    bst_progress('text', 'Creating figure...');
+    bst_progress('inc', 1);
 end
 
 % Set figure as current figure
@@ -198,11 +216,12 @@ bst_figures('SetCurrentFigure', hFig, '3D');
 camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');
 % Camera basic orientation
 if isNewFig
-    figure_3d('SetStandardView', hFig, 'top');
+    figure_3d('SetStandardView', hFig, 'left');
 end
 % Show figure
 set(hFig, 'Visible', 'on');
 if isProgress
+    drawnow
     bst_progress('stop');
 end
 % Select surface tab

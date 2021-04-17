@@ -17,7 +17,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -246,6 +246,9 @@ switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
     case 'spgranger',TfInfo.Function = 'other';
                      IsDirectionalData = 1;
                      IsBinaryData = 1;
+    case 'henv',     TfInfo.Function = 'other';
+    case 'pte',  TfInfo.Function = 'other';
+                 IsDirectionalData = 1;
     case {'plv','plvt'}
         if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
             TfInfo.Function = 'other';
@@ -283,10 +286,4 @@ panel_display('UpdatePanel', hFig);
 % Set figure visible
 set(hFig, 'Visible', 'on');
 bst_progress('stop');
-
-
-
-
-
-
 

@@ -5,7 +5,7 @@ function varargout = process_decoding_svm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -80,12 +80,6 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Initialize returned variables
     OutputFiles = {};
-    
-    % Not available in the compiled version
-    if exist('isdeployed', 'builtin') && isdeployed
-        bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
-        return;
-    end
     % Check the number of files in input
     if length(sInputs) < 2
         bst_report('Error', sProcess, sInputs, 'Not enough files in input.');
@@ -96,30 +90,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SensorTypes     = sProcess.options.sensortypes.Value;
     LowPass         = sProcess.options.lowpass.Value{1};
     numPermutations = sProcess.options.num_permutations.Value{1};
+    kFold           = sProcess.options.kfold.Value{1};
     model           = sProcess.options.model.Value;
     methods         = {'pairwise', 'temporalgen', 'multiclass'};
     method          = methods{sProcess.options.method.Value};
     
     % Ensure we are including the LibSVM folder in the Matlab path
     if strcmpi(model, 'svm')
-        libsvmDir = bst_fullfile(bst_get('BrainstormUserDir'), 'libsvm');
-        if exist(libsvmDir, 'dir')
-            addpath(genpath(libsvmDir));
+        [isInstalled, errMsg] = bst_plugin('Install', 'libsvm');
+        if ~isInstalled
+            bst_report('Error', sProcess, [], errMsg);
+            return;
         end
-        % Install LibSVM if missing
-        if ~exist('svmpredict', 'file')
-            rmpath(genpath(libsvmDir));
-            isOk = java_dialog('confirm', ...
-                ['This process requires the LibSVM toolbox.' 10 10 ...
-                     'Download and install it now?'], 'WaveClus');
-            if ~isOk
-                bst_report('Error', sProcess, sInputs, ['This process requires the LibSVM Toolbox:' 10 'http://www.csie.ntu.edu.tw/~cjlin/libsvm/#download']);
-                return;
-            end
-            downloadAndInstallLibsvm();
-        end
+        bst_plugin('SetProgressLogo', 'libsvm');
     end
-    
     % Check for the Signal Processing toolbox
     if LowPass > 0 && ~bst_get('UseSigProcToolbox')
         bst_report('Error', sProcess, sInputs, 'The Signal Processing Toolbox is required to apply a filter.');
@@ -130,6 +114,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     allConditions = {sInputs.Condition};
     [uniqueConditions, tmp, conditionMapping] = unique(allConditions);
     numConditions = length(uniqueConditions);
+    % Try to find trial group instead
+    if numConditions == 1
+        allConditions = cellfun(@str_remove_parenth, {sInputs.Comment}, 'UniformOutput', 0);
+        [uniqueConditions, tmp, conditionMapping] = unique(allConditions);
+        numConditions = length(uniqueConditions);
+    end
+    if numConditions == 1
+        bst_report('Error', sProcess, [], 'Could not find more than one condition to decode.');
+        return;
+    end
     if strcmpi(method, 'pairwise')
         methodName = 'Pairwise';
         Description = cell(numConditions * (numConditions - 1) / 2, 1);
@@ -162,11 +156,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Run max-correlation decoding
         modelName = 'max-correlation';
         bst_progress('start', 'Decoding', 'Decoding with max-correlation model...');
-        d = sll_decodemaxcorr(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 1);
+        d = sll_decodemaxcorr(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 1, 'kfold', kFold);
     else
         % Default: basic SVM model
         modelName = 'SVM';
-        kFold = sProcess.options.kfold.Value{1};
         bst_progress('start', 'Decoding', 'Decoding with SVM model...');
         d = sll_decodesvm(trial, allConditions, 'method', method, 'numpermutation', numPermutations, 'verbose', 2, 'kfold', kFold);
     end
@@ -206,6 +199,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     bst_save(OutputFiles{1}, FileMat, 'v6');
     % Register in database
     db_add_data(iStudy, OutputFiles{1}, FileMat);
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
 end
 
 
@@ -425,65 +420,3 @@ function h_filter = filter_design(filter_type,param,order,Fs,show_plot)
         ylabel(['Sinusoid at ' num2str(fcutoff*110/100) ' Hz' ]);
     end
 end
-
-%% ===== DOWNLOAD AND INSTALL LIBSVM =====
-function downloadAndInstallLibsvm()
-    isProgress = bst_progress('isvisible');
-    userDir = bst_get('BrainstormUserDir');
-    libsvmDir = bst_fullfile(userDir, 'libsvm');
-    url = 'https://github.com/cjlin1/libsvm/archive/master.zip';
-    % If folders exists: delete
-    if isdir(libsvmDir)
-        file_delete(libsvmDir, 1, 3);
-        rmdir(libsvmDir);
-    end
-    % Download file
-    zipFile = bst_fullfile(userDir, 'libsvm.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'LibSVM download');
-    
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) < time_out && ~isempty(errMsg)
-        pause(0.5);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'LibSVM download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if ~isempty(errMsg)
-        error(['Impossible to download LibSVM, please try installing it manually.' 10 errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'LibSVM', 'Installing LibSVM...');
-    unzip(zipFile, userDir);
-    % Get parent folder of the unzipped file
-    libsvmGitDir = bst_fullfile(userDir, 'libsvm-master');
-    % Move LibSVM directory to proper location
-    file_move(libsvmGitDir, libsvmDir);
-    % Add LibSVM to Matlab path
-    addpath(genpath(libsvmDir));
-    % For non-Windows, compile the binaries
-    if isempty(strfind(bst_get('OsType'), 'win'))
-        currentFolder = pwd;
-        makeDir = bst_fullfile(libsvmDir, 'matlab');
-        cd(makeDir);
-        try
-            make;
-        catch
-            cd(currentFolder);
-            error('Impossible to compile LibSVM, please try installing it manually.');
-        end
-        cd(currentFolder);
-    end
-    % Test installation
-    if exist('svmpredict', 'file')
-        disp('Successfully installed LibSVM.');
-    end
-    if ~isProgress
-        bst_progress('stop');
-    end
-end
-

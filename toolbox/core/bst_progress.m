@@ -25,7 +25,7 @@ function pBar = bst_progress(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -116,7 +116,7 @@ if isempty(pBar)
     pBar.jWindow.setModal(0);
     
     % Closing callback
-%     if exist('isdeployed', 'builtin') && isdeployed
+%     if bst_iscompiled()
         pBar.jWindow.setDefaultCloseOperation(pBar.jWindow.HIDE_ON_CLOSE);
 %     else
 %         pBar.jWindow.setDefaultCloseOperation(pBar.jWindow.DO_NOTHING_ON_CLOSE);
@@ -389,7 +389,7 @@ end
 %         %java_call(pBar.jWindow, 'setVisible', 'Z', 0);
 %         bst_progress('stop');
 %         
-%         if exist('isdeployed', 'builtin') && isdeployed
+%         if bst_iscompiled()
 %             try 
 %                 % Get command window
 %                 cmdWindow = com.mathworks.mde.cmdwin.CmdWin.getInstance();

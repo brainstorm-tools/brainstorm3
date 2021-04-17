@@ -17,7 +17,7 @@ function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, file
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -48,7 +48,7 @@ isLeft = 0;
 isRight = 0;
 isWhite = 0;
 isCortex = 0;
-isAseg = 0;
+isVolAtlas = 0;
 isSave = 1;
 
 % Progress bar
@@ -107,8 +107,8 @@ for iFile = 1:length(TessFiles)
     if ~isempty(strfind(oldTess.Comment, 'cortex_'))
         isCortex = 1;
     end
-    if ~isempty(strfind(oldTess.Comment, 'aseg'))
-        isAseg = 1;
+    if ~isempty(strfind(oldTess.Comment, 'aseg')) || ~isempty(strfind(oldTess.Comment, 'subcortical'))
+        isVolAtlas = 1;
     end
     % Concatenate current sub-tess to final tesselation structure
     offsetVertices   = size(NewTess.Vertices,1);
@@ -229,7 +229,7 @@ if isLeft && isRight
             NewComment = sprintf('cortex_%dV', length(NewTess.Vertices));
         end
     end
-elseif isCortex && isAseg
+elseif isCortex && isVolAtlas
     fileTag = 'cortex_mixed';
     if isempty(fileType)
         fileType = 'Cortex';

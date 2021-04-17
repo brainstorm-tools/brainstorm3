@@ -17,7 +17,7 @@ function varargout = bst_process( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,8 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2021
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -103,7 +104,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
             catch
             end
-        end        
+        end
     end
     
     % ===== APPLY PROCESSES =====
@@ -144,7 +145,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Process each input file
                 for iInput = 1:length(sInputs)
-                    % Capture processes crashes
+                    % Capture process crashes
                     try
                         % Apply filter to file
                         if strcmpi(sProcesses(iProc).Category, 'filter')
@@ -173,7 +174,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     bst_progress('start', 'Process', ['Running process: ' sProcesses(iProc).Comment '...'], 0, 100 * length(sProcesses));
                     bst_progress('set', 100 * (iProc-1));
                 end
-                % Capture processes crashes
+                % Capture process crashes
                 try
                     OutputFiles = ProcessStat(sProcesses(iProc), sInputs, sInputs2);
                 catch
@@ -190,7 +191,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 % Process each input file
                 for iInput = 1:length(sInputs)
-                    % Capture processes crashes
+                    % Capture process crashes
                     try
                         if strcmpi(sProcesses(iProc).Category, 'file')
                             tmpFiles = sProcesses(iProc).Function('Run', sProcesses(iProc), sInputs(iInput));
@@ -222,7 +223,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     bst_progress('start', 'Process', ['Running process: ' sProcesses(iProc).Comment '...'], 0, 100 * length(sProcesses));
                     bst_progress('set', 100 * (iProc-1));
                 end
-                % Capture processes crashes
+                % Capture process crashes
                 try
                     if strcmpi(sProcesses(iProc).Category, 'custom')
                         if isempty(sInputs2)
@@ -276,7 +277,9 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         end
         % Get all the studies to update
         allStudies = bst_get('Study', unique([sInputs.iStudy]));
-        StudyToRedraw = cat(2, StudyToRedraw, {allStudies.FileName});
+        if ~isempty(allStudies)
+            StudyToRedraw = cat(2, StudyToRedraw, {allStudies.FileName});
+        end
         % Are those studies supposed to be reloaded
         isReload = isReload || (~strcmpi(sProcesses(iProc).Category, 'Filter') && isfield(sProcesses(iProc).options, 'overwrite') && isfield(sProcesses(iProc).options.overwrite, 'Value') && isequal(sProcesses(iProc).options.overwrite.Value, 1));
     end
@@ -359,8 +362,13 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         if isempty(iSelRows)
             bst_report('Error', sProcess, sInput, ['Selected sensor types are not available in file "' sInput.FileName '".']);
             return;
+        elseif numel(iSelRows) == numel(ChannelMat.Channel) 
+            % All selected.
+            iSelRows = [];
+            AllSensorTypes = [];
+        else
+            AllSensorTypes = unique({ChannelMat.Channel(iSelRows).Type});
         end
-        AllSensorTypes = unique({ChannelMat.Channel(iSelRows).Type});
     % All the signals
     else
         iSelRows = [];
@@ -426,6 +434,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     else
         TFmask = [];
     end
+    % Get TF options
+    if isfield(sMat, 'Options') && ~isempty(sMat.Options)
+        sInput.Options = sMat.Options;
+    end
     
     % Progress bar comment
     txtProgress = ['Running process: ' sProcess.Comment '...'];
@@ -465,9 +477,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             return;
         end
         % ERROR: Cannot process channel/channel uncompensated CTF files
-        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && (sFileIn.prop.currCtfComp ~= 3) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
+                (sFileIn.prop.currCtfComp ~= sFileIn.prop.destCtfComp) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
             bst_report('Error', sProcess, sInput, [...
-                'This CTF file was not saved with the 3rd order compensation.' 10 ...
+                'This CTF file was not saved with the desired compensation order (', num2str(sFileIn.prop.destCtfComp), ').' 10 ...
                 'To process this file, you have the following options: ' 10 ...
                 '  1) Check the option "Process the entire file at once", only if the entire file fits in memory.' 10 ...
                 '  2) Run the process "Artifacts > Apply SSP & CTF compensation" first to save a compensated file.']);
@@ -475,13 +488,35 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         end
         % ERROR: SSP cannot be applied for channel/channel processing
         if ismember(1,sProcess.processDim) && ~isReadAll && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
-            bst_report('Error', sProcess, sInput, [...
-                'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
-                'To process this file, you have the following options: ' 10 ...
-                '  1) Check the option "Process the entire file at once" (possible only if the entire file fits in memory).' 10 ...
-                '  2) Run the process "Artifacts > Apply SSP & CTF compensation" first to save a compensated file.' 10 ...
-                '  3) Delete the SSP from this file, process it, then recalculate the SSP on the new file.']);
-            return;
+            % Verify if any channels that need to be projected are selected.
+            % Build projector matrix
+            Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
+            % Apply projector
+            if ~isempty(Projector)
+                % Get bad channels
+                iBadChan = find(sMat.ChannelFlag == -1);
+                % Remove bad channels from the projector (similar as in process_megreg)
+                if ~isempty(iBadChan)
+                    Projector(iBadChan,:) = 0;
+                    Projector(:,iBadChan) = 0;
+                    Projector(iBadChan,iBadChan) = eye(length(iBadChan));
+                end
+                % Apply projector
+                if ~isempty(iSelRows)
+                    % Channels that are modified by projector.
+                    isProjected = sum(Projector ~= 0, 2) > 1;
+                    if any(isProjected(iSelRows))
+                        
+                        bst_report('Error', sProcess, sInput, [...
+                            'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
+                            'To process this file, you have the following options: ' 10 ...
+                            '  1) Check the option "Process the entire file at once" (possible only if the entire file fits in memory).' 10 ...
+                            '  2) Run the process "Artifacts > Apply SSP & CTF compensation" first to save a compensated file.' 10 ...
+                            '  3) Delete the SSP from this file, process it, then recalculate the SSP on the new file.']);
+                        return;
+                    end
+                end
+            end
         end
         % If there are some projectors that are not saved yet: cannot accept default channel files
         if (sSubject.UseDefaultChannel ~= 0) && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
@@ -496,7 +531,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ImportMode      = 'Time';
         ImportOptions.DisplayMessages = 0;
-        ImportOptions.UseCtfComp      = 1;
+        if ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
+                (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+            ImportOptions.UseCtfComp  = 1;
+        else
+            ImportOptions.UseCtfComp  = 0; % otherwise reading raw CTF file without selecting any MEG channels would fail.
+        end
         ImportOptions.UseSsp          = 1;
         ImportOptions.RemoveBaseline  = 'no';
         % Force reading of the entire RAW file at once
@@ -706,8 +746,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     sInput.A = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, iRow, ImportOptions);
                 end
                 sInput.Std = [];
-                % Template continuous file (for the output)
-                sFileTemplate = sFileIn;
                 % Progress bar: processing
                 bst_progress('text', [txtProgress, ' [processing]']);
             else
@@ -787,8 +825,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             if isFirstLoop
                 isFirstLoop = 0;
                 bst_progress('text', [txtProgress, ' [creating new file]']);
+                if isRaw
+                    % Template continuous file (for the output)
+                    sFileTemplate = sFileIn;
+                end
                 % Did time definition change?
-                isTimeChange = ~ismember(2, sProcess.processDim) && ~isequal(sInput.TimeVector, sMat.Time) && (isRaw || ~((size(matValues,2) == 1) && (length(sMat.Time) == 2)));
+                isTimeChange = ~ismember(2, sProcess.processDim) && ~isequal(sInput.TimeVector, sMat.Time) && (isRaw || (~((size(matValues,2) == 1) && (length(sMat.Time) == 2))));
                 % Output time vector
                 if isTimeChange
                     OldFreq = 1./(sMat.Time(2) - sMat.Time(1));
@@ -866,7 +908,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             if isRaw
                 bst_progress('text', [txtProgress, ' [writing]']);
                 if isReadAll
-                    %FullFileMat(iRow, iCol) = sInput.A;
                     if isTimeChange
                         OutFullFileMat(iRow,:) = sInput.A;
                     else
@@ -892,8 +933,8 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 end
             end
         end
-    end
-
+    end % rows
+    
     % Save all the RAW file at once
     if isReadAll
         sFileOut = out_fwrite(sFileOut, ChannelMatOut, iEpoch, [], [], OutFullFileMat);
@@ -932,6 +973,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     if isfield(sMat, 'TFmask')
         sMat.TFmask = OutputTFmask;
     end
+    % TF options
+    if isfield(sMat, 'Options') && isfield(sInput, 'Options') && ~isempty(sInput.Options)
+        sMat.Options = sInput.Options;
+    end
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         sMat.Comment = sProcess.options.Comment.Value;
@@ -959,7 +1004,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         sMat.Function = sInput.Function;
     end
     % ChannelFlag 
-     if isfield(sInput, 'ChannelFlag') && ~isempty(sInput.ChannelFlag)
+    if isfield(sInput, 'ChannelFlag') && ~isempty(sInput.ChannelFlag)
         sMat.ChannelFlag = sInput.ChannelFlag;
         if isRaw
             sMat.F.channelflag = sInput.ChannelFlag;
@@ -1241,13 +1286,19 @@ function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
     if isempty(sOutput.Type)
         sOutput.Type = sInputA(1).FileType;
     end
+    % Get process comment
+    try
+        processComment = sProcess.Function('FormatComment', sProcess);
+    catch
+        processComment = sProcess.Comment;
+    end
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         sOutput.Comment = sProcess.options.Comment.Value;
     % Regular comment
     else
         if isempty(sOutput.Comment)
-            sOutput.Comment = sProcess.Function('FormatComment', sProcess);
+            sOutput.Comment = processComment;
             % Remove additional comments (separated with more than two spaces)
             iExtra = strfind(sOutput.Comment, '  ');
             if ~isempty(iExtra)
@@ -1291,7 +1342,7 @@ function OutputFiles = ProcessStat(sProcess, sInputA, sInputB)
     end
     % History
     sOutput = bst_history('add', sOutput, 'stat', sProcess.Comment);
-    sOutput = bst_history('add', sOutput, 'stat', [func2str(sProcess.Function) ': ' sProcess.Function('FormatComment', sProcess)]);
+    sOutput = bst_history('add', sOutput, 'stat', [func2str(sProcess.Function) ': ' processComment]);
     % History: List files A
     sOutput = bst_history('add', sOutput, 'stat', 'List of files in group A:');
     for i = 1:length(sInputA)
@@ -1408,9 +1459,11 @@ function sInputs = GetInputStruct(FileNames)
     FileType = file_gettype(FileNames{1});
     % Remove the full path
     ProtocolInfo = bst_get('ProtocolInfo');
-    FileNames = cellfun(@(c)strrep(c, ProtocolInfo.STUDIES, ''), FileNames, 'UniformOutput', 0);
+    FileNames = cellfun(@(c)strrep(c, [ProtocolInfo.STUDIES, filesep], ''), FileNames, 'UniformOutput', 0);
+    % Convert to linux-style file names
+    FileNames = cellfun(@file_win2unix, FileNames, 'UniformOutput', 0);
     % Group in studies
-    FilePaths = cellfun(@(c)c(1:find((c=='/') | (c=='\'),1,'last')-1), FileNames, 'UniformOutput', 0);
+    FilePaths = cellfun(@(c)c(1:find(c=='/',1,'last')-1), FileNames, 'UniformOutput', 0);
     [uniquePath,I,J] = unique(FilePaths);
     % Loop on studies
     for iPath = 1:length(uniquePath)
@@ -1436,57 +1489,54 @@ function sInputs = GetInputStruct(FileNames)
         if ~isempty(sStudy.Condition)
             [sInputs(iGroupFiles).Condition] = deal(sStudy.Condition{1});
         end
-        % Loop on all the files
-        for iFile = 1:length(GroupFileNames)
-            % Get study
-            switch (FileType)
-                case 'data'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Data', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Data(iItem);
-                    % Input type
-                    if ~isempty(sItem) && strcmpi(sItem.DataType, 'raw')
-                        InputType = 'raw';
-                    else
-                        InputType = 'data';
-                    end
-                case {'results', 'link'}
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Result', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Result(iItem);
-                    InputType = 'results';
-                case {'presults', 'pdata','ptimefreq','pmatrix'}
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Stat', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Stat(iItem);
-                    InputType = FileType;
-                case 'timefreq'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Timefreq', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Timefreq(iItem);
-                    InputType = 'timefreq';
-                case 'matrix'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Matrix', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Matrix(iItem);
-                    InputType = 'matrix';
-                case 'dipoles'
-                    [tmp, tmp, iItem] = bst_get('findFileInStudies', 'Dipoles', 'FileName', GroupFileNames{iFile}, iStudy);
-                    sItem = sStudy.Dipoles(iItem);
-                    InputType = 'dipoles';
-                otherwise
-                    error('File format not supported.');
-            end
-            % File was not found
-            if isempty(iItem)
-                disp(['BST> Warning: File not found "' GroupFileNames{iFile} '".']);
-                continue;
-            end
-            % Fill structure
-            iInput = iGroupFiles(iFile);
-            sInputs(iInput).iItem        = iItem;
-            sInputs(iInput).FileType     = InputType;
-            sInputs(iInput).FileName     = sItem.FileName;
-            sInputs(iInput).Comment      = sItem.Comment;
-            % Associated data file
-            if isfield(sItem, 'DataFile')
-                sInputs(iInput).DataFile = sItem.DataFile;
-            end
+        % Look for items in database
+        switch (FileType)
+            case 'data'
+                [tmp, iDb, iList] = intersect({sStudy.Data.FileName}, GroupFileNames);
+                sItems = sStudy.Data(iDb);
+                if ~isempty(sItems) && strcmpi(sItems(1).DataType, 'raw')
+                    InputType = 'raw';
+                else
+                    InputType = 'data';
+                end
+            case {'results', 'link'}
+                [tmp, iDb, iList] = intersect({sStudy.Result.FileName}, GroupFileNames);
+                sItems = sStudy.Result(iDb);
+                InputType = 'results';
+            case {'presults', 'pdata','ptimefreq','pmatrix'}
+                [tmp, iDb, iList] = intersect({sStudy.Stat.FileName}, GroupFileNames);
+                sItems = sStudy.Stat(iDb);
+                InputType = FileType;
+            case 'timefreq'
+                [tmp, iDb, iList] = intersect({sStudy.Timefreq.FileName}, GroupFileNames);
+                sItems = sStudy.Timefreq(iDb);
+                InputType = 'timefreq';
+            case 'matrix'
+                [tmp, iDb, iList] = intersect({sStudy.Matrix.FileName}, GroupFileNames);
+                sItems = sStudy.Matrix(iDb);
+                InputType = 'matrix';
+            case 'dipoles'
+                [tmp, iDb, iList] = intersect({sStudy.Dipoles.FileName}, GroupFileNames);
+                sItems = sStudy.Dipoles(iDb);
+                InputType = 'dipoles';
+            otherwise
+                error('File format not supported.');
+        end
+        % Error: not all files were found
+        if (length(iList) ~= length(GroupFileNames))
+            disp(sprintf('BST> Warning: %d file(s) not found in database.', length(GroupFileNames) - length(iList)));
+            continue;
+        end
+        % Fill structure
+        iInputs = iGroupFiles(iList);
+        iDb = num2cell(iDb);
+        [sInputs(iInputs).iItem]    = deal(iDb{:});
+        [sInputs(iInputs).FileType] = deal(InputType);
+        [sInputs(iInputs).FileName] = deal(sItems.FileName);
+        [sInputs(iInputs).Comment]  = deal(sItems.Comment);
+        % Associated data file
+        if isfield(sItems, 'DataFile')
+            [sInputs(iInputs).DataFile] = deal(sItems.DataFile);
         end
     end
     % Remove entries that were not found in the database
@@ -1562,6 +1612,8 @@ function [sStudy, iStudy, Comment, uniqueDataFile] = GetOutputStudy(sProcess, sI
     elseif (length(uniqueCond) == 1)
         % Get group analysis subject
         [sSubject, iSubject] = bst_get('NormalizedSubject');
+        % Remove the RAW tag if present
+        uniqueCond{1} = strrep(uniqueCond{1}, '@raw', '');
         % Try to get condition
         [sStudy, iStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, uniqueCond{1}));
         % Condition does not exist: Create new condition
@@ -1697,13 +1749,21 @@ end
 
 
 %% ===== GET NEW FILENAME =====
-function filename = GetNewFilename(fPath, fBase)
+function filename = GetNewFilename(fPath, fBase, isTimestamp)
+    % Parse inputs 
+    if (nargin < 3) || isempty(isTimestamp)
+        isTimestamp = 1;
+    end
     % Folder
     ProtocolInfo = bst_get('ProtocolInfo');
     fPath = strrep(fPath, ProtocolInfo.STUDIES, '');
     % Date and time
-    c = clock;
-    strTime = sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));
+    if isTimestamp
+        c = clock;
+        strTime = sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));
+    else
+        strTime = '';
+    end
     % Remove extension
     fBase = strrep(fBase, '.mat', '');
     % Full filename
@@ -1728,8 +1788,8 @@ function FileTag = GetFileTag(FileName)
         case {'timefreq', 'ptimefreq'}
             FileTag = FileType;
             listTags = {'_fft', '_psd', '_hilbert', ...
-                        '_connect1_corr', '_connect1_cohere', '_connect1_granger', '_connect1_spgranger', '_connect1_plv', '_connect1_plvt', '_connect1', ...
-                        '_connectn_corr', '_connectn_cohere', '_connectn_granger', '_connectn_spgranger', '_connectn_plv', '_connectn_plvt', '_connectn', ...
+                        '_connect1_corr', '_connect1_cohere', '_connect1_granger', '_connect1_spgranger', '_connect1_plv', '_connect1_plvt', '_connect1', '_connect1_henv', ...
+                        '_connectn_corr', '_connectn_cohere', '_connectn_granger', '_connectn_spgranger', '_connectn_plv', '_connectn_plvt', '_connectn', '_connectn_henv', ...
                         '_pac_fullmaps', '_pac', '_dpac_fullmaps', '_dpac'};
             for i = 1:length(listTags)
                 if ~isempty(strfind(FileName, listTags{i}))
@@ -2164,9 +2224,9 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
         %  Simple "value" type call: just the value instead of the cell list
         if ~isempty(defVal) && iscell(defVal) && isnumeric(newVal)
             updateVal{1} = newVal;
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else
@@ -2305,7 +2365,9 @@ function [sFileOut, errMsg] = CreateRawOut(sFileIn, RawFileOut, ImportOptions, i
                 end
             end
             % Delete epochs description
-            sFileOut.epochs = [];
+            if ~isempty(sFileOut) && isfield(sFileOut, 'epochs')
+                sFileOut.epochs = [];
+            end
             
         otherwise
             errMsg = 'Unsupported file format (only continuous FIF and CTF files can be processed).';
@@ -2425,6 +2487,120 @@ function sProcesses = OptimizePipelineRevert(sProcesses) %#ok<DEFNU>
     % Add to process list
     sProcesses = [sProcesses(1:iImport), sProcAdd, sProcesses(iImport+1:end)];
 end
+
+
+%% ===== SAVE RAW FILE =====
+function [MatFile, errMsg] = SaveRawFile(sFileIn, ChannelMat, studyPath, DateOfStudy, Comment, History) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 4) || isempty(DateOfStudy)
+        DateOfStudy = [];
+    end
+    if (nargin < 5) || isempty(Comment)
+        Comment = 'Link to raw file';
+    end
+    if (nargin < 6) || isempty(History)
+        History = [];
+    end
+    % Initialize returned variables
+    MatFile = [];
+    errMsg = '';
+    
+    % ===== OUTPUT FOLDER =====
+    % Get new condition name
+    [subjPath, ConditionName] = bst_fileparts(studyPath, 1);
+    [tmp, SubjectName] = bst_fileparts(subjPath, 1);
+    % Create output condition
+    iOutputStudy = db_add_condition(SubjectName, ConditionName, [], DateOfStudy);
+    if isempty(iOutputStudy)
+        errMsg = ['Output folder could not be created:' 10 newPath];
+        return;
+    end
+    % Get output study
+    sOutputStudy = bst_get('Study', iOutputStudy);
+    
+    % ===== OUTPUT LINK .MAT =====
+    % Output file name derives from the condition name
+    [tmp, rawBaseOut, rawBaseExt] = bst_fileparts(studyPath);
+    rawBaseOut = strrep([rawBaseOut rawBaseExt], '@raw', '');
+    % Full file name
+    MatFile = bst_fullfile(studyPath, ['data_0raw_' rawBaseOut '.mat']);
+
+    % ===== OUTPUT RAW .BST =====
+    % Full output filename
+    RawFileOut = bst_fullfile(studyPath, [rawBaseOut '.bst']);
+    RawFileFormat = 'BST-BIN';
+    % Create an empty Brainstorm-binary file
+    [sFileOut, errMsg] = out_fopen(RawFileOut, RawFileFormat, sFileIn, ChannelMat);
+    % Error processing
+    if isempty(sFileOut)
+        MatFile = [];
+        return;
+    end
+
+    % === COPY FILE CONTENTS ===
+    % Get maximum size of a data block
+    ProcessOptions = bst_get('ProcessOptions');
+    MaxSize = ProcessOptions.MaxBlockSize;
+    % Prepare import options (do not apply any modifier)
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.ImportMode      = 'Time';
+    ImportOptions.DisplayMessages = 0;
+    ImportOptions.UseCtfComp      = 0;
+    ImportOptions.UseSsp          = 0;
+    ImportOptions.RemoveBaseline  = 'no';
+    iEpoch = 1;
+    % Split in time blocks
+    nChannels = length(ChannelMat.Channel);
+    nTime     = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) .* sFileOut.prop.sfreq) + 1;
+    BlockSize = max(floor(MaxSize / nChannels), 1);
+    nBlocks   = ceil(nTime / BlockSize);
+    % Loop on blocks
+    for iBlock = 1:nBlocks
+        bst_progress('set', round(100*iBlock/nBlocks));
+        % Indices of columns to process
+        SamplesBounds = round(sFileIn.prop.times(1) * sFileOut.prop.sfreq) + [(iBlock-1)*BlockSize, min(iBlock * BlockSize - 1, nTime - 1)];
+        % Read one channel
+        F = in_fread(sFileIn, ChannelMat, iEpoch, SamplesBounds, [], ImportOptions);
+        % Write block
+        sFileOut = out_fwrite(sFileOut, ChannelMat, iEpoch, SamplesBounds, [], F);
+    end
+
+    % ===== SAVE RAW LINK =====
+    % Build output structure
+    DataMat = db_template('DataMat');
+    DataMat.F           = sFileOut;
+    DataMat.Comment     = Comment;
+    DataMat.ChannelFlag = sFileOut.channelflag;
+    DataMat.Time        = sFileOut.prop.times;
+    DataMat.DataType    = 'raw';
+    DataMat.Device      = sFileOut.device;
+    DataMat.History     = History;
+    % Save raw link to hard drive
+    bst_save(MatFile, DataMat, 'v6');
+    % Register in database
+    db_add_data(iOutputStudy, MatFile, DataMat);
+    % Update tree display
+    panel_protocols('UpdateNode', 'Study', iOutputStudy);
+    
+    % === OUTPUT CHANNE FILE ===
+    % If no default channel file: create new channel file
+    sSubject = bst_get('Subject', SubjectName);
+    if (sSubject.UseDefaultChannel == 0)
+        % Output channel file 
+        ChannelMatOut = ChannelMat;
+        % Mark the projectors as already applied to the file
+        if ~isempty(ChannelMatOut.Projector)
+            for iProj = 1:length(ChannelMatOut.Projector)
+                if (ChannelMatOut.Projector(iProj).Status == 1)
+                    ChannelMatOut.Projector(iProj).Status = 2;
+                end
+            end
+        end
+        db_set_channel(iOutputStudy, ChannelMatOut, 2, 0);
+    end
+end
+
+
 
 
 

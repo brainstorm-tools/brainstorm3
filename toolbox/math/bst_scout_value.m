@@ -18,7 +18,7 @@ function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -120,10 +120,10 @@ switch (lower(ScoutFunction))
         Fs = mean(F,1);
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
-        Fs = std(F,1);
+        Fs = std(F,[],1);
     % STDERR : Standard error
     case 'stderr'
-        Fs = std(F,1) ./ size(F,1);
+        Fs = std(F,[],1) ./ size(F,1);
     % RMS
     case 'rms'
         Fs = sqrt(sum(F.^2,1)); 

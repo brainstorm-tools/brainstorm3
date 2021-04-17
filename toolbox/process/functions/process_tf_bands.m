@@ -11,7 +11,7 @@ function varargout = process_tf_bands( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -238,7 +238,11 @@ end
 function strBands = FormatBands(Bands) %#ok<DEFNU>
     strBands = '';
     for i = 1:size(Bands,1)
-        strBands = [strBands, sprintf('%s / %s / %s\n', Bands{i,1}, Bands{i,2}, Bands{i,3})];
+        if (size(Bands, 2) == 3)
+            strBands = [strBands, sprintf('%s / %s / %s\n', Bands{i,1}, Bands{i,2}, Bands{i,3})];
+        elseif (size(Bands, 2) == 2)
+            strBands = [strBands, sprintf('%s / %s\n', Bands{i,1}, Bands{i,2})];
+        end
     end
 end
 
@@ -251,13 +255,11 @@ function Bands = ParseBands(strBands) %#ok<DEFNU>
     % Split by lines
     lineBand = str_split(strBands, 10);
     % Process each line
-    for iBand = 1:length(lineBand);
+    for iBand = 1:length(lineBand)
         % Split line 
         valBand = str_split(lineBand{iBand}, '/\|');
-        if (length(valBand) == 3)
-            Bands{iBand,1} = strtrim(valBand{1});
-            Bands{iBand,2} = strtrim(valBand{2});
-            Bands{iBand,3} = strtrim(valBand{3});
+        for i = 1:length(valBand)
+            Bands{iBand,i} = strtrim(valBand{i});
         end
     end
 end

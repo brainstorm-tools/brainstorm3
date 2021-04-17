@@ -1,7 +1,7 @@
 function out_tess(BstFile, OutputFile, FileFormat, sMri)
 % OUT_TESS: Exports a Brainstorm surface in another file format.
 %
-% USAGE:  out_tess(TessFile, OutputFile, FileFormat, sMri);
+% USAGE:  out_tess(BstFile, OutputFile, FileFormat, sMri);
 %
 % INPUT: 
 %     - BstFile    : Tesselation file from the Brainstorm database
@@ -13,7 +13,7 @@ function out_tess(BstFile, OutputFile, FileFormat, sMri)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -63,7 +63,7 @@ switch upper(FileFormat)
     case 'MESH'
         % Convert into BrainVISA MRI coordinates
         if ~isempty(sMri)
-            mriSize = size(sMri.Cube) .* sMri.Voxsize(:)' ./ 1000;
+            mriSize = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize(:)' ./ 1000;
             TessMat.Vertices = bst_bsxfun(@minus, mriSize, TessMat.Vertices);
         end
         % Export file
@@ -71,7 +71,7 @@ switch upper(FileFormat)
     case 'GII'
         % Convert to BrainVISA MRI coordinates
         if ~isempty(sMri)
-            mriSize = size(sMri.Cube) .* sMri.Voxsize(:)' ./ 1000;
+            mriSize = size(sMri.Cube(:,:,:,1)) .* sMri.Voxsize(:)' ./ 1000;
             TessMat.Vertices = bst_bsxfun(@minus, mriSize, TessMat.Vertices);
         end
         % Export file
@@ -82,7 +82,7 @@ switch upper(FileFormat)
         % MRI => FreeSurfer RAS coord
         if ~isempty(sMri)
             % TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, [128 129 128] / 1000);
-            TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, (size(sMri.Cube)/2 + [0 1 0]) .* sMri.Voxsize / 1000);
+            TessMat.Vertices = bst_bsxfun(@minus, TessMat.Vertices, (size(sMri.Cube(:,:,:,1))/2 + [0 1 0]) .* sMri.Voxsize / 1000);
         end
         % Export file
         out_tess_fs(TessMat, OutputFile);

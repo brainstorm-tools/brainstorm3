@@ -54,7 +54,7 @@ function varargout = bst_colormaps( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -119,8 +119,8 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'global';
         % Anatomy colormap
         case 'anatomy'
-            sColormap.Name             = 'bone';
-            sColormap.CMap             = bone(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'gray';
+            sColormap.CMap             = gray(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Stat colormap (1 inputs)
@@ -142,6 +142,7 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
+            sColormap.isRealMin        = 1;
         % Time-frequency maps
         case 'timefreq'
             sColormap.Name             = 'cmap_magma';
@@ -389,7 +390,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                         DataType = 'pac';
                         
                     case 'Connect'
-                        DataFig = getappdata(sFigure.hFigure, 'DataMinMax');
+                        DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
                         DataType = 'connect';
                         
                     case 'Image'
@@ -1354,6 +1355,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     dataBounds = GlobalData.DataSet(iDS).Dipoles(1).Time;
                 else
                     dataBounds = GlobalData.DataSet(iDS).Measures.Time;
+                end
+                if (length(dataBounds) == 2) && (dataBounds(1) == dataBounds(2))
+                    dataBounds(2) = dataBounds(2) + 0.001;
                 end
                 if (max(abs(dataBounds)) > 2)
                     fFactor = 1;

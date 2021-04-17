@@ -1,4 +1,3 @@
-
 function varargout = panel_timefreq_options(varargin)
 % PANEL_TIMEFREQ_OPTIONS: Options for time-frequency computation.
 % 
@@ -9,7 +8,7 @@ function varargout = panel_timefreq_options(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +22,7 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2020; Hossein Shahabi, 2020
 
 eval(macro_method);
 end
@@ -74,7 +73,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     else
         isClusterAll = 0;
     end
-    Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    
+    % Determine which function is calling this pannel
+    isProcHenv = ismember(func2str(sProcess.Function), {'process_henv1', 'process_henv1n', 'process_henv2'});
+    if isProcHenv
+        Method = sProcess.options.tfmeasure.Value;
+    else
+        Method = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    end
+    
     hFigWavelet = [];
     % Restrict time vector to selected time window
     if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value) && (length(sProcess.options.timewindow.Value{1}) == 2)
@@ -131,7 +138,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     jPanelNew = gui_river();
     
     % ===== COMMENT =====
-                   gui_component('label', jPanelNew, [], 'Comment:  ');
+    gui_component('label', jPanelNew, [], 'Comment:  ');
     jTextComment = gui_component('text', jPanelNew, 'hfill', ' ');
     
     % ===== TIME PANEL =====
@@ -150,7 +157,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         % Button: Generate
         jButtonTimeBands = gui_component('button', jPanelTime, 'br', 'Generate', [], [], @CreateTimeBands);
         jButtonTimeBands.setMargin(Insets(0,3,0,3));
-    if ~ismember(Method, {'fft', 'psd'})
+    if ~ismember(Method, {'fft', 'psd'}) && ~isProcHenv
         jPanelNew.add('br', jPanelTime);
     else
         gui_component('label', jPanelNew, 'br', '');
@@ -296,7 +303,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
         % === FILE SIZE ===
         jTextOutputSize = gui_component('label', jPanelProc, 'br', '');
-    jPanelNew.add('br hfill', jPanelProc);
+    if ~isProcHenv
+        jPanelNew.add('br hfill', jPanelProc);
+    end
     
     % ===== SET DEFAULT =====
     if TimefreqOptions.isTimeBands
@@ -435,7 +444,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         else
             jRadioFreqLinear.setEnabled(1);
-            jRadioFreqBands.setEnabled(1);
+            if isProcHenv
+                jRadioFreqBands.setEnabled(0);
+            else
+                jRadioFreqBands.setEnabled(1);
+            end
             if ~isempty(jRadioFreqLog)
                 jRadioFreqLog.setEnabled(1);
             end
@@ -469,6 +482,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                     jRadioMeasPow.setSelected(1);
                 end                
             end
+        end
+        % Disable some options when called through process_henv*
+        if isProcHenv
+            jRadioMeasNon.setSelected(1);
+            jRadioMeasPow.setEnabled(0);
+            jRadioMeasMag.setEnabled(0);
         end
         % === OUTPUT ===
         if ~isempty(jRadioOutAvg)
@@ -627,47 +646,66 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         % If valid values: show time resolution
         [f, FWHM_t, FWHM_f, t, W] = morlet_design(sOptions.MorletFc, sOptions.MorletFwhmTc);
-        % Convert to FWHM
-        
-        
+
         % Plot the values
-        hFigWavelet = figure(...
-            'MenuBar',     'none', ...
-            'Toolbar',     'none', ...
-            'NumberTitle', 'off', ...
-            'Name',        'Morlet wavelet');
+        isJavacomponent = bst_get('isJavacomponent');
+        if isJavacomponent
+            hFigWavelet = figure(...
+                'MenuBar',     'none', ...
+                'Toolbar',     'none', ...
+                'NumberTitle', 'off', ...
+                'Name',        'Morlet wavelet', ...
+                'Pointer',     'arrow');
+            hAxes1 = axes();
+            hAxes2 = axes();
+            hAxes3 = axes();
+        else
+            bst_progress('start', 'Morlet wavelets', 'Opening figure...');
+            hFigWavelet = uifigure(...
+                'NumberTitle', 'off', ...
+                'Name',        'Morlet wavelet', ...
+                'Pointer',     'arrow', ...
+                'AutoResizeChildren', 'on');
+            hAxes1 = axes(hFigWavelet);
+            hAxes2 = axes(hFigWavelet);
+            hAxes3 = axes(hFigWavelet);
+        end
         fontSize = bst_get('FigFont');
         % Frequency resolution
-        hAxes = subplot(2,2,1);
-        plot(f, FWHM_f);
-        title('Spectral resolution', 'Interpreter', 'none', 'FontSize', fontSize);
-        xlabel('Frequency (Hz)', 'FontSize', fontSize);
-        ylabel('FWHM (Hz)', 'FontSize', fontSize);
-        set(hAxes, 'Position', [.08, .64, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
+        plot(hAxes1, f, FWHM_f);
+        title(hAxes1, 'Spectral resolution', 'Interpreter', 'none', 'FontSize', fontSize);
+        xlabel(hAxes1, 'Frequency (Hz)', 'FontSize', fontSize);
+        ylabel(hAxes1, 'FWHM (Hz)', 'FontSize', fontSize);
+        set(hAxes1, 'Position', [.08, .64, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Time resolution
-        hAxes = subplot(2,2,3);
-        plot(f, FWHM_t);
-        title('Temporal resolution', 'Interpreter', 'none', 'FontSize', fontSize);
-        xlabel('Frequency (Hz)', 'FontSize', fontSize);
-        ylabel('FWHM (sec)', 'FontSize', fontSize);
-        set(hAxes, 'Position', [.08, .22, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
+        plot(hAxes2, f, FWHM_t);
+        title(hAxes2, 'Temporal resolution', 'Interpreter', 'none', 'FontSize', fontSize);
+        xlabel(hAxes2, 'Frequency (Hz)', 'FontSize', fontSize);
+        ylabel(hAxes2, 'FWHM (sec)', 'FontSize', fontSize);
+        set(hAxes2, 'Position', [.08, .22, .34, .28], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Plot morlet wavelet
-        hAxes = subplot(2,2,[2,4]);
-        plot(t,real(W),'linewidth',2)
-        hold on
-        plot(t,imag(W),'r','linewidth',2)
-        title('Complex Morlet wavelet');
-        set(hAxes, 'XLim', [t(1), t(end)], 'YLim', [-1,1]*1.05*max(real(W)), ...
+        plot(hAxes3, t,real(W),'linewidth',2)
+        hold(hAxes3, 'on');
+        plot(hAxes3, t,imag(W),'r','linewidth',2)
+        title(hAxes3, 'Complex Morlet wavelet');
+        set(hAxes3, 'XLim', [t(1), t(end)], 'YLim', [-1,1]*1.05*max(real(W)), ...
                    'Position', [.50, .22, .44, .70], 'FontSize', fontSize, 'XGrid', 'on', 'YGrid', 'on');
         % Text
         strDesc = ['<HTML>The complex Morlet wavelet is a Gaussian weighted sinusoid (blue for real values, ' ...
                    'red for imaginary values). It has point spread function with Gaussian shape both ' ...
                    'in time (temporal resolution) and in frequency (spectral resolution). Resolution is ' ...
                    'given in units of FWHM (full width half maximum) for several frequencies.'];
-        [jLabelDesc, hLabelDesc] = javacomponent(javax.swing.JLabel(strDesc), [0 0 1 1], hFigWavelet);
-        set(hLabelDesc, 'Units', 'Normalized', 'Position', [.01, .0, .99, .13], 'BackgroundColor', get(hFigWavelet, 'Color'));
-        bgColor = get(hFigWavelet, 'Color');
-        jLabelDesc.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+        if isJavacomponent
+            [jLabelDesc, hLabelDesc] = javacomponent(javax.swing.JLabel(strDesc), [0 0 1 1], hFigWavelet);
+            set(hLabelDesc, 'Units', 'Normalized', 'Position', [.01, .0, .99, .13], 'BackgroundColor', get(hFigWavelet, 'Color'));
+            bgColor = get(hFigWavelet, 'Color');
+            jLabelDesc.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+        else
+            figPos = get(hFigWavelet, 'Position');
+            hLabelDesc = uihtml(hFigWavelet, 'Position', [5, 5, figPos(3)*.99, figPos(4)*.13], 'HTMLSource', strDesc);
+            drawnow;
+            bst_progress('stop');
+        end
     end
 
 %% ===== CREATE TIME BANDS =====
@@ -887,6 +925,4 @@ function Freqs = GetLogFreq(strFreq)
     % Round the vector
     Freqs = unique(round(Freqs .* 10) ./ 10);
 end
-
-
 

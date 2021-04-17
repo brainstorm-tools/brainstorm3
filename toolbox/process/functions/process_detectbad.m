@@ -5,7 +5,7 @@ function varargout = process_detectbad( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_detectbad( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -303,8 +303,23 @@ function SetTrialStatus(FileNames, isBad)
     ProtocolInfo = bst_get('ProtocolInfo');
     % Get unique list of studies
     uniqueStudies = unique(iStudies);
-    % Remove path from all files
+    % Remove path from all files + Remove all BAD events
     for i = 1:length(FileNames)
+        % Remove bad events
+        if ~isBad
+            DataMat = in_bst_data(FileNames{i}, 'Events');
+            iDel = [];
+            for iEvt = 1:length(DataMat.Events)
+                if panel_record('IsEventBad', DataMat.Events(iEvt).label)
+                    iDel(end+1) = iEvt;
+                end
+            end
+            if ~isempty(iDel)
+                DataMat.Events(iDel) = [];
+                bst_save(file_fullpath(FileNames{i}), DataMat, 'v6', 1);
+            end
+        end
+        % Remove path
         [fPath, fBase, fExt] = bst_fileparts(FileNames{i});
         FileNames{i} = [fBase, fExt];
     end

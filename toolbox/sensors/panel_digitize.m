@@ -11,7 +11,7 @@ function varargout = panel_digitize(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -142,7 +142,7 @@ function Start() %#ok<DEFNU>
     ResetDataCollection();
     
     % Load beep sound
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         wavfile = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private', 'bst_beep_wav.mat');
         filemat = load(wavfile, 'wav');
         Digitize.BeepWav = filemat.wav;
@@ -960,7 +960,7 @@ function CreateHeadpointsFigure()
         % Get Digitizer JFrame
         bstContainer = get(bst_get('Panel','Digitize'), 'container');
         % Get maximum figure position
-        decorationSize = gui_layout('GetDecorationSize', bstContainer.handle{1});
+        decorationSize = bst_get('DecorationSize');
         [jBstArea, FigArea] = gui_layout('GetScreenBrainstormAreas', bstContainer.handle{1});
         FigPos = FigArea(1,:) + [decorationSize(1),  decorationSize(4),  - decorationSize(1) - decorationSize(3),  - decorationSize(2) - decorationSize(4)];
         if (FigPos(3) > 0) && (FigPos(4) > 0)
@@ -1155,7 +1155,9 @@ function AddMontage()
             break;
         end
         spl = regexp(tline,'\s+','split');
-        newMontage.Labels{end+1} = spl{2};
+        if (length(spl) >= 2)
+            newMontage.Labels{end+1} = spl{2};
+        end
     end
     % Close file
     fclose(fid);
@@ -1421,7 +1423,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
     % Beep at each click AND not for headshape points
     if DigitizeOptions.isBeep 
         % Beep not working in compiled version, replacing with this:
-        if exist('isdeployed', 'builtin') && isdeployed && (Digitize.Mode ~= 8)
+        if bst_iscompiled() && (Digitize.Mode ~= 8)
             sound(Digitize.BeepWav(6000:2:16000,1), 22000);
         else
             beep on;

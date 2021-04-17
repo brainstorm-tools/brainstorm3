@@ -1,13 +1,13 @@
-function GridLoc = bst_sourcegrid(Options, CortexFile, sCortex, sEnvelope)
+function GridLoc = bst_sourcegrid(Options, CortexFile, sInner, sEnvelope)
 % BST_SOURCEGRID: 3D adaptative gridding of the volume inside a cortex envelope.
 %
 % USAGE:  GridLoc = bst_sourcegrid(Options, CortexFile)
-%         GridLoc = bst_sourcegrid(Options, CortexFile, sCortex, sEnvelope)
+%         GridLoc = bst_sourcegrid(Options, CortexFile, sInner, sEnvelope)
 % 
 % INPUTS: 
 %    - Options    : Options structure
 %    - CortexFile : Full path to a cortex tesselation file
-%    - sCortex    : Cortex surface structure (Vertices/Faces)
+%    - sInner     : Loaded inner skull surface
 %    - sEnvelope  : Convex envelope to use as the outermost layer of the grid
 %
 % OUTPUTS:
@@ -17,7 +17,7 @@ function GridLoc = bst_sourcegrid(Options, CortexFile, sCortex, sEnvelope)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,6 +40,7 @@ if (nargin <= 2)
     if isempty(sEnvelope)
         return;
     end
+    sInner = [];
 end
 if (nargin < 1) || isempty(Options)
     Options.Method        = 'adaptive';
@@ -71,7 +72,6 @@ switch lower(Options.Method)
 end
 
 % ===== REMOVE POINTS OUTSIDE OF THE MRI =====
-% iOutside = find(~inpolyhd(GridLoc, sCortex.Vertices, sCortex.Faces));
 % Get brainmask
 [brainmask, sMri] = bst_memory('GetSurfaceMask', CortexFile);
 % Convert coordinates: SCS->Voxels
@@ -84,26 +84,35 @@ isOutsideMri = any(GridLocMri < 1,2) | ...
 % Remove the points that are outside of the MRI
 GridLoc(isOutsideMri,:) = [];
 GridLocMri(isOutsideMri,:) = [];
-
 % Convert in indices
 ind = sub2ind(size(brainmask), GridLocMri(:,1), GridLocMri(:,2), GridLocMri(:,3));
 % What is outside of the brain ?
 isOutsideBrain = (brainmask(ind) == 0);
-
-% % Show removed points
-% if ~isempty(iOutside)
-%     % Show surface + removed points
-%     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .4, [.6 .6 .6]);
-%     line(GridLoc(iOutside,1), GridLoc(iOutside,2), GridLoc(iOutside,3), 'LineStyle', 'none', ...
-%                 'MarkerFaceColor', [1 0 0], 'MarkerEdgeColor', [1 1 1], 'MarkerSize', 6, 'Marker', 'o');
-%     % Show surface + grid points
-%     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .3, [.6 .6 .6]);
-%     line(GridLoc(~iOutside,1), GridLoc(~iOutside,2), GridLoc(~iOutside,3), 'LineStyle', 'none', ...
-%                 'MarkerFaceColor', [0 1 0], 'MarkerSize', 2, 'Marker', 'o');
-% end
-
 % Remove those points
 GridLoc(isOutsideBrain,:) = [];
+
+% ===== REMOVE POINTS OUTSIDE OF THE INNER SKULL =====
+if ~isempty(sInner) && ismember(lower(Options.Method), {'isotropic', 'adaptive'})
+    % Find points outside of the inner skull
+    iOutside = find(~inpolyhd(GridLoc, sInner.Vertices, sInner.Faces));
+    % Remove the points
+    if ~isempty(iOutside)
+        GridLoc(iOutside,:) = [];
+    end
+
+    % % Show removed points
+    % if ~isempty(iOutside)
+    %     % Show surface + removed points
+    %     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .4, [.6 .6 .6]);
+    %     line(GridLoc(iOutside,1), GridLoc(iOutside,2), GridLoc(iOutside,3), 'LineStyle', 'none', ...
+    %                 'MarkerFaceColor', [1 0 0], 'MarkerEdgeColor', [1 1 1], 'MarkerSize', 6, 'Marker', 'o');
+    %     % Show surface + grid points
+    %     view_surface_matrix(sCortex.Vertices, sCortex.Faces, .3, [.6 .6 .6]);
+    %     line(GridLoc(~iOutside,1), GridLoc(~iOutside,2), GridLoc(~iOutside,3), 'LineStyle', 'none', ...
+    %                 'MarkerFaceColor', [0 1 0], 'MarkerSize', 2, 'Marker', 'o');
+    % end
+end
+
 
 end
 

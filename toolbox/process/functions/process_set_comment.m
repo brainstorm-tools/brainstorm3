@@ -5,7 +5,7 @@ function varargout = process_set_comment( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,27 +28,27 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Set comment';
+    sProcess.Comment     = 'Set name';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 1020;
     sProcess.Description = '';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw'};
-    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw'};
+    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
+    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
     % === TARGET
-    sProcess.options.tag.Comment = 'New comment:';
+    sProcess.options.tag.Comment = 'New name:';
     sProcess.options.tag.Type    = 'text';
     sProcess.options.tag.Value   = '';
     % === INDEX
-    sProcess.options.isindex.Comment = 'Add a file index to the comment';
+    sProcess.options.isindex.Comment = 'Add a file index to the name';
     sProcess.options.isindex.Type    = 'checkbox';
     sProcess.options.isindex.Value   = 1;
     % === WARNING
-    sProcess.options.label_warning.Comment    = '&nbsp;<FONT color=#7F7F7F>Warning: Comments cannot contain square brackets.</FONT>';
+    sProcess.options.label_warning.Comment    = '&nbsp;<FONT color=#7F7F7F>Warning: Names cannot contain square brackets.</FONT>';
     sProcess.options.label_warning.Type       = 'label';
 end
 
@@ -70,10 +70,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get new comment
     Comment = sProcess.options.tag.Value;
     if isempty(Comment)
-        bst_report('Error', sProcess, sInputs, 'Comment is not defined.');
+        bst_report('Error', sProcess, sInputs, 'Name is not defined.');
         return
     elseif ~isempty(strfind(Comment, '[')) || ~isempty(strfind(Comment, ']'))
-        bst_report('Error', sProcess, sInputs, 'Comments cannot contain square brackets.');
+        bst_report('Error', sProcess, sInputs, 'Names cannot contain square brackets.');
         return
     end
     % Add index

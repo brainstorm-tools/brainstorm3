@@ -8,7 +8,7 @@ function varargout = process_add_tag( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_add_tag( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -37,8 +37,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 1021;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/SelectFiles#How_to_control_the_output_file_names';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw'};
-    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw'};
+    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'raw', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
+    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'raw', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Definition of the options
@@ -47,7 +47,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.tag.Type    = 'text';
     sProcess.options.tag.Value   = '';
     % === FILENAME / COMMENT
-    sProcess.options.output.Comment = {'Add to comment', 'Add to file name'};
+    sProcess.options.output.Comment = {'Add to file name', 'Add to file path'};
     sProcess.options.output.Type    = 'radio';
     sProcess.options.output.Value   = 1;
     % === WARNING
@@ -79,11 +79,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, 'Tags cannot contain square brackets.');
         return
     end
-    
-    % === ADD TO COMMENT ===
-    if (sProcess.options.output.Value == 1)
-        % Update each file
-        for i = 1:length(sInputs)
+    % Standardize tag for file name
+    if (sProcess.options.output.Value == 2)
+        fileTag = file_standardize(tag);
+        if (fileTag(1) ~= '_')
+            fileTag = ['_', fileTag];
+        end
+    end
+
+    % Update each file
+    RenamedKernels = {};
+    for i = 1:length(sInputs)
+        % Get file type
+        fileType = file_gettype(sInputs(i).FileName);
+            
+        % === ADD TO COMMENT ===
+        if (sProcess.options.output.Value == 1)
+            % Rename link => Rename shared kernel instead
+            if strcmpi(fileType, 'link')
+                KernelFile = file_resolve_link(sInputs(i).FileName);
+                % Check if this kernel has already been renamed
+                if ismember(KernelFile, RenamedKernels)
+                    continue;
+                end
+                RenamedKernels{end+1} = KernelFile;
+            end
             % Load file
             FileName = file_fullpath(sInputs(i).FileName);
             FileMat = load(FileName, 'Comment');
@@ -91,17 +111,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             FileMat.Comment = [FileMat.Comment ' | ' tag];
             % Save file
             bst_save(FileName, FileMat, 'v6', 1);
-        end
-        
-    % === ADD TO FILE NAME ===
-    else
-        % File tag
-        fileTag = file_standardize(tag);
-        if (fileTag(1) ~= '_')
-            fileTag = ['_', fileTag];
-        end
-        % Update each file
-        for i = 1:length(sInputs)
+
+        % === ADD TO FILE NAME ===
+        else
             % Get study structure
             sStudy = bst_get('Study', sInputs(i).iStudy);
             % Check if files has dependent files
@@ -111,19 +123,32 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 bst_report('Error', sProcess, sInputs(i), 'The input file has some dependent files. In order to preserve the links in the database, it cannot be renamed.');
                 continue;
             end
-            % Rename file
-            OldFileName = file_fullpath(sInputs(i).FileName);
-            NewFileName = strrep(OldFileName, '.mat', [fileTag '.mat']);
-            OutputFiles{i} = strrep(OutputFiles{i}, '.mat', [fileTag '.mat']);
-            if ~strcmpi(OldFileName, NewFileName)
-                try 
-                    file_move(OldFileName, NewFileName);
-                    FileName = NewFileName;
-                catch
-                    bst_report('Error', sProcess, sInputs, ['Cannot rename file "' OldFileName '" to "' NewFileName '".']);
-                    FileName = OldFileName;
+            % Rename link => Rename shared kernel instead
+            if strcmpi(fileType, 'link')
+                % Add tag to kernel file name
+                OldFileName = file_resolve_link(sInputs(i).FileName);
+                [fPath, fBase, fExt] = bst_fileparts(OldFileName);
+                NewFileName = bst_fullfile(fPath, [fBase, fileTag, fExt]);
+                OutputFiles{i} = strrep(sInputs(i).FileName, file_short(OldFileName), file_short(NewFileName));
+                % Check if this kernel has already been renamed
+                if ismember(OldFileName, RenamedKernels)
                     continue;
                 end
+                RenamedKernels{end+1} = OldFileName;
+            % Regular file
+            else
+                % Add tag to filename
+                OldFileName = file_fullpath(sInputs(i).FileName);
+                [fPath, fBase, fExt] = bst_fileparts(OldFileName);
+                NewFileName = bst_fullfile(fPath, [fBase, fileTag, fExt]);
+                OutputFiles{i} = file_short(NewFileName);
+            end
+            % Rename file
+            try 
+                file_move(OldFileName, NewFileName);
+            catch
+                bst_report('Error', sProcess, sInputs, ['Cannot rename file "' OldFileName '" to "' NewFileName '".']);
+                continue;
             end
         end
     end

@@ -11,7 +11,7 @@ function varargout = panel_record(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -150,7 +150,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Delete group', IconLoader.ICON_EVT_TYPE_DEL, [], @(h,ev)bst_call(@EventTypeDel));
         gui_component('MenuItem', jMenu, [], 'Rename group', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventTypeRename));
         gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor));
-        jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)bst_call(@EventTypeToggleVisible));
+        jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)CallWithAccelerator(@EventTypeToggleVisible));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
         gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad));
         jMenu.addSeparator();
@@ -170,15 +170,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_KEYBOARD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
         jMenu.addSeparator();
-        jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent));
+        jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)CallWithAccelerator(@ToggleEvent));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0));
         jItem = gui_component('MenuItem', jMenu, [], '<HTML>Edit notes&nbsp;&nbsp;&nbsp;<FONT color="#A0A0A"><I>Double-click</I></FONT>', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventEditNotes));
-        jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@RejectTimeSegment));
+        jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)CallWithAccelerator(@RejectTimeSegment));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
         jMenu.addSeparator();
-        jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)bst_call(@JumpToEvent, 'leftarrow'));
+        jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)CallWithAccelerator(@JumpToEvent, 'leftarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, KeyEvent.SHIFT_MASK));
-        jItem = gui_component('MenuItem', jMenu, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)bst_call(@JumpToEvent, 'rightarrow'));
+        jItem = gui_component('MenuItem', jMenu, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallWithAccelerator(@JumpToEvent, 'rightarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, KeyEvent.SHIFT_MASK));
         % Artifacts
         jMenu = gui_component('Menu', jMenuBar, [], 'Artifacts', IconLoader.ICON_MENU, [], [], 11);
@@ -197,6 +197,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'));
         jMenu.addSeparator();
         jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'));
+        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj', [], 1));
         
         % === EVENTS TYPES ===
         jListEvtType = JList();
@@ -245,6 +246,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jItemSsp',        jItemSsp, ...
                                   'jItemIca',        jItemIca, ...
                                   'jItemSspSel',     jItemSspSel, ...
+                                  'jItemSspMontage', jItemSspMontage, ...
                                   'jPanelTime',      jPanelTime, ...
                                   'jPanelEvent',     jPanelEvent, ...
                                   'jLabelEpoch',     jLabelEpoch, ...
@@ -370,6 +372,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 JumpToEvent();
             end
         end
+    end
+
+    %% ===== CALL WITH ACCELERATORS =====
+    function CallWithAccelerator(varargin)
+        % Make sure tree items are not being renamed
+        ctrl = bst_get('PanelControls', 'protocols');
+        if isempty(ctrl) || isempty(ctrl.jTreeProtocols) || ctrl.jTreeProtocols.isEditing()
+            return;
+        end
+        % Make sure the item search box is not active
+        ctrl = bst_get('BstControls');
+        if isempty(ctrl) || isempty(ctrl.jTextFilter) || ctrl.jTextFilter.hasFocus()
+            disp('cancel')
+            return;
+        end
+        % Transfer call to bst_call
+        bst_call(varargin{:});
     end
 end
 
@@ -603,11 +622,9 @@ function ValidateTimeWindow(isProgress)
         ctrl.jTextStart.setText(sprintf('%1.4f', Time(iStart)));
     end
     % Save length in user preferences
-    if (smpLength <= length(Time))
-        RawViewerOptions = bst_get('RawViewerOptions');
-        RawViewerOptions.PageDuration = smpLength / sfreq;
-        bst_set('RawViewerOptions', RawViewerOptions);
-    end
+    RawViewerOptions = bst_get('RawViewerOptions');
+    RawViewerOptions.PageDuration = smpLength / sfreq;
+    bst_set('RawViewerOptions', RawViewerOptions);
     % Progress bar
     if isProgress
         bst_progress('start', 'Update display', 'Loading recordings...');
@@ -686,7 +703,7 @@ function UpdateDisplayOptions(hFig)
     end
     ctrl.jMenuMontage.setEnabled(~isNoModality);
     % Update montage name
-    if ismember(TsInfo.Modality, {'results', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
+    if ismember(TsInfo.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
         ctrl.jMenuMontage.setVisible(0);
     else
         ctrl.jMenuMontage.setVisible(1);
@@ -951,6 +968,7 @@ function UpdatePanel(hFig)
     ctrl.jButtonBaseline.setVisible(isRaw);
     % Enable/disable Artifacts menus
     gui_enable([ctrl.jItemSspEog, ctrl.jItemSspEcg, ctrl.jItemSsp, ctrl.jItemIca, ctrl.jItemSspSel], isRaw);
+    % gui_enable(ctrl.jItemSspMontage, ~isRaw);
     gui_enable(ctrl.jItemEegref, isRaw && isEeg);
     % Update display options
     UpdateDisplayOptions(hFig);
@@ -1166,7 +1184,11 @@ end
 
 
 %% ===== READ RAW BLOCK =====
-function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, TimeRange, DisplayMessages, UseCtfComp, RemoveBaseline, UseSsp) %#ok<DEFNU>
+function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, TimeRange, DisplayMessages, UseCtfComp, RemoveBaseline, UseSsp, iChannels) %#ok<DEFNU>
+    % Optional inputs
+    if (nargin < 9) || isempty(iChannels)
+        iChannels = [];
+    end
     % Define reading options
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode      = 'Time';
@@ -1180,7 +1202,7 @@ function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, Tim
     startSmp = round(TimeRange(1) * sFile.prop.sfreq);
     smpBlock = startSmp + [0, blockSmpLength - 1];
     % Read a block from the raw file
-    [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, smpBlock, [], ImportOptions);
+    [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, smpBlock, iChannels, ImportOptions);
 end
 
 
@@ -2065,9 +2087,14 @@ function EventConvertToExtended()
     evtWindow = round(evtWindow .* sfreq) ./ sfreq;
     
     % Apply modificiation to each event type
+    if isempty(GlobalData.FullTimeWindow) || isempty(GlobalData.FullTimeWindow.CurrentEpoch)
+        FullTimeWindow = GlobalData.DataSet(iDS).Measures.Time;
+    else
+        FullTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+    end
     for i = 1:length(sEvents)
-        sEvents(i).times = [max(GlobalData.DataSet(iDS).Measures.Time(1), sEvents(i).times(1,:) + evtWindow(1)); ...
-                            min(GlobalData.DataSet(iDS).Measures.Time(2), sEvents(i).times(1,:) + evtWindow(2))];
+        sEvents(i).times = [max(FullTimeWindow(1), sEvents(i).times(1,:) + evtWindow(1)); ...
+                            min(FullTimeWindow(2), sEvents(i).times(1,:) + evtWindow(2))];
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end
@@ -2116,6 +2143,9 @@ end
 % USAGE: [sEvent, iOccur] = EventOccurAdd(iEvent=[selected], channelNames=[])
 function [sEvent, iOccur] = EventOccurAdd(iEvent, channelNames)
     global GlobalData;
+    % Initialize returned variables
+    sEvent = [];
+    iOccur = [];
     % Parse inputs
     if (nargin < 2) || isempty(channelNames) || ~iscell(channelNames)
         channelNames = [];
@@ -2550,11 +2580,16 @@ end
 %    [bad_start_1, bad_start_2, ...
 %     bad_stop_1,  bad_stop_2, ...]
 % This array contains the sample indices of all the bad segments in the file
-function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
+function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile, isChannelEvtBad) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 2) || isempty(isChannelEvtBad)
+        isChannelEvtBad = 1;
+    end
     % Initialize empty list
     badSeg = [];
     badEpochs = [];
     badTimes = [];
+    badChan = {};
     % Get all the events
     events = sFile.events;
     if isempty(events)
@@ -2564,14 +2599,25 @@ function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
     for iEvt = 1:length(events)
         % Consider only the non-empty events that have the "bad" string in them
         if IsEventBad(events(iEvt).label) && ~isempty(events(iEvt).times)
+            % Exclude all the channel-specific events
+            if ~isChannelEvtBad
+                iOccBad = find(cellfun(@isempty, events(iEvt).channels));
+                if isempty(iOccBad)
+                    continue;
+                end
+            else
+                iOccBad = 1:size(events(iEvt).times,2);
+            end
             % If extended event
             if (size(events(iEvt).times,1) == 2)
-                badTimes = [badTimes, events(iEvt).times];
+                badTimes = [badTimes, events(iEvt).times(:,iOccBad)];
             % Else: single event
             else
-                badTimes = [badTimes, repmat(events(iEvt).times, 2, 1)];
+                badTimes = [badTimes, repmat(events(iEvt).times(:,iOccBad), 2, 1)];
             end
-            badEpochs = [badEpochs, events(iEvt).epochs];
+            badEpochs = [badEpochs, events(iEvt).epochs(iOccBad)];
+            % Get channel events
+            badChan = [badChan, events(iEvt).channels(iOccBad)];
         end
     end
     badSeg = round(badTimes .* sFile.prop.sfreq);
@@ -2666,7 +2712,7 @@ function CallProcessOnRaw(ProcessName)
             panel_ssp_selection('OpenRaw');
         end
         % Find the event type that was processed
-        if ~isempty(sProcesses) && isfield(sProcesses(1).options, 'eventname') && ~isempty(sProcesses(1).options.eventname)
+        if ~isempty(sProcesses) && isfield(sProcesses(1).options, 'eventname') && ~isempty(sProcesses(1).options.eventname.Value)
             % Get all the events
             sEvents = GetEvents();
             % Find processed event
@@ -2805,7 +2851,7 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
             error('This function can be called only on external raw files.');
         end
         % Convert to CTF-CONTINUOUS if necessary
-        if strcmpi(sFileIn.format, 'CTF')
+        if strcmpi(sFileIn.format, 'CTF') && (length(sFileIn.epochs) >= 2)
             sFileIn = process_ctf_convert('Compute', sFileIn, 'continuous');
         end
         % Prepare import options (do not apply any modifier)

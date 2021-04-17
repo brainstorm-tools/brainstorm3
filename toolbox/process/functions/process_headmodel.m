@@ -5,7 +5,7 @@ function varargout = process_headmodel( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_headmodel( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -38,7 +38,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.InputTypes  = {'data', 'raw', 'matrix'};
     sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
-    sProcess.nMinFiles   = 1;
+    sProcess.nMinFiles   = 0;
     % Options: Comment
     sProcess.options.Comment.Comment = 'Comment: ';
     sProcess.options.Comment.Type    = 'text';
@@ -58,23 +58,32 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Type    = 'label';
     sProcess.options.meg.Comment = '   - MEG method:';
     sProcess.options.meg.Type    = 'combobox';
-    sProcess.options.meg.Value   = {3, {'<none>', 'Single sphere', 'Overlapping spheres', 'OpenMEEG BEM'}};
+    sProcess.options.meg.Value   = {3, {'<none>', 'Single sphere', 'Overlapping spheres', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Option: EEG headmodel
     sProcess.options.eeg.Comment = '   - EEG method:';
     sProcess.options.eeg.Type    = 'combobox';
-    sProcess.options.eeg.Value   = {3, {'<none>', '3-shell sphere', 'OpenMEEG BEM'}};
+    sProcess.options.eeg.Value   = {3, {'<none>', '3-shell sphere', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Option: ECOG headmodel
     sProcess.options.ecog.Comment = '   - ECOG method:';
     sProcess.options.ecog.Type    = 'combobox';
-    sProcess.options.ecog.Value   = {2, {'<none>', 'OpenMEEG BEM'}};
+    sProcess.options.ecog.Value   = {2, {'<none>', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Option: SEEG headmodel
     sProcess.options.seeg.Comment = '   - SEEG method:';
     sProcess.options.seeg.Type    = 'combobox';
-    sProcess.options.seeg.Value   = {2, {'<none>', 'OpenMEEG BEM'}};
+    sProcess.options.seeg.Value   = {2, {'<none>', 'OpenMEEG BEM', 'DUNEuro FEM'}};
     % Options: OpenMEEG Options
     sProcess.options.openmeeg.Comment = {'panel_openmeeg', 'OpenMEEG options: '};
     sProcess.options.openmeeg.Type    = 'editpref';
     sProcess.options.openmeeg.Value   = bst_get('OpenMEEGOptions');
+    % Options: DUNEuro Options
+    sProcess.options.duneuro.Comment = {'panel_duneuro', 'DUNEuro options: '};
+    sProcess.options.duneuro.Type    = 'editpref';
+    sProcess.options.duneuro.Value   = bst_get('DuneuroOptions');
+    % Options: Channel file  (used for scripts when data files are not available)
+    sProcess.options.channelfile.Comment = 'Channel file: ';
+    sProcess.options.channelfile.Type    = 'text';
+    sProcess.options.channelfile.Value   = '';
+    sProcess.options.channelfile.Hidden  = 1;
 end
 
 
@@ -88,13 +97,15 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     isOpenMEEG = 0;
+    isDuneuro = 0;
     % == MEG options ==
     if isfield(sProcess.options, 'meg') && isfield(sProcess.options.meg, 'Value') && iscell(sProcess.options.meg.Value)
         switch (sProcess.options.meg.Value{1})
             case 1,  sMethod.MEGMethod = '';
             case 2,  sMethod.MEGMethod = 'meg_sphere';
             case 3,  sMethod.MEGMethod = 'os_meg';
-            case 4,  sMethod.MEGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 4,  sMethod.MEGMethod = 'openmeeg';  isOpenMEEG = 1;
+            case 5,  sMethod.MEGMethod = 'duneuro';   isDuneuro = 1;
         end
     else
         sMethod.MEGMethod = '';
@@ -105,6 +116,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case 1,  sMethod.EEGMethod = '';
             case 2,  sMethod.EEGMethod = 'eeg_3sphereberg';
             case 3,  sMethod.EEGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 4,  sMethod.EEGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.EEGMethod = '';
@@ -114,6 +126,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         switch (sProcess.options.ecog.Value{1})
             case 1,  sMethod.ECOGMethod = '';
             case 2,  sMethod.ECOGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 3,  sMethod.ECOGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.ECOGMethod = '';
@@ -123,6 +136,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         switch (sProcess.options.seeg.Value{1})
             case 1,  sMethod.SEEGMethod = '';
             case 2,  sMethod.SEEGMethod = 'openmeeg';   isOpenMEEG = 1;
+            case 3,  sMethod.SEEGMethod = 'duneuro';    isDuneuro = 1;
         end
     else
         sMethod.SEEGMethod = '';
@@ -150,15 +164,24 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sMethod.GridOptions = bst_get('GridOptions_headmodel');
     end
 
-    % Get channel studies
-    [sChannels, iChanStudies] = bst_get('ChannelForStudy', unique([sInputs.iStudy]));
-    % Check if there are channel files everywhere
-    if (length(sChannels) ~= length(iChanStudies))
-        bst_report('Error', sProcess, sInputs, ['Some of the input files are not associated with a channel file.' 10 'Please import the channel files first.']);
+    % Get channel file in options
+    if isfield(sProcess.options, 'channelfile') && isfield(sProcess.options.channelfile, 'Value') && ~isempty(sProcess.options.channelfile.Value)
+        ChannelFile = sProcess.options.channelfile.Value;
+        [sChanStudies, iChanStudies] = bst_get('ChannelFile', ChannelFile);
+    % Get channel studies from inputs
+    elseif ~isempty(sInputs)
+        [sChannels, iChanStudies] = bst_get('ChannelForStudy', unique([sInputs.iStudy]));
+        % Check if there are channel files everywhere
+        if (length(sChannels) ~= length(iChanStudies))
+            bst_report('Error', sProcess, sInputs, ['Some of the input files are not associated with a channel file.' 10 'Please import the channel files first.']);
+            return;
+        end
+        % Keep only once each channel file
+        iChanStudies = unique(iChanStudies);
+    else
+        bst_report('Error', sProcess, [], 'No input channel file.');
         return;
     end
-    % Keep only once each channel file
-    iChanStudies = unique(iChanStudies);
     
     % Copy OpenMEEG options to OPTIONS structure
     if isOpenMEEG
@@ -167,6 +190,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_set('OpenMEEGOptions', sProcess.options.openmeeg.Value);
         else
             bst_report('Error', sProcess, [], 'OpenMEEG options are not defined.');
+            return;
+        end
+    end
+    % Copy DUNEuro options to OPTIONS structure
+    if isDuneuro
+        if ~isempty(sProcess.options.duneuro.Value)
+            sMethod = struct_copy_fields(sMethod, sProcess.options.duneuro.Value, 1);
+            bst_set('DuneuroOptions', sProcess.options.duneuro.Value);
+        else
+            bst_report('Error', sProcess, [], 'DUNEuro options are not defined.');
             return;
         end
     end

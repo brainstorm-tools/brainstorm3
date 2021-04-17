@@ -3,7 +3,7 @@ function test_all(test_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -144,7 +144,7 @@ bst_process('CallProcess', 'process_headmodel', sSimScout, [], ...
          'SplitLength',  4000));
 % Process: Simulate recordings from scouts
 sSimData = bst_process('CallProcess', 'process_simulate_recordings', sSimScout, [], ...
-    'scouts',      {'Mindboggle', {'lateraloccipital L', 'medialorbitofrontal R'}}, ...
+    'scouts',      {'Desikan-Killiany', {'lateraloccipital L', 'medialorbitofrontal R'}}, ...
     'savesources', 0);
 % Add time markers
 DataMat.Events = db_template('event');
@@ -192,7 +192,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 4, ...  % EEG
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 %% ===== PRE-PROCESSING =====
@@ -248,7 +248,7 @@ sFilesPsdAfter = bst_process('CallProcess', 'process_psd', sFilesClean, [], ...
 % Process: Snapshot: Frequency spectrum
 bst_process('CallProcess', 'process_snapshot', [sFilesPsdBefore, sFilesPsdAfter], [], ...
     'target',   10, ...  % Frequency spectrum
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 
 %% ===== ARTIFACT CLEANING =====
@@ -374,7 +374,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrc, [], ...
     'orient',    3, ...  % top
     'time',      0.230, ...
     'threshold', 60, ...
-    'comment',   'Average sources');
+    'Comment',   'Average sources');
 
 
 %% ===== SCOUTS =====
@@ -434,7 +434,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrcVol, [], ...
     'orient',    3, ...  % top
     'time',      0, ...
     'threshold', 0, ...
-    'comment',   'Dipole modeling');
+    'Comment',   'Dipole modeling');
 % Process: Dipole scanning
 sDipScan = bst_process('CallProcess', 'process_dipole_scanning', sAvgSrcVol, [], ...
     'timewindow', [-0.040, 0.100], ...

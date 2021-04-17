@@ -8,7 +8,7 @@ function [sStudy, iItem] = db_add_data(iStudy, FileName, FileMat, iItem)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -172,6 +172,34 @@ switch (fileType)
             deletedFile{end+1} = sStudy.Matrix(iItem).FileName;
         end
         sStudy.Matrix(iItem) = sNew;
+    case 'headmodel'
+        % Create new descriptor
+        sNew = db_template('HeadModel');
+        sNew.FileName      = FileName;
+        sNew.Comment       = FileMat.Comment;
+        sNew.HeadModelType = FileMat.HeadModelType;
+        sNew.MEGMethod     = FileMat.MEGMethod;
+        sNew.EEGMethod     = FileMat.EEGMethod;
+        sNew.ECOGMethod    = FileMat.ECOGMethod;
+        sNew.SEEGMethod    = FileMat.SEEGMethod;
+        % Add it to study
+        if isempty(iItem)
+            iItem = length(sStudy.HeadModel) + 1;
+            % Make file comment unique
+            if ~isempty(sStudy.HeadModel)
+                Comment = file_unique(sNew.Comment, {sStudy.HeadModel.Comment});
+                % Modify input file
+                if ~isequal(Comment, sNew.Comment)
+                    save(file_fullpath(FileName), 'Comment', '-append');
+                    sNew.Comment = Comment;
+                end
+            end
+        else
+            deletedFile{end+1} = sStudy.HeadModel(iItem).FileName;
+        end
+        sStudy.HeadModel(iItem) = sNew;
+        % Make it the default head model
+        sStudy.iHeadModel = iItem;
 end
 % Update database
 bst_set('Study', iStudy, sStudy);

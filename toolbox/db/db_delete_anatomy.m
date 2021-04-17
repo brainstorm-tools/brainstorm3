@@ -7,7 +7,7 @@ function sSubject = db_delete_anatomy(iSubject, isKeepMri)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,6 +36,10 @@ if ~isKeepMri && ~isempty(sSubject.Anatomy)
     file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
     sSubject.Anatomy(1:end) = [];
     sSubject.iAnatomy = [];
+elseif isKeepMri && (length(sSubject.Anatomy) >= 2)
+    file_delete(file_fullpath({sSubject.Anatomy(2:end).FileName}), 1);
+    sSubject.Anatomy(2:end) = [];
+    sSubject.iAnatomy = 1;
 end
 
 % Delete surfaces

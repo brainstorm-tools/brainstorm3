@@ -7,7 +7,7 @@ function varargout = figure_connect( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,6 +38,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'DockControls',          'off', ...earnadd
                   'Units',                 'pixels', ...
                   'Color',                 [0 0 0], ...
+                  'Pointer',               'arrow', ...
                   'BusyAction',            'queue', ...
                   'Interruptible',         'off', ...
                   'HitTest',               'on', ...
@@ -62,7 +63,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     %                  'Visible',  'off', ...
     %                  'BusyAction',    'queue', ...
     %                  'Interruptible', 'off');
-              
+
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
 	% Create rendering panel
     [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
     % Resize callback
@@ -288,10 +293,12 @@ function UpdateContainer(hFig, container)
         titlePos = get(TitlesHandle(1), 'Position'); 
         titleHeight = titlePos(4);
     end
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginHeight  = 25;
-    marginWidth   = 45;
+    colorbarWidth = 15 .* Scaling;
+    marginHeight  = 25 .* Scaling;
+    marginWidth   = 45 .* Scaling;
     % If there is a colorbar 
     if ~isempty(hColorbar)
         % Reposition the colorbar
@@ -299,15 +306,15 @@ function UpdateContainer(hFig, container)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3))]);
+                                    max(1, min(90, figPos(4) - marginHeight - 3 .* Scaling))]);
         % Reposition the container
         marginAxes = 0;
         if ~isempty(container)
             set(container, 'Units',    'pixels', ...
                            'Position', [marginAxes, ...
                                         marginAxes, ...
-                                        figPos(3) - colorbarWidth - marginWidth - marginAxes, ... 
-                                        figPos(4) - 2*marginAxes - titleHeight]);
+                                        max(1, figPos(3) - colorbarWidth - marginWidth - marginAxes), ... 
+                                        max(1, figPos(4) - 2*marginAxes - titleHeight)]);
         end
         uistack(hColorbar,'top',1);
     else
@@ -1220,14 +1227,14 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
                 B = sort(s, 'descend');
                 if length(B) > MaximumNumberOfData
                     t = B(MaximumNumberOfData);
-                    Valid = Valid & (M > t);
+                    Valid = Valid & (M >= t);
                 end
             else
                 [tmp,tmp,s] = find(M(Valid == 1));
                 B = sort(abs(s), 'descend');
                 if length(B) > MaximumNumberOfData
                     t = B(MaximumNumberOfData);
-                    Valid = Valid & ((M < -t) | (M > t));
+                    Valid = Valid & ((M <= -t) | (M >= t));
                 end
             end
         end
@@ -1243,8 +1250,16 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
 
     % ===== MATRIX STATISTICS ===== 
     DataMinMax = [min(DataPair(:,3)), max(DataPair(:,3))];
-    if isempty(DataMinMax) || (DataMinMax(1) == DataMinMax(2))
+    if isempty(DataMinMax)
         DataMinMax = [0 1];
+    elseif (DataMinMax(1) == DataMinMax(2))
+        if (DataMinMax(1) > 0)
+            DataMinMax = [0 DataMinMax(2)];
+        elseif (DataMinMax(2) < 0)
+            DataMinMax = [DataMinMax(1), 0];
+        else
+            DataMinMax = [0 1];
+        end
     end
     % Update figure variable
     bst_figures('SetFigureHandleField', hFig, 'DataMinMax', DataMinMax);
@@ -2183,58 +2198,59 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
     end
 end
 
-function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
-    Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
-    Regions = Levels{2};
-    NumberOfNode = size(Regions,1);
-    mMeanDataPair = zeros(NumberOfNode*NumberOfNode,3);
-    %
-    for i=1:NumberOfNode
-        OutNode = getAgregatedNodesFrom(hFig, Regions(i));
-        for y=1:NumberOfNode
-            if (i ~= y)
-                InNode = getAgregatedNodesFrom(hFig, Regions(y));
-                Index = ismember(mDataPair(:,1),OutNode) & ismember(mDataPair(:,2),InNode);
-                nValue = sum(Index);
-                if (nValue > 0)
-                    Mean = sum(mDataPair(Index,3)) / sum(Index);
-                    mMeanDataPair(NumberOfNode * (i - 1) + y, :) = [Regions(i) Regions(y) Mean];
-                end
-            end
-        end
-    end
-    mMeanDataPair(mMeanDataPair(:,3) == 0,:) = [];
-end
-
-function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
+function mFunctionDataPair = ComputeRegionFunction(hFig, mDataPair, RegionFunction)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
     NumberOfRegions = size(Regions,1);
-    mMaxDataPair = zeros(NumberOfRegions*NumberOfRegions,3);
     
     % Precomputing this saves on processing time
     NodesFromRegions = cell(NumberOfRegions,1);
     for i=1:NumberOfRegions
         NodesFromRegions{i} = getAgregatedNodesFrom(hFig, Regions(i));
+    end   
+    
+    % Bidirectional data ?
+    DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure'); 
+    if DisplayBidirectionalMeasure
+        nPairs = NumberOfRegions*NumberOfRegions-NumberOfRegions;
+    else
+        nPairs = (NumberOfRegions*NumberOfRegions-NumberOfRegions) / 2;   
     end
     
+    mFunctionDataPair = zeros(nPairs,3);   
+    iFunction = 1;
     for i=1:NumberOfRegions
-        for y=1:NumberOfRegions
-            if (i ~= y)
-                % Retrieve index
+        if DisplayBidirectionalMeasure
+            yRange = 1 : NumberOfRegions;
+            yRange(i) = []; % skip i == y
+        else
+            yRange = i + 1 : NumberOfRegions;
+        end
+        for y=yRange
+            % Retrieve index
+            if DisplayBidirectionalMeasure
                 Index = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
-                % If there is values
-                if (sum(Index) > 0)
-                    Max = max(mDataPair(Index,3));
-                    mMaxDataPair(NumberOfRegions * (i - 1) + y, :) = [Regions(i) Regions(y) Max];
+            else
+                IndexItoY = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
+                IndexYtoI = ismember(mDataPair(:,1),NodesFromRegions{y}) & ismember(mDataPair(:,2),NodesFromRegions{i});
+                Index = IndexItoY | IndexYtoI;
+            end
+            % If there is values
+            if (sum(Index) > 0)
+                switch(RegionFunction)
+                    case 'max' 
+                        Value = max(mDataPair(Index,3));
+                    case 'mean'
+                        Value = mean(mDataPair(Index,3));
                 end
+                mFunctionDataPair(iFunction, :) = [Regions(i) Regions(y) Value];
+                iFunction = iFunction + 1;
             end
         end
     end
     % Eliminate empty data
-    mMaxDataPair(mMaxDataPair(:,3) == 0,:) = [];
+    mFunctionDataPair(mFunctionDataPair(:,3) == 0,:) = [];
 end
-
 
 function MeasureDistance = ComputeEuclideanMeasureDistance(hFig, aDataPair, mLoc)
     % Correct offset
@@ -2293,9 +2309,11 @@ function [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig)
     RegionDataPair = bst_figures('GetFigureHandleField', hFig, 'RegionDataPair');
     RegionDataMask = ones(size(RegionDataPair,1),1);
     if (size(RegionDataPair,1) > 0)
+        % Get colormap
+        sColormap = bst_colormaps('GetColormap', hFig);
         % Get threshold option
         ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
-        if (ThresholdAbsoluteValue)
+        if (ThresholdAbsoluteValue) || sColormap.isAbsoluteValues
             RegionDataPair(:,3) = abs(RegionDataPair(:,3));
         end
         % Get threshold
@@ -2358,7 +2376,7 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte','henv'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')
@@ -2744,17 +2762,9 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
         % Get data
         DataPair = GetPairs(hFig);
-        % Which function
-        switch (RegionFunction)
-            case 'mean'
-                RegionDataPair = ComputeMeanMeasureMatrix(hFig, DataPair);
-            case 'max'
-                RegionDataPair = ComputeMaxMeasureMatrix(hFig, DataPair);
-            otherwise
-                disp('The region function specified is not yet supported. Default to mean.');
-                RegionFunction = 'mean';
-                RegionDataPair = ComputeMeanMeasureMatrix(hFig, M);
-        end
+        % Computes function across node pairs in region
+        RegionDataPair = ComputeRegionFunction(hFig, DataPair, RegionFunction);
+        
         %
         OGL = getappdata(hFig, 'OpenGLDisplay');
         % Clear

@@ -11,7 +11,7 @@ function varargout = panel_process_select(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -726,7 +726,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             try
                 procComment = sCurProcess.Function('FormatComment', sCurProcess);
             catch
-                procComment = ['Error: Function "' func2str(sCurProcess.Function) '" is not accessible'];
+                procComment = sCurProcess.Comment;
             end
             % Add "overwrite" option
             if isfield(sCurProcess.options, 'overwrite') && sCurProcess.options.overwrite.Value
@@ -912,9 +912,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     GlobalData.Processes.Current(iProcess).options.(optNames{iOpt}).Value{2} = valUnits;
 
                 % FREQRANGE: {value, units, precision}
-                case 'freqrange'
+                case {'freqrange','freqrange_static'}
                     % Build list of frequencies
-                    if strcmpi(sFiles(1).FileType, 'timefreq')
+                    if strcmpi(sFiles(1).FileType, 'timefreq') && ~strcmpi(option.Type, 'freqrange_static')
                         % Load Freqs field from the input file
                         TfMat = in_bst_timefreq(sFiles(1).FileName, 0, 'Freqs');
                         if iscell(TfMat.Freqs)
@@ -945,8 +945,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Units
                     gui_component('label', jPanelOpt, [], 'Hz');
                     
+                    % Get precision
+                    if iscell(option.Value) && (length(option.Value) >= 3) && ~isempty(option.Value{3})
+                        precision = option.Value{3};
+                    else
+                        precision = 3;
+                    end
                     % Set controls callbacks
-                    precision = 3;
                     if isempty(FreqList)
                         bounds = {0, 10000, 1000};
                         if ~isempty(option.Value) && iscell(option.Value) && ~isempty(option.Value{1})
@@ -955,6 +960,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         else
                             initStart = 0;
                             initStop  = 100;
+                            % Set these values as current default
+                            SetOptionValue(iProcess, optNames{iOpt}, {[initStart, initStop], 'Hz', precision});
                         end
                         gui_validate_text(jTextMin, [], jTextMax, bounds, 'Hz', precision, initStart, @(h,ev)OptionRange_Callback(iProcess, optNames{iOpt}, [], jTextMin, jTextMax));
                         gui_validate_text(jTextMax, jTextMin, [], bounds, 'Hz', precision, initStop,  @(h,ev)OptionRange_Callback(iProcess, optNames{iOpt}, [], jTextMin, jTextMax));
@@ -1050,6 +1057,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jCheck.setSelected(strcmpi(option.Value, option.Comment{2,iRadio}));
                         jButtonGroup.add(jCheck);
                     end
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller) && isfield(option.Controller, option.Value) && ~isempty(option.Controller.(option.Value))
+                        ClassesToToggleOff{end + 1} = setdiff(fieldnames(option.Controller), option.Value);
+                    end
                 case 'combobox'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
                     % Combo box
@@ -1085,12 +1096,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Build list of frequencies
                     if isempty(TfMat.Freqs)
                         comboList = {'Not available'};
+                        nList = 0;
                     elseif iscell(TfMat.Freqs)
                         comboList = TfMat.Freqs(:,1)';
+                        nList = size(TfMat.Freqs,1);
                     else
                         for ifr = 1:length(TfMat.Freqs)
                             comboList{ifr} = num2str(TfMat.Freqs(ifr));
                         end
+                        nList = length(TfMat.Freqs);
                     end
                     % Label
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -1099,15 +1113,19 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jCombo.setEditable(false);
                     jPanelOpt.add(jCombo);
                     % Select previously selected item
-                    if ~isempty(option.Value) && (option.Value <= length(comboList))
+                    if ~isempty(option.Value) && (option.Value <= nList)
                         jCombo.setSelectedIndex(option.Value - 1);
+                    % Otherwise, reset to the first element of the list
+                    else
+                        jCombo.setSelectedIndex(0);
+                        SetOptionValue(iProcess, optNames{iOpt}, 1);
                     end
                     % Set validation callbacks
                     java_setcb(jCombo, 'ActionPerformedCallback', @(h,ev)SetOptionValue(iProcess, optNames{iOpt}, ev.getSource().getSelectedIndex()+1));
                     
                 case 'montage'
                     % Load channel file of first file in input
-                    ChannelMat = in_bst_channel(sFiles(1).ChannelFile, 'Channel');
+                    ChannelMat = in_bst_channel(sFiles(1).ChannelFile);
                     % Update automatic montages
                     panel_montage('UnloadAutoMontages');
                     if any(ismember({'ECOG', 'SEEG'}, {ChannelMat.Channel.Type}))
@@ -1115,6 +1133,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
                     if ismember('NIRS', {ChannelMat.Channel.Type})
                         panel_montage('AddAutoMontagesNirs', ChannelMat);
+                    end
+                    if ~isempty(ChannelMat.Projector)
+                        panel_montage('AddAutoMontagesProj', ChannelMat);
                     end
                     % Get all the montage names
                     AllMontages = panel_montage('GetMontage',[]);
@@ -1756,16 +1777,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         jDialog = jPanelProcess.getTopLevelAncestor();
         jDialog.setAlwaysOnTop(0);
         jDialog.setVisible(0);
-%         isModal = jDialog.isModal();
-%         jDialog.setModal(0);
         drawnow;
         % Display options dialog window
-        value = gui_show_dialog(sCurProcess.Comment, fcnPanel, 1, [], sCurProcess, sFiles);
+        value = bst_call(@gui_show_dialog, sCurProcess.Comment, fcnPanel, 1, [], sCurProcess, sFiles);
         drawnow;
         % Restore pipeline editor
         jDialog.setVisible(1);
         jDialog.setAlwaysOnTop(1);
-%         jDialog.setModal(isModal);
         drawnow;
         
         % Editing was cancelled
@@ -2076,7 +2094,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         UpdateProcessesList();
         % Save option value for future uses
         optType = GlobalData.Processes.Current(iProcess).options.(optName).Type;
-        if ismember(optType, {'value', 'range', 'freqrange', 'checkbox', 'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'combobox_label', 'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', 'freqsel', 'scout', 'scout_confirm'}) ...
+        if ismember(optType, {'value', 'range', 'freqrange', 'freqrange_static', 'checkbox', 'radio', 'radio_line', 'radio_label', 'radio_linelabel', 'combobox', 'combobox_label', 'text', 'textarea', 'channelname', 'subjectname', 'atlas', 'groupbands', 'montage', 'freqsel', 'scout', 'scout_confirm'}) ...
                 || (strcmpi(optType, 'filename') && (length(value)>=7) && strcmpi(value{7},'dirs') && strcmpi(value{3},'save'))
             % Get processing options
             ProcessOptions = bst_get('ProcessOptions');
@@ -2087,8 +2105,15 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             bst_set('ProcessOptions', ProcessOptions);
         end
         % If a class controller, toggle class
-        if strcmp(optType, 'checkbox') && isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
-            ToggleClass(GlobalData.Processes.Current(iProcess).options.(optName).Controller, value);
+        if isfield(GlobalData.Processes.Current(iProcess).options.(optName), 'Controller')
+            opt = GlobalData.Processes.Current(iProcess).options.(optName);
+            if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
+                ToggleClass(opt.Controller, value);
+            elseif strcmp(optType, 'radio_linelabel') && ~isempty(opt.Controller) && isstruct(opt.Controller) && isfield(opt.Controller, opt.Value) && ~isempty(opt.Controller.(opt.Value))
+                for cl = fieldnames(opt.Controller)'
+                    ToggleClass(opt.Controller.(cl{1}), strcmp(cl{1}, value));
+                end
+            end
         end
     end
 
@@ -2316,7 +2341,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             procComment = sExportProc(iProc).Function('FormatComment', sExportProc(iProc));
             procFunc    = func2str(sExportProc(iProc).Function);
             % Time-freq: make sure the options were selected
-            if ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd'}) && (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))
+            if ismember(procFunc, {'process_timefreq', 'process_hilbert', 'process_psd', 'process_henv1', 'process_henv1n', 'process_henv2'}) && (~isfield(sExportProc(iProc).options.edit, 'Value') || isempty(sExportProc(iProc).options.edit.Value))
                 bst_error('Please check the advanced options of the process before generating the script.', 'Generate script', 0);
                 return;
             end
@@ -2346,6 +2371,29 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 else
                     maxLength = 0;
                 end
+                % Remove unused options structures for specific processes (optional, only to make the script more compact)
+                if strcmp(procFunc, 'process_headmodel')
+                    iDuneuro = find(strcmpi(optNames, 'duneuro'));
+                    if ~isempty(iDuneuro) ...
+                        && (~ismember('meg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.meg.Value{2}{sExportProc(iProc).options.meg.Value{1}}), 'duneuro'))) ...
+                        && (~ismember('eeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.eeg.Value{2}{sExportProc(iProc).options.eeg.Value{1}}), 'duneuro'))) ...
+                        && (~ismember('seeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.seeg.Value{2}{sExportProc(iProc).options.seeg.Value{1}}), 'duneuro'))) ...
+                        && (~ismember('ecog', optNames) || isempty(strfind(lower(sExportProc(iProc).options.ecog.Value{2}{sExportProc(iProc).options.ecog.Value{1}}), 'duneuro')))
+                        optNames(iDuneuro) = [];
+                    end
+                    iOpenmeeg = find(strcmpi(optNames, 'openmeeg'));
+                    if ~isempty(iOpenmeeg) ...
+                        && (~ismember('meg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.meg.Value{2}{sExportProc(iProc).options.meg.Value{1}}), 'openmeeg'))) ...
+                        && (~ismember('eeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.eeg.Value{2}{sExportProc(iProc).options.eeg.Value{1}}), 'openmeeg'))) ...
+                        && (~ismember('seeg', optNames) || isempty(strfind(lower(sExportProc(iProc).options.seeg.Value{2}{sExportProc(iProc).options.seeg.Value{1}}), 'openmeeg'))) ...
+                        && (~ismember('ecog', optNames) || isempty(strfind(lower(sExportProc(iProc).options.ecog.Value{2}{sExportProc(iProc).options.ecog.Value{1}}), 'openmeeg')))
+                        optNames(iOpenmeeg) = [];
+                    end
+                    iVolumegrid = find(strcmpi(optNames, 'volumegrid'));
+                    if ~isempty(iVolumegrid) && ismember('sourcespace', optNames) && (sExportProc(iProc).options.sourcespace.Value ~= 2)
+                        optNames(iVolumegrid) = [];
+                    end
+                end
                 % Print each option on a separate line
                 for iOpt = 1:length(optNames)
                     opt = sExportProc(iProc).options.(optNames{iOpt});
@@ -2356,8 +2404,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Writing a line for the option
                     if isfield(opt, 'Value')
                         % For some options types: write only the value, not the selection parameters
-                        if isfield(opt, 'Type') && ismember(opt.Type, {'timewindow','baseline','poststim','value','range','freqrange','combobox','combobox_label'}) && iscell(opt.Value)
+                        if isfield(opt, 'Type') && ismember(opt.Type, {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(opt.Value)
                             optValue = opt.Value{1};
+                        elseif isfield(opt, 'Type') && ismember(opt.Type, {'combobox_label'}) && iscell(opt.Value)
+                            optValue = opt.Value(1);
                         elseif isfield(opt, 'Type') && ismember(opt.Type, {'filename','datafile'}) && iscell(opt.Value)
                             optValue = opt.Value(1:2);
                         elseif isfield(opt, 'Type') && ismember(opt.Type, {'cluster', 'cluster_confirm', 'scout', 'scout_confirm'}) && isstruct(opt.Value) && isfield(opt.Value, 'Handles')
@@ -2383,7 +2433,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         % Create final string
                         optStr = [', ...' strComment, 10 strIdent '''' optNames{iOpt} ''', ' strPad str_format(optValue, 1, 2)];
                         % Replace raw filenames and subject names
-                        if isfield(opt, 'Type') && ismember(opt.Type, {'filename','datafile'}) && iscell(opt.Value)
+                        if isfield(opt, 'Type') && ismember(opt.Type, {'filename','datafile'}) && iscell(opt.Value) && ~isempty(RawFiles)
                             % List of files
                             if iscell(optValue{1})
                                 for ic = 1:length(optValue{1})
@@ -2487,7 +2537,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
 
     %% ===== TOGGLE CLASS PANELS =====
     function ToggleClass(className, enable)
-        options = jPanelOptions.getComponents();
+        options = [jPanelInput.getComponents(), jPanelOptions.getComponents(), jPanelOutput.getComponents()];
         for iOption = 1:length(options)
             optName = options(iOption).getName();
             if ~isempty(optName) && strcmpi(optName, className)
@@ -2533,22 +2583,32 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     % Get the contents of sub-folder "functions"
     bstList = dir(bst_fullfile(bst_fileparts(mfilename('fullpath')), 'functions', 'process_*.m'));
     bstFunc = {bstList.name};
-    % Get the contents of user's custom processes (~user/.brainstorm/process)
-    if ~(exist('isdeployed', 'builtin') && isdeployed)
-        usrList = dir(bst_fullfile(bst_get('UserProcessDir'), 'process_*.m'));
-        usrFunc = {usrList.name};
-    % User processes disabled in compiled code
-    else
-        usrList = [];
-        usrFunc = {};
-    end
+    
+    % Get the contents of user's custom processes ($HOME/.brainstorm/process)
+    usrList = dir(bst_fullfile(bst_get('UserProcessDir'), 'process_*.m'));
+    usrFunc = {usrList.name};
     % Display warning for overridden processes
     override = intersect(usrFunc, bstFunc);
     for i = 1:length(override)
         disp(['BST> ' override{i} ' overridden by user (' bst_get('UserProcessDir') ')']);
     end
-    % Final list of processes
-    bstFunc = union(usrFunc, bstFunc);
+    % Add user processes to list of processes
+    if ~isempty(usrFunc)
+        bstFunc = union(usrFunc, bstFunc);
+    end
+    
+    % Get processes from installed plugins ($HOME/.brainstorm/plugins/*)
+    plugFunc = {};
+    PlugAll = bst_plugin('GetInstalled');
+    for iPlug = 1:length(PlugAll)
+        if ~isempty(PlugAll(iPlug).Processes)
+            plugFunc = cat(2, plugFunc, PlugAll(iPlug).Processes);
+        end
+    end
+    % Add plugin processes to list of processes
+    if ~isempty(plugFunc)
+        bstFunc = union(plugFunc, bstFunc);
+    end
 
     % ===== CHECK FOR MODIFICATIONS =====
     % Build a signature for both folders
@@ -2558,6 +2618,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     end
     for i = 1:length(usrList)
         sig = [sig, usrList(i).name, usrList(i).date, num2str(usrList(i).bytes)];
+    end
+    for i = 1:length(plugFunc)
+        sig = [sig, plugFunc{i}];
     end
     % If signature is same as previously: do not reload all the files
     if ~isForced
@@ -2576,8 +2639,23 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     sProcesses = repmat(defProcess, 0);
     % Get description for each file
     for iFile = 1:length(bstFunc)
+        % Skip python support functions
+        if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
+            continue;
+        end
+        % Split function names: regular process=only function name; plugin process=full path
+        [fPath, fName, fExt] = bst_fileparts(bstFunc{iFile});
+        % Switch folder if needed
+        if ~isempty(fPath)
+            curDir = pwd;
+            cd(fPath);
+        end
         % Get function handle
-        Function = str2func(strrep(bstFunc{iFile}, '.m', ''));
+        Function = str2func(fName);
+        % Restore previous dir
+        if ~isempty(fPath)
+            cd(curDir);
+        end
         % Call description function
         try
             desc = Function('GetDescription');
@@ -2698,8 +2776,13 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                         % Final option
                         option.Value = {[FileTimeVector(iStart), FileTimeVector(iEnd)], 'time', []};
                     end
-                case 'freqrange'
-                    option.Value = {[], 'Hz', []};
+                case 'freqrange'  % But do not reset 'freqrange_static'
+                    if iscell(option.Value) && (length(option.Value) >= 3) && ~isempty(option.Value{3})
+                        precision = option.Value{3};
+                    else
+                        precision = [];
+                    end
+                    option.Value = {[], 'Hz', precision};
             end
             % Override with previously defined values
             if UseDefaults
@@ -2942,7 +3025,7 @@ end
 function [procTimeVector, nFiles] = GetProcessFileVector(sProcesses, FileTimeVector, nFiles)
     % Default value
     procTimeVector = FileTimeVector;
-    if isempty(sProcesses)
+    if isempty(sProcesses) || (length(procTimeVector) < 2)
         return;
     end
     % Look for an epoching process that changes the time vector of the files
@@ -3012,13 +3095,13 @@ function [SubjNames, RawFiles] = GetSeparateInputs(sProcesses)
                 if iscell(opt.Value{1})
                     for ic = 1:length(opt.Value{1})
                         iFile = find(strcmpi(RawFiles, opt.Value{1}{ic}));
-                        if isempty(iFile)
+                        if isempty(iFile) && ~isempty(opt.Value{1}{ic})
                             RawFiles{end+1} = opt.Value{1}{ic};
                         end
                     end
                 else
                     iFile = find(strcmpi(RawFiles, opt.Value{1}));
-                    if isempty(iFile)
+                    if isempty(iFile) && ~isempty(opt.Value{1})
                         RawFiles{end+1} = opt.Value{1};
                     end
                 end

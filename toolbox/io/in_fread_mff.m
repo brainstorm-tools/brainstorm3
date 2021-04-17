@@ -1,15 +1,13 @@
-function F = in_fread_mff(sFile, iEpoch, SamplesBounds)
+function F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions)
 % IN_FREAD_MFF:  Read a block of recordings from an Philips .MFF file
 %
-% USAGE:  F = in_fread_mff(sFile, iEpoch, SamplesBounds) : Read all channels
-%         F = in_fread_mff(sFile, iEpoch)                : Read all channels, all the times
-%         F = in_fread_mff(sFile)                        : Read all channels, all the times, for first epoch
+% USAGE:  F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,18 +21,20 @@ function F = in_fread_mff(sFile, iEpoch, SamplesBounds)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Martin Cousineau, 2018
+% Author: Martin Cousineau, Francois Tadel, 2018-2021
 
-%% ===== MAKE SURE JAR IS DOWNLOADED =====
-in_fopen_mff('downloadAndInstallMffLibrary');
+
+%% ===== INSTALL MFF LIBRARY =====
+if ~exist('mff_importsignal', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'mff');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
 
 %% ===== PARSE INPUTS =====
-% Epoch not specified: read only the first one
-if (nargin < 2)
-    iEpoch = 1;
-end
 % Samples not specified: read the entire epoch
-if (nargin < 3) || isempty(SamplesBounds)
+if isempty(SamplesBounds)
     if ~isempty(sFile.epochs)
         SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
     else

@@ -5,7 +5,7 @@ function varargout = process_inverse_2016( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -419,7 +419,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             %     isFirstWarnAvg = 0;
             % end
             nAvg = min([nAvgAll 1]);
-            Leff = min([Leff 1]);
+            Leff = min([LeffAll 1]);
             
             % === BAD CHANNELS ===
             if any(BadChannels)

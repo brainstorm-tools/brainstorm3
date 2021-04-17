@@ -14,7 +14,7 @@ function export_timefreq( BstFile, OutputFile, FileFormat )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -61,9 +61,11 @@ if isempty(OutputFile)
             DefaultExt = '.mat';
         case {'ASCII-SPC', 'ASCII-SPC-HDR'}
             DefaultExt = '.txt';
-        case {'ASCII-CSV', 'ASCII-CSV-HDR'}
+        case {'ASCII-CSV', 'ASCII-CSV-HDR', 'ASCII-CSV-HDR-TR'}
             DefaultExt = '.csv';
-        case 'EXCEL'
+        case {'ASCII-TSV', 'ASCII-TSV-HDR', 'ASCII-TSV-HDR-TR'}
+            DefaultExt = '.tsv';
+        case {'EXCEL', 'EXCEL-TR'}
             DefaultExt = '.xlsx';
         otherwise
             DefaultExt = '_timefreq.mat';
@@ -101,8 +103,9 @@ if isempty(OutputFile)
 elseif isempty(FileFormat)
     [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
     switch lower(BstExt)
-        case '.txt',   FileFormat = 'ASCII-CSV';
-        case '.csv',   FileFormat = 'ASCII-SPC';
+        case '.txt',   FileFormat = 'ASCII-SPC';
+        case '.csv',   FileFormat = 'ASCII-CSV-HDR';
+        case '.tsv',   FileFormat = 'ASCII-TSV-HDR';
         case '.xlsx',  FileFormat = 'EXCEL';
         case '.mat',   FileFormat = 'BST';
         otherwise,     error('Unsupported file extension.');
@@ -121,7 +124,7 @@ switch (FileFormat)
     case 'FT-FREQ'
         ftData = out_fieldtrip_timefreq(BstFile);
         bst_save(OutputFile, ftData, 'v6');
-    case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
+    case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR', 'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL', 'EXCEL-TR'}
         % Format frequency labels
         if iscell(TimefreqMat.Freqs)
             LabelFreq = TimefreqMat.Freqs(:,1)';

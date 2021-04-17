@@ -8,7 +8,7 @@ function sHeader = neuroscan_read_header(NeuroscanFile, fileFormat, isEvents)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function sHeader = neuroscan_read_header(NeuroscanFile, fileFormat, isEvents)
 % Authors: This function is based on code from:
 %          - The Bioelectromagnetism toolbox: eeg_load_scan4*.m
 %          - EEGLAB: loadcnt.m
-%          Francois Tadel, Adaptation for Brainstorm, 2009-2017
+%          Francois Tadel, Adaptation for Brainstorm, 2009-2020
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(fileFormat)
@@ -306,12 +306,16 @@ switch lower(fileFormat)
         h.dataformat = 'float';
     case 'eeg'
         sizeHeader = 13;
-        h.bytes_per_samp = ((EVT_offset - h.datapos) / h.compsweeps - sizeHeader) / h.pnts / h.nchannels;
-        switch(h.bytes_per_samp)
-            case 2,    h.dataformat = 'int16';
-            case 4,    h.dataformat = 'int32';
-            otherwise, error('Unknown file format.');
+        h.bytes_per_samp = floor(((EVT_offset - h.datapos) / h.compsweeps - sizeHeader) / h.pnts / h.nchannels);
+        if (h.bytes_per_samp == 2)
+            h.dataformat = 'int16';
+        elseif (h.bytes_per_samp >= 4)
+            h.dataformat = 'int32';
+            h.bytes_per_samp = 4;
+        else
+            error('Unknown file format.');
         end
+        h.epoch_size = h.nchannels * h.pnts * h.bytes_per_samp + sizeHeader;
     otherwise
         error('Unknown data format');
 end
@@ -324,10 +328,8 @@ if strcmpi(fileFormat, 'eeg')
     nEpochs = h.compsweeps;
     % Read the headers of all the sweeps
     for i = 1:nEpochs
-        % sizeEpoch = sizeHeader + nTime * nChannels * hdr.header.bytes_per_samp;
-        sizeEpoch = (EVT_offset - h.datapos) / nEpochs;
         % Position cursor in file to read this data block
-        pos = h.datapos + (i - 1) * sizeEpoch;
+        pos = h.datapos + (i - 1) * h.epoch_size;
         fseek(fid, double(pos), 'bof');
         % Read sweeps header	
         epochs(i).accept   = fread(fid, 1, 'char');     % 1 byte
@@ -363,7 +365,7 @@ if isEvents
     EventsFile = deblank(strtrim(char(h.eventfile')));
     if ~isempty(EventsFile) && file_exist(EventsFile)
         error('Event files: Not supported yet.');
-    elseif (h.numevents > 0)
+    else %if (h.numevents > 0)
         % Go at the beginning of events block
         fseek(fid, EVT_offset, 'bof');
         % Read events table header
@@ -372,83 +374,89 @@ if isEvents
         evtOffset = fread(fid,1,'ulong');
         % Move forward in the file
         fseek(fid, double(evtOffset), 'cof');
-        
         % Check event type
         if ~ismember(evtType, [1,2,3])
-            error(sprintf('Invalid event type: %d', evtType));
-        end
-        % Define size of each event block
-        sizeEvents = [8, 19, 19];
-        nEvents = evtSize / sizeEvents(evtType);
-        % Initialize events structure
-        evt = repmat(struct(), [1 nEvents]);
-        % Offset for frame positions (header + electordes desc)
-        samplespos = 900 + 75 * h.nchannels;
-
-        % Read all events
-        for i=1:nEvents
-            % Read information common to all events
-            evt(i).stimtype = fread(fid,1,'ushort');
-            evt(i).keyboard = fread(fid,1,'char');
-            % evt(i).keyPad   = fread(fid,1,'bit4');
-            % evt(i).Accept   = fread(fid,1,'bit4');
-            temp            = fread(fid,1,'uint8');
-            evt(i).keyPad   = bitand(15,temp);
-            evt(i).Accept   = bitshift(temp,-4);
-
-            % Switch between different types of events
-            switch(evtType)
-                case 1
-                    offset = fread(fid,1,'long');
-                    evt(i).offset = offset - samplespos;
-                case 2
-                    offset = fread(fid,1,'long');
-                    evt(i).offset     = offset - samplespos;
-                    evt(i).type       = fread(fid,1,'short');
-                    evt(i).code       = fread(fid,1,'short');
-                    evt(i).latency    = fread(fid,1,'float');
-                    evt(i).epochevent = fread(fid,1,'char');
-                    evt(i).accept     = fread(fid,1,'char');
-                    evt(i).accuracy   = fread(fid,1,'char');
-                case 3
-                    % Type 3 is similar to type 2 except the offset field encodes the global sample frame
-                    offset            = fread(fid,1,'ulong');
-                    evt(i).offset     = offset * h.bytes_per_samp * h.nchannels;
-                    evt(i).type       = fread(fid,1,'short');
-                    evt(i).code       = fread(fid,1,'short');
-                    evt(i).latency    = fread(fid,1,'float');
-                    evt(i).epochevent = fread(fid,1,'char');
-                    evt(i).accept     = fread(fid,1,'char');
-                    evt(i).accuracy   = fread(fid,1,'char');
+            % If events were supposed to be read: error
+            if (h.numevents > 0)
+                error(sprintf('Invalid event type: %d', evtType));
             end
-            
-            % ===============================================================
-            % ===== WARNING: THERE IS SOMETHING WRONG AT THIS POINT....
-            % ===== Error in offset value, something is missing, there is sometimes a 
-            % ===== weird additional factor to get an integer value
-            % ===== Its value is not constant.... sometimes it is 39, sometimes 16...
-            % =====
-            % ===== The "round" helps ignoring this problem, but don't make things clean
-            % ===============================================================
-            % Rebuild time index
-            evt(i).iTime = evt(i).offset / h.bytes_per_samp / h.nchannels;
-            % Check that samples indices are integers
-            if any(evt(i).iTime ~= round(evt(i).iTime))
-                evt(i).iTime = round(evt(i).iTime);
-                warning('Samples indices are not integers...');
+        else
+            % Define size of each event block
+            sizeEvents = [8, 19, 19];
+            nEvents = evtSize / sizeEvents(evtType);
+            % If there are events to read
+            if (nEvents > 0)
+                % Initialize events structure
+                evt = repmat(struct(), [1 nEvents]);
+                % Offset for frame positions (header + electordes desc)
+                samplespos = 900 + 75 * h.nchannels;
+
+                % Read all events
+                for i=1:nEvents
+                    % Read information common to all events
+                    evt(i).stimtype = fread(fid,1,'ushort');
+                    evt(i).keyboard = fread(fid,1,'char');
+                    % evt(i).keyPad   = fread(fid,1,'bit4');
+                    % evt(i).Accept   = fread(fid,1,'bit4');
+                    temp            = fread(fid,1,'uint8');
+                    evt(i).keyPad   = bitand(15,temp);
+                    evt(i).Accept   = bitshift(temp,-4);
+
+                    % Switch between different types of events
+                    switch(evtType)
+                        case 1
+                            offset = fread(fid,1,'long');
+                            evt(i).offset = offset - samplespos;
+                        case 2
+                            offset = fread(fid,1,'long');
+                            evt(i).offset     = offset - samplespos;
+                            evt(i).type       = fread(fid,1,'short');
+                            evt(i).code       = fread(fid,1,'short');
+                            evt(i).latency    = fread(fid,1,'float');
+                            evt(i).epochevent = fread(fid,1,'char');
+                            evt(i).accept     = fread(fid,1,'char');
+                            evt(i).accuracy   = fread(fid,1,'char');
+                        case 3
+                            % Type 3 is similar to type 2 except the offset field encodes the global sample frame
+                            offset            = fread(fid,1,'ulong');
+                            evt(i).offset     = offset * h.bytes_per_samp * h.nchannels;
+                            evt(i).type       = fread(fid,1,'short');
+                            evt(i).code       = fread(fid,1,'short');
+                            evt(i).latency    = fread(fid,1,'float');
+                            evt(i).epochevent = fread(fid,1,'char');
+                            evt(i).accept     = fread(fid,1,'char');
+                            evt(i).accuracy   = fread(fid,1,'char');
+                    end
+
+                    % ===============================================================
+                    % ===== WARNING: THERE IS SOMETHING WRONG AT THIS POINT....
+                    % ===== Error in offset value, something is missing, there is sometimes a 
+                    % ===== weird additional factor to get an integer value
+                    % ===== Its value is not constant.... sometimes it is 39, sometimes 16...
+                    % =====
+                    % ===== The "round" helps ignoring this problem, but don't make things clean
+                    % ===============================================================
+                    % Rebuild time index
+                    evt(i).iTime = evt(i).offset / h.bytes_per_samp / h.nchannels;
+                    % Check that samples indices are integers
+                    if any(evt(i).iTime ~= round(evt(i).iTime))
+                        evt(i).iTime = round(evt(i).iTime);
+                        warning('Samples indices are not integers...');
+                    end
+                end      
+
+                % === REJECTED SEGMENTS ===
+                % Get the beginning and end of the rejected segments
+                iStarts = find([evt.Accept] == 12);
+                iStops  = find([evt.Accept] == 13);
+                % Check numbers of bounds
+                if (length(iStarts) ~= length(iStops))
+                    warning('Corrupted bad segments definition. Ignoring...');
+                elseif ~isempty(iStarts)
+                    % Build rejected segments matrix
+                    rej = [evt(iStarts).iTime; evt(iStops).iTime]';
+                end
             end
-        end      
-        
-        % === REJECTED SEGMENTS ===
-        % Get the beginning and end of the rejected segments
-        iStarts = find([evt.Accept] == 12);
-        iStops  = find([evt.Accept] == 13);
-        % Check numbers of bounds
-        if (length(iStarts) ~= length(iStops))
-            warning('Corrupted bad segments definition. Ignoring...');
-        elseif ~isempty(iStarts)
-            % Build rejected segments matrix
-            rej = [evt(iStarts).iTime; evt(iStops).iTime]';
         end
     end
 end

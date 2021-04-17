@@ -10,7 +10,7 @@ function db_reload_studies( iStudies, isUpdate )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,7 +65,10 @@ for iStudy = iStudies
         return
     end
     % Try to reuse the existing selection of headmodel (which is not saved on the hard drive)
-    if ~isempty(sStudy.iHeadModel) && (sStudy.iHeadModel <= length(sStudyNew.HeadModel))
+    if ~isempty(sStudy.HeadModel) && ~isempty(sStudy.iHeadModel) && ~isempty(sStudyNew.HeadModel)
+        sStudyNew.iHeadModel = find(strcmp(sStudy.HeadModel(sStudy.iHeadModel).FileName, {sStudyNew.HeadModel.FileName}));
+    end
+    if ~isempty(sStudy.iHeadModel) && (sStudy.iHeadModel <= length(sStudyNew.HeadModel)) && isempty(sStudyNew.iHeadModel)
         sStudyNew.iHeadModel = sStudy.iHeadModel;
     end
     % Else study was reloaded

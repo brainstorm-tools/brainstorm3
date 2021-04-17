@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_avg(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_avg(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2020
         
 %% ===== READ HEADER =====
 % Read the header
@@ -40,9 +40,8 @@ sFile.header     = hdr;
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Time and samples indices
-sFile.prop.times   = linspace(hdr.data.xmin, hdr.data.xmax, hdr.data.pnts + 1);
-sFile.prop.times   = [sFile.prop.times(1), sFile.prop.times(end-1)];
-sFile.prop.nAvg    = hdr.data.acceptcnt;
+sFile.prop.times = (round(hdr.data.xmin .* sFile.prop.sfreq) + [0, hdr.data.pnts-1]) ./ sFile.prop.sfreq;
+sFile.prop.nAvg  = hdr.data.acceptcnt;
 % Get bad channels
 nChannels = length(hdr.electloc);
 sFile.channelflag = ones(nChannels,1);
@@ -52,8 +51,8 @@ sFile.channelflag([hdr.electloc.bad] == 1) = -1;
 % ===== CREATE DEFAULT CHANNEL FILE =====
 % Normalize coordinates
 XY = [[hdr.electloc.x_coord]', [hdr.electloc.y_coord]'];
-minXY = min(XY);
-maxXY = max(XY);
+minXY = min(XY,1);
+maxXY = max(XY,1);
 XY(:,1) = (XY(:,1) - (maxXY(1) + minXY(1)) / 2) ./ (maxXY(1) - minXY(1)) .* .0875;
 XY(:,2) = (XY(:,2) - (maxXY(2) + minXY(2)) / 2) ./ (maxXY(2) - minXY(2)) .* .0875;
 % Create channel structure

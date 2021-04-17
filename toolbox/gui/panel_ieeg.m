@@ -11,7 +11,7 @@ function varargout = panel_ieeg(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -2461,8 +2461,8 @@ function SetElectrodeLoc(iLoc, jButton)
         % Ask to compute MNI transformation
         isComputeMni = java_dialog('confirm', [...
             'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI transformation would also define default fiducials.' 10 10 ...
-            'Compute the MNI transformation now?'], 'Set electrode position');
+            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+            'Compute the MNI normalization now?'], 'Set electrode position');
         % Run computation
         if isComputeMni
             figure_mri('ComputeMniCoordinates', hFig);
@@ -2619,7 +2619,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
         MriFile = sSubject.Anatomy(iAnatomy).FileName;
     end
     % View MRI
-    [hFig, iDS, iFig] = view_mri(MriFile);
+    [hFig, iDS, iFig] = view_mri(MriFile, [], [], 1);
     if isempty(hFig)
         return;
     end
