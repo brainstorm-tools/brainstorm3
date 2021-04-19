@@ -473,7 +473,7 @@ function sFile = getFuncFileStruct(type, funcFile)
         case 'dipoles'
             sFile.DataFile = funcFile.ExtraStr1;
 
-        case {'matrix', 'noisecov', 'image'}
+        case {'matrix', 'noisecov', 'ndatacov', 'image'}
             % Nothing to add
 
         otherwise
