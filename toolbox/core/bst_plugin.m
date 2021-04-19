@@ -676,7 +676,8 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                 PlugMat = struct();
             end
             % Copy fields
-            loadFields = setdiff(fieldnames(db_template('PlugDesc')), {'Name', 'Path', 'isLoaded', 'isManaged'});
+            excludedFields = {'Name', 'Path', 'isLoaded', 'isManaged', 'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'};
+            loadFields = setdiff(fieldnames(db_template('PlugDesc')), excludedFields);
             for iField = 1:length(loadFields)
                 if isfield(PlugMat, loadFields{iField}) && ~isempty(PlugMat.(loadFields{iField}))
                     PlugDesc(iPlug).(loadFields{iField}) = PlugMat.(loadFields{iField});
@@ -1073,14 +1074,16 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % Save plugin.mat
     PlugDesc.Path = PlugPath;
     PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
-    PlugDescSave = rmfield(PlugDesc, {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'});
+    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
     % === SEARCH PROCESSES ===
     % Look for process_* functions in the process folder
     PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
     if ~isempty(PlugProc)
-        PlugDesc.Processes = PlugProc;
+        % Remove absolute path: use only path relative to the plugin Path
+        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
     end
     
     % === LOAD PLUGIN ===
@@ -1096,7 +1099,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
     PlugDesc.LogoFile = GetLogoFile(PlugDesc);
     % Update plugin.mat after loading
-    PlugDescSave = rmfield(PlugDesc, {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'});
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
     % === CALLBACK: POST-INSTALL ===

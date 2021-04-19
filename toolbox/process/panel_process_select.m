@@ -2602,7 +2602,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     PlugAll = bst_plugin('GetInstalled');
     for iPlug = 1:length(PlugAll)
         if ~isempty(PlugAll(iPlug).Processes)
-            plugFunc = cat(2, plugFunc, PlugAll(iPlug).Processes);
+            % Concatenate plugin path and process function (relative to plugin path)
+            procFullPath = cellfun(@(c)bst_fullfile(PlugAll(iPlug).Path, c), PlugAll(iPlug).Processes, 'UniformOutput', 0);
+            plugFunc = cat(2, plugFunc, procFullPath);
         end
     end
     % Add plugin processes to list of processes
@@ -2637,6 +2639,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     % Returned variable
     defProcess = db_template('ProcessDesc');
     sProcesses = repmat(defProcess, 0);
+    matlabPath = [];
     % Get description for each file
     for iFile = 1:length(bstFunc)
         % Skip python support functions
@@ -2646,14 +2649,21 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         % Split function names: regular process=only function name; plugin process=full path
         [fPath, fName, fExt] = bst_fileparts(bstFunc{iFile});
         % Switch folder if needed
+        isChangeDir = 0;
         if ~isempty(fPath)
-            curDir = pwd;
-            cd(fPath);
+            if isempty(matlabPath)
+                matlabPath = str_split(path, pathsep);
+            end
+            if ~ismember(fPath, matlabPath)
+                curDir = pwd;
+                cd(fPath);
+                isChangeDir = 1;
+            end
         end
         % Get function handle
         Function = str2func(fName);
         % Restore previous dir
-        if ~isempty(fPath)
+        if isChangeDir
             cd(curDir);
         end
         % Call description function
