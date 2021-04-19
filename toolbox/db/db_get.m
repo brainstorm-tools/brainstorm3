@@ -275,7 +275,15 @@ switch contextName
 
         varargout{1} = sFiles;
         varargout{2} = sItems;
-    
+
+%% ==== SURFACE FILE ====
+    % Usage : [sSubject, iSubject, iSurface] = db_get('SurfaceFile', SurfaceFile)
+    case 'SurfaceFile'
+        sFile = db_get('AnatomyFile', sqlConn, args{1}); 
+        varargout{1} = db_get('Subject', sqlConn, sFile.Subject);
+        varargout{2} = sFile.Subject;
+        varargout{3} = sFile.Id;        
+        
     % Usage: sFiles = db_get('FunctionalFile', FileType, FileIDs)
     % Usage: sFiles = db_get('FunctionalFile', FileType, FileNames)
     case 'FunctionalFile'
