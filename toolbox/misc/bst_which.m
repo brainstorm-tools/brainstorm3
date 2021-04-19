@@ -91,25 +91,25 @@ else
         
     % === FILE EXPLORERS ===
     else
-        % NAUTILUS (GNOME)
-        isGnome = system('which nautilus');
-        if (isGnome == 0)
-            %unix(['xterm -e "nautilus \"' filepath '\""']);
-            system(['nautilus "' filepath '"']);
-            return
-        end
-        % KONQUEROR (KDE)
-        isKde = system('which konqueror');
-        if (isKde == 0)
-            system(['xterm -e "konqueror \"' filepath '\""']);
-            return
-        end
         % Any X Desktop Group (XDG) compliant
         ixXdg = system('which xdg-open');
         if (ixXdg == 0)          
             system(['xdg-open "' filepath '"']);
             return
-        end     
+        end
+        % NAUTILUS (GNOME)
+        isGnome = system('which nautilus');
+        if (isGnome == 0)
+            %unix(['xterm -e "nautilus \"' filepath '\""']);
+            system(['nautilus "' filepath '" &']);
+            return
+        end
+        % KONQUEROR (KDE)
+        isKde = system('which konqueror');
+        if (isKde == 0)
+            system(['xterm -e "konqueror \"' filepath '\"" &']);
+            return
+        end
         % Error
         error('No file manager found for your operating system.');
     end
