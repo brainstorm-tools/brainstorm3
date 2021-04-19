@@ -259,7 +259,7 @@ function [sSurf, iSurf] = LoadSurface(varargin)
     if isempty(iSubject)
         SurfaceType = 'Other';
     else
-        sAnatomy = db_get('AnatomyFile', iSurfDb);
+        sAnatomy = db_get('AnatomyFile', iSurfDb, 'SurfaceType');
         SurfaceType = sAnatomy.SurfaceType;       
     end
             
