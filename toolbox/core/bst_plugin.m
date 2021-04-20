@@ -274,14 +274,15 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
     
-%     % === BRAINENTROPY ===
-%     PlugDesc(end+1)             = GetStruct('brainentropy');
-%     PlugDesc(end).Version       = '2.7.1';
-%     PlugDesc(end).URLzip        = 'https://github.com/multi-funkim/best-brainstorm/archive/2.7.1.zip';
-%     PlugDesc(end).URLinfo       = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
-%     PlugDesc(end).TestFile      = 'process_inverse_mem.m';
-%     PlugDesc(end).ReadmeFile    = 'README.md';
-%     PlugDesc(end).LoadFolders   = {'*'};
+    % === BRAINENTROPY ===
+    PlugDesc(end+1)              = GetStruct('brainentropy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/multi-funkim/best-brainstorm/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
+    PlugDesc(end).TestFile       = 'process_inverse_mem.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
     
 %     % === NIRSTORM ===
     PlugDesc(end+1)             = GetStruct('nirstorm');
