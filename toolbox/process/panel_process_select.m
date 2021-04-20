@@ -2673,10 +2673,6 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             disp(['BST> Invalid plug-in function: "' bstFunc{iFile} '"']);
             continue;
         end
-%         % Ignore if Index is set to 0
-%         if (desc.Index == 0)
-%             continue;
-%         end
         % Copy fields to returned structure
         iProc = length(sProcesses) + 1;
         sProcesses(iProc) = defProcess;

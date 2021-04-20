@@ -354,6 +354,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                     errMessage = 'Cannot compute shared kernels with this method.';
                     return
                 end
+                % Install/load brainentropy plugin
+                [isInstalled, errMessage] = bst_plugin('Install', 'brainentropy', 1);
+                if ~isInstalled
+                    return;
+                end
                 % Default options
                 MethodOptions = be_main();
                 % Interface to edit options

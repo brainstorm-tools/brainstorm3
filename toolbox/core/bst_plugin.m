@@ -153,6 +153,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin'};
     
+    % === INVERSE: BRAINENTROPY ===
+    PlugDesc(end+1)              = GetStruct('brainentropy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Inverse';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/multi-funkim/best-brainstorm/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
+    PlugDesc(end).TestFile       = 'process_inverse_mem.m';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
@@ -288,16 +299,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).UnloadPlugs    = {'fieldtrip', 'roast'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
-    
-    % === BRAINENTROPY ===
-    PlugDesc(end+1)              = GetStruct('brainentropy');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/multi-funkim/best-brainstorm/archive/master.zip';
-    PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
-    PlugDesc(end).TestFile       = 'process_inverse_mem.m';
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).LoadFolders    = {'*'};
     % ================================================================================================================
     
     % Select only one plugin
