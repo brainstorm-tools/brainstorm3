@@ -1438,7 +1438,7 @@ function FigureKeyPressedCallback(hFig, ev)
                         % Get study
                         [sStudy, iStudy, iData] = bst_get('DataFile', DataFile);
                         % Change status
-                        process_detectbad('SetTrialStatus', DataFile, ~sStudy.Data(iData).BadTrial);
+                        SetTrialStatus(hFig, DataFile, ~sStudy.Data(iData).BadTrial);
                     case 'raw'
                         panel_record('RejectTimeSegment');
                 end
@@ -2293,9 +2293,9 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
         % === SET TRIAL GOOD/BAD ===
         if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'recordings')
             if (sStudy.Data(iData).BadTrial == 0)
-                jItem = gui_component('MenuItem', jPopup, [], 'Reject trial', IconLoader.ICON_BAD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 1));
+                jItem = gui_component('MenuItem', jPopup, [], 'Reject trial', IconLoader.ICON_BAD, [], @(h,ev)SetTrialStatus(hFig, DataFile, 1));
             else
-                jItem = gui_component('MenuItem', jPopup, [], 'Accept trial', IconLoader.ICON_GOOD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 0));
+                jItem = gui_component('MenuItem', jPopup, [], 'Accept trial', IconLoader.ICON_GOOD, [], @(h,ev)SetTrialStatus(hFig, DataFile, 0));
             end
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
         end    
@@ -5068,6 +5068,26 @@ function ReloadRawTimeBars()
         PlotRawTimeBar(iDS, iFig);
         % Resize
         ResizeCallback(hFig);
+    end
+end
+
+
+%% ===== SET TRIAL STATUS =====
+function SetTrialStatus(hFig, DataFile, isBad)
+    % Save modified markers (only when switching to good)
+    if ~isBad
+        panel_record('SaveModifications');
+    end
+    % Change trial status
+    process_detectbad('SetTrialStatus', DataFile, isBad);
+    % Update modified markers (only when switching to good)
+    if ~isBad
+        % Reload file
+        bst_memory('LoadDataFile', DataFile, 1);
+        % Reload figure
+        bst_figures('ReloadFigures', hFig, 1);
+        % Update record panel
+        panel_record('UpdatePanel', hFig);
     end
 end
 

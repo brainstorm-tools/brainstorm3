@@ -1,4 +1,9 @@
 ---------------------------------------------------------------
+April 2021
+- Plugins: NIRSTORM included as a plugin (available as compiled)
+- Doc: Updated all the tutorials with the new anatomy tools
+- Events: Marking a trial as good removes the tag "bad" from all the events
+---------------------------------------------------------------
 March 2021
 - New plugins manager: first release
 - Distrib: Reorganized compilation system to include plugins
