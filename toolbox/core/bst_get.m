@@ -1180,10 +1180,10 @@ switch contextName
             return;
         end
         % Get list of current protocol subjects
-        ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
+        ProtocolSubjects = bst_get('ProtocolSubjects');
         if isempty(ProtocolSubjects)
             return
-        end;
+        end
         
         % Parse inputs
         if (nargin == 2)
@@ -1200,8 +1200,8 @@ switch contextName
             iSurface = find(file_compare(SurfaceFile, {ProtocolSubjects.DefaultSubject.Surface.FileName}), 1);
             % If a surface was found in default subject : return it
             if ~isempty(iSurface)
-                argout1  = ProtocolSubjects.DefaultSubject;
-                argout2    = 0;
+                argout1 = ProtocolSubjects.DefaultSubject;
+                argout2 = ProtocolSubjects.DefaultSubject.Id;
                 argout3 = iSurface;
                 return
             end
@@ -1212,8 +1212,8 @@ switch contextName
             iSurface = find(file_compare(SurfaceFile, {ProtocolSubjects.Subject(iSubj).Surface.FileName}), 1);
             % If a surface was found in current subject : return it
             if ~isempty(iSurface)
-                argout1  = ProtocolSubjects.Subject(iSubj);
-                argout2    = iSubj;
+                argout1 = ProtocolSubjects.Subject(iSubj);
+                argout2 = ProtocolSubjects.Subject(iSubj).Id;
                 argout3 = iSurface;
                 return
             end

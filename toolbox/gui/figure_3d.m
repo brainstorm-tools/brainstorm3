@@ -1248,8 +1248,9 @@ function SetStandardView(hFig, viewNames)
     if isempty(Ranat) && ~isempty(TessInfo) && ~isempty(TessInfo(1).SurfaceFile)
         % Get subject
         sSubject = db_get('SurfaceFile', TessInfo(1).SurfaceFile);
+        SAnatomy = db_get('AnatomyFile', sSubject.iAnatomy, 'FileName');
         % If there is an MRI associated with it
-        if ~isempty(sSubject) && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(sSubject.iAnatomy).FileName)
+        if ~isempty(sSubject) && ~isempty(sSubject.Anatomy) && ~isempty(SAnatomy.FileName)
             % Load the SCS+MNI transformation from this file
             sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'NCS', 'SCS', 'Comment');
             if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
