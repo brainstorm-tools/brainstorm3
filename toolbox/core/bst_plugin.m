@@ -271,6 +271,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'process_nst_mbll.m';
     PlugDesc(end).ReadmeFile     = 'README.md'; 
     PlugDesc(end).GetVersionFcn  = 'nst_get_version';
+    PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     
     % === FIELDTRIP ===
