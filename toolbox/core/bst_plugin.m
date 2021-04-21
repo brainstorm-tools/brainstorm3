@@ -161,6 +161,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLzip         = 'https://github.com/multi-funkim/best-brainstorm/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
     PlugDesc(end).TestFile       = 'process_inverse_mem.m';
+    PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     
