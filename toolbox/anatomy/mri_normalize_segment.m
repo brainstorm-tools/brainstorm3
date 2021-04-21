@@ -35,14 +35,15 @@ end
 % === SAVE FILES IN TMP FOLDER ===
 % Output variables
 TpmFiles = [];
+% Empty temporary folder
+gui_brainstorm('EmptyTempFolder');
 % Save T1 MRI in .nii format
 baseName = 'spm_segment_T1.nii';
 T1Nii = bst_fullfile(bst_get('BrainstormTmpDir'), baseName);
 out_mri_nii(sMriT1, T1Nii);
 % Save T2 MRI in .nii format
 if ~isempty(sMriT2)
-    baseName = 'spm_segment_T2.nii';
-    T2Nii = bst_fullfile(bst_get('BrainstormTmpDir'), baseName);
+    T2Nii = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_segment_T2.nii');
     out_mri_nii(sMriT1, T2Nii);
 else
     T2Nii = [];

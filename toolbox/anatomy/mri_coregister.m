@@ -96,6 +96,8 @@ switch lower(Method)
         bst_plugin('SetProgressLogo', 'spm12');
         
         % === SAVE FILES IN TMP FOLDER ===
+        % Empty temporary folder
+        gui_brainstorm('EmptyTempFolder');
         % Save source MRI in .nii format
         NiiSrcFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_src.nii');
         out_mri_nii(sMriSrc, NiiSrcFile);
