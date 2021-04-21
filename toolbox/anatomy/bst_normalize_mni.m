@@ -233,7 +233,7 @@ end
 if ~isempty(TpmFiles) && ~isempty(T1File)
     bst_progress('text', 'Loading tissue segmentations...');
     % Get subject
-    [sSubject, iSubject] = bst_get('T1File', T1File);
+    [sSubject, iSubject] = bst_get('MriFile', T1File);
     % Import tissue classification
     import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
 end
