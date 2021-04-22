@@ -161,6 +161,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLzip         = 'https://github.com/multi-funkim/best-brainstorm/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
     PlugDesc(end).TestFile       = 'process_inverse_mem.m';
+    PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     
@@ -271,6 +272,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'process_nst_mbll.m';
     PlugDesc(end).ReadmeFile     = 'README.md'; 
     PlugDesc(end).GetVersionFcn  = 'nst_get_version';
+    PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     
     % === FIELDTRIP ===
