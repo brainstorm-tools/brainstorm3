@@ -145,6 +145,20 @@ TessLsphFile    = file_find(BsDir, [FilePrefix '.left.mid.cortex.svreg.dfs']);
 TessRsphFile    = file_find(BsDir, [FilePrefix '.right.mid.cortex.svreg.dfs']);
 TessLAtlsphFile = file_find(BsDir, 'atlas.left.mid.cortex.svreg.dfs');
 TessRAtlsphFile = file_find(BsDir, 'atlas.right.mid.cortex.svreg.dfs');
+
+% Find labels
+BsDirMultiParc = fullfile(BsDir,'multiparc');
+AnnotLhFiles = file_find(BsDirMultiParc, [FilePrefix '.left.mid.cortex.svreg.*.dfs'], 2, 0);
+AnnotRhFiles = file_find(BsDirMultiParc, [FilePrefix '.right.mid.cortex.svreg.*.dfs'], 2, 0);
+
+if isempty(AnnotLhFiles)
+    AnnotLhFiles = TessLhFile;
+end
+
+if isempty(AnnotRhFiles)
+    AnnotRhFiles = TessRhFile;
+end
+
 if isempty(HeadFile)
     errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.left.pial.cortex.dfs' 10];
 end
@@ -276,9 +290,9 @@ if ~isempty(TessLhFile)
     [iLh, BstTessLhFile, nVertOrigL] = import_surfaces(iSubject, TessLhFile, 'DFS', 0);
     BstTessLhFile = BstTessLhFile{1};
     % Load atlas
-    if ~isempty(TessLhFile)
+    if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: left pial...');
-        [sAllAtlas, err] = import_label(BstTessLhFile, TessLhFile, 1);
+        [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -297,9 +311,9 @@ if ~isempty(TessRhFile)
     [iRh, BstTessRhFile, nVertOrigR] = import_surfaces(iSubject, TessRhFile, 'DFS', 0);
     BstTessRhFile = BstTessRhFile{1};
     % Load atlas
-    if ~isempty(TessRhFile)
+    if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: right pial...');
-        [sAllAtlas, err] = import_label(BstTessRhFile, TessRhFile, 1);
+        [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -318,9 +332,9 @@ if ~isempty(TessLwFile)
     [iLw, BstTessLwFile] = import_surfaces(iSubject, TessLwFile, 'DFS', 0);
     BstTessLwFile = BstTessLwFile{1};
     % Load atlas
-    if ~isempty(TessLwFile)
+    if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: left white...');
-        [sAllAtlas, err] = import_label(BstTessLwFile, TessLwFile, 1);
+        [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -339,9 +353,9 @@ if ~isempty(TessRwFile)
     [iRw, BstTessRwFile] = import_surfaces(iSubject, TessRwFile, 'DFS', 0);
     BstTessRwFile = BstTessRwFile{1};
      % Load atlas
-    if ~isempty(TessRwFile)
+    if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: right inner...');
-        [sAllAtlas, err] = import_label(BstTessRwFile, TessRwFile, 1);
+        [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square

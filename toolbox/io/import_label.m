@@ -509,7 +509,7 @@ for iFile = 1:length(LabelFiles)
         % ===== BrainSuite/SVReg surface file =====
         case 'DFS'
             % === READ FILE ===
-            [VertexLabelIds, labelMap] = in_label_bs(LabelFiles{iFile});
+            [VertexLabelIds, labelMap, AtlasName] = in_label_bs(LabelFiles{iFile});
             % Could not read the label correctly
             if isempty(VertexLabelIds) || isempty(labelMap)
                 continue;
@@ -519,7 +519,11 @@ for iFile = 1:length(LabelFiles)
             % Convert to scouts structures
             lablist = unique(VertexLabelIds);
             if isNewAtlas
-                sAtlas.Name = 'SVReg';
+                if isempty(AtlasName)
+                    sAtlas.Name = 'SVReg';
+                else
+                    sAtlas.Name = AtlasName;
+                end
             end
 
             % Loop on each label
