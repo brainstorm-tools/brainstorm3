@@ -476,7 +476,10 @@ if isVolumeAtlas && ~isempty(SvregFile)
     [BstSvregFile, sMriSvreg] = import_mri(iSubject, SvregFile, 'ALL-ATLAS', 0, 1, 'svreg');
     % Import other label volumes
     for iFile = 1:length(OtherSvregFiles)
-        import_mri(iSubject, OtherSvregFiles{iFile});
+        st=strfind(OtherSvregFiles{iFile},'.svreg.');
+        ed=strfind(OtherSvregFiles{iFile},'.label.nii.gz');
+        AtlasName = OtherSvregFiles{iFile}(st+7:ed-1);
+        import_mri(iSubject, OtherSvregFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName);
     end
     % Import atlas
     SelLabels = {...
