@@ -1699,7 +1699,7 @@ function LinkButtonDownFcn(src, ~)
     % UserData(5) is index of ending node
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
-    isMeasureLink = src.UserData(3);
+    IsMeasureLink = src.UserData(3);
     
     % these need to be stored globally so that they can be accessed when
     % mouse click is released
@@ -1710,93 +1710,91 @@ function LinkButtonDownFcn(src, ~)
     % only works for left mouse clicks
     if (strcmpi(clickAction, 'SingleClick'))    
         % increase size on button down click
-        current_size = src.LineWidth;
-        set(src, 'LineWidth', 2.0*current_size);
+        CurSize = src.LineWidth;
+        set(src, 'LineWidth', 2.0*CurSize);
         
         % make node labels larger and bold
         % node indices are stored in UserData
-        node1 = AllNodes(src.UserData(4));
-        label1 = node1.TextLabel;
-        node2 = AllNodes(src.UserData(5));
-        label2 = node2.TextLabel;
-        current_labelSize = label1.FontSize;
-        set(label1, 'FontWeight', 'bold');
-        set(label2, 'FontWeight', 'bold');
-        set(label1, 'FontSize', current_labelSize + 2);
-        set(label2, 'FontSize', current_labelSize + 2);
+        Node1 = AllNodes(src.UserData(4));
+        Label1 = Node1.TextLabel;
+        Node2 = AllNodes(src.UserData(5));
+        Label2 = Node2.TextLabel;
+        CurLabelSize = Label1.FontSize;
+        set(Label1, 'FontWeight', 'bold');
+        set(Label2, 'FontWeight', 'bold');
+        set(Label1, 'FontSize', CurLabelSize + 2);
+        set(Label2, 'FontSize', CurLabelSize + 2);
         
         % also increase size of arrowheads 
         if (IsDirectional)
-            if (isMeasureLink)
+            if (IsMeasureLink)
                 Arrows1 = getappdata(hFig,'MeasureArrows1');
                 Arrows2 = getappdata(hFig,'MeasureArrows2');
-                scale = 2.0;
+                Scale = 2.0;
             else
                 Arrows1 = getappdata(hFig,'RegionArrows1');
                 Arrows2 = getappdata(hFig,'RegionArrows2');
-                scale = 2.0;
-            end    
-            arrow1 = Arrows1(Index);
-            arrow2 = Arrows2(Index);
-            arrow_size = arrow1.LineWidth;
+                Scale = 2.0;
+            end
+            Arrow1 = Arrows1(Index);
+            Arrow2 = Arrows2(Index);
+            ArrowSize = Arrow1.LineWidth;
             
-            set(arrow1, 'LineWidth', scale*arrow_size);
-            set(arrow2, 'LineWidth', scale*arrow_size);
+            set(Arrow1, 'LineWidth', Scale*ArrowSize);
+            set(Arrow2, 'LineWidth', Scale*ArrowSize);
         end
     end
 end
 
 % return size to original size after releasing mouse click
-function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,node1Index,node2Index)
+function LinkClickEvent(hFig,LinkIndex,LinkType,IsDirectional,Node1Index,Node2Index)
     % measure links
     if (LinkType)
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         Link = MeasureLinks(LinkIndex);
-        current_size = Link.LineWidth;
-        set(Link, 'LineWidth', current_size/2.0);
+        CurSize = Link.LineWidth;
+        set(Link, 'LineWidth', CurSize/2.0);
         
         if (IsDirectional)
             Arrows1 = getappdata(hFig,'MeasureArrows1');
             Arrows2 = getappdata(hFig,'MeasureArrows2');
-            scale = 2.0;
+            Scale = 2.0;
         end    
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(LinkIndex);
-        current_size = Link.LineWidth;     
-        set(Link, 'LineWidth', current_size/2.0);
+        CurSize = Link.LineWidth;     
+        set(Link, 'LineWidth', CurSize/2.0);
         
         if (IsDirectional)
             Arrows1 = getappdata(hFig,'RegionArrows1');
             Arrows2 = getappdata(hFig,'RegionArrows2'); 
-            scale = 2.0;
+            Scale = 2.0;
         end  
     end   
     
     % arrowheads
     if (IsDirectional)
-        arrow1 = Arrows1(LinkIndex);
-        arrow2 = Arrows2(LinkIndex);
-        arrow_size = arrow1.LineWidth;
-
-        set(arrow1, 'LineWidth', arrow_size/scale);
-        set(arrow2, 'LineWidth', arrow_size/scale);
+        Arrow1 = Arrows1(LinkIndex);
+        Arrow2 = Arrows2(LinkIndex);
+        ArrowSize = Arrow1.LineWidth;
+        set(Arrow1, 'LineWidth', ArrowSize/Scale);
+        set(Arrow2, 'LineWidth', ArrowSize/Scale);
     end
     
     % labels
     AllNodes = getappdata(hFig, 'AllNodes');
-    node1 = AllNodes(node1Index);
-    node2 = AllNodes(node2Index);
-    label1 = node1.TextLabel;
-    label2 = node2.TextLabel;
-    current_labelSize = label1.FontSize;
+    Node1 = AllNodes(Node1Index);
+    Node2 = AllNodes(Node2Index);
+    Label1 = Node1.TextLabel;
+    Label2 = Node2.TextLabel;
+    CurLabelSize = Label1.FontSize;
     
-    set(label1, 'FontWeight', 'normal');
-    set(label2, 'FontWeight', 'normal');
-    set(label1, 'FontSize', current_labelSize - 2);
-    set(label2, 'FontSize', current_labelSize - 2);
-    
+    set(Label1, 'FontWeight', 'normal');
+    set(Label2, 'FontWeight', 'normal');
+    set(Label1, 'FontSize', CurLabelSize - 2);
+    set(Label2, 'FontSize', CurLabelSize - 2);
 end
 
 % Draws 2 solid arrowheads for each link
@@ -1958,7 +1956,7 @@ function ArrowButtonDownFcn(src, ~)
     % UserData(5) is the index of the ending node    
     ArrowType = src.UserData(1);
     Index = src.UserData(2);
-    isMeasureLink = src.UserData(3);
+    IsMeasureLink = src.UserData(3);
     GlobalData.FigConnect.ClickedArrowIndex = src.UserData(2);
     GlobalData.FigConnect.ClickedNode1Index = src.UserData(4); 
     GlobalData.FigConnect.ClickedNode2Index = src.UserData(5);
@@ -1966,52 +1964,52 @@ function ArrowButtonDownFcn(src, ~)
     % only works for left mouse clicks
     if (strcmpi(clickAction, 'SingleClick'))    
         % increase size of the selected arrow
-        current_size = src.LineWidth;
+        CurSize = src.LineWidth;
         
         % increase size of the node labels and make them bold
-        node1 = AllNodes(src.UserData(4));
-        label1 = node1.TextLabel;
-        node2 = AllNodes(src.UserData(5));
-        label2 = node2.TextLabel;
-        current_labelSize = label1.FontSize;
-        set(label1, 'FontWeight', 'bold');
-        set(label2, 'FontWeight', 'bold');
-        set(label1, 'FontSize', current_labelSize + 2);
-        set(label2, 'FontSize', current_labelSize + 2);
+        Node1 = AllNodes(src.UserData(4));
+        Label1 = Node1.TextLabel;
+        Node2 = AllNodes(src.UserData(5));
+        Label2 = Node2.TextLabel;
+        CurLabelSize = Label1.FontSize;
+        set(Label1, 'FontWeight', 'bold');
+        set(Label2, 'FontWeight', 'bold');
+        set(Label1, 'FontSize', CurLabelSize + 2);
+        set(Label2, 'FontSize', CurLabelSize + 2);
         
         % need to modify size of the second arrowhead too
-        if (isMeasureLink)
+        if (IsMeasureLink)
             if (ArrowType) % first
                 Arrows = getappdata(hFig,'MeasureArrows2');
             else
                 Arrows = getappdata(hFig,'MeasureArrows1');
             end
-            otherArrow = Arrows(Index);
-            arrow_size = otherArrow.LineWidth;
-            scale = 2.0;
-            
+            OtherArrow = Arrows(Index);
+            ArrowSize = OtherArrow.LineWidth;
+            Scale = 2.0;
+
             AllLinks = getappdata(hFig,'MeasureLinks');
             Link = AllLinks(Index);
-            link_size = Link.LineWidth;
-            set(Link, 'LineWidth', 2.0*link_size);
+            LinkSize = Link.LineWidth;
+            set(Link, 'LineWidth', 2.0*LinkSize);
         else
             if (ArrowType) % first
                 Arrows = getappdata(hFig,'RegionArrows2');
             else
                 Arrows = getappdata(hFig,'RegionArrows1');
             end
-            otherArrow = Arrows(Index);
-            arrow_size = otherArrow.LineWidth;  
-            scale = 2.0;
+            OtherArrow = Arrows(Index);
+            ArrowSize = OtherArrow.LineWidth;  
+            Scale = 2.0;
             
             AllLinks = getappdata(hFig,'RegionLinks');
             Link = AllLinks(Index);
-            link_size = Link.LineWidth;
-            set(Link, 'LineWidth', 2.0*link_size);
+            LinkSize = Link.LineWidth;
+            set(Link, 'LineWidth', 2.0*LinkSize);
         end
         
-        set(src, 'LineWidth', scale*current_size);
-        set(otherArrow, 'LineWidth', scale*arrow_size);       
+        set(src, 'LineWidth', Scale*CurSize);
+        set(OtherArrow, 'LineWidth', Scale*ArrowSize);       
     end
 end
 
@@ -2021,51 +2019,51 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
     if (LinkType)
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         Link = MeasureLinks(ArrowIndex);
-        current_size = Link.LineWidth;
-        set(Link, 'LineWidth', current_size/2.0);
+        CurSize = Link.LineWidth;
+        set(Link, 'LineWidth', CurSize/2.0);
         
         Arrows1 = getappdata(hFig,'MeasureArrows1');
         Arrows2 = getappdata(hFig,'MeasureArrows2');
-        scale = 2.0;
+        Scale = 2.0;
         
     else % region links
         RegionLinks = getappdata(hFig,'RegionLinks');
         Link = RegionLinks(ArrowIndex);
-        current_size = Link.LineWidth;     
-        set(Link, 'LineWidth', current_size/2.0);  
+        CurSize = Link.LineWidth;     
+        set(Link, 'LineWidth', CurSize/2.0);  
         
         Arrows1 = getappdata(hFig,'RegionArrows1');
         Arrows2 = getappdata(hFig,'RegionArrows2');
-        scale = 2.0;
+        Scale = 2.0;
     end
     
-    arrow1 = Arrows1(ArrowIndex);
-    arrow2 = Arrows2(ArrowIndex);
+    Arrow1 = Arrows1(ArrowIndex);
+    Arrow2 = Arrows2(ArrowIndex);
     
-    arrow_size = arrow1.LineWidth;
-    set(arrow1, 'LineWidth', arrow_size/scale);
-    set(arrow2, 'LineWidth', arrow_size/scale);
+    ArrowSize = Arrow1.LineWidth;
+    set(Arrow1, 'LineWidth', ArrowSize/Scale);
+    set(Arrow2, 'LineWidth', ArrowSize/Scale);
     
     % put labels back to original font size 
     AllNodes = getappdata(hFig, 'AllNodes');   
-    node1 = AllNodes(Node1Index);
-    label1 = node1.TextLabel;
-    node2 = AllNodes(Node2Index);
-    label2 = node2.TextLabel;
-    current_labelSize = label1.FontSize;
+    Node1 = AllNodes(Node1Index);
+    Label1 = Node1.TextLabel;
+    Node2 = AllNodes(Node2Index);
+    Label2 = Node2.TextLabel;
+    CurLabelSize = Label1.FontSize;
     
-    set(label1, 'FontWeight', 'normal');
-    set(label2, 'FontWeight', 'normal');
-    set(label1, 'FontSize', current_labelSize - 2);
-    set(label2, 'FontSize', current_labelSize - 2);
+    set(Label1, 'FontWeight', 'normal');
+    set(Label2, 'FontWeight', 'normal');
+    set(Label1, 'FontSize', CurLabelSize - 2);
+    set(Label2, 'FontSize', CurLabelSize - 2);
 end
 
-%test callback function (for debugging purposes)
-function Test(hFig)
-	AllNodes = getappdata(hFig,'AllNodes');
-	MeasureLinks = getappdata(hFig,'MeasureLinks');
-	RegionLinks = getappdata(hFig,'RegionLinks');
-end
+% %test callback function (for debugging purposes)
+% function Test(hFig)
+% 	AllNodes = getappdata(hFig,'AllNodes');
+% 	MeasureLinks = getappdata(hFig,'MeasureLinks');
+% 	RegionLinks = getappdata(hFig,'RegionLinks');
+% end
  
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
