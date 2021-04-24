@@ -131,7 +131,10 @@ if isempty(T1File)
 end
 
 % Find volume segmentation file
+BsDirMultiParc = fullfile(BsDir,'multiparc');
+
 SvregFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
+OtherSvregFiles = file_find(BsDirMultiParc, [FilePrefix '.svreg.*.label.nii.gz'], 2, 0);
 
 % Find surfaces
 HeadFile        = file_find(BsDir, [FilePrefix '.scalp.dfs']);
@@ -147,7 +150,6 @@ TessLAtlsphFile = file_find(BsDir, 'atlas.left.mid.cortex.svreg.dfs');
 TessRAtlsphFile = file_find(BsDir, 'atlas.right.mid.cortex.svreg.dfs');
 
 % Find labels
-BsDirMultiParc = fullfile(BsDir,'multiparc');
 AnnotLhFiles = file_find(BsDirMultiParc, [FilePrefix '.left.mid.cortex.svreg.*.dfs'], 2, 0);
 AnnotRhFiles = file_find(BsDirMultiParc, [FilePrefix '.right.mid.cortex.svreg.*.dfs'], 2, 0);
 
@@ -472,6 +474,10 @@ end
 if isVolumeAtlas && ~isempty(SvregFile)
     % Import atlas as volume
     [BstSvregFile, sMriSvreg] = import_mri(iSubject, SvregFile, 'ALL-ATLAS', 0, 1, 'svreg');
+    % Import other label volumes
+    for iFile = 1:length(OtherSvregFiles)
+        import_mri(iSubject, OtherSvregFiles{iFile});
+    end
     % Import atlas
     SelLabels = {...
         'Accumbens L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', ...
