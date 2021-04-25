@@ -58,16 +58,13 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'isStatic', 0);
     setappdata(hFig, 'isStaticFreq', 1);
     setappdata(hFig, 'Colormap', db_template('ColormapInfo'));
-    setappdata(hFig, 'GraphSelection', []);
-    
+    setappdata(hFig, 'GraphSelection', []);    
     % Time-freq specific appdata
-    setappdata(hFig, 'Timefreq', db_template('TfInfo'));
-    
+    setappdata(hFig, 'Timefreq', db_template('TfInfo'));    
     % Display
     setappdata(hFig, 'MeasureLinksIsVisible', 1);
     setappdata(hFig, 'RegionLinksIsVisible', 0);
-    setappdata(hFig, 'RegionFunction', 'mean');
-    
+    setappdata(hFig, 'RegionFunction', 'mean');    
     % Add colormap
     bst_colormaps('AddColormapToFigure', hFig, 'connectn');
 end
@@ -99,8 +96,7 @@ function CurrentFreqChangedCallback(hFig)   %#ok<DEFNU>
     % Update figure
     UpdateFigurePlot(hFig);
 end
- 
- 
+  
 %% ===== DISPOSE FIGURE =====
 function Dispose(hFig) %#ok<DEFNU>
     % save user display preferences (only update/save at the end so that
@@ -113,7 +109,7 @@ function Dispose(hFig) %#ok<DEFNU>
     DispOptions.LinkSize = getappdata(hFig, 'LinkSize');
     DispOptions.LinkTransparency = getappdata(hFig, 'LinkTransparency');
     DispOptions.BgColor = getappdata(hFig, 'BgColor');
-    DispOptions.HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+    DispOptions.HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');   
     bst_set('ConnectGraphOptions', DispOptions);
     
     %NOTE: do not need to delete gcf (curr figure) because this is done in bst_figures(DeleteFigure)
@@ -276,8 +272,7 @@ function HasTitle = RefreshTitle(hFig)
         for i = 1:size(hTitle, 2)
             delete(hTitle(i));
         end
-        hTitle = [];
-        
+        hTitle = [];       
         setappdata(hFig, 'TitlesHandle', hTitle);
         UpdateContainer(hFig);
     end    
@@ -299,8 +294,7 @@ function FigureMouseDownCallback(hFig, ev)
     % Check if MouseUp was executed before MouseDown: Should ignore this MouseDown event
     if isappdata(hFig, 'clickAction') && strcmpi(getappdata(hFig, 'clickAction'), 'MouseDownNotConsumed')
         return;
-    end
-    
+    end   
     % click from Matlab figure
     if ~isempty(ev)
         if strcmpi(get(hFig, 'SelectionType'), 'alt') % right-click or CTRL+Click
@@ -316,7 +310,6 @@ function FigureMouseDownCallback(hFig, ev)
             GlobalData.FigConnect.Figure = hFig;
         end
         clickPos = get(hFig, 'CurrentPoint');
-
     % otherwise, click from Matlab colorbar
     else
         if strcmpi(get(hFig, 'SelectionType'), 'alt')
@@ -349,9 +342,8 @@ function FigureMouseMoveCallback(hFig, ev)
     if strcmpi(clickAction, 'MouseDownNotConsumed') || isempty(getappdata(hFig, 'clickPositionFigure'))
         return
     end   
-
-    curPos = get(hFig, 'CurrentPoint');
     
+    curPos = get(hFig, 'CurrentPoint');    
     % Motion from the previous event
     motionFigure = 0.3 * (curPos - getappdata(hFig, 'clickPositionFigure'));
     % Update click point location
@@ -372,10 +364,9 @@ function FigureMouseMoveCallback(hFig, ev)
             if (~isempty(isShift) && isShift)
                  motion = -motionFigure * 0.05;
                  MoveCamera(hFig, [motion(1) motion(2) 0]);
-             end
+            end
     end
 end
- 
  
 %% ===== FIGURE MOUSE UP CALLBACK =====
 % This function applies certain triggered events from mouse clicks/movements
@@ -384,26 +375,22 @@ end
     % Double click: reset camera
 function FigureMouseUpCallback(hFig, varargin)
     % Get index of potentially clicked node, link or arrowhead
-    % NOTE: Node index stored whenever the node is clicked (any type)
     global GlobalData;
     NodeIndex = GlobalData.FigConnect.ClickedNodeIndex; 
-    GlobalData.FigConnect.ClickedNodeIndex = 0; % clear stored index
-    
-    % clicked link
     LinkIndex = GlobalData.FigConnect.ClickedLinkIndex; 
-    GlobalData.FigConnect.ClickedLinkIndex = 0; 
     ArrowIndex = GlobalData.FigConnect.ClickedArrowIndex; 
+    Node1 = GlobalData.FigConnect.ClickedNode1Index;
+    Node2 = GlobalData.FigConnect.ClickedNode2Index;
+    % clear stored IDs
+    GlobalData.FigConnect.ClickedNodeIndex = 0; 
+    GlobalData.FigConnect.ClickedLinkIndex = 0; 
     GlobalData.FigConnect.ClickedArrowIndex = 0; 
-    
-    node1 = GlobalData.FigConnect.ClickedNode1Index;
-    GlobalData.FigConnect.ClickedNode1Index = 0;
-    node2 = GlobalData.FigConnect.ClickedNode2Index;
+    GlobalData.FigConnect.ClickedNode1Index = 0;    
     GlobalData.FigConnect.ClickedNode2Index = 0;
     
+    % Get application data + current user/mouse actions
     LinkType = getappdata(hFig, 'MeasureLinksIsVisible');
     IsDirectional = getappdata(hFig, 'IsDirectionalData');
-    
-    % Get application data (current user/mouse actions)
     clickAction = getappdata(hFig, 'clickAction');
     hasMoved = getappdata(hFig, 'hasMoved');
     
@@ -435,10 +422,10 @@ function FigureMouseUpCallback(hFig, varargin)
             % left mouse click on a link
             if (strcmpi(clickAction, 'SingleClick'))        
                 if (LinkIndex > 0)
-                    LinkClickEvent(hFig, LinkIndex, LinkType, IsDirectional, node1, node2);
+                    LinkClickEvent(hFig, LinkIndex, LinkType, IsDirectional, Node1, Node2);
                 end
                 if (ArrowIndex > 0)
-                    ArrowClickEvent(hFig, ArrowIndex, LinkType, node1, node2);
+                    ArrowClickEvent(hFig, ArrowIndex, LinkType, Node1, Node2);
                 end
             end
         end
@@ -454,15 +441,14 @@ function FigureMouseUpCallback(hFig, varargin)
         % left mouse click on a link
         if (strcmpi(clickAction, 'SingleClick'))
             if (LinkIndex > 0)
-                LinkClickEvent(hFig, LinkIndex, LinkType, IsDirectional, node1, node2);
+                LinkClickEvent(hFig, LinkIndex, LinkType, IsDirectional, Node1, Node2);
             end
             if (ArrowIndex > 0)
-                ArrowClickEvent(hFig, ArrowIndex, LinkType, node1, node2);
+                ArrowClickEvent(hFig, ArrowIndex, LinkType, Node1, Node2);
             end
         end
     end
 end
- 
  
 %% ===== FIGURE KEY PRESSED CALLBACK =====
 function FigureKeyPressedCallback(hFig, keyEvent)
@@ -476,7 +462,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     switch (keyEvent.Key)
         % ---NODE SELECTIONS---
         case 'a'            % Select All Nodes
-            SetSelectedNodes(hFig, [], 1, 1);
+            SetSelectedNodes(hFig, [], 1);
             UpdateColormap(hFig);
         case 'leftarrow'    % Select Previous Region
             ToggleRegionSelection(hFig, 1);
@@ -585,40 +571,39 @@ end
 
 function ToggleRegionSelection(hFig, Inc)
     % Get selected nodes
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get number of AgregatingNode
     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     
-    if (isempty(selNodes))
+    if (isempty(SelNodes))
         % Get first node
         NextNode = GetNextCircularRegion(hFig, [], Inc);
     else
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 1); 
+        SetSelectedNodes(hFig, SelNodes, 0); 
         % Remove agregating node from selection
-        SelectedNode = selNodes(1);
-        
+        SelectedNode = SelNodes(1);
+       
         NextNode = GetNextCircularRegion(hFig, SelectedNode, Inc);
         UpdateColormap(hFig);
     end
 
     % Is the next node an agregating node?
-    isAgregatingNode = ismember(NextNode, AgregatingNodes);
-    if (isAgregatingNode)
+    IsAgregatingNode = ismember(NextNode, AgregatingNodes);
+    if (IsAgregatingNode)
         % Get agregated nodes
         AgregatedNodeIndices = GetAgregatedNodesFrom(hFig, NextNode); 
         if (~isempty(AgregatedNodeIndices))
             % Select all nodes associated to NextNode
-            SetSelectedNodes(hFig, AgregatedNodeIndices, 1, 1);
+            SetSelectedNodes(hFig, AgregatedNodeIndices, 1);
             UpdateColormap(hFig);
         end    
     else
         % Select next node
-        SetSelectedNodes(hFig, NextNode, 1, 1);
+        SetSelectedNodes(hFig, NextNode, 1);
         UpdateColormap(hFig);
     end
 end
- 
  
 %% ===== NODE CLICK CALLBACK =====
 % If mouse click was used to select or unselect a node, this function is called to apply the appropriate changes
@@ -635,40 +620,40 @@ function NodeClickEvent(hFig, NodeIndex)
     DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
     if (DisplayNode(NodeIndex) == 1)
         % 1. GET NODE SETS AND PROPERTIES
-        selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+        SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
         MeasureNodes    = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
         % Is the node already selected ?
-        AlreadySelected = any(selNodes == NodeIndex);
+        AlreadySelected = any(SelNodes == NodeIndex);
         % Is the node an agregating node ?
-        isAgregatingNode = any(AgregatingNodes == NodeIndex);
+        IsAgregatingNode = any(AgregatingNodes == NodeIndex);
 
         % 2. IF NODE IS ALREADY SELECTED, TOGGLE IT
         if AlreadySelected
             % If all nodes are already selected
-            if all(ismember(MeasureNodes, selNodes))  
+            if all(ismember(MeasureNodes, SelNodes))  
                 % then we want to select only this new one
                 SetSelectedNodes(hFig, [], 0); % first unselect all nodes
                 AlreadySelected = 0;
                 UpdateColormap(hFig); % required for directional graphs with arrowheads!!
 
             % If it's the only already selected node, select all and return
-            elseif (length(selNodes) == 1)
+            elseif (length(SelNodes) == 1)
                 SetSelectedNodes(hFig, [], 1); 
                 UpdateColormap(hFig);
                 return;
             end
 
-            % Aggregative nodes: select blocks of nodes
-            if isAgregatingNode
+            % Agregative nodes: select blocks of nodes
+            if IsAgregatingNode
                 % Get agregated nodes
                 AgregatedNodeIndex = GetAgregatedNodesFrom(hFig, NodeIndex);
                 % How many are already selected
-                NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
+                NodeAlreadySelected = ismember(AgregatedNodeIndex, SelNodes);
 
                 % If the agregating node and this measure node are
                 % the only selected nodes, then select all and return
-                if (sum(NodeAlreadySelected) == size(selNodes, 1))
+                if (sum(NodeAlreadySelected) == size(SelNodes, 1))
                     SetSelectedNodes(hFig, [], 1);
                     UpdateColormap(hFig);
                     return;
@@ -685,15 +670,15 @@ function NodeClickEvent(hFig, NodeIndex)
         % 3. SHIFT Behaviour:
             % Default: toggle select this node only
             % If SHIFT is currently held, select multiple nodes
-        isShift = getappdata(hFig, 'ShiftPressed');
-        if (isempty(isShift) || ~isShift)
-            SetSelectedNodes(hFig, selNodes, 0, 1); % Deselect all
+        IsShift = getappdata(hFig, 'ShiftPressed');
+        if (isempty(IsShift) || ~IsShift)
+            SetSelectedNodes(hFig, SelNodes, 0); % Deselect all
             Select = 1; % Select picked node
             UpdateColormap(hFig);
         end
 
         % 4. APPLY DE/SELECTIONS
-        if (isAgregatingNode)
+        if (IsAgregatingNode)
             SelectNodeIndex = GetAgregatedNodesFrom(hFig, NodeIndex);
             SetSelectedNodes(hFig, [SelectNodeIndex(:); NodeIndex], Select); %set the selection
             % Go up the hierarchy
@@ -878,9 +863,9 @@ function DisplayFigurePopup(hFig)
         % === BACKGROUND OPTIONS ===
         jDisplayMenu.addSeparator();
         BackgroundColor = getappdata(hFig, 'BgColor');
-        isWhite = all(BackgroundColor == [1 1 1]);
+        IsWhite = all(BackgroundColor == [1 1 1]);
         jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
-        jItem.setSelected(isWhite);
+        jItem.setSelected(IsWhite);
         
         % === DEFAULT/RESET ===
         jDisplayMenu.addSeparator();
@@ -946,19 +931,19 @@ end
 % Link transparency slider
 function TransparencySliderCallback(hFig, ev, jLabel)
     % Update Modifier value
-    newValue = double(ev.getSource().getValue()) / 100;
+    Transparency = double(ev.getSource().getValue()) / 100;
     % Update text value
-    jLabel.setText(sprintf('%.0f %%', newValue * 100));
-    SetLinkTransparency(hFig, newValue);
+    jLabel.setText(sprintf('%.0f %%', Transparency * 100));
+    SetLinkTransparency(hFig, Transparency);
 end
  
 % Link size slider
 function LinkSizeSliderCallback(hFig, ev, jLabel)
     % Update Modifier value
-    newValue = ev.getSource().getValue() / 2;
+    LinkSize = ev.getSource().getValue() / 2;
     % Update text value
-    jLabel.setText(sprintf('%.0f', newValue * 2));
-    SetLinkSize(hFig, newValue);
+    jLabel.setText(sprintf('%.0f', LinkSize * 2));
+    SetLinkSize(hFig, LinkSize);
 end
 
 %% ===========================================================================
@@ -1228,12 +1213,12 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
                 end
             end
             % Sensors positions
-            selChan = zeros(1, length(RowNames));
+            SelChan = zeros(1, length(RowNames));
             for iRow = 1:length(RowNames)
                 % Get indice in the 
-                selChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
+                SelChan(iRow) = find(strcmpi({GlobalData.DataSet(iDS).Channel.Name}, RowNames{iRow}));
             end
-            RowLocs = figure_3d('GetChannelPositions', iDS, selChan);
+            RowLocs = figure_3d('GetChannelPositions', iDS, SelChan);
  
         case {'results', 'matrix'}
             % Get the file information file
@@ -1342,8 +1327,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     %% ===== User Display Preferences =====
     % get saved preferences
-    DispOptions = bst_get('ConnectGraphOptions');
-    
+    DispOptions = bst_get('ConnectGraphOptions');    
     setappdata(hFig, 'LobeFullLabel', DispOptions.LobeFullLabel);
     setappdata(hFig, 'TextDisplayMode', DispOptions.TextDisplayMode);
     setappdata(hFig, 'NodeSize', DispOptions.NodeSize);
@@ -1442,22 +1426,19 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     HideExtraLobeNode(hFig);
     % Display region and hem lobes?
     SetHierarchyNodeIsVisible(hFig, DispOptions.HierarchyNodeIsVisible);
-    
     % Position camera
     DefaultCamera(hFig);
-    % display final figure on top
-    %shg
 end
  
 %% ======== Create all links as Matlab Lines =====
-function BuildLinks(hFig, DataPair, isMeasureLink)
+function BuildLinks(hFig, DataPair, IsMeasureLink)
     % get pre-created nodes
     AllNodes = getappdata(hFig, 'AllNodes');
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     % clear any previous links and get scaling distance from nodes to unit circle
-    if (isMeasureLink)
-        levelScale = getappdata(hFig, 'MeasureLevelDistance');
+    if (IsMeasureLink)
+        LevelScale = getappdata(hFig, 'MeasureLevelDistance');
         if (isappdata(hFig, 'MeasureLinks'))
             delete(getappdata(hFig, 'MeasureLinks'));
             rmappdata(hFig, 'MeasureLinks');
@@ -1471,7 +1452,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             rmappdata(hFig, 'MeasureArrows2');
         end
     else
-        levelScale = getappdata(hFig, 'RegionLevelDistance');
+        LevelScale = getappdata(hFig, 'RegionLevelDistance');
         if (isappdata(hFig, 'RegionLinks'))
             delete(getappdata(hFig, 'RegionLinks'));
             rmappdata(hFig, 'RegionLinks');
@@ -1506,9 +1487,9 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
     for i = length(DataPair):-1:1 
         overlap = false;
         % node positions (rescaled to *unit* circle)
-        node1 = DataPair(i, 1); node2 = DataPair(i, 2);
-        u  = [AllNodes(node1).Position(1); AllNodes(node1).Position(2)]/levelScale;
-        v  = [AllNodes(node2).Position(1); AllNodes(node2).Position(2)]/levelScale;
+        Node1 = DataPair(i, 1); Node2 = DataPair(i, 2);
+        u  = [AllNodes(Node1).Position(1); AllNodes(Node1).Position(2)]/LevelScale;
+        v  = [AllNodes(Node2).Position(1); AllNodes(Node2).Position(2)]/LevelScale;
     
         % draw elliptical arc if 2 bidirectional links overlap
         All_u(i, :) = u.'; All_v(i, :) = v.';
@@ -1516,12 +1497,12 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             if (v(1) == All_u(j, 1) && v(2) == All_u(j, 2) && u(1) == All_v(j, 1) && u(2) == All_v(j, 2))
                 overlap = true;
                 
-                p = [(AllNodes(node1).Position(1) - AllNodes(node2).Position(1)) (AllNodes(node1).Position(2) - AllNodes(node2).Position(2))]; % horde vector
+                p = [(AllNodes(Node1).Position(1) - AllNodes(Node2).Position(1)) (AllNodes(Node1).Position(2) - AllNodes(Node2).Position(2))]; % horde vector
                 H = norm(p);            % horde length
                 R = 0.63*H;             % arc radius
                 v = [-p(2) p(1)]/H;     % perpendicular vector
                 L = sqrt(R*R-H*H/4);	% distance to circle (from horde)
-                p = [(AllNodes(node1).Position(1) + AllNodes(node2).Position(1)) (AllNodes(node1).Position(2) + AllNodes(node2).Position(2))];% vector center horde
+                p = [(AllNodes(Node1).Position(1) + AllNodes(Node2).Position(1)) (AllNodes(Node1).Position(2) + AllNodes(Node2).Position(2))];% vector center horde
                 p0(1, :) = p/2 + v*L;	% circle center 1
                 p0(2, :) = p/2 - v*L;	% circle center 2
                 d = sqrt(sum(p0.^2, 2)); % distance to circle center
@@ -1529,8 +1510,8 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 p0 = p0(ix, :);
                 
                 % generate arc points
-                vx = linspace(AllNodes(node1).Position(1), AllNodes(node2).Position(1), 100) - p0(1);
-                vy = linspace(AllNodes(node1).Position(2), AllNodes(node2).Position(2), 100) - p0(2);
+                vx = linspace(AllNodes(Node1).Position(1), AllNodes(Node2).Position(1), 100) - p0(1);
+                vy = linspace(AllNodes(Node1).Position(2), AllNodes(Node2).Position(2), 100) - p0(2);
                 v = sqrt(vx.^2 + vy.^2);
                 x = p0(1) + vx./v*R;
                 y = p0(2) + vy./v*R;
@@ -1541,8 +1522,8 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
         if (~overlap)
             % diametric points (w error margin): draw a straight line 
             if (abs(u(1) + v(1)) < 0.2 && abs(u(2) + v(2)) < 0.2)
-                x = linspace(levelScale*u(1), levelScale*v(1), 100);
-                y = linspace(levelScale*u(2), levelScale*v(2), 100);    
+                x = linspace(LevelScale*u(1), LevelScale*v(1), 100);
+                y = linspace(LevelScale*u(2), LevelScale*v(2), 100);    
             % otherwise, draw an arc
             else 
                 x0 = -(u(2) - v(2))/(u(1)*v(2) - u(2)*v(1));
@@ -1573,8 +1554,8 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 end
                 
                 % rescale onto our graph circle
-                x = levelScale*r*cos(theta) + levelScale*x0;
-                y = levelScale*r*sin(theta) + levelScale*y0;
+                x = LevelScale*r*cos(theta) + LevelScale*x0;
+                y = LevelScale*r*sin(theta) + LevelScale*y0;
             end
         end
         
@@ -1583,20 +1564,20 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
                 x, ...
                 y, ...
                 'LineWidth', 1.5, ...
-                'Color', [AllNodes(node1).Color 0.00], ...
+                'Color', [AllNodes(Node1).Color 0.00], ...
                 'PickableParts', 'visible', ...
                 'Visible', 'off', ...                                             % not visible as default;
-                'UserData', [i IsDirectionalData isMeasureLink node1 node2], ...  % i is the link index
+                'UserData', [i IsDirectionalData IsMeasureLink Node1 Node2], ...  % i is the link index
                 'ButtonDownFcn', @LinkButtonDownFcn); 
 
         % create arrows for directional links
         if (IsDirectionalData)
-            [Arrows1(i), Arrows2(i)] = Arrowhead(x, y, AllNodes(node1).Color, 100, 50, i, isMeasureLink, node1, node2, Xextend, Yextend);
+            [Arrows1(i), Arrows2(i)] = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
         end
     end
     
     % Store new links and arrows into figure  
-    if (isMeasureLink)
+    if (IsMeasureLink)
         setappdata(hFig, 'MeasureLinks', Links);
         if (IsDirectionalData)
             setappdata(hFig, 'MeasureArrows1', Arrows1);
@@ -1609,7 +1590,7 @@ function BuildLinks(hFig, DataPair, isMeasureLink)
             setappdata(hFig, 'RegionArrows2', Arrows2);
         end
     end
-
+    
     if (IsDirectionalData) % restore original axe ranges and hold status
         axis(OriginalAxis);
         if ~WasHold
@@ -1625,15 +1606,11 @@ function LinkButtonDownFcn(src, ~)
     clickAction = getappdata(hFig, 'clickAction');
     AllNodes = getappdata(hFig, 'AllNodes');
 
-    % UserData(1) is the link index
-    % UserData(2) is IsDirectional (1 if directional)
-    % UserData(3) is isMeasureLink (1 if measure, 0 if region)
-    % UserData(4) is index of starting node
-    % UserData(5) is index of ending node
+    % UserData = [LinkIndex IsDirectional IsMeasureLink StartingNodeIndex
+    % EndingNodeIndex]
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
-    IsMeasureLink = src.UserData(3);
-    
+    IsMeasureLink = src.UserData(3);    
     % Store globally for access when mouse click is released
     GlobalData.FigConnect.ClickedLinkIndex = src.UserData(1);
     GlobalData.FigConnect.ClickedNode1Index = src.UserData(4); 
@@ -1729,7 +1706,7 @@ end
 
 % Draws 2 solid arrowheads for each link
 % based on: https://www.mathworks.com/matlabcentral/fileexchange/4538-arrowhead
-function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasureLink, node1, node2, Xextend, Yextend)
+function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
     % determine location of first arrowhead
     ArWidth = 0.75;
     j = floor(length(x)*Where/100); 
@@ -1749,7 +1726,7 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasu
             p= -pi/2;
         end
     else % line not vertical, calculate slope using normed differences
-        m = ( (y2 - y1)/Yextend ) / ( (x2 - x1)/Xextend );
+        m = ( (y2 - y1)/yExtend ) / ( (x2 - x1)/xExtend );
         if x2 > x1
             p = atan(m);
         else
@@ -1770,8 +1747,8 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasu
     xd = xd - cos(p);
     yd = yd - sin(p);   
     % stretch/deform to look good on the current axes:
-    xd = xd*Xextend*ArSize/10000;
-    yd = yd*Yextend*ArSize/10000; 
+    xd = xd*xExtend*ArSize/10000;
+    yd = yd*yExtend*ArSize/10000; 
     % move to the location desired
     xd1 = xd + x2;
     yd1 = yd + y2;
@@ -1786,7 +1763,7 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasu
         'FaceColor', clr, ...
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
-        'UserData', [1 Index isMeasureLink node1, node2], ... % flag == 1 for first arrow
+        'UserData', [1 Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
         'ButtonDownFcn', @ArrowButtonDownFcn);
     
     % find point on the line closest to the desired location of
@@ -1825,7 +1802,7 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasu
             p= -pi/2;
         end
     else %-- line not vertical, calculate slope using normed differences
-        m = ( (y2 - y1)/Yextend ) / ( (x2 - x1)/Xextend );
+        m = ( (y2 - y1)/yExtend ) / ( (x2 - x1)/xExtend );
         if x2 > x1
             p = atan(m);
         else
@@ -1842,8 +1819,8 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasu
     xd = xd - cos(p);
     yd = yd - sin(p);
     % stretch/deform
-    xd = xd*Xextend*ArSize/10000;
-    yd = yd*Yextend*ArSize/10000;
+    xd = xd*xExtend*ArSize/10000;
+    yd = yd*yExtend*ArSize/10000;
     % move to desired location
     xd1 = xd + x2;
     yd1 = yd + y2;   
@@ -1855,7 +1832,7 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, isMeasu
         'FaceColor', clr, ...
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
-        'UserData', [0 Index isMeasureLink node1, node2], ... % flag == 0 for second arrow
+        'UserData', [0 Index IsMeasureLink Node1, Node2], ... % flag == 0 for second arrow
         'ButtonDownFcn', @ArrowButtonDownFcn);
 end
 
@@ -1866,12 +1843,7 @@ function ArrowButtonDownFcn(src, ~)
     clickAction = getappdata(hFig, 'clickAction');
     AllNodes = getappdata(hFig, 'AllNodes');
     
-    % UserData(1) is 1 for first arrowhead, and 0 for second arrowhead
-    % UserData(2) is the index of the arrowhead
-    % UserData(3) is isMeasureLink (1 for measure links, 0 for region)
-    % UserData(4) is the index of the starting node of the link on which the
-    % arrowhead lies
-    % UserData(5) is the index of the ending node    
+    % UserData = [IsFirstArrowhead ArrowheadIndex IsMeasureLink StartingNodeIndex EndingNodeIndex]    
     ArrowType = src.UserData(1);
     Index = src.UserData(2);
     IsMeasureLink = src.UserData(3);
@@ -2012,7 +1984,7 @@ function UpdateFigurePlot(hFig)
     % Progress bar
     bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get Rowlocs
     RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
     Options = getappdata(hFig, 'LoadingOptions');
@@ -2079,7 +2051,7 @@ function UpdateFigurePlot(hFig)
     % Update colormap
     UpdateColormap(hFig);
     % Redraw selected nodes
-    SetSelectedNodes(hFig, selNodes, 1, 1);
+    SetSelectedNodes(hFig, SelNodes, 1);
     % Update panel
     panel_display('UpdatePanel', hFig);
     bst_progress('stop');
@@ -2133,16 +2105,16 @@ function SetMeasureDisplayFilter(hFig, NewMeasureDisplayMask, Refresh)
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     if (Refresh)
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 0);
+        SetSelectedNodes(hFig, SelNodes, 0);
     end
     % Update variable
     bst_figures('SetFigureHandleField', hFig, 'MeasureDisplayMask', NewMeasureDisplayMask);
     if (Refresh)
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+        SetSelectedNodes(hFig, SelNodes, 1);
     end
 end
  
@@ -2152,7 +2124,7 @@ function SetMeasureThreshold(hFig, NewMeasureThreshold, Refresh)
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get Datapair
     DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
     % Get threshold option
@@ -2164,14 +2136,14 @@ function SetMeasureThreshold(hFig, NewMeasureThreshold, Refresh)
     MeasureThresholdMask = DataPair(:, 3) >= NewMeasureThreshold;
     if (Refresh)
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 0);
+        SetSelectedNodes(hFig, SelNodes, 0);
     end
     % Update variable
     bst_figures('SetFigureHandleField', hFig, 'MeasureThreshold', NewMeasureThreshold);
     bst_figures('SetFigureHandleField', hFig, 'MeasureThresholdMask', MeasureThresholdMask);
     if (Refresh)
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+        SetSelectedNodes(hFig, SelNodes, 1);
     end
 end
  
@@ -2182,19 +2154,19 @@ function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
     end
     DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Compute new mask
     NewMeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, NewMeasureAnatomicalFilter);
     if (Refresh)
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 0);
+        SetSelectedNodes(hFig, SelNodes, 0);
     end
     % Update variable
     bst_figures('SetFigureHandleField', hFig, 'MeasureAnatomicalFilter', NewMeasureAnatomicalFilter);
     bst_figures('SetFigureHandleField', hFig, 'MeasureAnatomicalMask', NewMeasureAnatomicalMask);
     if (Refresh)
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+        SetSelectedNodes(hFig, SelNodes, 1);
     end
 end
  
@@ -2205,19 +2177,19 @@ function SetMeasureFiberFilterTo(hFig, NewMeasureFiberFilter, Refresh)
     end
     DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Compute new mask
     NewMeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, NewMeasureFiberFilter);
     if (Refresh)
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 0);
+        SetSelectedNodes(hFig, SelNodes, 0);
     end
     % Update variable
     bst_figures('SetFigureHandleField', hFig, 'MeasureFiberFilter', NewMeasureFiberFilter);
     bst_figures('SetFigureHandleField', hFig, 'MeasureFiberMask', NewMeasureFiberMask);
     if (Refresh)
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+        SetSelectedNodes(hFig, SelNodes, 1);
     end
 end
  
@@ -2246,7 +2218,7 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get distance measures
     MeasureDistance = bst_figures('GetFigureHandleField', hFig, 'MeasureDistance');
     if isempty(MeasureDistance)
@@ -2258,7 +2230,7 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
     end
     if (Refresh)
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 0);
+        SetSelectedNodes(hFig, SelNodes, 0);
     end
     % Update variable
     bst_figures('SetFigureHandleField', hFig, 'MeasureMinDistanceFilter', NewMeasureMinDistanceFilter);
@@ -2266,7 +2238,7 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
     bst_figures('SetFigureHandleField', hFig, 'MeasureDistanceMask', MeasureDistanceMask);
     if (Refresh)
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+        SetSelectedNodes(hFig, SelNodes, 1);
     end
 end
  
@@ -2654,8 +2626,8 @@ end
     % Zoom in/out by changing CameraViewAngle of default z-axis
     % The greater the angle (0 to 180), the larger the field of view
     % ref: https://www.mathworks.com/help/matlab/ref/matlab.graphics.axis.axes-properties.html#budumk7-CameraViewAngle
-function ZoomCamera(hFig, factor)
-    angle = hFig.CurrentAxes.CameraViewAngle * factor;
+function ZoomCamera(hFig, Factor)
+    angle = hFig.CurrentAxes.CameraViewAngle * Factor;
     min = 3; max = 20;
     if (angle > max)
         angle = max;
@@ -2679,9 +2651,9 @@ end
 %  ===========================================================================
  
 %% ===== SET SELECTED NODES =====
-% USAGE:  SetSelectedNodes(hFig, iNodes=[], isSelected=1, isRedraw=1) : Add or remove nodes from the current selection
+% USAGE:  SetSelectedNodes(hFig, iNodes=[], IsSelected=1) : Add or remove nodes from the current selection
 %         If node selection is empty: select/unselect all the nodes
-function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
+function SetSelectedNodes(hFig, iNodes, IsSelected)
     % ==================== SETUP =========================
     % Parse inputs
     if (nargin < 2) || isempty(iNodes)
@@ -2689,34 +2661,32 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         NumberOfNodes = bst_figures('GetFigureHandleField', hFig, 'NumberOfNodes');
         iNodes = 1:NumberOfNodes;
     end
-    if (nargin < 3) || isempty(isSelected)
-        isSelected = 1;
+    if (nargin < 3) || isempty(IsSelected)
+        IsSelected = 1;
     end
-    if (nargin < 4) || isempty(isRedraw)
-        isRedraw = 1;
-    end
+
     % Get list of selected channels
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % If nodes are not specified
     if (nargin < 3)
-        iNodes = selNodes;
-        isSelected = 1;
+        iNodes = SelNodes;
+        IsSelected = 1;
     end    
     % Define node properties
-    if isSelected
+    if IsSelected
        % marker type now (x or O)
-        selNodes = union(selNodes, iNodes);
+        SelNodes = union(SelNodes, iNodes);
     else
-        selNodes = setdiff(selNodes, iNodes);
+        SelNodes = setdiff(SelNodes, iNodes);
     end   
     % Update list of selected channels
-    bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', selNodes);
+    bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', SelNodes);
     
     % =================== DISPLAY SELECTED NODES =========================
     AllNodes = getappdata(hFig, 'AllNodes');
     % REQUIRED: Display selected nodes ('ON' or 'OFF')
     for i = 1:length(iNodes)
-        if isSelected
+        if IsSelected
             SelectNode(hFig, AllNodes(iNodes(i)), true);
         else
             SelectNode(hFig, AllNodes(iNodes(i)), false);
@@ -2784,7 +2754,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         if (MeasureLinksIsVisible)
             MeasureLinks = getappdata(hFig, 'MeasureLinks');
             
-            if (isSelected)
+            if (IsSelected)
                 set(MeasureLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
@@ -2805,7 +2775,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         else % display region links
             RegionLinks = getappdata(hFig, 'RegionLinks');
             
-            if (isSelected)
+            if (IsSelected)
                 set(RegionLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
                     RegionArrows1 = getappdata(hFig, 'RegionArrows1');
@@ -2827,11 +2797,11 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     
     % Propagate selection to other figures
     NodeNames = bst_figures('GetFigureHandleField', hFig, 'Names');
-    if ~isempty(selNodes) && (length(selNodes) < length(NodeNames))
+    if ~isempty(SelNodes) && (length(SelNodes) < length(NodeNames))
         % Select rows
-        bst_figures('SetSelectedRows', NodeNames(selNodes));
+        bst_figures('SetSelectedRows', NodeNames(SelNodes));
         % Select scouts
-        panel_scout('SetSelectedScoutLabels', NodeNames(selNodes));
+        panel_scout('SetSelectedScoutLabels', NodeNames(SelNodes));
     else
         bst_figures('SetSelectedRows', []);
         panel_scout('SetSelectedScoutLabels', []);
@@ -2844,18 +2814,18 @@ end
 %hidden nodes should not be clickable
 %hidden nodes result in disabled options to show/hide text region labels 
 %hidden nodes do not have region max/min options
-function SetHierarchyNodeIsVisible(hFig, isVisible)
-    if (isVisible ~= getappdata(hFig, 'HierarchyNodeIsVisible'))
+function SetHierarchyNodeIsVisible(hFig, IsVisible)
+    if (IsVisible ~= getappdata(hFig, 'HierarchyNodeIsVisible'))
         % show/hide region nodes (lobes + hem nodes) from display
         AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-        SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
+        SetDisplayNodeFilter(hFig, AgregatingNodes, IsVisible);
         % rehide extra lobe nodes (level 3)
         HideExtraLobeNode(hFig);
         %hidden nodes do not have region max/min options
-        if(~isVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
+        if(~IsVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
             ToggleMeasureToRegionDisplay(hFig);
         end          
-        setappdata(hFig, 'HierarchyNodeIsVisible', isVisible);
+        setappdata(hFig, 'HierarchyNodeIsVisible', IsVisible);
     end
 end
  
@@ -2870,16 +2840,16 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         % Computes function across node pairs in region
         RegionDataPair = ComputeRegionFunction(hFig, DataPair, RegionFunction);     
         % create region mean/max links from computed RegionDataPair
-        BuildLinks(hFig, RegionDataPair, false); %Note: make sure to use isMeasureLink = false for this step
+        BuildLinks(hFig, RegionDataPair, false); %Note: make sure to use IsMeasureLink = false for this step
         % Update figure value
         bst_figures('SetFigureHandleField', hFig, 'RegionDataPair', RegionDataPair);
         setappdata(hFig, 'RegionFunction', RegionFunction);        
         % Get selected node
         selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
         % Erase selected node
-        SetSelectedNodes(hFig, selNodes, 0, 1);
+        SetSelectedNodes(hFig, selNodes, 0);
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, 1);        
+        SetSelectedNodes(hFig, selNodes, 1);        
         % Update color map
         UpdateColormap(hFig);
         % Update size and transparency
@@ -2905,12 +2875,12 @@ function ToggleMeasureToRegionDisplay(hFig)
         % Get selected node
         selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
         % Erase selected node
-        SetSelectedNodes(hFig, selNodes, 0, 1);
+        SetSelectedNodes(hFig, selNodes, 0);
         % Update visibility variable
         setappdata(hFig, 'MeasureLinksIsVisible', MeasureLinksIsVisible);
         setappdata(hFig, 'RegionLinksIsVisible', RegionLinksIsVisible);
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, 1);
+        SetSelectedNodes(hFig, selNodes, 1);
         UpdateColormap(hFig); % necessary for arrowheads visibility
     else
         disp('Current data does not support region display.');
@@ -2948,8 +2918,8 @@ end
  
 %% == Toggle label displays for lobes === 
 % toggle order:
-% show measure node labels and FULL agg node labels
-% show measure node labels and ABBRV agg node labels
+% show measure node labels and FULL agregating node labels
+% show measure node labels and ABBRV agregating node labels
 % show measure node labels only
 function ToggleTextDisplayMode(hFig)
     % Get display mode
@@ -2976,7 +2946,7 @@ function ToggleLobeLabels(hFig)
     if (getappdata(hFig, 'LobeFullLabel'))
         % toggle to abbr form and hor angle
         for i = 1:length(AllNodes)
-            if (AllNodes(i).isAgregatingNode)
+            if (AllNodes(i).IsAgregatingNode)
                 AllNodes(i).TextLabel.String = AllNodes(i).Label;
                 AllNodes(i).TextLabel.Rotation = 0;
             end
@@ -2985,7 +2955,7 @@ function ToggleLobeLabels(hFig)
     else
         % toggle to full form and radial angle
         for i = 1:length(AllNodes)
-            if (AllNodes(i).isAgregatingNode)
+            if (AllNodes(i).IsAgregatingNode)
                 AllNodes(i).TextLabel.String = LobeTagToFullTag(AllNodes(i).Label);
                 t = atan2(AllNodes(i).Position(2), AllNodes(i).Position(1));
                 if abs(t) > pi/2
@@ -3141,7 +3111,7 @@ function SetDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     if (Refresh)
         % Remove previous links
-        SetSelectedNodes(hFig, selNodes, 0, 0);
+        SetSelectedNodes(hFig, selNodes, 0);
     end
     % Update display mode
     setappdata(hFig, 'DisplayOutwardMeasure', DisplayOutwardMeasure);
@@ -3151,7 +3121,7 @@ function SetDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure
     RefreshBinaryStatus(hFig);
     if (Refresh)
         % Redraw selected nodes
-        SetSelectedNodes(hFig, selNodes, 1, 1);
+        SetSelectedNodes(hFig, selNodes, 1);
     end
 end
  
@@ -3183,13 +3153,9 @@ function RefreshBinaryStatus(hFig)
 end
  
 %% ===== REFRESH TEXT VISIBILITY =====
-function RefreshTextDisplay(hFig, isRedraw)
+function RefreshTextDisplay(hFig)
     FigureHasText = getappdata(hFig, 'FigureHasText');
     if FigureHasText
-        if nargin < 2
-            isRedraw = 1;
-        end
-
         AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
         MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         ValidNode = bst_figures('GetFigureHandleField', hFig, 'ValidNode');
@@ -3224,13 +3190,13 @@ end
 %% ===== SET DATA THRESHOLD =====
 function SetDataThreshold(hFig, DataThreshold) %#ok<DEFNU>
     % Get selected rows
-    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Remove previous links
-    SetSelectedNodes(hFig, selNodes, 0, 0);
+    SetSelectedNodes(hFig, SelNodes, 0);
     % Update threshold
     setappdata(hFig, 'DataThreshold', DataThreshold);
     % Redraw selected nodes
-    SetSelectedNodes(hFig, selNodes, 1, 1);
+    SetSelectedNodes(hFig, SelNodes, 1);
 end
  
 %% ===== UTILITY FUNCTIONS =====
@@ -3291,14 +3257,14 @@ function ClearAndAddNodes(hFig, V, Names)
     NodeSize = getappdata(hFig, 'NodeSize');
     LabelSize = getappdata(hFig, 'LabelSize'); 
     for i = nVertices:-1:1
-        isAgregatingNode = false;
+        IsAgregatingNode = false;
         if (i <= nAgregatingNodes)
-            isAgregatingNode = true; 
+            IsAgregatingNode = true; 
         end
         if (isempty(Names(i)) || isempty(Names{i}))
             Names{i} = ''; % Blank name if none is assigned
         end
-        AllNodes(i) = CreateNode(hFig, V(i, 1), V(i, 2), i, Names(i), isAgregatingNode, NodeSize, LabelSize);
+        AllNodes(i) = CreateNode(hFig, V(i, 1), V(i, 2), i, Names(i), IsAgregatingNode, NodeSize, LabelSize);
     end 
     
     % Measure Nodes are color coded to their Scout counterpart
@@ -3315,7 +3281,7 @@ function ClearAndAddNodes(hFig, V, Names)
     if (~getappdata(hFig, 'LobeFullLabel'))
         % display abbr form and horizontal angle
         for i = 1:length(AllNodes)
-            if (AllNodes(i).isAgregatingNode)
+            if (AllNodes(i).IsAgregatingNode)
                 AllNodes(i).TextLabel.String = AllNodes(i).Label;
                 AllNodes(i).TextLabel.Rotation = 0;
             end
@@ -3335,7 +3301,7 @@ end
 %% Create A New Node with NodeMarker and TextLabel graphics objs
 % Note: each node is a struct with the following fields:
 %   Node.Position           - [x, y] coordinates
-%   Node.isAgregatingNode   - true/false (if this node is a grouped node)
+%   Node.IsAgregatingNode   - true/false (if this node is a grouped node)
 %   Node.Color              - colour of the ROI/associated scout, or grey on default
 %   Node.NodeMarker         - Line Object reprenting the node on the figure
 %   Node.TextLabel          - Text Object representing the node label on the figure
@@ -3344,7 +3310,7 @@ end
 function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, NodeSize, LabelSize)
     Node = struct();
     Node.Position = [xPos, yPos];
-    Node.isAgregatingNode = IsAgregatingNode;
+    Node.IsAgregatingNode = IsAgregatingNode;
     Node.Color = [0.5 0.5 0.5];
     Node.Label = Label;
 
@@ -3361,10 +3327,10 @@ function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, Nod
         'Visible', 'on', ...
         'PickableParts', 'all', ...
         'ButtonDownFcn', @NodeButtonDownFcn, ...
-        'UserData', [Index Node.Label xPos yPos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
+        'UserData', Index); % store node index so that we can ID the nodes when clicked
     
     % Create label as Matlab Text obj 
-    Node.TextLabel = text(0, 0, Node.Label, 'Interpreter', 'none', 'Color', [1 1 1], 'ButtonDownFcn', @LabelButtonDownFcn, 'UserData', [Index Node.Label xPos yPos]); 
+    Node.TextLabel = text(0, 0, Node.Label, 'Interpreter', 'none', 'Color', [1 1 1], 'ButtonDownFcn', @LabelButtonDownFcn, 'UserData', Index); 
     Node.TextLabel.Position = 1.05*Node.Position; %need offset factor so label doesn't overlap
     Node.TextLabel.FontSize = LabelSize;
     Node.TextLabel.FontWeight = 'normal'; % not bold by default
@@ -3413,12 +3379,12 @@ end
 % to do here is store the index of the clicked node
 function NodeButtonDownFcn(src, ~)
     global GlobalData;
-    GlobalData.FigConnect.ClickedNodeIndex = src.UserData{1};
+    GlobalData.FigConnect.ClickedNodeIndex = src.UserData;
 end
 
 function LabelButtonDownFcn(src, ~)
     global GlobalData;
-    GlobalData.FigConnect.ClickedNodeIndex = src.UserData{1};
+    GlobalData.FigConnect.ClickedNodeIndex = src.UserData;
 end
 
 %% Delete all node structs and associated graphics objs if exist
@@ -3548,16 +3514,16 @@ function [sGroups] = GroupScouts(Atlas)
     for i = 2:NumberOfGroups
         j = i;
         sTemp = sGroups(i);
-        currentHemisphere = HemisphereTagToIndex(sGroups(i).Region);
-        currentLobe = LobeTagToIndex(sGroups(i).Region);
+        CurHem = HemisphereTagToIndex(sGroups(i).Region);
+        CurLobe = LobeTagToIndex(sGroups(i).Region);
         while ((j > 1))
-            current = currentHemisphere;
-            next = HemisphereTagToIndex(sGroups(j-1).Region);
-            if (current == next)
-                current = currentLobe;
-                next = LobeTagToIndex(sGroups(j-1).Region);
+            Current = CurHem;
+            Next = HemisphereTagToIndex(sGroups(j-1).Region);
+            if (Current == Next)
+                Current = CurLobe;
+                Next = LobeTagToIndex(sGroups(j-1).Region);
             end
-            if (next <= current)
+            if (Next <= Current)
                 break;
             end
             sGroups(j) = sGroups(j-1);
