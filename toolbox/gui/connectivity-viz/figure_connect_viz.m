@@ -585,7 +585,7 @@ function NextNode = GetNextCircularRegion(hFig, Node, Inc)
     end
     
   %  CircularIndex(~ismember(CircularIndex,DisplayNode)) = []; % comment
-  %  out to allow toggling when region nodes are hidden
+  %  out to allow toggling even when region nodes are hidden
     
     if isempty(Node)
         NextIndex = 1;
@@ -1389,14 +1389,14 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % get saved preferences
     DispOptions = bst_get('ConnectGraphOptions');
     
-    setappdata(hFig,'LobeFullLabel',DispOptions.LobeFullLabel);
+    setappdata(hFig, 'LobeFullLabel', DispOptions.LobeFullLabel);
     setappdata(hFig, 'TextDisplayMode', DispOptions.TextDisplayMode);
-    setappdata(hFig,'NodeSize',DispOptions.NodeSize);
-    setappdata(hFig,'LabelSize',DispOptions.LabelSize); 
-    setappdata(hFig,'LinkSize',DispOptions.LinkSize);
-    setappdata(hFig,'LinkTransparency',DispOptions.LinkTransparency);
-    setappdata(hFig,'BgColor',DispOptions.BgColor);
-    setappdata(hFig,'HierarchyNodeIsVisible',DispOptions.HierarchyNodeIsVisible);
+    setappdata(hFig, 'NodeSize', DispOptions.NodeSize);
+    setappdata(hFig, 'LabelSize', DispOptions.LabelSize); 
+    setappdata(hFig, 'LinkSize', DispOptions.LinkSize);
+    setappdata(hFig, 'LinkTransparency', DispOptions.LinkTransparency);
+    setappdata(hFig, 'BgColor', DispOptions.BgColor);
+    setappdata(hFig, 'HierarchyNodeIsVisible', 1); % note: set as 1 to match default, updated to saved user pref later
     
     %% ===== Create Nodes =====
     %  This also defines some data-based display parameters
@@ -2934,16 +2934,18 @@ end
 %hidden nodes result in disabled options to show/hide text region labels 
 %hidden nodes do not have region max/min options
 function SetHierarchyNodeIsVisible(hFig, isVisible)
-    % show/hide region nodes (lobes + hem nodes) from display
-    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-    SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
-    % rehide extra lobe nodes (level 3)
-    HideExtraLobeNode(hFig);
-    %hidden nodes do not have region max/min options
-    if(~isVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
-        ToggleMeasureToRegionDisplay(hFig);
-    end          
-    setappdata(hFig, 'HierarchyNodeIsVisible', isVisible);
+    if (isVisible ~= getappdata(hFig, 'HierarchyNodeIsVisible'))
+        % show/hide region nodes (lobes + hem nodes) from display
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+        SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
+        % rehide extra lobe nodes (level 3)
+        HideExtraLobeNode(hFig);
+        %hidden nodes do not have region max/min options
+        if(~isVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
+            ToggleMeasureToRegionDisplay(hFig);
+        end          
+        setappdata(hFig, 'HierarchyNodeIsVisible', isVisible);
+    end
 end
  
  
