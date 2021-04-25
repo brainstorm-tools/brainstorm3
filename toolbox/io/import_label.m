@@ -528,17 +528,21 @@ for iFile = 1:length(LabelFiles)
 
             % Loop on each label
             if isempty(labelMap)
-                new_colors = distinguishable_colors(length(lablist), [.5,.5,.5]);
+                new_colors = distinguishable_colors(length(lablist), [0,0,0]);
+                new_colors(1,:) = [0.5,0.5,0.5];
             end
 
             for i = 1:length(lablist)
                 % Find label ID
                 id = lablist(i);
                 % Skip if label id is not in labelMap
-                if isempty(labelMap) || ~labelMap.containsKey(num2str(id))
+                if isempty(labelMap)
                     labelInfo.Name = num2str(id);
                     labelInfo.Color = new_colors(i,:)';                    
                     %continue;
+                elseif ~labelMap.containsKey(num2str(id))
+                    labelInfo.Name = num2str(id);
+                    labelInfo.Color = [0,0,0]';                                    
                 else
                     entry = labelMap.get(num2str(id));
                     labelInfo.Name = entry(1);
@@ -548,6 +552,7 @@ for iFile = 1:length(LabelFiles)
                 labelInfo.Color = labelInfo.Color(:)';
                 % Skip the "background" scout
                 if strcmpi(labelInfo.Name, 'background')
+                    labelInfo.Color = [0.5,0.5,0.5]';
                     continue;
                 end
                 % New scout index
