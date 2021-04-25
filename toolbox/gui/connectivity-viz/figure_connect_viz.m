@@ -2697,7 +2697,7 @@ function UpdateColormap(hFig)
                     % Second arrow is visible for bidirectional links;
                     iData_mask = RegionDataMask.';
                     bidirectional = iData_mask & (OutIndex | InIndex);
-                    set(RegionArrows2(bidirectional), 'Visible', 'on')
+                    set(RegionArrows2(~bidirectional), 'Visible', 'off')
                 else
                     % make all second arrows invisible if user selected "In" or "Out"
                     set(RegionArrows2(:), 'Visible', 'off');
@@ -2900,7 +2900,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
                     RegionArrows1 = getappdata(hFig, 'RegionArrows1');
                     RegionArrows2 = getappdata(hFig, 'RegionArrows2');
                     set(RegionArrows1(iData), 'Visible', 'on');
-                    set(RegionArrows2(iData), 'Visible', 'off');
+                    set(RegionArrows2(iData), 'Visible', 'on');
                 end
             else
                 set(RegionLinks(iData), 'Visible', 'off');
@@ -3004,6 +3004,7 @@ function ToggleMeasureToRegionDisplay(hFig)
         setappdata(hFig, 'RegionLinksIsVisible', RegionLinksIsVisible);
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1, 1);
+        UpdateColormap(hFig); % necessary for arrowheads visibility
     else
         disp('Current data does not support region display.');
     end
