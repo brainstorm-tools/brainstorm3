@@ -512,7 +512,7 @@ for iFile = 1:length(LabelFiles)
             [VertexLabelIds, labelMap, AtlasName] = in_label_bs(LabelFiles{iFile});
             % Could not read the label correctly
             if isempty(VertexLabelIds) || isempty(labelMap)
-                continue;
+                fprintf('Hi');%%AAJ continue;
             end
             
             % === CONVERT TO SCOUTS ===
@@ -527,16 +527,23 @@ for iFile = 1:length(LabelFiles)
             end
 
             % Loop on each label
+            if isempty(labelMap)
+                new_colors = distinguishable_colors(length(lablist), [.5,.5,.5]);
+            end
+
             for i = 1:length(lablist)
                 % Find label ID
                 id = lablist(i);
                 % Skip if label id is not in labelMap
-                if ~labelMap.containsKey(num2str(id))
-                    continue;
+                if isempty(labelMap) || ~labelMap.containsKey(num2str(id))
+                    labelInfo.Name = num2str(id);
+                    labelInfo.Color = new_colors(i,:)';                    
+                    %continue;
+                else
+                    entry = labelMap.get(num2str(id));
+                    labelInfo.Name = entry(1);
+                    labelInfo.Color = entry(2);
                 end
-                entry = labelMap.get(num2str(id));
-                labelInfo.Name = entry(1);
-                labelInfo.Color = entry(2);
                 % Transpose color vector
                 labelInfo.Color = labelInfo.Color(:)';
                 % Skip the "background" scout
