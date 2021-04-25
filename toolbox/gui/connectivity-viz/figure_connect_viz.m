@@ -36,7 +36,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'IntegerHandle',         'off', ...
                   'MenuBar',               'none', ...
                   'Toolbar',               'none', ...
-                  'DockControls',          'off', ...earnadd
+                  'DockControls',          'off', ...
                   'Units',                 'pixels', ...
                   'Color',                 [0 0 0], ...
                   'Pointer',               'arrow', ...
@@ -66,15 +66,9 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     setappdata(hFig, 'Timefreq', db_template('TfInfo'));
     
     % Display
-    setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     setappdata(hFig, 'MeasureLinksIsVisible', 1);
     setappdata(hFig, 'RegionLinksIsVisible', 0);
     setappdata(hFig, 'RegionFunction', 'mean');
-    setappdata(hFig, 'LinkTransparency',  0);
-        
-    % Default Camera variables
-    setappdata(hFig, 'CamPitch', 0.5 * 3.1415);
-    setappdata(hFig, 'CamYaw', -0.5 * 3.1415);
     
     % Add colormap
     bst_colormaps('AddColormapToFigure', hFig, 'connectn');
@@ -111,6 +105,19 @@ end
  
 %% ===== DISPOSE FIGURE =====
 function Dispose(hFig) %#ok<DEFNU>
+    % save user display preferences (only update/save at the end so that
+    % options do not conflict when more than 1 graph is open)
+    DispOptions = bst_get('ConnectGraphOptions');
+    DispOptions.LobeFullLabel = getappdata(hFig,'LobeFullLabel');
+    DispOptions.TextDisplayMode = getappdata(hFig,'TextDisplayMode');
+    DispOptions.NodeSize = getappdata(hFig,'NodeSize');
+    DispOptions.LabelSize = getappdata(hFig,'LabelSize');
+    DispOptions.LinkSize = getappdata(hFig,'LinkSize');
+    DispOptions.LinkTransparency = getappdata(hFig,'LinkTransparency');
+    DispOptions.BgColor = getappdata(hFig,'BgColor');
+    DispOptions.HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+    bst_set('ConnectGraphOptions', DispOptions);
+    
     %NOTE: do not need to delete gcf (curr figure) because this is done in
     %bst_figures(DeleteFigure)
     
@@ -149,10 +156,6 @@ function Dispose(hFig) %#ok<DEFNU>
         delete(getappdata(hFig,'RegionArrows2'));
         rmappdata(hFig,'RegionArrows2');
     end
-
-    %===old===
-    SetBackgroundColor(hFig, [1 1 1]); %[1 1 1]= white [0 0 0]= black
-   
 end
  
  
@@ -164,9 +167,6 @@ function ResetDisplay(hFig)
     setappdata(hFig, 'DisplayBidirectionalMeasure', 0);
     setappdata(hFig, 'DataThreshold', 0.5);
     setappdata(hFig, 'DistanceThreshold', 0);
-    setappdata(hFig, 'TextDisplayMode', [1 2]);
-    setappdata(hFig, 'LobeFullLabel', 1); % 1 for displaying full label (e.g. 'Pre-Frontal') 0 for abbr tag ('PF')
-    setappdata(hFig, 'HierarchyNodeIsVisible', 1);
     if isappdata(hFig, 'DataPair')
         rmappdata(hFig, 'DataPair');
     end
@@ -189,46 +189,38 @@ function ResetDisplayOptions(hFig)
     if (~getappdata(hFig, 'LobeFullLabel'))
         ToggleLobeLabels(hFig);
     end
-    
     % show scout and region labels
     if (~isequal(getappdata(hFig, 'TextDisplayMode'),[1 2]))
         setappdata(hFig, 'TextDisplayMode', [1 2]);
         RefreshTextDisplay(hFig);
         HideExtraLobeNode(hFig);
     end
-  
     % reset node+label size
-    if (GetNodeSize(hFig)~= 5 || ~isappdata(hFig, 'LabelSize') || getappdata(hFig, 'LabelSize')~= 7)
+    if (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7)
         SetNodeLabelSize(hFig, 5, 7);
     end
-    
     % reset link size
     if (getappdata(hFig, 'LinkSize') ~= 1.5)
         SetLinkSize(hFig, 1.5);
     end
-    
     % reset link transparency
     if (getappdata(hFig, 'LinkTransparency') ~= 0)
         SetLinkTransparency(hFig, 0);
     end
-    
     % reset to black background
     if (~isequal(getappdata(hFig, 'BgColor'),[0 0 0]))
-        SetBackgroundColor(hFig, [0 0 0], [1 1 1])
+        SetBackgroundColor(hFig, [0 0 0]);
     end
-    
     % ensure region nodes (hem and lobes) NOT hidden
     if (~getappdata(hFig, 'HierarchyNodeIsVisible'))
     	SetHierarchyNodeIsVisible(hFig, 1)
     end
-    
     % reset camera
     DefaultCamera(hFig);
 end
 
 function IsDefault = CheckDisplayOptions(hFig)
     IsDefault = true;
-
     % check full lobe labels (not abbreviated)
     if (~getappdata(hFig, 'LobeFullLabel'))
         IsDefault = false;
@@ -236,7 +228,7 @@ function IsDefault = CheckDisplayOptions(hFig)
     elseif(~isequal(getappdata(hFig, 'TextDisplayMode'),[1 2]))
         IsDefault = false;
     % check node+label size
-    elseif (GetNodeSize(hFig)~= 5 || ~isappdata(hFig, 'LabelSize') || getappdata(hFig, 'LabelSize')~= 7)
+    elseif (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7) 
         IsDefault = false;
     % check link size
     elseif (getappdata(hFig, 'LinkSize') ~= 1.5)
@@ -250,14 +242,6 @@ function IsDefault = CheckDisplayOptions(hFig)
     % check region nodes (hem and lobes) NOT hidden
     elseif (~getappdata(hFig, 'HierarchyNodeIsVisible'))
     	IsDefault = false;
-    end
-end
- 
-%% ===== GET BACKGROUND COLOR =====
-function backgroundColor = GetBackgroundColor(hFig)
-    backgroundColor = getappdata(hFig, 'BgColor');
-    if isempty(backgroundColor)
-        backgroundColor = [0 0 0]; %default bg color is black
     end
 end
  
@@ -548,9 +532,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
         
         % ---OTHER---        
         case 'h' % Toggle visibility of hierarchy/region nodes
-            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            HierarchyNodeIsVisible = 1 - HierarchyNodeIsVisible;
-            SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
+            SetHierarchyNodeIsVisible(hFig, ~getappdata(hFig, 'HierarchyNodeIsVisible'));
         case 'm' % Toggle Region Links
             if (getappdata(hFig, 'HierarchyNodeIsVisible'))
                 ToggleMeasureToRegionDisplay(hFig);
@@ -838,12 +820,11 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: 2D LAYOUT (DISPLAY OPTIONS)====
     jDisplayMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
-        
             % === TOGGLE LABELS ===
             % Lobe label abbreviations
             if (DisplayInRegion)
                 jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Abbreviate lobe labels', [], [], @(h, ev)ToggleLobeLabels(hFig));
-                jItem.setSelected(~getappdata(hFig,'LobeFullLabel'));
+                jItem.setSelected(~getappdata(hFig, 'LobeFullLabel'));
                 jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
             end
             TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
@@ -859,16 +840,13 @@ function DisplayFigurePopup(hFig)
             % Selected Nodes' labels only
             jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show labels for selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
             jItem.setSelected(ismember(3,TextDisplayMode));
-        
         jDisplayMenu.addSeparator();
         
-        % == LINK DISPLAY OPTIONS ==
+        % == SLIDERS ==
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
-            
-            % === MODIFY NODE AND LINK SIZE (Mar 2021)===
+            % === MODIFY NODE AND LINK SIZE ===
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            % uses node size to update text and slider
-            NodeSize = GetNodeSize(hFig);
+            NodeSize = getappdata(hFig, 'NodeSize');
             % Label
             gui_component('label', jPanelModifiers, '', 'Node & label size');
             % Slider
@@ -893,7 +871,7 @@ function DisplayFigurePopup(hFig)
         
             % == MODIFY LINK SIZE ==
             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            LinkSize = GetLinkSize(hFig);
+            LinkSize = getappdata(hFig, 'LinkSize');
             % Label
             gui_component('label', jPanelModifiers, '', 'Link size');
             % Slider
@@ -967,25 +945,23 @@ function DisplayFigurePopup(hFig)
         if (DisplayInRegion)
             % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
             HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, 1 - HierarchyNodeIsVisible));
+            jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, ~HierarchyNodeIsVisible));
             jItem.setSelected(~HierarchyNodeIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
             jPopup.addSeparator();
-        end
-        
-        if (DisplayInRegion)
+
             % === TOGGLE DISPLAY REGION LINKS ===
             RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
             RegionFunction = getappdata(hFig, 'RegionFunction');
             jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
             jItem.setSelected(RegionLinksIsVisible);
-            jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
+            jItem.setEnabled(HierarchyNodeIsVisible);
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
 
             % === TOGGLE REGION FUNCTIONS===
             IsMean = strcmp(RegionFunction, 'mean');
             jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
-            jLabelMenu.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
+            jLabelMenu.setEnabled(HierarchyNodeIsVisible);
                 jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
                 jItem.setSelected(IsMean);
                 jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
@@ -1409,24 +1385,29 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'DisplayNode', ones(size(Vertices,1),1));
     bst_figures('SetFigureHandleField', hFig, 'ValidNode', ones(size(Vertices,1),1));
     
+    %% ===== User Display Preferences =====
+    % get saved preferences
+    DispOptions = bst_get('ConnectGraphOptions');
+    
+    setappdata(hFig,'LobeFullLabel',DispOptions.LobeFullLabel);
+    setappdata(hFig, 'TextDisplayMode', DispOptions.TextDisplayMode);
+    setappdata(hFig,'NodeSize',DispOptions.NodeSize);
+    setappdata(hFig,'LabelSize',DispOptions.LabelSize); 
+    setappdata(hFig,'LinkSize',DispOptions.LinkSize);
+    setappdata(hFig,'LinkTransparency',DispOptions.LinkTransparency);
+    setappdata(hFig,'BgColor',DispOptions.BgColor);
+    setappdata(hFig,'HierarchyNodeIsVisible',DispOptions.HierarchyNodeIsVisible);
+    
     %% ===== Create Nodes =====
     %  This also defines some data-based display parameters
     
     ClearAndAddNodes(hFig, Vertices, Names);
     GlobalData.FigConnect.ClickedNodeIndex = 0;  %set initial clicked node to 0 (none)
-    
     GlobalData.FigConnect.ClickedLinkIndex = 0; 
     GlobalData.FigConnect.ClickedArrowIndex = 0;
     GlobalData.FigConnect.ClickedNode1Index = 0;
     GlobalData.FigConnect.ClickedNode2Index = 0;
-    
-    % background color : 
-    %   White is for publications
-    %   Black for visualization (default)
-    BackgroundColor = GetBackgroundColor(hFig);
-    SetBackgroundColor(hFig, BackgroundColor);
- 
-    
+   
     %% ===== Compute Links =====
     % Data cleaning options
     Options.Neighbours = 0;
@@ -1446,12 +1427,10 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     
     
     %% ==== Create and Display Links =======
-   
     % Create links from computed DataPair
     BuildLinks(hFig, DataPair, true);
-    LinkSize = getappdata(hFig, 'LinkSize');
-    SetLinkSize(hFig, LinkSize);
-    SetLinkTransparency(hFig, 0.00);
+    SetLinkSize(hFig, DispOptions.LinkSize);
+    SetLinkTransparency(hFig, DispOptions.LinkTransparency);
         
     %% ===== Init Filters =====
     % Default intensity threshold
@@ -1500,14 +1479,16 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     %% ===== Rendering option =====
     % Required: Select all on default
     SetSelectedNodes(hFig, [], 1);
-    SetHierarchyNodeIsVisible(hFig, 1);
-    
     % Update colormap
     UpdateColormap(hFig);
-    % Refresh Text Display Mode default set in CreateFigure
+    SetBackgroundColor(hFig, DispOptions.BgColor);
+    % TextDisplayMode saved user prefs retrieved already, needs refresh
     RefreshTextDisplay(hFig);
     % Last minute hiding
     HideExtraLobeNode(hFig);
+    % Display region and hem lobes?
+    SetHierarchyNodeIsVisible(hFig, DispOptions.HierarchyNodeIsVisible);
+    
     % Position camera
     DefaultCamera(hFig);
     % display final figure on top
@@ -2057,13 +2038,6 @@ function ArrowClickEvent(hFig,ArrowIndex,LinkType,Node1Index,Node2Index)
     set(Label1, 'FontSize', CurLabelSize - 2);
     set(Label2, 'FontSize', CurLabelSize - 2);
 end
-
-% %test callback function (for debugging purposes)
-% function Test(hFig)
-% 	AllNodes = getappdata(hFig,'AllNodes');
-% 	MeasureLinks = getappdata(hFig,'MeasureLinks');
-% 	RegionLinks = getappdata(hFig,'RegionLinks');
-% end
  
 function NodeColors = BuildNodeColorList(RowNames, Atlas)
     % We assume RowNames and Scouts are in the same order
@@ -2135,12 +2109,10 @@ function UpdateFigurePlot(hFig)
     MeasureLinks = BuildRegionPath(hFig, NodePaths, DataPair);
 
     %% ==== Re-Create and Display Links =======
-    
     % Create new links from computed DataPair
     BuildLinks(hFig, DataPair, true);
-    LinkSize = getappdata(hFig, 'LinkSize');
-    SetLinkSize(hFig, LinkSize);
-    SetLinkTransparency(hFig, 0.00);
+    SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
+    SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
     
     %% ===== FILTERS =====
     Refresh = 0;
@@ -2178,14 +2150,13 @@ function UpdateFigurePlot(hFig)
         RegionFunction = getappdata(hFig, 'DefaultRegionFunction');
     end
     SetRegionFunction(hFig, RegionFunction);
- 
-    HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-    SetHierarchyNodeIsVisible(hFig, HierarchyNodeIsVisible);
+
+    SetHierarchyNodeIsVisible(hFig, getappdata(hFig, 'HierarchyNodeIsVisible'));
     
     RefreshTitle(hFig);
     
     % Set background color
-    SetBackgroundColor(hFig, GetBackgroundColor(hFig));
+    SetBackgroundColor(hFig, getappdata(hFig,'BgColor'));
     % Update colormap
     UpdateColormap(hFig);
     % Redraw selected nodes
@@ -2604,12 +2575,10 @@ function UpdateColormap(hFig)
     % === UPDATE DISPLAY ===
     CMap = sColormap.CMap;
     
-    % Added Dec 23: get the transparency
-    LinkTransparency = getappdata(hFig, 'LinkTransparency');
-    LinkIntensity = 1.00 - LinkTransparency;  
+    % get the transparency
+    LinkIntensity = 1.00 - getappdata(hFig, 'LinkTransparency');  
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
-    
-    
+      
     if (sum(DataMask) > 0)
         % Normalize DataPair for Offset
         Max = max(DataPair(:,3));
@@ -2622,7 +2591,7 @@ function UpdateColormap(hFig)
         end
         % Linear interpolation
         [StartColor, EndColor] = InterpolateColorMap(hFig, DataPair(DataMask,:), CMap, CLim);
-        color_viz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
+        ColorViz = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
         
         iData = find(DataMask == 1);
         MeasureLinks = getappdata(hFig, 'MeasureLinks');
@@ -2638,16 +2607,16 @@ function UpdateColormap(hFig)
         % set desired colors to each link (4th column is transparency)
         if (IsDirectionalData)
             for i = 1:length(VisibleLinks)
-                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]); %link color and transparency
-                set(VisibleArrows1(i), 'EdgeColor',color_viz(i,:), 'FaceColor', color_viz(i,:)); %arrow color
-                set(VisibleArrows2(i), 'EdgeColor', color_viz(i,:), 'FaceColor', color_viz(i,:));
+                set(VisibleLinks(i), 'Color', [ColorViz(i,:) LinkIntensity]); %link color and transparency
+                set(VisibleArrows1(i), 'EdgeColor',ColorViz(i,:), 'FaceColor', ColorViz(i,:)); %arrow color
+                set(VisibleArrows2(i), 'EdgeColor', ColorViz(i,:), 'FaceColor', ColorViz(i,:));
             end 
             %also set arrow transparency all at once
             set(VisibleArrows1, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
             set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
         else
             for i = 1:length(VisibleLinks)
-                set(VisibleLinks(i), 'Color', [color_viz(i,:) LinkIntensity]);
+                set(VisibleLinks(i), 'Color', [ColorViz(i,:) LinkIntensity]);
             end 
         end
         
@@ -2656,9 +2625,9 @@ function UpdateColormap(hFig)
             if (IsDirectionalData)
                 if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)
                     % Get Bidirectional data
-                    Data_matrix = DataPair(DataMask,:);
-                    OutIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                    InIndex = ismember(DataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                    DataMatrix = DataPair(DataMask,:);
+                    OutIndex = ismember(DataPair(:,1:2),DataMatrix(:,2:-1:1),'rows').';
+                    InIndex = ismember(DataPair(:,1:2),DataMatrix(:,2:-1:1),'rows').';
                     
                     % Second arrow is visible for bidirectional links;
                     iData_mask = DataMask.';
@@ -2687,11 +2656,11 @@ function UpdateColormap(hFig)
         [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask,:), CMap, CLim);
         
         % added on Dec 20
-        color_viz_region = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
+        ColorVizRegion = StartColor(:,:) + Offset(:,:).*(EndColor(:,:) - StartColor(:,:));
         
         iData = find(RegionDataMask == 1);
         RegionLinks = getappdata(hFig,'RegionLinks');
-        VisibleLinks_region = RegionLinks(iData).';
+        VisibleLinksRegion = RegionLinks(iData).';
         
         if (IsDirectionalData)
             RegionArrows1 = getappdata(hFig, 'RegionArrows1');
@@ -2702,17 +2671,17 @@ function UpdateColormap(hFig)
 
         % set desired colors to each link (4th column is transparency)
         if (IsDirectionalData)
-            for i = 1:length(VisibleLinks_region)
-                set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]); %link color and transparency
-                set(VisibleArrows1(i), 'EdgeColor',color_viz_region(i,:), 'FaceColor', color_viz_region(i,:)); %arrow color
-                set(VisibleArrows2(i), 'EdgeColor', color_viz_region(i,:), 'FaceColor', color_viz_region(i,:));
+            for i = 1:length(VisibleLinksRegion)
+                set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i,:) LinkIntensity]); %link color and transparency
+                set(VisibleArrows1(i), 'EdgeColor',ColorVizRegion(i,:), 'FaceColor', ColorVizRegion(i,:)); %arrow color
+                set(VisibleArrows2(i), 'EdgeColor', ColorVizRegion(i,:), 'FaceColor', ColorVizRegion(i,:));
             end 
             %also set arrow transparency all at once
             set(VisibleArrows1, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
             set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
         else
-            for i = 1:length(VisibleLinks_region)
-                set(VisibleLinks_region(i), 'Color', [color_viz_region(i,:) LinkIntensity]);
+            for i = 1:length(VisibleLinksRegion)
+                set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i,:) LinkIntensity]);
             end 
         end        
         
@@ -2721,9 +2690,9 @@ function UpdateColormap(hFig)
             if (IsDirectionalData)
                 if (~isempty(IsBinaryData) && IsBinaryData == 1 && DisplayBidirectionalMeasure)
                     % Get Bidirectional data
-                    Data_matrix = RegionDataPair(RegionDataMask,:);
-                    OutIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
-                    InIndex = ismember(RegionDataPair(:,1:2),Data_matrix(:,2:-1:1),'rows').';
+                    DataMatrix = RegionDataPair(RegionDataMask,:);
+                    OutIndex = ismember(RegionDataPair(:,1:2),DataMatrix(:,2:-1:1),'rows').';
+                    InIndex = ismember(RegionDataPair(:,1:2),DataMatrix(:,2:-1:1),'rows').';
                     
                     % Second arrow is visible for bidirectional links;
                     iData_mask = RegionDataMask.';
@@ -2965,20 +2934,16 @@ end
 %hidden nodes result in disabled options to show/hide text region labels 
 %hidden nodes do not have region max/min options
 function SetHierarchyNodeIsVisible(hFig, isVisible)
-    HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-    if (HierarchyNodeIsVisible ~= isVisible)
-        % show/hide region nodes (lobes + hem nodes) from display
-        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
-        SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
-        % rehide extra lobe nodes (level 3)
-        HideExtraLobeNode(hFig);
-        % Update variable
-        setappdata(hFig, 'HierarchyNodeIsVisible', isVisible);
-        %hidden nodes do not have region max/min options
-        if(~isVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
-            ToggleMeasureToRegionDisplay(hFig);
-        end           
-    end
+    % show/hide region nodes (lobes + hem nodes) from display
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+    SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
+    % rehide extra lobe nodes (level 3)
+    HideExtraLobeNode(hFig);
+    %hidden nodes do not have region max/min options
+    if(~isVisible && ~getappdata(hFig, 'MeasureLinksIsVisible'))
+        ToggleMeasureToRegionDisplay(hFig);
+    end          
+    setappdata(hFig, 'HierarchyNodeIsVisible', isVisible);
 end
  
  
@@ -3011,14 +2976,8 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         UpdateColormap(hFig);
         
         % update size and transparency
-        LinkSize = getappdata(hFig, 'LinkSize');
-        SetLinkSize(hFig, LinkSize);
-        if (isappdata(hFig,'LinkTransparency'))
-            transparency = getappdata(hFig,'LinkTransparency');
-        else
-            transparency = 0;
-        end
-        SetLinkTransparency(hFig, transparency);
+        SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
+        SetLinkTransparency(hFig, getappdata(hFig,'LinkTransparency'));
     end
 end
  
@@ -3053,7 +3012,6 @@ end
  
 %% ===== DISPLAY MODE =====
 function SetTextDisplayMode(hFig, DisplayMode)
-    disp("SetTextDisplayMode");
     % Get current display
     TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
     % If not already set
@@ -3115,8 +3073,6 @@ function ToggleLobeLabels(hFig)
                 AllNodes(i).TextLabel.Rotation = 0;
             end
         end
-         
-        %update appdata
         setappdata(hFig, 'LobeFullLabel', 0);
     else
         % toggle to full form and radial angle
@@ -3131,76 +3087,44 @@ function ToggleLobeLabels(hFig)
                 end
             end
         end
-        %update appdata
         setappdata(hFig, 'LobeFullLabel', 1);
     end
 end
 
 %% ===== NODE & LABEL SIZE IN SIGNLE FUNCTION =====
 function SetNodeLabelSize(hFig, NodeSize, LabelSize)
-    if isempty(NodeSize)
-        NodeSize = 5; % default for 'on' is 5, default for off is '6'
-    end
-    if isempty(LabelSize)
-        LabelSize = 7; % set to default -3
-    end
-
     AllNodes = getappdata(hFig,'AllNodes');
     for i = 1:size(AllNodes,2)
-        node = AllNodes(i);
-        set(node.NodeMarker, 'MarkerSize', NodeSize);
-        set(node.TextLabel, 'FontSize', LabelSize);
+        Node = AllNodes(i);
+        set(Node.NodeMarker, 'MarkerSize', NodeSize);
+        set(Node.TextLabel, 'FontSize', LabelSize);
     end     
-    
     setappdata(hFig, 'NodeSize', NodeSize);
     setappdata(hFig, 'LabelSize', LabelSize);
 end
-
-function NodeSize = GetNodeSize(hFig)
-    NodeSize = getappdata(hFig, 'NodeSize');
-    if isempty(NodeSize)
-        NodeSize = 5; % default for 'on' is 5, default for off is '6'
-    end
-end
     
 %% ===== LINK SIZE =====
-function LinkSize = GetLinkSize(hFig)
-    LinkSize = getappdata(hFig, 'LinkSize');
-    if isempty(LinkSize)
-        LinkSize = 1.5; % default
-    end
-end
- 
 function SetLinkSize(hFig, LinkSize)
-    if isempty(LinkSize)
-        LinkSize = 1.5; % default
-    end
-
     if (isappdata(hFig,'MeasureLinks'))
         MeasureLinks = getappdata(hFig,'MeasureLinks');
         set(MeasureLinks, 'LineWidth', LinkSize);
     end
-    
     if (isappdata(hFig,'MeasureArrows1'))
         MeasureArrows1 = getappdata(hFig,'MeasureArrows1');
         set(MeasureArrows1, 'LineWidth', LinkSize);
     end
-    
     if (isappdata(hFig,'MeasureArrows2'))
         MeasureArrows2 = getappdata(hFig,'MeasureArrows2');
         set(MeasureArrows2, 'LineWidth', LinkSize);
     end
-    
     if (isappdata(hFig,'RegionLinks'))
         RegionLinks = getappdata(hFig,'RegionLinks');
         set(RegionLinks, 'LineWidth', LinkSize);
     end
-    
     if (isappdata(hFig,'RegionArrows1'))
         RegionArrows1 = getappdata(hFig,'RegionArrows1');
         set(RegionArrows1, 'LineWidth', LinkSize);
     end
-    
     if (isappdata(hFig,'RegionArrows2'))
         RegionArrows2 = getappdata(hFig,'RegionArrows2');
         set(RegionArrows2, 'LineWidth', LinkSize);
@@ -3217,10 +3141,6 @@ function SetLinkTransparency(hFig, LinkTransparency)
     
     % Note: update transparency for both measure and region links that are
     % "visible" because displayed links should reflect updated transparency if user toggles link type 
-   
-    if isempty(LinkTransparency)
-        LinkTransparency = 0; % default
-    end
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     
     % MeasureLinks
@@ -3278,17 +3198,11 @@ function SetLinkTransparency(hFig, LinkTransparency)
             end
         end
     end
-    
     setappdata(hFig, 'LinkTransparency', LinkTransparency);
 end
  
 %% ===== BACKGROUND COLOR =====
-function SetBackgroundColor(hFig, BackgroundColor, TextColor)
-    % Negate text color if necessary
-    if nargin < 3
-        TextColor = ~BackgroundColor;
-    end
- 
+function SetBackgroundColor(hFig, BackgroundColor)
     % Update Matlab background color
     set(hFig, 'Color', BackgroundColor)
     
@@ -3301,12 +3215,11 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
                 % only update text color for selected nodes (keep rest as
                 % grey)
                 if ~isequal(AllNodes(i).TextLabel.Color,[0.5 0.5 0.5])
-                    set(AllNodes(i).TextLabel,'Color', TextColor);
+                    set(AllNodes(i).TextLabel,'Color', ~BackgroundColor);
                 end
             end
         end
     end
-    
     setappdata(hFig, 'BgColor', BackgroundColor); %set app data for toggle
     UpdateContainer(hFig);
 end
@@ -3318,17 +3231,7 @@ function ToggleBackground(hFig)
     else
         BackgroundColor = [1 1 1];
     end
-    TextColor = ~BackgroundColor;
-    SetBackgroundColor(hFig, BackgroundColor, TextColor)
-end
- 
-%% Binary Data
-function SetIsBinaryData(hFig, IsBinaryData)
-    % Update variable
-    setappdata(hFig, 'IsBinaryData', IsBinaryData);
-    setappdata(hFig, 'UserSpecifiedBinaryData', 1);
-    % Update colormap
-    UpdateColormap(hFig);
+    SetBackgroundColor(hFig, BackgroundColor)
 end
  
 function SetDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure, Refresh)
@@ -3399,7 +3302,7 @@ function RefreshTextDisplay(hFig, isRedraw)
         if ismember(1,TextDisplayMode)
             VisibleText(MeasureNodes) = ValidNode(MeasureNodes);
         end
-        if ismember(2,TextDisplayMode) 
+        if (ismember(2,TextDisplayMode) &&  getappdata(hFig, 'HierarchyNodeIsVisible'))
             VisibleText(AgregatingNodes) = ValidNode(AgregatingNodes);
         end
         if ismember(3,TextDisplayMode) 
@@ -3501,53 +3404,44 @@ function ClearAndAddNodes(hFig, V, Names)
         DeleteAllNodes(hFig);
         rmappdata(hFig,'AllNodes');
     end
-    
     if (isappdata(hFig,'MeasureLinks'))
         delete(getappdata(hFig,'MeasureLinks'));
         rmappdata(hFig,'MeasureLinks');
     end
-    
     if (isappdata(hFig,'RegionLinks'))
         delete(getappdata(hFig,'RegionLinks'));
         rmappdata(hFig,'RegionLinks');
     end
-    
     if (isappdata(hFig,'MeasureArrows1'))
         delete(getappdata(hFig,'MeasureArrows1'));
         rmappdata(hFig,'MeasureArrows1');
     end
-    
     if (isappdata(hFig,'MeasureArrows2'))
         delete(getappdata(hFig,'MeasureArrows2'));
         rmappdata(hFig,'MeasureArrows2');
     end
-    
     if (isappdata(hFig,'RegionArrows1'))
         delete(getappdata(hFig,'RegionArrows1'));
         rmappdata(hFig,'RegionArrows1');
     end
-    
     if (isappdata(hFig,'RegionArrows2'))
         delete(getappdata(hFig,'RegionArrows2'));
         rmappdata(hFig,'RegionArrows2');
     end
     
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
-   
-    % Create nodes as an array of struct nodes (loop backwards to
-    % pre-allocate nodes)
+    % Create nodes as array of node structs (loop backwards to pre-allocate)
+    NodeSize = getappdata(hFig,'NodeSize');
+    LabelSize = getappdata(hFig,'LabelSize'); 
     for i = nVertices:-1:1
         isAgregatingNode = false;
         if (i<=nAgregatingNodes)
             isAgregatingNode = true; 
         end
-        
         if (isempty(Names(i)) || isempty(Names{i}))
             Names{i} = ''; % Blank name if none is assigned
         end
-
-        % createNode(xpos, ypos, index, label, isAggregatingNode) 
-        AllNodes(i) = CreateNode(hFig,V(i,1),V(i,2),i,Names(i),isAgregatingNode);
+        AllNodes(i) = CreateNode(hFig,V(i,1),V(i,2),i,Names(i),isAgregatingNode, NodeSize, LabelSize);
     end 
     
     % Measure Nodes are color coded to their Scout counterpart
@@ -3559,7 +3453,18 @@ function ClearAndAddNodes(hFig, V, Names)
             AllNodes(nAgregatingNodes+i).NodeMarker.MarkerFaceColor = RowColors(i,:); % set marker fill color
         end 
     end
-        
+    
+    % check if saved user pref wants abbr. lobe labels
+    if (~getappdata(hFig,'LobeFullLabel'))
+        % display abbr form and horizontal angle
+        for i = 1:length(AllNodes)
+            if (AllNodes(i).isAgregatingNode)
+                AllNodes(i).TextLabel.String = AllNodes(i).Label;
+                AllNodes(i).TextLabel.Rotation = 0;
+            end
+        end
+    end
+    
     setappdata(hFig, 'AllNodes', AllNodes); % Very important!
     
     % refresh display extent
@@ -3574,81 +3479,76 @@ end
  
 %% Create A New Node with NodeMarker and TextLabel graphics objs
 % Note: each node is a struct with the following fields:
-%   node.Position           - [x,y] coordinates
-%   node.isAgregatingNode   - true/false (if this node is a grouped node)
-%   node.Color              - colour of the ROI/associated scout, or grey on default
-%   node.NodeMarker         - Line Object reprenting the node on the figure
-%   node.TextLabel          - Text Object representing the node label on the figure
-%
-%   NOTE: node.NodeMarker.Userdata = [{[index]} {label} ] to store useful node data
-%   so that we can ID the nodes when clicked! Can also retrieve xpos/ypos
-%   from the NodeMarker line obj using node.NodeMarker.XData/YData
-function node = CreateNode(hFig, xpos, ypos, index, label, isAgregatingNode)
-    node.Position = [xpos,ypos];
-    node.isAgregatingNode = isAgregatingNode;
-    node.Color = [0.5 0.5 0.5];
-    node.Label = label;
+%   Node.Position           - [x,y] coordinates
+%   Node.isAgregatingNode   - true/false (if this node is a grouped node)
+%   Node.Color              - colour of the ROI/associated scout, or grey on default
+%   Node.NodeMarker         - Line Object reprenting the node on the figure
+%   Node.TextLabel          - Text Object representing the node label on the figure
+%   NOTE: Node.NodeMarker.Userdata to store useful node data for node ID
+%   when clicking
+function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, NodeSize, LabelSize)
+    Node = struct();
+    Node.Position = [xPos,yPos];
+    Node.isAgregatingNode = IsAgregatingNode;
+    Node.Color = [0.5 0.5 0.5];
+    Node.Label = Label;
 
     % Mark the node as a Matlab Line graphic object
-    node.NodeMarker = line(...
-        node.Position(1),...
-        node.Position(2),...
+    Node.NodeMarker = line(...
+        Node.Position(1),...
+        Node.Position(2),...
         -2,...                              #z coordinate 
-        'Color',node.Color,...
+        'Color',Node.Color,...
         'Marker','o',...                    # Marker symbol when the node is selected 'on'
-        'MarkerFaceColor', node.Color,...   # Marker is default node color when 'on', grey when 'off'
-        'MarkerSize', 5,...                 # default (6) is too big
+        'MarkerFaceColor', Node.Color,...   # Marker is default node color when 'on', grey when 'off'
+        'MarkerSize', NodeSize,...                 
         'LineStyle','none',...
         'Visible','on',...
         'PickableParts','all',...
         'ButtonDownFcn',@NodeButtonDownFcn,...
-        'UserData',[index node.Label xpos ypos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
+        'UserData',[Index Node.Label xPos yPos]); %NOTE: store useful node data about in node.NodeMarker.UserData so that we can ID the nodes when clicked!
     
     % Create label as Matlab Text obj 
-    % display with '_', default colour white, callback to allow clicked labels
-    % also store useful node data about in TextLabel.UserData so that we can ID the nodes when label is clicked!
-    node.TextLabel = text(0,0,node.Label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[index node.Label xpos ypos]); 
-    node.TextLabel.Position = 1.05*node.Position; %need offset factor so label doesn't overlap
-    node.TextLabel.FontSize = node.TextLabel.FontSize-3; % this gives size of 7 (default 10 is too big)
-    node.TextLabel.FontWeight = 'normal'; % not bold by default
+    Node.TextLabel = text(0,0,Node.Label, 'Interpreter', 'none', 'Color', [1 1 1],'ButtonDownFcn',@LabelButtonDownFcn, 'UserData',[Index Node.Label xPos yPos]); 
+    Node.TextLabel.Position = 1.05*Node.Position; %need offset factor so label doesn't overlap
+    Node.TextLabel.FontSize = LabelSize;
+    Node.TextLabel.FontWeight = 'normal'; % not bold by default
 
-    % default full labels for lobes (user can toggle with 'l' shortcut and
-    % popup menu)
-    if (isAgregatingNode)
-        node.TextLabel.String = LobeTagToFullTag(node.Label);
+    % default full labels for lobes (user toggle with 'l' or popup menu)
+    if (IsAgregatingNode)
+        Node.TextLabel.String = LobeTagToFullTag(Node.Label);
     end
     
     %rotate and align labels
-    t = atan2(node.Position(2),node.Position(1));
+    t = atan2(Node.Position(2),Node.Position(1));
     if abs(t) > pi/2
-        node.TextLabel.Rotation = 180*(t/pi + 1);
-        node.TextLabel.HorizontalAlignment = 'right';
+        Node.TextLabel.Rotation = 180*(t/pi + 1);
+        Node.TextLabel.HorizontalAlignment = 'right';
     else
-        node.TextLabel.Rotation = t*180/pi;
+        Node.TextLabel.Rotation = t*180/pi;
     end
     
     % show node as 'selected' as default
-    SelectNode(hFig, node, true);
-   
+    SelectNode(hFig, Node, true);
 end
 
 % To visually change the appearance of sel/unsel nodes
-function SelectNode(hFig,node,isSelected)
+function SelectNode(hFig,Node,IsSelected)
     % user adjust node size as desired
-    nodeSize = GetNodeSize(hFig);    
-    if isSelected % node is SELECTED ("ON")
+    NodeSize = getappdata(hFig, 'NodeSize');
+    if IsSelected % node is SELECTED ("ON")
         % return to original node colour, shape, and size
-        node.NodeMarker.Marker = 'o';
-        node.NodeMarker.Color = node.NodeMarker.MarkerFaceColor;
-        node.NodeMarker.MarkerSize = nodeSize;
-        node.TextLabel.Color =  ~GetBackgroundColor(hFig);
+        Node.NodeMarker.Marker = 'o';
+        Node.NodeMarker.Color = Node.NodeMarker.MarkerFaceColor;
+        Node.NodeMarker.MarkerSize = NodeSize;
+        Node.TextLabel.Color =  ~getappdata(hFig, 'BgColor');
     else % node is NOT selected ("OFF")
         % display as a grey 'X' (slightly bigger/bolded to allow for easier clicking shape)
         % node labels also greyed out
-        node.NodeMarker.Marker = 'x';
-        node.NodeMarker.Color =  [0.5 0.5 0.5]; % grey marker
-        node.NodeMarker.MarkerSize = nodeSize + 1;
-        node.TextLabel.Color = [0.5 0.5 0.5]; % grey label
+        Node.NodeMarker.Marker = 'x';
+        Node.NodeMarker.Color =  [0.5 0.5 0.5]; % grey marker
+        Node.NodeMarker.MarkerSize = NodeSize + 1;
+        Node.TextLabel.Color = [0.5 0.5 0.5]; % grey label
     end
 end
 
