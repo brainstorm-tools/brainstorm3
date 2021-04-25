@@ -510,10 +510,8 @@ for iFile = 1:length(LabelFiles)
         case 'DFS'
             % === READ FILE ===
             [VertexLabelIds, labelMap, AtlasName] = in_label_bs(LabelFiles{iFile});
-            % Could not read the label correctly
-            if isempty(VertexLabelIds) || isempty(labelMap)
-                fprintf('Hi');%%AAJ continue;
-            end
+            % Could not read the label Names correctly
+            fprintf("Could not read the label names correctly for %s\n", AtlasName);
             
             % === CONVERT TO SCOUTS ===
             % Convert to scouts structures
