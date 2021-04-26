@@ -1874,7 +1874,7 @@ switch (lower(action))
                         if ~isempty(strfind(filenameRelative, '_connectn'))                           
                             
                             % new Connectivity Visualization tool menu option
-                            gui_component('MenuItem', jPopup, [], 'Display as graph        [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphFull'));
+                            gui_component('MenuItem', jPopup, [], 'Display as graph       [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphFull'));
                                                                       
                             gui_component('MenuItem', jPopup, [], 'Display as graph (old) [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));
                             %gui_component('MenuItem', jPopup, [], 'Connectivity graph (3D)',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, '3DGraph'));
