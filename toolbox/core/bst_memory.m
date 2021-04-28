@@ -2373,7 +2373,8 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         else
             nFooofRow = numel(iRow);
         end
-        Values = NaN([nFooofRow, size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF, [2,3])]);
+        [s1 s2 s3] = size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF);
+        Values = NaN([nFooofRow, s2, s3 ]);
         nFooofFreq = sum(isFooofFreq);
         % Check for old structure format with extra .FOOOF. level.
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data, 'FOOOF')
