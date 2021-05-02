@@ -865,6 +865,7 @@ function DisplayFigurePopup(hFig)
         BackgroundColor = getappdata(hFig, 'BgColor');
         IsWhite = all(BackgroundColor == [1 1 1]);
         jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
         jItem.setSelected(IsWhite);
         
         % === DEFAULT/RESET ===
