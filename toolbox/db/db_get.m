@@ -264,7 +264,7 @@ switch contextName
         end
         sItems = [];
         
-        % If output expeted, all field requested, and all sFiles are same Type     
+        % If output expected, all fields requested, and all sFiles are same Type     
         if nargout > 1 && isequal(fields, '*') && length(unique({sFiles(:).Type})) == 1
             nFiles = length(sFiles);
             sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
