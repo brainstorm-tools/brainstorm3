@@ -230,8 +230,7 @@ switch contextName
                 for iCat = 1:length(categories)
                     field = ['i' categories{iCat}];
                     if ~isempty(sStudy.(field)) && isnumeric(sStudy.(field))
-                        sFile = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-                            'FileName', struct('Id', sStudy.(field)));
+                        sFile = db_get('FunctionalFile', sqlConn, sStudy.(field), 'FileName');
                         if ~isempty(sFile)
                             sStudy.(field) = sFile.FileName;
                         end
@@ -391,8 +390,7 @@ switch contextName
                     selectedFiles{iCat} = sStudies(i).(field);
                 elseif ~isempty(sStudies(i).(field)) && isnumeric(sStudies(i).(field))
                     % Get FileName with previous file ID before it's deleted
-                    sFile = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-                        'FileName', struct('Id', sStudies(i).(field)));
+                    sFile = db_get('FunctionalFile', sqlConn, sStudies(i).(field), 'FileName');
                     if ~isempty(sFile)
                         selectedFiles{iCat} = sFile.FileName;
                     end

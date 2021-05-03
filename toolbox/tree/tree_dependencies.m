@@ -177,9 +177,9 @@ try
                 % Check for bad trials
                 if ~GetBadTrials
                     % Get study
-                    sItem = db_get('FunctionalFile', 'data', nodeFileNames{iNode});
+                    [~, sData] = db_get('FunctionalFile', nodeFileNames{iNode});
                     % Ignore bad trials
-                    if sItem.BadTrial
+                    if sData.BadTrial
                         continue;
                     end
                 end
@@ -544,7 +544,7 @@ if ~isempty(iTargetStudies)
                 if ~GetBadTrials
                     qryCond.ExtraNum = 0;
                 end
-                sFiles = sql_query([], 'select', 'FunctionalFile', 'Id', qryCond);
+                sFiles = db_get('FunctionalFile', qryCond, 'Id');
                 
                 % Add data files to list
                 if ~isempty(sFiles)

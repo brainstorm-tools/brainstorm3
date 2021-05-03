@@ -1339,7 +1339,7 @@ switch (lower(action))
                 % Get study description
                 iStudy = bstNodes(1).getStudyIndex();
                 iData = bstNodes(1).getItemIndex();
-                sData = db_get('FunctionalFile', 'Data', iData);
+                [~, sData] = db_get('FunctionalFile', iData);
                 iSubject = db_get('SubjectFromStudy', iStudy);
                 sSubject = bst_get('Subject', iSubject);
                 % Data type

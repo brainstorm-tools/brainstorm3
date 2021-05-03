@@ -135,7 +135,7 @@ if isAnatomy
 else
     % Get parent file
     if ~isempty(ParentFile)
-        sParent = sql_query(sqlConn, 'select', 'FunctionalFile', {'FileName', 'Type'}, struct('Id', ParentFile));
+        sParent = db_get('FunctionalFile', sqlConn, ParentFile, {'FileName', 'Type'});
         if strcmpi(sParent.Type, 'folder')
             ParentFolder = sParent.FileName;
         else
@@ -162,19 +162,19 @@ if ismember(fileType, {'subjectimage', 'channel', 'noisecov', 'ndatacov'})
 %                 delfile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(1).FileName);
 %             end
         case 'channel'
-            sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Study', iTarget, 'Type', 'channel'));
-            if ~isempty(sChannel)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sChannel.FileName);
+            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'channel'), 'Filename');
+            if ~isempty(sFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile.FileName);
             end
         case 'noisecov'
-            sNoiseCov = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Study', iTarget, 'Type', 'noisecov'));
-            if ~isempty(sNoiseCov)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sNoiseCov(1).FileName);
+            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'noisecov'), 'Filename');
+            if ~isempty(sFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
             end
         case 'ndatacov'
-            sDataCov = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Study', iTarget, 'Type', 'ndatacov'));
-            if ~isempty(sDataCov)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sDataCov(1).FileName);
+            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'ndatacov'), 'Filename');
+            if ~isempty(sFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
             end
     end
     % Replace file

@@ -72,7 +72,7 @@ for iStudy = iStudies
         sFile.ParentFile = iParent;
         
         % Get parent name
-        sParent = sql_query(sqlConn, 'select', 'FunctionalFile', 'FileName', struct('Id', iParent));
+        sParent = db_get('FunctionalFile', sqlConn, iParent, 'FileName');
         sFile.FileName = bst_fullfile(sParent.FileName, FolderName);
     else
         % Get Subject & Study names

@@ -218,32 +218,64 @@ switch contextName
         else
             varargout{1} = sAnatFiles;
         end
-
-    % Usage: sFiles = db_get('FunctionalFile', FileType, FileIDs)
-    % Usage: sFiles = db_get('FunctionalFile', FileType, FileNames)
+        
+%% ==== FUNCTIONAL FILE ====
+    % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileIDs,   Fields)
+    % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileNames, Fields)
+    % Usage: [sFiles, sItems] = db_get('FunctionalFile', CondQuery, Fields)
     case 'FunctionalFile'
-        type = args{1};
-        iFiles = args{2};
+        % Parse inputs
+        iFiles = args{1};
+        fields = '*';                              
+        templateStruct = db_template('FunctionalFile');
+
         if ischar(iFiles)
             iFiles = {iFiles};
+        elseif isstruct(iFiles)
+            condQuery = args{1};           
         end
-        nFiles = length(iFiles);
-        sFiles = repmat(db_template('FunctionalFile'), 1, nFiles);
-        sItems = repmat(db_template(type), 1, nFiles);
 
-        for i = 1:nFiles
-            if iscell(iFiles)
-                condQuery = struct('Type', type, 'FileName', iFiles{i});
-            else
-                condQuery = struct('Id', iFiles(i));
+        if length(args) > 1
+            fields = args{2};
+            if ischar(fields)
+                fields = {fields};
             end
-            sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', '*', condQuery);
-            sItems(i) = getFuncFileStruct(type, sFiles(i));
+            for i = 1 : length(fields)
+                resultStruct.(fields{i}) = templateStruct.(fields{i});
+            end
+        else
+            resultStruct = templateStruct;
         end
 
-        varargout{1} = sItems;
-        varargout{2} = sFiles;
+        % Input is FileIDs and FileNames
+        if ~isstruct(iFiles)
+            nFiles = length(iFiles);
+            sFiles = repmat(resultStruct, 1, nFiles);
+            for i = 1:nFiles
+                if iscell(iFiles)
+                    condQuery.FileName = iFiles{i};
+                else
+                    condQuery.Id = iFiles(i);
+                end
+                sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
+            end
+        else % Input is struct query
+            sFiles = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery(1));
+        end
+        sItems = [];
+        
+        % If output expected, all fields requested, and all sFiles are same Type     
+        if nargout > 1 && isequal(fields, '*') && length(unique({sFiles(:).Type})) == 1
+            nFiles = length(sFiles);
+            sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
+            for i = 1 : nFiles
+                sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
+            end
+        end        
 
+        varargout{1} = sFiles;
+        varargout{2} = sItems;
+%%
     % Usage: iSubject = db_get('SubjectFromStudy', iStudy)
     case 'SubjectFromStudy'
         iStudy = args{1};
@@ -295,10 +327,9 @@ switch contextName
             if ~isempty(sStudy)
                 % If no channel selected, find first channel in study
                 if isempty(sStudy.iChannel)
-                    sChannel = sql_query(sqlConn, 'select', 'FunctionalFile', ...
-                        'Id', struct('Study', sStudy.Id, 'Type', 'channel'));
-                    if ~isempty(sChannel)
-                        sStudy.iChannel = sChannel(1).Id;
+                    sFile = db_get('FunctionalFile', sqlConn, struct('Study', sStudy.Id, 'Type', 'channel'), 'Id');
+                    if ~isempty(sFile)
+                        sStudy.iChannel = sFile(1).Id;
                     end
                 end
 
@@ -414,6 +445,8 @@ if handleConn
     sql_close(sqlConn);
 end
 end
+
+%% ==== HELPERS ====
 
 % Get a specific functional file db_template structure from the generic
 % db_template('FunctionalFile') structure.
