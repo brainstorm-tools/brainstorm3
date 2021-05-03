@@ -3474,7 +3474,7 @@ function FullTag = LobeTagToFullTag(Tag)
     elseif strcmp(Tag, 'F')
         FullTag = 'Frontal';
     elseif strcmp(Tag, 'C')
-        FullTag = 'Cerebral';       
+        FullTag = 'Central';       
     elseif strcmp(Tag, 'T')
         FullTag = 'Temporal';
     elseif strcmp(Tag, 'P')
