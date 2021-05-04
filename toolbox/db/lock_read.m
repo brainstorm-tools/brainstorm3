@@ -81,7 +81,7 @@ end
 if isempty(sLock) && ~isempty(FileId)
     ParentId = FileId;
     while 1
-        sParent = sql_query(sqlConnection, 'select', 'FunctionalFile', 'ParentFile', struct('Id', ParentId));
+        sParent = db_get('FunctionalFile', sqlConnection, ParentId, 'ParentFile');
         if isempty(sParent) || isempty(sParent.ParentFile)
             break;
         end

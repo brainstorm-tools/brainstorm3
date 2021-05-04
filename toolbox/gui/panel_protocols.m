@@ -945,7 +945,7 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
     if (nargin <= 2)
         % Find file in database
         FileName = nodeTypes;
-        sFile = sql_query([], 'select', 'FunctionalFile', {'Id', 'Study'}, struct('FileName', file_short(FileName)));
+        sFile = db_get('FunctionalFile', file_short(FileName), {'Id', 'Study'});
         if isempty(sFile)
             return
         end

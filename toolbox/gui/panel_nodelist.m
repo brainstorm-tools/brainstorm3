@@ -722,7 +722,7 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
         result.close();
         % Get channel file
         if iChannel ~= 0
-            sChannel = db_get('FunctionalFile', sqlConn, 'channel', iChannel);
+            [~, sChannel] = db_get('FunctionalFile', sqlConn, iChannel);
         else
             sChannel = [];
         end
@@ -747,19 +747,19 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
             % Data or results
             switch (ProcessType)
                 case 'data'
-                    sData = db_get('FunctionalFile', sqlConn, 'Data', iItems(i));
+                    [~, sData] = db_get('FunctionalFile', sqlConn, iItems(i));
                     sFiles(i).FileName = file_win2unix(sData.FileName);
                     sFiles(i).Comment  = sData.Comment;
                     if strcmpi(sData.DataType, 'raw')
                         sFiles(i).FileType = 'raw';
                     end
                 case 'results'
-                    sResult = db_get('FunctionalFile', sqlConn, 'Result', iItems(i));
+                    [~, sResult] = db_get('FunctionalFile', sqlConn, iItems(i));
                     sFiles(i).FileName = file_win2unix(sResult.FileName);
                     sFiles(i).Comment  = sResult.Comment;
                     sFiles(i).DataFile = file_win2unix(sResult.DataFile);
                 case 'timefreq'
-                    sTimefreq = db_get('FunctionalFile', sqlConn, 'Timefreq', iItems(i));
+                    [~, sTimefreq] = db_get('FunctionalFile', sqlConn, iItems(i));
                     % Do not accept TF/sources, because it's impossible to get the full matrix [nSources x nTime x nFrequencies]
                     if isFirstWarning && strcmpi(sTimefreq.DataType, 'results') && ~isempty(strfind(sTimefreq.FileName, '_KERNEL_'))
                         isFirstWarning = 0;
@@ -778,11 +778,11 @@ function sFiles = GetFiles(nodelistName)      %#ok<DEFNU>
                     sFiles(i).Comment  = sTimefreq.Comment;
                     sFiles(i).DataFile = file_win2unix(sTimefreq.DataFile);
                 case 'matrix'
-                    sMatrix = db_get('FunctionalFile', sqlConn, 'Matrix', iItems(i));
+                    [~, sMatrix] = db_get('FunctionalFile', sqlConn, iItems(i));
                     sFiles(i).FileName = file_win2unix(sMatrix.FileName);
                     sFiles(i).Comment  = sMatrix.Comment;
                 case {'pdata','presults','ptimefreq','pmatrix'}
-                    sStat = db_get('FunctionalFile', sqlConn, 'Stat', iItems(i));
+                    [~, sStat] = db_get('FunctionalFile', sqlConn, iItems(i));
                     sFiles(i).FileName = file_win2unix(sStat.FileName);
                     sFiles(i).Comment  = sStat.Comment;
                 otherwise
