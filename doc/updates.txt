@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+May 2021
+- Anatomy: Use imported volume parcellations as volume scouts
+---------------------------------------------------------------
 April 2021
 - Plugins: NIRSTORM included as a plugin (available as compiled)
 - Plugins: BrainEntropy included as a plugin (available as compiled)
