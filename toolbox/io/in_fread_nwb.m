@@ -1,7 +1,7 @@
-function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous, ImportOptions)
+function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isContinuous)
 % IN_FREAD_NWB Read a block of recordings from nwb files
 %
-% USAGE:  F = in_fread_nwb(sFile, SamplesBounds, selectedChannels, isContinuous, ImportOptions)
+% USAGE:  F = in_fread_nwb(sFile, SamplesBounds=[], iChannels=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,37 +21,61 @@ function F = in_fread_nwb(sFile, iEpoch, SamplesBounds, selectedChannels, isCont
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis, Francois Tadel, 2019-2020
+% Author: Konstantinos Nasiotis 2019-2020
 
-error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-opening-nwb-files/21025');
 
-%% ===== DOWNLOAD NWB LIBRARY IF NEEDED =====
-if ~exist('nwbRead', 'file')
-    errMsg = bst_install_nwb(ImportOptions.DisplayMessages);
-    if ~isempty(errMsg)
-        error(errMsg);
-    end
+% Parse inputs
+if (nargin < 3) || isempty(selectedChannels)
+    selectedChannels = 1:length(sFile.channelflag);
 end
+nTotalChannels = length(selectedChannels);
 
+% Install/load NWB library
+[isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'nwb');
+if ~isInstalled
+    error(errMsg);
+end
+NWBDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
+
+
+%% Load everything from the NWB directory
+
+previous_directory = pwd;
+cd(NWBDir);
 
 %% Load the nwbFile object that holds the info of the .nwb
 nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead of reading the .nwb from scratch
 
+ChannelsModuleStructure = sFile.header.ChannelsModuleStructure;
+
+% % If time for the ephys signals doesnt start from 0, adjust
+% samples_adjustment = 0;
+% for iModule = 1:length(ChannelsModuleStructure)
+%     if ChannelsModuleStructure(iModule).isElectrophysiology
+%         samples_adjustment = round(ChannelsModuleStructure(iModule).timeBounds(1)*ChannelsModuleStructure(iModule).Fs) - 1;
+%     end
+% end
+% SamplesBounds = SamplesBounds - samples_adjustment;
+
+
 %% Assign the bounds based on the trials or the continuous selection
 if isempty(SamplesBounds) && isContinuous
-    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+    SamplesBounds = round(sFile.prop.times.* sFile.prop.sfreq);
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
 elseif (~isempty(SamplesBounds) && isContinuous) || (~isempty(SamplesBounds) && ~isContinuous)
     timeBounds    = SamplesBounds./sFile.prop.sfreq;
 elseif isempty(SamplesBounds) && ~isContinuous
     iEpoch = double(iEpoch);
     % Get sample bounds
-    all_TrialsTimeBounds = double([nwb2.intervals_trials.start_time.data.load nwb2.intervals_trials.stop_time.data.load]);
+    all_TrialsTimeBounds = double([nwb2.intervals_epochs.start_time.data.load nwb2.intervals_epochs.stop_time.data.load]);
     timeBounds = all_TrialsTimeBounds(iEpoch,:);
     SamplesBounds = round(timeBounds.* sFile.prop.sfreq);    
 end
 
-nSamples      = SamplesBounds(2) - SamplesBounds(1) + 1;
+nSamples = SamplesBounds(2) - SamplesBounds(1);
+
+Fs = sFile.prop.sfreq;
+timeBounds = SamplesBounds./Fs;
 
 %% Get the signals
 
@@ -61,61 +85,149 @@ nSamples      = SamplesBounds(2) - SamplesBounds(1) + 1;
 % This could lead to problems
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 
-allBehaviorKeys = sFile.header.ChannelType;
+F = zeros(nTotalChannels, nSamples+1);
 
-nChannels = length(selectedChannels);
-F = zeros(nChannels, nSamples);
+iiCh = 0;
+for iModule = 1:length(ChannelsModuleStructure)
+    nModuleChannels = ChannelsModuleStructure(iModule).nChannels;
+    
+    % First check if the segment requested is within the
+    % discontinuities of the signal. If it is, fill the F matrix with
+    % NaNs - Maybe Consider zeros
+    time_discontinuities = ChannelsModuleStructure(iModule).time_discontinuities;
 
-% Get the Intracranial signals
-iEEG = 0;
-for iChannel = 1:nChannels
-    if strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'EEG') || strcmp(sFile.header.ChannelType{selectedChannels(iChannel)}, 'SEEG')
-        iEEG = iEEG + 1;
-        
-        if ~isempty(sFile.header.RawKey)
-            F(iChannel,:) = nwb2.acquisition.get(sFile.header.RawKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
-        else
-            F(iChannel,:) = nwb2.processing.get('ecephys').nwbdatainterface.get('LFP').electricalseries.get(sFile.header.LFPKey).data.load([selectedChannels(iEEG), SamplesBounds(1)+1], [selectedChannels(iEEG), SamplesBounds(2)+1]);
-        end
-    else
-        % Get the additional/behavioral channels
-        if ~isempty(sFile.header.allBehaviorKeys)
-            position_timestamps =  nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{selectedChannels(iChannel),1}).spatialseries.get(allBehaviorKeys{selectedChannels(iChannel),2}).timestamps.load; % I use only the first subkey - subkeys should have the same timestamps
-            % Get the indices of the samples that are within the time-selection
-            selected_timestamps = find(position_timestamps>timeBounds(1) & position_timestamps<timeBounds(2));
+    entireRequestedSegmentWithinDiscontinuity  = false;
+    partialRequestedSegmentWithinDiscontinuity = false;
 
+    if ~isempty(time_discontinuities)
+        for iDiscontinuity = 1:size(time_discontinuities,1)
+            if time_discontinuities(iDiscontinuity,1)<timeBounds(1) && time_discontinuities(iDiscontinuity,2)>timeBounds(2)
+                entireRequestedSegmentWithinDiscontinuity = true;
+                F(iiCh+1:iiCh + nModuleChannels,:) = nan(nModuleChannels, nSamples+1);
+                break
+            elseif (time_discontinuities(iDiscontinuity,1)<timeBounds(1) && timeBounds(2)>time_discontinuities(iDiscontinuity,1) && timeBounds(2)<time_discontinuities(iDiscontinuity,2))...
+                || (time_discontinuities(iDiscontinuity,1)<timeBounds(1) && timeBounds(1)<time_discontinuities(iDiscontinuity,2) && timeBounds(2)>time_discontinuities(iDiscontinuity,2))
 
-            if length(selected_timestamps)<2 % If there is not at least a start and a stop sample present
-                F(iChannel,:) = nan(1, nSamples);
-                disp(['Time selection is outside the timestamps for the ' allBehaviorKeys{iChannel,1} ' channels'])
-            else
-
-                selected_timestamps_bounds = [selected_timestamps(1) selected_timestamps(end)];
-
-                % These Behavioral channels have different sampling rates -
-                % they need to be upsampled
-                % Moreover, there are multiple channels within each
-                % Behavioral description                
-                iAdditionalChannel = find(find(strcmp(allBehaviorKeys(:,2), allBehaviorKeys{selectedChannels(iChannel),2}))==selectedChannels(iChannel)); % This gives the index of the channel selected with the behavior channels
-                
-                temp = nwb2.processing.get('behavior').nwbdatainterface.get(allBehaviorKeys{selectedChannels(iChannel),1}).spatialseries.get(allBehaviorKeys{selectedChannels(iChannel),2}).data.load([iAdditionalChannel, selected_timestamps_bounds(1)], [iAdditionalChannel, selected_timestamps_bounds(2)]);
-                temp = temp(~isnan(temp)); % Some entries might be NaNs
-                if ~isempty(temp)
-                    % Upsampling the lower sampled behavioral signals
-                    upsampled_position = interp(temp,ceil(nSamples/length(temp)));
-                    logical_keep = true(1,length(upsampled_position));
-                    random_points_to_remove = randperm(length(upsampled_position),length(upsampled_position)-nSamples);
-                    logical_keep(random_points_to_remove) = false;
-                    F(iChannel,:) = upsampled_position(logical_keep);
-                else
-                    F(iChannel,:) = nan(1, nSamples);
-                end
+                % The following can potentially be improved by assigning
+                % part of the signal to NaNs and keeping the rest. Ignoring
+                % for now
+                partialRequestedSegmentWithinDiscontinuity = true;
+                F(iiCh+1:iiCh + nModuleChannels,:) = nan(nModuleChannels, nSamples+1);
+                break
             end
-
         end
     end
+    
+    if ~entireRequestedSegmentWithinDiscontinuity && ~partialRequestedSegmentWithinDiscontinuity
+
+        % The following code takes into account annoying discontinuities
+        % that can occur even during the electrophysiological recordings (examples are the neuropixel Dandi recordings)
+        % The sampleBounds are different
+        if ~isempty(ChannelsModuleStructure(iModule).module.timestamps)
+            actual_timestamps = ChannelsModuleStructure(iModule).module.timestamps.load;
+        elseif ~isempty(ChannelsModuleStructure(iModule).module.starting_time_rate)
+            actual_timestamps = linspace(ChannelsModuleStructure(iModule).module.starting_time, ChannelsModuleStructure(iModule).module.starting_time+ ChannelsModuleStructure(iModule).nSamples/ChannelsModuleStructure(iModule).Fs,ChannelsModuleStructure(iModule).nSamples);
+        end
+
+        selectedTimestampsIndices = find(actual_timestamps>=timeBounds(1) & actual_timestamps<=timeBounds(2));
+        if ~isempty(selectedTimestampsIndices)
+            SampleBoundsModule = [selectedTimestampsIndices(1) selectedTimestampsIndices(end)];
+        else
+            SampleBoundsModule = [0, 0];
+        end
+        
+        % In case I reach the edge of the recording - adjust
+        reached_edge = false;
+        if SampleBoundsModule(2) == ChannelsModuleStructure(iModule).nSamples
+            SampleBoundsModule(2) = SampleBoundsModule(2)-1;
+            reached_edge = true;
+        end
+                
+        
+        % Assign the Electrophysiological signals - these will not be resampled
+        if ChannelsModuleStructure(iModule).isElectrophysiology && sum(SampleBoundsModule)~=0
+
+            % Do a check if we're dealing with compressed or non-compressed data
+            if strcmp(class(ChannelsModuleStructure(iModule).module.data),'types.untyped.DataPipe') % Compressed data
+                if ~ChannelsModuleStructure(iModule).FlipMatrix
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.internal.load([1, SampleBoundsModule(1)], [ChannelsModuleStructure(iModule).nChannels, SampleBoundsModule(2)+1]);
+                else
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.internal.load([SampleBoundsModule(1), 1], [SampleBoundsModule(2)+1, ChannelsModuleStructure(iModule).nChannels])';
+                end
+            else % Uncompressed data
+                if ~ChannelsModuleStructure(iModule).FlipMatrix
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.load([1, SampleBoundsModule(1)], [ChannelsModuleStructure(iModule).nChannels, SampleBoundsModule(2)+1]);
+                else
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.load([SampleBoundsModule(1), 1], [SampleBoundsModule(2)+1, ChannelsModuleStructure(iModule).nChannels])';
+                end
+            end
+            loadedSignal = double(loadedSignal);
+            
+            if reached_edge
+                F(iiCh+1:iiCh + nModuleChannels,1:end-1) = loadedSignal;
+            else
+                F(iiCh+1:iiCh + nModuleChannels,:) = loadedSignal;
+            end
+            
+        elseif sum(SampleBoundsModule)~=0 % Take care of the other signals
+            
+            % Load the corresponding signal to the requested timebounds
+            if ~ChannelsModuleStructure(iModule).FlipMatrix
+                if ChannelsModuleStructure(iModule).nChannels>1
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.load([1, SampleBoundsModule(1)+1], [ChannelsModuleStructure(iModule).nChannels, SampleBoundsModule(2)+1]);
+                else
+                    loadedSignal = ChannelsModuleStructure(iModule).module.data.load(SampleBoundsModule(1)+1, SampleBoundsModule(2)+1)';
+                end
+            else
+                loadedSignal = ChannelsModuleStructure(iModule).module.data.load([SampleBoundsModule(1)+1, 1], [SampleBoundsModule(2)+1, ChannelsModuleStructure(iModule).nChannels])';
+            end
+            loadedSignal = double(loadedSignal);        
+
+
+            % If the sampling rate of the signal is less than the
+            % electrophysiological, perform upsampling
+            if ChannelsModuleStructure(iModule).Fs < Fs
+
+                low_sampled_signal = loadedSignal;
+                temp = zeros(size(low_sampled_signal,1),nSamples+1);
+                for iChannel = 1:size(low_sampled_signal,1)
+
+                    %1. UPSAMPLE AND DROP RANDOM ENTRIES
+                    % Upsampling the lower sampled behavioral signals
+                    upsampled_signal = repelem(low_sampled_signal(iChannel,:),ceil(nSamples/size(low_sampled_signal,2)));
+                    nSamplesToDrop = size(upsampled_signal,2) - nSamples-1;
+                    keep_these_samples = true(1,length(upsampled_signal));
+                    remove_these_samples = round(linspace(2, size(upsampled_signal,2)-1, nSamplesToDrop)); % Keeping the edges
+
+                    keep_these_samples(remove_these_samples) = false;
+                    temp(iChannel,:) = upsampled_signal(keep_these_samples);
+
+    %             %2. INTERPOLATION
+    %             temp(iChannel,:) = interp(double(data.streams.(stream_info(iStream).label).data),round(Fs/stream_info(iStream).fs));
+                end
+                F(iiCh+1:iiCh + nModuleChannels,:) = temp;
+
+
+            elseif ChannelsModuleStructure(iModule).Fs > Fs % Higher sampled signals - Similar code is used in TDT importer
+                % Make sure the signal has all the samples we expect
+                high_sampled_signal = loadedSignal;
+
+                nSamplesToDrop = size(high_sampled_signal,2) - nSamples-1;
+                keep_these_samples = true(1,size(high_sampled_signal,2));
+                remove_these_samples = round(linspace(2, size(high_sampled_signal,2)-1, nSamplesToDrop)); % Keeping the edges
+
+                keep_these_samples(remove_these_samples) = false;
+                temp = high_sampled_signal(:,keep_these_samples);
+
+                F(iiCh+1:iiCh + nModuleChannels,:) = temp;
+            end
+        else % In case there are no signals within the selected timebounds, assign NaNs to it
+            F(iiCh+1:iiCh + nModuleChannels,:) = NaN(size(F(iiCh+1:iiCh + nModuleChannels,:)));
+        end
+    end
+    iiCh = iiCh + nModuleChannels;
 end
 
-
+cd(previous_directory)
 
 end

@@ -77,13 +77,13 @@ end
 hdr.device = fread(fid, [1 16], '*char');
 hdr.version = get_header_version(hdr.device);
 if (hdr.version == 0)
-    error(['EEG deviceblock has unknown signature: "' hdr.device '"']);
+    error(['EEG deviceblock has unknown signature: ' hdr.device]);
 end
 % Get controlblock signature
 fseek(fid, 129, 'bof');
 hdr.control = fread(fid, [1 16], '*char');
 if (get_header_version(hdr.control) == 0)
-    error(['EEG controlblock has unknown signature: "' hdr.control '"']);
+    error(['EEG controlblock has unknown signature: ' hdr.control]);
 end
 % Get waveformdatablock signature
 fseek(fid, 6142, 'bof');
@@ -241,7 +241,7 @@ if ~isempty(LogFile)
     % Get file signature
     device = fread(fid, [1 16], '*char');
     if (get_header_version(device) == 0)
-        error(['LOG file has unknown signature: "' device '"']);
+        error(['LOG file has unknown signature: ' device]);
     end
     % Get log blocks 
     fseek(fid, 145, 'bof');
@@ -368,7 +368,7 @@ if ~isempty(PntFile)
     % Get file signature
     device = fread(fid, [1 16], '*char');
     if (get_header_version(device) == 0)
-        error(['PNT file has unknown signature: "' device '"']);
+        error(['PNT file has unknown signature: ' device]);
     end
     % Read patient info: Id
     fseek(fid, 1540, 'bof');

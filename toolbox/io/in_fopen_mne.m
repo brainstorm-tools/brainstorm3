@@ -54,7 +54,7 @@ disp('TODO: Read info{''events''}');
 % Annotations
 evtOnset = bst_py2mat(pyObj.annotations.onset);
 if ~isempty(evtOnset)
-    evtDuration = double(pyObj.annotations.duration);
+    evtDuration = bst_py2mat(pyObj.annotations.duration);
     evtLabel = cellfun(@(c)char(c), cell(py.list(pyObj.annotations.description)), 'UniformOutput', false);
     % Group by label
     uniqueEvt = unique(evtLabel);

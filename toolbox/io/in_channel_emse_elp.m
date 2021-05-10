@@ -24,7 +24,7 @@ function ChannelMat = in_channel_emse_elp(ChannelFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009
+% Authors: Francois Tadel, 2009-2021
 
 % Open file
 fid = fopen(ChannelFile, 'r');
@@ -35,6 +35,7 @@ end
 iChannel = 0;
 iFiducial = 1;
 isReadingSensor = 0;
+isReadingHeadpoint = 0;
 % Initialize returned structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'EMSE channels';
@@ -46,8 +47,15 @@ while 1
     % End of file: stop reading
     if (read_line(1) == -1)
         break
-    % Empty line and comments: ignore
-    elseif isempty(read_line) || (read_line(1) == '/') || (length(read_line) < 2)
+    % Empty line: ignore
+    elseif isempty(read_line) || (length(read_line) < 2)
+        continue;
+    % Start digitized head shape
+    elseif ~isempty(strfind(read_line, 'position of digitized'))
+        isReadingHeadpoint = 1;
+        continue
+    % Other comments: ignore
+    elseif (read_line(1) == '/')
         continue;
     end
 
@@ -71,6 +79,7 @@ while 1
             ChannelMat.Channel(iChannel).Comment = '';
             ChannelMat.Channel(iChannel).Weight  = 1;
         end
+        isReadingHeadpoint = 0;
     % Start sensor
     elseif strcmpi(read_line(1:2), '%S')
         SensorType = sscanf(read_line(4:end), '%d');
@@ -81,10 +90,12 @@ while 1
         ChannelMat.Channel(iChannel).Comment = '';
         ChannelMat.Channel(iChannel).Weight  = 1;
         ChannelMat.Channel(iChannel).Type    = 'EEG';
+        isReadingHeadpoint = 0;
     % Sensor name
     elseif strcmpi(read_line(1:2), '%N') && isReadingSensor
         SensorName = deblank(strtrim(read_line(4:end)));
         ChannelMat.Channel(iChannel).Name = SensorName;
+        isReadingHeadpoint = 0;
     % Sensor position
     elseif isReadingSensor
         % Try to read 3 positions
@@ -93,6 +104,19 @@ while 1
             ChannelMat.Channel(iChannel).Loc = SensorPos;
         end
         isReadingSensor = 0;
+        isReadingHeadpoint = 0;
+    % Reading digitized head shape
+    elseif isReadingHeadpoint
+        % Try to read 3 positions
+        SensorPos = sscanf(read_line, '%f %f %f');
+        if (length(SensorPos) == 3)
+            iPoint = size(ChannelMat.HeadPoints.Loc, 2) + 1;
+            ChannelMat.HeadPoints.Loc(:,iPoint) = SensorPos;
+            ChannelMat.HeadPoints.Label{iPoint} = 'EXTRA';
+            ChannelMat.HeadPoints.Type{iPoint}  = 'EXTRA';
+        elseif (length(SensorPos) ~= 2)
+            isReadingHeadpoint = 0;
+        end
     end
 end
 

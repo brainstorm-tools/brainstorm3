@@ -54,26 +54,39 @@ for i = 1:hdr.nchan
         ChannelMat.Channel(i).Loc(:,iCoil)    = hdr.ch(iChannels(i)).position(iCoil).r_s' ./ 1000;
         ChannelMat.Channel(i).Orient(:,iCoil) = hdr.ch(iChannels(i)).position(iCoil).u_s' ./ 1000;
         ChannelMat.Channel(i).Weight(1,iCoil) = hdr.ch(iChannels(i)).wgt(iCoil);
-    end    
-    % Type: everything below the "_"
-    iUnder = find(ChannelMat.Channel(i).Name == '_');
-    if (length(iUnder) == 1) && (iUnder > 1)
-        Type = ChannelMat.Channel(i).Name(1:iUnder-1);
-        % Rename some known types
-        switch (Type)
-            case 'MAG',   ChannelMat.Channel(i).Type = 'MEG';
-            case 'REF',   ChannelMat.Channel(i).Type = 'MEG REF';
-            case 'ELEC',  ChannelMat.Channel(i).Type = 'EEG';
-            otherwise,    ChannelMat.Channel(i).Type = Type;
-        end
-    else
-        ChannelMat.Channel(i).Type = 'MISC';
     end
+    % Type
+    switch (hdr.ch(iChannels(i)).type)  
+        case 1,    ChannelMat.Channel(i).Type = 'EEG';
+        case 2,    ChannelMat.Channel(i).Type = 'MEG';
+        case 4,    ChannelMat.Channel(i).Type = 'EEG';
+        case 8,    ChannelMat.Channel(i).Type = 'MEG REF';
+        case 16,   ChannelMat.Channel(i).Type = 'Misc';     %AUX
+        case 32,   ChannelMat.Channel(i).Type = 'Misc';     %PARAM
+        case 64,   ChannelMat.Channel(i).Type = 'Misc';     %DIGIT
+        case 128,  ChannelMat.Channel(i).Type = 'Misc';     %FLAG
+        otherwise, ChannelMat.Channel(i).Type = 'Misc';     %Misc 
+    end    
+    
+    % Type: everything below the "_"
+%     iUnder = find(ChannelMat.Channel(i).Name == '_');
+%     if (length(iUnder) == 1) && (iUnder > 1)
+%         Type = ChannelMat.Channel(i).Name(1:iUnder-1);
+%         % Rename some known types
+%         switch (Type)
+%             case 'MAG',   ChannelMat.Channel(i).Type = 'MEG';
+%             case 'REF',   ChannelMat.Channel(i).Type = 'MEG REF';
+%             case 'ELE',   ChannelMat.Channel(i).Type = 'EEG';
+%             otherwise,    ChannelMat.Channel(i).Type = Type;
+%         end
+%     else
+%         ChannelMat.Channel(i).Type = 'Misc';
+%     end
 end
+
 % Channel flag
 ChannelFlag = double([hdr.ch(iChannels).flag] == 0);
 ChannelFlag(ChannelFlag == 0) = -1;
-
 
 % %% ===== ADD MEG POSITIONS =====
 % iChan = channel_find(ChannelMat.Channel, 'MEG');

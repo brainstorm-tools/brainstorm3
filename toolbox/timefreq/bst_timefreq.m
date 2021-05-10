@@ -447,7 +447,7 @@ for iData = 1:length(Data)
             end
             
             % PSD: we don't want the bad segments
-            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd')
+            if ~isempty(iStudy) && strcmpi(OPTIONS.Method, 'psd') && ~isempty(sStudy.Result(iFile).DataFile)
                 % Load associated data file
                 sMat = in_bst_data(sStudy.Result(iFile).DataFile);
                 % Raw file
@@ -843,6 +843,8 @@ end
                 % Look for a trial tag in the filename
                 iTagStart = strfind(fBase, '_trial');
                 if ~isempty(iTagStart)
+                    % Extract the last occurrence in case it's also in the folder name
+                    iTagStart = iTagStart(end);
                     iTagStop = iTagStart + find(fBase(iTagStart+6:end) == '_',1) + 4;
                     if isempty(iTagStop)
                         iTagStop = length(fBase);

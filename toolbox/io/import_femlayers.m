@@ -67,12 +67,10 @@ subjectSubDir = bst_fileparts(sSubject.FileName);
 
 
 %% ===== INSTALL ISO2MESH =====
-% Install iso2mesh if needed
-if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-    errMsg = process_fem_mesh('InstallIso2mesh', isInteractive);
-    if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-        warning('Could not find Iso2mesh on your computer... the extracted surface may have some isolated faces.')
-    end
+% Install/load iso2mesh plugin
+[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
+if ~isInstalled
+    error(errMsg);
 end
             
 

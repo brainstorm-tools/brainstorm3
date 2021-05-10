@@ -11,6 +11,7 @@ function varargout = figure_3d( varargin )
 %                 figure_3d('FigureKeyPressedCallback',   hFig, keyEvent)   
 %                 figure_3d('ResetView',                  hFig)
 %                 figure_3d('SetStandardView',            hFig, viewNames)
+%                 figure_3d('SetLocationMri',             hFig, cs, XYZ)
 %                 figure_3d('DisplayFigurePopup',         hFig)
 %                 figure_3d('UpdateSurfaceColor',    hFig, iTess)
 %                 figure_3d('ViewSensors',           hFig, isMarkers, isLabels, isMesh=1, Modality=[])
@@ -4497,6 +4498,29 @@ function JumpMaximum(hFig)
 end
 
 
+%% ===== SET LOCATION MRI =====
+function SetLocationMri(hFig, cs, XYZ)
+    % Get MRI in figure
+    [sMri, TessInfo, iAnatomy] = panel_surface('GetSurfaceMri', hFig);
+    if isempty(sMri) || isempty(TessInfo) || isempty(iAnatomy)
+        return;
+    end
+    % Convert if necessary
+    if ~strcmpi(cs, 'voxel')
+        XYZ = cs_convert(sMri, cs, 'voxel', XYZ);
+    end
+    % Get that values are inside volume bounds
+    XYZ(1) = bst_saturate(XYZ(1), [1, size(sMri.Cube,1)]);
+    XYZ(2) = bst_saturate(XYZ(2), [1, size(sMri.Cube,2)]);
+    XYZ(3) = bst_saturate(XYZ(3), [1, size(sMri.Cube,3)]);
+    % Round coordinates
+    XYZ = round(XYZ);
+    % Set new position
+    TessInfo(iAnatomy).CutsPosition = XYZ;
+    UpdateMriDisplay(hFig, [1 2 3], TessInfo, iAnatomy);
+end
+
+
 %% ===== SELECT FIBER SCOUTS =====
 function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     global GlobalData;
@@ -4516,6 +4540,13 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     iTess = find(ismember({TessInfo.Name}, 'Fibers'));
     [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
     
+    % Nothing to plot? Only remove existing fibers
+    if isempty(iScouts)
+        delete(TessInfo(iTess).hPatch);
+        TessInfo(iTess).hPatch = [];
+        setappdata(hFigFib, 'Surface', TessInfo);
+        return;
+    end
     
     % If fibers not yet assigned to atlas, do so now
     if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
@@ -4549,7 +4580,9 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
         % Plot fibers
         [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
     else
-        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+        if ~isempty(TessInfo(iTess).hPatch)
+            TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+        end
     end
 
     % Update figure's surfaces list and current surface pointer

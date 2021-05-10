@@ -139,7 +139,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     jToogleNonLin = gui_component('ToolbarToggle', jPanelTop, [], 'Non-linear', jGroupLinear, '', @(h,ev)UpdatePanel(1), []);
     jToogleLinear.setSelected(1);
     % Disable for shared/volume
-    if ~strcmpi(HeadModelType, 'surface') || isShared || (exist('isdeployed', 'builtin') && isdeployed)
+    if ~strcmpi(HeadModelType, 'surface') || isShared || bst_iscompiled()
         jToogleNonLin.setEnabled(0);
     end
     

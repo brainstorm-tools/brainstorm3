@@ -19,7 +19,7 @@ function events = in_events_nwb(sFile, nwb2, nEpochs, ChannelMat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2019
+% Authors: Konstantinos Nasiotis, 2019-2021
 
 %% Reads spiking and acquisition events
 
@@ -42,7 +42,6 @@ catch
     disp('No events in this .nwb file')
     return
 end
-
 
 if events_exist    
     % Initialize list of events
@@ -73,25 +72,31 @@ if events_exist
 end
 
 %% Read the Spikes' events
-try
-    nNeurons = length(nwb2.units.vectordata.get('max_electrode').data.load);
-    SpikesExist = 1;
-catch
-    warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.vectordata.get("max_electrode")" that assigns spikes to specific electrodes is needed')
+
+%% Read the Spikes' events
+if ~isempty(nwb2.units)
+    if ~isempty(nwb2.units.electrodes_index)
+        SpikesExist = 1;
+    else
+        warning('The format of the spikes (if any are saved) in this .nwb is not compatible with Brainstorm - The field "nwb2.units.electrodes_index" that assigns spikes to specific electrodes is needed')
+        SpikesExist = 0;
+    end
+else
     SpikesExist = 0;
 end
-    
-if SpikesExist
-     
-    amp_channel_IDs = nwb2.general_extracellular_ephys_electrodes.vectordata.get('amp_channel').data.load;
-    maxWaveformCh = nwb2.units.vectordata.get('max_electrode').data.load; % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
+
+
+if SpikesExist  
+    % The channels on which each Neuron had the maximum amplitude on its waveforms - Assigning each neuron to an electrode
+    maxWaveformCh = nwb2.units.electrodes_index.data.load + 1; % Add 1 due to python convention  
+                                                               % Neuroscope starts at 0 - This is guaranteed to create problems with other systems or if someone creates the NWB with Matlab!!!                                         
+    nNeurons = length(maxWaveformCh);
     
     if ~exist('events')
         events_spikes = repmat(db_template('event'), 1, nNeurons);
     end
 
     for iNeuron = 1:nNeurons
-
         if iNeuron == 1
             times = nwb2.units.spike_times.data.load(1:sum(nwb2.units.spike_times_index.data.load(iNeuron)));
         else
@@ -99,13 +104,11 @@ if SpikesExist
         end
         times = times(times~=0);
 
-        
         % Check if a channel has multiple neurons:
         nNeuronsOnChannel = sum( maxWaveformCh == maxWaveformCh(iNeuron));
         iNeuronsOnChannel = find(maxWaveformCh == maxWaveformCh(iNeuron));
            
-        
-        theChannel = find(amp_channel_IDs==maxWaveformCh(iNeuron));
+        theChannel = maxWaveformCh(iNeuron);
         
         if nNeuronsOnChannel == 1
             events_spikes(iNeuron).label  = ['Spikes Channel ' ChannelMat.Channel(theChannel).Name];
@@ -135,10 +138,7 @@ if SpikesExist
         else
             events_spikes(iNeuron).epochs  = ones(1, length(events_spikes(iNeuron).times));
         end
-        
-        
     end
-        
         
     if exist('events')
         events = [events events_spikes];
@@ -146,6 +146,5 @@ if SpikesExist
         events = events_spikes;
     end
 end
-
 
 end

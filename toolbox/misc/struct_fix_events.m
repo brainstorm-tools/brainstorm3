@@ -43,10 +43,16 @@ if ~isequal(fieldnames(sTemplate), fieldnames(sEvents))
 end
 % Fix the dimensions of all the fields
 for iEvt = 1:length(sEvents)
+    % label
+    if isempty(sEvents(iEvt).label)
+        sEvents(iEvt).label = sprintf('unknown_%02d', iEvt);
+    end
+    % reactTimes
     nOcc = size(sEvents(iEvt).times, 2);
     if ~isempty(sEvents(iEvt).reactTimes) && (length(sEvents(iEvt).reactTimes) ~= nOcc)
         sEvents(iEvt).reactTimes = [];
     end
+    % channels
     if (length(sEvents(iEvt).channels) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).channels))
         sEvents(iEvt).channels = cell(1, nOcc);
         if ~isModified
@@ -54,6 +60,7 @@ for iEvt = 1:length(sEvents)
             isModified = 1;
         end
     end
+    % notes
     if (length(sEvents(iEvt).notes) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).notes))
         sEvents(iEvt).notes = cell(1, nOcc);
         if ~isModified

@@ -1467,8 +1467,6 @@ end
 function [isValidated, errMsg] = ValidateTimefreq()
     global GlobalData;
     ctrl = GlobalData.Guidelines.ctrl;
-    % Add missing paths
-    bst_spm_init(1, 'ft_specest_mtmconvol');
     % Initialize returned variables
     isValidated = 0;
     errMsg = '';

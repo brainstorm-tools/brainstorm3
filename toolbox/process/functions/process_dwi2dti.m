@@ -133,7 +133,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % ===== COMPUTE DTI =====
     % Compute DTI tensors
-    [DtiFile, errMsg] = Compute(iSubject, DwiFile, BvalFile, BvecFile);
+    [DtiFile, errMsg] = Compute(iSubject, [], DwiFile, BvalFile, BvecFile);
     % Error handling
     if ~isempty(errMsg)
         if isempty(DtiFile)
@@ -200,11 +200,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
             disp(['BST> Adding to system path: ' BsBinDir]);
             disp(['BST> Adding to system path: ' BsBdpDir]);
-            if ispc
-                setenv('PATH', [getenv('PATH'), ';', BsBinDir, ';', BsBdpDir]);
-            else
-                setenv('PATH', [getenv('PATH'), ':', BsBinDir, ':', BsBdpDir]);
-            end
+            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
             % Check again
             status = system('bdp --version');
         end
@@ -239,7 +235,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' --hires "' fullfile(tmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
         ' --cortex "' fullfile(tmpDir, 'bse_cortex_file.nii.gz"')];
     disp(['BST> System call: ' strCall]);
-    status = system(strCall);
+    status = system(strCall)
     % Error handling
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 1/3 (BSE).', 10, 'Check the Matlab command window for more information.'];
@@ -253,7 +249,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' -o "' fullfile(tmpDir, 'output_mri.bfc.nii.gz"') ...
         ' -L 0.5 -U 1.5'];
     disp(['BST> System call: ' strCall]);
-    status = system(strCall);
+    status = system(strCall)
     % Error handling
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 2/3 (BFC).', 10, 'Check the Matlab command window for more information.'];
@@ -269,7 +265,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' -g "' BvecFile '" -b "' BvalFile '"'];
     disp(['BST> System call: ' strCall]);
     % Error handling
-    status = system(strCall);
+    status = system(strCall)
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 3/3 (BDP).', 10, 'Check the Matlab command window for more information.'];
         return

@@ -7,8 +7,6 @@ function varargout = process_fem_mesh( varargin )
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
-%                 errMsg = process_fem_mesh('InstallIso2mesh', isInteractive)
-%                 errMsg = process_fem_mesh('InstallBrain2mesh', isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,7 +26,7 @@ function varargout = process_fem_mesh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Takfarinas Medani, 2019-2020
+% Authors: Francois Tadel, Takfarinas Medani, 2019-2021
 
 eval(macro_method);
 end
@@ -300,11 +298,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         sMriT1 = in_mri_bst(T1File);
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
-            [sMriT1, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
+            [sMriT1tmp, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
-                errMsg = ['Error trying to compute the MNI transformation for T1: ' 10 errNorm 10 'Disable the option to cut the neck.'];
-                return;
+                errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10];
+                % Do not return: This is only a warning
+            elseif ~isempty(sMriT1tmp)
+                sMriT1 = sMriT1tmp;
             end
         elseif (OPTIONS.Zneck > 0)
             errMsg = 'Invalid neck MNI Z coordinate (must be negative or zero).';
@@ -317,11 +317,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         sMriT2 = in_mri_bst(T2File);
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
-            [sMriT2, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
+            [sMriT2tmp, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
-                errMsg = ['Error trying to compute the MNI transformation for T2: ' 10 errNorm 10 'Disable the option to cut the neck.'];
-                return;
+                errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10 10];
+                % Do not return: This is only a warning
+            elseif ~isempty(sMriT2tmp)
+                sMriT2 = sMriT2tmp;
             end
         end
     end
@@ -331,13 +333,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     switch lower(OPTIONS.Method)
         % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
         case 'iso2mesh'
-            % Install iso2mesh if needed
-            if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                errMsg = InstallIso2mesh(isInteractive);
-                if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                    return;
-                end
+            % Install/load iso2mesh plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
+                return;
             end
+            bst_plugin('SetProgressLogo', 'iso2mesh');
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
                 if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
@@ -347,7 +349,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                         sSubject.Surface(sSubject.iScalp).FileName};
                     TissueLabels = {'brain', 'skull', 'scalp'};
                 else
-                    errMsg = ['Method "' OPTIONS.Method '" requires three surfaces: head, inner skull and outer skull.' 10 ...
+                    errMsg = [errMsg, 'Method "' OPTIONS.Method '" requires three surfaces: head, inner skull and outer skull.' 10 ...
                         'Create them with process "Generate BEM surfaces" first.'];
                     return;
                 end
@@ -399,7 +401,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                     try
                         [newnode, newelem] = mergesurf(bemMerge{:});
                     catch
-                        errMsg = 'Problem with the function MergeSurf. You can try with MergeMesh.';
+                        errMsg = [errMsg, 'Problem with the function MergeSurf. You can try with MergeMesh.'];
                         bst_progress('stop');
                         return;
                     end
@@ -439,7 +441,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Check labelling from 1 to nBem
             allLabels = unique(elem(:,5));
             if ~isequal(allLabels(:)', 1:nBem)
-                errMsg = ['Problem with Tetget: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
+                errMsg = [errMsg, 'Problem with Tetget: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
                 bst_progress('stop');
                 return;
             end
@@ -456,18 +458,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         case 'brain2mesh'
             disp([10 'FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File 10]);
-            % Initialize SPM
-            if ~bst_spm_init(isInteractive)
-                errMsg = 'SPM12 must be in the Matlab path for using this feature.';
+            % Install/load brain2mesh plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'brain2mesh', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
                 return;
             end
-            % Install brain2mesh if needed
-            if ~exist('brain2mesh', 'file')
-                errMsg = InstallBrain2mesh(isInteractive);
-                if ~isempty(errMsg) || ~exist('brain2mesh', 'file')
-                    return;
-                end
-            end
+            bst_plugin('SetProgressLogo', 'brain2mesh');
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
             if isempty(tpmFile) || ~file_exist(tpmFile)
@@ -491,7 +488,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 out_mri_nii(sMriT2, T2Nii);
                 % Check the size of the volumes
                 if ~isequal(size(sMriT1.Cube), size(sMriT2.Cube)) || ~isequal(size(sMriT1.Voxsize), size(sMriT2.Voxsize))
-                    errMsg = ['Input images have different dimension, you must register and reslice them first.' 10 ...
+                    errMsg = [errMsg, 'Input images have different dimension, you must register and reslice them first.' 10 ...
                               sprintf('T1:(%d x %d x %d),   T2:(%d x %d x %d)', size(sMriT1.Cube), size(sMriT2.Cube))];
                     return;
                 end
@@ -548,19 +545,19 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Check for success
             testFile = bst_fullfile(tempDir, ['c5' subjid 'T1.nii']);
             if ~file_exist(testFile)
-                errMsg = ['SPM12 segmentation failed: missing output file "' testFile '".'];
+                errMsg = [errMsg, 'SPM12 segmentation failed: missing output file "' testFile '".'];
                 return;
             end
             % Read outputs
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c1' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c1' subjid 'T1.nii']), 0, 0, 0);
             seg.gm = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c2' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c2' subjid 'T1.nii']), 0, 0, 0);
             seg.wm = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c3' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c3' subjid 'T1.nii']), 0, 0, 0);
             seg.csf = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c4' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c4' subjid 'T1.nii']), 0, 0, 0);
             seg.skull = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c5' subjid 'T1.nii']));
+            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c5' subjid 'T1.nii']), 0, 0, 0);
             seg.scalp = sTpm.Cube;
 
             % ===== CALL BRAIN2MESH =====
@@ -568,7 +565,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [node,elem] = brain2mesh(seg);
             % Handle errors
             if isempty(elem)
-                errMsg = 'Mesh generation with Brain2Mesh/tetgen1.5 failed.';
+                errMsg = [errMsg, 'Mesh generation with Brain2Mesh/tetgen1.5 failed.'];
                 return;
             end
             % Remove unwanted tissues (label <= 0)
@@ -589,7 +586,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Check for SimNIBS installation
             status = system('headreco --version');
             if (status ~= 0)
-                errMsg = ['SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
+                errMsg = [errMsg, 'SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
                 return;
             end
 
@@ -598,11 +595,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
                 % Issue warning
                 bst_report('Warning', 'process_fem_mesh', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
-                % Compute MNI transformation
+                % Compute MNI normalization
                 [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)
-                    errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
+                    errMsg = [errMsg, 'Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end
@@ -637,13 +634,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             else % call the default option, where VertexDensity is fixed to 0.5
                 strCall = ['headreco all --noclean  ' subjid ' ' T1Nii ' ' T2Nii];
             end
-            [status, result] = system(strCall);
+            status = system(strCall)
             % Restore working directory
             cd(curDir);
             % If SimNIBS returned an error
             if (status ~= 0)
-                errMsg = ['SimNIBS call: ', strrep(strCall, ' "', [10 '      "']),  10 10 ...
-                          'SimNIBS error #' num2str(status) ': ' 10 result];
+                errMsg = [errMsg, 'SimNIBS call: ', strrep(strCall, ' "', [10 '      "']),  10 10 ...
+                          'SimNIBS error #' num2str(status) ': See command window.'];
                 return;
             end
                   
@@ -651,7 +648,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], 0, 1);
             % Handle errors
             if ~isempty(errorImport)
-                errMsg = ['Error trying to import the SimNIBS output: ' 10 errorImport];
+                errMsg = [errMsg, 'Error trying to import the SimNIBS output: ' 10 errorImport];
                 return;
             end
             % Only tetra could be generated from this method
@@ -661,44 +658,47 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Segmentation process
             OPTIONS.layers     = {'white','gray','csf','skull','scalp'};
             OPTIONS.isSaveTess = 0;
-            [isOk, errMsg, TissueFile] = process_ft_volumesegment('Compute', iSubject, iT1, OPTIONS);
+            [isOk, errFt, TissueFile] = process_ft_volumesegment('Compute', iSubject, iT1, OPTIONS);
             if ~isOk
+                errMsg = [errMsg, errFt];
                 return;
             end
             TissueLabels = OPTIONS.layers;
             % Get index of tissue file
             [sSubject, iSubject, iTissue] = bst_get('MriFile', TissueFile);
             % Mesh process
-            [isOk, errMsg, FemFile] = process_ft_prepare_mesh_hexa('Compute', iSubject, iTissue, OPTIONS);
+            [isOk, errFt, FemFile] = process_ft_prepare_mesh_hexa('Compute', iSubject, iTissue, OPTIONS);
             if ~isOk
+                errMsg = [errMsg, errFt];
                 return;
             end
 
         case 'roast'                      
             disp(['FEM> T1 MRI: ' T1File]);
             disp(['FEM> T2 MRI: ' T2File]);
-            % Install ROAST if needed
-            if ~exist('roast', 'file')
-                errMsg = InstallRoast(isInteractive);
-                if ~isempty(errMsg) || ~exist('roast', 'file')
-                    return;
-                end
-            end            
+            % Install/load ROAST plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'roast', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
+                return;
+            end
+            bst_plugin('SetProgressLogo', 'roast');
+            
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
             if isempty(sMriT1) || ~isfield(sMriT1, 'SCS') || ~isfield(sMriT1.SCS, 'NAS') || ~isfield(sMriT1.SCS, 'LPA') || ~isfield(sMriT1.SCS, 'RPA') || (length(sMriT1.SCS.NAS)~=3) || (length(sMriT1.SCS.LPA)~=3) || (length(sMriT1.SCS.RPA)~=3) || ~isfield(sMriT1.SCS, 'R') || isempty(sMriT1.SCS.R) || ~isfield(sMriT1.SCS, 'T') || isempty(sMriT1.SCS.T)
                 % Issue warning
                 bst_report('Warning', 'process_fem_mesh', [], 'Missing NAS/LPA/RPA: Computing the MNI transformation to get default positions.');
-                % Compute MNI transformation
+                % Compute MNI normalization
                 [sMriT1, errNorm] = bst_normalize_mni(sMriT1);
                 % Handle errors
                 if ~isempty(errNorm)
-                    errMsg = ['Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
+                    errMsg = [errMsg, 'Error trying to compute the MNI transformation: ' 10 errNorm 10 'Set the NAS/LPA/RPA fiducials manually.'];
                     return;
                 end
             end            
             % === SAVE T1 MRI AS NII ===
-            bst_progress('setimage', 'logo_roast.gif');
+            bst_progress('setimage', 'plugins/roast_logo.gif');
             bst_progress('text', 'Exporting MRI...');
             % Empty temporary folder, otherwise it may reuse previous files in the folder
             gui_brainstorm('EmptyTempFolder');
@@ -730,7 +730,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 close all;
                 % Error handling
                 if ~file_exist(segNii)
-                    errMsg = 'ROAST: MRI segmentation (SPM) failed.';
+                    errMsg = [errMsg, 'ROAST: MRI segmentation (SPM) failed.'];
                     return;
                 end
             end
@@ -745,7 +745,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 segTouchup(T1Nii, T2Nii);
                 % Error handling
                 if ~file_exist(touchNii)
-                    errMsg = 'ROAST: MRI segmentation touchup failed.';
+                    errMsg = [errMsg, 'ROAST: MRI segmentation touchup failed.'];
                     return;
                 end
                 % Save to the database
@@ -754,7 +754,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % === ROAST: MESH GENERATION ===
             bst_progress('text', 'ROAST: Mesh generation (iso2mesh)...');
             % Load segmentation masks
-            sMasks = in_mri_nii(touchNii);
+            sMasks = in_mri_nii(touchNii, 0, 0, 0);
             % Call iso2mesh for mesh generation
             meshOpt = struct(...
                 'radbound',  5, ...
@@ -765,7 +765,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [node,elem] = cgalv2m(sMasks.Cube, meshOpt, maxvol);
             % Error handling
             if isempty(elem)
-                errMsg = 'Mesh generation failed (iso2mesh/cgalv2m).';
+                errMsg = [errMsg, 'Mesh generation failed (iso2mesh/cgalv2m).'];
                 return;
             end
             % Fix for voxel space
@@ -792,9 +792,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             node = no; % need to updates the new list         
             
         otherwise
-            errMsg = ['Invalid method "' OPTIONS.Method '".'];
+            errMsg = [errMsg, 'Invalid method "' OPTIONS.Method '".'];
             return;
     end
+    % Remove logos
+    bst_plugin('SetProgressLogo', []);
 
 
     % ===== SAVE FEM MESH =====
@@ -872,19 +874,17 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         res = java_dialog('question', [...
             '<HTML><B>Iso2mesh</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
             'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
-            'Iso2mesh is downloaded and installed automatically by Brainstorm.<BR><BR>' ...
+            '<FONT COLOR="#707070"><I>Iso2mesh is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
             '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2Mesh.<BR>' ...
             'Brain2Mesh is downloaded and installed automatically by Brainstorm.<BR>' ...
-            'SPM12 must be installed on the computer first.<BR>' ...
-            'Website: https://www.fil.ion.ucl.ac.uk/spm/software/spm12<BR><BR>', ...
+            '<FONT COLOR="#707070"><I>Brain2mesh and SPM12 are downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
             '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.<BR>' ...
-            'SimNIBS must be installed on the computer first.<BR>' ...
-            'Website: https://simnibs.github.io/simnibs<BR><BR>' ...
+            '<FONT COLOR="#707070"><I>SimNIBS must be installed on the computer first.<BR>' ...
+            'Website: https://simnibs.github.io/simnibs</I></FONT><BR><BR>' ...
              '<B>ROAST</B>:<BR>Call ROAST to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
-            'ROAST is downloaded and installed automatically when needed.<BR><BR>'...
+            '<FONT COLOR="#707070"><I>ROAST is downloaded and installed automatically when needed.</I></FONT><BR><BR>'...
             '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
-            'FieldTrip must be installed on the computer first.<BR>' ...
-            'Website: http://www.fieldtriptoolbox.org/download<BR><BR>' ...
+            '<FONT COLOR="#707070"><I>FieldTrip is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
             ], 'FEM mesh generation method', [], {'Iso2mesh','Brain2Mesh','SimNIBS','ROAST','FieldTrip'}, 'Iso2mesh');
         if isempty(res)
             return
@@ -978,306 +978,6 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     end
     % Close progress bar
     bst_progress('stop');
-end
-
-
-
-%% ===== INSTALL ROAST =====
-function errMsg = InstallRoast(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Download URL
-    url = 'https://www.parralab.org/roast/roast-3.0.zip';
-
-    % Check if already available in path
-    if exist('roast', 'file')
-        disp([10, 'ROAST path: ', bst_fileparts(which('roast')), 10]);
-        return;
-    end
-    % Local folder where to install ROAST
-    roastDir = bst_fullfile(bst_get('BrainstormUserDir'), 'roast');
-    exePath = bst_fullfile(roastDir, 'roast-3.0', 'roast.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(roastDir)
-        roastDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'roast');
-        if isdir(roastDirMaster)
-            roastDir = roastDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(roastDir, 'url');
-    % Read the previous download url information
-    if isdir(roastDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If file doesnt exist: download
-    if ~isdir(roastDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(roastDir)
-            file_delete(roastDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(roastDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 roastDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['ROAST is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of ROAST?'], 'ROAST');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(roastDir, 'roast.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download ROAST');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download ROAST:' 10 errMsg1];
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing ROAST...');
-        % Unzip file
-        cd(roastDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add roast to path
-    if ~exist('roast', 'file')
-        % Add ROAST to the path
-        exeDir = bst_fileparts(exePath);
-        addpath(exeDir);
-        disp([10, 'ROAST path: ', exeDir, 10]);
-        % Add dependent libraries to the path
-        if ~exist('spm.m', 'file')
-            addpath(fullfile(exeDir, 'lib', 'spm12'));
-        end
-        if ~exist('iso2meshver.m', 'file')
-            addpath(fullfile(exeDir, 'lib', 'iso2mesh'));
-        end
-        addpath(fullfile(exeDir, 'lib', 'cvx'));
-        addpath(fullfile(exeDir, 'lib', 'ncs2daprox'));
-        addpath(fullfile(exeDir, 'lib', 'NIFTI_20110921'));
-        % If the executable is still not accessible
-    else
-        errMsg = ['ROAST could not be installed in: ' roastDir];
-    end
-end
-
-
-%% ===== INSTALL ISO2MESH =====
-function errMsg = InstallIso2mesh(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Check if already available in path
-    if exist('iso2meshver', 'file') && isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-        disp([10, 'Iso2mesh path: ', bst_fileparts(which('iso2meshver')), 10]);
-        return;
-    end
-
-    % Get default url
-    osType = bst_get('OsType', 0);
-    switch (osType)
-        case 'linux64',  url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-linux64.zip';
-        case 'mac32',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx32.zip';
-        case 'mac64',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-osx64.zip';
-        case 'win32',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
-        case 'win64',    url = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-win32.zip';
-        otherwise,       error(['Iso2mesh software does not exist for your operating system (' osType ').']);
-    end
-
-    % Local folder where to install iso2mesh
-    isoDir = bst_fullfile(bst_get('BrainstormUserDir'), 'iso2mesh', osType);
-    exePath = bst_fullfile(isoDir, 'iso2mesh', 'iso2meshver.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(isoDir)
-        isoDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'iso2mesh');
-        if isdir(isoDirMaster)
-            isoDir = isoDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(isoDir, 'url');
-    % Read the previous download url information
-    if isdir(isoDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If executable doesn't exist or is outdated: download
-    if ~isdir(isoDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(isoDir)
-            file_delete(isoDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(isoDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 isoDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['Iso2mesh is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of Iso2mesh?'], 'Iso2mesh');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(isoDir, 'iso2mesh.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download Iso2mesh');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download Iso2mesh automatically:' 10 errMsg];
-            if ~exist('isdeployed', 'builtin') || ~isdeployed
-                errMsg = [errMsg 10 10 ...
-                    'Alternative download solution:' 10 ...
-                    '1) Copy the URL below from the Matlab command window: ' 10 ...
-                    '     ' url 10 ...
-                    '2) Paste it in a web browser' 10 ...
-                    '3) Save the file and unzip it' 10 ...
-                    '4) Add the folder "iso2mesh" to your Matlab path.'];
-            end
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing Iso2mesh...');
-        % Unzip file
-        cd(isoDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add to path
-    if ~exist('iso2meshver', 'file') && file_exist(exePath)
-        addpath(bst_fileparts(exePath));
-        disp([10, 'Iso2mesh path: ', bst_fileparts(exePath), 10]);
-        % Set iso2mesh temp folder
-        assignin('base', 'ISO2MESH_TEMP', bst_get('BrainstormTmpDir'));
-    else
-        errMsg = ['Iso2mesh could not be installed in: ' isoDir];
-    end
-end
-
-
-%% ===== INSTALL BRAIN2MESH =====
-function errMsg = InstallBrain2mesh(isInteractive)
-    % Initialize variables
-    errMsg = [];
-    curdir = pwd;
-    % Check if already available in path
-    if exist('brain2mesh', 'file')
-        disp([10, 'Brain2Mesh path: ', bst_fileparts(which('brain2mesh')), 10]);
-        return;
-    end
-    % Download url
-    url = 'http://neuroimage.usc.edu/bst/getupdate.php?d=Brain2Mesh_alpha2.zip';
-    % Local folder where to install iso2mesh
-    installDir = bst_fullfile(bst_get('BrainstormUserDir'), 'brain2mesh');
-    exePath = bst_fullfile(installDir, 'brain2mesh', 'brain2mesh.m');
-    % If dir doesn't exist in user folder, try to look for it in the Brainstorm folder
-    if ~isdir(installDir)
-        installDirMaster = bst_fullfile(bst_get('BrainstormHomeDir'), 'brain2mesh');
-        if isdir(installDirMaster)
-            installDir = installDirMaster;
-        end
-    end
-
-    % URL file defines the current version
-    urlFile = bst_fullfile(installDir, 'url');
-    % Read the previous download url information
-    if isdir(installDir) && file_exist(urlFile)
-        fid = fopen(urlFile, 'r');
-        prevUrl = fread(fid, [1 Inf], '*char');
-        fclose(fid);
-    else
-        prevUrl = '';
-    end
-    % If executable doesn't exist or is outdated: download
-    if ~isdir(installDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
-        % If folder exists: delete
-        if isdir(installDir)
-            file_delete(installDir, 1, 3);
-        end
-        % Create folder
-        res = mkdir(installDir);
-        if ~res
-            errMsg = ['Error: Cannot create folder' 10 installDir];
-            return
-        end
-        % Message
-        if isInteractive
-            isOk = java_dialog('confirm', ...
-                ['Brain2Mesh is not installed on your computer (or out-of-date).' 10 10 ...
-                'Download and the latest version of Brain2Mesh?'], 'Brain2Mesh');
-            if ~isOk
-                errMsg = 'Download aborted by user';
-                return;
-            end
-        end
-        % Download file
-        zipFile = bst_fullfile(installDir, 'brain2mesh.zip');
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'Download Brain2Mesh');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download Brain2Mesh automatically:' 10 errMsg];
-            if ~exist('isdeployed', 'builtin') || ~isdeployed
-                errMsg = [errMsg 10 10 ...
-                    'Alternative download solution:' 10 ...
-                    '1) Copy the URL below from the Matlab command window: ' 10 ...
-                    '     ' url 10 ...
-                    '2) Paste it in a web browser' 10 ...
-                    '3) Save the file and unzip it' 10 ...
-                    '4) Add the folder "brain2mesh" to your Matlab path.'];
-            end
-            return;
-        end
-        % Display again progress bar
-        bst_progress('text', 'Installing Brain2Mesh...');
-        % Unzip file
-        cd(installDir);
-        unzip(zipFile);
-        file_delete(zipFile, 1, 3);
-        cd(curdir);
-        % Save download URL in folder
-        fid = fopen(urlFile, 'w');
-        fwrite(fid, url);
-        fclose(fid);
-    end
-    % If installed but not in path: add to path
-    if ~exist('brain2mesh', 'file') && isdir(bst_fullfile(bst_fileparts(which('brain2mesh')), 'doc'))
-        addpath(bst_fileparts(exePath));
-        disp([10, 'Brain2Mesh path: ', bst_fileparts(exePath), 10]);
-    else
-        errMsg = ['Brain2Mesh could not be installed in: ' installDir];
-    end
 end
 
 

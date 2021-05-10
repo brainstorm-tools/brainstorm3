@@ -112,8 +112,10 @@ elseif strcmpi(plexonFormat, '.pl2')
     hdr.chan_headers = cell2mat(newHeader.AnalogChannels);
     newHeader.EventChannels = cell2mat(newHeader.EventChannels);
     CHANNELS_SELECTED = find([hdr.chan_headers.Enabled]);
-    one_channel = hdr.chan_headers(CHANNELS_SELECTED(1));
+    
     isMiscChannels = ~isDataChannel({hdr.chan_headers(CHANNELS_SELECTED).Name});
+    data_channels = hdr.chan_headers(CHANNELS_SELECTED(~isMiscChannels));
+    one_channel = data_channels(1);
     
     % Extract header
     hdr.NumSamples        = one_channel.NumValues;
@@ -357,7 +359,7 @@ end
 
 
 function isData = isDataChannel(channelNames)
-    dataChannelPrefixes = {'WB', 'AD'};
+    dataChannelPrefixes = {'AD', 'FP'};  % This list is probably incomplete
     nPrefixes = length(dataChannelPrefixes);
     prefixLens = cellfun('length', dataChannelPrefixes);
     

@@ -44,7 +44,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
         jToolbar.add(JLabel('     '));
         % Button "View in MRI Viewer"
-        gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
+        gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'Center MRI Viewer on dipole', @ViewInMriViewer);
+        % Button "View/3D"
+        gui_component('ToolbarButton', jToolbar, [], 'View/3D', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'Center 3D view on dipole', @ViewIn3D);
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'Reset', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
                   
@@ -52,9 +54,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelMain = gui_river();
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
-        jPanelCoordinates.setPreferredSize(java_scaled('dimension', 240,125));
+        %jPanelCoordinates.setPreferredSize(java_scaled('dimension', 240,125));
             % Coordinates
-            gui_component('label', jPanelCoordinates, 'tab', '  ');
+            gui_component('label', jPanelCoordinates, '', '  ');
             gui_component('label', jPanelCoordinates, 'tab', '       X');
             gui_component('label', jPanelCoordinates, 'tab', '       Y');
             gui_component('label', jPanelCoordinates, 'tab', '       Z');
@@ -451,7 +453,6 @@ function ViewInMriViewer(varargin)
     if isempty(hFig)
         return
     end
-    
     % Get selected dipole in figure
     iDipole = getappdata(hFig, 'iDipoleSelected');
     if isempty(iDipole)
@@ -464,26 +465,39 @@ function ViewInMriViewer(varargin)
     end
     % Select dipole structure
     sDip = DipolesInfo.Dipole(iDipole);
-
     % Get subject and subject's MRI
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     if isempty(sSubject) || isempty(sSubject.iAnatomy)
         return 
     end
-    % Progress bar
-    bst_progress('start', 'MRI Viewer', 'Opening MRI Viewer...');
-    % Get protocol directories
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % MRI full filename
-    MriFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(MriFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Select the required point
     figure_mri('SetLocation', 'scs', hFig, [], sDip.Loc);
-    % Close progress bar
-    bst_progress('stop');
 end
 
 
+%% ===== VIEW IN 3D =====
+function ViewIn3D(varargin)
+    % Get current 3D figure
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    if isempty(hFig)
+        return
+    end
+    % Get selected dipole in figure
+    iDipole = getappdata(hFig, 'iDipoleSelected');
+    if isempty(iDipole)
+        return;
+    end
+    % Get Dipoles description for current figure
+    DipolesInfo = panel_dipoles('GetDipolesForFigure', hFig);
+    if isempty(DipolesInfo) || isempty(DipolesInfo.Dipole) || isempty(iDipole) || (iDipole > length(DipolesInfo.Dipole))
+        return
+    end
+    % Select dipole structure
+    sDip = DipolesInfo.Dipole(iDipole);
+    % Select the required point
+    figure_3d('SetLocationMri', hFig, 'scs', sDip.Loc);
+end
 
 

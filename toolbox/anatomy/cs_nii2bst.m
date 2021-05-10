@@ -22,7 +22,7 @@ function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016-2017
+% Author: Francois Tadel, 2016-2021
 
 % Parse inputs
 if (nargin < 3) || isempty(isApply)

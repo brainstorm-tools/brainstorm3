@@ -21,13 +21,13 @@ function F = in_fread_mff(sFile, iEpoch, SamplesBounds, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Martin Cousineau, Francois Tadel, 2018-2020
+% Author: Martin Cousineau, Francois Tadel, 2018-2021
 
 
-%% ===== DOWNLOAD MFF LIBRARY IF NEEDED =====
-if ~exist('mff_import', 'file')
-    errMsg = bst_install_mff(ImportOptions.DisplayMessages);
-    if ~isempty(errMsg)
+%% ===== INSTALL MFF LIBRARY =====
+if ~exist('mff_importsignal', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'mff');
+    if ~isInstalled
         error(errMsg);
     end
 end

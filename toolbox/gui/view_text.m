@@ -1,8 +1,8 @@
-function jFrame = view_text( wndText, wndTitle, isFile )
+function jFrame = view_text( wndText, wndTitle, isFile, isWait )
 % VIEW_TEXT: Display a text in a Java window.
 %
-% USAGE:  jFrame = view_text( wndText, wndTitle='', isFile=0 )
-%         jFrame = view_text( filename, wndTitle='', isFile=1 )
+% USAGE:  jFrame = view_text( wndText,  wndTitle='', isFile=0, isWait=0 )
+%         jFrame = view_text( filename, wndTitle='', isFile=1, isWait=0 )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -30,6 +30,9 @@ import java.awt.*;
 import org.brainstorm.icon.*;
 
 % Parse inputs
+if (nargin < 4) || isempty(isWait)
+    isWait = 0;
+end
 if (nargin < 3) || isempty(isFile)
     isFile = 0;
 end
@@ -59,6 +62,11 @@ jTextArea.setMargin(java_create('java.awt.Insets', 'IIII', 10,25,10,25));
 jTextArea.setFont(bst_get('Font', 12, 'Courier New'));
 jFrame.getContentPane.add(JScrollPane(jTextArea));
 
+% Add OK button if need to wait
+if isWait
+    gui_component('button', jFrame.getContentPane(), BorderLayout.SOUTH, '<HTML><B>I agree</B>', [], [], @CloseDialog);
+end
+
 % Show window
 jFrame.pack();
 jFrame.setVisible(1);
@@ -71,6 +79,26 @@ newHeight = min(framSize.getHeight(), maxSize.getHeight() - 30);
 % Resize window
 jFrame.setSize(newWidth, newHeight);
     
-    
-    
+% Wait until closed
+if isWait
+    % Bring to front
+    jFrame.setAlwaysOnTop(1);
+    % Set callback
+    java_setcb(jFrame, 'WindowClosingCallback', @CloseDialog);
+    % Create mutex
+    bst_mutex('create', 'License');
+    % Wait for mutex (release when window is closed)
+    bst_mutex('waitfor', 'License');
+end
+
+
+%% ===== CLOSE CALLBACK =====
+function CloseDialog(varargin)
+    % Release mutex
+    bst_mutex('release', 'License');
+    % Close dialog
+    jFrame.dispose();
+end
+
+end
     

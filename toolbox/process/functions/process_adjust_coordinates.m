@@ -1,5 +1,9 @@
 function varargout = process_adjust_coordinates(varargin)
 % PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
+% 
+% Native coordinates are based on system fiducials (e.g. MEG head coils),
+% whereas Brainstorm's SCS coordinates are based on the anatomical fiducial
+% points from the .pos file.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -624,10 +628,11 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
         InitLoc = [ChannelMat.SCS.NAS(:), ChannelMat.SCS.LPA(:), ChannelMat.SCS.RPA(:); ones(1, 3)];
     elseif ~isempty(sInput) && isfield(sInput, 'header') && isfield(sInput.header, 'hc') && isfield(sInput.header.hc, 'SCS') && ...
             all(isfield(sInput.header.hc.SCS, {'NAS','LPA','RPA'})) && length(sInput.header.hc.SCS.NAS) == 3
-        % Initial head coil locations from the CTF .hc file, but NOT in SCS coordinates!
+        % Initial head coil locations from the CTF .hc file, but in dewar coordinates, NOT in SCS coordinates!
         InitLoc = [sInput.header.hc.SCS.NAS(:), sInput.header.hc.SCS.LPA(:), sInput.header.hc.SCS.RPA(:)]; % 3x3 by columns
-        InitLoc = LocationTransform(InitLoc) * [InitLoc; ones(1, 3)];
-        %InitLoc = InitLoc(:);
+        InitLoc = InitLoc(:);
+        return;
+        %InitLoc = TransfAdjust * TransfBefore * [InitLoc; ones(1, 3)];
     else
         % Just use some reasonable distances, with a warning.
         Message = 'Exact reference head coil locations not available. Using reasonable (adult) locations according to head position.';
@@ -635,33 +640,16 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
         NasDist = 0.10;
         InitLoc = [[NasDist; 0; 0; 1], [0; LeftRightDist/2; 0; 1], [0; -LeftRightDist/2; 0; 1]];
     end
-    % InitLoc above is in Native coordiates.  Bring it back to Dewar
-    % coordinates to compare with HLU channels.
+    % InitLoc above is in Native coordiates (if pre head loc didn't fail).
+    % Bring it back to Dewar coordinates to compare with HLU channels.
     %
     % Take into account if the initial/reference head position was
     % "adjusted", i.e. replaced by the median position throughout the
     % recording.  If so, use all transformations from 'Dewar=>Native' to
     % this adjustment transformation.  (In practice there shouldn't be any
     % between them.)
-    iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
-    if isempty(iDewToNat) || numel(iDewToNat) > 1
-        bst_report('Error', 'process_adjust_coordinates', sInput, ...
-            'Could not find required transformation.');
-        InitLoc = [];
-        return;
-    end
-    iAdjust = find(strcmpi(ChannelMat.TransfMegLabels, 'AdjustedNative'));
-    if numel(iAdjust) > 1
-        bst_report('Error', 'process_adjust_coordinates', sInput, ...
-            'Could not find required transformation.');
-        InitLoc = [];
-        return;
-    elseif isempty(iAdjust)
-        iAdjust = iDewToNat;
-    end
-    for t = iAdjust:-1:iDewToNat
-        InitLoc = ChannelMat.TransfMeg{t} \ InitLoc;
-    end
+    [TransfBefore, TransfAdjust] = GetTransforms(ChannelMat, sInput);
+    InitLoc = TransfBefore \ (TransfAdjust \ InitLoc);
     InitLoc(4, :) = [];
     InitLoc = InitLoc(:);
 end % ReferenceHeadLocation
@@ -691,18 +679,18 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
     TransfBefore = [];
     TransfAfter = [];
     TransfAdjust = [];
-    if isempty(iDewToNat) || numel(iDewToNat) > 1
-        bst_report('Error', 'process_adjust_coordinates', sInputs, ...
-            'Could not find required transformation.');
-        return;
+    if isempty(iDewToNat)
+        bst_report('Warning', 'process_adjust_coordinates', sInputs, ...
+            'Missing ''Dewar=>Native'' transformation; adjustment will start from dewar coordinates.');
+        iDewToNat = 0;
     end
     if iDewToNat > 1
         bst_report('Warning', 'process_adjust_coordinates', sInputs, ...
-            'Unexpected transformations found before ''Dewar=>Native''; ignoring them.');
+            'Unexpected transformations found before ''Dewar=>Native''; perhaps channel file should be reset.');
     end
-    if numel(iAdjust) > 1
+    if numel(iAdjust) > 1 || numel(iDewToNat) > 1
         bst_report('Error', 'process_adjust_coordinates', sInputs, ...
-            'Could not find required transformation.');
+            'Multiple identical transformations found: channel file should be reset.');
         return;
     elseif isempty(iAdjust)
         iBef = iDewToNat;
@@ -711,11 +699,11 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
     else
         if iAdjust < iDewToNat
             bst_report('Error', 'process_adjust_coordinates', sInputs, ...
-                'Unable to interpret order of transformations.');
+                'Unable to interpret order of transformations: channel file should be reset.');
             return;
         elseif iAdjust - iDewToNat > 1
             bst_report('Warning', 'process_adjust_coordinates', sInputs, ...
-                'Unexpected transformations found between ''Dewar=>Native'' and ''AdjustedNative''; assuming they make sense there.');
+                'Unexpected transformations found between ''Dewar=>Native'' and ''AdjustedNative''; perhaps channel file should be reset.');
         end
         iBef = iAdjust - 1;
         iAft = iAdjust + 1;
@@ -723,8 +711,11 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
     end
     
     TransfBefore = eye(4);
-    for t = iDewToNat:iBef
-        TransfBefore = ChannelMat.TransfMeg{t} * TransfBefore;
+    if iBef > 0
+        % Now starting from 1st transformation, even if not Dewar=>Native.
+        for t = 1:iBef
+            TransfBefore = ChannelMat.TransfMeg{t} * TransfBefore;
+        end
     end
     TransfAfter = eye(4);
     for t = iAft:numel(ChannelMat.TransfMeg)
@@ -738,6 +729,11 @@ function [TransfMat, TransfAdjust] = LocationTransform(Loc, ...
     % Compute transformation corresponding to head coil positions.
     % We want this to be as efficient as possible, since used many times by
     % process_sss.
+    
+    % Check for previous version.
+    if nargin < 4
+        error('Missing inputs.');
+    end
     
     % Transformation matrices are in m, as are HLU channels.
     % The HLU channels (here Loc) are in dewar coordinates.  Bring them to
@@ -815,7 +811,7 @@ function M = GeoMedian(X, Precision)
     % (if at any iteration the approximation of M equals a data point).
     %
     %
-    % © Copyright 2018 Marc Lalancette
+    % (c) Copyright 2018 Marc Lalancette
     % The Hospital for Sick Children, Toronto, Canada
     %
     % This file is part of a free repository of Matlab tools for MEG

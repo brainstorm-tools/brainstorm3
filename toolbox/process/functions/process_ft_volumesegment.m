@@ -104,11 +104,7 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
-    % Not supported in compiled version
-    if exist('isdeployed', 'builtin') && isdeployed
-        error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
-    end
-
+    
     % ===== GET OPTIONS =====
     % If data file in input: get the subject from the input
     if strcmpi(sInputs(1).FileType, 'data')
@@ -129,18 +125,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if sProcess.options.isscalp.Value
         OPTIONS.layers{end+1} = 'scalp';
         OPTIONS.nVertices(end+1) = sProcess.options.nvertscalp.Value{1};
-        if ~exist('imfill','file')
-            bst_report('Error', sProcess, [], 'Extracting the scalp requires the Image Processing toolbox.');
-            return;
-        end
     end
     if sProcess.options.isskull.Value
         OPTIONS.layers{end+1} = 'skull';
         OPTIONS.nVertices(end+1) = sProcess.options.nvertskull.Value{1};
-        if ~exist('imdilate','file')
-            bst_report('Error', sProcess, [], 'Extracting the skull requires the Image Processing toolbox.');
-            return;
-        end
     end
     if sProcess.options.iscsf.Value
         OPTIONS.layers{end+1} = 'csf';
@@ -206,6 +194,12 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     errMsg = '';
     TissueFile = [];
     
+    % ===== CHECK DEPENDENCIES =====
+    if any(ismember({'skull','scalp'}, OPTIONS.layers)) && (~exist('imdilate','file') || ~exist('imfill','file'))
+        errMsg = 'Extracting the skull and scalp requires the Image Processing toolbox.';
+        return;
+    end
+    
     % ===== DEFAULT OPTIONS =====
     Def_OPTIONS = GetDefaultOptions();
     if isempty(OPTIONS)
@@ -228,8 +222,12 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     ftMri = out_fieldtrip_mri(sMri);
 
     % ===== CALL FIELDTRIP =====
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        return;
+    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     % Replace CSF with BRAIN if white/grey not needed
     if ~any(ismember({'white','gray'}, OPTIONS.layers)) && ismember('csf', OPTIONS.layers)
         OPTIONS.layers{ismember(OPTIONS.layers, {'csf'})} = 'brain';
@@ -314,6 +312,8 @@ function [isOk, errMsg, TissueFile] = Compute(iSubject, iMri, OPTIONS)
     end
 
     % ===== SAVE TISSUE ATLAS =====
+    % Add basic labels
+    sMriTissue.Labels = mri_getlabels('tissues5');
     % Set comment
     sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
     % Copy some fields from the original MRI
@@ -381,6 +381,8 @@ function ComputeInteractive(iSubject, iMris) %#ok<DEFNU>
     else
         OPTIONS.nVertices = OPTIONS.nVertices(isSelect);
     end
+    % Remove fieldtrip logo
+    bst_plugin('SetProgressLogo', []);
     % Open progress bar
     bst_progress('start', 'Generate BEM mesh', 'Initialization...');
     % Generate BEM mesh

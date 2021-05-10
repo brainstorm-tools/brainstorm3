@@ -100,6 +100,32 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.skip_by_annotation.Comment = 'skip_by_annotation: ';
     sProcess.options.skip_by_annotation.Type    = 'text';
     sProcess.options.skip_by_annotation.Value   = 'edge, bad_acq_skip';
+    % fine_calibration_file (site specific)
+    sProcess.options.calibration.Comment = 'fine-calibration file:';
+    sProcess.options.calibration.Type    = 'filename';
+    sProcess.options.calibration.Value = {...
+        '', ...                               % Filename
+        '', ...                               % FileFormat
+        'open', ...                           % Dialog type: {open,save}
+        'Import fine-calibration file...', ...     % Window title
+        'ImportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                         % Selection mode: {single,multiple}
+        'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
+        {'.dat', 'fine-calibration file (*.dat)', 'calibration'}, ... % Specify file type
+        'DataIn'};                          % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
+    % cross_talk_file (site specific)    
+    sProcess.options.ctc.Comment = 'cross-talk file:';
+    sProcess.options.ctc.Type    = 'filename';
+    sProcess.options.ctc.Value   = {...
+        '', ...                               % Filename
+        '', ...                               % FileFormat
+        'open', ...                           % Dialog type: {open,save}
+        'Import cross-talk file...', ...     % Window title
+        'ImportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                         % Selection mode: {single,multiple}
+        'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
+        {'.fif', 'cross-talk file (*.fif)', 'ctc'}, ... % Specify file type
+        'DataIn'};                          % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn   
 end
 
 

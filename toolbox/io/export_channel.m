@@ -26,7 +26,7 @@ function export_channel( BstChannelFile, OutputChannelFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2020
 
 % ===== PASRSE INPUTS =====
 if (nargin < 1) || isempty(BstChannelFile)
@@ -102,15 +102,11 @@ end
 % MNI transformation
 if isMniTransf
     % Check that the transformation is available
-    if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
+    if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri, 'NCS') || ((~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)) && (~isfield(sMri.NCS, 'y') || isempty(sMri.NCS.y)))
         error(['The SCS and MNI transformations must be defined for this subject' 10 'in order to load sensor positions in MNI coordinates.']);
     end
-    % Compute the transformation SCS => MNI
-    Transf = cs_convert(sMri, 'scs', 'mni');
-    
-    RTscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
-    RTmri2mni = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
-    Transf = RTmri2mni * RTscs2mri;
+    % Pass the entire MRI structure for conversions to MNI space
+    Transf = sMri;
 % World transformation (vox2ras/nii)
 elseif isWorldTransf
     % Check that the transformation is available
@@ -119,7 +115,6 @@ elseif isWorldTransf
     end
     % Compute the transformation SCS => WORLD
     Transf = cs_convert(sMri, 'scs', 'world');
-    
 else
     Transf = [];
 end

@@ -115,6 +115,10 @@ function [isOk, errorMsg, pyVer] = Initialize(isInteractive)
             % Set Python exe in Matlab
             try
                 [pyVer, PythonExeMatlab, isLoaded] = bst_python_ver(PythonExeBst);
+                if isempty(PythonExeMatlab)
+                    errorMsg = 'BST> Could not configure Python, Matlab is maybe too old.';
+                    return;
+                end
             catch
                 errorMsg = ['BST> Error: Invalid Python executable: ' PythonExeBst];
                 return;

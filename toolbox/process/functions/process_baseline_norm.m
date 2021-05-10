@@ -160,9 +160,13 @@ function OPTIONS = GetOptions(sProcess, sInput)
     if ~isempty(OPTIONS.Baseline) 
         OPTIONS.iBaseline = panel_time('GetTimeIndices', sInput.TimeVector, OPTIONS.Baseline);
         if isempty(OPTIONS.iBaseline)
-            bst_report('Error', sProcess, [], 'Invalid baseline definition.');
+            bst_report('Error', sProcess, sInput, 'Invalid baseline definition.');
             OPTIONS = [];
             return;
+        elseif (length(OPTIONS.iBaseline) < 3)
+            bst_report('Warning', sProcess, sInput, ['The baseline time window you selected contains only ' num2str(length(OPTIONS.iBaseline)) ' sample(s).' 10 ...
+                'This is probably an error: check the baseline definition or the input file type ' ...
+                '(eg. you cannot use this process to normalize PSD files because they do not have a time dimension.)']);
         end
     % Get all file
     else
@@ -202,7 +206,6 @@ function sInputB = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
         sInputB = [];
         return;
     end
-
     % Compute zscore
     sInputB.A = Compute(sInputB.A, sInputA.A(:,OPTIONS.iBaseline,:), OPTIONS.Method);
     % If there is a normalization: change data types

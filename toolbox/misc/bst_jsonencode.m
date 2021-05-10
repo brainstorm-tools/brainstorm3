@@ -38,6 +38,10 @@ if nargin < 3
     depth = 0;
 end
 
+if length(inStruct) > 1
+    error('List of structure input unsupported. If you tried using cells, try a cell of cell {{}}');
+end
+
 outString = '{';
 fields  = fieldnames(inStruct);
 
@@ -48,6 +52,15 @@ for iField = 1:length(fields)
     strFld = stringify(field, indent);
     if isstruct(value)
         strVal = bst_jsonencode(value, indent, depth + 1);
+    elseif iscell(value)
+        strVal = '[';
+        for iElem = 1:length(value)
+            if iElem > 1
+                strVal = [strVal ', '];
+            end
+            strVal = [strVal stringify(value{iElem}, indent)];
+        end
+        strVal = [strVal ']'];
     else
         strVal = stringify(value, indent);
     end

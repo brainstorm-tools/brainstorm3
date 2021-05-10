@@ -19,7 +19,7 @@ function varargout = process_detectbad( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -303,8 +303,25 @@ function SetTrialStatus(FileNames, isBad)
     ProtocolInfo = bst_get('ProtocolInfo');
     % Get unique list of studies
     uniqueStudies = unique(iStudies);
-    % Remove path from all files
+    % Remove path from all files + Remove all BAD events
     for i = 1:length(FileNames)
+        % Remove bad events
+        if ~isBad
+            DataMat = in_bst_data(FileNames{i}, 'Events');
+            isModifiedFile = 0;
+            for iEvt = 1:length(DataMat.Events)
+                [DataMat.Events(iEvt), isModifiedEvt] = panel_record('SetEventGood', DataMat.Events(iEvt), DataMat.Events);
+                if isModifiedEvt
+                    isModifiedFile = 1;
+                end
+            end
+            if isModifiedFile
+                bst_report('Info', 'process_detectbad', FileNames{i}, 'Event names were modified to remove the tag "bad".');
+                disp('BST> Event names were modified to remove the tag "bad".');
+                bst_save(file_fullpath(FileNames{i}), DataMat, 'v6', 1);
+            end
+        end
+        % Remove path
         [fPath, fBase, fExt] = bst_fileparts(FileNames{i});
         FileNames{i} = [fBase, fExt];
     end
@@ -355,7 +372,5 @@ function SetTrialStatus(FileNames, isBad)
     panel_protocols('RepaintTree');
     bst_progress('stop');
 end
-
-
 
 

@@ -1,5 +1,5 @@
 function varargout = process_snapshot( varargin )
-% PROCESS_SNAPSHOT: Delete files, subject, or condition.
+% PROCESS_SNAPSHOT: Save snapshot.
 %
 % USAGE:     sProcess = process_snapshot('GetDescription')
 %                       process_snapshot('Run', sProcess, sInputs)

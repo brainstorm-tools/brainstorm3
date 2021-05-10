@@ -21,6 +21,14 @@ function F = in_fread_tdt(sFile, SamplesBounds, selectedChannels)
 %
 % Author: Konstantinos Nasiotis 2019-2020
 
+% Install/load TDT-SDK library
+if ~exist('TDTbin2mat', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'tdt-sdk');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
 % Parse inputs
 if (nargin < 3) || isempty(selectedChannels)
     selectedChannels = 1:length(sFile.channelflag);

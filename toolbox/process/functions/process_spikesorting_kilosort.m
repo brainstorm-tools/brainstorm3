@@ -80,7 +80,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ProtocolInfo = bst_get('ProtocolInfo');
 
     % Not available in the compiled version
-    if (exist('isdeployed', 'builtin') && isdeployed)
+    if bst_iscompiled()
         error('This function is not available in the compiled version of Brainstorm.');
     end
     % Check for Excel writer toolbox

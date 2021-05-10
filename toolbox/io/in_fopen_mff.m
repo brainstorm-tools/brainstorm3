@@ -19,16 +19,14 @@ function [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, channelsOnl
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, Francois Tadel, 2018-2020
+% Authors: Martin Cousineau, Francois Tadel, 2018-2021
 
-%% ===== DOWNLOAD MFF LIBRARY IF NEEDED =====
-if ~exist('mff_import', 'file')
-    errMsg = bst_install_mff(ImportOptions.DisplayMessages);
-    if ~isempty(errMsg)
-        error(errMsg);
-    end
+
+%% ===== INSTALL/LOAD MFF LIBRARY =====
+[isInstalled, errMsg] = bst_plugin('Install', 'mff', ImportOptions.DisplayMessages);
+if ~isInstalled
+    error(errMsg);
 end
-
 
 %% ===== EXTRACT MFF DIRECTORY =====
 [parentFolder, file, ext] = bst_fileparts(DataFile);

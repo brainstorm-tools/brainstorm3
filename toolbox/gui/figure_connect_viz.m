@@ -22,7 +22,7 @@ function varargout = figure_connect_viz( varargin )
 % =============================================================================@
 %
 % Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin
-% Cousineau, 2019; Helen Lin & Yaqi Li, 2020-2021
+% Cousineau, 2019-2021; Helen Lin & Yaqi Li, 2020-2021
 
 eval(macro_method);
 end
@@ -2208,9 +2208,48 @@ function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, Measur
 end
  
 function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilter)
-    MeasureFiberMask = zeros(size(DataPair, 1), 1);
-    MeasureFiberMask(:) = 1;
-    return;
+    global GlobalData;
+    MeasureFiberMask = zeros(size(DataPair,1),1);
+    
+    % Only filter if there are fibers shown
+    plotFibers = getappdata(hFig, 'plotFibers');
+    hFigFib = bst_figures('GetFigureHandleField', hFig, 'hFigFib');
+    if MeasureFiberFilter == 0 || isempty(plotFibers) || ~plotFibers || ~ishandle(hFigFib)
+        MeasureFiberMask(:) = 1;
+        return;
+    end
+    
+    %% Get fibers information
+    TfInfo = getappdata(hFig, 'Timefreq');
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        %ScoutNames     = bst_figures('GetFigureHandleField', hFig, 'RowNames');
+        ScoutCentroids = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
+        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+    DataPair = DataPair(:,1:2) - size(AgregatingNodes, 2);
+    
+    %% Find nodes that have fiber assignments
+    assignBsx = reshape(assign', [1 size(assign')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, DataPair, assignBsx), 2) | all( bsxfun(@eq, DataPair, flip(assignBsx,2)), 2);
+    % Find the indices of the rows with a match
+    MeasureFiberMask = any(indices,3);
+        
+    if MeasureFiberFilter == 2 % Anatomically inaccurate
+        MeasureFiberMask = ~MeasureFiberMask;
+    end
 end
  
 function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureMaxDistanceFilter, Refresh)
@@ -2529,6 +2568,18 @@ function UpdateColormap(hFig)
                 end
             end
         end
+        
+        % === UPDATE FIBER COLORS ===
+        plotFibers = getappdata(hFig, 'plotFibers');
+        if plotFibers
+            % Get scout information
+            SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+            SelectedNodeMask = ismember(DataPair(:, 1), SelNodes) ...
+                         | ismember(DataPair(:, 2), SelNodes);
+            AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+            iScouts = DataPair(DataMask & SelectedNodeMask, 1:2) - size(AgregatingNodes, 2);
+            figure_3d('SelectFiberScouts', hFig, iScouts, StartColor, 1);
+        end
     end
     
     [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig);
@@ -2806,6 +2857,27 @@ function SetSelectedNodes(hFig, iNodes, IsSelected)
     else
         bst_figures('SetSelectedRows', []);
         panel_scout('SetSelectedScoutLabels', []);
+    end
+    
+    % If we're plotting fibers, send pairs of scouts that are to be displayed
+    plotFibers = getappdata(hFig, 'plotFibers');
+    if plotFibers
+        % Get scout information
+        SelectedNodeMask = ismember(DataToFilter(:, 1), SelNodes) ...
+                         | ismember(DataToFilter(:, 2), SelNodes);
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+        iScouts = DataToFilter(DataMask & SelectedNodeMask, 1:2) - size(AgregatingNodes, 2);
+        
+        % Get color information
+        CMap = get(hFig, 'Colormap');
+        CLim = getappdata(hFig, 'CLim');
+        if isempty(CLim)
+            CLim = [0, 1];
+        end
+        Color = InterpolateColorMap(hFig, abs(DataToFilter(DataMask,:)), CMap, CLim);
+
+        % Send to 3D fibers
+        figure_3d('SelectFiberScouts', hFig, iScouts, Color);
     end
 end
  
@@ -3316,6 +3388,7 @@ function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, Nod
     Node.Label = Label;
 
     % Mark the node as a Matlab Line graphic object
+    set(0, 'CurrentFigure', hFig);
     Node.NodeMarker = line(...
         Node.Position(1), ...
         Node.Position(2), ...

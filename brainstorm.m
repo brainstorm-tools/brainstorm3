@@ -43,15 +43,15 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2021
 
 % Make sure that "more" is off
 more off
 
 % Compiled version
-if exist('isdeployed', 'builtin') && isdeployed
+isCompiled = exist('isdeployed', 'builtin') && isdeployed;
+if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
-    %disp(['Running from: ' BrainstormHomeDir]);
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));
@@ -101,76 +101,9 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     if ~isempty(jarfile)
         javaaddpath([BrainstormHomeDir '/java/' jarfile]);
     end
-    
-    % === INITIALIZE MFFMATLABIO LIBRARY ===
-    [mffJarPath, mffJarExists] = bst_get('MffJarFile');
-    mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
-    if isdir(mffDirTmp)
-        % A new library version is available, install it
-        mffDir = fileparts(mffJarPath);
-        if isdir(mffDir)
-            rmdir(mffDir, 's');
-        end
-        mkdir(mffDir);
-        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
-        file_move(libDir, mffDir);
-        rmdir(mffDirTmp, 's');
-        mffJarExists = 1;
-    end
-    % Add MFF JAR file if present
-    if mffJarExists
-        javaaddpath(mffJarPath);
-    end
-    
-    % === INITIALIZE NWB LIBRARY ===
-    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');        
-    initialization_flag_file = bst_fullfile(NWBDir,'NWB_initialized.mat');
-    if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file);
-        if ~NWB_initialized
-            % The generateCore needs to run from a specific folder
-            current_path = pwd;
-            % Add NWB to Matlab path
-            addpath(genpath(NWBDir));
-            % Generate the NWB Schema (First time run)
-            disp(['Installing NWB library: ' NWBDir '...']);
-            cd(NWBDir);
-            generateCore();
-            % Update path with new folders
-            addpath(genpath(NWBDir));
-            % Update Initialization flag
-            NWB_initialized = 1;
-            save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
-            cd(current_path);
-        end
-    end
-    
-    % === INITIALIZE NWB-ECoG LIBRARY ===
-    NWB_ECoGDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB', 'ECoG');        
-    initialization_flag_file = bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat');
-    if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file);
-        if ~NWB_ECoGinitialized
-            disp('Installing NWB - ECoG library...');
-            % The generateCore needs to run from a specific folder
-            current_path = pwd;
-            cd(NWB_ECoGDir);
-            % Add NWB to Matlab path
-            addpath(genpath(NWB_ECoGDir));
-            % Generate the NWB Schema (First time run)
-            generateCore(bst_fullfile('ecog.namespace.yaml'))
-            % Update Initialization flag
-            NWB_ECoGinitialized = 1;
-            save(bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat'), 'NWB_ECoGinitialized');
-            cd(current_path);
-        end
-    end
-    
-    
-
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
-if exist('isdeployed', 'builtin') && isdeployed
+if isCompiled
     % Find the entry in the classpath
     if ~isempty(jarfile)
         jarfileRemove = setdiff({'brainstorm_jogl1.jar', 'brainstorm_jogl2.jar', 'brainstorm_jogl2.3.jar'}, jarfile);
@@ -298,7 +231,7 @@ switch action
         % Message
         java_dialog('msgbox', 'Brainstorm will now download additional files needed for the workshop.', 'Workshop');
         % Downloads OpenMEEG
-        bst_openmeeg('download');
+        bst_plugin('Install', 'openmeeg', 1);
         % Downloads the TMP.nii SPM atlas
         bst_normalize_mni('install');
         % Message
@@ -335,21 +268,12 @@ switch action
         % Remove .brainstorm from the path
         rmpath(bst_get('UserMexDir'));
         rmpath(bst_get('UserProcessDir'));
-        % Build the name of the deployment function
-        bst_deploy_java = str2func(['bst_deploy_java_' ReleaseName(2:end)]);
         % Update
         if (nargin > 1)
             bst_deploy_java(varargin{2:end});
         else
             bst_deploy_java();
         end
-        
-    case 'packagebin'
-        bst_set_path(BrainstormHomeDir);
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
-        bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        bst_package_bin(varargin{2:end});
         
     otherwise
         % Check if trying to execute a script
@@ -362,11 +286,17 @@ switch action
         end
         % Execute script
         if ~isempty(ScriptFile)
-            % Start brainstorm in server mode
-            brainstorm server;
+            % Start brainstorm in server mode (local database or not)
+            if (length(varargin) > 1) && any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
+                brainstorm server local;
+                params = setdiff(varargin(2:end), 'local');
+            else
+                brainstorm server;
+                params = [];
+            end
             % Execute script
-            if (length(varargin) > 1)
-                panel_command('ExecuteScript', ScriptFile, varargin{2:end});
+            if ~isempty(params)
+                panel_command('ExecuteScript', ScriptFile, params{:});
             else
                 panel_command('ExecuteScript', ScriptFile);
             end
@@ -409,7 +339,7 @@ end
 %% ===== SET PATH =====
 function bst_set_path(BrainstormHomeDir)
     % Cancel add path in case of deployed application
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         return
     end
     % Brainstorm folder itself

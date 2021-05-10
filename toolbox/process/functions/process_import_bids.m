@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2019; Martin Cousineau, 2018
+% Authors: Francois Tadel, 2016-2021; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -187,6 +187,13 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     end
     if isempty(subjDir)
         subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
+        % If the folders include the session: remove it
+        for i = 1:length(subjDir)
+            iUnder = find(subjDir(i).name == '_', 1);
+            if ~isempty(iUnder)
+                subjDir(i).name = subjDir(i).name(1:iUnder-1);
+            end
+        end
     end
     % Loop on the subjects
     SubjectName = {};
@@ -219,8 +226,13 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         % If there is one unique segmented anatomy: group all the sessions together
         [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);
         % If there is no segmented folder, try SUBJID_SESSID
-        if isempty(AnatDir) && (length(sessDir) == 1)
-            [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(1).name]);
+        if isempty(AnatDir)
+            for iSes = 1:length(sessDir)
+                [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(iSes).name]);
+                if ~isempty(AnatDir)
+                    break;
+                end
+            end
         end
         
         % Get all MRI files
@@ -405,7 +417,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             else
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
-                    % Compute MNI transformation
+                    % Compute MNI normalization
                     [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
@@ -625,7 +637,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 EventsFile = [baseName, '_events.tsv'];
                 if file_exist(EventsFile)
                     bst_process('CallProcess', 'process_evt_import', newFiles, [], ...
-                        'evtfile', {EventsFile, 'BIDS'});
+                        'evtfile', {EventsFile, 'BIDS'}, ...
+                        'delete',  1);
                 end
                 
                 % Load _channels.tsv
@@ -815,16 +828,11 @@ end
 %% ===== SELECT COORDINATE SYSTEM =====
 % Tries to find the best coordinate system available: subject space, otherwise MNI space
 function [fileList, fileSpace] = SelectCoordSystem(fileList)
-    % Orig subject space
-    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-orig')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-head')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-subject')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-scanner')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-sform')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
+    % T1 subject space
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
-        fileSpace = 'orig';
+        fileSpace = 'Other';
         return;
     end
     % MNI

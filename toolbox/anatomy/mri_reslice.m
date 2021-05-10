@@ -1,7 +1,7 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef, isAtlas)
 % MRI_RESLICE: Relice a volume based on a reference volume.
 %
-% USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+% USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef, isAtlas=0)
 %            [sMriReg, errMsg, fileTag] = mri_reslice(sMriSrc,    sMriRef, ...)
 %
 % INPUTS:
@@ -11,6 +11,8 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 %    - sMriRef    : Brainstorm MRI structure used as a reference
 %    - TransfSrc  : Transformation for the MRI to register, or 'ncs'/'scs'/'vox2ras'
 %    - TransfRef  : Transformation for the reference MRI, or 'ncs'/'scs'/'vox2ras'
+%    - isAtlas    : If 0, interpolate using single values (cubic intepolation)
+%                   If 1, interpolate using integer values only (nearest neighbor)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -39,6 +41,10 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 % Authors: Francois Tadel, 2016-2020
 
 % ===== PARSE INPUTS =====
+% Parse inputs
+if (nargin < 5) || isempty(isAtlas)
+    isAtlas = 0;
+end
 % Initialize returned values
 MriFileReg = [];
 errMsg = [];
@@ -75,7 +81,7 @@ end
 if ischar(TransfSrc)
     if strcmpi(TransfSrc, 'ncs')
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         if isempty(errMsg)
             TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
@@ -104,7 +110,7 @@ end
 if ischar(TransfRef)
     if strcmpi(TransfRef, 'ncs')
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         if isempty(errMsg)
             TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
@@ -133,14 +139,14 @@ end
 
 
 % ===== INTERPOLATE MRI VOLUME =====
-% Original position vectors (WHATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
-X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5);
-Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5);
-Z1 = ((0:size(sMriSrc.Cube,3)-1) + 0.5);
+% Original position vectors (WATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
+X1 = (0:size(sMriSrc.Cube,1)-1) + 0.5;
+Y1 = (0:size(sMriSrc.Cube,2)-1) + 0.5;
+Z1 = (0:size(sMriSrc.Cube,3)-1) + 0.5;
 % Reference position vectors
-X2 = ((0:size(sMriRef.Cube,1)-1) + 0.5);
-Y2 = ((0:size(sMriRef.Cube,2)-1) + 0.5);
-Z2 = ((0:size(sMriRef.Cube,3)-1) + 0.5);
+X2 = (0:size(sMriRef.Cube,1)-1) + 0.5;
+Y2 = (0:size(sMriRef.Cube,2)-1) + 0.5;
+Z2 = (0:size(sMriRef.Cube,3)-1) + 0.5;
 % Mesh grids
 [Xgrid2, Ygrid2, Zgrid2] = meshgrid(Y2, X2, Z2);
 % Apply final transformation: reference MRI => common space => original MRI
@@ -160,11 +166,19 @@ Zgrid2 = reshape(allGrid(3,:), size(Zgrid2));
 n4 = size(sMriSrc.Cube,4);
 newCube = cell(1,n4);
 for i4 = 1:n4
-    newCube{i4} = single(interp3(...
-        Y1 .* sMriSrc.Voxsize(2), ...
-        X1 .* sMriSrc.Voxsize(1), ...
-        Z1 .* sMriSrc.Voxsize(3), ...
-        double(sMriSrc.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+    if isAtlas
+        newCube{i4} = interp3(...
+            Y1 .* sMriSrc.Voxsize(2), ...
+            X1 .* sMriSrc.Voxsize(1), ...
+            Z1 .* sMriSrc.Voxsize(3), ...
+            sMriSrc.Cube(:,:,:,i4), Xgrid2, Ygrid2, Zgrid2, 'nearest', 0);
+    else
+        newCube{i4} = single(interp3(...
+            Y1 .* sMriSrc.Voxsize(2), ...
+            X1 .* sMriSrc.Voxsize(1), ...
+            Z1 .* sMriSrc.Voxsize(3), ...
+            double(sMriSrc.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+    end
 end
 newCube = cat(4, newCube{:});
 

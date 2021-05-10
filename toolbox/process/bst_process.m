@@ -31,7 +31,8 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2021
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -1748,13 +1749,21 @@ end
 
 
 %% ===== GET NEW FILENAME =====
-function filename = GetNewFilename(fPath, fBase)
+function filename = GetNewFilename(fPath, fBase, isTimestamp)
+    % Parse inputs 
+    if (nargin < 3) || isempty(isTimestamp)
+        isTimestamp = 1;
+    end
     % Folder
     ProtocolInfo = bst_get('ProtocolInfo');
     fPath = strrep(fPath, ProtocolInfo.STUDIES, '');
     % Date and time
-    c = clock;
-    strTime = sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));
+    if isTimestamp
+        c = clock;
+        strTime = sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));
+    else
+        strTime = '';
+    end
     % Remove extension
     fBase = strrep(fBase, '.mat', '');
     % Full filename

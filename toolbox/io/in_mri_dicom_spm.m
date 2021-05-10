@@ -29,7 +29,7 @@ function NiiFiles = in_mri_dicom_spm(DicomFiles, OutputFolder, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2021
 
 % Parse inputs
 if (nargin < 3) || isempty(isInteractive)
@@ -39,12 +39,16 @@ if (nargin < 2) || isempty(OutputFolder)
     OutputFolder = bst_get('BrainstormTmpDir');
 end
 
-% Check SPM installation
-bst_spm_init();
+% Initialize SPM
+[isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+if ~isInstalled
+    error(errMsg);
+end
 
 % Progress bar
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'DICOM converter (SPM)', 'Loading DICOM headers...', 0, length(DicomFiles));
+bst_plugin('SetProgressLogo', 'spm12');
 
 % Read SPM DICOM dictionnary
 disp(['Openin: ' fullfile(spm('Dir'),'spm_dicom_dict.txt')])

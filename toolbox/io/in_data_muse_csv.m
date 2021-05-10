@@ -24,22 +24,13 @@ function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018-2019
+% Authors: Francois Tadel, 2018-2021
 
 
 % ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(sfreq)
-    res = java_dialog('input', [...
-        'Muse recordings may have an irregular sampling rate with missing samples,' 10 ...
-        'therefore they need to be reinterpolated on a fixed time grid in order to' 10 ...
-        'be imported and processed in Brainstorm.' 10 10 ...
-        'Enter sampling rate:'], 'Import Muse EEG', [], '500');
-    if isempty(res) || isempty(str2num(res)) || (str2num(res) <= 0)
-        error('Invalid sampling rate.')
-    end
-    sfreq = str2num(res);
+    sfreq = [];
 end
-
 
 % ===== READ CSV =====
 bst_progress('text', 'Reading csv file...');
@@ -133,7 +124,7 @@ iColRec = iColAll(~cellfun(@(c)all(isnan(c)), RecMat(iColAll)));
 rawF = [RecMat{iColRec}]';
 % Find events
 iTimeEvt = find(all(isnan(rawF),1));
-% Get event timing
+% Event times: From the timestamps
 evtTime = rawTime(iTimeEvt);
 % Get event labels
 if ~isempty(iElements) && ~all(cellfun(@isempty, RecMat{iElements}(iTimeEvt)))
@@ -150,23 +141,76 @@ if ~isempty(iMissing)
     disp(sprintf('BST> Muse: Missing data at %d time points. Replacing with zeros...', length(iMissing)));
     rawF(isnan(rawF)) = 0;
 end
+nChannels = size(rawF,1);
+
+
+% ===== ASK SAMPLING FREQUENCY =====
+if isempty(sfreq)
+    sfreq_all = 1 ./ diff(rawTime);
+    sfreq_all(isinf(sfreq_all)) = [];
+    sfreq_all(isnan(sfreq_all)) = [];
+    sfreq_mean = mean(sfreq_all);
+    sfreq_std = std(sfreq_all);
+    % Regular sampling in CSV
+    if (sfreq_std < 0.01)
+       sfreq = sfreq_mean;
+       isResample = 0;
+    % Irregular sampling in CSV
+    else
+        res = java_dialog('question', sprintf([...
+            '<HTML>The timestamps are irregular (%1.3f +/- %1.3f Hz) and<BR>' ...
+            'cannot be used in Brainstorm as is. Two options are available:<BR><BR>' ...
+            '<B>Resample</B>:<BR>' ...
+            '- Trust the timestamps from the .csv<BR>' ...
+            '- Re-interpolate the signals on a regular time vector<BR>' ...
+            '- Events latencies are based on their timestamps<BR><BR>' ...
+            '<B>Ignore</B>:<BR>' ...
+            '- Do not trust the timestamps: ignore them completely<BR>' ...
+            '- Trust the Muse sampling regularity: do not re-interpolate signals<BR>' ...
+            '- Events latencies are based on their positions in the data files<BR><BR>'], sfreq_mean, sfreq_std), ...
+            'Import Muse EEG', [], {'Resample', 'Ignore', 'Cancel'}, 'Ignore');
+        if isempty(res) || strcmpi(res, 'Cancel')
+            error('Import cancelled by user.');
+        end
+        isResample = strcmpi(res, 'Resample');
+        % Ask sampling rate
+        res = java_dialog('input', 'Enter sampling rate:', 'Import Muse EEG', [], '256');
+        if isempty(res)
+            error('Import cancelled by user.');
+        elseif isempty(str2num(res)) || (str2num(res) <= 0)
+            error('Invalid sampling rate.')
+        end
+        sfreq = str2num(res);
+    end
+else
+    isResample = 0;
+end
+
 
 % ===== REINTERPOLATE =====
-bst_progress('text', 'Inteprolating recordings...');
-% Remove duplicated time points
-[uniqueTime,iUnique] = unique(rawTime);
-if (length(uniqueTime) < length(rawTime))
-    disp(sprintf('BST> Muse: Removed %d duplicated time samples.', length(rawTime) - length(uniqueTime)));
-    rawTime = rawTime(iUnique);
-    rawF = rawF(:,iUnique);
-end
-% Define time vector
-Time = 0:1/sfreq:max(rawTime);
-% Interpolate data
-nChannels = size(rawF,1);
-F = zeros(nChannels, length(Time));
-for iChan = 1:nChannels
-    F(iChan,:) = interp1(rawTime, rawF(iChan,:), Time);
+if isResample
+    bst_progress('text', 'Inteprolating recordings...');
+    % Remove duplicated time points
+    [uniqueTime,iUnique] = unique(rawTime);
+    if (length(uniqueTime) < length(rawTime))
+        disp(sprintf('BST> Muse: Removed %d duplicated time samples.', length(rawTime) - length(uniqueTime)));
+        rawTime = rawTime(iUnique);
+        rawF = rawF(:,iUnique);
+    end
+    % Define time vector
+    Time = 0:1/sfreq:max(rawTime);
+    % Interpolate data
+    F = zeros(nChannels, length(Time));
+    for iChan = 1:nChannels
+        F(iChan,:) = interp1(rawTime, rawF(iChan,:), Time);
+    end
+else
+    Time = (0:(length(rawTime)-1)) ./ sfreq;
+    F = rawF;
+    % Fix timing indices to compensate for data points that were removed
+    iTimeEvt = iTimeEvt - (0:length(iTimeEvt)-1);
+    % Event times: From the data matrix
+    evtTime = Time(iTimeEvt);
 end
 
 

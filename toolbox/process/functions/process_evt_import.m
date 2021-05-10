@@ -19,7 +19,7 @@ function varargout = process_evt_import( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012
+% Authors: Francois Tadel, 2012-2021
 
 eval(macro_method);
 end
@@ -57,6 +57,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.evtname.Comment = 'Event name:';
     sProcess.options.evtname.Type    = 'text';
     sProcess.options.evtname.Value   = 'New';
+    % Option: Delete existing events
+    sProcess.options.delete.Comment = 'Delete existing events';
+    sProcess.options.delete.Type    = 'checkbox';
+    sProcess.options.delete.Value   = 0;
 end
 
 
@@ -73,6 +77,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     EventFile  = sProcess.options.evtfile.Value{1};
     FileFormat = sProcess.options.evtfile.Value{2};
     EventName  = sProcess.options.evtname.Value;
+    isDelete   = sProcess.options.delete.Value;
     if isempty(EventFile)
         bst_report('Error', sProcess, [], 'Event file not selected.');
         return
@@ -88,7 +93,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Load channel file
     ChannelMat = in_bst_channel(sInput.ChannelFile); 
     % Import events file
-    [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFormat, EventName);
+    [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFormat, EventName, 0, isDelete);
 
     % Only save changes if something was change
     if ~isempty(newEvents)

@@ -119,33 +119,6 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     if isempty(sProcesses)
         return
     end   
-
-    % Check if FieldTrip needs to be added in the path
-    isFieldTrip = 0;
-    for i = 1:length(sProcesses)
-        % Function ft_specest_mtmconvol is both in FieldTrip and SPM, if SPM is available us it
-        if strcmp(func2str(sProcesses(i).Function), 'process_ft_mtmconvol')
-            if ~isempty(bst_get('SpmDir')) && isempty(bst_get('FieldTripDir'))
-                isOk = bst_spm_init(0, 'ft_specest_mtmconvol');
-                if ~isOk
-                    isFieldTrip = 1;
-                end
-            else
-                isFieldTrip = 1;
-            end
-        % Other FieldTrip functions: load FieldTrip
-        elseif ~isempty(strfind(func2str(sProcesses(i).Function), 'process_ft_'))
-            isFieldTrip = 1;
-            break;
-        end
-    end
-    % Add FieldTrip in the path
-    if isFieldTrip
-        isOk = bst_ft_init(1);
-        if ~isOk
-            return;
-        end
-    end
     
     % Call process function
     sOutputs = bst_process('Run', sProcesses, sFiles, [], 1);

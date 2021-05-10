@@ -67,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -147,6 +147,21 @@ function [sMri,iMri] = LoadMri(MriFile)
             end
         end
         
+        % === REFERENCE VOLUME ===
+        % Copy SCS and NCS fields from reference volume
+        if ~isempty(sSubject.iAnatomy) && ~file_compare(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName) && ...
+            (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || ~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC))
+            % Load reference volume for this subject
+            sMriRef = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            % Copy SCS field
+            if (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS)) && isfield(sMriRef, 'SCS') && ~isempty(sMriRef.SCS) && ~isempty(sMriRef.SCS.NAS)
+                sMri.SCS = sMriRef.SCS;
+            end
+            % Copy NCS field
+            if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC)) && isfield(sMriRef, 'NCS') && ~isempty(sMriRef.NCS) && ~isempty(sMriRef.NCS.AC)
+                sMri.NCS = sMriRef.NCS;
+            end
+        end
         % === REGISTER NEW MRI ===
         % Add MRI to loaded MRIs in this protocol
         iMri = length(GlobalData.Mri) + 1;
@@ -2358,7 +2373,8 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         else
             nFooofRow = numel(iRow);
         end
-        Values = NaN([nFooofRow, size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF, [2,3])]);
+        [s1 s2 s3] = size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF);
+        Values = NaN([nFooofRow, s2, s3 ]);
         nFooofFreq = sum(isFooofFreq);
         % Check for old structure format with extra .FOOOF. level.
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data, 'FOOOF')
@@ -3461,10 +3477,11 @@ function UnloadMri(MriFile) %#ok<DEFNU>
     MriFile = file_short(MriFile);
     % Check if MRI is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
-    % If it is: unload it
-    if ~isempty(iMri)
-        GlobalData.Mri(iMri) = [];
+    if isempty(iMri)
+        return;
     end
+    % Unload MRI
+    GlobalData.Mri(iMri) = [];
     % Get subject
     sSubject = bst_get('MriFile', MriFile);
     % Unload subject

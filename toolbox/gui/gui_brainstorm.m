@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 eval(macro_method);
 end
@@ -55,6 +55,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
         GUI.nodelists = [];
         return;
     end
+    % Compiled distribution
+    isCompiled = bst_iscompiled();
     
     % ===== CREATE GLOBAL MUTEX =====
     % Clone control
@@ -138,7 +140,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
         gui_component('MenuItem', jMenuFile, [], 'Edit preferences', IconLoader.ICON_PROPERTIES, [], @(h,ev)bst_call(@gui_show, 'panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0), fontSize);
         jMenuFile.addSeparator();
         % === EXECUTE SCRIPTS IN COMPILED VERSION ===
-        if exist('isdeployed', 'builtin') && isdeployed
+        if isCompiled
             gui_component('MenuItem', jMenuFile, [], 'Command window', IconLoader.ICON_TERMINAL, [], @(h,ev)gui_show('panel_command', 'JavaWindow', 'MATLAB command window', [], 0, 1, 0), fontSize);
             gui_component('MenuItem', jMenuFile, [], 'Execute script', IconLoader.ICON_PROCESS, [], @(h,ev)bst_call(@panel_command, 'ExecuteScript'), fontSize);
             jMenuFile.addSeparator();
@@ -156,36 +158,17 @@ function GUI = CreateWindow() %#ok<DEFNU>
         bst_colormaps('CreateAllMenus', jMenuColormaps, [], 1);
 
     % ==== Menu UPDATE ====
-    jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
+    if ~isCompiled
+        jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
-        if ~(exist('isdeployed', 'builtin') && isdeployed)
-            gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
-        end
-        % UPDATE OPENMEEG
-        if (GlobalData.Program.GuiLevel == 1)
-            jMenuOpenmeeg = gui_component('Menu', jMenuUpdate, [], 'Update OpenMEEG', IconLoader.ICON_RELOAD, [], [], fontSize);
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'Download', [], [], @(h,ev)bst_call(@DownloadOpenmeeg), fontSize);
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'Install', [], [], @(h,ev)bst_call(@bst_openmeeg, 'update'), fontSize);
-            if strcmpi(bst_get('OsType',0), 'win64')
-                jMenuOpenmeeg.addSeparator();
-                gui_component('MenuItem', jMenuOpenmeeg, [], 'Download Visual C++', [], [], @(h,ev)web('http://www.microsoft.com/en-us/download/details.aspx?id=14632', '-browser'), fontSize);
-            end
-            jMenuOpenmeeg.addSeparator();
-            gui_component('MenuItem', jMenuOpenmeeg, [], 'OpenMEEG help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem', '-browser'), fontSize);
-        end
-        if (GlobalData.Program.GuiLevel == 1) && ~(exist('isdeployed', 'builtin') && isdeployed)
-            jMenuNirsorm = gui_component('Menu', jMenuUpdate, [], 'Update NIRSTORM', IconLoader.ICON_RELOAD, [], [], fontSize);
-            if nst_setup('status')
-                gui_component('MenuItem', jMenuNirsorm, [], 'Update', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
-                gui_component('MenuItem', jMenuNirsorm, [], 'Uninstall', [], [], @(h,ev)nst_setup('uninstall',[],1), fontSize);
-            else
-                gui_component('MenuItem', jMenuNirsorm, [], 'Download', [], [], @(h,ev)nst_setup('install',[],1), fontSize);
-            end    
-            
-            gui_component('MenuItem', jMenuNirsorm, [], 'NIRSTORM help', [], [], @(h,ev)web('https://github.com/Nirstorm/nirstorm/wiki', '-browser'), fontSize);
-
-        end       
-        
+        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);     
+    end
+    
+    % ==== Menu PLUGINS ====
+    jMenuPlugins = gui_component('Menu', jMenuBar, [], 'Plugins', [], [], [], fontSize);
+        jMenusPlug = bst_plugin('MenuCreate', jMenuPlugins, fontSize);
+        java_setcb(jMenuPlugins, 'MenuSelectedCallback', @(h,ev)bst_plugin('MenuUpdate', jMenusPlug));
+       
     % ==== Menu HELP ====
     jMenuSupport = gui_component('Menu', jMenuBar, [], ' Help ', [], [], [], fontSize);
         % BUG REPORTS
@@ -1468,24 +1451,13 @@ function SetExplorationMode(ExplorationMode) %#ok<DEFNU>
 end
 
 
-%% ===== DOWNLOAD OPENMEEG =====
-function DownloadOpenmeeg()
-    % Display information message
-    java_dialog('msgbox', [...
-        'You will be directed to the OpenMEEG website:' 10 ...
-        ' - Download an installer adapted to your operating system (.tar.gz only)' 10 ...
-        ' - Click on the menu "Help > Update OpenMEEG > Install"' 10 ...
-        ' - Select the downloaded .tar.gz file'], 'Download OpenMEEG');
-    % Open web browser
-    try
-        web('http://openmeeg.gforge.inria.fr/download/', '-browser');
-    catch
-    end
-end
 %% ===== DOWNLOAD FILE =====
-function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
+function errMsg = DownloadFile(srcUrl, destFile, wndTitle, imgFile) %#ok<DEFNU>
     errMsg = [];
     % Parse inputs
+    if (nargin < 4) || isempty(imgFile)
+        imgFile = [];
+    end
     if (nargin < 3) || isempty(wndTitle)
         wndTitle = 'Download file';
     end
@@ -1497,9 +1469,12 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
         % Open progress bar
         isProgress = bst_progress('isVisible');
         if ~isProgress
-            bst_progress('start', wndTitle, ['Downloading: ' srcUrl]);
+            bst_progress('start', wndTitle, 'Downloading...');
         else
-            bst_progress('text', ['Downloading: ' srcUrl]);
+            bst_progress('text', 'Downloading...');
+        end
+        if ~isempty(imgFile)
+            bst_progress('setimage', imgFile);
         end
         % Create folder if needed
         if ~isdir(bst_fileparts(destFile))
@@ -1511,7 +1486,15 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
         if ~isProgress
             bst_progress('stop');
         end
+        if ~isempty(imgFile)
+            bst_progress('removeimage');
+        end
     else
+        % Temporarily hides progress bar (Downloader opens another progress bar)
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            bst_progress('hide');
+        end
         % Get system proxy definition, if available
         if exist('com.mathworks.mlwidgets.html.HTMLPrefs', 'class') && exist('com.mathworks.webproxy.WebproxyFactory', 'class') && ismethod('com.mathworks.webproxy.WebproxyFactory', 'findProxyForURL')
             com.mathworks.mlwidgets.html.HTMLPrefs.setProxySettings;
@@ -1520,7 +1503,7 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
             proxy = [];
         end
         % Start the download
-        downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle);
+        downloadManager = java_create('org.brainstorm.file.BstDownload', 'Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;Ljava.lang.String;)', srcUrl, destFile, wndTitle, imgFile);
         if ~isempty(proxy)
             downloadManager.download(proxy);
         else
@@ -1529,6 +1512,9 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle) %#ok<DEFNU>
         % Wait for the termination of the thread
         while (downloadManager.getResult() == -1)
             pause(0.2);
+        end
+        if isProgress
+            bst_progress('show');
         end
         % If file was not downloaded correctly
         if (downloadManager.getResult() ~= 1)
@@ -1646,6 +1632,7 @@ function status = CloneProble(bstDir)
                 bst_error('Invalid username or password.', 'Brainstorm login', 0);
             end
         catch
+            bst_error('Could not establish a secure connection to Brainstorm server', 'Brainstorm login', 0);
             status = 0;
         end
         bst_progress('stop');

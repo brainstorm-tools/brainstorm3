@@ -28,7 +28,13 @@ function out_fwrite_fif(sFile, sfid, iEpoch, SamplesBounds, iChannels, F)
 isEpoched = ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw);
 % Missing SampleBounds: use the entire raw file
 if ~isempty(isEpoched) && isempty(SamplesBounds)
-    SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
+    % Multiple files
+    if isfield(sFile.header, 'fif_headers') && (length(sFile.header.fif_headers) > 1)
+        SamplesBounds = [sFile.header.fif_headers{1}.raw.first_samp, sFile.header.fif_headers{end}.raw.last_samp];
+    % Single file
+    else
+        SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
+    end
 end
 
 % === CALIBRATION ===

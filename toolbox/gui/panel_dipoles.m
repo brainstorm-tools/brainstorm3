@@ -149,14 +149,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         
         %dipole size
         jTitleDipSize = gui_component('Label', jPanelColor, 'br', 'Point display size:');
-        jSliderDipSize = JSlider(5, 15, 8);
+        jSliderDipSize = JSlider(5, 20, 8);
         jSliderDipSize.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
         java_setcb(jSliderDipSize, 'MouseReleasedCallback', @FireUpdateDisplayOptions, ...
                                    'KeyPressedCallback',    @FireUpdateDisplayOptions);
         jPanelColor.add('tab hfill', jSliderDipSize);
         %dipole tail size
         jTitleTailWidth = gui_component('Label', jPanelColor, 'br', 'Tail display width:');
-        jSliderTailWidth = JSlider(4, 10, 8);
+        jSliderTailWidth = JSlider(4, 40, 8);
         jSliderTailWidth.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
         java_setcb(jSliderTailWidth, 'MouseReleasedCallback', @FireUpdateDisplayOptions, ...
                                    'KeyPressedCallback',    @FireUpdateDisplayOptions);
