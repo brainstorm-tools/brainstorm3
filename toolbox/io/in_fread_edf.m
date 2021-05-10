@@ -38,7 +38,7 @@ end
 if (nargin < 3) || isempty(SamplesBounds)
     SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
 end
-nTimes = sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq;
+nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
 iTimes = SamplesBounds(1):SamplesBounds(2);
 % Block of times/channels to extract
 nReadChannels = double(ChannelsRange(2) - ChannelsRange(1) + 1);

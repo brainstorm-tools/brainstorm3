@@ -1,4 +1,4 @@
-function [VertexLabelIds, LabelMap] = in_label_bs(FileName)
+function [VertexLabelIds, LabelMap, AtlasName] = in_label_bs(FileName)
 % IN_LABEL_SVREG: Import an atlas from an SVReg-labelled surface
 %
 % USAGE: in_label_bs(FileName, Verbosity=1) : Load labeled vertices from given file
@@ -34,9 +34,15 @@ function [VertexLabelIds, LabelMap] = in_label_bs(FileName)
 
 % ===== Read XML Label Description File =====
 fPath = bst_fileparts(FileName);
-XmlFile = file_find(fPath, 'brainsuite_labeldescription*.xml');
+
+st=strfind(FileName,'.svreg.');
+ed=strfind(FileName,'.dfs');
+AtlasName = FileName(st+7:ed-1);
+
+XmlFile = file_find(fPath, ['brainsuite_labeldescription*',AtlasName,'.xml']);
 if isempty(XmlFile)
-    fprintf(1, 'BST> Error: Could not find XML label description file brainsuite_labeldescription.xml\n');
+    fprintf(1, 'BST> For Atlas %s could not find XML label description file brainsuite_labeldescription.xml\n', AtlasName);
+    fprintf(1, 'BST> Only label Ids will be used for this atlas without label names\n');
     LabelMap = [];
 else
     LabelMap = generate_label_map(XmlFile);

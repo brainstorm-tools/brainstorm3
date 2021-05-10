@@ -71,8 +71,6 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 % Authors: Sylvain Baillet, March 2002
 %          Francois Tadel, 2009-2019
 
-global nfv
-nfv = [];
 errMessage = [];
 
 %% ===== DEFAULTS ==================================================================================
@@ -499,7 +497,7 @@ end
 if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    bst_progress('setimage', 'logo_duneuro.png');
+    bst_progress('setimage', 'plugins/duneuro_logo.png');
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
     % Comment in history field

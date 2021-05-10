@@ -80,7 +80,7 @@ if nargin >= 3
     else % Otherwise: Try to define from existing information in the database
         if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
             Origin = sMri.NCS.Origin - [1 2 2];
-        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
+        elseif isfield(sMri, 'NCS') && ((isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R)) || (isfield(sMri.NCS, 'y') && ~isempty(sMri.NCS.y)))
             Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
         elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC)
             Origin = sMri.NCS.AC + [0, -3, 4];

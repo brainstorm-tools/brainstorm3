@@ -83,8 +83,13 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     % MEG headmodel
@@ -132,18 +137,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     SurfaceMethod = sProcess.options.surfaces.Value;
     % Display intermediate results
     isVerbose = sProcess.options.verbose.Value;
-    % FieldTrip option: Not supported in compiled version
-    if exist('isdeployed', 'builtin') && isdeployed && strcmpi(SurfaceMethod, 'fieldtrip')
-        error(['FieldTrip segmentation not supported in compiled version yet, use Brainstorm BEM surfaces instead.' 10 ...
-               'Post a message on the forum if you need this feature implemented.']);
-    end
-    
+
     % ===== INSTALL OPENMEEG =====
     if ismember('openmeeg', allMethods) && (system('om_assemble') ~= 0)
-        % Make sure that OpenMEEG is already installed
-        OpenmeegDir = bst_openmeeg('download');
-        % Add the OpenMEEG folder to the system path
-        setenv('path', [getenv('path') ';' OpenmeegDir ';']);
+        % Install/load OpenMEEG
+        [isOk, errMsg, PlugDesc] = bst_plugin('Install', 'openmeeg');
+        if ~isOk
+            bst_report('Error', sProcess, sInputs, ['Error installing OpenMEEG: ' 10 errMsg]);
+            return;
+        end
+        % Add the OpenMEEG bin folder to the system path
+        binDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'bin');
+        setenv('path', [getenv('path'), pathsep, binDir, pathsep]);
     end
 
     % ===== GET STUDIES =====
@@ -438,7 +443,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Save database
     db_save();
-
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
     % Return the data files in input
     OutputFiles = {sInputs.FileName};
 end

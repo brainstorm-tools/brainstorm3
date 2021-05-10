@@ -21,7 +21,7 @@ function [ template ] = db_template(structureName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 
 switch lower(structureName)
@@ -94,6 +94,7 @@ switch lower(structureName)
             'Header',      [], ...
             'Histogram',   [], ...
             'InitTransf',  [], ...
+            'Labels',      [], ...
             'History',     []);
 
     case 'surfacemat'
@@ -691,6 +692,7 @@ switch lower(structureName)
             'Header',     [], ...
             'Histogram',  [], ...
             'InitTransf', [], ...
+            'Labels',     [], ...
             'History',    []);  
 
     case 'figureid'
@@ -872,6 +874,7 @@ switch lower(structureName)
                 'GuiLevel',          1, ...
                 'GUI',               [], ...
                 'CloneLock',         1, ...
+                'isInternet',        0, ...
                 'ProgressBar',       [], ...
                 'ColormapPanels',    repmat(struct( ...
                     'ColormapType',  [], ...
@@ -880,6 +883,7 @@ switch lower(structureName)
                     'Nodes',         [], ...
                     'isCut',         0), ...
                 'FontCache',         struct(), ...
+                'PluginCache',       struct(), ...
                 'ColorChooser',      [], ...
                 'ProcessMenuCache',  struct(), ...
                 'HasSigProcToolbox', []), ...
@@ -1026,6 +1030,9 @@ switch lower(structureName)
             'DataMinMax',              [], ...   % Minimum and maximum of the DataSource.FileName file
             'DataWmat',                [], ...   % Interpolation matrix (transformation to map Data on hPatch surface) 
             'OverlayCube',             [], ...   % Interpolated results in a MRI volume
+            'OverlayCubeLabels',       [], ...   % Map of labels (volume of indices)
+            'OverlayLabels',           [], ...   % Labels (cell-array of indices/strings)
+            'isOverlayAtlas',          0, ...    % Is the loaded overlay the atlas described in the OverlayLabels
             'DataAlpha',               0, ...    % Alpha for blending of anatomy and surface data
             'DataThreshold',           0.5, ...  % Threshold to apply to color coding of data values  
             'SizeThreshold',           1, ...    % Threshold to apply to color coding of data values  
@@ -1155,6 +1162,40 @@ switch lower(structureName)
         template.InputTypes = {};
         template.OutputTypes = {};
        
+    case 'plugdesc'
+        template = struct(...
+            'Name',          '', ...  % Plugin name = subfolder in the Brainstorm user folder
+            'Category',      '', ...  % Sub-menu in which the plugin is listed
+            'Version',       '', ...  % String with the version name
+            'AutoUpdate',     1, ...  % If 1, plugin is updated automatically when there is a new version available
+            'AutoLoad',       0, ...  % If 1, plugin is loaded automatically at Brainstorm startup
+            'URLzip',        '', ...  % Download URL (zip file accessible over HTTP/HTTPS/FTP)
+            'URLinfo',       '', ...  % Information URL: Software website
+            'ExtraMenus',    [], ...  % Cell matrix {Nx2} with list of entries to add to the plugins menu, eg. {'Download page', 'web(''http://...'')'; 'Tutorial', 'web(''http://...'')'}
+            'TestFile',      '', ...  % Function/file name to check the existence of the plugin outside of the Brainstorm user folder
+            'ReadmeFile',    '', ...  % Text filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_readme.txt
+            'LogoFile',      '', ...  % Logo filename (relative to the plugin path) - If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
+            'MinMatlabVer',   0, ...  % Minimum Matlab version, as returned by bst_get('MatlabVersion')
+            'CompiledStatus', 0, ...  % 0=Not available in the compiled version, 1=Available for download, 2=Compiled with Brainstorm
+            'RequiredPlugs', [], ...  % Cell-array of required plugin names, to install/load before this one: {Nx2}=>{'plugname','version';...} or {Nx1}=>{'plugname';...}
+            'UnloadPlugs',   [], ...  % Cell-array of incompatible plugin names, to remove from path before adding
+            'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up (use {'*'} to load all subfolders)
+            'GetVersionFcn', [], ...  % String to eval to get the version (after installation)
+            'InstalledFcn',  [], ...  % String to eval or function handle to call after installing the plugin
+            'UninstalledFcn',[], ...  % String to eval or function handle to call after uninstalling the plugin
+            'LoadedFcn',     [], ...  % String to eval or function handle to call after loading the plugin
+            'UnloadedFcn',   [], ...  % String to eval or function handle to call after unloading the plugin
+            ... % Set when installing or loading the plugin 
+            'SubFolder',     '', ...  % If all the code is in a subfolder: detect this at installation time
+            'Path',          [], ...  % Set at runtime: Installation path for this plugin
+            'Processes',     [], ...  % List of process functions to be added to the pipeline manager
+            'isLoaded',      0, ...   % Set at runtime: 0=Not loaded, 1=Loaded (folder and specific subfolders added to Matlab path)
+            'isManaged',     0);      % Set at runtime: 0=Installed by the user, 1=Installed automatically by Brainstorm
+        template.LoadFolders = {};
+        template.UnloadPlugs = {};
+        template.RequiredPlugs = {};
+        template.Processes = {};
+        
     case 'interpolation'
         template = struct(...
             'WInterp',   [], ...

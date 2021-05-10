@@ -36,6 +36,10 @@ if ~isKeepMri && ~isempty(sSubject.Anatomy)
     file_delete(file_fullpath({sSubject.Anatomy.FileName}), 1);
     sSubject.Anatomy(1:end) = [];
     sSubject.iAnatomy = [];
+elseif isKeepMri && (length(sSubject.Anatomy) >= 2)
+    file_delete(file_fullpath({sSubject.Anatomy(2:end).FileName}), 1);
+    sSubject.Anatomy(2:end) = [];
+    sSubject.iAnatomy = 1;
 end
 
 % Delete surfaces

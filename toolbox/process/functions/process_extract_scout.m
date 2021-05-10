@@ -21,7 +21,7 @@ function varargout = process_extract_scout( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -474,7 +474,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Scout was not found: Error
                 if isempty(sScout)
                     bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
-                    return;
+                    continue;
                 end
                 % Get scout function
                 if ~isempty(ScoutFunc)
@@ -522,10 +522,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                     % Do not accept volume atlases with non-volume head models
                     if ~isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
                         return;
                     elseif isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
                         return;
                     end
                     % Set the scout computation properties based on the information in the "Source model" atlas
@@ -682,6 +682,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                 end
             end
+        end
+        % If nothing was found
+        if isempty(scoutValues)
+            return;
         end
         
         % === OUTPUT STRUCTURE ===

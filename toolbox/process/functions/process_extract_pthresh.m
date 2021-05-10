@@ -282,7 +282,10 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
         [pmask, pthresh] = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'SPM') && ~isempty(StatMat.SPM)
         % Initialize SPM
-        bst_spm_init();
+        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalled
+            error(errMsg);
+        end
         % SPM must be installed
         if ~exist('spm_uc', 'file')
             warning('SPM must be in the Matlab path to compute the statistical thresold for this file.');

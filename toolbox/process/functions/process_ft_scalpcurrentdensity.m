@@ -100,8 +100,13 @@ end
 function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Initialize returned list of files
     OutputFiles = {};
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     Conductivity = 0.33; % Default value
@@ -168,6 +173,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     bst_save(OutputFiles{1}, DataMat, 'v6');
     % Register in database
     db_add_data(sInput.iStudy, OutputFiles{1}, DataMat);
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
 end
 
 

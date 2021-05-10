@@ -81,12 +81,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jButtonGroupChannel.add(jRadioChannelIndividual);
         jButtonGroupChannel.add(jRadioChannelDefaultSubject);
         jButtonGroupChannel.add(jRadioChannelDefaultGlobal);
+        java_setcb(jRadioChannelDefaultSubject, 'ActionPerformedCallback', @SharedWarning);
         java_setcb(jRadioChannelDefaultGlobal, 'ActionPerformedCallback', @GlobalWarning);
         jPanelDefaults.add('br', JLabel());
         
         % By default : Individual channel file
         jRadioChannelIndividual.setSelected(1);
         % Try to prevent people to share channel files between protocol
+        jRadioChannelDefaultSubject.setForeground(Color(.5,.5,.5));
         jRadioChannelDefaultGlobal.setForeground(Color(.5,.5,.5));
         java_setcb(jRadioChannelDefaultGlobal, 'ActionPerformedCallback', @GlobalWarning);
     jPanelNew.add('br hfill', jPanelDefaults);
@@ -120,6 +122,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_hide(panelName);
     end
 
+    % WARNING FOR SHARED CHANNEL FILE
+    function SharedWarning(varargin)
+        % Display warning
+        res = java_dialog('question', ['We do not recommend using this option anymore.' 10 10 ...
+                                       'Sharing the same electrodes cap for multiple continuous files may lead to errors.' 10 ...
+                                       'The channel file contains the linear operators (SSP, ICA, re-referencing operator)' 10 ...
+                                       'applied dynamically to the continuous files, which means that applying a spatial filter' 10 ...
+                                       'to one file applies it to all the files in the subject. This constraint is often' 10 ...
+                                       'misunderstood and leads to errors in the manipulation of the files.' 10  ...
+                                       'Use this option only if you clearly understand the meaning of this warning.' 10 10 ...
+                                       'Are you sure you want to select this option ?' 10 10], 'Warning', [], {'Confirm', 'Cancel'}, 'Cancel');
+        % Select the default option "Use one channel file per subject"
+        if (isempty(res) || ~strcmpi(res, 'Confirm'))
+            jRadioChannelIndividual.setSelected(1);
+        end
+    end
+
     % WARNING FOR GLOBAL CHANNEL FILE
     function GlobalWarning(varargin)
         % Display warning
@@ -130,13 +149,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                        'The problem is that the noise covariance matrix depends on the quality of the' 10 ...
                                        'EEG recordings, which is usually very different from a subject to another.' 10 ...
                                        'Practically, it is impossible to get the same impedences for all the subjects.' 10 10 ...
-                                       'Most users will click on "Cancel", and then select "Use one channel file per subject".' 10 ...
                                        'To set the channel file and compute the headmodels for all the subjects at once:' 10 ...
                                        'right-click on the protocol node instead of each subject individually.' 10 10 ...
                                        'Are you sure you want to select this option ?' 10 10], 'Warning', [], {'Confirm', 'Cancel'}, 'Cancel');
         % Select the default option "Use one channel file per subject"
         if (isempty(res) || ~strcmpi(res, 'Confirm'))
-            jRadioChannelDefaultSubject.setSelected(1);
+            jRadioChannelIndividual.setSelected(1);
         end
     end
 

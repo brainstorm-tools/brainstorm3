@@ -23,7 +23,7 @@ function varargout = panel_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2020
+% Authors: Francois Tadel, 2009-2021
 
 eval(macro_method);
 end
@@ -37,7 +37,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     global GlobalData;
     % Constants
     panelName = 'Preferences';
-    isCompiled = exist('isdeployed', 'builtin') && isdeployed;
     
     % Create main main panel
     jPanelNew = gui_river();
@@ -109,37 +108,23 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jButtonTempDir = gui_component('Button', jPanelFolders, [], '...', [], [], @TempDirectory_Callback);
         jButtonTempDir.setMargin(Insets(2,2,2,2));
         jButtonTempDir.setFocusable(0);
-        % External toolboxes (only in non-compiled mode)
-        if ~isCompiled
-            % FieldTrip folder
-            gui_component('Label', jPanelFolders, 'br', 'FieldTrip toolbox: ', [], [], []);
-            jTextFtDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
-            jButtonFtDir = gui_component('Button', jPanelFolders, [], '...', [], [], @FtDirectory_Callback);
-            jButtonFtDir.setMargin(Insets(2,2,2,2));
-            jButtonFtDir.setFocusable(0);
-            % SPM folder
-            gui_component('Label', jPanelFolders, 'br', 'SPM toolbox: ', [], [], []);
-            jTextSpmDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
-            jButtonSpmDir = gui_component('Button', jPanelFolders, [], '...', [], [], @SpmDirectory_Callback);
-            jButtonSpmDir.setMargin(Insets(2,2,2,2));
-            jButtonSpmDir.setFocusable(0);
-            % BrainSuite folder
-            gui_component('Label', jPanelFolders, 'br', 'BrainSuite installation folder: ', [], [], []);
-            jTextBsDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
-            jButtonBsDir = gui_component('Button', jPanelFolders, [], '...', [], [], @BsDirectory_Callback);
-            jButtonBsDir.setMargin(Insets(2,2,2,2));
-            jButtonBsDir.setFocusable(0);
-        else
-            jTextFtDir = [];
-            jTextSpmDir = [];
-            jTextBsDir = [];
-        end
+        % BrainSuite folder
+        gui_component('Label', jPanelFolders, 'br', 'BrainSuite installation folder: ', [], [], []);
+        jTextBsDir   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
+        jButtonBsDir = gui_component('Button', jPanelFolders, [], '...', [], [], @BsDirectory_Callback);
+        jButtonBsDir.setMargin(Insets(2,2,2,2));
+        jButtonBsDir.setFocusable(0);
         % Python executable
-        gui_component('Label', jPanelFolders, 'br', 'Python executable: ', [], [], []);
+        jLabelPythonExe  = gui_component('Label', jPanelFolders, 'br', 'Python executable: ', [], [], []);
         jTextPythonExe   = gui_component('Text', jPanelFolders, 'br hfill', '', [], [], []);
         jButtonPythonExe = gui_component('Button', jPanelFolders, [], '...', [], [], @PythonExe_Callback);
         jButtonPythonExe.setMargin(Insets(2,2,2,2));
         jButtonPythonExe.setFocusable(0);
+        if ~exist('pyenv', 'builtin') && ~exist('pyversion', 'builtin')
+            jLabelPythonExe.setEnabled(0);
+            jTextPythonExe.setEnabled(0);
+            jButtonPythonExe.setEnabled(0);
+        end
     jPanelRight.add('br hfill', jPanelFolders);
     
     % ===== RIGHT: SIGNAL PROCESSING =====
@@ -228,17 +213,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             case 300,       jSliderScaling.setValue(6);
             case 400,       jSliderScaling.setValue(7);
         end    
-        % Directory
+        % Temporary folder
         jTextTempDir.setText(bst_get('BrainstormTmpDir'));
-        if ~isempty(jTextFtDir)
-            jTextFtDir.setText(bst_get('FieldTripDir'));
-        end
-        if ~isempty(jTextSpmDir)
-            jTextSpmDir.setText(bst_get('SpmDir'));
-        end
-        if ~isempty(jTextBsDir)
-            jTextBsDir.setText(bst_get('BrainSuiteDir'));
-        end
+        % BrainSuite folder
+        jTextBsDir.setText(bst_get('BrainSuiteDir'));
         % Python config
         jTextPythonExe.setText(bst_get('PythonExe'));
         % Use signal processing toolbox
@@ -326,57 +304,28 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
             elseif dir_contains(newTmpDir, dbDir)
                 java_dialog('warning', 'Your temporary directory cannot contain your database directory.');
             else
+                % If resetting tmp directory with an empty value
+                if isempty(newTmpDir)
+                    bst_set('BrainstormTmpDir', '');
                 % If temp directory changed: create directory if it doesn't exist
-                if file_exist(newTmpDir) || mkdir(newTmpDir)
+                elseif file_exist(newTmpDir) || mkdir(newTmpDir)
                     bst_set('BrainstormTmpDir', newTmpDir);
                 else
                     java_dialog('warning', 'Could not create temporary directory.');
                 end
             end
         end
-        % FieldTrip directory
-        if ~isempty(jTextFtDir)
-            oldFtDir = bst_get('FieldTripDir');
-            newFtDir = char(jTextFtDir.getText());
-            if ~file_compare(oldFtDir, newFtDir)
-                % Folder doesn't exist
-                if ~isempty(newFtDir) && ~file_exist(newFtDir)
-                    java_dialog('warning', 'Selected FieldTrip folder doesn''t exist. Ignoring...');
-                elseif ~isempty(newFtDir) && ~file_exist(bst_fullfile(newFtDir, 'ft_defaults.m'))
-                    java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install. Ignoring...');
-                else
-                    bst_set('FieldTripDir', newFtDir);
-                end
-            end
-        end
-        % SPM directory
-        if ~isempty(jTextSpmDir)
-            oldSpmDir = bst_get('SpmDir');
-            newSpmDir = char(jTextSpmDir.getText());
-            if ~file_compare(oldSpmDir, newSpmDir)
-                % Folder doesn't exist
-                if ~isempty(newSpmDir) && ~file_exist(newSpmDir)
-                    java_dialog('warning', 'Selected SPM folder doesn''t exist. Ignoring...');
-                elseif ~isempty(newSpmDir) && ~file_exist(bst_fullfile(newSpmDir, 'spm.m'))
-                    java_dialog('warning', 'Selected folder does not contain a valid SPM install. Ignoring...');
-                else
-                    bst_set('SpmDir', newSpmDir);
-                end
-            end
-        end
         % BrainSuite directory
-        if ~isempty(jTextBsDir)
-            oldBsDir = bst_get('BrainSuiteDir');
-            newBsDir = char(jTextBsDir.getText());
-            if ~file_compare(oldBsDir, newBsDir)
-                % Folder doesn't exist
-                if ~isempty(newBsDir) && ~file_exist(newBsDir)
-                    java_dialog('warning', 'Selected BrainSuite folder doesn''t exist. Ignoring...');
-                elseif ~isempty(newBsDir) && ~file_exist(bst_fullfile(newBsDir, 'bdp'))
-                    java_dialog('warning', 'Selected folder does not contain a valid BrainSuite install (missing "bdp" folder). Ignoring...');
-                else
-                    bst_set('BrainSuiteDir', newBsDir);
-                end
+        oldBsDir = bst_get('BrainSuiteDir');
+        newBsDir = char(jTextBsDir.getText());
+        if ~file_compare(oldBsDir, newBsDir)
+            % Folder doesn't exist
+            if ~isempty(newBsDir) && ~file_exist(newBsDir)
+                java_dialog('warning', 'Selected BrainSuite folder doesn''t exist. Ignoring...');
+            elseif ~isempty(newBsDir) && ~file_exist(bst_fullfile(newBsDir, 'bdp'))
+                java_dialog('warning', 'Selected folder does not contain a valid BrainSuite install (missing "bdp" folder). Ignoring...');
+            else
+                bst_set('BrainSuiteDir', newBsDir);
             end
         end
         
@@ -453,64 +402,6 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     end
 
 
-%% ===== FIELDTRIP DIRECTORY SELECTION =====
-    % Callback for '...' button
-    function FtDirectory_Callback(varargin)
-        % Get the initial path
-        initDir = bst_get('FieldTripDir', 1);
-        % Open 'Select directory' dialog
-        ftDir = uigetdir(initDir, 'Select FieldTrip directory.');
-        % If no directory was selected : return without doing anything
-        if (isempty(ftDir) || (ftDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, ftDir)))
-            return;
-        % Directory is not avalid FieldTrip folder
-        elseif ~file_exist(bst_fullfile(ftDir, 'ft_defaults.m'))
-            java_dialog('warning', 'Selected folder does not contain a valid FieldTrip install.');
-            return;
-        end
-        % Else : update control text
-        jTextFtDir.setText(ftDir);
-        % Focus main brainstorm figure
-        jBstFrame = bst_get('BstFrame');
-        jBstFrame.setVisible(1);
-        % Remove all the previous FieldTrip folders from the path
-        if ~isempty(initDir) && isdir(initDir)
-            warning('off', 'MATLAB:rmpath:DirNotFound');
-            allFtPath = genpath(initDir);
-            rmpath(allFtPath);
-            warning('on', 'MATLAB:rmpath:DirNotFound');
-        end
-    end
-
-%% ===== SPM DIRECTORY SELECTION =====
-    % Callback for '...' button
-    function SpmDirectory_Callback(varargin)
-        % Get the initial path
-        initDir = bst_get('SpmDir', 1);
-        % Open 'Select directory' dialog
-        spmDir = uigetdir(initDir, 'Select SPM directory.');
-        % If no directory was selected : return without doing anything
-        if (isempty(spmDir) || (spmDir(1) == 0) || (~isempty(initDir) && file_compare(initDir, spmDir)))
-            return;
-        % Directory is not avalid SPM folder
-        elseif ~file_exist(bst_fullfile(spmDir, 'spm.m'))
-            java_dialog('warning', 'Selected folder does not contain a valid SPM install.');
-            return;
-        end
-        % Else : update control text
-        jTextSpmDir.setText(spmDir);
-        % Focus main brainstorm figure
-        jBstFrame = bst_get('BstFrame');
-        jBstFrame.setVisible(1);
-        % Remove all the previous SPM folders from the path
-        if ~isempty(initDir) && isdir(initDir)
-            warning('off', 'MATLAB:rmpath:DirNotFound');
-            allSpmPath = genpath(initDir);
-            rmpath(allSpmPath);
-            warning('on', 'MATLAB:rmpath:DirNotFound');
-        end
-    end
-
 %% ===== BRAINSUITE DIRECTORY SELECTION =====
     % Callback for '...' button
     function BsDirectory_Callback(varargin)
@@ -532,6 +423,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         jBstFrame = bst_get('BstFrame');
         jBstFrame.setVisible(1);
     end
+
 
 %% ===== PYTHON EXECUTABLE =====
     % Callback for '...' button
@@ -597,7 +489,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
 %         end
 %         % New python path
 %         if ~isempty(PythonConfig.PythonPath)
-%             newPath = [PythonConfig.PythonPath ';' addDir];
+%             newPath = [PythonConfig.PythonPath, pathsep, addDir];
 %         else
 %             newPath = addDir;
 %         end
@@ -782,9 +674,9 @@ function PATH = SystemPathRemove(rmPath, PATH)
     end
     % Get system path
     PATH = getenv('PATH');
-    PATH_split = str_split(PATH, ';');
+    PATH_split = str_split(PATH, pathsep);
     % Find elements to remove
-    rm_split = str_split(rmPath, ';');
+    rm_split = str_split(rmPath, pathsep);
     iRm = find(ismember(PATH_split, rm_split));
     if isempty(iRm)
         return;
@@ -800,7 +692,7 @@ function PATH = SystemPathRemove(rmPath, PATH)
         if (i == 1)
             PATH = PATH_split{i};
         else
-            PATH = [PATH, ';', PATH_split{i}];
+            PATH = [PATH, pathsep, PATH_split{i}];
         end
     end
     % Update system path
@@ -822,12 +714,12 @@ function PATH = SystemPathAdd(addPath, PATH)
         isSystemPath = 0;
     end
     % Get system path
-    PATH_split = str_split(PATH, ';');
+    PATH_split = str_split(PATH, pathsep);
     % Check which folders are not yet in the system path
-    add_split = str_split(addPath, ';');
+    add_split = str_split(addPath, pathsep);
     for iPath = 1:length(add_split)
         if isdir(add_split{iPath}) && ~ismember(add_split{iPath}, PATH_split)
-            PATH = [PATH ';' add_split{iPath}];
+            PATH = [PATH, pathsep, add_split{iPath}];
             disp(['BST> Added to system path: ' add_split{iPath}]);
         end
     end

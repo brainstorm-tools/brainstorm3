@@ -66,10 +66,6 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = [];
     OPTIONS = struct();
-    % Not supported in compiled version
-    if exist('isdeployed', 'builtin') && isdeployed
-        error('Not supported in compiled version yet. Post a message on the forum if you need this feature.');
-    end
     % Get subject name
     SubjectName = file_standardize(sProcess.options.subjectname.Value);
     if isempty(SubjectName)
@@ -161,6 +157,13 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     ftMri = rmfield(ftMri, 'anatomy');
         
     % ===== CALL FIELDTRIP =====
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        return;
+    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
+    % Call: ft_prepare_mesh
     cfg = [];
     cfg.method = 'hexahedral';
     cfg.spmversion = 'spm12';
@@ -187,6 +190,8 @@ function [isOk, errMsg, FemFile] = Compute(iSubject, iMri, OPTIONS)
     bst_save(FemFile, FemMat, 'v7');
     db_add_surface(iSubject, FemFile, FemMat.Comment);
 
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
     % Return success
     isOk = 1;
 end

@@ -55,7 +55,10 @@ FigData.AxesLegend = {};
 Handles = GlobalData.DataSet(iDS).Figure(iFig).Handles;
 % Check downsampling factor
 if Handles.DownsampleFactor
-    error(['The time series were downsampled before being displayed.' 10 'Import the recordings first, or use the process "Extract>Extract time" instead.']);
+    error(['The signals were downsampled before being displayed and cannot be exported from the figure.' 10 ...
+        'For continuous files: import the recordings first.' 10 ...
+        'For imported time series: read directly the corresponding .mat files.' 10 ...
+        'For scouts: use the proces "Extract > Scout time series".' ]);
 end
 % Get y-factor and offsets
 Factor = Handles(1).DisplayFactor;

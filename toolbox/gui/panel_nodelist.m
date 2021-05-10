@@ -841,6 +841,9 @@ function SetListEnabled(isEnabled) %#ok<DEFNU>
     end
     % Get selection buttons
     sControls = bst_get('BstControls');
+    if isempty(sControls)
+        return;
+    end
     sControls.jButtonRecordingsA.setEnabled(isEnabled);
     sControls.jButtonSourcesA.setEnabled(isEnabled);
     sControls.jButtonTimefreqA.setEnabled(isEnabled);

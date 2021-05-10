@@ -432,6 +432,7 @@ end
 %% ===== DIPOLES =====
 % Display dipoles
 for i = 1:length(sStudy.Dipoles)
+    nodeParent = [];
     % If stand-alone file (not associated with a data file) => DISPLAY
     if isempty(sStudy.Dipoles(i).DataFile)
         % Add node to study node

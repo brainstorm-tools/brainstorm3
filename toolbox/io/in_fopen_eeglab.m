@@ -28,7 +28,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2021
 
 % ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -43,6 +43,14 @@ if isstruct(DataFile)
     DataFile = hdr.filename;
 else
     hdr = load(DataFile, '-mat');
+end
+% If there is no EEG field
+if ~isfield(hdr, 'EEG')
+    if isfield(hdr, 'nbchan') && isfield(hdr, 'pnts') && isfield(hdr, 'trials')
+        hdr = struct('EEG', hdr);
+    else
+        error('Invalid EEGLAB .set file: missing EEG structure.');
+    end
 end
 % Add some information
 hdr.isRaw = isempty(hdr.EEG.epoch) && ~isempty(hdr.EEG.data);

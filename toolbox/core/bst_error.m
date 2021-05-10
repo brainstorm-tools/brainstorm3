@@ -132,7 +132,7 @@ if (nargout == 0)
         % Hide progress bar
         bst_progress('stop');
         % Display error message window
-        java_dialog('error', fullErrMsg, errTitle);
+        java_dialog('errorhelp', fullErrMsg, errTitle);
     end
     % Display error message in Matlab console
     disp(consoleMsg);

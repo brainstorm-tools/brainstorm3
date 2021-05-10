@@ -68,7 +68,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         jRadioMosherGlsrp = gui_component('Radio', [], [], 'Performance',      jButtonGroupMethod, '', @(h,ev)UpdatePanel(), []);
         jRadioMosherMNEp  = gui_component('Radio', [], [], 'Performance',      jButtonGroupMethod, '', @(h,ev)UpdatePanel(), []);
         jRadioMEM         = gui_component('Radio', [], [], 'BrainEntropy MEM', jButtonGroupMethod, '', @(h,ev)UpdatePanel(), []);
-        if ~strcmpi(HeadModelType, 'surface') || isShared || (exist('isdeployed', 'builtin') && isdeployed)
+        if ~strcmpi(HeadModelType, 'surface') || isShared || bst_iscompiled()
             jRadioMEM.setEnabled(0);
         end
     % Add 'Method' panel to main panel

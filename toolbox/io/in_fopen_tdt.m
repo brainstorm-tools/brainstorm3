@@ -26,8 +26,13 @@ function [sFile, ChannelMat] = in_fopen_tdt(DataFile)
 
 
 % Not available in the compiled version
-if (exist('isdeployed', 'builtin') && isdeployed)
+if bst_iscompiled()
     error('Reading TDT files is not available in the compiled version of Brainstorm.');
+end
+% Install/load TDT-SDK library
+[isInstalled, errMsg] = bst_plugin('Install', 'tdt-sdk');
+if ~isInstalled
+    error(errMsg);
 end
 
 
@@ -43,25 +48,6 @@ hdr.BaseFolder = DataFolder;
  %% ===== FILE COMMENT =====
 % Comment: BaseFolder
 Comment = DataFolder;
-
-
-
-
- %% Check if the TDT builder has already been downloaded and properly set up
-if exist('TDTbin2mat','file') ~= 2
-    isOk = java_dialog('confirm', ...
-        ['The Tucker Davis Technologies SDK is not installed on your computer.' 10 10 ...
-             'Download and install the latest version?'], 'Tucker Davis Technologies');
-    if ~isOk
-        bst_report('Error', sProcess, sInputs, 'This process requires the Tucker Davis Technologies SDK.');
-        return;
-    end
-    downloadAndInstallTDT()
-end
-
-
-
-
 
 
 %% ===== READ DATA HEADERS =====
@@ -327,68 +313,5 @@ end
 % Import this list
 sFile = import_events(sFile, [], events);
 end
-
-
-
-
-function downloadAndInstallTDT()
-
-    TDTDir = bst_fullfile(bst_get('BrainstormUserDir'), 'TDT');
-    TDTTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'TDT_tmp');
-    url = 'https://www.tdt.com/files/examples/TDTMatlabSDK.zip';
-           
-    % If folders exists: delete
-    if isdir(TDTDir)
-        file_delete(TDTDir, 1, 3);
-    end
-    if isdir(TDTTmpDir)
-        file_delete(TDTTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(TDTTmpDir);
-    % Download file
-    zipFile = bst_fullfile(TDTTmpDir, 'TDT.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'TDT download');
-    
-    
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
-        % Try to download until the timeout is reached
-        pause(0.1);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'TDT download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
-        error(['Impossible to download TDT.' 10 errMsg]);
-    end
-    
-    % Unzip file
-    bst_progress('start', 'TDT', 'Installing TDT...');
-    unzip(zipFile, TDTTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(TDTTmpDir);
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}));
-    idir = idir(find(strcmp({diropen(idir).name}, 'TDTSDK')));
-    
-    newTDTDir = bst_fullfile(TDTTmpDir, diropen(idir).name, 'TDTbin2mat');
-    % Move TDT directory to proper location
-    file_move(newTDTDir, TDTDir);
-    % Delete unnecessary files
-    file_delete(TDTTmpDir, 1, 3);
-    % Add TDT to Matlab path
-    addpath(genpath(TDTDir));
-    
-    bst_progress('start', 'TDT', 'TDT SDK successfully installed');
-
- end
-
-
-
 
 

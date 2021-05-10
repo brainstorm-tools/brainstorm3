@@ -57,7 +57,13 @@ if ~isfield(sFile.header, 'raw') || isempty(sFile.header.raw)
 else
     % If time not specified, read the entire file
     if isempty(SamplesBounds)
-        SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
+        % Multiple files
+        if isfield(sFile.header, 'fif_headers') && (length(sFile.header.fif_headers) > 1)
+            SamplesBounds = [sFile.header.fif_headers{1}.raw.first_samp, sFile.header.fif_headers{end}.raw.last_samp];
+        % Single file
+        else
+            SamplesBounds = [sFile.header.raw.first_samp, sFile.header.raw.last_samp];
+        end
     end
     % If there are multiple FIF files: check in which one the data should be read
     if isfield(sFile.header, 'fif_list') && isfield(sFile.header, 'fif_times') && (length(sFile.header.fif_list) >= 2)

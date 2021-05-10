@@ -1,7 +1,7 @@
 function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
 % IN_MRI: Detect file format and load MRI file.
 % 
-% USAGE:  in_mri(MriFile, FileFormat='ALL')
+% USAGE:  in_mri(MriFile, FileFormat='ALL', isInteractive=1, isNormalize=0)
 % INPUT:
 %     - MriFile       : full path to a MRI file
 %     - FileFormat    : Format of the input file (default = 'ALL')
@@ -45,7 +45,7 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 % Parse inputs
 if (nargin < 4) || isempty(isNormalize)
@@ -67,28 +67,31 @@ MRI = [];
 vox2ras = [];
 
 % ===== GUNZIP FILE =====
-% Get file extension
-[filePath, fileBase, fileExt] = bst_fileparts(MriFile);
-% If file is gzipped
-if strcmpi(fileExt, '.gz')
-    % Get temporary folder
-    tmpDir = bst_get('BrainstormTmpDir');
-    % Target file
-    gunzippedFile = bst_fullfile(tmpDir, fileBase);
-    % Unzip file
-    res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
-    if ~res
-        error(['Could not gunzip file "' MriFile '" to:' 10 gunzippedFile ]);
-    end
-    % Import gunzipped file
-    MriFile = gunzippedFile;
+if ~iscell(MriFile)
+    % Get file extension
     [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+    % If file is gzipped
+    if strcmpi(fileExt, '.gz')
+        % Get temporary folder
+        tmpDir = bst_get('BrainstormTmpDir');
+        % Target file
+        gunzippedFile = bst_fullfile(tmpDir, fileBase);
+        % Unzip file
+        res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
+        if ~res
+            error(['Could not gunzip file "' MriFile '" to:' 10 gunzippedFile ]);
+        end
+        % Import gunzipped file
+        MriFile = gunzippedFile;
+        [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+    end
 end
 
                 
 %% ===== DETECT FILE FORMAT =====
-isMni = strcmpi(FileFormat, 'ALL-MNI');
-if ismember(FileFormat, {'ALL', 'ALL-MNI'})
+isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
+isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
+if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
     % Switch between file extensions
     switch (lower(fileExt))
         case '.mri',                  FileFormat = 'CTF';
@@ -111,9 +114,9 @@ switch (FileFormat)
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
         if isInteractive
-            [MRI, vox2ras] = in_mri_nii(MriFile, 1, []); % Function automatically detects right byte order
+            [MRI, vox2ras] = in_mri_nii(MriFile, 1, [], []);
         else
-            [MRI, vox2ras] = in_mri_nii(MriFile, 1, 1); % Function automatically detects right byte order
+            [MRI, vox2ras] = in_mri_nii(MriFile, 1, 1, 0);
         end
     case 'MGH'
         if isInteractive
@@ -134,6 +137,8 @@ switch (FileFormat)
         if ~isempty(strfind(lower(fileBase), 'subjectimage'))
             MRI = load(MriFile);
         end
+    case 'SPM-TPM'
+        MRI = in_mri_tpm(MriFile);
     otherwise
         error(['Unknown format: ' FileFormat]);
 end
@@ -159,7 +164,7 @@ if any(isnan(MRI.Cube(:)))
     MRI.Cube(isnan(MRI.Cube)) = 0;
 end
 % Simplify data type
-if ~isa(MRI.Cube, 'uint8')
+if ~isa(MRI.Cube, 'uint8') && ~isAtlas
     % If only int values between 0 and 255: Reduce storage size by forcing to uint8 
     if (max(MRI.Cube(:)) <= 255) && (min(MRI.Cube(:)) >= 0) && (max(abs(MRI.Cube(:) - round(MRI.Cube(:)))) < 1e-10)
         MRI.Cube = uint8(MRI.Cube);

@@ -21,7 +21,7 @@ function [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptio
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2021
         
 
 % Parse inputs
@@ -217,28 +217,32 @@ sFile.acq_date = str_date(hdr.startdate);
 SplitType = repmat({''}, 1, hdr.nsignal);
 SplitName = repmat({''}, 1, hdr.nsignal);
 for i = 1:hdr.nsignal
-    % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
-    if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
-        hdr.signal(i).label(end) = [];
+    if ~isempty(hdr.signal(i).label)    
+        % Removing trailing dots (eg. "Fc5." instead of "FC5", as in: https://www.physionet.org/pn4/eegmmidb/)
         if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
             hdr.signal(i).label(end) = [];
             if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
                 hdr.signal(i).label(end) = [];
+                if (hdr.signal(i).label(end) == '.') && (length(hdr.signal(i).label) > 1)
+                    hdr.signal(i).label(end) = [];
+                end
             end
         end
-    end
-    % Remove extra spaces
-    signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
-    % Find space chars (label format "Type Name")
-    iSpace = find(signalLabel == ' ');
-    % Only if there is one space only
-    if (length(iSpace) == 1) && (iSpace >= 3)
-        SplitName{i} = signalLabel(iSpace+1:end);
-        SplitType{i} = signalLabel(1:iSpace-1);
-    % Accept also 2 spaces
-    elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
-        SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
-        SplitType{i} = signalLabel(1:iSpace(1)-1);
+        % Remove extra spaces
+        signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
+        % Find space chars (label format "Type Name")
+        iSpace = find(signalLabel == ' ');
+        % Only if there is one space only
+        if (length(iSpace) == 1) && (iSpace >= 3)
+            SplitName{i} = signalLabel(iSpace+1:end);
+            SplitType{i} = signalLabel(1:iSpace-1);
+        % Accept also 2 spaces
+        elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+            SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
+            SplitType{i} = signalLabel(1:iSpace(1)-1);
+        end
+    else
+        hdr.signal(i).label = sprintf('E%d', i);
     end
 end
 % Remove the classification if it makes some names non unique
@@ -357,6 +361,10 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
     % Read EDF annotations
     if strcmpi(sFile.format, 'EEG-EDF')
         evtList = {};
+        % By default: the file starts at 0s (definitions useful in case the first records are missing)
+        t0_file = 0;
+        prev_rec = 0;
+        prev_irec = 1;
         % In EDF+, the first annotation channel has epoch time stamps (EDF
         % calls epochs records).  So read all annotation channels per epoch.
         for irec = 1:hdr.nrec
@@ -371,15 +379,17 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 %    Onset[21]Duration[20]Annot1[20]Annot2[20]..AnnotN[20][0]
                 %    Onset[20]Annot1[20]Annot2[20]..AnnotN[20][0]
                 %    Onset[20]Annot1[20][0]
+                %    Onset[20][20][0]                       : First TAL of a record, with an empty annotation, indicating the offset from the beginning of the file
+                %    Onset[20][20]Annot2[20]..AnnotN[20][0] : First TAL + extra annotations
                 iSeparator = [-1, find((F(1:end-1) == 20) & (F(2:end) == 0))];
                 % Loop on all the TALs
                 for iAnnot = 1:length(iSeparator)-1
                     % Get annotation
                     strAnnot = char(F(iSeparator(iAnnot)+2:iSeparator(iAnnot+1)-1));
                     % Split in blocks with [20]
-                    splitAnnot = str_split(strAnnot, 20);
-                    % The first TAL in a record should be indicating the timing of the first sample of the record
-                    if (iAnnot == 1) && (length(splitAnnot) == 1) && ~any(splitAnnot{1} == 21)
+                    splitAnnot = str_split(strAnnot, 20, 0);
+                    % The first TAL in a record should be indicating the timing of the first sample of the record (empty annotation)
+                    if (iAnnot == 1) && ((length(splitAnnot) == 1) || isempty(splitAnnot{2})) && ~any(splitAnnot{1} == 21)
                         % Ignore if this is not the first channel
                         if (ichan > 1)
                             continue;
@@ -417,6 +427,10 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                         end
                         prev_rec = t0_rec;
                         prev_irec = irec;
+                        % If there are extra annotations for this TAL: Create one event for each label in the TAL
+                        for iLabel = 3:length(splitAnnot)
+                            evtList(end+1,:) = {splitAnnot{iLabel}, (t0_rec-t0_file) + [0;0]};
+                        end
                     % Regular TAL: indicating a marker
                     else
                         % Split time in onset/duration

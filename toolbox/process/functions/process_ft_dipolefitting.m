@@ -90,8 +90,13 @@ end
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFile = [];
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     SensorTypes = sProcess.options.sensortypes.Value;
@@ -180,7 +185,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     GridLoc = bst_sourcegrid(GridOptions, HeadModelMat.SurfaceFile);
     
     % Initialise unlimited progress bar
-    bst_progress('start', 'ft_dipolefitting', 'Calling FieldTrip function: ft_dipolefitting...');
+    bst_progress('text', 'Calling FieldTrip function: ft_dipolefitting...');
     % Prepare FieldTrip cfg structure
     cfg = [];
     cfg.channel     = {ChannelMat.Channel(iChannels).Name};
@@ -295,6 +300,8 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     panel_protocols('UpdateNode', 'Study', sInput.iStudy);
     % Save database
     db_save();
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
     
     % Return the input file (as we cannot handle the dipole files in the pipeline editor)
     OutputFile = DipoleFile;

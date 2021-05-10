@@ -81,7 +81,12 @@ if (intensityMax == 0)
 end
 
 % Histogram calculation
-[Histogram.fncY, Histogram.fncX] = hist(volume(:), 0:double(intensityMax));
+if (intensityMax < 128)
+    bins = linspace(0, double(intensityMax), 256);
+else
+    bins = 0:double(intensityMax);
+end
+[Histogram.fncY, Histogram.fncX] = hist(volume(:), bins);
 Histogram.intensityMax = intensityMax;
 clear volume intensityMax;
 

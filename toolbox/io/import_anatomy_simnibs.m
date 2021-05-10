@@ -143,7 +143,7 @@ MaskNii = file_find(SimDir, '*_final_contr.nii.gz', 2, 1);
 % Find final mesh
 MshFile = file_find(SimDir, '*.msh', 1, 0);
 if isempty(MshFile) || isempty(MshFile{1})
-    errorMsg = [errorMsg 'Mesh file *.msh found in top folder.' 10];
+    errorMsg = [errorMsg 'Mesh file *.msh not found in top folder.' 10];
 elseif (length(MshFile) > 1)
     errorMsg = [errorMsg 'Multiple *.msh found in top folder.' 10];
 else
@@ -218,7 +218,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -270,11 +270,11 @@ end
 %% ===== IMPORT OTHER VOLUMES =====
 % Read T2 MRI
 if ~isKeepMri && ~isempty(T2Nii)
-    [T2File, sMriT2] = import_mri(iSubject, T2Nii, [], 0, 1, 'T2');
+    [T2File, sMriT2] = import_mri(iSubject, T2Nii, 'ALL', 0, 1, 'T2');
 end
 % Read masks
 if ~isempty(MaskNii)
-    MaskFile = import_mri(iSubject, MaskNii, [], 0, 1, 'tissues');
+    MaskFile = import_mri(iSubject, MaskNii, 'ALL-ATLAS', 0, 1, 'tissues');
 end
 
 

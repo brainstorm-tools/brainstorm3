@@ -52,9 +52,9 @@ end
 bst_progress('start', 'Resect FEM mesh', ['Loading file "' FemFile '"...']);
 % Load MRI
 sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-% If the MNI normalization is not available: compute it now
+% If the linear MNI normalization is not available: compute it now
 if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || ~isfield(sMri.NCS, 'R') || ~isfield(sMri.NCS, 'T') || isempty(sMri.NCS.R) || isempty(sMri.NCS.T))
-    [sMri, errMsg] = bst_normalize_mni(sMri);
+    [sMri, errMsg] = bst_normalize_mni(sMri, 'maff8');
     if ~isempty(errMsg)
         error(errMsg);
     end
@@ -66,7 +66,7 @@ FemFile = file_fullpath(FemFile);
 FemMat = load(FemFile);
 
 bst_progress('text', 'Removing elements...');
-% Get MNI transformation
+% Get linear MNI transformation
 vox2mni = cs_convert(sMri, 'scs', 'mni');
 % Get cut plane in MRI coordinates
 cutPlane = MNIplane * vox2mni;

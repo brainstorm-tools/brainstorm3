@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 eval(macro_method);
 end
@@ -432,6 +432,16 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
         end
         [commonLabel, overlayLabels] = str_common_path(overlayLabels);
     end
+    % Replace NaN with zeros
+    tic
+    for iFile = 1:length(F)
+        Nnan = nnz(isnan(F{iFile}));
+        if (Nnan > 0)
+            disp(sprintf('BST> WARNING: %d NaN values replaced with zeros.', Nnan));
+            F{iFile}(isnan(F{iFile})) = 0;
+        end
+    end
+    toc
     % Return only one file if required
     if ~isMultiOutput
         F = F{1};

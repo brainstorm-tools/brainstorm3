@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri, isTissues)
+function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInteractive, sFid, isExtraMaps, isKeepMri, isVolumeAtlas)
 % IMPORT_ANATOMY_CAT_2020: Import a full CAT12 folder as the subject's anatomy (Version >= CAT12.7-RC2)
 %
-% USAGE:  errorMsg = import_anatomy_cat_2020(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0, isTissues=1)
+% USAGE:  errorMsg = import_anatomy_cat_2020(iSubject, CatDir=[], nVertices=15000, isInteractive=1, sFid=[], isExtraMaps=0, isKeepMri=0, isVolumeAtlas=1)
 %
 % INPUT:
 %    - iSubject     : Indice of the subject where to import the MRI
@@ -14,7 +14,9 @@ function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInter
 %    - isKeepMri    : 0=Delete all existing anatomy files
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
 %                     2=Keep existing MRI and surfaces
-%    - isTissues     : If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
+%    - isVolumeAtlas: If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
+%                     and import all the volume atlases in folder mri_atlas
+%                     
 %
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
@@ -37,12 +39,12 @@ function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInter
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2020
+% Authors: Francois Tadel, 2019-2021
 
 %% ===== PARSE INPUTS =====
 % Import tissues
-if (nargin < 8) || isempty(isTissues)
-    isTissues = 1;
+if (nargin < 8) || isempty(isVolumeAtlas)
+    isVolumeAtlas = 1;
 end
 % Keep MRI
 if (nargin < 7) || isempty(isKeepMri)
@@ -126,11 +128,12 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE CAT12 FOLDER =====
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'Import CAT12 folder', 'Parsing folder...');
+bst_plugin('SetProgressLogo', 'cat12');
 % Find MRI
-MriFile = file_find(CatDir, '*.nii', 1, 0);
-if isempty(MriFile)
+T1File = file_find(CatDir, '*.nii', 1, 0);
+if isempty(T1File)
     errorMsg = [errorMsg 'Original MRI file was not found: *.nii in top folder' 10];
-elseif (length(MriFile) > 1)
+elseif (length(T1File) > 1)
     errorMsg = [errorMsg 'Multiple .nii found in top folder' 10];
 end
 % Find surfaces
@@ -151,14 +154,19 @@ AnnotLhFiles = file_find(CatDir, 'lh.*.annot', 2, 0);
 AnnotRhFiles = file_find(CatDir, 'rh.*.annot', 2, 0);
 
 % Find tissue probability maps
-if isTissues
+if isVolumeAtlas
     TpmFiles = {file_find(CatDir, 'p2*.nii', 2), ...  % White matter
                 file_find(CatDir, 'p1*.nii', 2), ...  % Gray matter
                 file_find(CatDir, 'p3*.nii', 2), ...  % CSF
                 file_find(CatDir, 'p4*.nii', 2), ...  % Skull
                 file_find(CatDir, 'p5*.nii', 2), ...  % Scalp
                 file_find(CatDir, 'p6*.nii', 2)};     % Background
+    VolAtlasFiles = file_find(bst_fullfile(CatDir, 'mri_atlas'), '*.nii', 1, 0);
 end
+% % Find MNI registration volumes
+% RegFile = file_find(CatDir, 'y_*.nii', 2);
+% RegInvFile = file_find(CatDir, 'iy_*.nii', 2);
+
 % Find extra cortical maps
 if isExtraMaps
     % Cortical thickness
@@ -187,11 +195,12 @@ end
 
 %% ===== IMPORT MRI =====
 if isKeepMri && ~isempty(sSubject.Anatomy)
-    BstMriFile = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 else
+    bst_progress('text', 'Loading MRI...');
     % Read MRI
-    [BstMriFile, sMri] = import_mri(iSubject, MriFile);
-    if isempty(BstMriFile)
+    [BstT1File, sMri] = import_mri(iSubject, T1File);
+    if isempty(BstT1File)
         errorMsg = 'Could not import CAT12 folder: MRI was not imported properly';
         if isInteractive
             bst_error(errorMsg, 'Import CAT12 folder', 0);
@@ -241,7 +250,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -261,14 +270,14 @@ if ~isInteractive || ~isempty(FidFile)
 % Define with the MRI Viewer
 elseif ~isKeepMri
     % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
 end
 % Load SCS and NCS field to make sure that all the points were defined
-sMri = in_mri_bst(BstMriFile);
+sMri = in_mri_bst(BstT1File);
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import CAT12 folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -278,14 +287,22 @@ if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.
 end
 
 %% ===== MNI NORMALIZATION =====
+% % Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
+% if ~isempty(RegFile) && ~isempty(RegInvFile)
+%     bst_progress('text', 'Loading non-linear MNI transformation...');
+%     sMri = import_mnireg(sMri, RegFile, RegInvFile, 'cat12');
+%     % Save modified file
+%     bst_save(file_fullpath(BstT1File), sMri, 'v7');
+% Compute linear MNI registration (spm_maff8)
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
-    % Error handling
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     errorMsg = [errorMsg errCall];
 end
 
 %% ===== IMPORT SURFACES =====
+% Restore CAT12 icon
+bst_plugin('SetProgressLogo', 'cat12');
 % Left pial
 if ~isempty(TessLhFile)
     % Import file
@@ -424,6 +441,37 @@ db_reload_subjects(iSubject);
 HeadFile = tess_isohead(iSubject, 10000, 0, 2);
 
 
+%% ===== IMPORT VOLUME ATLASES =====
+if isVolumeAtlas && ~isempty(VolAtlasFiles)
+    % Get subject tag
+    [fPath, SubjectTag] = bst_fileparts(T1File{1});
+    % Import all the volumes
+    for iFile = 1:length(VolAtlasFiles)
+        % Strip the subject tag from the atlas name
+        [fPath, AtlasName] = bst_fileparts(VolAtlasFiles{iFile});
+        AtlasName = strrep(AtlasName, ['_' SubjectTag], '');
+        % Get the labels
+        switch (AtlasName)
+            case 'aal3',               Labels = mri_getlabels_cat12_aal3();                % AAL3 - Automated Anatomical Labeling (Tzourio-Mazoyer 2002)
+            case 'anatomy3',           Labels = mri_getlabels_cat12_anatomy3();
+            case 'cobra',              Labels = mri_getlabels_cat12_cobra();
+            case 'hammers',            Labels = mri_getlabels_cat12_hammers();             % HAMMERS - Hammersmith atlas (Hammers 2003, Gousias 2008, Faillenot 2017, Wild 2017)
+            case 'ibsr',               Labels = mri_getlabels_cat12_ibsr();
+            case 'julichbrain',        Labels = mri_getlabels_cat12_julichbrain();         % Julich-Brain 2.0
+            case 'lpba40',             Labels = mri_getlabels_cat12_lpba40();              % LONI lpba40
+            case 'mori',               Labels = mri_getlabels_cat12_mori();                % Mori 2009
+            case 'neuromorphometrics', Labels = mri_getlabels_cat12_neuromorphometrics();  % MICCAI 2012 Multi-Atlas Labeling Workshop and Challenge (Neuromorphometrics)
+            case 'Schaefer2018_100Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_100();
+            case 'Schaefer2018_200Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_200();
+            case 'Schaefer2018_400Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_400();
+            case 'Schaefer2018_600Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_600();
+            otherwise,                 Labels = [];
+        end
+        % Import volume
+        import_mri(iSubject, VolAtlasFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName, Labels);
+    end
+end
+
 %% ===== IMPORT THICKNESS MAPS =====
 if isExtraMaps && ~isempty(CortexHiFile)
     % Create a condition "CAT12"
@@ -448,60 +496,9 @@ end
 
 
 %% ===== IMPORT TISSUE LABELS =====
-if isTissues && ~isempty(TpmFiles)
+if isVolumeAtlas && ~isempty(TpmFiles)
     bst_progress('start', 'Import CAT12 folder', 'Importing tissue probability maps...');
-    sMriTissue = [];
-    pCube = [];
-    % Find for each voxel in which tissue there is the highest probability
-    for iTissue = 1:length(TpmFiles)
-        % Skip missing tissue
-        if isempty(TpmFiles{iTissue})
-            continue;
-        end
-        % Load probability map
-        sMriProb = in_mri_nii(TpmFiles{iTissue});
-        % First volume: Copy structure
-        if isempty(sMriTissue)
-            sMriTissue = sMriProb;
-            sMriTissue.Cube = 0 .* sMriTissue.Cube;
-            pCube = sMriTissue.Cube;
-        end
-        % Set label for the voxels that have a probability higher than the previous volumes
-        maskLabel = ((sMriProb.Cube > pCube) & (sMriProb.Cube > 0));
-        sMriTissue.Cube(maskLabel) = iTissue;
-        pCube(maskLabel) = sMriProb.Cube(maskLabel);
-    end
-    % Save tissues atlas
-    if ~isempty(sMriTissue)
-        % Get updated subject definition
-        sSubject = bst_get('Subject', iSubject);
-        % Replace background with zeros
-        sMriTissue.Cube(sMriTissue.Cube == 6) = 0;
-        % Set comment
-        sMriTissue.Comment = file_unique('tissues', {sSubject.Surface.Comment});
-        % Copy some fields from the original MRI
-        if isfield(sMri, 'SCS') 
-            sMriTissue.SCS = sMri.SCS;
-        end
-        if isfield(sMri, 'NCS') 
-            sMriTissue.NCS = sMri.NCS;
-        end
-        if isfield(sMri, 'History') 
-            sMriTissue.History = sMri.History;
-        end
-        % Add history tag
-        sMriTissue = bst_history('add', sMriTissue, 'segment', 'Tissues segmentation generated with CAT12.');
-        % Output file name
-        TissueFile = file_unique(strrep(file_fullpath(BstMriFile), '.mat', '_tissues.mat'));
-        % Save new MRI in Brainstorm format
-        sMriTissue = out_mri_bst(sMriTissue, TissueFile);
-        % Add to subject
-        iAnatomy = length(sSubject.Anatomy) + 1;
-        sSubject.Anatomy(iAnatomy).Comment  = sMriTissue.Comment;
-        sSubject.Anatomy(iAnatomy).FileName = file_short(TissueFile);
-        % Save subject
-        bst_set('Subject', iSubject, sSubject);
-    end
+    import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_cat12');
 end
 
 
@@ -530,6 +527,7 @@ if isInteractive
     figure_3d('SetStandardView', hFig, 'left');
 end
 % Close progress bar
+bst_plugin('SetProgressLogo', []);
 if ~isProgress
     bst_progress('stop');
 end

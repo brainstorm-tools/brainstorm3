@@ -182,97 +182,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
                 % Get channel file
                 ChannelMat = in_bst_channel(sInputs(iInput).ChannelFile);
-
-            case 'results'
-                clustType = 'scouts';
-                % Load results
-                sMat = in_bst_results(sInputs(iInput).FileName, 0);
-                % Atlas-based files
-                if isfield(sMat, 'Atlas') && ~isempty(sMat.Atlas)
-                    % Try to look the requested scouts in the file
-                    for i = 1:length(sClusters)
-                        iTmp = find(strcmpi(sClusters(i).Label, {sMat.Atlas(1).Scouts.Label}));
-                        if ~isempty(iTmp)
-                            iFileScouts(end+1) = iTmp;
-                        end
-                    end
-                    % If the scout names cannot be found: error
-                    if (length(iFileScouts) ~= length(sClusters))
-                        bst_report('Error', sProcess, sInputs(iInput), 'File is already based on an atlas, but the selected scouts don''t match with it.');
-                        continue;
-                    end
-                end
-                % Get surface vertex normals
-                if ~isempty(sMat.SurfaceFile)
-                    SurfaceFile = sMat.SurfaceFile;
-                end
-                % FULL RESULTS
-                if isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
-                    sResults = sMat;
-                    matValues = sMat.ImageGridAmp;
-                    stdValues = sMat.Std;
-                % KERNEL ONLY
-                elseif isfield(sMat, 'ImagingKernel') && ~isempty(sMat.ImagingKernel)
-                    sResults = sMat;
-                    %sMat = in_bst_data(sResults.DataFile);
-                    sMat = in_bst(sResults.DataFile, TimeWindow);
-                    matValues = [];
-                    stdValues = [];
-                end
-                % Get ZScore parameter
-                if isfield(sResults, 'ZScore') && ~isempty(sResults.ZScore)
-                    ZScore = sResults.ZScore;
-                end
-                % Get GridAtlas/GridLoc/GridOrient parameter
-                if isfield(sResults, 'GridAtlas') && ~isempty(sResults.GridAtlas)
-                    GridAtlas = sResults.GridAtlas;
-                end
-                if isfield(sResults, 'GridLoc') && ~isempty(sResults.GridLoc)
-                    GridLoc = sResults.GridLoc;
-                    if isVolumeAtlas && ~isempty(nAtlasGrid) && (size(sResults.GridLoc,1) ~= nAtlasGrid)
-                        bst_report('Error', sProcess, sInputs(iInput), ['The number of grid points in this atlas (' num2str(nAtlasGrid) ') does not match the loaded source file (' num2str(size(sResults.GridLoc,1)) ').']);
-                        continue;
-                    end
-                end
-                if isfield(sResults, 'GridOrient') && ~isempty(sResults.GridOrient)
-                    GridOrient = sResults.GridOrient;
-                end
-                % Input filename
-                if isequal(sInputs(iInput).FileName(1:4), 'link')
-                    % Get data filename
-                    [KernelFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
-                    DataFile = strrep(DataFile, ProtocolInfo.STUDIES, '');
-                    DataFile = file_win2unix(DataFile(2:end));
-                    condComment = [DataFile '/' sInputs(iInput).Comment];
-                else
-                    condComment = sInputs(iInput).FileName;
-                end
-                
-            case 'timefreq'
-                clustType = 'scouts';
-                % Load file
-                sMat = in_bst_timefreq(sInputs(iInput).FileName, 0);
-                if ~strcmpi(sMat.DataType, 'results')
-                    bst_report('Error', sProcess, sInputs(iInput), 'This file does not contain any valid cortical maps.');
-                    continue;
-                end
-                matValues = sMat.TF;
-                stdValues = sMat.Std;
-                % Error: cannot process atlas-based files
-                if isfield(sMat, 'Atlas') && ~isempty(sMat.Atlas)
-                    bst_report('Error', sProcess, sInputs(iInput), 'File is already based on an atlas.');
-                    continue;
-                end
-                % Get ZScore parameter
-                if isfield(sMat, 'ZScore') && ~isempty(sMat.ZScore)
-                    ZScore = sMat.ZScore;
-                end
-                % Copy surface filename
-                if isfield(sMat, 'SurfaceFile') && ~isempty(sMat.SurfaceFile)
-                    SurfaceFile = sMat.SurfaceFile;
-                end
-                % Input filename
-                condComment = sInputs(iInput).FileName;
                
             otherwise
                 bst_report('Error', sProcess, sInputs(iInput), 'Unsupported file type.');
@@ -399,89 +308,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 case 'data'
                     nComponents = 1;
                     iRows = panel_cluster('GetChannelsInCluster', sClusters(iClust), ChannelMat.Channel, sMat.ChannelFlag);
-                    
-                case {'results', 'timefreq'}
-                    % Get the number of components per vertex
-                    if strcmpi(sInputs(iInput).FileType, 'results')
-                        nComponents = sResults.nComponents;
-                    else
-                        nComponents = 1;
-                    end
-                    % Check for scout modifications, compare it with current atlas in the file
-                    if isCheckModif
-                        % Get scout in current file
-                        iScout = find(strcmpi(sClusters(iClust).Label, {sSurf.Atlas(sSurf.iAtlas).Scouts.Label}));
-                        if (length(iScout) > 1)
-                            bst_report('Error', sProcess, sInputs(iInput), 'Multiple scouts have the same name, please fix this error.');
-                            return;
-                        end
-                        % Scout is found
-                        if ~isempty(iScout)
-                            % Using the scout from the current surface 
-                            iVertices = sort(sSurf.Atlas(sSurf.iAtlas).Scouts(iScout).Vertices);
-                            % Check that the number of vertices between the two scouts (current surface and input option)
-                            if ~isequal(iVertices, sort(sClusters(iClust).Vertices))
-                                bst_report('Warning', sProcess, sInputs(iInput), ['Using scout "' sClusters(iClust).Label '" in atlas "' sSurf.Atlas(sSurf.iAtlas).Name '" in surface file "' SurfaceFile '".' 10 ...
-                                    'Note it has a different number of vertices (' num2str(length(sSurf.Atlas(sSurf.iAtlas).Scouts(iScout).Vertices)) ...
-                                    ') than the scout in input of the process (' num2str(length(sClusters(iClust).Vertices)) ').']);
-                            end
-                        end
-                    else
-                        iScout = [];
-                    end
-                    % Scout is not found in current atlas
-                    if isempty(iScout)
-                        % Use the scout in input, with a warning
-                        iVertices = sort(sClusters(iClust).Vertices);
-                        % Warning
-                        bst_report('Warning', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" is not available in atlas "' sSurf.Atlas(sSurf.iAtlas).Name '" in surface file "' SurfaceFile '".' 10 ...
-                            'You should make sure that the scout was initially defined on this surface. If it was defined on another surface, the vertex indices are probably wrong.']);
-                    end
-                    % Get the vertex indices of the scout in ImageGridAmp/ImagingKernel
-                    [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
-                    % Mixed headmodel results
-                    if (nComponents == 0)
-                        % Do not accept scouts that span over multiple regions
-                        if isempty(iRegionScouts)
-                            bst_report('Error', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" is not included in the source model.']);
-                            return;
-                        elseif (length(iRegionScouts) > 1)
-                            bst_report('Error', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" spans over multiple regions of the "Source model" atlas.']);
-                            return;
-                        end
-                        % Do not accept volume atlases with non-volume head models
-                        if ~isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
-                            bst_report('Error', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
-                            return;
-                        elseif isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
-                            bst_report('Error', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
-                            return;
-                        end
-                        % Set the scout computation properties based on the information in the "Source model" atlas
-                        if strcmpi(GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
-                            nComponents = 1;
-                            if ~isempty(GridOrient)
-                                ScoutOrient = GridOrient(iVertices,:);
-                            end
-                        else
-                            nComponents = 3;
-                            ScoutOrient = [];
-                        end
-                    % Simple head models
-                    else
-                        % Do not accept volume atlases with non-volume head models
-                        if ~isVolumeAtlas && ~isempty(GridLoc)
-                            bst_report('Error', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" is a surface scout but the sources are calculated on a volume grid.']);
-                            return;
-                        elseif isVolumeAtlas && isempty(GridLoc)
-                            bst_report('Error', sProcess, sInputs(iInput), ['Scout "' sClusters(iClust).Label '" is a volume scout but the sources are calculated on a surface.']);
-                            return;
-                        end
-                        % Get the scout orientation
-                        if ~isempty(SurfOrient)
-                            ScoutOrient = SurfOrient(iVertices,:);
-                        end
-                    end
             end
             % Get row names
             if strcmpi(sClusters(iClust).Function, 'All') && UseRowName(iClust) 
@@ -507,7 +333,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             
             % === APPLY DYNAMIC ZSCORE ===
-            
             if ~isempty(ZScore)
                 ZScoreScout = ZScore;
                 % Keep only the selected vertices

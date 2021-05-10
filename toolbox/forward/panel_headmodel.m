@@ -656,14 +656,16 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                 return;
             end
             OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM(1)).FileName);
-            % Let user edit DUNEuro options
-            DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro, 1, [], OPTIONS);
-            if isempty(DuneuroOptions)
-                bst_progress('stop');
-                return;
+            % Interactive interface to set the OpenMEEG options
+            if OPTIONS.Interactive
+                DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro, 1, [], OPTIONS);
+                if isempty(DuneuroOptions)
+                    bst_progress('stop');
+                    return;
+                end
+                % Copy the selected options to the OPTIONS structure
+                OPTIONS = struct_copy_fields(OPTIONS, DuneuroOptions, 1);
             end
-            % Copy the selected options to the OPTIONS structure
-            OPTIONS = struct_copy_fields(OPTIONS, DuneuroOptions, 1);
         end
         
         % ===== COMPUTE HEADMODEL =====

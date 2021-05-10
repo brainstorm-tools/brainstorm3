@@ -22,7 +22,7 @@ function varargout = panel_inverse_2018(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 eval(macro_method);
 end
@@ -133,31 +133,18 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     if isProcess && isfield(OPTIONS, 'Comment') && ~isempty(OPTIONS.Comment)
         jTextComment.setText(OPTIONS.Comment);
     end
-    % Linear / Non-linear
-    jGroupLinear  = ButtonGroup(); 
-    jToogleLinear = gui_component('ToolbarToggle', jPanelTop, 'br', 'Linear', jGroupLinear, '', @(h,ev)UpdatePanel(1), []);
-    jToogleNonLin = gui_component('ToolbarToggle', jPanelTop, [], 'Non-linear', jGroupLinear, '', @(h,ev)UpdatePanel(1), []);
-    jToogleLinear.setSelected(1);
-    % Disable for shared/volume
-    if ~strcmpi(HeadModelType, 'surface') || isShared || (exist('isdeployed', 'builtin') && isdeployed)
-        jToogleNonLin.setEnabled(0);
-    end
-    
-    % ======================================================================================================
-    
-    % ==== PANEL: NON-LINEAR ====
-    jPanelNonLin = gui_river([1,1], [0,6,6,6], 'Non-linear methods');
-        jGroupNonLin  = ButtonGroup();       
-        jRadioMem = gui_component('radio', jPanelNonLin, [], 'MEM: Maximum entropy on the mean', jGroupNonLin, '', @(h,ev)UpdatePanel(), []);
-        jRadioMem.setSelected(1);
-    jPanelLeft.add(jPanelNonLin);
-    
+
     % ==== PANEL: METHOD ====
     jPanelMethod = gui_river([1,1], [0,6,6,6], 'Method');
         jGroupMethod  = ButtonGroup();
         jRadioMethodMn  = gui_component('radio', jPanelMethod, [],   'Minimum norm imaging', jGroupMethod, '', @Method_Callback, []);
         jRadioMethodBf  = gui_component('radio', jPanelMethod, 'br', 'LCMV beamformer',      jGroupMethod, '', @Method_Callback, []);
         jRadioMethodDip = gui_component('radio', jPanelMethod, 'br', 'Dipole modeling',      jGroupMethod, '', @Method_Callback, []);
+        if ~isProcess
+            jRadioMethodMem = gui_component('radio', jPanelMethod, 'br', 'MEM: Max entropy on the mean', jGroupMethod, '', @Method_Callback, []);
+        else
+            jRadioMethodMem = [];
+        end
         % Default selection
         switch lower(OPTIONS.InverseMethod)
             case 'minnorm',  jRadioMethodMn.setSelected(1);
@@ -174,6 +161,11 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             jRadioMethodBf.setEnabled(0);
             jRadioMethodDip.setEnabled(0);
         end
+        % Disable MEM for shared/volume
+        if ~isempty(jRadioMethodMem) && ~isProcess && (~strcmpi(HeadModelType, 'surface') || isShared)
+            jRadioMethodMem.setEnabled(0);
+        end
+        
     c.gridy = 1;
     jPanelLeft.add(jPanelMethod, c);
     
@@ -272,6 +264,11 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     c.gridy = 4;
     jPanelLeft.add(jPanelSensors, c);
     
+    % ==== PANEL: MEM INFO ====
+    jPanelMemInfo = gui_river([1,1], [0,6,6,6], 'MEM');
+        gui_component('label', jPanelMemInfo, '', '<HTML><FONT color="#707070"><I>Requires the BrainEntropy plugin.<BR>Options defined in a separate panel.</I></FONT>', [], '', [], []);
+    c.gridy = 2;
+    jPanelLeft.add(jPanelMemInfo, c);
     % ======================================================================================================
     
     % ==== DEPTH WEIGHTING =====
@@ -373,8 +370,6 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     ctrl = struct(...
             'HeadModelType',  HeadModelType, ...
             'jTextComment',   jTextComment, ...
-            'jToogleLinear',  jToogleLinear, ...
-            'jToogleNonLin',  jToogleNonLin, ...
             ... % ==== PANEL: METHOD ====
             'jRadioMethodMn',  jRadioMethodMn, ...
             'jRadioMethodBf',  jRadioMethodBf, ...
@@ -406,7 +401,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             'jRadioDiag',    jRadioDiag, ...
             'jRadioNoReg',   jRadioNoReg, ...
             ... % ==== PANEL: NON-LINEAR ====
-            'jRadioMem',     jRadioMem, ...
+            'jRadioMethodMem',     jRadioMethodMem, ...
             ... % ==== PANEL: DATA TYPE ====
             'jCheckMeg',     jCheckMeg, ...
             'jCheckMegGrad', jCheckMegGrad, ...
@@ -491,17 +486,15 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             isForced = 0;
         end
         % Get the main categories of options
-        isLinear = jToogleLinear.isSelected();
+        isLinear = isempty(jRadioMethodMem) || ~jRadioMethodMem.isSelected();
         % Expert mode / Normal mode
         if isForced
             ExpertMode = bst_get('ExpertMode');
-            % Show/hide left panels
-            jPanelMethod.setVisible(isLinear);
-            % jPanelModel.setVisible(isLinear && ~strcmpi(HeadModelType, 'mixed'));
+            % Left panels
             jPanelModel.setVisible(isLinear);
             jPanelMeasureMN.setVisible(isLinear && jRadioMethodMn.isSelected());
             jPanelMeasureBf.setVisible(isLinear && jRadioMethodBf.isSelected());
-            jPanelNonLin.setVisible(~isLinear);
+            jPanelMemInfo.setVisible(~isLinear);
             % Right panels (expert)
             jPanelRight.setVisible(ExpertMode);
             jPanelNoiseCov.setVisible(isLinear);
@@ -609,7 +602,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             % Get comment for this method
             Comment = GetMethodComment(InverseMethod, InverseMeasure);
         else
-            if jRadioMem.isSelected()
+            if ~isempty(jRadioMethodMem) && jRadioMethodMem.isSelected()
                 Comment = 'MEM: ';
             end
         end
@@ -637,7 +630,8 @@ function s = GetPanelContents() %#ok<DEFNU>
     % Comment
     s.Comment = char(ctrl.jTextComment.getText());
     % Linear models
-    if ctrl.jToogleLinear.isSelected()
+    isLinear = isempty(ctrl.jRadioMethodMem) || ~ctrl.jRadioMethodMem.isSelected();
+    if isLinear
         % Get selected method
         [s.InverseMethod, s.InverseMeasure] = GetSelectedMethod(ctrl);
         % Source model
@@ -688,7 +682,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     % Non-linear models
     else
         % Get selected method
-        if ctrl.jRadioMem.isSelected()
+        if ctrl.jRadioMethodMem.isSelected()
             s.InverseMethod = 'mem';
         end
         % Other fields that are not defined
