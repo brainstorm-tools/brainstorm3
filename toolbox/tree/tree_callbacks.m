@@ -1878,7 +1878,7 @@ switch (lower(action))
                             %gui_component('MenuItem', jPopup, [], 'Connectivity graph (3D)',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, '3DGraph'));
                             gui_component('MenuItem', jPopup, [], 'Display as image       [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
-                                gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
+                                gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect_viz(filenameRelative, 'Fibers'));
                             end
                             jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [NxN]', IconLoader.ICON_CONNECTN, [], []);
                         else
