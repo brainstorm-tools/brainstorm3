@@ -85,7 +85,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         % If at least one valid figure was found
         if ~isempty(hFigures)
             % Refine selection for certain types of figures
-            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'ConnectViz', 'Pac'}) %TODO: check
+            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'ConnectViz', 'Pac'}) 
                 for i = 1:length(hFigures)
                     TfInfo = getappdata(hFigures(i), 'Timefreq');
                     if ~isempty(TfInfo) && file_compare(TfInfo.FileName, Constrains)
@@ -187,7 +187,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
             case 'Connect'
                 hFig = figure_connect('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesTimefreq');
-            case 'ConnectViz' %@TODO: check
+            case 'ConnectViz' % new connectivity visualization tool (2021)
                 hFig = figure_connect_viz('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesTimefreq');
             case 'Image'
@@ -476,7 +476,7 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality 'PAC: ' figureName];
         case 'Connect'
             figureName = [figureNameModality 'Connect: ' figureName];
-        case 'ConnectViz' % @TODO: check
+        case 'ConnectViz' % new connectivity visualization tool (2021)
             figureName = [figureNameModality 'ConnectViz: ' figureName];
         case 'Image'
             % Add dependent file comment
@@ -897,8 +897,6 @@ function DeleteFigure(hFigure, varargin)
         figure_connect('Dispose', hFigure);
     end
     
-    % @TODO: remove use of this once OpenGL is not used anymore 
-    % If figure is an OpenGL connectivty graph: call the destructor
     if strcmpi(Figure.Id.Type, 'ConnectViz')
         figure_connect_viz('Dispose', hFigure);
     end
@@ -977,7 +975,7 @@ function FireCurrentTimeChanged(ForceTime)
                     figure_pac('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Connect'
                     figure_connect('CurrentTimeChangedCallback', sFig.hFigure);
-                case 'ConnectViz' % @TODO: check
+                case 'ConnectViz' % new connectivity visualization tool (2021)
                     figure_connect_viz('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Image'
                     figure_image('CurrentTimeChangedCallback', sFig.hFigure);
@@ -1028,7 +1026,7 @@ function FireCurrentFreqChanged()
                     figure_connect('CurrentFreqChangedCallback', sFig.hFigure);
                     bst_progress('stop');
                     
-                case 'ConnectViz' %@ TODO: check
+                case 'ConnectViz' % new connectivity visualization tool (2021)
                     bst_progress('start', 'Connectivity-viz graph', 'Reloading connectivity-viz graph...');
                     figure_connect_viz('CurrentFreqChangedCallback', sFig.hFigure);
                     bst_progress('stop');
@@ -1582,7 +1580,7 @@ function ViewTopography(hFig, UseSmoothing)
             RecType = '';
         case 'Connect'
             warning('todo');
-        case 'ConnectViz' %TODO: check
+        case 'ConnectViz' 
             warning('todo');
     end
     % Call view data function
@@ -1953,7 +1951,7 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                     bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
                     figure_connect('UpdateFigurePlot', Figure.hFigure);
                     bst_progress('stop');
-                case 'ConnectViz' % @TODO: check
+                case 'ConnectViz' % new connectivity visualization tool (2021)
                     bst_progress('start', 'Connectivity-viz graph', 'Reloading connectivity-viz graph...');
                     figure_connect_viz('UpdateFigurePlot', Figure.hFigure);
                     bst_progress('stop');

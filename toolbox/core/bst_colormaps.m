@@ -296,7 +296,7 @@ function FireColormapChanged(ColormapType, isAbsoluteChanged)
                         figure_timefreq('ColormapChangedCallback', sFigure.hFigure);
                     case 'Connect'
                         figure_connect('ColormapChangedCallback', sFigure.hFigure);
-                    case 'ConnectViz' %@TODO: check
+                    case 'ConnectViz' % new connectivity visualization tool (2021)
                         figure_connect_viz('ColormapChangedCallback', sFigure.hFigure);
                     case 'Pac'
                         figure_pac('ColormapChangedCallback', sFigure.hFigure);
@@ -395,9 +395,9 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                         DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
                         DataType = 'connect';
                         
-                    case 'ConnectViz' %@TODO:check
+                    case 'ConnectViz' % new connectivity visualization tool (2021)
                         DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
-                        DataType = 'connect'; % @TODO: check   
+                        DataType = 'connect'; 
                         
                     case 'Image'
                         DataFig = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
@@ -1319,7 +1319,6 @@ end
 
 %% ====== SLIDERS CALLBACKS ======
 function SpinnerCallback(ev, ColormapType, Modifier)
-    disp('Entered SpinnerCallback');
     % Get colormap
     sColormap = GetColormap(ColormapType);
     % Update Modifier value
@@ -1493,7 +1492,7 @@ function SetColorbarVisible(hFig, isVisible) %#ok<DEFNU>
         FigureId = getappdata(hFig, 'FigureId');
         % Get color for colorbar text
         switch (FigureId.Type)
-            case {'3DViz', 'Topography', 'MriViewer', 'Connect', 'ConnectViz'} %@TODO: check
+            case {'3DViz', 'Topography', 'MriViewer', 'Connect', 'ConnectViz'} 
                 textColor = [.8 .8 .8];
             case {'Timefreq', 'Pac', 'Image'}
                 textColor = [0 0 0];

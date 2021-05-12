@@ -584,7 +584,7 @@ function UpdatePanel(hFig)
                 DisplayInRegion = 0;
             end
             ctrl.jPanelAnatomical.setVisible(DisplayInRegion);
-            % No fiber panel @TODO: remove jPanelFiber for NEW tool
+            % Fiber panel for new tool?
             ctrl.jPanelFiber.setVisible(0);
         
         % CONNECTIVITY OPTIONS %
@@ -837,7 +837,7 @@ function SetDisplayOptions(sOptions)
         case '3DViz',      panel_surface('UpdateSurfaceData', hFig);
         case 'MriViewer',  panel_surface('UpdateSurfaceData', hFig);
         case 'Connect',    figure_connect('UpdateFigurePlot', hFig);
-        case 'ConnectViz', figure_connect_viz('UpdateFigurePlot', hFig); %@TODO: check
+        case 'ConnectViz', figure_connect_viz('UpdateFigurePlot', hFig); 
         case 'Pac'   
             % Update this figure
             figure_pac('UpdateFigurePlot', hFig);
@@ -916,7 +916,7 @@ function SetDisplayOptions(sOptions)
                                 figure_pac('UpdateFigurePlot', hFigOthers(i));
                             case 'Connect'
                                 warning('todo');
-                            case 'ConnectViz' %@TODO: check
+                            case 'ConnectViz' 
                                 warning('todo');
                         end
                     end
@@ -1186,7 +1186,7 @@ function SetThresholdOptions(sOptions)
             UpdatePanel(hFig);
         end
         
-        % @TODO: New ConnectViz slider logic, may need combine with previous
+        % New ConnectViz slider logic
         isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
         if isConnectViz
             % Threshold min/max
@@ -1258,8 +1258,7 @@ function SetDistanceOptions(sOptions)
             figure_connect('UpdateColormap', hFig);
         end
         
-        % @TODO: new distance thresh logic for Connect-viz, may combine with
-        % previous
+        % for new connect-viz tool
         isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
         if isConnectViz
             % Get current threshold
@@ -1326,7 +1325,7 @@ function SetConnectivityDisplayOptions(sOptions, DisplayButton)
         curDisplayBidirectionalMeasure ~= DisplayBidirectionalMeasure)
         % Refresh figure with new threshold
         
-        % @TODO: check logic for new vs old connect-viz tool
+        % logic for new vs old connect-viz tool
         FigureId = getappdata(hFig, 'FigureId');
         isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
         if isConnectViz
@@ -1359,7 +1358,6 @@ function SetAnatomicalFilteringOptions(sOptions, AnatomicalFilter)
         MeasureAnatomicalFilter = 0;
     end
     % Update figure
-    % @TODO: check logic for new vs old connect-viz tool
     FigureId = getappdata(hFig, 'FigureId');
     isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
     if isConnectViz
@@ -1386,7 +1384,6 @@ function SetFiberFilteringOptions(sOptions, FiberFilter)
     end
     bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate connections...');
     % Update figure
-    % @TODO: check logic for new vs old connect-viz tool
     FigureId = getappdata(hFig, 'FigureId');
     isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
     if isConnectViz
