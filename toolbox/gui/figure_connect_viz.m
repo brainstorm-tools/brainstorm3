@@ -772,6 +772,7 @@ function DisplayFigurePopup(hFig)
                 jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Abbreviate lobe labels', [], [], @(h, ev)ToggleLobeLabels(hFig));
                 jItem.setSelected(~getappdata(hFig, 'LobeFullLabel'));
                 jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L,0));    
             end
             TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
             % Measure (outer) node labels
@@ -782,6 +783,7 @@ function DisplayFigurePopup(hFig)
                 jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show region labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
                 jItem.setSelected(ismember(2, TextDisplayMode));
                 jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L,0));  
             end
             % Selected Nodes' labels only
             jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show labels for selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
