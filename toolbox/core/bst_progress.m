@@ -152,8 +152,13 @@ if isempty(pBar)
     GlobalData.Program.ProgressBar = pBar;
 end
 
-% Linux: the dialog needs to be displayed for a short period before being hidden
+% Linux: need to print something on the command window (don't know why...)
 if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa64'})
+    drawnow();
+    fprintf(' ');
+    fprintf('\b');
+    drawnow();
+    % The dialog needs to be displayed for a short period before being hidden
     pause(0.05);
 end
 
