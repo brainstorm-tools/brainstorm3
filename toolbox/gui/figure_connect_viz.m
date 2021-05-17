@@ -247,9 +247,9 @@ function UpdateContainer(hFig)
     % Scale figure
     Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15 .* Scaling;
-    marginHeight  = 25 .* Scaling;
-    marginWidth   = 45 .* Scaling;
+    colorbarWidth = bsxfun(@times, 15, Scaling); % replaced .* with bsxfun for back compatibility
+    marginHeight  = bsxfun(@times, 25, Scaling);
+    marginWidth   = bsxfun(@times, 45, Scaling);
     % If there is a colorbar 
     if ~isempty(hColorbar)
         % Reposition the colorbar
@@ -257,7 +257,7 @@ function UpdateContainer(hFig)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3 .* Scaling))]);
+                                    max(1, min(90, figPos(4) - marginHeight - bsxfun(@times, 3, Scaling)))]);
         uistack(hColorbar, 'top', 1);
     end
 end
@@ -2522,8 +2522,7 @@ function UpdateColormap(hFig)
         end
         % Linear interpolation
         [StartColor, EndColor] = InterpolateColorMap(hFig, DataPair(DataMask, :), CMap, CLim);
-        ColorViz = StartColor(:, :) + Offset(:, :).*(EndColor(:, :) - StartColor(:, :));
-        
+        ColorViz = bsxfun(@plus, StartColor, bsxfun(@times, Offset, bsxfun(@minus, EndColor, StartColor)));  % replaced .* with bsxfun for back compatibility
         iData = find(DataMask == 1);
         MeasureLinks = getappdata(hFig, 'MeasureLinks');
         VisibleLinks = MeasureLinks(iData).';
@@ -2596,10 +2595,8 @@ function UpdateColormap(hFig)
             Offset = (abs(RegionDataPair(RegionDataMask, 3)) - Min) ./ (Max - Min);
         end
         % Normalize within the colormap range 
-        [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask, :), CMap, CLim);
-       
-        ColorVizRegion = StartColor(:, :) + Offset(:, :).*(EndColor(:, :) - StartColor(:, :));
-        
+        [StartColor, EndColor] = InterpolateColorMap(hFig, RegionDataPair(RegionDataMask, :), CMap, CLim); 
+        ColorVizRegion = bsxfun(@plus, StartColor, bsxfun(@times, Offset, bsxfun(@minus, EndColor, StartColor)));
         iData = find(RegionDataMask == 1);
         RegionLinks = getappdata(hFig, 'RegionLinks');
         VisibleLinksRegion = RegionLinks(iData).';
@@ -2664,8 +2661,8 @@ function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, L
     id = r(max(s, 1));
     iu = r(min(s+1, n));
     [~, it] = min([abs(a-b(id));abs(b(iu)-a)]);
-    StartColor = ColorMap(id+(it-1).*(iu-id), :);
-    EndColor = ColorMap(id+(it-1).*(iu-id), :);
+    StartColor = ColorMap(id + bsxfun(@times, it-1, iu-id), :);  % replaced .* with bsxfun for back compatibility
+    EndColor = ColorMap(id + bsxfun(@times, it-1, iu-id), :);
 end
 
 %% ======== RESET CAMERA DISPLAY ================
