@@ -274,9 +274,22 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         % Save modification on hard drive
         bst_save(file_fullpath(T1FileBst), sMri, 'v7');
     end
-
+    
+    
     % ===== CALL CAT12 SEGMENTATION =====
     bst_progress('text', '<HTML>Starting SPM batch... &nbsp;&nbsp;&nbsp;<FONT COLOR="#707070"><I>(see command window)</I></FONT>');
+    
+   % Switch to CAT12 expert mode
+    cat12('expert');
+    % Hide CAT12 figures
+    set([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
+         findall(0, 'Type', 'Figure', 'Tag', 'CAT'), ...
+         findall(0, 'Type', 'Figure', 'Tag', 'Graphics')], 'Visible', 'off');
+     
+    % Initialize SPM batch
+    spm_jobman('initcfg');
+    
+    
     % Create SPM batch
     matlabbatch{1}.spm.tools.cat.estwrite.data = {NiiFile};
     matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;                % Blocking call to CAT12
@@ -350,14 +363,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         matlabbatch{2}.spm.tools.cat.stools.surfextract.nproc = 0;  % Blocking call to CAT12
     end
 
-    % Switch to CAT12 expert mode
-    cat12('expert');
-    % Hide CAT12 figures
-    set([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
-         findall(0, 'Type', 'Figure', 'Tag', 'CAT'), ...
-         findall(0, 'Type', 'Figure', 'Tag', 'Graphics')], 'Visible', 'off');
-    % Run SPM batch
-    spm_jobman('initcfg');
+
     spm_jobman('run',matlabbatch);
     % Close CAT12 figures
     close([findall(0, 'Type', 'Figure', 'Tag', 'Interactive'), ...
