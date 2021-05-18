@@ -301,8 +301,12 @@ function FigureMouseDownCallback(hFig, ev)
             clickAction = 'popup';
         elseif strcmpi(get(hFig, 'SelectionType'), 'open') % double-click
             clickAction = 'ResetCamera';
-        elseif strcmpi(get(hFig, 'SelectionType'), 'extend') % SHIFT is held
-            clickAction = 'ShiftClick'; % POTENTIAL node click or mousemovecamera
+        elseif strcmpi(get(hFig, 'SelectionType'), 'extend') % SHIFT or middle button is held
+            if (getappdata(hFig, 'ShiftPressed'))
+                clickAction = 'ShiftClick'; % POTENTIAL node click or mousemovecamera
+            else
+                clickAction = 'pan';
+            end
         else % normal click
             clickAction = 'SingleClick'; % POTENTIAL node/link click
             % store figure being clicked when clicking on a link
@@ -365,6 +369,9 @@ function FigureMouseMoveCallback(hFig, ev)
                  motion = -motionFigure * 0.05;
                  MoveCamera(hFig, [motion(1) motion(2) 0]);
             end
+        case 'pan'
+            motion = -motionFigure * 0.05;
+            MoveCamera(hFig, [motion(1) motion(2) 0]);
     end
 end
  
@@ -565,7 +572,7 @@ function NextNode = GetNextCircularRegion(hFig, Node, Inc)
 end
 
 function SelectAllNodes(hFig)
-    SetSelectedNodes(hFig, [], 1, 1);
+    SetSelectedNodes(hFig, [], 1);
     UpdateColormap(hFig);
 end
 
