@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 May 2021
 - Anatomy: Use imported volume parcellations as volume scouts
+- Anatomy: Updated CAT12 to version 12.8 (r1825)
 ---------------------------------------------------------------
 April 2021
 - Plugins: NIRSTORM included as a plugin (available as compiled)

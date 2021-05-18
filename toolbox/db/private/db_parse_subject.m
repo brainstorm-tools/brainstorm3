@@ -43,7 +43,7 @@ function sSubject = db_parse_subject( subjectsDir, subjectSubDir, sizeProgress )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 
 %% ===== PARSE INPUTS =====
@@ -190,10 +190,14 @@ if ~isempty(subjMat)
     % the pointed files in the sSubject structure
 
     % ==== ANATOMY ====
-    % By default : use the first anatomy in list
+    % By default : use the first anatomy in list (which is not a volume atlas)
     if ~isempty(sSubject(1).Anatomy)
-        % sSubject(1).iAnatomy = length(sSubject(1).Anatomy);
-        sSubject(1).iAnatomy = 1;
+        iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject(1).Anatomy.FileName}));
+        if (length(sSubject(1).Anatomy) == 1) || isempty(iNoAtlas)
+            sSubject(1).iAnatomy = 1;
+        else
+            sSubject(1).iAnatomy = iNoAtlas(1);
+        end
     else
         sSubject(1).iAnatomy = [];
     end
