@@ -80,6 +80,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.cerebellum.Comment = '<FONT color="#777777">Compute cerebellum surfaces [Experimental]</FONT>';
     sProcess.options.cerebellum.Type    = 'checkbox';
     sProcess.options.cerebellum.Value   = 0;
+    sProcess.options.cerebellum.Hidden  = 1;
 end
 
 
@@ -277,9 +278,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== CALL CAT12 SEGMENTATION =====
     bst_progress('text', '<HTML>Starting SPM batch... &nbsp;&nbsp;&nbsp;<FONT COLOR="#707070"><I>(see command window)</I></FONT>');
     % Create SPM batch
-    matlabbatch{1}.spm.tools.cat.estwrite.data = {[NiiFile ',1']};
-    matlabbatch{1}.spm.tools.cat.estwrite.data_wmh = {''};
-    matlabbatch{1}.spm.tools.cat.estwrite.useprior = '';
+    matlabbatch{1}.spm.tools.cat.estwrite.data = {NiiFile};
     matlabbatch{1}.spm.tools.cat.estwrite.nproc = 0;                % Blocking call to CAT12
     matlabbatch{1}.spm.tools.cat.estwrite.opts.tpm = {TpmNii};      % User-defined TPM atlas
     matlabbatch{1}.spm.tools.cat.estwrite.output.bias.warped = 0;
@@ -302,8 +301,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.native = 1;  % Label: background=0, CSF=1, GM=2, WM=3, WMH=4
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.warped = 0;
     matlabbatch{1}.spm.tools.cat.estwrite.output.label.dartel = 0;
-    % Do not save IXI550 deformation fields (we need ICBM152NLinAsym09 deformation fields for compatibility)
-    % matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [0 0];  % Non-linear MNI normalization deformation fields: [forward inverse]
+    matlabbatch{1}.spm.tools.cat.estwrite.output.labelnative = 1;  % Confirmed useful by CGaser in CAT12.8
+    % CAT12.8 now saves everything in ICBM152NLinAsym09 space: we can use directly the MNI deformation fields
+    matlabbatch{1}.spm.tools.cat.estwrite.output.warps = [1 1];  % Non-linear MNI normalization deformation fields: [forward inverse]
     % Volume atlases
     if isVolumeAtlases
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.neuromorphometrics = 1;
@@ -318,8 +318,10 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_100Parcels_17Networks_order = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_200Parcels_17Networks_order = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_400Parcels_17Networks_order = 1;
-        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_800Parcels_17Networks_order = 1;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.atlases.Schaefer2018_600Parcels_17Networks_order = 1;
         matlabbatch{1}.spm.tools.cat.estwrite.output.atlas.native = 1;  % Save atlases in native space
+        matlabbatch{1}.spm.tools.cat.estwrite.output.atlas.warped = 0;
+        matlabbatch{1}.spm.tools.cat.estwrite.output.atlas.dartel = 0;
     else
         % No ROIs
         matlabbatch{1}.spm.tools.cat.estwrite.output.ROImenu.noROI = struct([]);   % CGaser comment: Correct syntax to disable ROI processing for volumes   
@@ -340,7 +342,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
     % Extract additional surface parameters: Cortical thickness, Gyrification index, Sulcal depth
     if isExtraMaps
-        % matlabbatch{1}.spm.tools.cat.estwrite.output.surf_measures = 1;   % CGaser comment: Experimental flag
+        matlabbatch{1}.spm.tools.cat.estwrite.output.surf_measures = 1;  % Thickness maps
         % Separate SPM process (second element in the batch)
         matlabbatch{2}.spm.tools.cat.stools.surfextract.data_surf(1) = cfg_dep('CAT12: Segmentation (current release): Left Central Surface', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','lhcentral', '()',{':'}));
         matlabbatch{2}.spm.tools.cat.stools.surfextract.GI = 1;     % Gyrification index
@@ -406,7 +408,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     end
     nVertices = str2double(nVertices);
     % Ask for volume atlases
-    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Import anatomical parcellations?' 10 10 ...
+    [isVolumeAtlases, isCancel] = java_dialog('confirm', ['Compute anatomical parcellations?' 10 10 ...
         ' - AAL3', 10 ...
         ' - Anatomy v3', 10 ...
         ' - CoBrALab' 10 ...
@@ -416,7 +418,15 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
         ' - LPBA40' 10 ...
         ' - Mori', 10 ...
         ' - Neuromorphometrics' 10 ...
-        ' - Schaefer2018', 10 10], 'Anatomical parcellations');
+        ' - Schaefer2018', 10 10], 'CAT12 MRI segmentation');
+    if isCancel
+        return
+    end
+    % Ask for cortical maps
+    [isExtraMaps, isCancel] = java_dialog('confirm', ['Compute cortical maps?' 10 10 ...
+        ' - Cortical thickness', 10 ...
+        ' - Gyrification index', 10 ...
+        ' - Sulcal depth', 10 10], 'CAT12 MRI segmentation');
     if isCancel
         return
     end
@@ -426,7 +436,6 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     TpmNii = bst_get('SpmTpmAtlas');
     isInteractive = 1;
     isSphReg = 1;
-    isExtraMaps = 0;
     isCerebellum = 0;
     [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isVolumeAtlases, isExtraMaps, isCerebellum);
     % Error handling
