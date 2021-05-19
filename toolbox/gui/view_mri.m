@@ -12,6 +12,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 %     - 'EditMri'       : Show the control to modify the MRI and the fiducials
 %     - 'EditFiducials' : Show the control to modify the fiducials only
 %     - isNewFig        : If 1, forces new figure creation (do not re-use a previously created figure)
+%                         If 2, creates new figure only if there are already sensors loaded in the existing figure
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the figure that was created or updated
@@ -37,7 +38,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2020
+% Authors: Francois Tadel, 2009-2021
 
 
 %% ===== PARSE INPUTS =====
@@ -135,10 +136,16 @@ end
 
 %% ===== CREATE FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
-if ~isNewFig
-    [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
-else
-    hFig = [];
+switch isNewFig
+    case 0   % Always reuse figure
+        [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
+    case 1   % Always create new figure
+        hFig = [];
+    case 2   % Reuse only if no sensors loaded
+        [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
+        if ~isempty(hFig) && ~isempty(GlobalData.DataSet(iOldDataSet).Figure(iFig).SelectedChannels)
+            hFig = [];
+        end
 end
 % Make sure that only one figure was found
 if ~isempty(hFig)
