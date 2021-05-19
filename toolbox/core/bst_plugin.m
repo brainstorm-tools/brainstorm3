@@ -1403,7 +1403,7 @@ end
 
 
 %% ===== LOAD =====
-% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugName/PlugDesc)
+% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc)
 function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     % Initialize returned variables 
     isOk = 0;
@@ -1415,7 +1415,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
-        errMsg = ['Plugin ', PlugName ' is not supported for versions of Matlab <= ' strMinVer];
+        errMsg = ['Plugin ', PlugDesc.Name ' is not supported for versions of Matlab <= ' strMinVer];
         return;
     end
     
