@@ -182,7 +182,7 @@ function ScreenDef = GetScreenClientArea()
     MonitorPositions = get(0, 'MonitorPositions');
     isOldPositions = (bst_get('MatlabVersion') < 804);
     % Fix discrepancies (reported in: https://neuroimage.usc.edu/forums/t/using-brainstorm-on-two-screens-under-linux/28418)
-    if length(jScreens) < size(MonitorPositions,1)
+    if length(jScreens) > size(MonitorPositions,1)
         jScreens = jScreens(1:size(MonitorPositions,1));
     end
     % Find default screen
