@@ -141,6 +141,8 @@ if isempty(newEvents)
             newEvents = in_events_presentation(sFile, EventFile);
         case 'NICOLET'
             newEvents = in_events_nicolet(sFile, EventFile);
+        case 'MICROMED'
+            newEvents = in_events_micromed(sFile, EventFile);
         case 'XLTEK'
             newEvents = in_events_xltek(sFile, EventFile);
         case 'ARRAY-TIMES'
