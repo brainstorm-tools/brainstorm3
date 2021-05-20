@@ -2198,6 +2198,12 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
         elseif strcmpi(sFile.format, 'EEG-SMRX') && isfield(sFile.header, 'timedate')
             t = sFile.header.timedate;
             dateTitle = [datestr(datenum(t(7), t(6), t(5), t(4), t(3), t(2)), 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
+        % Micromed TRC: Wall clock time
+        elseif strcmpi(sFile.format, 'EEG-MICROMED') && isfield(sFile.header, 'acquisition') && isfield(sFile.header.acquisition, 'sec')
+            acq = sFile.header.acquisition;
+            dstart = datenum(acq.year, acq.month, acq.day, acq.hour, acq.min, acq.sec);
+            dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
+            dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
         end
     end
     % Menu title
