@@ -1535,7 +1535,7 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     % pairs 
     
     %for each link (loop backwards to pre-allocate links)
-    for i = length(DataPair):-1:1 
+    for i = size(DataPair,1):-1:1 
         overlap = false;
         % node positions (rescaled to *unit* circle)
         Node1 = DataPair(i, 1); Node2 = DataPair(i, 2);
@@ -3390,7 +3390,7 @@ function ClearAndAddNodes(hFig, V, Names)
     % Measure Nodes are color coded to their Scout counterpart
     RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
     if ~isempty(RowColors)
-        for i = 1:length(RowColors)
+        for i = 1:size(RowColors,1)
             AllNodes(nAgregatingNodes+i).Color = RowColors(i, :);
             AllNodes(nAgregatingNodes+i).NodeMarker.Color = RowColors(i, :);
             AllNodes(nAgregatingNodes+i).NodeMarker.MarkerFaceColor = RowColors(i, :); % set marker fill color
