@@ -107,7 +107,7 @@ function Dispose(hFig) %#ok<DEFNU>
     DispOptions.NodeSize = getappdata(hFig, 'NodeSize');
     DispOptions.LabelSize = getappdata(hFig, 'LabelSize');
     DispOptions.LinkSize = getappdata(hFig, 'LinkSize');
-    DispOptions.LinkTransparency = getappdata(hFig, 'LinkTransparency');
+%     DispOptions.LinkTransparency = getappdata(hFig, 'LinkTransparency');
     DispOptions.BgColor = getappdata(hFig, 'BgColor');
     DispOptions.HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');   
     bst_set('ConnectGraphOptions', DispOptions);
@@ -190,9 +190,9 @@ function ResetDisplayOptions(hFig)
         SetLinkSize(hFig, 1.5);
     end
     % reset link transparency
-    if (getappdata(hFig, 'LinkTransparency') ~= 0)
-        SetLinkTransparency(hFig, 0);
-    end
+%     if (getappdata(hFig, 'LinkTransparency') ~= 0)
+%         SetLinkTransparency(hFig, 0);
+%     end
     % reset to black background
     if (~isequal(getappdata(hFig, 'BgColor'), [0 0 0]))
         SetBackgroundColor(hFig, [0 0 0]);
@@ -220,8 +220,8 @@ function IsDefault = CheckDisplayOptions(hFig)
     elseif (getappdata(hFig, 'LinkSize') ~= 1.5)
         IsDefault = false;
     % check link transparency
-    elseif (getappdata(hFig, 'LinkTransparency') ~= 0)
-        IsDefault = false;
+%     elseif (getappdata(hFig, 'LinkTransparency') ~= 0)
+%         IsDefault = false;
     % check black background
     elseif (~isequal(getappdata(hFig, 'BgColor'), [0 0 0]))
         IsDefault = false;
@@ -847,26 +847,26 @@ function DisplayFigurePopup(hFig)
             jDisplayMenu.add(jPanelModifiers);
             
             % == MODIFY LINK TRANSPARENCY ==
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-            Transparency = getappdata(hFig, 'LinkTransparency');
-            % Label
-            gui_component('label', jPanelModifiers, '', 'Link transp');
-            % Slider
-            jSliderContrast = JSlider(0, 100, 100);
-            jSliderContrast.setValue(round(Transparency * 100));
-            jSliderContrast.setPreferredSize(java_scaled('dimension', 100, 23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
-            jSliderContrast.setFocusable(0);
-            jSliderContrast.setOpaque(0);
-            jPanelModifiers.add('tab hfill', jSliderContrast);
-            % Value (text)
-            jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f %%', Transparency * 100));
-            jLabelContrast.setPreferredSize(java_scaled('dimension', 50, 23));
-            jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-            jPanelModifiers.add(jLabelContrast);
-            % Slider callbacks
-            java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h, ev)TransparencySliderCallback(hFig, ev, jLabelContrast));
-            jDisplayMenu.add(jPanelModifiers);
+%             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+%             Transparency = getappdata(hFig, 'LinkTransparency');
+%             % Label
+%             gui_component('label', jPanelModifiers, '', 'Link transp');
+%             % Slider
+%             jSliderContrast = JSlider(0, 100, 100);
+%             jSliderContrast.setValue(round(Transparency * 100));
+%             jSliderContrast.setPreferredSize(java_scaled('dimension', 100, 23));
+%             %jSliderContrast.setToolTipText(tooltipSliders);
+%             jSliderContrast.setFocusable(0);
+%             jSliderContrast.setOpaque(0);
+%             jPanelModifiers.add('tab hfill', jSliderContrast);
+%             % Value (text)
+%             jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f %%', Transparency * 100));
+%             jLabelContrast.setPreferredSize(java_scaled('dimension', 50, 23));
+%             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
+%             jPanelModifiers.add(jLabelContrast);
+%             % Slider callbacks
+%             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h, ev)TransparencySliderCallback(hFig, ev, jLabelContrast));
+%             jDisplayMenu.add(jPanelModifiers);
         end
         
         % === BACKGROUND OPTIONS ===
@@ -939,13 +939,13 @@ function NodeLabelSizeSliderCallback(hFig, ev, jLabel)
 end
 
 % Link transparency slider
-function TransparencySliderCallback(hFig, ev, jLabel)
-    % Update Modifier value
-    Transparency = double(ev.getSource().getValue()) / 100;
-    % Update text value
-    jLabel.setText(sprintf('%.0f %%', Transparency * 100));
-    SetLinkTransparency(hFig, Transparency);
-end
+% function TransparencySliderCallback(hFig, ev, jLabel)
+%     % Update Modifier value
+%     Transparency = double(ev.getSource().getValue()) / 100;
+%     % Update text value
+%     jLabel.setText(sprintf('%.0f %%', Transparency * 100));
+%     SetLinkTransparency(hFig, Transparency);
+% end
  
 % Link size slider
 function LinkSizeSliderCallback(hFig, ev, jLabel)
@@ -1343,7 +1343,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     setappdata(hFig, 'NodeSize', DispOptions.NodeSize);
     setappdata(hFig, 'LabelSize', DispOptions.LabelSize); 
     setappdata(hFig, 'LinkSize', DispOptions.LinkSize);
-    setappdata(hFig, 'LinkTransparency', DispOptions.LinkTransparency);
+%     setappdata(hFig, 'LinkTransparency', DispOptions.LinkTransparency);
     setappdata(hFig, 'BgColor', DispOptions.BgColor);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1); % note: set as 1 to match default, updated to saved user pref later
     
@@ -1378,7 +1378,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % Create links from computed DataPair
     BuildLinks(hFig, DataPair, true);
     SetLinkSize(hFig, DispOptions.LinkSize);
-    SetLinkTransparency(hFig, DispOptions.LinkTransparency);
+%     SetLinkTransparency(hFig, DispOptions.LinkTransparency);
         
     %% ===== Init Filters =====
     % Default intensity threshold
@@ -2015,7 +2015,7 @@ function UpdateFigurePlot(hFig)
     % Create new links from computed DataPair
     BuildLinks(hFig, DataPair, true);
     SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
-    SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
+%     SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
     
     %% ===== FILTERS =====
     Refresh = 0;
@@ -2514,7 +2514,7 @@ function UpdateColormap(hFig)
     CMap = sColormap.CMap;
     
     % get the transparency
-    LinkIntensity = 1.00 - getappdata(hFig, 'LinkTransparency');  
+    LinkIntensity = 1; % 1.00 - getappdata(hFig, 'LinkTransparency');  
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
       
     if (sum(DataMask) > 0)
@@ -2933,7 +2933,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         UpdateColormap(hFig);
         % Update size and transparency
         SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
-        SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
+%         SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
     end
 end
  
@@ -3091,63 +3091,63 @@ function SetLinkSize(hFig, LinkSize)
 end
  
 %% ===== LINK TRANSPARENCY ===== 
-function SetLinkTransparency(hFig, LinkTransparency)
-    % Note: only need to update for 'visible' links on graph (under the
-    % thresholds selected) because when filters change, color +
-    % transparency are updated in UpdateColormap
-    
-    % Note: update transparency for both measure and region links that are
-    % "visible" because displayed links should reflect updated transparency if user toggles link type 
-    IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
-    
-    % MeasureLinks
-    if (isappdata(hFig, 'MeasureLinks'))
-        MeasureLinks = getappdata(hFig, 'MeasureLinks');           
-        [~, DataMask] = GetPairs(hFig); 
-        iData = find(DataMask == 1); % - 1;
-    
-        % set desired transparency to each link
-        % (1 - LinkTransparency) for link intensity
-        if (~isempty(iData))
-            VisibleLinks = MeasureLinks(iData).';            
-            for i = 1:length(VisibleLinks)
-                VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
-            end
-            if (IsDirectionalData)
-                MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
-                MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-                VisibleArrows1 = MeasureArrows1(iData).';
-                VisibleArrows2 = MeasureArrows2(iData).';  
-                set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-                set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-            end
-        end
-    end
-    
-    % RegionLinks
-    if (isappdata(hFig, 'RegionLinks'))
-        RegionLinks = getappdata(hFig, 'RegionLinks'); 
-        [~, DataMask] = GetRegionPairs(hFig);
-        iData = find(DataMask == 1);
-        
-        % set desired transparency to each link
-        if (~isempty(iData))
-            VisibleLinks = RegionLinks(iData).';           
-            for i = 1:length(VisibleLinks)
-                VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
-            end                
-            if (IsDirectionalData)
-                RegionArrows1 = getappdata(hFig, 'RegionArrows1');
-                RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-                VisibleArrows1 = RegionArrows1(iData).';
-                VisibleArrows2 = RegionArrows2(iData).';                
-                set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-                set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-            end
-        end
-    end
-    setappdata(hFig, 'LinkTransparency', LinkTransparency);
-end
+% function SetLinkTransparency(hFig, LinkTransparency)
+%     % Note: only need to update for 'visible' links on graph (under the
+%     % thresholds selected) because when filters change, color +
+%     % transparency are updated in UpdateColormap
+%     
+%     % Note: update transparency for both measure and region links that are
+%     % "visible" because displayed links should reflect updated transparency if user toggles link type 
+%     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+%     
+%     % MeasureLinks
+%     if (isappdata(hFig, 'MeasureLinks'))
+%         MeasureLinks = getappdata(hFig, 'MeasureLinks');           
+%         [~, DataMask] = GetPairs(hFig); 
+%         iData = find(DataMask == 1); % - 1;
+%     
+%         % set desired transparency to each link
+%         % (1 - LinkTransparency) for link intensity
+%         if (~isempty(iData))
+%             VisibleLinks = MeasureLinks(iData).';            
+%             for i = 1:length(VisibleLinks)
+%                 VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
+%             end
+%             if (IsDirectionalData)
+%                 MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
+%                 MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
+%                 VisibleArrows1 = MeasureArrows1(iData).';
+%                 VisibleArrows2 = MeasureArrows2(iData).';  
+%                 set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
+%                 set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
+%             end
+%         end
+%     end
+%     
+%     % RegionLinks
+%     if (isappdata(hFig, 'RegionLinks'))
+%         RegionLinks = getappdata(hFig, 'RegionLinks'); 
+%         [~, DataMask] = GetRegionPairs(hFig);
+%         iData = find(DataMask == 1);
+%         
+%         % set desired transparency to each link
+%         if (~isempty(iData))
+%             VisibleLinks = RegionLinks(iData).';           
+%             for i = 1:length(VisibleLinks)
+%                 VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
+%             end                
+%             if (IsDirectionalData)
+%                 RegionArrows1 = getappdata(hFig, 'RegionArrows1');
+%                 RegionArrows2 = getappdata(hFig, 'RegionArrows2');
+%                 VisibleArrows1 = RegionArrows1(iData).';
+%                 VisibleArrows2 = RegionArrows2(iData).';                
+%                 set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
+%                 set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
+%             end
+%         end
+%     end
+%     setappdata(hFig, 'LinkTransparency', LinkTransparency);
+% end
  
 %% ===== BACKGROUND COLOR =====
 function SetBackgroundColor(hFig, BackgroundColor)
