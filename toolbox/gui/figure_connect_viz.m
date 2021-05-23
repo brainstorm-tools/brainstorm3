@@ -760,17 +760,46 @@ function DisplayFigurePopup(hFig)
     % ==== MENU: COLORMAP =====
     bst_colormaps('CreateAllMenus', jPopup, hFig, 0);
     
-    % ==== MENU: SNAPSHOT ====
+    % ==== GRAPH OPTIONS ====
     jPopup.addSeparator();
-    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
-        % === SAVE AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h, ev)bst_call(@out_figure_image, hFig));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
-        % === OPEN AS IMAGE ===
-        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h, ev)bst_call(@out_figure_image, hFig, 'Viewer'));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));       
-    jPopup.add(jMenuSave);
-    
+    jGraphMenu = gui_component('Menu', jPopup, [], 'Graph options', IconLoader.ICON_CONNECTN);
+        % === SELECT ALL THE NODES ===
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select all', [], [], @(h, n, s, r)SelectAllNodes(hFig));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0));
+        % === SELECT NEXT REGION ===
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
+        % === SELECT PREVIOUS REGION===
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
+        jGraphMenu.addSeparator();
+
+        if (DisplayInRegion)
+            % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
+            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, ~HierarchyNodeIsVisible));
+            jItem.setSelected(~HierarchyNodeIsVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
+            jGraphMenu.addSeparator();
+
+            % === TOGGLE DISPLAY REGION LINKS ===
+            RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
+            RegionFunction = getappdata(hFig, 'RegionFunction');
+            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem.setSelected(RegionLinksIsVisible);
+            jItem.setEnabled(HierarchyNodeIsVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
+
+            % === TOGGLE REGION FUNCTIONS===
+            IsMean = strcmp(RegionFunction, 'mean');
+            jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Choose region function');
+            jLabelMenu.setEnabled(HierarchyNodeIsVisible);
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+                jItem.setSelected(IsMean);
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem.setSelected(~IsMean);
+        end
+        
     % ==== MENU: 2D LAYOUT (DISPLAY OPTIONS)====
     jDisplayMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
             % === TOGGLE LABELS ===
@@ -882,48 +911,60 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('MenuItem', jDisplayMenu, [], 'Reset display options', [], [], @(h, ev)ResetDisplayOptions(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0));
         jItem.setEnabled(~CheckDisplayOptions(hFig));
-  
- 
-    % ==== GRAPH OPTIONS ====
-    % 'Graph Options' are directly shown in main pop-up menu
-        jPopup.addSeparator();
-        % === SELECT ALL THE NODES ===
-        jItem = gui_component('MenuItem', jPopup, [], 'Select all', [], [], @(h, n, s, r)SelectAllNodes(hFig));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, 0));
-        % === SELECT NEXT REGION ===
-        jItem = gui_component('MenuItem', jPopup, [], 'Select next region', [], [], @(h, ev)ToggleRegionSelection(hFig, -1));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, 0));
-        % === SELECT PREVIOUS REGION===
-        jItem = gui_component('MenuItem', jPopup, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
-        jPopup.addSeparator();
-
-        if (DisplayInRegion)
-            % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
-            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, ~HierarchyNodeIsVisible));
-            jItem.setSelected(~HierarchyNodeIsVisible);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
-            jPopup.addSeparator();
-
-            % === TOGGLE DISPLAY REGION LINKS ===
-            RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
-            RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jPopup, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
-            jItem.setSelected(RegionLinksIsVisible);
-            jItem.setEnabled(HierarchyNodeIsVisible);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
-
-            % === TOGGLE REGION FUNCTIONS===
-            IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jPopup, [], 'Choose region function');
-            jLabelMenu.setEnabled(HierarchyNodeIsVisible);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
-                jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
-                jItem.setSelected(~IsMean);
-        end
     
+    % ==== MENU: SNAPSHOT ====
+    jPopup.addSeparator();
+    jMenuSave = gui_component('Menu', jPopup, [], 'Snapshot', IconLoader.ICON_SNAPSHOT);
+        % === SAVE AS IMAGE ===
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Save as image', IconLoader.ICON_SAVE, [], @(h, ev)bst_call(@out_figure_image, hFig));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_I, KeyEvent.CTRL_MASK));
+        % === OPEN AS IMAGE ===
+        jItem = gui_component('MenuItem', jMenuSave, [], 'Open as image', IconLoader.ICON_IMAGE, [], @(h, ev)bst_call(@out_figure_image, hFig, 'Viewer'));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_J, KeyEvent.CTRL_MASK));       
+    jPopup.add(jMenuSave);
+    
+    % ==== MENU: FIGURE (copied from figure_3D.m ====
+    jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
+    
+        % Note: Show Axes and Show Headpoints commented out, not applicable
+        % to this tool
+%         % Show axes
+%         isAxis = ~isempty(findobj(hFig, 'Tag', 'AxisXYZ'));
+%         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View axis', IconLoader.ICON_AXES, [], @(h,ev)ViewAxis(hFig, ~isAxis));
+%         jItem.setSelected(isAxis);
+%         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_MASK)); 
+%         % Show Head points
+%         isHeadPoints = ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc);
+%         if isHeadPoints && ~strcmpi(FigureType, 'Topography')
+%             % Are head points visible
+%             hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
+%             isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
+%             jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible));
+%             jItem.setSelected(isVisible);
+%         end
+%         jMenuFigure.addSeparator();
+
+        % Change background color
+        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
+        jMenuFigure.addSeparator();
+        % Show Matlab controls
+        isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
+        jItem.setSelected(isMatlabCtrl);
+        % Show plot edit toolbar
+        isPlotEditToolbar = getappdata(hFig, 'isPlotEditToolbar');
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Plot edit toolbar', IconLoader.ICON_PLOTEDIT, [], @(h,ev)bst_figures('TogglePlotEditToolbar', hFig));
+        jItem.setSelected(isPlotEditToolbar);
+        % Dock figure
+        isDocked = strcmpi(get(hFig, 'WindowStyle'), 'docked');
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Dock figure', IconLoader.ICON_DOCK, [], @(h,ev)bst_figures('DockFigure', hFig, ~isDocked));
+        jItem.setSelected(isDocked);
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, KeyEvent.CTRL_MASK)); 
+        % CLONE FIGURE
+        jMenuFigure.addSeparator();
+        gui_component('MenuItem', jMenuFigure, [], 'Clone figure', [], [], @(h,ev)bst_figures('CloneFigure', hFig));
+
+
     % Display Popup menu
     gui_popup(jPopup, hFig);
 end
