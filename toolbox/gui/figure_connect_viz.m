@@ -1494,13 +1494,9 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
             delete(getappdata(hFig, 'MeasureLinks'));
             rmappdata(hFig, 'MeasureLinks');
         end
-        if (isappdata(hFig, 'MeasureArrows1'))
-            delete(getappdata(hFig, 'MeasureArrows1'));
-            rmappdata(hFig, 'MeasureArrows1');
-        end
-        if (isappdata(hFig, 'MeasureArrows2'))
-            delete(getappdata(hFig, 'MeasureArrows2'));
-            rmappdata(hFig, 'MeasureArrows2');
+        if (isappdata(hFig, 'MeasureArrows'))
+            delete(getappdata(hFig, 'MeasureArrows'));
+            rmappdata(hFig, 'MeasureArrows');
         end
     else
         LevelScale = getappdata(hFig, 'RegionLevelDistance');
@@ -1508,13 +1504,9 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
             delete(getappdata(hFig, 'RegionLinks'));
             rmappdata(hFig, 'RegionLinks');
         end
-        if (isappdata(hFig, 'RegionArrows1'))
-            delete(getappdata(hFig, 'RegionArrows1'));
-            rmappdata(hFig, 'RegionArrows1');
-        end
-        if (isappdata(hFig, 'RegionArrows2'))
-            delete(getappdata(hFig, 'RegionArrows2'));
-            rmappdata(hFig, 'RegionArrows2');
+        if (isappdata(hFig, 'RegionArrows'))
+            delete(getappdata(hFig, 'RegionArrows'));
+            rmappdata(hFig, 'RegionArrows');
         end
     end
     
@@ -1535,7 +1527,7 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     % pairs 
     
     %for each link (loop backwards to pre-allocate links)
-    for i = size(DataPair,1):-1:1 
+    for i = length(DataPair):-1:1 
         overlap = false;
         % node positions (rescaled to *unit* circle)
         Node1 = DataPair(i, 1); Node2 = DataPair(i, 2);
@@ -1623,7 +1615,7 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
 
         % create arrows for directional links
         if (IsDirectionalData)
-            [Arrows1(i), Arrows2(i)] = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
+            [Arrows(i)] = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
         end
     end
     
@@ -1631,14 +1623,12 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     if (IsMeasureLink)
         setappdata(hFig, 'MeasureLinks', Links);
         if (IsDirectionalData)
-            setappdata(hFig, 'MeasureArrows1', Arrows1);
-            setappdata(hFig, 'MeasureArrows2', Arrows2);
+            setappdata(hFig, 'MeasureArrows', Arrows);
         end
     else
         setappdata(hFig, 'RegionLinks', Links);
         if (IsDirectionalData)
-            setappdata(hFig, 'RegionArrows1', Arrows1);
-            setappdata(hFig, 'RegionArrows2', Arrows2);
+            setappdata(hFig, 'RegionArrows', Arrows);
         end
     end
     
@@ -1657,8 +1647,6 @@ function LinkButtonDownFcn(src, ~)
     clickAction = getappdata(hFig, 'clickAction');
     AllNodes = getappdata(hFig, 'AllNodes');
 
-    % UserData = [LinkIndex IsDirectional IsMeasureLink StartingNodeIndex
-    % EndingNodeIndex]
     Index = src.UserData(1);
     IsDirectional = src.UserData(2);
     IsMeasureLink = src.UserData(3);    
@@ -1687,20 +1675,16 @@ function LinkButtonDownFcn(src, ~)
         % also increase size of arrowheads 
         if (IsDirectional)
             if (IsMeasureLink)
-                Arrows1 = getappdata(hFig, 'MeasureArrows1');
-                Arrows2 = getappdata(hFig, 'MeasureArrows2');
+                Arrows = getappdata(hFig, 'MeasureArrows');
                 Scale = 2.0;
             else
-                Arrows1 = getappdata(hFig, 'RegionArrows1');
-                Arrows2 = getappdata(hFig, 'RegionArrows2');
+                Arrows = getappdata(hFig, 'RegionArrows');
                 Scale = 2.0;
             end
-            Arrow1 = Arrows1(Index);
-            Arrow2 = Arrows2(Index);
-            ArrowSize = Arrow1.LineWidth;
+            Arrow = Arrows(Index);
+            ArrowSize = Arrow.LineWidth;
             
-            set(Arrow1, 'LineWidth', Scale*ArrowSize);
-            set(Arrow2, 'LineWidth', Scale*ArrowSize);
+            set(Arrow, 'LineWidth', Scale*ArrowSize);
         end
     end
 end
@@ -1715,8 +1699,7 @@ function LinkClickEvent(hFig, LinkIndex, LinkType, IsDirectional, Node1Index, No
         set(Link, 'LineWidth', CurSize/2.0);
         
         if (IsDirectional)
-            Arrows1 = getappdata(hFig, 'MeasureArrows1');
-            Arrows2 = getappdata(hFig, 'MeasureArrows2');
+            Arrows = getappdata(hFig, 'MeasureArrows');
             Scale = 2.0;
         end          
     else % region links
@@ -1726,19 +1709,16 @@ function LinkClickEvent(hFig, LinkIndex, LinkType, IsDirectional, Node1Index, No
         set(Link, 'LineWidth', CurSize/2.0);
         
         if (IsDirectional)
-            Arrows1 = getappdata(hFig, 'RegionArrows1');
-            Arrows2 = getappdata(hFig, 'RegionArrows2'); 
+            Arrows = getappdata(hFig, 'RegionArrows');
             Scale = 2.0;
         end  
     end   
     
     % arrowheads
     if (IsDirectional)
-        Arrow1 = Arrows1(LinkIndex);
-        Arrow2 = Arrows2(LinkIndex);
-        ArrowSize = Arrow1.LineWidth;
-        set(Arrow1, 'LineWidth', ArrowSize/Scale);
-        set(Arrow2, 'LineWidth', ArrowSize/Scale);
+        Arrow = Arrows(LinkIndex);
+        ArrowSize = Arrow.LineWidth;
+        set(Arrow, 'LineWidth', ArrowSize/Scale);
     end
     
     % labels
@@ -1757,7 +1737,7 @@ end
 
 % Draws 2 solid arrowheads for each link
 % based on: https://www.mathworks.com/matlabcentral/fileexchange/4538-arrowhead
-function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
+function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
     % determine location of first arrowhead
     ArWidth = 0.75;
     j = floor(length(x)*Where/100); 
@@ -1806,16 +1786,8 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasu
     % tip of the second arrow
     new_x = (xd1(2)+xd1(3))/2;
     new_y = (yd1(2)+yd1(3))/2;    
-    % draw first triangle
-    handle1 = patch(xd1, ...
-        yd1, ...
-        clr, ...
-        'EdgeColor', clr, ...
-        'FaceColor', clr, ...
-        'Visible', 'off', ...
-        'PickableParts', 'visible', ...
-        'UserData', [1 Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
-        'ButtonDownFcn', @ArrowButtonDownFcn);
+    
+%%%%% second arrowhead %%%%%%
     
     % find point on the line closest to the desired location of
     % the second arrowhead (tip of second at base of the first)
@@ -1873,22 +1845,34 @@ function [handle1, handle2] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasu
     xd = xd*xExtend*ArSize/10000;
     yd = yd*yExtend*ArSize/10000;
     % move to desired location
-    xd1 = xd + x2;
-    yd1 = yd + y2;   
-    % draw the second triangle
-    handle2 = patch(xd1, ...
-        yd1, ...
-        clr, ...
-        'EdgeColor', clr, ...
-        'FaceColor', clr, ...
+    xd2 = xd + x2;
+    yd2 = yd + y2; 
+    
+    xd_all = [xd1 xd2];
+    yd_all = [yd1 yd2];
+    
+    Vertices = [xd_all.', yd_all.'];
+    Faces = [1 2 3; 4 5 6];
+    
+    %%%% draw both arrowheads as 2 faces of a single patch object %%%%
+    
+    handle = patch('Vertices', Vertices, ...
+        'Faces', Faces, ...
+        'EdgeColor', 'flat', ...
+        'FaceColor', 'flat', ...
+        'FaceAlpha', 'flat', ...
+        'AlphaDataMapping', 'none', ...
+        'FaceVertexCData', repmat(NaN, 6, 1), ...
+        'FaceVertexAlphaData', [0; 0], ...
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
-        'UserData', [0 Index IsMeasureLink Node1, Node2], ... % flag == 0 for second arrow
+        'UserData', [1 Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
         'ButtonDownFcn', @ArrowButtonDownFcn);
 end
 
 % When user clicks on an arrow
 function ArrowButtonDownFcn(src, ~)
+    disp('EnteredArrowButtonDownFcn');
     global GlobalData;
     hFig = GlobalData.FigConnect.Figure;
     clickAction = getappdata(hFig, 'clickAction');
@@ -1917,36 +1901,36 @@ function ArrowButtonDownFcn(src, ~)
         set(Label2, 'FontSize', CurLabelSize + 2);    
         % need to modify size of the second arrowhead too
         if (IsMeasureLink)
-            if (ArrowType) % first
-                Arrows = getappdata(hFig, 'MeasureArrows2');
-            else
-                Arrows = getappdata(hFig, 'MeasureArrows1');
-            end
-            OtherArrow = Arrows(Index);
-            ArrowSize = OtherArrow.LineWidth;
+% %             if (ArrowType) % first
+%                 Arrows = getappdata(hFig, 'MeasureArrows');
+% %             else
+% %                 Arrows = getappdata(hFig, 'MeasureArrows1');
+% %             end
+% %             OtherArrow = Arrows(Index);
+%             ArrowSize = OtherArrow.LineWidth;
             Scale = 2.0;
 
             AllLinks = getappdata(hFig, 'MeasureLinks');
             Link = AllLinks(Index);
             LinkSize = Link.LineWidth;
-            set(Link, 'LineWidth', 2.0*LinkSize);
+            set(Link, 'LineWidth', Scale*LinkSize);
         else
-            if (ArrowType) % first
-                Arrows = getappdata(hFig, 'RegionArrows2');
-            else
-                Arrows = getappdata(hFig, 'RegionArrows1');
-            end
-            OtherArrow = Arrows(Index);
-            ArrowSize = OtherArrow.LineWidth;  
+%             if (ArrowType) % first
+%                 Arrows = getappdata(hFig, 'RegionArrows');
+%             else
+% %                 Arrows = getappdata(hFig, 'RegionArrows1');
+%             end
+%             OtherArrow = Arrows(Index);
+%             ArrowSize = OtherArrow.LineWidth;  
             Scale = 2.0;
             
             AllLinks = getappdata(hFig, 'RegionLinks');
             Link = AllLinks(Index);
             LinkSize = Link.LineWidth;
-            set(Link, 'LineWidth', 2.0*LinkSize);
+            set(Link, 'LineWidth', Scale*LinkSize);
         end       
         set(src, 'LineWidth', Scale*CurSize);
-        set(OtherArrow, 'LineWidth', Scale*ArrowSize);       
+%         set(OtherArrow, 'LineWidth', Scale*ArrowSize);       
     end
 end
 
@@ -1959,8 +1943,8 @@ function ArrowClickEvent(hFig, ArrowIndex, LinkType, Node1Index, Node2Index)
         CurSize = Link.LineWidth;
         set(Link, 'LineWidth', CurSize/2.0);
         
-        Arrows1 = getappdata(hFig, 'MeasureArrows1');
-        Arrows2 = getappdata(hFig, 'MeasureArrows2');
+        Arrows = getappdata(hFig, 'MeasureArrows');
+%         Arrows2 = getappdata(hFig, 'MeasureArrows2');
         Scale = 2.0;       
     else % region links
         RegionLinks = getappdata(hFig, 'RegionLinks');
@@ -1968,17 +1952,17 @@ function ArrowClickEvent(hFig, ArrowIndex, LinkType, Node1Index, Node2Index)
         CurSize = Link.LineWidth;     
         set(Link, 'LineWidth', CurSize/2.0);  
         
-        Arrows1 = getappdata(hFig, 'RegionArrows1');
-        Arrows2 = getappdata(hFig, 'RegionArrows2');
+        Arrows = getappdata(hFig, 'RegionArrows');
+%         Arrows2 = getappdata(hFig, 'RegionArrows2');
         Scale = 2.0;
     end
     
-    Arrow1 = Arrows1(ArrowIndex);
-    Arrow2 = Arrows2(ArrowIndex);
+    Arrow = Arrows(ArrowIndex);
+%     Arrow2 = Arrows2(ArrowIndex);
     
-    ArrowSize = Arrow1.LineWidth;
-    set(Arrow1, 'LineWidth', ArrowSize/Scale);
-    set(Arrow2, 'LineWidth', ArrowSize/Scale);
+    ArrowSize = Arrow.LineWidth;
+    set(Arrow, 'LineWidth', ArrowSize/Scale);
+%     set(Arrow2, 'LineWidth', ArrowSize/Scale);
     
     % put labels back to original font size 
     AllNodes = getappdata(hFig, 'AllNodes');   
@@ -2555,7 +2539,7 @@ function UpdateColormap(hFig)
     CMap = sColormap.CMap;
     
     % get the transparency
-    LinkIntensity = 1; % 1.00 - getappdata(hFig, 'LinkTransparency');  
+    % LinkIntensity = 1.00 - getappdata(hFig, 'LinkTransparency');  
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
       
     if (sum(DataMask) > 0)
@@ -2576,26 +2560,25 @@ function UpdateColormap(hFig)
         VisibleLinks = MeasureLinks(iData).';
         
         if (IsDirectionalData)
-            MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
-            MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-            VisibleArrows1 = MeasureArrows1(iData).';
-            VisibleArrows2 = MeasureArrows2(iData).';
+            MeasureArrows = getappdata(hFig, 'MeasureArrows');
+            VisibleArrows = MeasureArrows(iData).';
         end
         
         % set desired colors to each link (4th column is transparency)
         if (IsDirectionalData)
             for i = 1:length(VisibleLinks)
-                set(VisibleLinks(i), 'Color', [ColorViz(i, :) LinkIntensity]); %link color and transparency
-                set(VisibleArrows1(i), 'EdgeColor', ColorViz(i, :), 'FaceColor', ColorViz(i, :)); %arrow color
-                set(VisibleArrows2(i), 'EdgeColor', ColorViz(i, :), 'FaceColor', ColorViz(i, :));
+%                 set(VisibleLinks(i), 'Color', [ColorViz(i, :) LinkIntensity]); %link color and transparency
+                set(VisibleLinks(i), 'Color', ColorViz(i, :));
+                set(VisibleArrows(i), 'FaceVertexCData', repmat(ColorViz(i, :), 6, 1)); 
             end 
-            %also set arrow transparency all at once
-            set(VisibleArrows1, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
-            set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+%             %also set arrow transparency all at once
+%             set(VisibleArrows, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+% %             set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
         else
             for i = 1:length(VisibleLinks)
-                set(VisibleLinks(i), 'Color', [ColorViz(i, :) LinkIntensity]);
-            end 
+                set(VisibleLinks(i), 'Color', ColorViz(i, :));
+                %             set(VisibleLinks(i), 'Color', [ColorViz(i, :) LinkIntensity]); %link color and transparency
+            end
         end
         
         % update visibility of arrowheads
@@ -2607,14 +2590,27 @@ function UpdateColormap(hFig)
                     OutIndex = ismember(DataPair(:, 1:2), DataMatrix(:, 2:-1:1), 'rows').';
                     InIndex = ismember(DataPair(:, 1:2), DataMatrix(:, 2:-1:1), 'rows').';
                     
-                    % Second arrow is visible for bidirectional links;
+                    % Second arrow is visible for bidirectional links only
                     iData_mask = DataMask.';
                     bidirectional = iData_mask & (OutIndex | InIndex);
-                    set(MeasureArrows2(~bidirectional), 'Visible', 'off')
+                    non_bidirectional = MeasureArrows(~bidirectional);
+                    
+                    % for non-bidirectional links change visibility of second arrow while preserving
+                    % that of the first arrow
+                    for i = 1:length(non_bidirectional) 
+                        current_arrow = non_bidirectional(i);
+                        current_arrow.FaceVertexAlphaData(2) = 0;
+                        current_arrow.FaceVertexCData(4:6,:) = NaN;
+                    end
+                    
                 else
                     % make all second arrows invisible if user selected "In" or "Out"
-                    set(MeasureArrows2(:), 'Visible', 'off');
-                end
+                    for i = 1:length(MeasureArrows) 
+                        current_arrow = MeasureArrows(i);
+                        current_arrow.FaceVertexAlphaData(2) = 0;
+                        current_arrow.FaceVertexCData(4:6,:) = NaN;
+                    end  
+               end
             end
         end
         
@@ -2650,26 +2646,25 @@ function UpdateColormap(hFig)
         VisibleLinksRegion = RegionLinks(iData).';
         
         if (IsDirectionalData)
-            RegionArrows1 = getappdata(hFig, 'RegionArrows1');
-            RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-            VisibleArrows1 = RegionArrows1(iData).';
-            VisibleArrows2 = RegionArrows2(iData).';
+            RegionArrows = getappdata(hFig, 'RegionArrows');
+            VisibleArrows = RegionArrows(iData).';
         end
 
         % set desired colors to each link (4th column is transparency)
         if (IsDirectionalData)
             for i = 1:length(VisibleLinksRegion)
-                set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i, :) LinkIntensity]); %link color and transparency
-                set(VisibleArrows1(i), 'EdgeColor', ColorVizRegion(i, :), 'FaceColor', ColorVizRegion(i, :)); %arrow color
-                set(VisibleArrows2(i), 'EdgeColor', ColorVizRegion(i, :), 'FaceColor', ColorVizRegion(i, :));
+%                 set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i, :) LinkIntensity]); %link color and transparency
+                set(VisibleLinksRegion(i), 'Color', ColorVizRegion(i, :));
+                set(VisibleArrows(i), 'FaceVertexCData', repmat(ColorVizRegion(i, :), 6, 1)); %arrow color
             end 
-            %also set arrow transparency all at once
-            set(VisibleArrows1, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
-            set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+%             %also set arrow transparency all at once
+%             set(VisibleArrows, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
+% %             set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
         else
             for i = 1:length(VisibleLinksRegion)
-                set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i, :) LinkIntensity]);
-            end 
+                %             set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i, :) LinkIntensity]);
+                set(VisibleLinksRegion(i), 'Color', ColorVizRegion(i, :));
+            end
         end        
         
         % update arrowheads
@@ -2684,16 +2679,26 @@ function UpdateColormap(hFig)
                     % Second arrow is visible for bidirectional links;
                     iData_mask = RegionDataMask.';
                     bidirectional = iData_mask & (OutIndex | InIndex);
-                    set(RegionArrows2(~bidirectional), 'Visible', 'off')
+                    non_bidirectional = RegionArrows(~bidirectional);                    
+                    
+                    for i = 1:length(non_bidirectional)
+                        current_arrow = non_bidirectional(i);
+                        current_arrow.FaceVertexAlphaData(2) = 0;
+                        current_arrow.FaceVertexCData(4:6,:) = NaN;
+                    end
+                    
                 else
                     % make all second arrows invisible if user selected "In" or "Out"
-                    set(RegionArrows2(:), 'Visible', 'off');
+                    for i = 1:length(RegionArrows)
+                        current_arrow = MeasureArrows(i);
+                        current_arrow.FaceVertexAlphaData(2) = 0;
+                        current_arrow.FaceVertexCData(4:6,:) = NaN;
+                    end
                 end
             end
         end
     end
 end
- 
 
 function [StartColor EndColor] = InterpolateColorMap(hFig, DataPair, ColorMap, Limit)
     % Normalize and interpolate
@@ -2855,19 +2860,19 @@ function SetSelectedNodes(hFig, iNodes, IsSelected)
             
             if (IsSelected)
                 set(MeasureLinks(iData), 'Visible', 'on');
+                
+                % make both arrowheads visible when selected
                 if (IsDirectionalData)
-                    MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
-                    MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-                    set(MeasureArrows1(iData), 'Visible', 'on');
-                    set(MeasureArrows2(iData), 'Visible', 'on');
+                    MeasureArrows = getappdata(hFig, 'MeasureArrows');
+                    set(MeasureArrows(iData), 'Visible', 'on');
+                    set(MeasureArrows(iData), 'FaceVertexAlphaData', [1; 1]);
                 end
+                
             else % make everything else invisible
                 set(MeasureLinks(iData), 'Visible', 'off');
                 if (IsDirectionalData)
-                    MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
-                    MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-                    set(MeasureArrows1(iData), 'Visible', 'off');
-                    set(MeasureArrows2(iData), 'Visible', 'off');
+                    MeasureArrows = getappdata(hFig, 'MeasureArrows');
+                    set(MeasureArrows(iData), 'Visible', 'off');
                 end
             end
             
@@ -2877,18 +2882,15 @@ function SetSelectedNodes(hFig, iNodes, IsSelected)
             if (IsSelected)
                 set(RegionLinks(iData), 'Visible', 'on');
                 if (IsDirectionalData)
-                    RegionArrows1 = getappdata(hFig, 'RegionArrows1');
-                    RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-                    set(RegionArrows1(iData), 'Visible', 'on');
-                    set(RegionArrows2(iData), 'Visible', 'on');
+                    RegionArrows = getappdata(hFig, 'RegionArrows');
+                    set(RegionArrows(iData), 'Visible', 'on');
+                    set(RegionArrows(iData), 'FaceVertexAlphaData', [1; 1]);
                 end
             else
                 set(RegionLinks(iData), 'Visible', 'off');
                 if (IsDirectionalData)
-                    RegionArrows1 = getappdata(hFig, 'RegionArrows1');
-                    RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-                    set(RegionArrows1(iData), 'Visible', 'off');
-                    set(RegionArrows2(iData), 'Visible', 'off');
+                    RegionArrows = getappdata(hFig, 'RegionArrows');
+                    set(RegionArrows(iData), 'Visible', 'off');
                 end
             end
         end
@@ -2927,7 +2929,6 @@ function SetSelectedNodes(hFig, iNodes, IsSelected)
         figure_3d('SelectFiberScouts', hFig, iScouts, Color);
     end
 end
- 
  
 %% SHOW/HIDE REGION NODES FROM DISPLAY
 %show/hide region nodes (lobes + hem nodes) from display
