@@ -131,18 +131,10 @@ function Dispose(hFig) %#ok<DEFNU>
         delete(getappdata(hFig, 'MeasureArrows'));
         rmappdata(hFig, 'MeasureArrows');
     end    
-%     if (isappdata(hFig, 'MeasureArrows2'))
-%         delete(getappdata(hFig, 'MeasureArrows2'));
-%         rmappdata(hFig, 'MeasureArrows2');
-%     end
     if (isappdata(hFig, 'RegionArrows'))
         delete(getappdata(hFig, 'RegionArrows'));
         rmappdata(hFig, 'RegionArrows');
     end    
-%     if (isappdata(hFig, 'RegionArrows2'))
-%         delete(getappdata(hFig, 'RegionArrows2'));
-%         rmappdata(hFig, 'RegionArrows2');
-%     end
 end
   
 %% ===== RESET DISPLAY =====
@@ -625,6 +617,8 @@ function NodeClickEvent(hFig, NodeIndex)
         return;
     end
     
+    bst_progress('start', 'Scout selection', 'Selecting data...');
+    
     DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
     if (DisplayNode(NodeIndex) == 1)
         % 1. GET NODE SETS AND PROPERTIES
@@ -649,6 +643,7 @@ function NodeClickEvent(hFig, NodeIndex)
             elseif (length(SelNodes) == 1)
                 SetSelectedNodes(hFig, [], 1); 
                 UpdateColormap(hFig);
+                bst_progress('stop');
                 return;
             end
 
@@ -664,6 +659,7 @@ function NodeClickEvent(hFig, NodeIndex)
                 if (sum(NodeAlreadySelected) == size(SelNodes, 1))
                     SetSelectedNodes(hFig, [], 1);
                     UpdateColormap(hFig);
+                    bst_progress('stop');
                     return;
                 end
             end
@@ -697,6 +693,7 @@ function NodeClickEvent(hFig, NodeIndex)
             UpdateColormap(hFig);
         end 
     end
+    bst_progress('stop');
 end
 
 %%
@@ -2074,7 +2071,8 @@ function UpdateFigurePlot(hFig)
     SetSelectedNodes(hFig, SelNodes, 1);
     % Update panel
     panel_display('UpdatePanel', hFig);
-    bst_progress('stop');
+    interaction
+    
 end
 
 function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
@@ -2941,6 +2939,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     % Does data have regions to cluster ?
     DisplayInCircle = getappdata(hFig, 'DisplayInCircle');
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
+        bst_progress('start', 'Region function selection', 'Updating graph...');
         % Get data
         DataPair = GetPairs(hFig);        
         % Computes function across node pairs in region
@@ -2961,6 +2960,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         % Update size and transparency
         SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
 %         SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
+        bst_progress('stop');
     end
 end
  
@@ -2972,9 +2972,11 @@ function ToggleMeasureToRegionDisplay(hFig)
         % Toggle visibility
         MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
         if (MeasureLinksIsVisible)
+            bst_progress('start', 'Region graph display', 'Updating graph...');
             MeasureLinksIsVisible = 0;
             RegionLinksIsVisible = 1;
         else
+            bst_progress('start', 'Measure graph display', 'Updating graph...');
             MeasureLinksIsVisible = 1;
             RegionLinksIsVisible = 0;
         end
@@ -2988,6 +2990,7 @@ function ToggleMeasureToRegionDisplay(hFig)
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1);
         UpdateColormap(hFig); % necessary for arrowheads visibility
+        bst_progress('stop');
     else
         disp('Current data does not support region display.');
     end
@@ -3097,10 +3100,6 @@ function SetLinkSize(hFig, LinkSize)
         MeasureArrows1 = getappdata(hFig, 'MeasureArrows');
         set(MeasureArrows1, 'LineWidth', LinkSize);
     end
-%     if (isappdata(hFig, 'MeasureArrows2'))
-%         MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-%         set(MeasureArrows2, 'LineWidth', LinkSize);
-%     end
     if (isappdata(hFig, 'RegionLinks'))
         RegionLinks = getappdata(hFig, 'RegionLinks');
         set(RegionLinks, 'LineWidth', LinkSize);
@@ -3109,10 +3108,6 @@ function SetLinkSize(hFig, LinkSize)
         RegionArrows1 = getappdata(hFig, 'RegionArrows');
         set(RegionArrows1, 'LineWidth', LinkSize);
     end
-%     if (isappdata(hFig, 'RegionArrows2'))
-%         RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-%         set(RegionArrows2, 'LineWidth', LinkSize);
-%     end
     % set new size
     setappdata(hFig, 'LinkSize', LinkSize);
 end
@@ -3345,18 +3340,10 @@ function ClearAndAddNodes(hFig, V, Names)
         delete(getappdata(hFig, 'MeasureArrows'));
         rmappdata(hFig, 'MeasureArrows1');
     end
-%     if (isappdata(hFig, 'MeasureArrows2'))
-%         delete(getappdata(hFig, 'MeasureArrows2'));
-%         rmappdata(hFig, 'MeasureArrows2');
-%     end
     if (isappdata(hFig, 'RegionArrows'))
         delete(getappdata(hFig, 'RegionArrows'));
         rmappdata(hFig, 'RegionArrows1');
     end
-%     if (isappdata(hFig, 'RegionArrows2'))
-%         delete(getappdata(hFig, 'RegionArrows2'));
-%         rmappdata(hFig, 'RegionArrows2');
-%     end
     
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
     % Create nodes as array of node structs (loop backwards to pre-allocate)
