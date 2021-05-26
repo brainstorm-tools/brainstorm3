@@ -127,22 +127,22 @@ function Dispose(hFig) %#ok<DEFNU>
         delete(getappdata(hFig, 'RegionLinks'));
         rmappdata(hFig, 'RegionLinks');
     end
-    if (isappdata(hFig, 'MeasureArrows1'))
-        delete(getappdata(hFig, 'MeasureArrows1'));
-        rmappdata(hFig, 'MeasureArrows1');
+    if (isappdata(hFig, 'MeasureArrows'))
+        delete(getappdata(hFig, 'MeasureArrows'));
+        rmappdata(hFig, 'MeasureArrows');
     end    
-    if (isappdata(hFig, 'MeasureArrows2'))
-        delete(getappdata(hFig, 'MeasureArrows2'));
-        rmappdata(hFig, 'MeasureArrows2');
-    end
-    if (isappdata(hFig, 'RegionArrows1'))
-        delete(getappdata(hFig, 'RegionArrows1'));
-        rmappdata(hFig, 'RegionArrows1');
+%     if (isappdata(hFig, 'MeasureArrows2'))
+%         delete(getappdata(hFig, 'MeasureArrows2'));
+%         rmappdata(hFig, 'MeasureArrows2');
+%     end
+    if (isappdata(hFig, 'RegionArrows'))
+        delete(getappdata(hFig, 'RegionArrows'));
+        rmappdata(hFig, 'RegionArrows');
     end    
-    if (isappdata(hFig, 'RegionArrows2'))
-        delete(getappdata(hFig, 'RegionArrows2'));
-        rmappdata(hFig, 'RegionArrows2');
-    end
+%     if (isappdata(hFig, 'RegionArrows2'))
+%         delete(getappdata(hFig, 'RegionArrows2'));
+%         rmappdata(hFig, 'RegionArrows2');
+%     end
 end
   
 %% ===== RESET DISPLAY =====
@@ -381,6 +381,7 @@ end
     % Right click: popup menu
     % Double click: reset camera
 function FigureMouseUpCallback(hFig, varargin)
+
     % Get index of potentially clicked node, link or arrowhead
     global GlobalData;
     NodeIndex = GlobalData.FigConnect.ClickedNodeIndex; 
@@ -1615,7 +1616,7 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
 
         % create arrows for directional links
         if (IsDirectionalData)
-            [Arrows(i)] = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
+            Arrows(i) = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
         end
     end
     
@@ -1862,52 +1863,46 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
         'FaceColor', 'flat', ...
         'FaceAlpha', 'flat', ...
         'AlphaDataMapping', 'none', ...
-        'FaceVertexCData', repmat(NaN, 6, 1), ...
+        'FaceVertexCData', repmat(NaN, 6, 1), ... % no defined color at start
         'FaceVertexAlphaData', [0; 0], ...
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
-        'UserData', [1 Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
+        'UserData', [Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
         'ButtonDownFcn', @ArrowButtonDownFcn);
 end
 
 % When user clicks on an arrow
 function ArrowButtonDownFcn(src, ~)
-    disp('EnteredArrowButtonDownFcn');
+
     global GlobalData;
     hFig = GlobalData.FigConnect.Figure;
     clickAction = getappdata(hFig, 'clickAction');
     AllNodes = getappdata(hFig, 'AllNodes');
     
-    % UserData = [IsFirstArrowhead ArrowheadIndex IsMeasureLink StartingNodeIndex EndingNodeIndex]    
-    ArrowType = src.UserData(1);
-    Index = src.UserData(2);
-    IsMeasureLink = src.UserData(3);
-    GlobalData.FigConnect.ClickedArrowIndex = src.UserData(2);
-    GlobalData.FigConnect.ClickedNode1Index = src.UserData(4); 
-    GlobalData.FigConnect.ClickedNode2Index = src.UserData(5);
+    Index = src.UserData(1);
+    IsMeasureLink = src.UserData(2);
+    GlobalData.FigConnect.ClickedArrowIndex = src.UserData(1);
+    GlobalData.FigConnect.ClickedNode1Index = src.UserData(3); 
+    GlobalData.FigConnect.ClickedNode2Index = src.UserData(4);
     
-    if (strcmpi(clickAction, 'SingleClick'))    
-        % increase size of the selected arrow
+    if (strcmpi(clickAction, 'SingleClick')) 
+        
+        % size of the selected arrow
         CurSize = src.LineWidth;  
+        
         % increase size of the node labels and make them bold
-        Node1 = AllNodes(src.UserData(4));
+        Node1 = AllNodes(src.UserData(3));
         Label1 = Node1.TextLabel;
-        Node2 = AllNodes(src.UserData(5));
+        Node2 = AllNodes(src.UserData(4));
         Label2 = Node2.TextLabel;
         CurLabelSize = Label1.FontSize;
         set(Label1, 'FontWeight', 'bold');
         set(Label2, 'FontWeight', 'bold');
         set(Label1, 'FontSize', CurLabelSize + 2);
-        set(Label2, 'FontSize', CurLabelSize + 2);    
-        % need to modify size of the second arrowhead too
+        set(Label2, 'FontSize', CurLabelSize + 2);   
+        
+        % increase link size depending on the type of graph
         if (IsMeasureLink)
-% %             if (ArrowType) % first
-%                 Arrows = getappdata(hFig, 'MeasureArrows');
-% %             else
-% %                 Arrows = getappdata(hFig, 'MeasureArrows1');
-% %             end
-% %             OtherArrow = Arrows(Index);
-%             ArrowSize = OtherArrow.LineWidth;
             Scale = 2.0;
 
             AllLinks = getappdata(hFig, 'MeasureLinks');
@@ -1915,22 +1910,15 @@ function ArrowButtonDownFcn(src, ~)
             LinkSize = Link.LineWidth;
             set(Link, 'LineWidth', Scale*LinkSize);
         else
-%             if (ArrowType) % first
-%                 Arrows = getappdata(hFig, 'RegionArrows');
-%             else
-% %                 Arrows = getappdata(hFig, 'RegionArrows1');
-%             end
-%             OtherArrow = Arrows(Index);
-%             ArrowSize = OtherArrow.LineWidth;  
             Scale = 2.0;
             
             AllLinks = getappdata(hFig, 'RegionLinks');
             Link = AllLinks(Index);
             LinkSize = Link.LineWidth;
             set(Link, 'LineWidth', Scale*LinkSize);
-        end       
+        end
+        % increase size of the selected arrow
         set(src, 'LineWidth', Scale*CurSize);
-%         set(OtherArrow, 'LineWidth', Scale*ArrowSize);       
     end
 end
 
@@ -1944,8 +1932,8 @@ function ArrowClickEvent(hFig, ArrowIndex, LinkType, Node1Index, Node2Index)
         set(Link, 'LineWidth', CurSize/2.0);
         
         Arrows = getappdata(hFig, 'MeasureArrows');
-%         Arrows2 = getappdata(hFig, 'MeasureArrows2');
         Scale = 2.0;       
+        
     else % region links
         RegionLinks = getappdata(hFig, 'RegionLinks');
         Link = RegionLinks(ArrowIndex);
@@ -1953,16 +1941,13 @@ function ArrowClickEvent(hFig, ArrowIndex, LinkType, Node1Index, Node2Index)
         set(Link, 'LineWidth', CurSize/2.0);  
         
         Arrows = getappdata(hFig, 'RegionArrows');
-%         Arrows2 = getappdata(hFig, 'RegionArrows2');
         Scale = 2.0;
     end
     
+    % return arrow size back to initial size
     Arrow = Arrows(ArrowIndex);
-%     Arrow2 = Arrows2(ArrowIndex);
-    
     ArrowSize = Arrow.LineWidth;
     set(Arrow, 'LineWidth', ArrowSize/Scale);
-%     set(Arrow2, 'LineWidth', ArrowSize/Scale);
     
     % put labels back to original font size 
     AllNodes = getappdata(hFig, 'AllNodes');   
@@ -3108,26 +3093,26 @@ function SetLinkSize(hFig, LinkSize)
         MeasureLinks = getappdata(hFig, 'MeasureLinks');
         set(MeasureLinks, 'LineWidth', LinkSize);
     end
-    if (isappdata(hFig, 'MeasureArrows1'))
-        MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
+    if (isappdata(hFig, 'MeasureArrows'))
+        MeasureArrows1 = getappdata(hFig, 'MeasureArrows');
         set(MeasureArrows1, 'LineWidth', LinkSize);
     end
-    if (isappdata(hFig, 'MeasureArrows2'))
-        MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-        set(MeasureArrows2, 'LineWidth', LinkSize);
-    end
+%     if (isappdata(hFig, 'MeasureArrows2'))
+%         MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
+%         set(MeasureArrows2, 'LineWidth', LinkSize);
+%     end
     if (isappdata(hFig, 'RegionLinks'))
         RegionLinks = getappdata(hFig, 'RegionLinks');
         set(RegionLinks, 'LineWidth', LinkSize);
     end
-    if (isappdata(hFig, 'RegionArrows1'))
-        RegionArrows1 = getappdata(hFig, 'RegionArrows1');
+    if (isappdata(hFig, 'RegionArrows'))
+        RegionArrows1 = getappdata(hFig, 'RegionArrows');
         set(RegionArrows1, 'LineWidth', LinkSize);
     end
-    if (isappdata(hFig, 'RegionArrows2'))
-        RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-        set(RegionArrows2, 'LineWidth', LinkSize);
-    end
+%     if (isappdata(hFig, 'RegionArrows2'))
+%         RegionArrows2 = getappdata(hFig, 'RegionArrows2');
+%         set(RegionArrows2, 'LineWidth', LinkSize);
+%     end
     % set new size
     setappdata(hFig, 'LinkSize', LinkSize);
 end
@@ -3356,22 +3341,22 @@ function ClearAndAddNodes(hFig, V, Names)
         delete(getappdata(hFig, 'RegionLinks'));
         rmappdata(hFig, 'RegionLinks');
     end
-    if (isappdata(hFig, 'MeasureArrows1'))
-        delete(getappdata(hFig, 'MeasureArrows1'));
+    if (isappdata(hFig, 'MeasureArrows'))
+        delete(getappdata(hFig, 'MeasureArrows'));
         rmappdata(hFig, 'MeasureArrows1');
     end
-    if (isappdata(hFig, 'MeasureArrows2'))
-        delete(getappdata(hFig, 'MeasureArrows2'));
-        rmappdata(hFig, 'MeasureArrows2');
-    end
-    if (isappdata(hFig, 'RegionArrows1'))
-        delete(getappdata(hFig, 'RegionArrows1'));
+%     if (isappdata(hFig, 'MeasureArrows2'))
+%         delete(getappdata(hFig, 'MeasureArrows2'));
+%         rmappdata(hFig, 'MeasureArrows2');
+%     end
+    if (isappdata(hFig, 'RegionArrows'))
+        delete(getappdata(hFig, 'RegionArrows'));
         rmappdata(hFig, 'RegionArrows1');
     end
-    if (isappdata(hFig, 'RegionArrows2'))
-        delete(getappdata(hFig, 'RegionArrows2'));
-        rmappdata(hFig, 'RegionArrows2');
-    end
+%     if (isappdata(hFig, 'RegionArrows2'))
+%         delete(getappdata(hFig, 'RegionArrows2'));
+%         rmappdata(hFig, 'RegionArrows2');
+%     end
     
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
     % Create nodes as array of node structs (loop backwards to pre-allocate)
