@@ -462,8 +462,10 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     switch (keyEvent.Key)
         % ---NODE SELECTIONS---
         case 'a'            % Select All Nodes
+            bst_progress('start', 'Region Selection', 'Updating graph...');
             SetSelectedNodes(hFig, [], 1);
             UpdateColormap(hFig);
+            bst_progress('stop');
         case 'leftarrow'    % Select Previous Region
             ToggleRegionSelection(hFig, 1);
         case 'rightarrow'   % Select Next Region
@@ -565,11 +567,14 @@ function NextNode = GetNextCircularRegion(hFig, Node, Inc)
 end
 
 function SelectAllNodes(hFig)
+    bst_progress('start', 'Region Selection', 'Updating graph...');
     SetSelectedNodes(hFig, [], 1);
     UpdateColormap(hFig);
+    bst_progress('stop');
 end
 
 function ToggleRegionSelection(hFig, Inc)
+    bst_progress('start', 'Region Selection', 'Updating graph...');
     % Get selected nodes
     SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get number of AgregatingNode
@@ -603,6 +608,7 @@ function ToggleRegionSelection(hFig, Inc)
         SetSelectedNodes(hFig, NextNode, 1);
         UpdateColormap(hFig);
     end
+    bst_progress('stop');
 end
  
 %% ===== NODE CLICK CALLBACK =====
@@ -617,7 +623,7 @@ function NodeClickEvent(hFig, NodeIndex)
         return;
     end
     
-    bst_progress('start', 'Scout selection', 'Selecting data...');
+    bst_progress('start', 'Scout selection', 'Updating graph...');
     
     DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
     if (DisplayNode(NodeIndex) == 1)
@@ -3206,6 +3212,7 @@ end
  
 function SetDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure, Refresh)
     if (nargin < 5)
+        bst_progress('start', 'Direction Filter', 'Updating graph...');
         Refresh = 1;
     end
     % Get selected rows
@@ -3223,6 +3230,7 @@ function SetDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure
     if (Refresh)
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1);
+        bst_progress('stop');
     end
 end
  
