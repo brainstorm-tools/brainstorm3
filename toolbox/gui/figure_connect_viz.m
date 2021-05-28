@@ -1796,7 +1796,6 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
     % find point on the line closest to the desired location of
     % the second arrowhead (tip of second at base of the first)
     pts_line = [x(:), y(:)];
-    %dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
     difference = bsxfun(@minus, pts_line, [new_x new_y]);
     dist2 = sum(difference.^2, 2);
     [~, index] = min(dist2);    
@@ -1857,8 +1856,10 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
     xd_all = [xd1 xd2];
     yd_all = [yd1 yd2];
     
+    % first face = first arrow with vertices 1-2-3
+    % second face = second arrow with vertices 4-5-6
     Vertices = [xd_all.', yd_all.'];
-    Faces = [1 2 3; 4 5 6];
+    Faces = [1 2 3; 4 5 6]; 
     
     %%%% draw both arrowheads as 2 faces of a single patch object %%%%
     
