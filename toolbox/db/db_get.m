@@ -46,10 +46,83 @@ end
 
 varargout = {};
 switch contextName
-    case 'Subject'
-        iSubject = args{1};
-        varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', struct('Id', iSubject));
+%% ==== SUBJECT ====
+    % Usage : sSubject = db_get('Subject', SubjectIDs,       Fields, isRaw);
+    %         sSubject = db_get('Subject', SubjectFileNames, Fields, isRaw);
+    %         sSubject = db_get('Subject', CondQuery,        Fields, isRaw);
+    %         sSubject = db_get('Subject');
+    % If isRaw is set: force to return the real brainstormsubject description
+    % (ignoring wether it uses protocol's default anatomy or not)    
+    case 'Subject'      
+        % Parse inputs
+        iSubjects = args{1};
+        fields = '*';   
+        isRaw = 0;
+        templateStruct = db_template('Subject');
+                
+        if ischar(iSubjects)
+            iSubjects = {iSubjects};
+        elseif isstruct(iSubjects)
+            condQuery = args{1};           
+        end
         
+        if length(args) > 1
+            fields = args{2};
+            if ischar(fields)
+                fields = {fields};
+            end
+            for i = 1 : length(fields)
+                resultStruct.(fields{i}) = templateStruct.(fields{i});
+            end
+        else
+            resultStruct = templateStruct;
+        end
+                       
+        % isRaw parameter
+        if length(args) > 2
+            isRaw = args{3};
+        end
+        
+        % Input is SubjectIDs or SubjectFileNames
+        if ~isstruct(iSubjects)
+            nSubjects = length(iSubjects);
+            sSubjects = repmat(resultStruct, 1, nSubjects);
+            for i = 1:nSubjects
+                if iscell(nSubjects)
+                    condQuery.FileName = iSubjects{i};
+                else
+                    condQuery.Id = iSubjects(i);
+                end
+                sSubjects(i) = sql_query(sqlConn, 'select', 'subject', fields, condQuery);
+            end
+        else % Input is struct query
+            sSubjects = sql_query(sqlConn, 'select', 'subject', fields, condQuery(1));
+        end
+
+        if ~isRaw
+            % Retrive default
+            iDefaultSubject = find(ismember({sSubjects.Name}, '@default_subject'));
+            if iDefaultSubject
+                DefaultSubject = sSubjects(iDefaultSubject);
+            else
+                DefaultSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                    struct('Name', '@default_subject'));
+            end
+            % Update fields but Subjects using default Anatomy
+            for i = 1:nSubjects 
+                if sSubjects(i).UseDefaultAnat && iDefaultSubject
+                    tmp = DefaultSubject;
+                    tmp.Name              = sSubjects(i).Name;
+                    tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
+                    tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
+                    sSubjects(i) = tmp;                   
+                end    
+            end
+        end
+
+        varargout{1} = sSubjects;   
+        
+%%        
     case 'Subjects'
         includeDefaultSub = length(args) > 1 && args{2};
         if ~includeDefaultSub
