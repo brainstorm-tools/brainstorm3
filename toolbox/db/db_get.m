@@ -292,11 +292,11 @@ switch contextName
             varargout{1} = sAnatFiles;
         end
 
-%% ==== ANATOMY FILE ====
+%% ==== ANATOMY FILE and SURFACE FILE ====
     % Usage: [sFiles, sItems] = db_get('AnatomyFile', FileIDs,   Fields)
     % Usage: [sFiles, sItems] = db_get('AnatomyFile', FileNames, Fields)
     % Usage: [sFiles, sItems] = db_get('AnatomyFile', CondQuery, Fields)
-    case 'AnatomyFile'
+    case {'AnatomyFile', 'SurfaceFile'}
         % Parse inputs
         iFiles = args{1};
         fields = '*';                              
@@ -348,15 +348,7 @@ switch contextName
 
         varargout{1} = sFiles;
         varargout{2} = sItems;
-
-%% ==== SURFACE FILE ====
-    % Usage : [sSubject, iSubject, iSurface] = db_get('SurfaceFile', SurfaceFile)
-    case 'SurfaceFile'
-        sFile = db_get('AnatomyFile', sqlConn, args{1}); 
-        varargout{1} = db_get('Subject', sqlConn, sFile.Subject);
-        varargout{2} = sFile.Subject;
-        varargout{3} = sFile.Id;        
-        
+          
         
 %% ==== FUNCTIONAL FILE ====
     % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileIDs,   Fields)
