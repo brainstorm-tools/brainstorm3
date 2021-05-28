@@ -462,7 +462,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
     switch (keyEvent.Key)
         % ---NODE SELECTIONS---
         case 'a'            % Select All Nodes
-            bst_progress('start', 'Region Selection', 'Updating graph...');
+            bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
             SetSelectedNodes(hFig, [], 1);
             UpdateColormap(hFig);
             bst_progress('stop');
@@ -567,14 +567,14 @@ function NextNode = GetNextCircularRegion(hFig, Node, Inc)
 end
 
 function SelectAllNodes(hFig)
-    bst_progress('start', 'Region Selection', 'Updating graph...');
+    bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     SetSelectedNodes(hFig, [], 1);
     UpdateColormap(hFig);
     bst_progress('stop');
 end
 
 function ToggleRegionSelection(hFig, Inc)
-    bst_progress('start', 'Region Selection', 'Updating graph...');
+    bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected nodes
     SelNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get number of AgregatingNode
@@ -623,7 +623,7 @@ function NodeClickEvent(hFig, NodeIndex)
         return;
     end
     
-    bst_progress('start', 'Scout selection', 'Updating graph...');
+    bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     
     DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
     if (DisplayNode(NodeIndex) == 1)
@@ -1796,7 +1796,9 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
     % find point on the line closest to the desired location of
     % the second arrowhead (tip of second at base of the first)
     pts_line = [x(:), y(:)];
-    dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
+    %dist2 = sum((pts_line - [new_x new_y]) .^ 2, 2);
+    difference = bsxfun(@minus, pts_line, [new_x new_y]);
+    dist2 = sum(difference.^2, 2);
     [~, index] = min(dist2);    
     % if more than one index is found, return the one closest to 70
     if (size(index) > 1)
@@ -2077,8 +2079,7 @@ function UpdateFigurePlot(hFig)
     SetSelectedNodes(hFig, SelNodes, 1);
     % Update panel
     panel_display('UpdatePanel', hFig);
-    interaction
-    
+    bst_progress('stop');
 end
 
 function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
@@ -2945,7 +2946,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     % Does data have regions to cluster ?
     DisplayInCircle = getappdata(hFig, 'DisplayInCircle');
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
-        bst_progress('start', 'Region function selection', 'Updating graph...');
+        bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
         % Get data
         DataPair = GetPairs(hFig);        
         % Computes function across node pairs in region
@@ -2975,14 +2976,13 @@ end
 function ToggleMeasureToRegionDisplay(hFig)
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
     if (DisplayInRegion)
+        bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
         % Toggle visibility
         MeasureLinksIsVisible = getappdata(hFig, 'MeasureLinksIsVisible');
         if (MeasureLinksIsVisible)
-            bst_progress('start', 'Region graph display', 'Updating graph...');
             MeasureLinksIsVisible = 0;
             RegionLinksIsVisible = 1;
         else
-            bst_progress('start', 'Measure graph display', 'Updating graph...');
             MeasureLinksIsVisible = 1;
             RegionLinksIsVisible = 0;
         end
@@ -3212,7 +3212,7 @@ end
  
 function SetDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure, Refresh)
     if (nargin < 5)
-        bst_progress('start', 'Direction Filter', 'Updating graph...');
+        bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
         Refresh = 1;
     end
     % Get selected rows
