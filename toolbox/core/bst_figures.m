@@ -302,7 +302,7 @@ function UpdateFigureName(hFig)
     end
     % Get subject
     if ~isempty(GlobalData.DataSet(iDS).SubjectFile)
-        sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
+        sSubject = db_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     end
     % Add subject name
     if ~isempty(sSubject) && ~isempty(sSubject.Name)
@@ -1188,8 +1188,8 @@ function SetCurrentFigure(hFig, Type)
             [tmp__, iStudy] = bst_get('Study', StudyFile);
             panel_protocols('SelectNode', [], 'studysubject', iStudy, -1);
         elseif ~isempty(SubjectFile)
-            [tmp__, iSubject] = bst_get('Subject', SubjectFile);
-            panel_protocols('SelectNode', [], 'subject', -1, iSubject);
+            sSubject = db_get('Subject', SubjectFile);
+            panel_protocols('SelectNode', [], 'subject', -1, sSubject.Id);
         end
         
         % If this is a stat file: update of the stat panel

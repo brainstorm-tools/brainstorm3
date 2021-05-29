@@ -255,12 +255,11 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         SurfaceFile = sDbSurf.FileName;
     end
     % Get subject and surface type
-    [sSubject, iSubject, iSurfDb] = db_get('SurfaceFile', SurfaceFile);
-    if isempty(iSubject)
+    sAnatomyFile = db_get('AnatomyFile', SurfaceFile);
+    if isempty(sAnatomyFile.Subject)
         SurfaceType = 'Other';
     else
-        sAnatomy = db_get('AnatomyFile', iSurfDb, 'SurfaceType');
-        SurfaceType = sAnatomy.SurfaceType;       
+        SurfaceType = sAnatomyFile.SurfaceType;       
     end
             
     % ===== LOAD FILE =====
@@ -2616,7 +2615,7 @@ function iDS = GetDataSetSubject(SubjectFile, createSubject)
     % If no dataset found for this subject : look if subject uses default subject
     if isempty(iDS)
         % Find subject in database (return default subject if needed)
-        sSubject = bst_get('Subject', SubjectFile);
+        sSubject = db_get('Subject', SubjectFile);
         if ~isempty(sSubject)
             % Look for the default subject file in the loaded DataSets
             iDS = find(file_compare({GlobalData.DataSet.SubjectFile}, sSubject.FileName) & ...

@@ -1179,11 +1179,6 @@ switch contextName
         if isempty(GlobalData) || isempty(GlobalData.DataBase) || isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
             return;
         end
-        % Get list of current protocol subjects
-        ProtocolSubjects = bst_get('ProtocolSubjects');
-        if isempty(ProtocolSubjects)
-            return
-        end
         
         % Parse inputs
         if (nargin == 2)
@@ -1191,34 +1186,12 @@ switch contextName
         else
             error('Invalid call to bst_get().');
         end
-
-        % Remove SUBJECTS path from SurfaceFile
-        SurfaceFile = file_short(SurfaceFile);
-        % Look for surface file in DefaultSubject
-        if ~isempty(ProtocolSubjects.DefaultSubject)
-            % Find the first surface that matches the SurfaceFile
-            iSurface = find(file_compare(SurfaceFile, {ProtocolSubjects.DefaultSubject.Surface.FileName}), 1);
-            % If a surface was found in default subject : return it
-            if ~isempty(iSurface)
-                argout1 = ProtocolSubjects.DefaultSubject;
-                argout2 = ProtocolSubjects.DefaultSubject.Id;
-                argout3 = iSurface;
-                return
-            end
-        end
-        % Look for surface file in all the surfaces of all subjects
-        for iSubj = 1:length(ProtocolSubjects.Subject)
-            % Find the first surface that matches the SurfaceFile
-            iSurface = find(file_compare(SurfaceFile, {ProtocolSubjects.Subject(iSubj).Surface.FileName}), 1);
-            % If a surface was found in current subject : return it
-            if ~isempty(iSurface)
-                argout1 = ProtocolSubjects.Subject(iSubj);
-                argout2 = ProtocolSubjects.Subject(iSubj).Id;
-                argout3 = iSurface;
-                return
-            end
-        end
-            
+        
+        % Look for specific surface file
+        sFile = db_get('AnatomyFile', varargin{2}); 
+        argout1 = db_get('Subject', sFile.Subject);
+        argout2 = sFile.Subject;
+        argout3 = sFile.Id;               
         
 %% ==== SURFACE FILE BY TYPE ====
     % Usage : [sSurface, iSurface] = bst_get('SurfaceFileByType', iSubject,    SurfaceType)
