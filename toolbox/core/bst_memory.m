@@ -2628,11 +2628,11 @@ function iDS = GetDataSetSubject(SubjectFile, createSubject)
     % look for loaded subjects that use the default anatomy
     if isempty(iDS) && strcmpi(bst_fileparts(sSubject.FileName), bst_get('DirDefaultSubject'))
         % Get all protocol subjects
-        ProtocolSubjects = bst_get('ProtocolSubjects');
+        ProtocolSubjects = db_get('Subjects');
         % If subjects are defined for the protocol
-        if ~isempty(ProtocolSubjects.Subject)
+        if ~isempty(ProtocolSubjects)
             % Get subjects that use default anatomy
-            DefAnatSubj = ProtocolSubjects.Subject([ProtocolSubjects.Subject.UseDefaultAnat] == 1);
+            DefAnatSubj = ProtocolSubjects([ProtocolSubjects.UseDefaultAnat] == 1);
             % Look for loaded subject that use the default anatomy
             for i = 1:length(DefAnatSubj)
                 % Look for the subject file in the loaded DataSets

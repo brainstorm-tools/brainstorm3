@@ -44,6 +44,7 @@ else
     end
 end
 
+st = dbstack;
 varargout = {};
 switch contextName
 %% ==== SUBJECT ====
@@ -88,7 +89,7 @@ switch contextName
             nSubjects = length(iSubjects);
             sSubjects = repmat(resultStruct, 1, nSubjects);
             for i = 1:nSubjects
-                if iscell(nSubjects)
+                if iscell(iSubjects)
                     condQuery.FileName = iSubjects{i};
                 else
                     condQuery.Id = iSubjects(i);
@@ -99,19 +100,19 @@ switch contextName
             sSubjects = sql_query(sqlConn, 'select', 'subject', fields, condQuery(1));
         end
 
-        if ~isRaw
-            % Retrive default
+        % Retrive default subject is needed
+        if ~isRaw && isequal(fields, '*') && any(find([sSubjects.UseDefaultAnat]))
             iDefaultSubject = find(ismember({sSubjects.Name}, '@default_subject'));
             if iDefaultSubject
-                DefaultSubject = sSubjects(iDefaultSubject);
+                sDefaultSubject = sSubjects(iDefaultSubject);
             else
-                DefaultSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
+                sDefaultSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
                     struct('Name', '@default_subject'));
             end
-            % Update fields but Subjects using default Anatomy
+            % Update fields in Subjects using default Anatomy
             for i = 1:nSubjects 
-                if sSubjects(i).UseDefaultAnat && iDefaultSubject
-                    tmp = DefaultSubject;
+                if sSubjects(i).UseDefaultAnat && ~isempty(sDefaultSubject)
+                    tmp = sDefaultSubject;
                     tmp.Name              = sSubjects(i).Name;
                     tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
                     tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
@@ -122,9 +123,11 @@ switch contextName
 
         varargout{1} = sSubjects;   
         
-%%        
+%% ==== SUBJECTS ====
+    % Usage : sSubjects = db_get('Subjects');    % Exclude @default_subject
+    %         sSubjects = db_get('Subjects', 1); % Include @default_subject
     case 'Subjects'
-        includeDefaultSub = length(args) > 1 && args{2};
+        includeDefaultSub = ~isempty(args);
         if ~includeDefaultSub
             addQuery = ' WHERE Name <> "@default_subject"';
         else
@@ -243,7 +246,7 @@ switch contextName
                 end
             end
 
-            sFile = getFuncFileStruct(type, results(iFile));
+            sFile = getFunctionalFileStruct(type, results(iFile));
 
             if ~isempty(sStudy)
                 % Special case to make sure noise and data covariances are
@@ -400,7 +403,7 @@ switch contextName
             nFiles = length(sFiles);
             sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
             for i = 1 : nFiles
-                sItems(i) = getFuncFileStruct(sFiles(i).Type, sFiles(i));
+                sItems(i) = getFunctionalFileStruct(sFiles(i).Type, sFiles(i));
             end
         end        
 
@@ -581,7 +584,7 @@ end
 
 % Get a specific functional file db_template structure from the generic
 % db_template('FunctionalFile') structure.
-function sFile = getFuncFileStruct(type, funcFile)
+function sFile = getFunctionalFileStruct(type, funcFile)
     sFile = db_template(type);
     if isempty(funcFile)
         return;
@@ -646,7 +649,7 @@ function sFile = getFuncFileStruct(type, funcFile)
 end
 
 % Get a specific anatomy file db_template structure from the generic
-% db_template('FunctionalFile') structure.
+% db_template('AnatomyFile') structure.
 function sFile = getAnatomyFileStruct(type, anatomyFile)
     sFile = db_template(type);
     if isempty(anatomyFile)
