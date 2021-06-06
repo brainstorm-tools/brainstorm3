@@ -181,10 +181,6 @@ function ResetDisplayOptions(hFig)
     if (getappdata(hFig, 'LinkSize') ~= 1.5)
         SetLinkSize(hFig, 1.5);
     end
-    % reset link transparency
-%     if (getappdata(hFig, 'LinkTransparency') ~= 0)
-%         SetLinkTransparency(hFig, 0);
-%     end
     % reset to black background
     if (~isequal(getappdata(hFig, 'BgColor'), [0 0 0]))
         SetBackgroundColor(hFig, [0 0 0]);
@@ -982,15 +978,6 @@ function NodeLabelSizeSliderCallback(hFig, ev, jLabel)
     jLabel.setText(sprintf('%.0f', NodeValue * 2));
     SetNodeLabelSize(hFig, NodeValue, LabelValue);
 end
-
-% Link transparency slider
-% function TransparencySliderCallback(hFig, ev, jLabel)
-%     % Update Modifier value
-%     Transparency = double(ev.getSource().getValue()) / 100;
-%     % Update text value
-%     jLabel.setText(sprintf('%.0f %%', Transparency * 100));
-%     SetLinkTransparency(hFig, Transparency);
-% end
  
 % Link size slider
 function LinkSizeSliderCallback(hFig, ev, jLabel)
@@ -1423,7 +1410,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     % Create links from computed DataPair
     BuildLinks(hFig, DataPair, true);
     SetLinkSize(hFig, DispOptions.LinkSize);
-%     SetLinkTransparency(hFig, DispOptions.LinkTransparency);
         
     %% ===== Init Filters =====
     % Default intensity threshold
@@ -2031,7 +2017,6 @@ function UpdateFigurePlot(hFig)
     % Create new links from computed DataPair
     BuildLinks(hFig, DataPair, true);
     SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
-%     SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
     
     %% ===== FILTERS =====
     Refresh = 0;
@@ -2558,17 +2543,12 @@ function UpdateColormap(hFig)
         % set desired colors to each link (4th column is transparency)
         if (IsDirectionalData)
             for i = 1:length(VisibleLinks)
-%                 set(VisibleLinks(i), 'Color', [ColorViz(i, :) LinkIntensity]); %link color and transparency
                 set(VisibleLinks(i), 'Color', ColorViz(i, :));
                 set(VisibleArrows(i), 'FaceVertexCData', repmat(ColorViz(i, :), 6, 1)); 
             end 
-%             %also set arrow transparency all at once
-%             set(VisibleArrows, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
-% %             set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
         else
             for i = 1:length(VisibleLinks)
                 set(VisibleLinks(i), 'Color', ColorViz(i, :));
-                %             set(VisibleLinks(i), 'Color', [ColorViz(i, :) LinkIntensity]); %link color and transparency
             end
         end
         
@@ -2644,16 +2624,11 @@ function UpdateColormap(hFig)
         % set desired colors to each link (4th column is transparency)
         if (IsDirectionalData)
             for i = 1:length(VisibleLinksRegion)
-%                 set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i, :) LinkIntensity]); %link color and transparency
                 set(VisibleLinksRegion(i), 'Color', ColorVizRegion(i, :));
                 set(VisibleArrows(i), 'FaceVertexCData', repmat(ColorVizRegion(i, :), 6, 1)); %arrow color
             end 
-%             %also set arrow transparency all at once
-%             set(VisibleArrows, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
-% %             set(VisibleArrows2, 'EdgeAlpha', LinkIntensity, 'FaceAlpha', LinkIntensity);
         else
             for i = 1:length(VisibleLinksRegion)
-                %             set(VisibleLinksRegion(i), 'Color', [ColorVizRegion(i, :) LinkIntensity]);
                 set(VisibleLinksRegion(i), 'Color', ColorVizRegion(i, :));
             end
         end        
@@ -2967,7 +2942,6 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
         UpdateColormap(hFig);
         % Update size and transparency
         SetLinkSize(hFig, getappdata(hFig, 'LinkSize'));
-%         SetLinkTransparency(hFig, getappdata(hFig, 'LinkTransparency'));
         bst_progress('stop');
     end
 end
@@ -3120,63 +3094,9 @@ function SetLinkSize(hFig, LinkSize)
 end
  
 %% ===== LINK TRANSPARENCY ===== 
-% function SetLinkTransparency(hFig, LinkTransparency)
-%     % Note: only need to update for 'visible' links on graph (under the
-%     % thresholds selected) because when filters change, color +
-%     % transparency are updated in UpdateColormap
-%     
-%     % Note: update transparency for both measure and region links that are
-%     % "visible" because displayed links should reflect updated transparency if user toggles link type 
-%     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
-%     
-%     % MeasureLinks
-%     if (isappdata(hFig, 'MeasureLinks'))
-%         MeasureLinks = getappdata(hFig, 'MeasureLinks');           
-%         [~, DataMask] = GetPairs(hFig); 
-%         iData = find(DataMask == 1); % - 1;
-%     
-%         % set desired transparency to each link
-%         % (1 - LinkTransparency) for link intensity
-%         if (~isempty(iData))
-%             VisibleLinks = MeasureLinks(iData).';            
-%             for i = 1:length(VisibleLinks)
-%                 VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
-%             end
-%             if (IsDirectionalData)
-%                 MeasureArrows1 = getappdata(hFig, 'MeasureArrows1');
-%                 MeasureArrows2 = getappdata(hFig, 'MeasureArrows2');
-%                 VisibleArrows1 = MeasureArrows1(iData).';
-%                 VisibleArrows2 = MeasureArrows2(iData).';  
-%                 set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-%                 set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-%             end
-%         end
-%     end
-%     
-%     % RegionLinks
-%     if (isappdata(hFig, 'RegionLinks'))
-%         RegionLinks = getappdata(hFig, 'RegionLinks'); 
-%         [~, DataMask] = GetRegionPairs(hFig);
-%         iData = find(DataMask == 1);
-%         
-%         % set desired transparency to each link
-%         if (~isempty(iData))
-%             VisibleLinks = RegionLinks(iData).';           
-%             for i = 1:length(VisibleLinks)
-%                 VisibleLinks(i).Color(4) = 1.00 - LinkTransparency;
-%             end                
-%             if (IsDirectionalData)
-%                 RegionArrows1 = getappdata(hFig, 'RegionArrows1');
-%                 RegionArrows2 = getappdata(hFig, 'RegionArrows2');
-%                 VisibleArrows1 = RegionArrows1(iData).';
-%                 VisibleArrows2 = RegionArrows2(iData).';                
-%                 set(VisibleArrows1, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-%                 set(VisibleArrows2, 'EdgeAlpha', 1.00 - LinkTransparency, 'FaceAlpha', 1.00 - LinkTransparency);
-%             end
-%         end
-%     end
-%     setappdata(hFig, 'LinkTransparency', LinkTransparency);
-% end
+% Removed in new visualization tool, as color blending is not supported
+% with MATLAB graphics
+
  
 %% ===== BACKGROUND COLOR =====
 function SetBackgroundColor(hFig, BackgroundColor)
