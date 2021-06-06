@@ -60,12 +60,12 @@ iDS = [];
 iFig = [];
 
 if (strcmpi(DisplayMode, 'GraphFull'))
-    if ~exist('org.brainstorm.connect.GraphicsFramework', 'class')
-        bst_error(['The OpenGL connectivity graph is not available for your version of Matlab.' 10 10 ...
-                   'You can use these tools by running the compiled version: ' 10 ...
-                   'see the Installation page on the Brainstorm website.'], 'View connectivity matrix', 0);
+    % Visualization tool only available starting from R2014b
+    if bst_get('MatlabVersion') < 804
+        bst_error(['The connectivity graph is not available for your version of Matlab.' 10 ...
+                   'It is only available starting from MATLAB Release 2014b.'], 'View connectivity graph', 0);
         return;
-    end
+    end    
 end
 
 %% ===== LOAD CONNECT FILE =====
