@@ -1251,7 +1251,7 @@ function SetStandardView(hFig, viewNames)
         sSubject  = db_get('Subject', sAnatomyFile.Subject, 'iAnatomy');
         [~, sMriFile]  = db_get('AnatomyFile', sSubject.iAnatomy);
         % If there is an MRI associated with it
-        if ~isempty(sSubject) && ~isempty(sMriFile.FileName)
+        if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy) && ~isempty(sMriFile.FileName)
             % Load the SCS+MNI transformation from this file
             sMri = load(file_fullpath(sMriFile.FileName), 'NCS', 'SCS', 'Comment');
             if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
