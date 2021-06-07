@@ -109,14 +109,16 @@ switch contextName
                     struct('Name', '@default_subject'));
             end
             % Update fields in Subjects using default Anatomy
-            for i = 1:nSubjects 
-                if sSubjects(i).UseDefaultAnat && ~isempty(sDefaultSubject)
-                    tmp = sDefaultSubject;
-                    tmp.Name              = sSubjects(i).Name;
-                    tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
-                    tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
-                    sSubjects(i) = tmp;                   
-                end    
+            if ~isempty(sDefaultSubject)
+                for i = 1:nSubjects 
+                    if sSubjects(i).UseDefaultAnat 
+                        tmp = sDefaultSubject;
+                        tmp.Name              = sSubjects(i).Name;
+                        tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
+                        tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
+                        sSubjects(i) = tmp;                   
+                    end    
+                end
             end
         end
 
