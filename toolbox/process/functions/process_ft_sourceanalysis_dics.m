@@ -110,7 +110,7 @@ sProcess.options.otfr.Comment = {'yes', 'no (existing)', 'Overwrite TFR:'; ...
 sProcess.options.otfr.Type    = 'radio_linelabel';
 sProcess.options.otfr.Value   = 'strict';
 
-sProcess.options.maxfreq.Comment = 'Max frequnecy (for TFR calulation):';
+sProcess.options.maxfreq.Comment = 'Max frequnecy (for TFR calculation):';
 sProcess.options.maxfreq.Type    = 'value';
 sProcess.options.maxfreq.Value   = {40,'Hz ',0};
 
