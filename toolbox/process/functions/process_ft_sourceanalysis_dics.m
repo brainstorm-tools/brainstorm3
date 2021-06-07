@@ -102,7 +102,7 @@ sProcess.options.effect.Type    = 'radio_linelabel';
 sProcess.options.effect.Value   = 'strict';
 
 % TFR
-sProcess.options.label3.Comment = '<BR><B> Time-freq response (its only for data inspection):</B>';
+sProcess.options.label3.Comment = '<BR><B> Time-freq response (used for data inspection):</B>';
 sProcess.options.label3.Type    = 'label';
 
 sProcess.options.otfr.Comment = {'yes', 'no (existing)', 'Overwrite TFR:'; ...
