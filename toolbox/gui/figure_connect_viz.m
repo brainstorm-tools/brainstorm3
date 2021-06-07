@@ -107,7 +107,6 @@ function Dispose(hFig) %#ok<DEFNU>
     DispOptions.NodeSize = getappdata(hFig, 'NodeSize');
     DispOptions.LabelSize = getappdata(hFig, 'LabelSize');
     DispOptions.LinkSize = getappdata(hFig, 'LinkSize');
-%     DispOptions.LinkTransparency = getappdata(hFig, 'LinkTransparency');
     DispOptions.BgColor = getappdata(hFig, 'BgColor');
     DispOptions.HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');   
     bst_set('ConnectGraphOptions', DispOptions);
@@ -207,9 +206,6 @@ function IsDefault = CheckDisplayOptions(hFig)
     % check link size
     elseif (getappdata(hFig, 'LinkSize') ~= 1.5)
         IsDefault = false;
-    % check link transparency
-%     elseif (getappdata(hFig, 'LinkTransparency') ~= 0)
-%         IsDefault = false;
     % check black background
     elseif (~isequal(getappdata(hFig, 'BgColor'), [0 0 0]))
         IsDefault = false;
@@ -874,28 +870,6 @@ function DisplayFigurePopup(hFig)
             % Slider callbacks
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h, ev)LinkSizeSliderCallback(hFig, ev, jLabelContrast));
             jDisplayMenu.add(jPanelModifiers);
-            
-            % == MODIFY LINK TRANSPARENCY ==
-%             jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
-%             Transparency = getappdata(hFig, 'LinkTransparency');
-%             % Label
-%             gui_component('label', jPanelModifiers, '', 'Link transp');
-%             % Slider
-%             jSliderContrast = JSlider(0, 100, 100);
-%             jSliderContrast.setValue(round(Transparency * 100));
-%             jSliderContrast.setPreferredSize(java_scaled('dimension', 100, 23));
-%             %jSliderContrast.setToolTipText(tooltipSliders);
-%             jSliderContrast.setFocusable(0);
-%             jSliderContrast.setOpaque(0);
-%             jPanelModifiers.add('tab hfill', jSliderContrast);
-%             % Value (text)
-%             jLabelContrast = gui_component('label', jPanelModifiers, '', sprintf('%.0f %%', Transparency * 100));
-%             jLabelContrast.setPreferredSize(java_scaled('dimension', 50, 23));
-%             jLabelContrast.setHorizontalAlignment(JLabel.LEFT);
-%             jPanelModifiers.add(jLabelContrast);
-%             % Slider callbacks
-%             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h, ev)TransparencySliderCallback(hFig, ev, jLabelContrast));
-%             jDisplayMenu.add(jPanelModifiers);
         end
         
         % === BACKGROUND OPTIONS ===
@@ -1375,7 +1349,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     setappdata(hFig, 'NodeSize', DispOptions.NodeSize);
     setappdata(hFig, 'LabelSize', DispOptions.LabelSize); 
     setappdata(hFig, 'LinkSize', DispOptions.LinkSize);
-%     setappdata(hFig, 'LinkTransparency', DispOptions.LinkTransparency);
     setappdata(hFig, 'BgColor', DispOptions.BgColor);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1); % note: set as 1 to match default, updated to saved user pref later
     
@@ -2513,9 +2486,7 @@ function UpdateColormap(hFig)
     
     % === UPDATE DISPLAY ===
     CMap = sColormap.CMap;
-    
-    % get the transparency
-    % LinkIntensity = 1.00 - getappdata(hFig, 'LinkTransparency');  
+      
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
       
     if (sum(DataMask) > 0)

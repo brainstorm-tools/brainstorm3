@@ -3295,7 +3295,6 @@ switch contextName
             'LabelSize', 7, ...  
             'NodeSize', 5, ...         
             'LinkSize', 1.5, ...           
-            'LinkTransparency', 0, ...
             'BgColor', [0 0 0], ...        
             'HierarchyNodeIsVisible', 1);
         % If we have an additional argument, get the default values
@@ -3303,7 +3302,18 @@ switch contextName
             argout1 = defPref;
         % Otherwise, get the saved values
         else
-            argout1 = FillMissingFields(contextName, defPref);
+            savedValues = FillMissingFields(contextName, defPref);
+            
+            % if any of the fields are [], replace by default value
+            % do it here to avoid touching the common FillMissingFields
+            % function, as other tools may actually want to set [] as desired property           
+            fields = fieldnames(savedValues);
+            for i=1:numel(fields)
+                if(isempty(savedValues.(fields{i})))
+                    savedValues.(fields{i}) = defPref.(fields{i});
+                end
+            end
+            argout1 = savedValues;
         end
     
     case 'NodelistOptions'
