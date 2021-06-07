@@ -1,4 +1,4 @@
-function varargout = process_ft_dics(varargin )
+function varargout = process_ft_sourceanalysis_dics(varargin )
 % PROCESS_FT_SOURCEANALYSIS Call FieldTrip function ft_sourceanalysis
 
 % @=============================================================================
@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
 % ===== PROCESS =====
 
 % Description the process
-sProcess.Comment     = 'FieldTrip: process_ft_dics';
+sProcess.Comment     = 'FieldTrip: process_ft_sourceanalysis_dics';
 sProcess.Category    = 'Custom';
 sProcess.SubGroup    = 'Sources';
 sProcess.Index       = 356;
@@ -74,12 +74,12 @@ sProcess.options.label2.Type    = 'label';
 % Enter the FOI in the data in Hz, eg, 22:
 sProcess.options.FOI.Comment = 'FOI:';
 sProcess.options.FOI.Type    = 'value';
-sProcess.options.FOI.Value   = {0,'Hz ',18};
+sProcess.options.FOI.Value   = {18,'Hz ',0};
 
 % Enter the Tappering frequnecy in the data in Hz, eg, 4:
 sProcess.options.tpr.Comment = 'Tappering freq.:';
 sProcess.options.tpr.Type    = 'value';
-sProcess.options.tpr.Value   = {0,'Hz ',4};
+sProcess.options.tpr.Value   = {4,'Hz ',0};
 
 sProcess.options.label4.Comment = '<BR><B> Contrasting analysis:</B>'; % Contrast between pre and post, across trials
 sProcess.options.label4.Type    = 'label';
@@ -112,7 +112,7 @@ sProcess.options.otfr.Value   = 'strict';
 
 sProcess.options.maxfreq.Comment = 'Max frequnecy (for TFR calulation):';
 sProcess.options.maxfreq.Type    = 'value';
-sProcess.options.maxfreq.Value   = {0,'Hz ',40};
+sProcess.options.maxfreq.Value   = {40,'Hz ',0};
 
 end
 
@@ -661,7 +661,7 @@ plot([freq_of_interest freq_of_interest], [0 clim],...
 
 %%
 cfg = [];
-cfg.baseline = [-0.3 0];
+cfg.baseline = cfg_main.baselinetime;
 cfg.baselinetype = 'absolute';
 freq_bsl = ft_freqbaseline(cfg, tfr);
 
