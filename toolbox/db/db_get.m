@@ -44,7 +44,6 @@ else
     end
 end
 
-st = dbstack;
 varargout = {};
 switch contextName
 %% ==== SUBJECT ====
@@ -53,7 +52,7 @@ switch contextName
     %         sSubject = db_get('Subject', CondQuery,        Fields, isRaw);
     %         sSubject = db_get('Subject');
     % If isRaw is set: force to return the real brainstormsubject description
-    % (ignoring wether it uses protocol's default anatomy or not)    
+    % (ignoring whether it uses protocol's default anatomy or not)    
     case 'Subject'      
         % Parse inputs
         iSubjects = args{1};
@@ -100,7 +99,7 @@ switch contextName
             sSubjects = sql_query(sqlConn, 'select', 'subject', fields, condQuery(1));
         end
 
-        % Retrive default subject is needed
+        % Retrieve default subject if needed
         if ~isRaw && isequal(fields, '*') && any(find([sSubjects.UseDefaultAnat]))
             iDefaultSubject = find(ismember({sSubjects.Name}, '@default_subject'));
             if iDefaultSubject
