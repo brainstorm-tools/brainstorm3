@@ -1048,7 +1048,7 @@ switch (lower(action))
                             AddSeparator(jMenuRegister);
                             gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'ncs', 'ncs'));
                             gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'scs', 'scs'));
-                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / world coordinates (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
                             AddSeparator(jMenuRegister);
                             gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'vox2ras', 0));
                         end
