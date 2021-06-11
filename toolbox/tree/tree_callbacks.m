@@ -825,6 +825,12 @@ switch (lower(action))
                         DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
                     end
                 end
+                % Find anatomy volumes (exclude atlases)
+                if ~isempty(sSubject.Anatomy)
+                    iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                else
+                    iVolAnat = [];
+                end
                 % If only one modality
                 if (length(DisplayMod) == 1) && ((length(bstNodes) ~= 1) || isempty(Device)) && ~ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'}) && ~ismember(DisplayMod, {'EEG','ECOG','SEEG','ECOG+SEEG','NIRS'})
                     gui_component('MenuItem', jPopup, [], 'Display sensors', IconLoader.ICON_CHANNEL, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{1}, 'scalp'));
@@ -859,22 +865,20 @@ switch (lower(action))
                             if ~isempty(sSubject.iCortex)
                                 gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (Cortex)'],   IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'cortex', 1));
                             end
-                            if ~isempty(sSubject.iAnatomy)
-                                % MRI 3D
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, sSubject.Anatomy(iAnat).FileName, 1));
-                                    end
+                            % MRI 3D
+                            if (length(iVolAnat) == 1)
+                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', iVolAnat(1)));
+                            elseif (length(iVolAnat) > 1)
+                                for iAnat = 1:length(iVolAnat)
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, sSubject.Anatomy(iVolAnat(iAnat)).FileName, 1));
                                 end
-                                % MRI Viewer
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, sSubject.iAnatomy));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iAnat));
-                                    end
+                            end
+                            % MRI Viewer
+                            if (length(iVolAnat) == 1)
+                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(1)));
+                            elseif (length(iVolAnat) > 1)
+                                for iAnat = 1:length(iVolAnat)
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(iAnat)));
                                 end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
@@ -933,22 +937,20 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (Cortex)'],     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, 'cortex'));
                                 end
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(1).FileName));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iAnat).FileName));  
+                                if (length(iVolAnat) == 1)
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iVolAnat(1)).FileName));
+                                elseif (length(iVolAnat) > 1)
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iVolAnat(iAnat)).FileName));
                                     end
                                 end
                             end
                             % Allow edition in MRI even if there is not location available for any electrode
-                            if ~isempty(sSubject.iAnatomy)
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, 1));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iAnat));
-                                    end
+                            if (length(iVolAnat) == 1)
+                                gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(1)));
+                            elseif (length(iVolAnat) > 1)
+                                for iAnat = 1:length(iVolAnat)
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(iAnat)));
                                 end
                             end
                             AddSeparator(jMenuAlign);
@@ -1134,8 +1136,10 @@ switch (lower(action))
                             jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
                                 % ADD ANATOMIES
                                 for iAnat = 1:length(sSubject.Anatomy)
-                                    fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
-                                    gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
+                                    if isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
+                                        fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
+                                        gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
+                                    end
                                 end
                                 % ADD SURFACES
                                 for iSurf = 1:length(sSubject.Surface)
@@ -1335,10 +1339,14 @@ switch (lower(action))
                 if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                     DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
                 end
+                % Find anatomy volumes (exclude atlases)
+                if ~isempty(sSubject.Anatomy)
+                    iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                else
+                    iVolAnat = [];
+                end
                 % One data file selected only
                 if (length(bstNodes) == 1)
-                    % Get associated subject and surfaces, if it exists
-                    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                     % RAW continuous files
                     if ~bst_get('ReadOnly') && ~isStat
                         % Import in database
@@ -1394,17 +1402,15 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, AllMod{iMod}));
                                 end
-                                if ~isempty(sSubject.iAnatomy)
-                                    if (length(sSubject.Anatomy) == 1)
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, AllMod{iMod}));
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, AllMod{iMod}));
-                                    else
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, AllMod{iMod}));
-                                        end
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, AllMod{iMod}));
-                                        end
+                                if (length(iVolAnat) == 1)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, AllMod{iMod}));
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, AllMod{iMod}));
+                                elseif (length(iVolAnat) > 1)
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, AllMod{iMod}));
+                                    end
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, AllMod{iMod}));
                                     end
                                 end
                             end
@@ -1690,15 +1696,21 @@ switch (lower(action))
                         end
                     end
                     % === DISPLAY ON MRI ===
-                    if (length(sSubject.Anatomy) == 1)
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative));
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative));
+                    % Find anatomy volumes (exclude atlases)
+                    if ~isempty(sSubject.Anatomy)
+                        iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
                     else
-                        for iAnat = 1:length(sSubject.Anatomy)
-                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                        iVolAnat = [];
+                    end
+                    if (length(iVolAnat) == 1)
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                    elseif (length(iVolAnat) > 1)
+                        for iAnat = 1:length(iVolAnat)
+                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
                         end
-                        for iAnat = 1:length(sSubject.Anatomy)
-                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                        for iAnat = 1:length(iVolAnat)
+                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
                         end
                     end
                     % === DISPLAY ON SPHERE ===
@@ -1777,15 +1789,21 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuActivations, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
                         end
                         % === DISPLAY ON MRI ===
-                        if (length(sSubject.Anatomy) == 1)
-                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative));
-                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative));
+                        % Find anatomy volumes (exclude atlases)
+                        if ~isempty(sSubject.Anatomy)
+                            iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
                         else
-                            for iAnat = 1:length(sSubject.Anatomy)
-                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                            iVolAnat = [];
+                        end
+                        if (length(iVolAnat) == 1)
+                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                        elseif (length(iVolAnat) > 1)
+                            for iAnat = 1:length(iVolAnat)
+                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
                             end
-                            for iAnat = 1:length(sSubject.Anatomy)
-                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative));
+                            for iAnat = 1:length(iVolAnat)
+                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
                             end
                         end
                     % === STAT CLUSTERS ===
@@ -2055,17 +2073,21 @@ switch (lower(action))
                                             if ~isempty(sSubject.iCortex)
                                                 gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
                                             end
-                                            if ~isempty(sSubject.iAnatomy)
-                                                if (length(sSubject.Anatomy) == 1)
-                                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                                else
-                                                    for iAnat = 1:length(sSubject.Anatomy)
-                                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                                    end
-                                                    for iAnat = 1:length(sSubject.Anatomy)
-                                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                                    end
+                                            % Find anatomy volumes (exclude atlases)
+                                            if ~isempty(sSubject.Anatomy)
+                                                iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                                            else
+                                                iVolAnat = [];
+                                            end
+                                            if (length(iVolAnat) == 1)
+                                                gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                                gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                            elseif (length(iVolAnat) > 1)
+                                                for iAnat = 1:length(iVolAnat)
+                                                    gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
+                                                end
+                                                for iAnat = 1:length(iVolAnat)
+                                                    gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
                                                 end
                                             end
                                         end
@@ -2182,17 +2204,21 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
                                 end
-                                if ~isempty(sSubject.iAnatomy)
-                                    if (length(sSubject.Anatomy) == 1)
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                    else
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                        end
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                        end
+                                % Find anatomy volumes (exclude atlases)
+                                if ~isempty(sSubject.Anatomy)
+                                    iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                                else
+                                    iVolAnat = [];
+                                end
+                                if (length(iVolAnat) == 1)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                elseif (length(iVolAnat) > 1)
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
+                                    end
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
                                     end
                                 end
                             end
