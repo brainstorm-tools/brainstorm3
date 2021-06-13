@@ -170,7 +170,6 @@ function ResetDisplayOptions(hFig)
     if (~isequal(getappdata(hFig, 'TextDisplayMode'), [1 2]))
         setappdata(hFig, 'TextDisplayMode', [1 2]);
         RefreshTextDisplay(hFig);
-        HideExtraLobeNode(hFig);
     end
     % reset node+label size
     if (getappdata(hFig, 'NodeSize') ~= 5 || getappdata(hFig, 'LabelSize') ~= 7)
@@ -457,6 +456,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
             SetSelectedNodes(hFig, [], 1);
             UpdateColormap(hFig);
+            RefreshTextDisplay(hFig);
             bst_progress('stop');
         case 'leftarrow'    % Select Previous Region
             ToggleRegionSelection(hFig, 1);
@@ -600,6 +600,7 @@ function ToggleRegionSelection(hFig, Inc)
         SetSelectedNodes(hFig, NextNode, 1);
         UpdateColormap(hFig);
     end
+    RefreshTextDisplay(hFig);
     bst_progress('stop');
 end
  
@@ -691,6 +692,8 @@ function NodeClickEvent(hFig, NodeIndex)
             UpdateColormap(hFig);
         end 
     end
+    
+    RefreshTextDisplay(hFig);
     bst_progress('stop');
 end
 
@@ -1436,8 +1439,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     SetBackgroundColor(hFig, DispOptions.BgColor);
     % TextDisplayMode saved user prefs retrieved already, needs refresh
     RefreshTextDisplay(hFig);
-    % Last minute hiding
-    HideExtraLobeNode(hFig);
     % Display region and hem lobes?
     SetHierarchyNodeIsVisible(hFig, DispOptions.HierarchyNodeIsVisible);
     % Position camera
@@ -2974,7 +2975,6 @@ function SetTextDisplayMode(hFig, DisplayMode)
     setappdata(hFig, 'TextDisplayMode', TextDisplayMode);
     % Refresh
     RefreshTextDisplay(hFig);
-    HideExtraLobeNode(hFig);
 end
  
 %% == Toggle label displays for lobes === 
@@ -2999,7 +2999,6 @@ function ToggleTextDisplayMode(hFig)
     setappdata(hFig, 'TextDisplayMode', TextDisplayMode);
     % Refresh
     RefreshTextDisplay(hFig);
-    HideExtraLobeNode(hFig);
 end
 
 function ToggleLobeLabels(hFig) 
@@ -3185,6 +3184,8 @@ function RefreshTextDisplay(hFig)
                AllNodes(i).TextLabel.Visible = 'off';
             end
         end
+        
+        HideExtraLobeNode(hFig);
     end
 end
  
