@@ -53,26 +53,39 @@ switch contextName
     %         sSubject = db_get('Subject');
     % If isRaw is set: force to return the real brainstormsubject description
     % (ignoring whether it uses protocol's default anatomy or not)    
-    case 'Subject'      
-        % Parse inputs
-        iSubjects = args{1};
+    case 'Subject'
+        % Default parameters
         fields = '*';   
         isRaw = 0;
         templateStruct = db_template('Subject');
-                
+
+        % Parse first parameter
+        if isempty(args)
+           ProtocolInfo = bst_get('ProtocolInfo');
+           iSubjects = ProtocolInfo.iSubject;
+        else
+           iSubjects = args{1};
+        end
+        % SubjectFileNames and CondQuery cases
         if ischar(iSubjects)
             iSubjects = {iSubjects};
         elseif isstruct(iSubjects)
             condQuery = args{1};           
         end
-        
+
+        % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
             if ischar(fields)
                 fields = {fields};
             end
-            for i = 1 : length(fields)
-                resultStruct.(fields{i}) = templateStruct.(fields{i});
+            % Verify requested fields
+            if ~all(isfield(templateStruct, fields))
+                error('Invalid Fields requested in db_get()');
+            else
+                for i = 1 : length(fields)
+                    resultStruct.(fields{i}) = templateStruct.(fields{i});
+                end
             end
         else
             resultStruct = templateStruct;
@@ -93,7 +106,11 @@ switch contextName
                 else
                     condQuery.Id = iSubjects(i);
                 end
-                sSubjects(i) = sql_query(sqlConn, 'select', 'subject', fields, condQuery);
+                result = sql_query(sqlConn, 'select', 'subject', fields, condQuery);
+                if isempty(result)
+                    error('Subject was not found in db_get()')
+                end
+                sSubjects(i) = result;
             end
         else % Input is struct query
             sSubjects = sql_query(sqlConn, 'select', 'subject', fields, condQuery(1));
@@ -105,12 +122,11 @@ switch contextName
             if iDefaultSubject
                 sDefaultSubject = sSubjects(iDefaultSubject);
             else
-                sDefaultSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('Name', '@default_subject'));
+                sDefaultSubject = db_get(sqlConn, 'Subject', struct('Name', '@default_subject'));
             end
             % Update fields in Subjects using default Anatomy
             if ~isempty(sDefaultSubject)
-                for i = 1:nSubjects 
+                for i = 1:length(sSubjects)
                     if sSubjects(i).UseDefaultAnat 
                         tmp = sDefaultSubject;
                         tmp.Name              = sSubjects(i).Name;
@@ -124,6 +140,7 @@ switch contextName
 
         varargout{1} = sSubjects;   
         
+
 %% ==== SUBJECTS ====
     % Usage : sSubjects = db_get('Subjects');    % Exclude @default_subject
     %         sSubjects = db_get('Subjects', 1); % Include @default_subject
