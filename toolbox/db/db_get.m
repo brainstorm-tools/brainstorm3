@@ -108,7 +108,7 @@ switch contextName
                 end
                 result = sql_query(sqlConn, 'select', 'subject', fields, condQuery);
                 if isempty(result)
-                    error('Subject was not found in db_get()')
+                    error('Subject entry was not found in db_get()')
                 end
                 sSubjects(i) = result;
             end
@@ -351,7 +351,11 @@ switch contextName
                 else
                     condQuery.Id = iFiles(i);
                 end
-                sFiles(i) = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery);
+                result = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery);
+                if isempty(result)
+                    error('AnatomyFile entry was not found in db_get()')
+                end
+                sFiles(i) = result;            
             end
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery(1));
@@ -409,7 +413,11 @@ switch contextName
                 else
                     condQuery.Id = iFiles(i);
                 end
-                sFiles(i) = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
+                result = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
+                if isempty(result)
+                    error('FunctionalFile entry was not found in db_get()')
+                end
+                sFiles(i) = result;  
             end
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery(1));
