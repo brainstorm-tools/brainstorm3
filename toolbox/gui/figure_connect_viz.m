@@ -21,8 +21,10 @@ function varargout = figure_connect_viz( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin
-% Cousineau, 2019-2021; Helen Lin & Yaqi Li, 2020-2021
+% Authors: Sebastien Dery, 2013           (initial JOGL rendering)
+%          Francois Tadel, 2013-2021
+%          Martin Cousineau, 2019-2021
+%          Helen Lin & Yaqi Li, 2020-2021 (new Matlab rendering)
 
 eval(macro_method);
 end
@@ -751,8 +753,9 @@ function DisplayFigurePopup(hFig)
     if isempty(hAxes)
         return
     end
-    
+    % Get current properties
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
+    TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
     % Create popup menu
     jPopup = java_create('javax.swing.JPopupMenu');
     
@@ -772,71 +775,27 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('MenuItem', jGraphMenu, [], 'Select previous region', [], [], @(h, ev)ToggleRegionSelection(hFig, 1));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, 0));
         jGraphMenu.addSeparator();
-
-        if (DisplayInRegion)
-            % === TOGGLE HIERARCHY/REGION NODE VISIBILITY ===
-            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Hide region nodes', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, ~HierarchyNodeIsVisible));
-            jItem.setSelected(~HierarchyNodeIsVisible);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
-            jGraphMenu.addSeparator();
-
-            % === TOGGLE DISPLAY REGION LINKS ===
-            RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
-            RegionFunction = getappdata(hFig, 'RegionFunction');
-            jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
-            jItem.setSelected(RegionLinksIsVisible);
-            jItem.setEnabled(HierarchyNodeIsVisible);
-            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
-
-            % === TOGGLE REGION FUNCTIONS===
-            IsMean = strcmp(RegionFunction, 'mean');
-            jLabelMenu = gui_component('Menu', jGraphMenu, [], 'Choose region function');
-            jLabelMenu.setEnabled(HierarchyNodeIsVisible);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
-                jItem.setSelected(IsMean);
-                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
-                jItem.setSelected(~IsMean);
-        end
         
-    % ==== MENU: 2D LAYOUT (DISPLAY OPTIONS)====
-    jDisplayMenu = gui_component('Menu', jPopup, [], 'Display options', IconLoader.ICON_CONNECTN);
-            % === TOGGLE LABELS ===
-            % Lobe label abbreviations
-            if (DisplayInRegion)
-                jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Abbreviate lobe labels', [], [], @(h, ev)ToggleLobeLabels(hFig));
-                jItem.setSelected(~getappdata(hFig, 'LobeFullLabel'));
-                jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L,0));    
-            end
-            TextDisplayMode = getappdata(hFig, 'TextDisplayMode');
-            % Measure (outer) node labels
-            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show scout labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
-            jItem.setSelected(ismember(1, TextDisplayMode));
-            % Region (lobe/hemisphere) node labels
-            if (DisplayInRegion)
-                jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show region labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
-                jItem.setSelected(ismember(2, TextDisplayMode));
-                jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
-                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L,0));  
-            end
-            % Selected Nodes' labels only
-            jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'Show labels for selection only', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
-            jItem.setSelected(ismember(3, TextDisplayMode));
-        jDisplayMenu.addSeparator();
+        % === TOGGLE LABELS ===
+        % Measure (outer) node labels
+        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Show labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 1));
+        jItem.setSelected(ismember(1, TextDisplayMode));
+        % Selected Nodes' labels only
+        jItem = gui_component('CheckBoxMenuItem', jGraphMenu, [], 'Show labels for selection', [], [], @(h, ev)SetTextDisplayMode(hFig, 3));
+        jItem.setSelected(ismember(3, TextDisplayMode));
+        jGraphMenu.addSeparator();
         
-        % == SLIDERS ==
+        % === SLIDERS ===
         if (bst_get('MatlabVersion') >= 705) % Check Matlab version: Works only for R2007b and newer
             % === MODIFY NODE AND LINK SIZE ===
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
+            jPanelModifiers = gui_river([0 0], [0, 31, 0, 0]);
             NodeSize = getappdata(hFig, 'NodeSize');
             % Label
-            gui_component('label', jPanelModifiers, '', 'Node & label size');
+            gui_component('label', jPanelModifiers, '', 'Label size:');
             % Slider
             jSliderContrast = JSlider(5, 25); % uses factor of 2 for node sizes 2.5 to 12.5 with increments of 0.5 in actuality
             jSliderContrast.setValue(round(NodeSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension', 100, 23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
             jSliderContrast.setFocusable(0);
             jSliderContrast.setOpaque(0);
             jPanelModifiers.add('tab hfill', jSliderContrast);
@@ -847,21 +806,15 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h, ev)NodeLabelSizeSliderCallback(hFig, ev, jLabelContrast));
-            jDisplayMenu.add(jPanelModifiers);
-            if (~DisplayInRegion)
-                jDisplayMenu.addSeparator();
-            end
-        
+
             % == MODIFY LINK SIZE ==
-            jPanelModifiers = gui_river([0 0], [0, 29, 0, 0]);
             LinkSize = getappdata(hFig, 'LinkSize');
             % Label
-            gui_component('label', jPanelModifiers, '', 'Link size');
+            gui_component('label', jPanelModifiers, 'br', 'Link size:');
             % Slider
             jSliderContrast = JSlider(1, 20); % uses factor of 2 for link sizes 0.5 to 10.0 with increments of 0.5 in actuality
             jSliderContrast.setValue(round(LinkSize * 2));
             jSliderContrast.setPreferredSize(java_scaled('dimension', 100, 23));
-            %jSliderContrast.setToolTipText(tooltipSliders);
             jSliderContrast.setFocusable(0);
             jSliderContrast.setOpaque(0);
             jPanelModifiers.add('tab hfill', jSliderContrast);
@@ -872,20 +825,49 @@ function DisplayFigurePopup(hFig)
             jPanelModifiers.add(jLabelContrast);
             % Slider callbacks
             java_setcb(jSliderContrast.getModel(), 'StateChangedCallback', @(h, ev)LinkSizeSliderCallback(hFig, ev, jLabelContrast));
-            jDisplayMenu.add(jPanelModifiers);
+            jGraphMenu.add(jPanelModifiers);
+            jGraphMenu.addSeparator();
         end
         
-        % === BACKGROUND OPTIONS ===
-        jDisplayMenu.addSeparator();
-        BackgroundColor = getappdata(hFig, 'BgColor');
-        IsWhite = all(BackgroundColor == [1 1 1]);
-        jItem = gui_component('CheckBoxMenuItem', jDisplayMenu, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
-        jItem.setSelected(IsWhite);
-        
+        % === REGIONS ===
+        if (DisplayInRegion)
+            jMenuRegion = gui_component('Menu', jGraphMenu, [], 'Regions / lobes');
+            % Show region nodes
+            HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
+            jItem = gui_component('CheckBoxMenuItem', jMenuRegion, [], 'Show regions', [], [], @(h, ev)SetHierarchyNodeIsVisible(hFig, ~HierarchyNodeIsVisible));
+            jItem.setSelected(HierarchyNodeIsVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
+            % Show region labels
+            jItem = gui_component('CheckBoxMenuItem', jMenuRegion, [], 'Show region labels', [], [], @(h, ev)SetTextDisplayMode(hFig, 2));
+            isShowRegionLabel = ismember(2, TextDisplayMode);
+            jItem.setSelected(isShowRegionLabel);
+            jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible'));
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L,0));
+            % Label abbreviations
+            jItem = gui_component('CheckBoxMenuItem', jMenuRegion, [], 'Abbreviate region labels', [], [], @(h, ev)ToggleLobeLabels(hFig));
+            jItem.setSelected(~getappdata(hFig, 'LobeFullLabel'));
+            jItem.setEnabled(getappdata(hFig, 'HierarchyNodeIsVisible') && isShowRegionLabel);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L,0));
+            jMenuRegion.addSeparator();
+            % Display region mean/max
+            RegionLinksIsVisible = getappdata(hFig, 'RegionLinksIsVisible');
+            RegionFunction = getappdata(hFig, 'RegionFunction');
+            jItem = gui_component('CheckBoxMenuItem', jMenuRegion, [], ['Display region ' RegionFunction], [], [], @(h, ev)ToggleMeasureToRegionDisplay(hFig));
+            jItem.setSelected(RegionLinksIsVisible);
+            jItem.setEnabled(HierarchyNodeIsVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_M, 0));
+            % Set region function
+            IsMean = strcmp(RegionFunction, 'mean');
+            jLabelMenu = gui_component('Menu', jMenuRegion, [], 'Choose region function');
+            jLabelMenu.setEnabled(HierarchyNodeIsVisible);
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Mean', [], [], @(h, ev)SetRegionFunction(hFig, 'mean'));
+                jItem.setSelected(IsMean);
+                jItem = gui_component('CheckBoxMenuItem', jLabelMenu, [], 'Max', [], [], @(h, ev)SetRegionFunction(hFig, 'max'));
+                jItem.setSelected(~IsMean);
+            jGraphMenu.addSeparator();
+        end
         % === DEFAULT/RESET ===
-        jDisplayMenu.addSeparator();
-        jItem = gui_component('MenuItem', jDisplayMenu, [], 'Reset display options', [], [], @(h, ev)ResetDisplayOptions(hFig));
+        jItem = gui_component('MenuItem', jGraphMenu, [], 'Reset display options', [], [], @(h, ev)ResetDisplayOptions(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, 0));
         jItem.setEnabled(~CheckDisplayOptions(hFig));
     
@@ -902,27 +884,12 @@ function DisplayFigurePopup(hFig)
     
     % ==== MENU: FIGURE (copied from figure_3D.m ====
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
-    
-        % Note: Show Axes and Show Headpoints commented out, not applicable
-        % to this tool
-%         % Show axes
-%         isAxis = ~isempty(findobj(hFig, 'Tag', 'AxisXYZ'));
-%         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View axis', IconLoader.ICON_AXES, [], @(h,ev)ViewAxis(hFig, ~isAxis));
-%         jItem.setSelected(isAxis);
-%         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_MASK)); 
-%         % Show Head points
-%         isHeadPoints = ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc);
-%         if isHeadPoints && ~strcmpi(FigureType, 'Topography')
-%             % Are head points visible
-%             hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
-%             isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
-%             jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible));
-%             jItem.setSelected(isVisible);
-%         end
-%         jMenuFigure.addSeparator();
-
         % Change background color
-        gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
+        BackgroundColor = getappdata(hFig, 'BgColor');
+        IsWhite = all(BackgroundColor == [1 1 1]);
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'White background', [], [], @(h, ev)ToggleBackground(hFig));
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
+        jItem.setSelected(IsWhite);
         jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
