@@ -158,6 +158,8 @@ if strcmpi(commandName, 'stop') && ismember(computer('arch'), {'glnx86', 'glnxa6
     fprintf(' ');
     fprintf('\b');
     drawnow();
+    % The dialog needs to be displayed for a short period before being hidden
+    pause(0.05);
 end
 
 

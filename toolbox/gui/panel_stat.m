@@ -321,15 +321,19 @@ end
 %% ===== GET FIGURE CLUSTERS =====
 function [StatClusters,StatFile,iFig,iDS] = GetFigureClusters(hFig)
     global GlobalData;
+    % Initialize returned values
+    StatFile = [];
+    StatClusters = [];
     % Default current figure
     if (nargin < 1) || isempty(hFig)
         hFig = bst_figures('GetCurrentFigure');
     end
     % Get figure
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig); 
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
+        return;
+    end
     % Get loaded clusters
-    StatFile = [];
-    StatClusters = [];
     switch GlobalData.DataSet(iDS).Figure(iFig).Id.Type
         case 'DataTimeSeries'
             TsInfo = getappdata(hFig, 'TsInfo');

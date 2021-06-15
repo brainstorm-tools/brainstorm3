@@ -58,17 +58,10 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % Get file name
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     fBase = strrep(fBase, '.nii', '');
-    % Try to get a side .csv with the labels
+    % LABELS: Try to get a side .csv with the labels
     LabelsFile = bst_fullfile(fPath, [fBase, '.csv']);
     if file_exist(LabelsFile)
-        Labels = in_tsv(LabelsFile, {'ROIid','ROIname','ROIcolor'}, 0, ';');
-        if any(cellfun(@isempty, Labels(:)))
-            disp('BST> Error: Missing columns is CSV file: ROIid, ROIname or ROIcolor.');
-            Labels = [];
-        else
-            Labels(:,1) = cellfun(@str2double,  Labels(:,1), 'UniformOutput', 0);
-            Labels(:,3) = cellfun(@str2num,  Labels(:,3), 'UniformOutput', 0);
-        end
+        Labels = in_label_cat12(LabelsFile);
     end
     % If labels were read: use the filename as the atlas name
     fBase = lower(fBase);

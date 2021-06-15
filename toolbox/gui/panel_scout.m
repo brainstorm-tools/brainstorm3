@@ -366,13 +366,13 @@ function UpdatePanel()
     UpdateScoutsList();
     % Update menus
     if ~isempty(sSurf) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas) && (sSurf.iAtlas <= length(sSurf.Atlas))
-        UpdateMenus(sSurf.Atlas(sSurf.iAtlas));
+        UpdateMenus(sSurf.Atlas(sSurf.iAtlas), sSurf);
     end
 end
 
 
 %% ===== SHOW MENU =====
-function UpdateMenus(sAtlas)
+function UpdateMenus(sAtlas, sSurf)
     import org.brainstorm.icon.*;
     % Get "Scouts" panel controls
     ctrl = bst_get('PanelControls', 'Scout');
@@ -391,7 +391,7 @@ function UpdateMenus(sAtlas)
     jMenuNew = gui_component('Menu', jMenu, [], 'New atlas', IconLoader.ICON_ATLAS, [], []);
         gui_component('MenuItem', jMenuNew, [], 'Empty atlas', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SetAtlas, [], 'Add'));
         jMenuNew.addSeparator();
-        gui_component('MenuItem', jMenuNew, [], 'Copy atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
+        gui_component('MenuItem', jMenuNew, [], 'Copy current atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
         gui_component('MenuItem', jMenuNew, [], 'Copy selected scouts',  IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 0,0));
         % Create special atlases
         jMenuNew.addSeparator();
@@ -399,6 +399,22 @@ function UpdateMenus(sAtlas)
             gui_component('MenuItem', jMenuNew, [], 'Source model options', IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@CreateAtlasInverse));
         end
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
+    % Create atlas from volumes in subject anatomy
+    jMenuAnat = gui_component('Menu', jMenu, [], 'From subject anatomy', IconLoader.ICON_VOLATLAS, [], []);
+    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#')
+        sSubject = bst_get('SurfaceFile', sSurf.FileName);
+        if ~isempty(sSubject.Anatomy)
+            iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+            if ~isempty(iAnatAtlases)
+                for iAnat = iAnatAtlases
+                    gui_component('MenuItem', jMenuAnat, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@LoadScouts, file_fullpath(sSubject.Anatomy(iAnat).FileName), 1));
+                end
+            else
+                jEmpty = gui_component('MenuItem', jMenuAnat, [], '<HTML><I>No volume atlas in subject anatomy</I>', [], [], []);
+                jEmpty.setEnabled(0);
+            end
+        end
+    end
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Load atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts));
     if ~isReadOnly
@@ -472,8 +488,6 @@ function UpdateMenus(sAtlas)
     end
         
     % === MENU PROJECT ====
-    % Get current surface and atlas
-    [sAtlas, iAtlas, sSurf] = GetAtlas();
     % Offer these projection menus only for Cortex surfaces
     if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
         % Get subjectlist
@@ -1015,7 +1029,7 @@ function SetCurrentAtlas(iAtlas, isForced)
         return;
     end
     % Update menus
-    UpdateMenus(sSurf.Atlas(iAtlas));
+    UpdateMenus(sSurf.Atlas(iAtlas), sSurf);
     % If current atlas did not change: exit
     if ~isForced && isequal(sSurf.iAtlas, iAtlas)
         return;
@@ -1964,6 +1978,12 @@ function CreateAtlasVolumeGrid()
     end
     % Create new atlas
     SetAtlas([], 'Add', sAtlasVol);
+end
+
+
+%% ===== CREATE ATLAS: ANATOMY VOLUME =====
+function CreateAtlasAnat(iAnatomy)
+
 end
 
 

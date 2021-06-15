@@ -166,6 +166,12 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     else
         OPTIONS.Target = [];
     end
+    % Ignore bad segments
+    if ismember(sInputA(1).FileType, {'data','raw'}) && isfield(sProcess.options, 'ignorebad') && ~isempty(sProcess.options.ignorebad.Value)
+        OPTIONS.isIgnoreBad = sProcess.options.ignorebad.Value;
+    else
+        OPTIONS.isIgnoreBad = [];
+    end
     % All other options
     OPTIONS.NumFreqs     = sProcess.options.numfreqs.Value{1};
     OPTIONS.MaxSignals   = sProcess.options.max_block_size.Value{1};
@@ -173,7 +179,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isMex        = sProcess.options.ismex.Value;
     OPTIONS.isSaveMax    = sProcess.options.savemax.Value;
     OPTIONS.isAvgOutput  = sProcess.options.avgoutput.Value;
-    OPTIONS.isIgnoreBad  = sProcess.options.ignorebad.Value;
     if (length(sInputA) == 1)
         OPTIONS.isAvgOutput = 0;
     end

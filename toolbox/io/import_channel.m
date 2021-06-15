@@ -125,13 +125,13 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
-    case {'BIDS-ORIG-MM', 'BIDS-MNI-MM'}
+    case {'BIDS-ORIG-MM', 'BIDS-OTHER-MM', 'BIDS-MNI-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
         FileUnits = 'm';
-    case {'BIDS-ORIG-CM', 'BIDS-MNI-CM'}
+    case {'BIDS-ORIG-CM', 'BIDS-OTHER-CM', 'BIDS-MNI-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
         FileUnits = 'm';
-    case {'BIDS-ORIG-M', 'BIDS-MNI-M'}
+    case {'BIDS-ORIG-M', 'BIDS-OTHER-M', 'BIDS-MNI-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
         
