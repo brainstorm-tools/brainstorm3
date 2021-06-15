@@ -3015,16 +3015,16 @@ function SetLinkSize(hFig, LinkSize)
         set(MeasureLinks, 'LineWidth', LinkSize);
     end
     if (isappdata(hFig, 'MeasureArrows'))
-        MeasureArrows1 = getappdata(hFig, 'MeasureArrows');
-        set(MeasureArrows1, 'LineWidth', LinkSize);
+        MeasureArrows = getappdata(hFig, 'MeasureArrows');
+        set(MeasureArrows, 'LineWidth', LinkSize);
     end
     if (isappdata(hFig, 'RegionLinks'))
         RegionLinks = getappdata(hFig, 'RegionLinks');
         set(RegionLinks, 'LineWidth', LinkSize);
     end
     if (isappdata(hFig, 'RegionArrows'))
-        RegionArrows1 = getappdata(hFig, 'RegionArrows');
-        set(RegionArrows1, 'LineWidth', LinkSize);
+        RegionArrows = getappdata(hFig, 'RegionArrows');
+        set(RegionArrows, 'LineWidth', LinkSize);
     end
     % set new size
     setappdata(hFig, 'LinkSize', LinkSize);
@@ -3206,11 +3206,11 @@ function ClearAndAddNodes(hFig, V, Names)
     end
     if (isappdata(hFig, 'MeasureArrows'))
         delete(getappdata(hFig, 'MeasureArrows'));
-        rmappdata(hFig, 'MeasureArrows1');
+        rmappdata(hFig, 'MeasureArrows');
     end
     if (isappdata(hFig, 'RegionArrows'))
         delete(getappdata(hFig, 'RegionArrows'));
-        rmappdata(hFig, 'RegionArrows1');
+        rmappdata(hFig, 'RegionArrows');
     end
     
     % --- CREATE AND ADD NODES TO DISPLAY ---- %
