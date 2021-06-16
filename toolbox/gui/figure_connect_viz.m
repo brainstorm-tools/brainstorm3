@@ -644,6 +644,7 @@ function NodeClickEvent(hFig, NodeIndex)
             elseif (length(SelNodes) == 1)
                 SetSelectedNodes(hFig, [], 1); 
                 UpdateColormap(hFig);
+                RefreshTextDisplay(hFig);
                 bst_progress('stop');
                 return;
             end
@@ -660,6 +661,7 @@ function NodeClickEvent(hFig, NodeIndex)
                 if (sum(NodeAlreadySelected) == size(SelNodes, 1))
                     SetSelectedNodes(hFig, [], 1);
                     UpdateColormap(hFig);
+                    RefreshTextDisplay(hFig);
                     bst_progress('stop');
                     return;
                 end
