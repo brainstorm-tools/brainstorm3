@@ -1454,6 +1454,13 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
         Yextend = abs(OriginalAxis(4)-OriginalAxis(3));
     end
     
+    % if we are building measurelinks, we use their distance to compute the
+    % radius (see math below)
+    if (IsMeasureLink)
+        RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
+        MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
+    end
+    
     % Note: DataPair computation already removed diagonal and capped at max 5000
     % pairs 
     
@@ -1473,7 +1480,17 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
                 
                 p = [(AllNodes(Node1).Position(1) - AllNodes(Node2).Position(1)) (AllNodes(Node1).Position(2) - AllNodes(Node2).Position(2))]; % horde vector
                 H = norm(p);            % horde length
-                R = 0.63*H;             % arc radius
+                
+                % For measure links, we have some rare cases where the
+                % radius of the arc needs to be adapted for links that
+                % are long. In these cases, the arc radius depends on
+                % distance between the nodes. 
+                if (IsMeasureLink && MeasureDistance(i) >= 80.0)
+                    R = 0.75*H;
+                else
+                    R = 0.63*H;             
+                end
+
                 v = [-p(2) p(1)]/H;     % perpendicular vector
                 L = sqrt(R*R-H*H/4);	% distance to circle (from horde)
                 p = [(AllNodes(Node1).Position(1) + AllNodes(Node2).Position(1)) (AllNodes(Node1).Position(2) + AllNodes(Node2).Position(2))];% vector center horde
