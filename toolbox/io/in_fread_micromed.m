@@ -43,8 +43,14 @@ switch bytesPerVal
     case 4, dataClass = 'uint32';
 end
 
+% Sample offset of the first block, for reduced files
+if isfield(sFile.header, 'smp_offset') && ~isempty(sFile.header.smp_offset)
+    smp_offset = sFile.header.smp_offset;
+else
+    smp_offset = 0;
+end
 % Time offset
-offsetTime = round(SamplesBounds(1) * nChannels * bytesPerVal);
+offsetTime = round((SamplesBounds(1) - smp_offset) * nChannels * bytesPerVal);
 % Channel offset at the beginning and end of each channel block
 offsetChannelStart = round((ChannelsRange(1)-1) * bytesPerVal);
 offsetChannelEnd   = (nChannels - ChannelsRange(2)) * bytesPerVal;
