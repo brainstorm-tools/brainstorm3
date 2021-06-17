@@ -66,10 +66,22 @@ for iEvt = 1:length(uniqueEvt)
     iOcc = find(strcmpi(Markers(:,2)', uniqueEvt{iEvt}));
     % Compute samples from the file start
     samples = round([Markers{iOcc,1}] .* sFile.prop.sfreq);
-    notes = [Markers(iOcc,3)]';
+    notes = Markers(iOcc,3)';
     % Detect if simple events (duration <= 2 samples)
     if ~any(samples(2,:) - samples(1,:) > 2)
         samples(2,:) = [];
+    end
+    % Adjust if there are segments in the file
+    if isfield(sFile.header, 'segment') && ~isempty(sFile.header.segment)
+        for iOcc = 1:size(samples,2)
+            iSeg = find(samples(1,iOcc) >= [sFile.header.segment.time], 1, 'last');
+            if ~isempty(iSeg)
+                samples(:,iOcc) = ...
+                    samples(:,iOcc) - sFile.header.segment(iSeg).time ...                    % Offset from beginning of segment (in samples)
+                    + sFile.header.segment(iSeg).sample - sFile.header.segment(1).sample ... % Offset from beginning of file
+                    + round(sFile.prop.times(1) .* sFile.prop.sfreq);                        % Start of the file
+            end
+        end
     end
     % Detect events outside of the file definition
     iOut = find((samples(end,:) < sFile.prop.times(1) .* sFile.prop.sfreq) | (samples(1,:) > sFile.prop.times(2) .* sFile.prop.sfreq));
