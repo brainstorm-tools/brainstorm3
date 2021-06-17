@@ -2957,8 +2957,7 @@ function SetTextDisplayMode(hFig, DisplayMode)
     else
         % automatically show all labels when uselecting "Show labels for selection"
         if (DisplayMode == 3)
-            TextDisplayMode = [1 2];
-            setappdata(hFig, 'TextDisplayMode', TextDisplayMode);       
+            TextDisplayMode = [1 2];   
         else
             TextDisplayMode(Index) = [];
         end
