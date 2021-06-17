@@ -3,7 +3,7 @@ function F = in_fread_axion(sFile, SamplesBounds, iChannels, precision)
 %
 % USAGE:  F = in_fread_axion(sFile, SamplesBounds=[], iChannels=[], precision)
 
-% This function uses the the "Axion MATLAB Files" package 
+% This function uses the "Axion MATLAB Files" package 
 % distributed by Axion Biosystems with their AxIS software 
 
 % @=============================================================================

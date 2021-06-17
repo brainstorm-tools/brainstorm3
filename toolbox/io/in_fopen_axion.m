@@ -4,7 +4,7 @@ function [sFile, ChannelMat] = in_fopen_axion(DataFile)
 %
 % USAGE: [sFile, ChannelMat] = in_fopen_axion(DataFile)
 
-% This function uses the the "Axion MATLAB Files" package 
+% This function uses the "Axion MATLAB Files" package 
 % distributed by Axion Biosystems with their AxIS software 
 
 % @=============================================================================
