@@ -1133,6 +1133,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     
     % === SHOW PLUGIN INFO ===
+    % Log install
+    bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
     % Show plugin information (interactive mode only)
     if isInteractive
         % Hide progress bar
