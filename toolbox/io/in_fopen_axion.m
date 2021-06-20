@@ -25,56 +25,49 @@ function [sFile, ChannelMat] = in_fopen_axion(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Raymundo Cassani, 2021
+% Authors: Raymundo Cassani, Francois Tadel, 2021
 
 
-%% ===== GET FILE =====
-% Get base dataset folder
-[~, ~, axisFormat] = bst_fileparts(DataFile);
-FileData = AxisFile(DataFile);
-
-
-%% ===== FILE COMMENT =====
-comment = FileData.Notes.RecordingName;
-
-
-%% ===== READ DATA HEADERS =====
-hdr.AxisVersion = FileData.AXIS_VERSION;
-hdr.PlateType = FileData.Notes.Description;
-hdr.Extension = axisFormat;
-hdr.Description = FileData.Notes.Description;
-hdr.SamplingFrequency = FileData.DataSets.Header.SamplingFrequency;
-hdr.VoltageScale = FileData.DataSets.Header.VoltageScale;
-hdr.RecordingSetup = FileData.DataSets.HeaderExtension.Description;
-hdr.AcqDate = datestr(FileData.DataSets.Header.ExperimentStartTime.ToDateTimeVect);
-
-
-%% Get all channels
-sChannel = struct('WellRow',         [], ...
-                  'WellColumn',      [], ... 
-                  'ElectrodeColumn', [], ...
-                  'ElectrodeRow',    []);
-channelFields = fields(sChannel);
-sChannel.Label = '';
-hdr.ChannelCount = length(FileData.DataSets.ChannelArray.Channels);
-sChannels = repmat(sChannel, 1, hdr.ChannelCount);
-for iChannel = 1 : hdr.ChannelCount
-    for iField = 1 : length(channelFields)
-        sChannels(iChannel).(channelFields{iField}) = ...
-            FileData.DataSets.ChannelArray.Channels(iChannel).(channelFields{iField});
+%% ===== INSTALL MFF LIBRARY =====
+if ~exist('AxisFile', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'axion');
+    if ~isInstalled
+        error(errMsg);
     end
-    % Assign label according the Axion nomenclature
-    sChannels(iChannel) = axionChannelLabel(sChannels(iChannel)); 
+end
+
+
+%% ===== READ FILE HEADER =====
+% Get base dataset folder
+[fPath, fBase] = bst_fileparts(DataFile);
+hdr.FileObj = AxisFile(DataFile);
+
+
+%% ===== GET CHANNEL LABELS =====
+hdr.ChannelCount = length(hdr.FileObj.DataSets.ChannelArray.Channels);
+hdr.ChannelLabels = cell(1, hdr.ChannelCount);
+for iChannel = 1:hdr.ChannelCount
+    % Label according the Axion nomenclature, four characters, each corresponds
+    % to the indices of the 4D cell array obtained with FileObj.DataSets.LoadData()
+    % 1st char: WellRow         = 1st index in 4D array,  'A', 'B',...  =  1, 2,...
+    % 2nd char: WellColumn      = 2nd index in 4D array,  '1', '2',...  =  1, 2,...
+    % 3rd char: ElectrodeColumn = 3rd index in 4D array,  '1', '2',...  =  1, 2,...
+    % 4th char: ElectrodeRow    = 4th index in 4D array,  '1', '2',...  =  1, 2,...
+    chObj = hdr.FileObj.DataSets.ChannelArray.Channels(iChannel);
+    hdr.ChannelLabels{iChannel} = [...
+        char(uint8('A') - 1 + chObj.WellRow), ...
+        num2str(chObj.WellColumn), ...
+        num2str(chObj.ElectrodeColumn), ...
+        num2str(chObj.ElectrodeRow)];
+    % Read all the data for one channel, to get the file duration
+    if (iChannel == 1)
+        chData = hdr.FileObj.DataSets.LoadData(hdr.ChannelLabels{1}(1:2), hdr.ChannelLabels{1}(3:4));
+        chWaveform = chData{chObj.WellRow, chObj.WellColumn, chObj.ElectrodeColumn, chObj.ElectrodeRow};
+        hdr.NumSamples = length(chWaveform.Data);
+    end
 end
 % Sort channels by label
-[~,idx] = sort({sChannels.Label});
-hdr.sChannels = sChannels(idx);
-
-% Read one channel to get number of samples
-sChannel = hdr.sChannels(1);
-tmpAll = FileData.DataSets.LoadData(sChannel.Label(1:2), sChannel.Label(3:4));
-tmp = tmpAll{sChannel.WellRow, sChannel.WellColumn, sChannel.ElectrodeColumn, sChannel.ElectrodeRow};
-hdr.NumSamples = length(tmp.Data);
+[hdr.ChannelLabels, hdr.ChannelIndices] = sort(hdr.ChannelLabels);
 
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
@@ -84,47 +77,33 @@ sFile = db_template('sfile');
 sFile.filename    = DataFile;
 sFile.format      = 'EEG-AXION';
 sFile.device      = 'MEA Axion';
-sFile.comment     = comment;
+sFile.comment     = fBase;
 % Sampling frequency is considered the same for all channels
-sFile.prop.sfreq  = hdr.SamplingFrequency;
+sFile.prop.sfreq  = hdr.FileObj.DataSets.Header.SamplingFrequency;
 sFile.prop.times  = [0, hdr.NumSamples - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg   = 1;
 sFile.header      = hdr;
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
-sFile.acq_date    = hdr.AcqDate;
+sFile.acq_date    = datestr(hdr.FileObj.DataSets.Header.ExperimentStartTime.ToDateTimeVect);
 
 
-%% ===== CREATE EMPTY CHANNEL FILE =====
+%% ===== CHANNEL FILE =====
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'Axion channels';
 ChannelMat.Channel = repmat(db_template('channeldesc'), [1, hdr.ChannelCount]);
-
-for iChannel = 1 : hdr.ChannelCount
-    ChannelMat.Channel(iChannel).Name = hdr.sChannels(iChannel).Label;
-    ChannelMat.Channel(iChannel).Loc     = [0; 0; 0];
-    ChannelMat.Channel(iChannel).Type    = 'EEG';
-    ChannelMat.Channel(iChannel).Orient  = [];
-    ChannelMat.Channel(iChannel).Weight  = 1;
-    ChannelMat.Channel(iChannel).Comment = [];
+for iChannel = 1:hdr.ChannelCount
+    ChannelMat.Channel(iChannel).Name   = hdr.ChannelLabels{iChannel};
+    ChannelMat.Channel(iChannel).Type   = 'EEG';
+    ChannelMat.Channel(iChannel).Weight = 1;
 end
 
 
 %% ===== READ EVENTS =====
 % TODO
 
-end
+
+% Close the file handle before saving the file
+hdr.FileObj.close();
 
 
-function sChannel = axionChannelLabel(sChannel)
-% Label according the Axion nomenclature, four characters, each corresponds
-% to the indices of the 4D cell array obtained with FileData.DataSets.LoadData()
-% 1st char: WellRow         = 1st index in 4D array,  'A', 'B',...  =  1, 2,...
-% 2nd char: WellColumn      = 2nd index in 4D array,  '1', '2',...  =  1, 2,...
-% 3rd char: ElectrodeColumn = 3rd index in 4D array,  '1', '2',...  =  1, 2,...
-% 4th char: ElectrodeRow    = 4th index in 4D array,  '1', '2',...  =  1, 2,...
-    sChannel.Label = [char(uint8('A') - 1 + sChannel.WellRow), ...
-                      num2str(sChannel.WellColumn), ...
-                      num2str(sChannel.ElectrodeColumn), ...
-                      num2str(sChannel.ElectrodeRow)];    
-end

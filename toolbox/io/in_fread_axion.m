@@ -24,10 +24,19 @@ function F = in_fread_axion(sFile, SamplesBounds, iChannels, precision)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Raymundo Cassani, 2021
+% Authors: Raymundo Cassani, Francois Tadel, 2021
 
 
-% Parse inputs
+%% ===== INSTALL MFF LIBRARY =====
+if ~exist('AxisFile', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'axion');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
+
+%% ===== PARSE INPUTS =====
 if (nargin < 4) || isempty(precision)
     precision = 'double';
 elseif ~ismember(precision, {'single', 'double'})
@@ -40,26 +49,22 @@ if (nargin < 2) || isempty(SamplesBounds)
     SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
-%% The AxisFile class needs needs one extra sample in the upper bound
-SamplesBounds(2) = SamplesBounds(2) + 1;
 
+%% ===== READ FILE =====
+% Open the file again
+sFile.header.FileObj.reopen();
 
-%% Read the .raw file and convert it to Brainstorm format
-sChannels   = sFile.header.sChannels(iChannels);
-TimesBounds = SamplesBounds ./ sFile.prop.sfreq;
-FileData    = AxisFile(sFile.filename);
-waveforms   = FileData.DataSets.LoadData(TimesBounds);
-% Get one channel
-sChannel = sChannels(1);
-tmp = waveforms{sChannel.WellRow, sChannel.WellColumn, sChannel.ElectrodeColumn, sChannel.ElectrodeRow};    
-nChannels = length(sChannels);
-nSamples  = length(tmp.Data); 
+% Read the .raw file and convert it to Brainstorm format
+% The AxisFile class needs needs one extra sample in the upper bound
+waveforms = sFile.header.FileObj.DataSets.LoadData((SamplesBounds + [0 1]) ./ sFile.prop.sfreq);
+
 % Initialize Brainstorm output
-F = zeros(nChannels, nSamples, precision);
+F = zeros(sFile.header.ChannelCount, SamplesBounds(2)-SamplesBounds(1)+1, precision);
 precFunc = str2func(precision);
-
-for iChannel = 1 : nChannels
-    sChannel = sChannels(iChannel);
-    tmp = waveforms{sChannel.WellRow, sChannel.WellColumn, sChannel.ElectrodeColumn, sChannel.ElectrodeRow};       
+% Reorder channels correctly (see in_fopen_axion.m for labelling logic)
+for iChannel = 1:sFile.header.ChannelCount
+    chObj = sFile.header.FileObj.DataSets.ChannelArray.Channels(sFile.header.ChannelIndices(iChannel));
+    tmp = waveforms{chObj.WellRow, chObj.WellColumn, chObj.ElectrodeColumn, chObj.ElectrodeRow};       
     F(iChannel,:) = precFunc(tmp.GetVoltageVector);
 end
+
