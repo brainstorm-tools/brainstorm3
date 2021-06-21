@@ -85,7 +85,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         % If at least one valid figure was found
         if ~isempty(hFigures)
             % Refine selection for certain types of figures
-            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'Pac'})
+            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'ConnectViz', 'Pac'}) 
                 for i = 1:length(hFigures)
                     TfInfo = getappdata(hFigures(i), 'Timefreq');
                     if ~isempty(TfInfo) && file_compare(TfInfo.FileName, Constrains)
@@ -186,6 +186,9 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
                 FigHandles = db_template('DisplayHandlesTimefreq');
             case 'Connect'
                 hFig = figure_connect('CreateFigure', FigureId);
+                FigHandles = db_template('DisplayHandlesTimefreq');
+            case 'ConnectViz' % new connectivity visualization tool (2021)
+                hFig = figure_connect_viz('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesTimefreq');
             case 'Image'
                 hFig = figure_image('CreateFigure', FigureId);
@@ -473,6 +476,8 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality 'PAC: ' figureName];
         case 'Connect'
             figureName = [figureNameModality 'Connect: ' figureName];
+        case 'ConnectViz' % new connectivity visualization tool (2021)
+            figureName = [figureNameModality 'ConnectViz: ' figureName];
         case 'Image'
             % Add dependent file comment
             FileName = getappdata(hFig, 'FileName');
@@ -891,6 +896,11 @@ function DeleteFigure(hFigure, varargin)
     if strcmpi(Figure.Id.Type, 'Connect')
         figure_connect('Dispose', hFigure);
     end
+    
+    if strcmpi(Figure.Id.Type, 'ConnectViz')
+        figure_connect_viz('Dispose', hFigure);
+    end
+    
     % Delete graphic object
     if ishandle(hFigure)
         delete(hFigure);
@@ -965,6 +975,8 @@ function FireCurrentTimeChanged(ForceTime)
                     figure_pac('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Connect'
                     figure_connect('CurrentTimeChangedCallback', sFig.hFigure);
+                case 'ConnectViz' % new connectivity visualization tool (2021)
+                    figure_connect_viz('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Image'
                     figure_image('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Video'
@@ -1012,6 +1024,11 @@ function FireCurrentFreqChanged()
                 case 'Connect'
                     bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
                     figure_connect('CurrentFreqChangedCallback', sFig.hFigure);
+                    bst_progress('stop');
+                    
+                case 'ConnectViz' % new connectivity visualization tool (2021)
+                    bst_progress('start', 'Connectivity-viz graph', 'Reloading connectivity-viz graph...');
+                    figure_connect_viz('CurrentFreqChangedCallback', sFig.hFigure);
                     bst_progress('stop');
                 case 'Image'
                     figure_image('CurrentFreqChangedCallback', sFig.hFigure);
@@ -1563,6 +1580,8 @@ function ViewTopography(hFig, UseSmoothing)
             RecType = '';
         case 'Connect'
             warning('todo');
+        case 'ConnectViz' 
+            warning('todo');
     end
     % Call view data function
     if ~isempty(DataFile) && ~isempty(Modalities)
@@ -1698,7 +1717,7 @@ function isValid = isFigureId(FigureId)
             isfield(FigureId, 'Type') && ...
             isfield(FigureId, 'SubType') && ...
             isfield(FigureId, 'Modality') && ...
-            ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Topography', '3DViz', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Connect', 'Image'}));
+            ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Topography', '3DViz', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Connect', 'ConnectViz', 'Image'}));
         isValid = 1;
     else
         isValid = 0;
@@ -1932,6 +1951,10 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                     bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
                     figure_connect('UpdateFigurePlot', Figure.hFigure);
                     bst_progress('stop');
+                case 'ConnectViz' % new connectivity visualization tool (2021)
+                    bst_progress('start', 'Connectivity-viz graph', 'Reloading connectivity-viz graph...');
+                    figure_connect_viz('UpdateFigurePlot', Figure.hFigure);
+                    bst_progress('stop');
                 case 'Image'
                     % ReloadCall only
                 case 'Video'
@@ -2051,7 +2074,9 @@ function FireSelectedRowChanged()
                 case 'Pac'
                     % Nothing to do
                 case 'Connect'
-                    figure_connect('SelectedRowChangedCallback', iDS, iFig);
+                    figure_connect('SelectedRowChangedCallback', iDS, iFig); % empty callback
+                case 'ConnectViz' 
+                    % Nothing to do
                 case 'Image'
                     % Nothing to do
                 otherwise

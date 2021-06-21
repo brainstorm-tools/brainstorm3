@@ -739,7 +739,7 @@ function JavaClickCallback(hFig, ev)
 
                     % If shift is not pressed, deselect all node
                     isShiftDown = ev.get('ShiftDown');
-                    if (strcmp(isShiftDown,'off'))
+                    if (isShiftDown == 0)
                         % Deselect
                         SetSelectedNodes(hFig, selNodes, 0, 1);
                         % Deselect picked node
@@ -2198,6 +2198,7 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
     end
 end
 
+%% Updated March 16: removed double region links
 function mFunctionDataPair = ComputeRegionFunction(hFig, mDataPair, RegionFunction)
     Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
@@ -2347,7 +2348,7 @@ function UpdateColormap(hFig)
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
         return
-    end
+     end
     % Get data description
     iDS = bst_memory('GetDataSetTimefreq', TfInfo.FileName);
     if isempty(iDS)
@@ -2380,9 +2381,9 @@ function UpdateColormap(hFig)
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')
-            CLim = ThresholdMinMax;
+            CLim = DataMinMax;
             if sColormap.isAbsoluteValues
-                CLim = abs(CLim);            
+                CLim = [0, abs(CLim(2))];
             end
         else
             if sColormap.isAbsoluteValues
@@ -2762,6 +2763,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
         % Get data
         DataPair = GetPairs(hFig);
+        
         % Computes function across node pairs in region
         RegionDataPair = ComputeRegionFunction(hFig, DataPair, RegionFunction);
         

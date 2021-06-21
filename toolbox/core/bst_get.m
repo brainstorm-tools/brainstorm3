@@ -3287,7 +3287,35 @@ switch contextName
                        'Labels', [])], ...
             'iMontage',     1);
         argout1 = FillMissingFields(contextName, defPref);
-        
+    
+    case 'ConnectGraphOptions'
+        defPref = struct(...
+            'LobeFullLabel', 1, ... 
+            'TextDisplayMode', [1 2], ...
+            'LabelSize', 7, ...  
+            'NodeSize', 5, ...         
+            'LinkSize', 1.5, ...           
+            'BgColor', [0 0 0], ...        
+            'HierarchyNodeIsVisible', 1);
+        % If we have an additional argument, get the default values
+        if nargin > 1
+            argout1 = defPref;
+        % Otherwise, get the saved values
+        else
+            savedValues = FillMissingFields(contextName, defPref);
+            
+            % if any of the fields are [], replace by default value
+            % do it here to avoid touching the common FillMissingFields
+            % function, as other tools may actually want to set [] as desired property           
+            fields = fieldnames(savedValues);
+            for i=1:numel(fields)
+                if(isempty(savedValues.(fields{i})))
+                    savedValues.(fields{i}) = defPref.(fields{i});
+                end
+            end
+            argout1 = savedValues;
+        end
+    
     case 'NodelistOptions'
         defPref = struct(...
             'String', '', ...         % What to search for

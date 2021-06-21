@@ -4540,6 +4540,13 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
     iTess = find(ismember({TessInfo.Name}, 'Fibers'));
     [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
     
+    % Nothing to plot? Only remove existing fibers
+    if isempty(iScouts)
+        delete(TessInfo(iTess).hPatch);
+        TessInfo(iTess).hPatch = [];
+        setappdata(hFigFib, 'Surface', TessInfo);
+        return;
+    end
     
     % If fibers not yet assigned to atlas, do so now
     if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
@@ -4573,7 +4580,9 @@ function hFigFib = SelectFiberScouts(hFigConn, iScouts, Color, ColorOnly)
         % Plot fibers
         [hFigFib, TessInfo(iTess).hPatch] = PlotFibers(hFigFib, FibMat.Points(iFibers,:,:), Color(iFoundScouts,:));
     else
-        TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+        if ~isempty(TessInfo(iTess).hPatch)
+            TessInfo(iTess).hPatch = ColorFibers(TessInfo(iTess).hPatch, Color(iFoundScouts,:));
+        end
     end
 
     % Update figure's surfaces list and current surface pointer
