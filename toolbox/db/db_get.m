@@ -108,7 +108,12 @@ switch contextName
                 end
                 result = sql_query(sqlConn, 'select', 'subject', fields, condQuery);
                 if isempty(result)
-                    error('Subject entry was not found in db_get()')
+                    if isfield(condQuery, 'FileName')
+                        entryStr = ['FileName "', iSubjects{i}, '"'];
+                    else
+                        entryStr = ['Id "', num2str(iSubjects(i)), '"'];
+                    end
+                    error(['Subject with ', entryStr, ' was not found in database.']);
                 end
                 sSubjects(i) = result;
             end
@@ -353,7 +358,12 @@ switch contextName
                 end
                 result = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery);
                 if isempty(result)
-                    error('AnatomyFile entry was not found in db_get()')
+                    if isfield(condQuery, 'FileName')
+                        entryStr = ['FileName "', iFiles{i}, '"'];
+                    else
+                        entryStr = ['Id "', num2str(iFiles(i)), '"'];
+                    end
+                    error(['AnatomyFile with ', entryStr, ' was not found in database.']);
                 end
                 sFiles(i) = result;            
             end
@@ -415,7 +425,12 @@ switch contextName
                 end
                 result = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
                 if isempty(result)
-                    error('FunctionalFile entry was not found in db_get()')
+                    if isfield(condQuery, 'FileName')
+                        entryStr = ['FileName "', iFiles{i}, '"'];
+                    else
+                        entryStr = ['Id "', num2str(iFiles(i)), '"'];
+                    end
+                    error(['FunctionalFile with ', entryStr, ' was not found in database.']);
                 end
                 sFiles(i) = result;  
             end
