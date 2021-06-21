@@ -3423,6 +3423,8 @@ function Index = LobeTagToIndex(Region)
             end
         case 'O' %Occipital
             Index = 6;
+        case 'L' %Limbic
+            Index = 7;
     end
 end
  
@@ -3450,6 +3452,8 @@ function Tag = LobeIndexToTag(Index)
             Tag = 'P';
         case 6
             Tag = 'O';
+        case 7
+            Tag = 'L';
     end
 end
  
@@ -3466,6 +3470,8 @@ function FullTag = LobeTagToFullTag(Tag)
         FullTag = 'Parietal';
     elseif strcmp(Tag, 'O')
         FullTag = 'Occipital';
+    elseif strcmp(Tag, 'L')
+        FullTag = 'Limbic';
     elseif strcmp(Tag, 'U')
         FullTag = 'Unknown';
     else

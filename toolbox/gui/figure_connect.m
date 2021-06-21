@@ -3980,6 +3980,8 @@ function Index = LobeTagToIndex(Region)
             end
         case 'O' %Occipital
             Index = 6;
+        case 'L' %Limbic
+            Index = 7;
     end
 end
 
@@ -4019,6 +4021,8 @@ function Tag = LobeIndexToTag(Index)
             Tag = 'P';
         case 6
             Tag = 'O';
+        case 7
+            Tag = 'L';
     end
 end
 
@@ -4055,6 +4059,8 @@ function PathNames = VerticeToFullName(hFig, Index)
                 PathNames{3} = ' > Parietal';
             case 6
                 PathNames{3} = ' > Occipital';
+            case 7
+                PathNames{3} = ' > Limbic';
             otherwise
                 PathNames{3} = ' > Unknown';
         end
