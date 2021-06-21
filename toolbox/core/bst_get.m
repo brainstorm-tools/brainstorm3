@@ -1188,7 +1188,7 @@ switch contextName
         end
         
         % Look for specific surface file
-        sFile = db_get('AnatomyFile', varargin{2}); 
+        sFile = db_get('SurfaceFile', SurfaceFile); 
         argout1 = db_get('Subject', sFile.Subject);
         argout2 = sFile.Subject;
         argout3 = sFile.Id;               
