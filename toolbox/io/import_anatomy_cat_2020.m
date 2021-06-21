@@ -171,6 +171,15 @@ end
 % Find atlases
 AnnotLhFiles = file_find(CatDir, 'lh.*.annot', 2, 0);
 AnnotRhFiles = file_find(CatDir, 'rh.*.annot', 2, 0);
+% Re-order the files so that FreeSurfer atlases are first (for automatic region labelling)
+if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
+    iDKL = find(~cellfun(@(c)isempty(strfind(c, 'aparc_DK40')), AnnotLhFiles));
+    iDKR = find(~cellfun(@(c)isempty(strfind(c, 'aparc_DK40')), AnnotRhFiles));
+    if ~isempty(iDKL) && ~isempty(iDKR)
+        AnnotLhFiles = AnnotLhFiles([iDKL, setdiff(1:length(AnnotLhFiles), iDKL)]);
+        AnnotRhFiles = AnnotRhFiles([iDKR, setdiff(1:length(AnnotRhFiles), iDKR)]);
+    end
+end
 
 % Find tissue probability maps
 if isVolumeAtlas

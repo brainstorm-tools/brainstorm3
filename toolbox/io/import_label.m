@@ -195,10 +195,12 @@ for iFile = 1:length(LabelFiles)
                 iScout = length(sAtlas.Scouts) + 1;
                 sAtlas.Scouts(iScout).Vertices = find(labels == lablist(i))';
                 if ~isempty(colortable.struct_names{iTable})
-                    % Strip CAT12 Schaeffer labels
+                    % Strip uselss parts of Schaeffer labels
                     Label = colortable.struct_names{iTable};
                     Label = strrep(Label, '17Networks_LH_', '');
                     Label = strrep(Label, '17Networks_RH_', '');
+                    Label = strrep(Label, '7Networks_LH_', '');
+                    Label = strrep(Label, '7Networks_RH_', '');
                     sAtlas.Scouts(iScout).Label = file_unique(Label, {sAtlas.Scouts.Label});
                 else
                     sAtlas.Scouts(iScout).Label = file_unique('Unknown', {sAtlas.Scouts.Label});
