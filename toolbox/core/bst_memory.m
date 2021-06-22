@@ -255,11 +255,11 @@ function [sSurf, iSurf] = LoadSurface(varargin)
         SurfaceFile = sDbSurf.FileName;
     end
     % Get subject and surface type
-    [sSubject, iSubject, iSurfDb] = bst_get('SurfaceFile', SurfaceFile);
-    if isempty(iSubject)
+    sAnatomyFile = db_get('AnatomyFile', SurfaceFile);
+    if isempty(sAnatomyFile.Subject)
         SurfaceType = 'Other';
     else
-        SurfaceType = sSubject.Surface(iSurfDb).SurfaceType;
+        SurfaceType = sAnatomyFile.SurfaceType;       
     end
             
     % ===== LOAD FILE =====
@@ -2615,7 +2615,7 @@ function iDS = GetDataSetSubject(SubjectFile, createSubject)
     % If no dataset found for this subject : look if subject uses default subject
     if isempty(iDS)
         % Find subject in database (return default subject if needed)
-        sSubject = bst_get('Subject', SubjectFile);
+        sSubject = db_get('Subject', SubjectFile);
         if ~isempty(sSubject)
             % Look for the default subject file in the loaded DataSets
             iDS = find(file_compare({GlobalData.DataSet.SubjectFile}, sSubject.FileName) & ...
@@ -2628,11 +2628,11 @@ function iDS = GetDataSetSubject(SubjectFile, createSubject)
     % look for loaded subjects that use the default anatomy
     if isempty(iDS) && strcmpi(bst_fileparts(sSubject.FileName), bst_get('DirDefaultSubject'))
         % Get all protocol subjects
-        ProtocolSubjects = bst_get('ProtocolSubjects');
+        ProtocolSubjects = db_get('Subjects');
         % If subjects are defined for the protocol
-        if ~isempty(ProtocolSubjects.Subject)
+        if ~isempty(ProtocolSubjects)
             % Get subjects that use default anatomy
-            DefAnatSubj = ProtocolSubjects.Subject([ProtocolSubjects.Subject.UseDefaultAnat] == 1);
+            DefAnatSubj = ProtocolSubjects([ProtocolSubjects.UseDefaultAnat] == 1);
             % Look for loaded subject that use the default anatomy
             for i = 1:length(DefAnatSubj)
                 % Look for the subject file in the loaded DataSets
