@@ -1,7 +1,7 @@
-function export_default_anat(iSubject, DefaultName, IncludeChannels)
+function ZipFile = export_default_anat(iSubject, DefaultName, IncludeChannels)
 % EXPORT_DEFAULT_ANAT: Export a subject anatomy as a user template in a .zip file.
 %
-% USAGE:  export_mri( iSubject, DefaultName=[ask], IncludeChannels=[ask] )
+% USAGE:  ZipFile = export_default_anat( iSubject, DefaultName=[ask], IncludeChannels=[ask] )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,9 @@ function export_default_anat(iSubject, DefaultName, IncludeChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2020
+% Authors: Francois Tadel, 2013-2021
+
+ZipFile = [];
 
 % ===== GET DEFAULT NAME =====
 % Get subject 

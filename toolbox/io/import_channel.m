@@ -307,7 +307,7 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
 end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
-if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
+if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS', 'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'})
     isApplyVox2ras = 1;
 end
 
@@ -367,6 +367,12 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
     % Get subject for first file only
     sSubject = bst_get('Subject', sStudies(1).BrainStormSubject);
 
+    % SIMNIBS: Disable auto-alignment based on fiducials 
+    if strcmpi(FileFormat, 'SIMNIBS')
+        isAlignScs = 0;
+    else
+        isAlignScs = 1;
+    end
     % If there is a MRI for this subject
     if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
         % Load the MRI
@@ -391,14 +397,12 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
                 % Convert all the coordinates
                 AllChannelMats = channel_apply_transf(ChannelMat, Transf, [], 1);
                 ChannelMat = AllChannelMats{1};
+                % Disable alignment based on SCS fiducials
+                isAlignScs = 0;
             end
         end
     end
-    if strcmpi(FileFormat, 'SIMNIBS')
-        isAlignScs = 0;
-    else
-        isAlignScs = 1;
-    end
+    
 elseif isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ismember('Native=>Brainstorm/CTF', ChannelMat.TransfMegLabels)
     % No need to duplicate this transformation if it was previously
     % computed, e.g. in in_channel_ctf. (It would be identity the second
@@ -410,9 +414,8 @@ end
 
 
 %% ===== DETECT CHANNEL TYPES =====
-% Remove fiducials only from polhemus and ascii files
-%isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
-isRemoveFid = 1;
+% Remove fiducials (expect for BIDS files)
+isRemoveFid = isempty(strfind(FileFormat, 'BIDS-'));
 % Detect auxiliary EEG channels + align channel
 ChannelMat = channel_detect_type(ChannelMat, isAlignScs, isRemoveFid);
 
