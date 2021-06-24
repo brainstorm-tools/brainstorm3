@@ -35,11 +35,11 @@ function [sFile, ChannelMat] = in_fopen_blackrock(DataFile)
 %
 % Authors: Francois Tadel, 2015
 
-%% ===== CHECK FOR NPMK TOOLBOX =====
-if ~exist('openNSx', 'file')
-    error(['Reading Blackrock files requires the NPMK toolbox:' 10 ...
-           ' - Download the latest at: https://github.com/BlackrockMicrosystems/NPMK/releases' 10 ...
-           ' - Add the NPMK folder and sub-folders to your Matlab path.']);
+
+%% ===== INSTALL NPMK LIBRARY =====
+[isInstalled, errMsg] = bst_plugin('Install', 'blackrock');
+if ~isInstalled
+    error(errMsg);
 end
 
 

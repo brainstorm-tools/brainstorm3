@@ -176,6 +176,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'adi.m';
     PlugDesc(end).CompiledStatus = 0;
    
+    % === I/O: BLACKROCK ===
+    PlugDesc(end+1)              = GetStruct('blackrock');
+    PlugDesc(end).Version        = '5.5.2.0';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/refs/tags/5.5.2.0.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
+    PlugDesc(end).TestFile       = 'openNSx.m';
+    PlugDesc(end).ReadmeFile     = 'Versions.txt';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
