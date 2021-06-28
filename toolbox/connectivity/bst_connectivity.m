@@ -504,13 +504,9 @@ for iFile = 1:length(FilesA)
                 end
                 phaseA = HA ./ abs(HA);
                 phaseB = HB ./ abs(HB);
-                cA = real(phaseA);
-                cB = real(phaseB);
-                sA = imag(phaseA);
-                sB = imag(phaseB);
                 % Compute PLV 
                 % Divide by number of time samples
-                R(:,:,iBand) = (cA*cB' + sA*sB' + 1i * (sA*cB' - cA*sB')) ./ size(cA,2);    
+                R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);    
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
