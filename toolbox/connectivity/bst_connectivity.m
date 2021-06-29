@@ -541,13 +541,22 @@ for iFile = 1:length(FilesA)
                     HB = hilbert_fcn(DataBband')';
                 end
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %%%% COULD BE OPTIMIZED EXACTLY LIKE 'PLV' CASE
+                %%%% COULD BE OPTIMIZED EXACTLY LIKE 'PLV' CASE (see notes below)
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Replicate nB x HA, and nA x HB
                 iA = repmat(1:nA, 1, nB)';
                 iB = reshape(repmat(1:nB, nA, 1), [], 1);
                 % Compute the PLV in time for each pair
-                R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
+                R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));
+                %R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % The implementation below is faster in the time-independent case, 
+                % here not so much for big nA and nB, still putting it for consistency
+                %phaseB = HB(iB) ./ abs(HB(iB));
+                %phaseA = HA(iA) ./ abs(HA(iA));
+                %R(:,:,iBand)=(phaseA.'.*phaseB').';
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
