@@ -196,7 +196,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ftData.time{iInput} = DataMat.Time;
     end
     
-    %%
     % ===== FIELDTRIP: ft_freqanalysis =====
     bst_progress('text', 'Calling FieldTrip function: ft_freqanalysis...');
     % Compute tfr-decomposition
@@ -221,7 +220,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     disp(['Global max: time:',num2str(time_of_interest),'sec']);
     disp(['Global max: freq:',num2str(freq_of_interest),'Hz']);
 
-    
     % ===== FIELDTRIP: EPOCHING =====
     % Baseline
     cfg = [];
@@ -234,7 +232,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     cfg = [];
     ep_data.app = ft_appenddata(cfg, ep_data.bsl, ep_data.pst);
     
-
     % ===== FIELDTRIP: SPECTRAL ANALYSIS =====
     cfg_main = [];
     cfg_main.fmax = MaxFreq;
@@ -272,8 +269,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     f_data.bsl = do_fft(cfg, ep_data.bsl); f_data.bsl.elec = cfg_main.sens;
     f_data.pst = do_fft(cfg, ep_data.pst); f_data.pst.elec = cfg_main.sens;
 
-
-    %% step 9: Source analysis
+    %% Source analysis
 
     switch Method
         case 'subtraction'
@@ -357,7 +353,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             stats2.stat(isnan(stats2.stat))=0;
     end
 
-    %% step 10: saving output, surface/volume projection
+    %% Saving output, surface/volume projection
     % Call FieldTrip function
 
     % === CREATE OUTPUT STRUCTURE ===
@@ -594,4 +590,3 @@ function stat = do_source_stat_montcarlo(s_data)
     cfg.uvar     = 2;
     stat         = ft_sourcestatistics(cfg,s_data.pst,s_data.bsl);
 end
-
