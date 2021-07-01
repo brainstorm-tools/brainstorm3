@@ -186,12 +186,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ftData.trial = cell(1,length(sInputs));
     ftData.time = cell(1,length(sInputs));
     % Load all the trials
+    
+    AllChannelFiles = unique({sInputs.ChannelFile});
+    iChanInputs = find(ismember({sInputs.ChannelFile}, AllChannelFiles{1}));
     for iInput = 1:length(sInputs)
+        DataFile = sInputs(iChanInputs(iInput)).FileName;
         DataMat = in_bst_data(DataFile);
         ftData.trial{iInput} = DataMat.F(iChannelsData,:);
         ftData.time{iInput} = DataMat.Time;
     end
     
+    %%
     % ===== FIELDTRIP: ft_freqanalysis =====
     bst_progress('text', 'Calling FieldTrip function: ft_freqanalysis...');
     % Compute tfr-decomposition
@@ -394,7 +399,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ResultsMat.SurfaceFile   = HeadModelMat.SurfaceFile;
     ResultsMat.nAvg          = DataMat.nAvg;
     ResultsMat.Leff          = DataMat.Leff;
-    ResultsMat.Comment       = ['DICS: ' Method, ' ',num2str(FOI),'Hz ', sprintf('1.3fs-%1.3fs', PostStim)];
+    ResultsMat.Comment       = ['DICS: ' Method, ' ',num2str(FOI),'Hz ', sprintf('%1.3fs-%1.3fs', PostStim)];
     switch lower(ResultsMat.HeadModelType)
         case 'volume'
             ResultsMat.GridLoc    = HeadModelMat.GridLoc;
