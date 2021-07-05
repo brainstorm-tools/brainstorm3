@@ -33,7 +33,7 @@ function [sFile, ChannelMat] = in_fopen_blackrock(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2021
 
 
 %% ===== INSTALL NPMK LIBRARY =====
