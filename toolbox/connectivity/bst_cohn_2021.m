@@ -4,8 +4,8 @@ function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, 
 % USAGE:  [Gxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreqRes=1, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
 %
 % INPUTS:
-%    - Xs      : Cell array of signals {[Nsignals1, Ntimes1], [Nsignals2, Ntimes2], ...}
-%    - Ys      : Cell array of signals {[Nsignals1, Ntimes1], [Nsignals2, Ntimes2], ...}
+%    - Xs      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
+%    - Ys      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
 %    - Fs      : Sampling frequency of X and Y (in Hz)
 %    - nFFT    : Length of the window used to estimate the coherence (must be a power of 2 for the efficiency of the FFT)
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
@@ -109,23 +109,23 @@ Messages = [];
 nWin = [];
 
 % Get current progress bar position
-% waitStart = bst_progress('get');
+waitStart = bst_progress('get');
 
 %% ===== Total number of windows =====
-% Number of Signals 
-nX = length(Xs);
-nY = length(Ys);
-
+% Pair files in Xs and Ys must have same nSamples  
+nSamplesXs = cellfun('size', Xs, 2);
+nSamplesYs = cellfun('size', Ys, 2);
+if ~isequal(nSamplesXs, nSamplesYs)
+    Messages = 'Pairs of Files A and Files B must have the same number of samples.';
+    return;
+end
+% Number of Files
+nFiles = length(nSamplesXs);
 % Window length and Overlap in samples
 nWinLen  = floor(WinLen * Fs);
 nOverlap = floor(nWinLen * Overlap); 
-
 % Minimum number of windows for signals in X and signals in Y
-minnWinLenX = min(cellfun('size', Xs, 2));
-minnWinLenY = min(cellfun('size', Ys, 2));
-minWinX = floor( (minnWinLenX - nOverlap) / (nWinLen - nOverlap));
-minWinY = floor( (minnWinLenY - nOverlap) / (nWinLen - nOverlap));
-minWin  = min(nX * minWinX, nY * minWinY);
+minWin = nFiles * floor( (min(nSamplesXs) - nOverlap) / (nWinLen - nOverlap));
 
 % Error and Warning
 minWinError = 2;
@@ -135,14 +135,14 @@ if minWin < minWinError
     nMinMessage = nWinLen * (1 - nOverlap) * (minWinError - 1);
     Messages = sprintf(['Input signals are too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
                         'Provide 2 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-                        min(nX, nY), min(minnWinLenX, minnWinLenY), WinLen, WinLen, nMinMessage/Fs);
+                        nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
     return;
 % WARNING: Maybe not enough time points
 elseif minWin < minWinWarning
     nMinMessage = nWinLen * (1 - nOverlap) * (minWinWarning - 1);
     Messages = sprintf(['Input signals may be too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
                         'Recommendation: Provide 5 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-                        min(nX, nY), min(minnWinLenX, minnWinLenY), WinLen, WinLen, nMinMessage/Fs);
+                        nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
 end
 
 %% ===== COMPUTE Sxx, Syy, Sxy ======
@@ -153,20 +153,38 @@ nFFT = 2 ^ nextpow2(nWinLen * 2);
 nKeep = (nFFT / 2) + 1;
 freq = (0: nKeep-1) * (Fs / nFFT);
 
-%% ===== Case NxN =====
-if isequal(Xs, Ys)
-    nSignalsX = size(Xs{1}, 1);
-    % Accumulators
-    Sxx = zeros(nSignalsX, length(freq));
-    Sxy = zeros(nSignalsX, nSignalsX, length(freq)); % complex
-    nEpochsX = 0;
-    
-    for iX = 1 : nX
-        % time series x [nSignals, nSamples]
-        x = Xs{iX};    
+% Accumulators
+nSignalsX = size(Xs{1}, 1);
+Sxx = zeros(nSignalsX, length(freq));
+nSignalsY = size(Ys{1}, 1);
+Syy = zeros(nSignalsY, length(freq));
+Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
+nEpochsAcc = 0;
+
+for iFile = 1 : nFiles
+    % Compute Syy
+    y = Ys{iFile};    
+    % Epoching 
+    epy = bst_epoching(y, nWinLen, nOverlap);
+    nEpochsAcc = nEpochsAcc + size(epy, 3);
+    % Apply window
+    epy = bst_bsxfun(@times, epy, win);
+    % Zero padding, FFT, keep positive 
+    epY = fft(epy, nFFT, 2);
+    epY = epY(:, 1:nKeep, :);
+    % Sum across epochs
+    Syy = Syy + sum(epY .* conj(epY), 3);
+    %% ===== Case NxX =====
+    if isequal(Xs, Ys)
+        % Compute Sxx
+        epX = epY;
+        Sxx = Syy;
+    %% ===== Case 1xX =====
+    else
+        % Compute Sxx
+        x = Xs{iFile};
         % Epoching 
         epx = bst_epoching(x, nWinLen, nOverlap);
-        nEpochsX = nEpochsX + size(epx, 3);
         % Apply window
         epx = bst_bsxfun(@times, epx, win);
         % Zero padding, FFT, keep positive 
@@ -174,23 +192,25 @@ if isequal(Xs, Ys)
         epX = epX(:, 1:nKeep, :);
         % Sum across epochs
         Sxx = Sxx + sum(epX .* conj(epX), 3);
-        for ix = 1 : nSignalsX
-            for iy = 1 : nSignalsX
-                tmp = sum(epX(ix, :, :) .* conj(epX(iy, :, :)), 3);
-                Sxy(ix, iy, :) = squeeze(Sxy(ix, iy, :)) + tmp(:);
-            end
+    end
+    % Compute Sxy
+    for ix = 1 : nSignalsX
+        for iy = 1 : nSignalsY
+            tmp = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
+            Sxy(ix, iy, :) = squeeze(Sxy(ix, iy, :)) + tmp(:);
         end
     end
-% Xs == Ys 
-epY = epX;
-nEpochsY = nEpochsX;
-Sxx = permute(Sxx, [1, 3, 2]);
-Syy = permute(Sxx, [2, 1, 3]);
-
-%% ===== Case 1xX =====
-else
-    disp('1xN')
+    
+    
 end
+% Averages
+Sxx = Sxx / nEpochsAcc;
+Syy = Syy / nEpochsAcc;
+Sxy = Sxy / nEpochsAcc;
+
+% Add dimension to use bsxfunc(@rdivide)
+Sxx = permute(Sxx, [1, 3, 2]); % [nSignalsX, 1, nKeep]
+Syy = permute(Syy, [3, 1, 2]); % [1, nSignalsY, nKeep]
 
 %% ===== Coherence types =====
 switch CohMeasure
@@ -200,7 +220,26 @@ switch CohMeasure
         Sxy = abs(Sxy) .^ 2;
         Sxy = bst_bsxfun(@rdivide, Sxy, Sxx);
         Sxy = bst_bsxfun(@rdivide, Sxy, Syy);
+    
+    % Imaginary Coherence (2019)
+    case {'icohere2019', 'lcohere2019'} % (No pValues for the new version)
+        Sxy = bst_bsxfun(@rdivide, Sxy, sqrt(Sxx));
+        Sxy = bst_bsxfun(@rdivide, Sxy, sqrt(Syy));
+        if strcmpi(CohMeasure,'icohere2019') % Imaginary Coherence
+            Sxy = abs(imag(Sxy));
+        else % Lagged Coherence
+            Sxy = abs(imag(Sxy))./sqrt(1-real(Sxy).^2);
+        end
+        
+    % Lagged Coherence
+    case {'lcohere2021'}
+        tmp = 1 + (0 * Sxy);
+        tmp = bst_bsxfun(@times, tmp, Sxx);
+        tmp = bst_bsxfun(@times, tmp, Syy);
+        Sxy = abs(imag(Sxy)) ./ sqrt(tmp - real(Sxy).^2);
+        
 end
+
 
 % Make sure that there are no residual imaginary parts due to numerical errors
 if ~isreal(Sxy)
