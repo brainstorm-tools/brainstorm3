@@ -1,13 +1,13 @@
 function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax)
 % BST_COHN_2021: Updated version of bst_cohn.m 
 %
-% USAGE:  [Gxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreqRes=1, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
+% USAGE:  [Gxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
 %
 % INPUTS:
 %    - Xs      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
 %    - Ys      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
 %    - Fs      : Sampling frequency of X and Y (in Hz)
-%    - nFFT    : Length of the window used to estimate the coherence (must be a power of 2 for the efficiency of the FFT)
+%    - WinLen        : Length of the window used to estimate the coherence
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
 %    - CohMeasure    : {'mscohere', 'icohere' , 'icohere2019', 'lcohere2019'}
 %    - isSymmetric   : If 1, use an optimized method for symmetrical matrices
@@ -75,11 +75,10 @@ function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Raymundo Cassani 2021, Hossein Shahabi, 2019
-% Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
-
-%% ===== INITIALIZATIONS =====
-
+% Authors: Sergul Aydore, Syed Ashrafulla, Guiomar Niso, 2013-2014
+%          Francois Tadel, 2013-2019
+%          Hossein Shahabi, 2019
+%          Raymundo Cassani, 2021
 
 
 %% ===== INITIALIZATIONS =====
@@ -106,12 +105,18 @@ Cxy = [];
 pValues = [];
 freq = [];
 Messages = [];
-nWin = [];
+nWin = 0;
 
 % Get current progress bar position
 waitStart = bst_progress('get');
 
 %% ===== Total number of windows =====
+% Number of Files
+nFiles = length(Xs);
+% Window length and Overlap in samples
+nWinLen  = floor(WinLen * Fs);
+nOverlap = floor(nWinLen * Overlap);
+nFFT = 2 ^ nextpow2(nWinLen * 2);
 % Pair files in Xs and Ys must have same nSamples  
 nSamplesXs = cellfun('size', Xs, 2);
 nSamplesYs = cellfun('size', Ys, 2);
@@ -119,11 +124,6 @@ if ~isequal(nSamplesXs, nSamplesYs)
     Messages = 'Pairs of Files A and Files B must have the same number of samples.';
     return;
 end
-% Number of Files
-nFiles = length(nSamplesXs);
-% Window length and Overlap in samples
-nWinLen  = floor(WinLen * Fs);
-nOverlap = floor(nWinLen * Overlap); 
 % Minimum number of windows for signals in X and signals in Y
 minWin = nFiles * floor( (min(nSamplesXs) - nOverlap) / (nWinLen - nOverlap));
 
@@ -148,7 +148,6 @@ end
 %% ===== COMPUTE Sxx, Syy, Sxy ======
 % Window
 win  = transpose(bst_window('hamming', nWinLen));
-nFFT = 2 ^ nextpow2(nWinLen * 2);
 % Keep only positive frequencies of the spectra
 nKeep = (nFFT / 2) + 1;
 freq = (0: nKeep-1) * (Fs / nFFT);
@@ -159,14 +158,14 @@ Sxx = zeros(nSignalsX, length(freq));
 nSignalsY = size(Ys{1}, 1);
 Syy = zeros(nSignalsY, length(freq));
 Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
-nEpochsAcc = 0;
+nWin = 0;
 
 for iFile = 1 : nFiles
     % Compute Syy
     y = Ys{iFile};    
     % Epoching 
     epy = bst_epoching(y, nWinLen, nOverlap);
-    nEpochsAcc = nEpochsAcc + size(epy, 3);
+    nWin = nWin + size(epy, 3);
     % Apply window
     epy = bst_bsxfun(@times, epy, win);
     % Zero padding, FFT, keep positive 
@@ -204,9 +203,9 @@ for iFile = 1 : nFiles
     
 end
 % Averages
-Sxx = Sxx / nEpochsAcc;
-Syy = Syy / nEpochsAcc;
-Sxy = Sxy / nEpochsAcc;
+Sxx = Sxx / nWin;
+Syy = Syy / nWin;
+Sxy = Sxy / nWin;
 
 % Add dimension to use bsxfunc(@rdivide)
 Sxx = permute(Sxx, [1, 3, 2]); % [nSignalsX, 1, nKeep]

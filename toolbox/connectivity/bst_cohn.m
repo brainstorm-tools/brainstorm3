@@ -75,9 +75,9 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Hossein Shahabi, 2019
-% Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
-
+% Authors: Sergul Aydore, Syed Ashrafulla, Guiomar Niso, 2013-2014
+%          Francois Tadel, 2013-2019
+%          Hossein Shahabi, 2019
 
 %% ===== INITIALIZATIONS =====
 % Default options
