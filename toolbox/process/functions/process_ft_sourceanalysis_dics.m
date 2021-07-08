@@ -196,6 +196,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ftData.time{iInput} = DataMat.Time;
     end
     
+    
     % ===== FIELDTRIP: ft_freqanalysis =====
     bst_progress('text', 'Calling FieldTrip function: ft_freqanalysis...');
     % Compute tfr-decomposition
@@ -232,6 +233,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     cfg = [];
     ep_data.app = ft_appenddata(cfg, ep_data.bsl, ep_data.pst);
     
+    
     % ===== FIELDTRIP: SPECTRAL ANALYSIS =====
     cfg_main = [];
     cfg_main.fmax = MaxFreq;
@@ -246,8 +248,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     f_data.bsl = do_fft(cfg, ep_data.bsl); f_data.bsl.elec = cfg_main.sens;
     f_data.pst = do_fft(cfg, ep_data.pst); f_data.pst.elec = cfg_main.sens;
 
-    % PSD - sensor space
-
+    
+    % ===== FIELDTRIP: PSD SENSOR SPACE =====
     outputdir_dics = cfg_main.outputdir;
     if exist(outputdir_dics, 'file') == 0, mkdir(outputdir_dics), end
 
@@ -269,8 +271,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     f_data.bsl = do_fft(cfg, ep_data.bsl); f_data.bsl.elec = cfg_main.sens;
     f_data.pst = do_fft(cfg, ep_data.pst); f_data.pst.elec = cfg_main.sens;
 
-    %% Source analysis
-
+    
+    % ===== SOURCE ANALYSIS =====
     switch Method
         case 'subtraction'
             cfg = [];
@@ -353,12 +355,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             stats2.stat(isnan(stats2.stat))=0;
     end
 
-    %% Saving output, surface/volume projection
-    % Call FieldTrip function
-
+    
+    % ===== SAVE RESULTS =====
     % === CREATE OUTPUT STRUCTURE ===
     bst_progress('text', 'Saving source file...');
     bst_progress('inc', 1);
+    % Output study
+    if (length(sInputs) == 1)
+        iStudyOut = sInputs(1).iStudy;
+        RefDataFile = sInputs(iChanInputs(iInput)).FileName;
+    else
+        [tmp, iStudyOut] = bst_process('GetOutputStudy', sProcess, sInputs);
+        RefDataFile = [];
+    end
     % Create structure
     ResultsMat = db_template('resultsmat');
     ResultsMat.ImagingKernel = [];
@@ -383,11 +392,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             ResultsMat.ImageGridAmp  = stats2.stat;
             ResultsMat.cfg           = stat.cfg;
     end
-
     ResultsMat.nComponents   = 1;
     ResultsMat.Function      = Method;
     ResultsMat.Time          = 1;
-    ResultsMat.DataFile      = DataFile;
+    ResultsMat.DataFile      = RefDataFile;
     ResultsMat.HeadModelFile = HeadModelFile;
     ResultsMat.HeadModelType = HeadModelMat.HeadModelType;
     ResultsMat.ChannelFlag   = DataMat.ChannelFlag;
@@ -419,16 +427,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     newResult = db_template('results');
     newResult.Comment       = ResultsMat.Comment;
     newResult.FileName      = file_short(ResultFile);
-    newResult.DataFile      = DataFile;
+    newResult.DataFile      = ResultsMat.DataFile;
     newResult.isLink        = 0;
     newResult.HeadModelType = ResultsMat.HeadModelType;
     % Get output study
-    sStudyData = bst_get('Study', sInputs(1).iStudy);
+    sStudyOut = bst_get('Study', iStudyOut);
     % Add new entry to the database
-    iResult = length(sStudyData.Result) + 1;
-    sStudyData.Result(iResult) = newResult;
+    iResult = length(sStudyOut.Result) + 1;
+    sStudyOut.Result(iResult) = newResult;
     % Update Brainstorm database
-    bst_set('Study', sInputs(1).iStudy, sStudyData);
+    bst_set('Study', iStudyOut, sStudyOut);
     % Store output filename
     OutputFiles{end+1} = newResult.FileName;
     % Expand data node
@@ -438,8 +446,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     db_save();
     % Hide progress bar
     bst_progress('stop');
-
 end
+
 
 
 %% ===== TIME-FREQUENCY =====
