@@ -1,4 +1,7 @@
 ---------------------------------------------------------------
+July 2021
+- Inverse: FieldTrip DICS
+---------------------------------------------------------------
 June 2021
 - New connectivity graphs
 - CAT12: Added support for thalamus atlas
