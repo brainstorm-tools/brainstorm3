@@ -180,7 +180,7 @@ for iFile = 1 : nFiles
         % Compute Sxx
         epX = epY;
         Sxx = Syy;
-    %% ===== Case 1xX =====
+    %% ===== Case 1xN =====
     else
         % Compute Sxx
         x = Xs{iFile};
