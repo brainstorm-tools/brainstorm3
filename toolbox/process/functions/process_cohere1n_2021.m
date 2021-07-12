@@ -153,8 +153,6 @@ function Test() %#ok<DEFNU>
         'maxfreqres',   MaxFreqRes, ...  % VARIES
         'maxfreq',      [], ...          % No maximum frequency
         'pThresh',      0.05, ...        % p-value thrshold
-        ... 'isfreqbands',  0, ...       % No frequency bands
-        ... 'freqbands',    [], ...
         'outputmode',   1);              % Save individual results (one file per input file)
     t = toc;
     % Execution time
