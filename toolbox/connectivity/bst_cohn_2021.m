@@ -165,7 +165,7 @@ for iFile = 1 : nFiles
     % Compute Syy
     y = Ys{iFile};    
     % Epoching 
-    epy = bst_epoching(y, nWinLen, nOverlap);
+    epy = epoching(y, nWinLen, nOverlap);
     clear y;
     nWin = nWin + size(epy, 3);
     % Apply window
@@ -185,7 +185,7 @@ for iFile = 1 : nFiles
         % Compute Sxx
         x = Xs{iFile};
         % Epoching 
-        epx = bst_epoching(x, nWinLen, nOverlap);
+        epx = epoching(x, nWinLen, nOverlap);
         clear x;
         % Apply window
         epx = bst_bsxfun(@times, epx, win);
@@ -263,6 +263,30 @@ end
 if ~isreal(Cxy)
     Cxy = abs(Cxy);
 end
+
+end
+
+function epx = epoching(x, nEpochLen, nOverlap)
+    % Divides the `X` provided as [nSignals, nSamples] into epochs with a 
+    % epoch length of `nEpochLen` indicated in samples, and 
+    % an overlap of `nOverlap` samples between consecutive epochs.
+
+    % Obtain parameters of the data
+    [nSignals, nSamples] = size(x);
+    % Number of epochs
+    nEpochs = floor( (nSamples - nOverlap) / (nEpochLen - nOverlap) );
+    % If not enough data
+    if nEpochs == 0
+        epx = [];
+        return
+    end
+    % `markers` indicates where the epochs start
+    markers = ((0 : (nEpochs-1)) * (nEpochLen - nOverlap)) + 1;
+    epx = zeros(nSignals, nEpochLen, nEpochs, class(x));
+    % Divide data in epochs
+    for iEpoch = 1 : nEpochs
+        epx(:,:,iEpoch) = x(:, markers(iEpoch) : markers(iEpoch) + nEpochLen - 1);
+    end
 end
 
 
