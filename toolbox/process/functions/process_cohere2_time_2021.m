@@ -71,7 +71,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'mscohere';
     % === WINDOW LENGTH
-    sProcess.options.win_length.Comment = 'Estimatore window length:';
+    sProcess.options.win_length.Comment = 'Window length for PSD estimation:';
     sProcess.options.win_length.Type    = 'value';
     sProcess.options.win_length.Value   = {1, 's', []};
     % === OVERLAP
