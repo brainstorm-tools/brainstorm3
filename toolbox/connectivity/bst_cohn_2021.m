@@ -104,8 +104,9 @@ end
 Cxy = [];
 pValues = [];
 freq = [];
-Messages = [];
 nWin = 0;
+nFFT = [];
+Messages = [];
 
 % Get current progress bar position
 waitStart = bst_progress('get');
@@ -162,6 +163,7 @@ Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
 nWin = 0;
 
 for iFile = 1 : nFiles
+    bst_progress('set', round(waitStart + iFile/nFiles * 0.80 * waitMax));
     % Compute Syy
     y = Ys{iFile};    
     % Epoching 
@@ -195,13 +197,24 @@ for iFile = 1 : nFiles
         % Sum across epochs
         Sxx = Sxx + sum(epX .* conj(epX), 3);
     end
-    % Compute Sxy
+    % Compute Sxy (with loop)
     for ix = 1 : nSignalsX
-        for iy = 1 : nSignalsY
+        for iy = ix : nSignalsY
             tmp = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
             Sxy(ix, iy, :) = squeeze(Sxy(ix, iy, :)) + tmp(:);
+            % Case NxN
+            if nSignalsX ~= 1 
+                Sxy(iy, ix, :) = conj(Sxy(ix, iy, :));
+            end
         end
     end
+%     % Compute Sxy (vectorized)
+%     Sxy_tmp = complex(ones(nSignalsX, nSignalsY, length(freq), size(epy, 3)));
+%     epX = permute(epX, [1,4,2,3]);
+%     epY = permute(epY, [4,1,2,3]);
+%     Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, epX);
+%     Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, conj(epY));
+%     Sxy = Sxy + sum(Sxy_tmp, 4);   
 end
 
 % Averages
@@ -209,25 +222,33 @@ Sxx = Sxx / nWin;
 Syy = Syy / nWin;
 Sxy = Sxy / nWin;
 
-% Add dimension to use bsxfunc(@rdivide)
-Sxx = permute(Sxx, [1, 3, 2]); % [nSignalsX, 1, nKeep]
-Syy = permute(Syy, [3, 1, 2]); % [1, nSignalsY, nKeep]
-
 % Project in source space
 if ~isempty(ImagingKernel)
+    nSourcesX = size(ImagingKernel,1);
+    bst_progress('text', sprintf('Projecting to source domain [%d>%d]...', nSignalsX, nSourcesX));
     % Initialize output matrix
-    nX = size(ImagingKernel,1);
-    nY = size(ImagingKernel,1);
-    Gsources = zeros(nX, nY, length(freq));
+    Sxy_sources = zeros(nSourcesX, nSourcesX, length(freq));
+    Sxx_sources = zeros(nSourcesX, length(freq));
     % Loop on the frequencies to make the multiplication
     for iFreq = 1:length(freq)
-        Gsources(:,:,iFreq) = ImagingKernel * Gxy(:,:,iFreq) * ImagingKernel';
+        Sxy_sources(:,:,iFreq) = ImagingKernel * Sxy(:,:,iFreq) * ImagingKernel';
     end
-    Sxy = Gsources;
-    clear Gsources;
+    % Extract autospectra from Sxy
+    for iSource = 1 : nSourcesX
+        Sxx_sources(iSource, :) = Sxy_sources(iSource, iSource, :);
+    end
+    Sxy = Sxy_sources;
+    Sxx = Sxx_sources;
+    Syy = Sxx_sources;
+    clear Sxy_sources Sxx_sources
 end
 
 %% ===== Coherence types =====
+bst_progress('set', round(waitStart + 0.90 * waitMax));
+% Add dimension to use bsxfunc(@rdivide)
+Sxx = permute(Sxx, [1, 3, 2]); % [nSignalsX or nSourcesX, 1, nKeep]
+Syy = permute(Syy, [3, 1, 2]); % [1, nSignalsY or nSourcesY, nKeep]
+
 % Coherency or complex coherence C = Sxy ./ sqrt(Sxx*Syy)  
 Cxy = bst_bsxfun(@rdivide, Sxy, sqrt(Sxx));
 Cxy = bst_bsxfun(@rdivide, Cxy, sqrt(Syy));
@@ -248,7 +269,7 @@ switch CohMeasure
         Cxy = abs(imag(Cxy)) ./ sqrt(1-real(Cxy).^2);
         
     % Imaginary Coherence (before 2019)
-    case 'icohere' % (We only have Imaginary coherence)
+    case 'icohere' % (We only had Imaginary coherence)
         % Parametric estimation of the significance level
         if (Overlap == 0.5)
             pValues = max(0, 1 - abs(Cxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
@@ -263,6 +284,7 @@ end
 if ~isreal(Cxy)
     Cxy = abs(Cxy);
 end
+bst_progress('set', round(waitStart + 0.95 * waitMax));
 
 end
 
