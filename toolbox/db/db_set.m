@@ -35,6 +35,7 @@ args = varargin(3:end);
 out1 = [];
 out2 = [];
 
+try
 switch contextName
     % iAnat/iSurf = db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
     case 'FilesWithSubject'
@@ -311,6 +312,11 @@ switch contextName
         
     otherwise
         error('Invalid context : "%s"', contextName);
+end
+catch ME
+    % Close SQL connection if error
+    sql_close(sqlConn);
+    rethrow(ME)
 end
 
 % Close SQL connection if it was created

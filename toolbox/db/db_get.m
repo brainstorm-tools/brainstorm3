@@ -44,6 +44,7 @@ else
     end
 end
 
+try
 varargout = {};
 switch contextName
 %% ==== SUBJECT ====
@@ -613,7 +614,11 @@ switch contextName
     otherwise
         error('Invalid context : "%s"', contextName);
 end
-
+catch ME
+    % Close SQL connection if error
+    sql_close(sqlConn);
+    rethrow(ME)
+end
 
 % Close SQL connection if it was created
 if handleConn
