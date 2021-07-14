@@ -81,7 +81,7 @@ end
 if isempty(sLock) && ~isempty(FileId)
     ParentId = FileId;
     while 1
-        sParent = db_get('FunctionalFile', sqlConnection, ParentId, 'ParentFile');
+        sParent = db_get(sqlConnection, 'FunctionalFile', ParentId, 'ParentFile');
         if isempty(sParent) || isempty(sParent.ParentFile)
             break;
         end

@@ -546,7 +546,7 @@ switch contextName
                 iDefaultSubject = iSubject;
             end
             % Get all anatomy files of each subject
-            sSubjects(iSubject) = db_get('FilesWithSubject', sqlConn, sSubjects(iSubject));
+            sSubjects(iSubject) = db_get(sqlConn, 'FilesWithSubject', sSubjects(iSubject));
         end
         
         % Separate default subject
@@ -571,7 +571,7 @@ switch contextName
         end
         
         sqlConn = sql_connect();
-        argout1.Study = db_get('Studies', sqlConn);
+        argout1.Study = db_get(sqlConn, 'Studies');
         defaultStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Subject', 0, 'Name', '@default_study'));
         analysisStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Name', '@inter'));
         
@@ -595,7 +595,7 @@ switch contextName
                 end
                 
                 % Populate functional files data
-                sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
+                sStudy = db_get(sqlConn, 'FilesWithStudy', sStudy);
             end
             
             if iSub == -1
@@ -690,7 +690,7 @@ switch contextName
                 end
                 
                 % Populate functional files data
-                sStudy = db_get('FilesWithStudy', sqlConn, sStudy);
+                sStudy = db_get(sqlConn, 'FilesWithStudy', sStudy);
                 
                 argout1(iNext) = sStudy;
                 argout2(iNext) = sStudy.Id;
@@ -900,14 +900,14 @@ switch contextName
             % If subject uses default channel file    
             elseif (sSubject.UseDefaultChannel ~= 0)
                 % Get default study for this subject
-                iStudiesNew = db_get('DefaultStudy', sqlConn, iSubject);
+                iStudiesNew = db_get(sqlConn, 'DefaultStudy', iSubject);
                 iStudies = [iStudies, iStudiesNew];
             % Else: get all the studies belonging to this subject
             else
                 if NoIntra
-                    iStudiesNew = db_get('StudiesFromSubject', sqlConn, iSubject);
+                    iStudiesNew = db_get(sqlConn, 'StudiesFromSubject', iSubject);
                 else
-                    iStudiesNew = db_get('StudiesFromSubject', sqlConn, iSubject, 'intra_subject');
+                    iStudiesNew = db_get(sqlConn, 'StudiesFromSubject', iSubject, 'intra_subject');
                 end
                 iStudies = [iStudies, iStudiesNew];
             end
@@ -1164,7 +1164,7 @@ switch contextName
             end
             
             % Populate Surface & Anatomy files
-            sSubject = db_get('FilesWithSubject', sqlConn, sSubject);
+            sSubject = db_get(sqlConn, 'FilesWithSubject', sSubject);
             
             argout1 = sSubject;
             argout2 = iSubject;
@@ -1333,7 +1333,7 @@ switch contextName
         sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('FileName', StudyFile));
         % If data file instead on Study file
         if isempty(sStudy)
-            sFile = db_get('FunctionalFile', sqlConn, StudyFile, 'Study');
+            sFile = db_get(sqlConn, 'FunctionalFile', StudyFile, 'Study');
             if ~isempty(sFile)
                 iStudy = sFile.Study;
             end
@@ -1373,8 +1373,8 @@ switch contextName
         for i = 1:length(iStudies)           
             % Get study 
             iStudy = iStudies(i);
-            [iChannel, iChanStudy] = db_get('ChannelFromStudy', sqlConn, iStudy);
-            [~, sChannel] = db_get('FunctionalFile', sqlConn, iChannel);
+            [iChannel, iChanStudy] = db_get(sqlConn, 'ChannelFromStudy', iStudy);
+            [~, sChannel] = db_get(sqlConn, 'FunctionalFile', iChannel);
             if ~isempty(sChannel)
                 iChanStudies = [iChanStudies, iChanStudy];
                 sListChannel = [sListChannel, sChannel];
@@ -1391,9 +1391,9 @@ switch contextName
     case 'ChannelModalities'
         % Get channel from input file
         sqlConn = sql_connect();
-        sFile = db_get('FunctionalFile', sqlConn, varargin{2}, {'Id', 'Study', 'Type'});
+        sFile = db_get(sqlConn, 'FunctionalFile', varargin{2}, {'Id', 'Study', 'Type'});
         if strcmpi(sFile.Type, 'channel')
-            [~, sChannel] = db_get('FunctionalFile', sqlConn, sFile.Id);
+            [~, sChannel] = db_get(sqlConn, 'FunctionalFile', sFile.Id);
             sql_close(sqlConn);
         else
             sql_close(sqlConn);

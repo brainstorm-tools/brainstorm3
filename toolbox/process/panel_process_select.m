@@ -85,7 +85,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     end
     % Get all the subjects names
     sqlConn = sql_connect();
-    sSubjects = db_get('Subjects', sqlConn);
+    sSubjects = db_get(sqlConn, 'Subjects');
     ProtocolInfo     = bst_get('ProtocolInfo');
     SubjectNames = {};
     iSelSubject = [];
@@ -93,7 +93,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         SubjectIds   = [sSubjects.Id];
         SubjectNames = {sSubjects.Name};
         if ~isempty(ProtocolInfo.iStudy)
-            iSelSubject = db_get('SubjectFromStudy', sqlConn, ProtocolInfo.iStudy);
+            iSelSubject = db_get(sqlConn, 'SubjectFromStudy', ProtocolInfo.iStudy);
         end
     end
     sql_close(sqlConn);

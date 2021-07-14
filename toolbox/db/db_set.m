@@ -1,4 +1,4 @@
-function [out1, out2] = db_set(varargin)
+function varargout = db_set(varargin)
 % DB_SET: Set values in the protocol database from a Brainstorm structure
 % This function is a newer API than bst_set
 
@@ -21,19 +21,25 @@ function [out1, out2] = db_set(varargin)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2020
+%          Raymundo Cassani, 2021
 
 % Parse inputs
-if isempty(varargin{1})
-    sqlConn = sql_connect();
-    handleConn = 1;
-else
-    sqlConn = varargin{1};
-    handleConn = 0;
+if isjava(varargin{1}) && nargin > 1
+    handleConn = 0;         
+    sqlConn = varargin{1};  
+    varargin(1) = [];
 end
-contextName = varargin{2};
-args = varargin(3:end);
-out1 = [];
-out2 = [];
+if (nargin >= 1) && ischar(varargin{1}) 
+    args = {};
+    handleConn = 1;
+    sqlConn = sql_connect();
+    contextName = varargin{1};
+    if nargin > 1
+        args = varargin(2:end);
+    end
+else
+    return
+end
 
 try
 switch contextName
@@ -49,13 +55,13 @@ switch contextName
             else
                 selFile = args(4);
             end
-            out2 = cell(1, length(selFile));
+            varargout{2} = cell(1, length(selFile));
         else
             selFile = [];
         end
 
         if nargout > 0
-            out1 = repmat(db_template('AnatomyFile'), 1, nFiles);
+            varargout{1} = repmat(db_template('AnatomyFile'), 1, nFiles);
         end
 
         for iFile = 1:nFiles
@@ -79,12 +85,12 @@ switch contextName
 
             if nargout > 0
                 anatomyFile.Id = insertedId;
-                out1(iFile) = anatomyFile;
+                varargout{1}(iFile) = anatomyFile;
 
                 if ~isempty(selFile)
                     iSel = find(strcmpi(anatomyFile.FileName, selFile));
                     if ~isempty(iSel)
-                        out2{iSel} = anatomyFile.Id;
+                        varargout{2}(iSel) = {anatomyFile.Id};
                     end
                 end
             end
@@ -115,7 +121,7 @@ switch contextName
                 else
                     selFile = args(2);
                 end
-                out1 = cell(1, length(selFile));
+                varargout{1} = cell(1, length(selFile));
             end
         else
             types  = {lower(args{1})};
@@ -226,7 +232,7 @@ switch contextName
                     if ~isempty(selFile)
                         iSel = find(strcmpi(functionalFile.FileName, selFile));
                         if ~isempty(iSel)
-                            out1{iSel} = FileId;
+                            varargout{1}(iSel) = {FileId};
                         end
                     end
                     
@@ -288,7 +294,7 @@ switch contextName
             updateCondition = [];
         end
         
-        out1 = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition);
+        varargout{1} = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition);
 
     case 'ParentCount'
         iFile = args{1};

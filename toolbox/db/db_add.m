@@ -135,7 +135,7 @@ if isAnatomy
 else
     % Get parent file
     if ~isempty(ParentFile)
-        sParent = db_get('FunctionalFile', sqlConn, ParentFile, {'FileName', 'Type'});
+        sParent = db_get(sqlConn, 'FunctionalFile', ParentFile, {'FileName', 'Type'});
         if strcmpi(sParent.Type, 'folder')
             ParentFolder = sParent.FileName;
         else
@@ -162,17 +162,17 @@ if ismember(fileType, {'subjectimage', 'channel', 'noisecov', 'ndatacov'})
 %                 delfile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(1).FileName);
 %             end
         case 'channel'
-            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'channel'), 'Filename');
+            sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'channel'), 'Filename');
             if ~isempty(sFile)
                 delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile.FileName);
             end
         case 'noisecov'
-            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'noisecov'), 'Filename');
+            sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'noisecov'), 'Filename');
             if ~isempty(sFile)
                 delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
             end
         case 'ndatacov'
-            sFile = db_get('FunctionalFile', sqlConn, struct('Study', iTarget, 'Type', 'ndatacov'), 'Filename');
+            sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'ndatacov'), 'Filename');
             if ~isempty(sFile)
                 delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
             end

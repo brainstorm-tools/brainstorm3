@@ -21,27 +21,24 @@ function varargout = db_get(varargin)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2020
+%          Raymundo Cassani, 2021
 
 % Parse inputs
-contextName = varargin{1};
-if nargin < 2 || isempty(varargin{2}) || ~isjava(varargin{2})
-    sqlConn = sql_connect();
+if isjava(varargin{1}) && nargin > 1
+    handleConn = 0;
+    sqlConn = varargin{1};
+    varargin(1) = [];
+end
+if (nargin >= 1) && ischar(varargin{1}) 
+    args = {};
     handleConn = 1;
-    if nargin > 2 && isempty(varargin{2})
-        args = varargin(3:end);
-    elseif nargin > 1
+    sqlConn = sql_connect();
+    contextName = varargin{1};
+    if nargin > 1
         args = varargin(2:end);
-    else
-        args = {};
     end
 else
-    sqlConn = varargin{2};
-    handleConn = 0;
-    if nargin > 2
-        args = varargin(3:end);
-    else
-        args = {};
-    end
+    return
 end
 
 try
@@ -503,7 +500,7 @@ switch contextName
             if ~isempty(sStudy)
                 % If no channel selected, find first channel in study
                 if isempty(sStudy.iChannel)
-                    sFile = db_get('FunctionalFile', sqlConn, struct('Study', sStudy.Id, 'Type', 'channel'), 'Id');
+                    sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', sStudy.Id, 'Type', 'channel'), 'Id');
                     if ~isempty(sFile)
                         sStudy.iChannel = sFile(1).Id;
                     end
