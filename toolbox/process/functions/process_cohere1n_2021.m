@@ -1,8 +1,8 @@
-function varargout = process_cohere1n( varargin )
-% PROCESS_COHERE1N: Compute the coherence between all the pairs of signals, in one file.
+function varargout = process_cohere1n_2021( varargin )
+% PROCESS_COHERE1N_2021: Compute the coherence between all the pairs of signals, in one file.
 %
-% USAGE:   OutputFiles = process_cohere1n('Run', sProcess, sInputA)
-%                        process_cohere1n('Test')
+% USAGE:   OutputFiles = process_cohere1n_2021('Run', sProcess, sInputA)
+%                        process_cohere1n_2021('Test')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +22,8 @@ function varargout = process_cohere1n( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020; Hossein Shahabi, 2019-2020
+% Authors: Francois Tadel, 2012-2021
+%          Hossein Shahabi, 2019-2020
 
 eval(macro_method);
 end
@@ -31,7 +32,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Coherence NxN [Deprecated]';
+    sProcess.Comment     = 'Coherence NxN [2021]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 656;
@@ -62,22 +63,23 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'mscohere', 'icohere2019', 'lcohere2019', 'icohere'};
     sProcess.options.cohmeasure.Type    = 'radio_label';
     sProcess.options.cohmeasure.Value   = 'mscohere';
-    % === Overlap
-    sProcess.options.overlap.Comment = 'Overlap for PSD estimation:';
+    % === WINDOW LENGTH
+    sProcess.options.win_length.Comment = 'Window length for PSD estimation:';
+    sProcess.options.win_length.Type    = 'value';
+    sProcess.options.win_length.Value   = {1, 's', []};
+    % === OVERLAP
+    sProcess.options.overlap.Comment = 'Overlap for PSD estimation:' ;
     sProcess.options.overlap.Type    = 'value';
     sProcess.options.overlap.Value   = {50, '%', []};
-    % === MAX FREQUENCY RESOLUTION
-    sProcess.options.maxfreqres.Comment = 'Maximum frequency resolution:';
-    sProcess.options.maxfreqres.Type    = 'value';
-    sProcess.options.maxfreqres.Value   = {2,'Hz',2};
     % === HIGHEST FREQUENCY OF INTEREST
     sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
     sProcess.options.maxfreq.Type    = 'value';
     sProcess.options.maxfreq.Value   = {60,'Hz',2};
-    % === OUTPUT MODE
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 1;
+    % === OUTPUT MODE 2021
+    sProcess.options.outputmode.Comment = {'Save individual results (one output file per input file)', 'Average cross-spectra of input files (one output file)'; ...
+                                           'input', 'avgcoh'};
+    sProcess.options.outputmode.Type    = 'radio_label';
+    sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';
 end
 
@@ -100,7 +102,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Metric options
     OPTIONS.Method = 'cohere';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
-    OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
+    OPTIONS.WinLen        = sProcess.options.win_length.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
     OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
     OPTIONS.pThresh       = 0.05;
@@ -123,26 +125,69 @@ function Test() %#ok<DEFNU>
     % Start a new report
     bst_report('Start');
     % Get test datasets
-    sFile = process_simulate_ar('Test');
-    % Loop on frequency resolutions
-    for freq = [1 2 3 5 10 20]
-        % Coherence process
-        sTmp = bst_process('CallProcess', 'process_cohere1n', sFile, [], ...
-            'timewindow',   [], ...    % All the time in input
-            'cohmeasure',   1, ...     % 1=Magnitude-squared, 2=Imaginary
-            'overlap',      3, ...     % 50%
-            'maxfreqres',   freq, ...  % VARIES
-            'maxfreq',      [], ...    % No maximum frequency
-            'pThresh',      0.05, ...  % p-value thrshold
-            ... 'isfreqbands',  0, ...     % No frequency bands
-            ... 'freqbands',    [], ...
-            'outputmode',   1);        % Save individual results (one file per input file)
-        % Snapshot: spectrum
-        bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
-            'target',       11, ...  % Connectivity matrix (image)
-            'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
-            'Comment',      [sTmp.Comment, ': ' sTmp.Comment]);
-    end
+    sFile = process_simulate_ar('Test'); % Fs = 1200 Hz
+    % NOTES:
+    % bst_cohn.m (2019) uses 2^nextpow2(round(Fs / MaxFreqRes)) samples 
+    % of DATA for the FFT, there is no zero padding
+    %
+    % bst_cohn_2021.m uses nWinLen = round(WinLen * Fs) samples of DATA, 
+    % that are zero padded to 2^nextpow2(nWinLen * 2) for the FFT
+    %
+    % To get the similar results with bst_cohn and bst_cohn_2021:
+    % 1. Select a MaxFreqRes that leads to a power-of-2 number of samples, 
+    % thus, we can be sure that no extra data is used in the FFT. 
+    % 2. Use the duration associated to that MaxFreqRes as WinLen parameter  
+    % for bst_cohn_2021, with this we will compute coherence on the same data
+        
+    Fs = 1200;      % Default Fs for process_simulate_ar('Test')
+    nSamples = 512; % Desired number of samples 
+    MaxFreqRes = Fs/nSamples; % Hz ==> round(Fs / MaxFreqRes) = 512 samples
+    WinLen = 1 / MaxFreqRes;  % s  ==> 512 samples zero-padded to 1024
+    
+    % Coherence process with bst_cohn.m (2019)
+    tic;
+    sTmp = bst_process('CallProcess', 'process_cohere1n', sFile, [], ...
+        'timewindow',   [], ...          % All the time in input
+        'cohmeasure',   'mscohere', ...  % 1=Magnitude-squared, 2=Imaginary
+        'overlap',      50, ...          % 50%
+        'maxfreqres',   MaxFreqRes, ...  % VARIES
+        'maxfreq',      [], ...          % No maximum frequency
+        'pThresh',      0.05, ...        % p-value thrshold
+        'outputmode',   1);              % Save individual results (one file per input file)
+    t = toc;
+    % Execution time
+    bst_report('Info', 'process_cohere1n', sFile, sprintf('Execution time: %1.6f seconds', t));
+    % Add tag
+    bst_process('CallProcess', 'process_add_tag', sTmp.FileName, [], 'tag', '(2019)' );
+    % Snapshot: spectrum
+    bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
+        'target',       11, ...  % Connectivity matrix (image)
+        'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
+        'Comment',      [sTmp.Comment, ': (2019)']);
+
+    
+    % Coherence process with bst_cohn_2021.m
+    tic;
+    sTmp = bst_process('CallProcess', 'process_cohere1n_2021', sFile, [], ...
+        'timewindow',   [], ...          % All the time in input
+        'includebad',   1, ...
+        'removeevoked', 0, ...
+        'cohmeasure',   'mscohere', ...  % Magnitude-squared Coherence|C|^2 = |Gxy|^2/(Gxx*Gyy)
+        'win_length',   WinLen, ...
+        'overlap',      50, ...          % 50%
+        'maxfreq',      [], ...
+        'outputmode',   'input');        % Save individual results (one output file per input file)
+    t = toc;
+    % Execution time
+    bst_report('Info', 'process_cohere1n_2021', sFile, sprintf('Execution time: %1.6f seconds', t));   
+    % Snapshot: spectrum
+    bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
+        'target',         11, ...  % Connectivity matrix (image)
+        'modality',       1, ...
+        'orient',         1, ...
+        'contact_nimage', 16, ...
+        'Comment',      [sTmp.Comment, ': (2021)']);
+
     % Save and display report
     ReportFile = bst_report('Save', sTmp);
     bst_report('Open', ReportFile);

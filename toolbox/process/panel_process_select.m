@@ -2850,6 +2850,17 @@ function sProcess = GetProcess(ProcessName)
         % Return process if found
         if ~isempty(iProc)
             sProcess = GlobalData.Processes.All(iProc);
+        % Else: try to get its definition directly from the function (for deprecated processes)
+        elseif exist(ProcessName, 'file')
+            % Call description function
+            try
+                Function = str2func(ProcessName);
+                sProcess = Function('GetDescription');
+                sProcess = struct_copy_fields(db_template('processdesc'), sProcess, 1);
+                sProcess.Function = Function;
+            catch
+                sProcess = [];
+            end
         else
             sProcess = [];
         end

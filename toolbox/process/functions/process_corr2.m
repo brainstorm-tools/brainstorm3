@@ -229,17 +229,22 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA, sInputB) %#ok<DEFNU>
     end
 
     % === OUTPUT ===
-    % Output mode
-    strOutput = lower(sProcess.options.outputmode.Comment{sProcess.options.outputmode.Value});
-    if ~isempty(strfind(strOutput, 'average'))
-        OPTIONS.OutputMode = 'avg';
-    elseif ~isempty(strfind(strOutput, 'concatenate'))
-        OPTIONS.OutputMode = 'concat';
+    % Output mode: 'radio_label' option (2021)
+    if ischar(sProcess.options.outputmode.Value)
+        OPTIONS.OutputMode = sProcess.options.outputmode.Value;
+    % Output mode: 'radio' option (deprecated)
     else
-        OPTIONS.OutputMode = 'input';
+        strOutput = lower(sProcess.options.outputmode.Comment{sProcess.options.outputmode.Value});
+        if ~isempty(strfind(strOutput, 'average'))
+            OPTIONS.OutputMode = 'avg';
+        elseif ~isempty(strfind(strOutput, 'concatenate'))
+            OPTIONS.OutputMode = 'concat';
+        else
+            OPTIONS.OutputMode = 'input';
+        end
     end
     % Output study, in case of average
-    if strcmpi(OPTIONS.OutputMode, 'avg') || strcmpi(OPTIONS.OutputMode, 'concat')
+    if ismember(OPTIONS.OutputMode, {'avg', 'concat', 'avgcoh'})
         if ~isempty(sInputB)
             [tmp, OPTIONS.iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputB);
         else

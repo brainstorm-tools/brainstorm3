@@ -1,5 +1,5 @@
-function varargout = process_cohere2_time( varargin )
-% PROCESS_COHERE2_TIME: Compute the time-resolved coherence between all the pairs of signals, in one file.
+function varargout = process_cohere2_time_2021( varargin )
+% PROCESS_COHERE2_TIME_2021: Compute the time-resolved coherence between all the pairs of signals, in one file.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -19,7 +19,9 @@ function varargout = process_cohere2_time( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, 2015-2020; Hossein Shahabi, 2019-2020
+% Authors: Elizabeth Bock, 2015
+%          Francois Tadel, 2015-2021
+%          Hossein Shahabi, 2019-2020
 
 eval(macro_method);
 end
@@ -28,7 +30,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Time-resolved coherence AxB [Deprecated]';
+    sProcess.Comment     = 'Time-resolved coherence AxB [2021]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 660;
@@ -47,14 +49,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;
     sProcess.options.removeevoked.Group   = 'input';
-    % Time window
-    sProcess.options.win.Comment = 'Estimation window length:';
-    sProcess.options.win.Type    = 'value';
-    sProcess.options.win.Value   = {.350, 'ms', []};
+    % === Time window
+    sProcess.options.slide_win.Comment = 'Sliding time window duration:';
+    sProcess.options.slide_win.Type    = 'value';
+    sProcess.options.slide_win.Value   = {.350, 'ms', []};
     % === Overlap for Sliding window (Time)
-    sProcess.options.overlap.Comment = 'Sliding window overlap:';
-    sProcess.options.overlap.Type    = 'value';
-    sProcess.options.overlap.Value   = {50, '%', []};
+    sProcess.options.slide_overlap.Comment = 'Sliding window overlap:';
+    sProcess.options.slide_overlap.Type    = 'value';
+    sProcess.options.slide_overlap.Value   = {50, '%', []};
     % === COHERENCE METHOD
     sProcess.options.cohmeasure.Comment = {...
         ['<B>Magnitude-squared Coherence</B><BR>' ...
@@ -67,11 +69,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
         '<FONT color="#777777"> IC    = imag(C)^2 / (1-real(C)^2) </FONT>']; ...
         'mscohere', 'icohere2019','lcohere2019', 'icohere'};
     sProcess.options.cohmeasure.Type    = 'radio_label';
-    sProcess.options.cohmeasure.Value   = 'Measure:';
-    % === MAX FREQUENCY RESOLUTION
-    sProcess.options.maxfreqres.Comment = 'Maximum frequency resolution:';
-    sProcess.options.maxfreqres.Type    = 'value';
-    sProcess.options.maxfreqres.Value   = {2,'Hz',2};
+    sProcess.options.cohmeasure.Value   = 'mscohere';
+    % === WINDOW LENGTH
+    sProcess.options.win_length.Comment = 'Window length for PSD estimation:';
+    sProcess.options.win_length.Type    = 'value';
+    sProcess.options.win_length.Value   = {1, 's', []};
+    % === OVERLAP
+    sProcess.options.overlap.Comment = 'Overlap for PSD estimation:' ;
+    sProcess.options.overlap.Type    = 'value';
+    sProcess.options.overlap.Value   = {50, '%', []};
     % === HIGHEST FREQUENCY OF INTEREST
     sProcess.options.maxfreq.Comment = 'Highest frequency of interest:';
     sProcess.options.maxfreq.Type    = 'value';
@@ -106,17 +112,17 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     % Metric options
     OPTIONS.Method = 'cohere';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
-    OPTIONS.MaxFreqRes    = sProcess.options.maxfreqres.Value{1};
+    OPTIONS.WinLen        = sProcess.options.win_length.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
     OPTIONS.CohOverlap    = 0.50;
     OPTIONS.pThresh       = 0.05;
     OPTIONS.isSave        = 0;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
 
-    % Time windows options
+    % Sliding time windows options
     CommentTag    = sProcess.options.commenttag.Value;
-    EstTimeWinLen = sProcess.options.win.Value{1};
-    Overlap       = sProcess.options.overlap.Value{1}/100;
+    EstTimeWinLen = sProcess.options.slide_win.Value{1};
+    Overlap       = sProcess.options.slide_overlap.Value{1}/100;
     
     % Read time information
     TimeVectorA  = in_bst(sInputA(1).FileName, 'Time');
