@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 July 2021
 - Inverse: FieldTrip DICS
+- Anatomy: Fixed O'Reilly infant templates
 - Connectivity: New coherence processes 2021
 ---------------------------------------------------------------
 June 2021

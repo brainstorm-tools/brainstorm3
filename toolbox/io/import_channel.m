@@ -162,10 +162,6 @@ switch (FileFormat)
                 ChannelMat.Comment = 'Cartool channels';
                 FileUnits = 'cm';
         end
-
-    case 'MEGDRAW'
-        ChannelMat = in_channel_megdraw(ChannelFile);
-        FileUnits = 'cm';
         
     case 'CURRY' % (*.res;*.rs3;*.pom)
         switch (fExt)
@@ -177,10 +173,6 @@ switch (FileFormat)
             case 'pom'
                 ChannelMat = in_channel_curry_pom(ChannelFile);
         end
-        FileUnits = 'mm';
-        
-    case 'XENSOR' % ANT Xensor (*.elc)
-        ChannelMat = in_channel_ant_xensor(ChannelFile);
         FileUnits = 'mm';
 
     case 'EEGLAB' % (*.ced;*.xyz)
@@ -205,20 +197,71 @@ switch (FileFormat)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','-Y','X','Z'}, 0, .01);
         ChannelMat.Comment = 'EGI channels';
         FileUnits = 'cm';
-    
-    case 'MFF'  % (coordinates.xml)
-        [tmp, ChannelMat] = in_fopen_mff(ChannelFile, ImportOptions, 1);
-        FileUnits = 'mm';
-        
+
     case 'EMSE'  % (*.elp)
         ChannelMat = in_channel_emse_elp(ChannelFile);
         FileUnits = 'm';
+
+    case 'FREESURFER-TSV'
+        % Read file
+        ChannelMat = in_channel_bids(ChannelFile, 0.001);
+        FileUnits = 'm';
+        % If we know the destination study: convert from FreeSurfer/Surface coordinates to SCS coordinates
+        if ~isempty(iStudies)
+            % Get the subject for the first study
+            sStudy = bst_get('Study', iStudies(1));
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            % Get the subject's MRI
+            if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+                error('You need to import the FreeSurfer anatomy before.');
+            end
+            % Load the MRI
+            MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+            sMri = in_mri_bst(MriFile);
+            if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || isempty(sMri.SCS.NAS)
+                error('Missing fiducials.');
+            end
+            % Convert coordinates: FreeSurfer surface => MRI
+            fcnTransf = @(Loc)bst_bsxfun(@plus, Loc', (size(sMri.Cube(:,:,:,1))/2 + [0 1 0]) .* sMri.Voxsize / 1000)';
+            AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
+            ChannelMat = AllChannelMats{1};
+            % Convert coordinates: MRI => SCS
+            fcnTransf = @(Loc)cs_convert(sMri, 'mri', 'scs', Loc')';
+            AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
+            ChannelMat = AllChannelMats{1};
+        end
+        
+
+
+        
+    case {'INTRANAT', 'INTRANAT_MNI'}
+        switch (fExt)
+            case 'pts'
+                ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
+            case 'csv'
+                if strcmpi(FileFormat, 'INTRANAT_MNI')
+                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'MNI', .001);
+                else
+                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'T1pre Scanner Based', .001);
+                end
+        end
+        ChannelMat.Comment = 'Contacts';
+        FileUnits = 'mm';
+        [ChannelMat.Channel.Type] = deal('SEEG');
+        
+    case 'MEGDRAW'
+        ChannelMat = in_channel_megdraw(ChannelFile);
+        FileUnits = 'cm';
         
     case 'LOCALITE'
         ChannelMat = in_channel_ascii(ChannelFile, {'%d','name','X','Y','Z'}, 1, .001);
         ChannelMat.Comment = 'Localite channels';
         FileUnits = 'mm';
 
+    case 'MFF'  % (coordinates.xml)
+        [tmp, ChannelMat] = in_fopen_mff(ChannelFile, ImportOptions, 1);
+        FileUnits = 'mm';
+        
     case 'NEUROSCAN'  % (*.dat;*.tri;*.txt;*.asc)
         switch (fExt)
             case {'dat', 'txt'}
@@ -253,22 +296,12 @@ switch (FileFormat)
         
     case 'TVB'
         ChannelMat = in_channel_tvb(ChannelFile);
-        FileUnits = 'm';
+        FileUnits = 'm';       
         
-    case {'INTRANAT', 'INTRANAT_MNI'}
-        switch (fExt)
-            case 'pts'
-                ChannelMat = in_channel_ascii(ChannelFile, {'name','X','Y','Z'}, 3, .001);
-            case 'csv'
-                if strcmpi(FileFormat, 'INTRANAT_MNI')
-                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'MNI', .001);
-                else
-                    ChannelMat = in_channel_tsv(ChannelFile, 'contact', 'T1pre Scanner Based', .001);
-                end
-        end
-        ChannelMat.Comment = 'Contacts';
+    case 'XENSOR' % ANT Xensor (*.elc)
+        ChannelMat = in_channel_ant_xensor(ChannelFile);
         FileUnits = 'mm';
-        [ChannelMat.Channel.Type] = deal('SEEG');
+        
     case {'ASCII_XYZ', 'ASCII_XYZ_MNI', 'ASCII_XYZ_WORLD'}  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
         ChannelMat.Comment = 'Channels';
