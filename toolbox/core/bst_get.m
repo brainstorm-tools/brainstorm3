@@ -2258,57 +2258,57 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
             sTemplates(end).Name = 'Kabdebon_7w';
         end
-        if ~ismember('oreilly_0.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m';
-            sTemplates(end).Name = 'Oreilly_0.5m';
+        if ~ismember('oreilly_0.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m_2021';
+            sTemplates(end).Name = 'Oreilly_0.5m_2021';
         end
-        if ~ismember('oreilly_1m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m';
-            sTemplates(end).Name = 'Oreilly_1m';
+        if ~ismember('oreilly_1m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m_2021';
+            sTemplates(end).Name = 'Oreilly_1m_2021';
         end
-        if ~ismember('oreilly_2m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m';
-            sTemplates(end).Name = 'Oreilly_2m';
+        if ~ismember('oreilly_2m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m_2021';
+            sTemplates(end).Name = 'Oreilly_2m_2021';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m';
-            sTemplates(end).Name = 'Oreilly_3m';
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m_2021')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m_2021';
+            sTemplates(end).Name = 'Oreilly_3m_2021';
         end
-        if ~ismember('oreilly_4.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m';
-            sTemplates(end).Name = 'Oreilly_4.5m';
+        if ~ismember('oreilly_4.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m_2021';
+            sTemplates(end).Name = 'Oreilly_4.5m_2021';
         end
-        if ~ismember('oreilly_6m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m';
-            sTemplates(end).Name = 'Oreilly_6m';
+        if ~ismember('oreilly_6m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m_2021';
+            sTemplates(end).Name = 'Oreilly_6m_2021';
         end
-        if ~ismember('oreilly_7.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m';
-            sTemplates(end).Name = 'Oreilly_7.5m';
+        if ~ismember('oreilly_7.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m_2021';
+            sTemplates(end).Name = 'Oreilly_7.5m_2021';
         end
-        if ~ismember('oreilly_9m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m';
-            sTemplates(end).Name = 'Oreilly_9m';
+        if ~ismember('oreilly_9m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m_2021';
+            sTemplates(end).Name = 'Oreilly_9m_2021';
         end
-        if ~ismember('oreilly_10.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m';
-            sTemplates(end).Name = 'Oreilly_10.5m';
+        if ~ismember('oreilly_10.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m_2021';
+            sTemplates(end).Name = 'Oreilly_10.5m_2021';
         end
-        if ~ismember('oreilly_12m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m';
-            sTemplates(end).Name = 'Oreilly_12m';
+        if ~ismember('oreilly_12m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m_2021';
+            sTemplates(end).Name = 'Oreilly_12m_2021';
         end
-        if ~ismember('oreilly_15m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m';
-            sTemplates(end).Name = 'Oreilly_15m';
+        if ~ismember('oreilly_15m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m_2021';
+            sTemplates(end).Name = 'Oreilly_15m_2021';
         end
-        if ~ismember('oreilly_18m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m';
-            sTemplates(end).Name = 'Oreilly_18m';
+        if ~ismember('oreilly_18m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m_2021';
+            sTemplates(end).Name = 'Oreilly_18m_2021';
         end
-        if ~ismember('oreilly_24m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m';
-            sTemplates(end).Name = 'Oreilly_24m';
+        if ~ismember('oreilly_24m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m_2021';
+            sTemplates(end).Name = 'Oreilly_24m_2021';
         end
         % If a specific template was requested
         if ~isempty(AnatName)
