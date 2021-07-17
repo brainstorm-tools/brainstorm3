@@ -68,12 +68,17 @@ for i = 1:length(sSubject.Anatomy)
     sMriNew.Cube    = sMri.Cube;
     sMriNew.Voxsize = sMri.Voxsize;
     sMriNew.SCS     = sMri.SCS;
-    sMriNew.NCS     = sMri.NCS;
+    if isfield(sMri, 'NCS')
+        sMriNew.NCS = sMri.NCS;
+    end
     if isfield(sMri, 'Header')
         sMriNew.Header = sMri.Header;
     end
     if isfield(sMri, 'InitTransf')
         sMriNew.InitTransf = sMri.InitTransf;
+    end
+    if isfield(sMri, 'Labels')
+        sMriNew.Labels = sMri.Labels;
     end
     % Save file back
     bst_save(MriFile, sMriNew, 'v7');
