@@ -1,6 +1,7 @@
 ---------------------------------------------------------------
 July 2021
 - Inverse: FieldTrip DICS
+- Connectivity: New coherence processes 2021
 ---------------------------------------------------------------
 June 2021
 - New connectivity graphs
