@@ -1219,7 +1219,7 @@ function destFile = CopyFile(iTarget, srcFile, srcType, iSrcStudy, sSubjectTarge
     % Get source subject
     if ~isAnatomy
         iSubjectSrcRaw = db_get(sqlConn, 'SubjectFromStudy', iSrcStudy);
-        sSubjectSrcRaw = db_get('Subject', iSubjectSrcRaw);
+        sSubjectSrcRaw = db_get(sqlConn, 'Subject', iSubjectSrcRaw);
         % Check if the subject changes
         UseDefaultAnatSrc    = (sSubjectSrcRaw.UseDefaultAnat == 1)    || (iSubjectSrcRaw == 0);
         UseDefaultAnatTarget = (sSubjectTargetRaw.UseDefaultAnat == 1) || (iSubjectTargetRaw == 0);
