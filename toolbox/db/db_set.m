@@ -38,7 +38,7 @@ if (nargin >= 1) && ischar(varargin{1})
         args = varargin(2:end);
     end
 else
-    return
+    error(['Usage : db_set(contextName) ' 10 '        db_set(sqlConn, contextName)']);
 end
 
 try
