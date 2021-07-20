@@ -86,7 +86,7 @@ if isempty(iItem)
         queryCond.ExtraStr1 = sNew.ExtraStr1;
     end
     
-    sFiles = db_get('FunctionalFile', sqlConn, queryCond, 'Name');
+    sFiles = db_get(sqlConn, 'FunctionalFile', queryCond, 'Name');
     if ~isempty(sFiles)
         Comment = file_unique(sNew.Name, {sFiles.Name});
         % Modify input file
@@ -100,7 +100,7 @@ if isempty(iItem)
     db_set(sqlConn, 'FunctionalFile', 'insert', sNew);
 else
     % Delete replaced file
-    sOld = db_get('FunctionalFile', sqlConn, iItem, 'FileName');
+    sOld = db_get(sqlConn, 'FunctionalFile', iItem, 'FileName');
     if ~isempty(sOld)
         file_delete(bst_fullfile(ProtocolInfo.STUDIES, sOld.FileName), 1);
     end
