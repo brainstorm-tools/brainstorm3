@@ -1,6 +1,6 @@
-function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, inputs)
-% BST_GRANGER_SPECTRAL  Granger causality at each frequency between any two
-%                       signals.
+function [connectivity, pValues, freq] = bst_granger_spectral_conditional(X, Y, Fs, order, inputs)
+% BST_GRANGER_SPECTRAL_CONDITIONAL  Granger causality at each frequency between any two
+%                                   signals, conditioned on all the remaining signals
 %
 % Inputs:
 %   X                 - first set of signals, one signal per row
@@ -24,17 +24,24 @@ function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, i
 %
 % Outputs:
 %   connectivity      - A x B matrix of spectral Granger causalities from
-%                       source to sink. 
-%                       By default, GC(a,a) = 0 if Y is empty.
+%                       source to sink, conditioned on all the other variables. 
+%                       If Y is empty, the matrix contains the spectral GC
+%                       from each source variable to each sink variable,
+%                       conditioned on the remaining variable. 
+%                       If Y is not empty the matrix contains the spectral
+%                       causalities from each variable in Y to each
+%                       variable in X, conditionend on the other variables
+%                       in Y.
 %                       [C: MX x MY x NF matrix]
 %   pValues           - parametric p-value for corresponding spectral Granger
-%                       causality in mean estimate (not implemented!)
+%                       causality in mean estimate (not implemented yet!)
 %                       [P: MX x MY x NF matrix]
 %   freq              - frequencies corresponding to the previous two metrics
 %                       [F: NF x 1 vector]
 %
-% See also BST_GRANGER.
+% See also BST_GRANGER_CONDITIONAL.
 %
+
 % Spectral causality measures are evaluated from the spectra of the full
 % and restricted models as:
 %
@@ -45,8 +52,8 @@ function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, i
 % for additional information.
 %
 % Call:
-%   connectivity = bst_granger_spectral(X, Y, 200, 10, inputs); % general call
-%   connectivity = bst_granger_spectral(X, [], 200, 30, inputs); % every pair
+%   connectivity = bst_granger_spectral_conditional(X, Y, 200, 10, inputs); % general call
+%   connectivity = bst_granger_spectral_conditional(X, [], 200, 30, inputs); % every pair in X
 % Parameter examples:
 %   inputs.freq           = 0:0.1:100; % specify desired frequencies
 %   inputs.freqResolution = 0.1; % have a high-point FFT
@@ -78,7 +85,7 @@ function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, i
 if ndims(X) == 3
   inputs.nTrials = size(X,3);
   X = reshape(X, size(X, 1), []);
-  Y = reshape(Y, size(Y, 1), []);
+  Y = reshape(Y, size(Y, 1), []); 
 elseif ~isfield(inputs, 'nTrials')
   inputs.nTrials = 1;
 end
@@ -140,119 +147,138 @@ end
 
 %% Differentiate between auto-causality and cross-causality for speed
 
-if isempty(Y) % auto-causality between signals in X, so we can halve the number of models to estimate
+if isempty(Y) % causality between signals in X
   
-  % preallocate the spectral causality matrix
-  connectivity = zeros(size(X, 1), size(X, 1), nFFT/2); 
+   % preallocate the spectral causality matrix
+   connectivity = zeros(size(X, 1), size(X, 1), nFFT/2); 
   
-  % iterate over all pairs of sinks & sources
-  for iX = 1:size(X, 1)
-    for iY = iX+1 : size(X, 1) % to avoid auto-causality
+   % the full model is evaluated only one time
+   
+   % multivariate model estimation
+    [transfers, noiseCovariance, order] = bst_mvar(X, order, inputs.nTrials, inputs.flagFPE);
+
+    % spectra for the full model
+    [spectra, freq] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
+
+    % data correlations using Yule-Walker (up to high order 50)
+    R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
+
+    % iterate over all pairs of sinks & sources
+    for iX = 1:size(X, 1)
+        for iY = iX+1 : size(X, 1) % to avoid auto-causality
       
-        % two-variate model
-        [transfers, noiseCovariance, order] = bst_mvar([X(iX, :); X(iY, :)], order, inputs.nTrials, inputs.flagFPE);
+            % restricted model iY -> iX
 
-        % spectra of full model
-        [spectra, freq] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
-        
-        % data correlations using Yule-Walker (up to high order 50)
-        R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
+            % mask for the coefficients of the restricted model
+            mask = ones(size(X,1));
+            mask(iX,iY) = 0;
 
-        % restricted model iY -> iX
-        
-        % mask for the coefficients of the restricted model
-        mask = ones(2);
-        mask(1,2) = 0;
-        
-        % restricted bivariate model (using masked row-by-row solution of
-        % YW equations)
-        [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
-      
-         % spectra of restricted system
-        [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
+            % restricted multivariate model (using masked row-by-row solution of YW equations)
+            [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
 
-        % connectivity at each frequence (see Cohen et al., 2020)
-        for n = 1:length(freq)
-            connectivity(iX, iY, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+             % spectra of restricted system
+            [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
+
+            % connectivity at each frequence (see Cohen et al., 2020)
+            for n = 1:length(freq)
+                connectivity(iX, iY, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+            end
+
+            % restricted model iX -> iY
+
+            % mask for the coefficients of the restricted model
+            mask = ones(size(X,1));
+            mask(iY,iX) = 0;
+
+            % restricted multivariate model (using masked row-by-row solution of YW equations)        
+            [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
+
+             % spectra of restricted system   
+            [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
+
+            % connectivity at each frequence (see Cohen et al., 2020)
+            for n = 1:length(freq)
+                connectivity(iY, iX, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+            end
         end
-        
-        % restricted model iX -> iY
-
-        % mask for the coefficients of the restricted model
-        mask = ones(2);
-        mask(2,1) = 0;
-        
-        % restricted bivariate model
-        [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
-      
-         % spectra of restricted system
-        [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
-
-        % connectivity at each frequence (see Cohen et al., 2020)
-        for n = 1:length(freq)
-            connectivity(iY, iX, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
-        end
+    
+        % diagonal will equal the maximum of all inflows and outflows for iX, specific to each frequency
+        connectivity(iX, iX, :) = max( max(connectivity(iX, :, :), [], 2), max(connectivity(:, iX, :), [], 1) );   
     end
-    
-    % diagonal will equal the maximum of all inflows and outflows for iX, specific to each frequency
-    connectivity(iX, iX, :) = max( max(connectivity(iX, :, :), [], 2), max(connectivity(:, iX, :), [], 1) );
-    
-  end
 
 else % we have to use all pairs of signals
   
-  % preallocate the spectral causality matrix
-  connectivity = zeros(size(X, 1), size(Y, 1), nFFT/2); 
-  duplicates = zeros(0, 2);
+    % preallocate the spectral causality matrix
+    connectivity = zeros(size(X, 1), size(Y, 1), nFFT/2); 
+    duplicates = zeros(0, 2);
   
-  % iterate over all pairs of sinks & sources
-  for iX = 1:size(X, 1)
-    for iY = 1:size(Y, 1)
-      
-      if max(abs(X(iX, :) - Y(iY, :))) > eps % by default, if X(sink) = Y(source), the causality is 0 everywhere
+    % iterate over all pairs of sinks & sources
+    for iX = 1:size(X, 1)
+        for iY = 1:size(Y, 1)
+     
+            % X(iX,:) = sink, Y(iY,:) = source, Y(~iY,:) = conditional
+            % I have to check that the sink is different form all the other
+            % variables in Y
+            sink = X(iX,:);
+            source = Y(iY,:);
+            other_vars = Y(setdiff( 1:size(Y, 1), iY),:);
+            
+            % If sink and source are duplicates there's a correction
+            % 
+            if max(abs(sink - source)) > eps % by default, if X(sink) = Y(source), the causality is 0 everywhere
+                
+                % If the target is equal to one of the conditioning
+                % variables, remove it
+                remove_inds = [];
+                for k = 1:size(other_vars,1)
+                     if max(abs(sink - other_vars(k,:))) < eps
+                          remove_inds = [remove_inds, k];
+                     end
+                end
+                other_vars(remove_inds,:) = [];
+                
+                
+                % multivariate model estimation (one sink, all sources)
+                [transfers, noiseCovariance, order] = bst_mvar([sink; source; other_vars], order, inputs.nTrials, inputs.flagFPE);
 
-        % two-variate model 
-        [transfers, noiseCovariance, order] = bst_mvar([X(iX, :); Y(iY, :)], order, inputs.nTrials, inputs.flagFPE);
+                % spectra for the full model
+                [spectra, freq] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
+
+                % data correlations using Yule-Walker (up to high order 50)
+                R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
+                
+                % mask for the coefficients of the restricted model
+                mask = ones(2 + size(other_vars,1)); % size(other vars) + one source + one sink
+                mask(1,2) = 0; % Cut only the source -> sink coupling
+
+                % restricted multivariate model (using masked row-by-row solution of YW equations)
+                [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
+
+                 % spectra of restricted system
+                [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
+
+                % connectivity at each frequence (see Cohen et al., 2020)
+                for n = 1:length(freq)
+                    connectivity(iX, iY, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
+                end
+
+            else % save duplicates to modify later
         
-        % spectra of full model
-        [spectra, freq] = bst_granger_spectral_spectrum(transfers, noiseCovariance, nFFT, Fs);
-      
-        % data correlations using Yule-Walker (up to high order 50)
-        R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
-
-        % mask for the coefficients of the restricted model
-        mask = ones(2);
-        mask(1,2) = 0;
+                duplicates(end+1, :) = [iX iY]; %#ok<AGROW>
         
-        % restricted bivariate model (using masked row-by-row solution of YW equations)
-        [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
+            end
       
-         % spectra of restricted system
-        [spectra_restricted, ~] = bst_granger_spectral_spectrum(transfers_restricted, noiseCovariance_restricted, nFFT, Fs);
-
-        % connectivity at each frequence (see Cohen et al., 2020)        
-        for n = 1:length(freq)
-            connectivity(iX, iY, n) = log(abs(det(spectra_restricted(:,:,n))) ./ abs(det(spectra(:,:,n))));% Geweke-Granger
         end
-        
-      else % save duplicates to modify later
-        
-        duplicates(end+1, :) = [iX iY]; %#ok<AGROW>
-        
-      end
-      
     end
-  end
   
-  % for duplicate indices, set the causality value to the maximum of all inflows for iX and outflows for iY
-  for iDuplicate = 1:size(duplicates, 1)
-    connectivity(duplicates(iDuplicate, 1), duplicates(iDuplicate, 2), :) = max( ...
-      max(connectivity(duplicates(iDuplicate, 1), :, :), [], 2), ...
-      max(connectivity(:, duplicates(iDuplicate, 2), :), [], 1) ...
-      );
-  end
-  
-  
+    % for duplicate indices, set the causality value to the maximum of all inflows for iX and outflows for iY
+    for iDuplicate = 1:size(duplicates, 1)
+        connectivity(duplicates(iDuplicate, 1), duplicates(iDuplicate, 2), :) = max( ...
+        max(connectivity(duplicates(iDuplicate, 1), :, :), [], 2), ...
+        max(connectivity(:, duplicates(iDuplicate, 2), :), [], 1) ...
+        );
+    end
+   
 end
 
 %% Interpolate to desired frequencies & perform statistics if desired

@@ -1,7 +1,7 @@
-function [connectivity, pValue] = bst_granger(X, Y, order, inputs)
-% BST_GRANGER       Granger causality  between any two signals, 
-%                   using two Wald statistics
-%
+function [connectivity, pValue] = bst_granger_conditional(X, Y, order, inputs)
+% BST_GRANGER_CONDITIONAL       Conditional Granger causality  between any 
+%                               two signals
+%                               
 % Inputs:
 %   sinks         - first set of signals, one signal per row
 %                   [X: MX x N or MX x N x T matrix]
@@ -22,25 +22,23 @@ function [connectivity, pValue] = bst_granger(X, Y, order, inputs)
 % Outputs:
 %   connectivity  - A x B matrix of causalities from source to sink
 %                   [C: MX x MY matrix]
-%   pValue        - parametric p-value for corresponding Granger causality estimate
-%                   [P: MX x MY matrix]
+%   pValue        - parametric p-value for corresponding conditional Granger causality estimate
+%                   [P: MX x MY matrix] (not implemented!)
 % 
 % See also BST_MVAR
 %
-% For each signal pair (a,b) we calculate the Granger causality:
+% For each signal pair (a,b) we calculate the conditional Granger causality:
 % 
 %                       det(restricted_residuals_cov_matrix)        
 %         gc =   ----------------------------------------------------
 %                             det(full_cov_matrix)
 %
-% see Cohen, Dror, et al. "A general spectral decomposition of causal influences
-% applied to integrated information." and Barret, Barnett and Seth "Multivariate 
-% Granger causality and generalized variance".
+% see Barret, Barnett and Seth "Multivariate Granger causality and generalized variance".
 %
 % Call:
-%   connectivity = bst_granger(X, Y, 5, inputs);
-%   connectivity = bst_granger(X, [], 5, inputs); % every pair in X
-%   connectivity = bst_granger(X, [], 20, inputs); % more delays in AR
+%   connectivity = bst_granger_conditional(X, Y, 5, inputs);
+%   connectivity = bst_granger_conditional(X, [], 5, inputs); % every pair in X
+%   connectivity = bst_granger_conditional(X, [], 20, inputs); % more delays in AR
 %   inputs.nTrials = 10; % use trial-averaged covariances in AR estimation
 %   inputs.standardize = true; % zero mean and unit variance
 %   inputs.flagFPE = true; % allow different orders for each pair of signals
@@ -121,36 +119,37 @@ if isempty(Y) % auto-causality
   % setup
   connectivity = zeros(nX);
   
+  % the full model is evaluated only one time
+   
+  % multivariate model estimation
+  [transfers, noiseCovariance, order] = bst_mvar(X, order, inputs.nTrials, inputs.flagFPE);
+
+  % data correlations using Yule-Walker (up to high order 50)
+  R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
+  
   % only iterate over one triangle
   for iX = 1:nX
     
     % iterate over all the pairs after iX
     for iY = (iX+1):nX
       
-        % two-variate model
-        [transfers, noiseCovariance, order] = bst_mvar([X(iX, :); X(iY, :)], order, inputs.nTrials, inputs.flagFPE);
-
-        % data correlations using Yule-Walker (up to high order 50)
-        R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
-
         % restricted model iY -> iX
         
         % mask for the coefficients of the restricted model
-        mask = ones(2);
-        mask(1,2) = 0;
-        
-        % restricted bivariate model (using masked row-by-row solution of
-        % YW equations)
+        mask = ones(size(X,1));
+        mask(iX,iY) = 0;
+
+        % restricted multivariate model (using masked row-by-row solution of YW equations)
         [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
-      
+                  
         % connectivity
         connectivity(iX, iY) = log(det(noiseCovariance_restricted) ./ det(noiseCovariance));
         
         % restricted model iX -> iY
 
         % mask for the coefficients of the restricted model
-        mask = ones(2);
-        mask(2,1) = 0;
+        mask = ones(size(X,1));
+        mask(iY,iX) = 0;
         
         % restricted bivariate model (using masked row-by-row solution of
         % YW equations)
@@ -170,28 +169,46 @@ else % cross-causality
   % setup
   connectivity = zeros(nX, nY);
   duplicates = zeros(0, 2);
-  
+ 
   for iX = 1:nX
     for iY = 1:nY
-      
-      if any(abs(X(iX, :) - Y(iY, :)) > eps) % avoid duplicates
-      
-        % two-variate model 
-        [transfers, noiseCovariance, order] = bst_mvar([X(iX, :); Y(iY, :)], order, inputs.nTrials, inputs.flagFPE);
-              
+      % X(iX,:) = sink, Y(iY,:) = source, Y(~iY,:) = conditional
+      % I have to check that the sink is different form all the other
+      % variables in Y
+      sink = X(iX,:);
+      source = Y(iY,:);
+      other_vars = Y(setdiff( 1:size(Y, 1), iY),:);
+
+      % If sink and source are duplicates there's a correction     
+      if max(abs(sink - source)) > eps % by default, if X(sink) = Y(source), the causality is 0 everywhere
+
+            % If the target is equal to one of the conditioning
+            % variables, remove it
+            remove_inds = [];
+            for k = 1:size(other_vars,1)
+                 if max(abs(sink - other_vars(k,:))) < eps
+                      remove_inds = [remove_inds, k];
+                 end
+            end
+            other_vars(remove_inds,:) = [];
+
+
+        % multivariate model estimation (one sink, all sources)
+        [transfers, noiseCovariance, order] = bst_mvar([sink; source; other_vars], order, inputs.nTrials, inputs.flagFPE);
+
         % data correlations using Yule-Walker (up to high order 50)
         R = YuleWalker_Inverse(transfers, noiseCovariance, 50);
 
         % mask for the coefficients of the restricted model
-        mask = ones(2);
-        mask(1,2) = 0;
-        
-        % restricted bivariate model (using masked row-by-row solution of YW equations)
+        mask = ones(2 + size(other_vars,1)); % size(other vars) + one source + one sink
+        mask(1,2) = 0; % Cut only the source -> sink coupling
+
+        % restricted multivariate model (using masked row-by-row solution of YW equations)
         [transfers_restricted,noiseCovariance_restricted] = YuleWalker_Mask(R, mask);
-       
-        % connectivity   
-        connectivity(iX, iY) = log(det(noiseCovariance_restricted) ./ det(noiseCovariance));       
-        
+
+        % connectivity
+        connectivity(iX, iY) = log(det(noiseCovariance_restricted) ./ det(noiseCovariance));    
+
       else % save duplicates to modify later
         
         duplicates(end+1, :) = [iX iY]; %#ok<AGROW>
@@ -212,7 +229,8 @@ end
 %% Statistics: parametric p-values for causality in mean (based on regression coefficients) and variance (based on Wald statistics)
 
 % F statistic of connectivity when multiplied by number of regressors
-pValue = 1 - betainc(connectivity ./ (1 + connectivity), order / 2, (nSamples - order * inputs.nTrials - 2 * order - 1) / 2, 'lower');
+pValue = 1;
+% pValue = 1 - betainc(connectivity ./ (1 + connectivity), order / 2, (nSamples - order * inputs.nTrials - 2 * order - 1) / 2, 'lower');
 % here we assume we have many more samples than the order of the MVAR model so that in all cases we use the second condition below to compute the p-value
 % note: if connectivity = 0 (auto-causality or two of the same signals) then this formula evalutes pValue = 1 which is desired (no significant causality)
   
