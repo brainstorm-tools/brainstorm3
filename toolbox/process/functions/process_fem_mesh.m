@@ -1,4 +1,4 @@
-function varargout = process_fem_mesh( varargin ) % correctedVersion
+function varargout = process_fem_mesh( varargin )
 % PROCESS_FEM_MESH: Generate tetrahedral/hexahedral FEM mesh.
 %
 % USAGE:     OutputFiles = process_fem_mesh('Run',     sProcess, sInputs)
