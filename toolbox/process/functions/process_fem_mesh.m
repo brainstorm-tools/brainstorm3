@@ -51,16 +51,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = '';
     % Method
-    sProcess.options.method.Comment = {'<B>Iso2mesh</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>', ...
-                                       '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2Mesh<BR>', ...
+    sProcess.options.method.Comment = {'<B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>', ...
+                                       '<B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the new one fails)<BR>', ...
+                                       '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh<BR>', ...
                                        '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.', ...
                                        '<B>FieldTrip</B>:<BR> Call FieldTrip to create hexahedral mesh of the <B>T1 MRI</B>.'; ...
-                                       '<B>Iso2mesh-2021</B>:<BR>Call iso2mesh (2021 version) to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>',
-                                       'iso2mesh', 'brain2mesh', 'simnibs', 'fieldtrip','iso2mesh-2021'};
+                                       'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs', 'fieldtrip'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'iso2mesh';
     % Iso2mesh options: 
-    sProcess.options.opt1.Comment = '<BR><BR><B>Iso2mesh options</B>: ';
+    sProcess.options.opt1.Comment = '<BR><B>Iso2mesh options</B>: ';
     sProcess.options.opt1.Type    = 'label';
     % Iso2mesh: Merge method
     sProcess.options.mergemethod.Comment = {'mergemesh', 'mergesurf', 'Input surfaces merged with:'; 'mergemesh', 'mergesurf', ''};
@@ -136,7 +136,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Method
     OPTIONS.Method = sProcess.options.method.Value;
-    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method, {'iso2mesh','brain2mesh','simnibs','fieldtrip','iso2mesh-2021'})
+    if isempty(OPTIONS.Method) || ~ischar(OPTIONS.Method) || ~ismember(OPTIONS.Method, {'iso2mesh-2021','iso2mesh','brain2mesh','simnibs','fieldtrip'})
         bst_report('Error', sProcess, [], 'Invalid method.');
         return
     end
@@ -200,7 +200,7 @@ end
 %% ===== DEFAULT OPTIONS =====
 function OPTIONS = GetDefaultOptions()
     OPTIONS = struct(...
-        'Method',         'iso2mesh', ...      % {'iso2mesh', 'brain2mesh', 'simnibs', 'roast', 'fieldtrip'}
+        'Method',         'iso2mesh-2021', ... % {'iso2mesh-2021', 'iso2mesh', 'brain2mesh', 'simnibs', 'roast', 'fieldtrip'}
         'MeshType',       'tetrahedral', ...   % iso2mesh: 'tetrahedral';  simnibs: 'tetrahedral';  roast:'hexahedral'/'tetrahedral';  fieldtrip:'hexahedral'/'tetrahedral' 
         'MaxVol',         0.1, ...             % iso2mesh: Max tetrahedral volume (10=coarse, 0.0001=fine)
         'KeepRatio',      100, ...             % iso2mesh: Percentage of elements kept (1-100%)
@@ -332,15 +332,15 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     
     % ===== GENERATE MESH =====
     switch lower(OPTIONS.Method)
-        % new version of the iso2mesh 
+        % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
         case 'iso2mesh-2021'
-          % Install iso2mesh if needed
-            if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                errMsg = InstallIso2mesh(isInteractive);
-                if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-                    return;
-                end
-            end                    
+            % Install/load iso2mesh plugin
+            [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
+            if ~isInstalled
+                errMsg = [errMsg, errInstall];
+                return;
+            end
+            bst_plugin('SetProgressLogo', 'iso2mesh');
             % If surfaces are not passed in input: get default surfaces
             if isempty(OPTIONS.BemFiles)
                 if ~isempty(sSubject.iScalp) && ~isempty(sSubject.iOuterSkull) && ~isempty(sSubject.iInnerSkull)
@@ -359,23 +359,22 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 % Get tissue label
                 for iBem = 1:length(OPTIONS.BemFiles)
                     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
-                   
-                   % correct the labels to avoid error on the display (MNE surfaces labeles)
-                   label = sSubject.Surface(iSurface).Comment
-                   if  ~isempty(strfind(label, 'inner')) && ~isempty(strfind(label, 'skull'))
+                    % Correct the labels to avoid error on the display (MNE surfaces labels)
+                    label = sSubject.Surface(iSurface).Comment;
+                    if ~isempty(strfind(label, 'inner')) && ~isempty(strfind(label, 'skull'))
                         label = 'csf';
-                   end
-                   if  ~isempty(strfind(label, 'outer')) && ~isempty(strfind(label, 'skull'))
-                       label = 'skull';
-                   end
-                   if  ~isempty(strfind(label, 'inner')) && ~isempty(strfind(label, 'skin'))
-                       label = 'skull'; %
-                   end
-                   if  ~isempty(strfind(label, 'outer')) && ~isempty(strfind(label, 'skin'))
-                       label = 'skin'; % or 'scalp'
-                   end                    
+                    end
+                    if ~isempty(strfind(label, 'outer')) && ~isempty(strfind(label, 'skull'))
+                        label = 'skull';
+                    end
+                    if ~isempty(strfind(label, 'inner')) && ~isempty(strfind(label, 'skin'))
+                        label = 'skull';
+                    end
+                    if  ~isempty(strfind(label, 'outer')) && ~isempty(strfind(label, 'skin'))
+                        label = 'skin'; % or 'scalp'
+                    end
                     TissueLabels{iBem} = label;
-                end        
+                end
             end      
             % Load surfaces
             bst_progress('text', 'Loading surfaces...');
@@ -387,8 +386,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));        
                 BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
-                % compute the distances
-                if iBem ==1
+                % Compute the distances
+                if (iBem == 1)
                     center_inner = mean(bemMerge{1}, 1);
                 end
                 faceList = unique(BemMat.Faces);
@@ -405,13 +404,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 listPointasSeed(iBem,:) = maxYpoint;
             end
             %  Sort from inner to outer
-                [tmp, orderIn] = sort(distance_in);
-                distance_in = distance_in(orderIn);
-             % update the reorder of the labels from inner to outer
-                TissueLabels = TissueLabels(orderIn);
-                listPointasSeed = listPointasSeed(orderIn,:);
-                listPointasSeed = listPointasSeed - [0 0.002 0];
-                listPointasSeed(1,:) = center_inner;
+            [tmp, orderIn] = sort(distance_in);
+            distance_in = distance_in(orderIn);
+            % update the reorder of the labels from inner to outer
+            TissueLabels = TissueLabels(orderIn);
+            listPointasSeed = listPointasSeed(orderIn,:);
+            listPointasSeed = listPointasSeed - [0 0.002 0];
+            listPointasSeed(1,:) = center_inner;
             disp(' ');
             % Merge all the surfaces
             bst_progress('text', ['Merging surfaces (Iso2mesh/' OPTIONS.MergeMethod ')...']);
@@ -444,12 +443,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 OPTIONS.KeepRatio, factor_bst .* OPTIONS.MaxVol, (regions), [], [], 'tetgen1.5');            
             % Removing the label 0 (Tetgen 1.4) or higher than number of layers (Tetgen 1.5)
             bst_progress('text', 'Fixing 3D mesh...');
-%             iOther = find((elem(:,5) == 0) & (elem(:,5) > nBem));
-%             if ~isempty(iOther) && (length(iOther) < 0.1 * length(elem))
-%                 elem(iOther,:) = [];
-%             end
-            % ==> do not remove any elements, it may corrumpt the mesh,
-            % this new version identifies correctely the elelemts 
             
             % Check labelling from 1 to nBem
             allLabels = unique(elem(:,5));
@@ -470,21 +463,20 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 % figure; plotmesh(node(elemList,:),'r.');xlabel('x');ylabel('y');zlabel('z');hold on; plotmesh([maxYpoint;minYpoint],'bo') 
                 distance_out(ind) = norm(maxYpoint-minYpoint);
             end
-            % sort weired elements, works in all case even when there are
-            % more output tissues than inputs
-           distOut_tmp = distance_out;
-           for ind = 1 : length(distance_in)
-               tmp = find(round(distOut_tmp,3)<=round(distance_in(ind),3));
-               distOut_tmp(tmp) = ind;
-           end
-            % replace with the correct ID
+            % Sort weired elements, works in all case even when there are more output tissues than inputs
+            distOut_tmp = distance_out;
+            for ind = 1 : length(distance_in)
+                tmp = find(round(distOut_tmp,3)<=round(distance_in(ind),3));
+                distOut_tmp(tmp) = ind;
+            end
+            % Replace with the correct ID
             tmp = elem;
             tmp(:,5) = tmp(:,5) +10; % translation to avoind overlapping
             allLabels = unique(tmp(:,5));
             for  ind = 1: length(allLabels) 
                 tmp(tmp(:,5) == allLabels(ind),5) = distOut_tmp(ind);
             end        
-            % check again just in case
+            % Check again just in case
              allLabels = unique(tmp(:,5));
             if ~isequal(allLabels(:)', 1:nBem)
                 errMsg = ['Problem with tissue labels: Brainstorm cannot understand the output labels (' num2str(allLabels(:)') ').'];
@@ -501,7 +493,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Only tetra could be generated from this method
             OPTIONS.MeshType = 'tetrahedral';     
         
-        % Compute from OpenMEEG BEM layers: head, outerskull, innerskull
+        % Old version
         case 'iso2mesh'
             % Install/load iso2mesh plugin
             [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
@@ -731,11 +723,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             seg.scalp = sTpm.Cube;
 
             % ===== CALL BRAIN2MESH =====
-            bst_progress('text', 'Meshing with Brain2Mesh...');
+            bst_progress('text', 'Meshing with Brain2mesh...');
             [node,elem] = brain2mesh(seg);
             % Handle errors
             if isempty(elem)
-                errMsg = [errMsg, 'Mesh generation with Brain2Mesh/tetgen1.5 failed.'];
+                errMsg = [errMsg, 'Mesh generation with Brain2mesh/tetgen1.5 failed.'];
                 return;
             end
             % Remove unwanted tissues (label <= 0)
@@ -1038,22 +1030,25 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % If BEM surfaces are selected, the only possible method is "iso2mesh"
     if ~isempty(BemFiles) && iscell(BemFiles)
         res = java_dialog('question', [...
-            '<HTML><B>Iso2mesh</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
+            '<HTML><B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
             'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
-            '<HTML><B>Iso2mesh-2021</B>:<BR>New implementation that can be used if the previous iso2mesh fails<BR>' ...
             '<FONT COLOR="#707070"><I>Iso2mesh is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            ], 'FEM mesh generation method', [], {'iso2mesh','iso2mesh-2021'}, 'iso2mesh');
-        
-        OPTIONS.Method = res;
+            '<HTML><B>Iso2mesh</B>:<BR>Older implementation that can be used if the new version fails.<BR><BR>' ...
+            ], 'FEM mesh generation method', [], {'Iso2mesh-2021','Iso2mesh'}, 'Iso2mesh-2021');
+        if isempty(res)
+            return
+        end
+        OPTIONS.Method = lower(res);
         OPTIONS.BemFiles = BemFiles;
     % Otherwise: Ask for method to use
     else
         res = java_dialog('question', [...
-            '<HTML><B>Iso2mesh</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
+            '<HTML><B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
             'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
             '<FONT COLOR="#707070"><I>Iso2mesh is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2Mesh.<BR>' ...
-            'Brain2Mesh is downloaded and installed automatically by Brainstorm.<BR>' ...
+            '<HTML><B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the new one fails).<BR><BR>' ...
+            '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh.<BR>' ...
+            'Brain2mesh is downloaded and installed automatically by Brainstorm.<BR>' ...
             '<FONT COLOR="#707070"><I>Brain2mesh and SPM12 are downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
             '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.<BR>' ...
             '<FONT COLOR="#707070"><I>SimNIBS must be installed on the computer first.<BR>' ...
@@ -1062,10 +1057,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
             '<FONT COLOR="#707070"><I>ROAST is downloaded and installed automatically when needed.</I></FONT><BR><BR>'...
             '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
             '<FONT COLOR="#707070"><I>FieldTrip is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            '<HTML><B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
-            'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
-            '<FONT COLOR="#707070"><I>Iso2mesh is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            ], 'FEM mesh generation method', [], {'Iso2mesh','Brain2Mesh','SimNIBS','ROAST','FieldTrip','Iso2mesh-2021'}, 'Iso2mesh');
+            ], 'FEM mesh generation method', [], {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS','ROAST','FieldTrip'}, 'Iso2mesh-2021');
         if isempty(res)
             return
         end
