@@ -1,4 +1,4 @@
-function varargout = process_fem_mesh( varargin )
+function varargout = process_fem_mesh( varargin ) % correctedVersion
 % PROCESS_FEM_MESH: Generate tetrahedral/hexahedral FEM mesh.
 %
 % USAGE:     OutputFiles = process_fem_mesh('Run',     sProcess, sInputs)
@@ -382,16 +382,21 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             disp(' ');
             nBem = length(OPTIONS.BemFiles);
             distance_in = zeros(1,nBem);
+            allNodes = [];
             for iBem = 1:nBem                               
                 disp(sprintf('FEM> %d. %5s: %s', iBem, TissueLabels{iBem}, OPTIONS.BemFiles{iBem}));        
                 BemMat = in_tess_bst(OPTIONS.BemFiles{iBem});
                 bemMerge = cat(2, bemMerge, BemMat.Vertices, BemMat.Faces);
-                % Compute the distances
-                if (iBem == 1)
-                    center_inner = mean(bemMerge{1}, 1);
-                end
-                faceList = unique(BemMat.Faces);
-                nodeList = BemMat.Vertices(faceList,:);
+                allNodes = [allNodes; BemMat.Vertices];
+            end
+            % Compute the center of the mesh
+            center_inner = mean(allNodes, 1);
+            
+            % Compute the distances
+            for iBem = 1:nBem
+                faceList = unique(bemMerge{2*iBem});
+                nodeList = bemMerge{2*iBem - 1}(faceList,:);
+
                 % Find the largest distance between two point
                 maxYcoor = max(nodeList(:,2));
                 minYcoor = min(nodeList(:,2));
