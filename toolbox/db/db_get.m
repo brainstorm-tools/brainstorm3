@@ -1,7 +1,50 @@
 function varargout = db_get(varargin)
 % DB_GET: Get a Brainstorm structure from the protocol database
 % This function is a newer API than bst_get
-
+% 
+% USAGE :
+%    - db_get(contextName) or 
+%    - db_get(sqlConn, contextName)
+%
+% ====== PROTOCOLS =====================================================================
+%
+%
+% ====== SUBJECTS ======================================================================
+%    - db_get('Subject', SubjectIDs,       Fields, isRaw) : Find subject(s) by ID(s)
+%    - db_get('Subject', SubjectFileNames, Fields, isRaw) : Find subject(s) by FileName(s)
+%    - db_get('Subject', CondQuery,        Fields, isRaw) : Find subject(s) with a Query
+%    - db_get('Subject')                                  : Get current subject in current protocol 
+%    - db_get('Subjects', includeDefault)                 : Get all subjects in current protocol 
+%    - db_get('SubjectFromStudy', StudyID)                : Find Subject for Study with StudyID  
+%    - db_get('SubjectFromFunctionalFile', FileId)        : Find Subject for FunctionalFile with FileID 
+%    - db_get('SubjectFromFunctionalFile', FileName)      : Find Subject for FunctionalFile with FileID 
+%
+% ====== STUDIES =======================================================================
+%    - db_get('StudiesFromSubject', SubjectID, 'intra_subject', 'default_study') : Find Studies for Subject with SubjectID (with intra_subject and default_study)
+%    - db_get('StudiesFromSubject', SubjectIDs)  : Find Studies for Subject with SubjectID (w/o intra_subject and default_study)
+%    - db_get('StudiesFromSubject', SubjectName) : Find Studies for Subject with SubjectName (w/o intra_subject and default_study)
+%    - db_get('DefaultStudy', iSubject)
+%    - db_get('Study', StudyID) : Find Study by ID
+%    - db_get('Studies', Fields) : Get all Studies in current protocol
+%    - db_get('Studies')         : Get all Studies in current protocol
+%
+% ====== ANATOMY AND FUNCTIONAL FILES ==================================================
+%    - db_get('FilesWithSubject')  :                        :
+%    - db_get('FilesWithStudy')    :                       :
+%    - db_get('AnatomyFile', FileIDs,   Fields) : Find anatomy file(s) by ID(s) 
+%    - db_get('AnatomyFile', FileNames, Fields) : Find anatomy file(s) by FileName(s)
+%    - db_get('AnatomyFile', CondQuery, Fields) : Find anatomy file(s) with a Query
+%    - db_get('SurfaceFile', FileIDs,   Fields) : Find surface file(s) by ID(s) 
+%    - db_get('SurfaceFile', FileNames, Fields) : Find surface file(s) by FileName(s)
+%    - db_get('SurfaceFile', CondQuery, Fields) : Find surface file(s) with a Query
+%    - db_get('FunctionalFile', FileIDs,   Fields) : Find functional file(s) by ID(s) 
+%    - db_get('FunctionalFile', FileNames, Fields) : Find functional file(s) by FileName(s)
+%    - db_get('FunctionalFile', CondQuery, Fields) : Find functional file(s) with a Query
+%    - db_get('ChannelFromStudy', StudyID) : Find current Channel for Study with StudyID  
+%
+%
+% SEE ALSO db_set
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -23,7 +66,7 @@ function varargout = db_get(varargin)
 % Authors: Martin Cousineau, 2020
 %          Raymundo Cassani, 2021
 
-% Parse inputs
+%% ==== PARSE INPUTS ====
 if isjava(varargin{1}) && nargin > 1
     handleConn = 0;
     sqlConn = varargin{1};
@@ -43,12 +86,14 @@ end
 
 try
 varargout = {};
+
+% Get required context structure
 switch contextName
 %% ==== SUBJECT ====
-    % Usage : sSubject = db_get('Subject', SubjectIDs,       Fields, isRaw);
-    %         sSubject = db_get('Subject', SubjectFileNames, Fields, isRaw);
-    %         sSubject = db_get('Subject', CondQuery,        Fields, isRaw);
-    %         sSubject = db_get('Subject');
+    % sSubject = db_get('Subject', SubjectIDs,       Fields, isRaw);
+    %          = db_get('Subject', SubjectFileNames, Fields, isRaw);
+    %          = db_get('Subject', CondQuery,        Fields, isRaw);
+    %          = db_get('Subject');
     % If isRaw is set: force to return the real brainstormsubject description
     % (ignoring whether it uses protocol's default anatomy or not)    
     case 'Subject'
@@ -145,8 +190,8 @@ switch contextName
         
 
 %% ==== SUBJECTS ====
-    % Usage : sSubjects = db_get('Subjects');    % Exclude @default_subject
-    %         sSubjects = db_get('Subjects', 1); % Include @default_subject
+    % sSubjects = db_get('Subjects');    % Exclude @default_subject
+    %           = db_get('Subjects', 1); % Include @default_subject
     case 'Subjects'
         includeDefaultSub = ~isempty(args);
         if ~includeDefaultSub
@@ -156,7 +201,8 @@ switch contextName
         end
         varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', [], addQuery);
 
-    % Usage: sFiles = db_get('FilesWithSubject', FileType (e.g. Anatomy), SubjectID)
+%% ==== FILES WITH SUBJECT ====
+    % sFiles = db_get('FilesWithSubject', FileType (e.g. Anatomy), SubjectID)
     case 'FilesWithSubject'
         % Special case: sSubject = db_get('FilesWithSubject', sSubject)
         % This sets the anatomy file fields in sSubject (Anatomy, Surface)
@@ -213,7 +259,8 @@ switch contextName
             end
         end
 
-    % Usage: sFiles = db_get('FilesWithStudy', FileType (e.g. Data), StudyID)
+%% ==== FILES WITH STUDY ====
+    % sFiles = db_get('FilesWithStudy', FileType (e.g. Data), StudyID)
     case 'FilesWithStudy'
         % Special case: sStudy = db_get('FilesWithStudy', sStudy)
         % This sets the functional file fields in sStudy (e.g. Data)
@@ -317,9 +364,9 @@ switch contextName
         end
 
 %% ==== ANATOMY FILE and SURFACE FILE ====
-    % Usage: [sFiles, sItems] = db_get('AnatomyFile', FileIDs,   Fields)
-    % Usage: [sFiles, sItems] = db_get('AnatomyFile', FileNames, Fields)
-    % Usage: [sFiles, sItems] = db_get('AnatomyFile', CondQuery, Fields)
+    % [sFiles, sItems] = db_get('AnatomyFile', FileIDs,   Fields)
+    %                  = db_get('AnatomyFile', FileNames, Fields)
+    %                  = db_get('AnatomyFile', CondQuery, Fields)
     case {'AnatomyFile', 'SurfaceFile'}
         % Parse inputs
         iFiles = args{1};
@@ -384,9 +431,9 @@ switch contextName
           
         
 %% ==== FUNCTIONAL FILE ====
-    % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileIDs,   Fields)
-    % Usage: [sFiles, sItems] = db_get('FunctionalFile', FileNames, Fields)
-    % Usage: [sFiles, sItems] = db_get('FunctionalFile', CondQuery, Fields)
+    % [sFiles, sItems] = db_get('FunctionalFile', FileIDs,   Fields)
+    %                  = db_get('FunctionalFile', FileNames, Fields)
+    %                  = db_get('FunctionalFile', CondQuery, Fields)
     case 'FunctionalFile'
         % Parse inputs
         iFiles = args{1};
@@ -448,8 +495,8 @@ switch contextName
 
         varargout{1} = sFiles;
         varargout{2} = sItems;
-%%
-    % Usage: iSubject = db_get('SubjectFromStudy', iStudy)
+%% ==== SUBJECT FROM STUDY ====
+    % iSubject = db_get('SubjectFromStudy', StudyID)
     case 'SubjectFromStudy'
         iStudy = args{1};
         sStudy = sql_query(sqlConn, 'select', 'Study', 'Subject', struct('Id', iStudy));
@@ -461,8 +508,9 @@ switch contextName
         end
 
         varargout{1} = iSubject;
-        
-    % Usage: iFile = db_get('ChannelFromStudy', iStudy)
+
+%% ==== CHANNEL FROM STUDY ====
+    % iFile = db_get('ChannelFromStudy', StudyID)
     case 'ChannelFromStudy'
         iStudy = args{1};
         varargout{1} = [];
@@ -512,10 +560,11 @@ switch contextName
                 end
             end
         end
-        
-    % Usage: iStudies = db_get('StudiesFromSubject', iSubject) : WITHOUT the system studies ('intra_subject', 'default_study')
-    % Usage: iStudies = db_get('StudiesFromSubject', iSubject, 'intra_subject', 'default_study') : WITH the system studies
-    % Usage: iStudies = db_get('StudiesFromSubject', SubjectName)
+    
+%% ==== STUDIES FROM SUBJECT ====        
+    % iStudies = db_get('StudiesFromSubject', iSubject)                                   % Exclude 'intra_subject' and 'default_study')
+    %          = db_get('StudiesFromSubject', iSubject, 'intra_subject', 'default_study') % Include 'intra_subject' and 'default_study')
+    %          = db_get('StudiesFromSubject', SubjectName)
     case 'StudiesFromSubject'
         iSubject = args{1};
         
@@ -546,8 +595,9 @@ switch contextName
                 varargout{1} = [sStudy.Id];
             end
         end
-        
-    % Usage: iStudy = db_get('DefaultStudy', iSubject)
+
+%% ==== DEFAULT STUDY ====       
+    % iStudy = db_get('DefaultStudy', iSubject)
     case 'DefaultStudy'
         iSubject = args{1};
         varargout{1} = [];
@@ -574,13 +624,15 @@ switch contextName
         if ~isempty(sStudy)
             varargout{1} = sStudy.Id;
         end
-        
+%% ==== STUDY ====   
+    % sStudy = db_get('Study', StudyID)
     case 'Study'
         iStudy = args{1};
         varargout{1} = sql_query(sqlConn, 'select', 'Study', '*', struct('Id', iStudy));
-        
-    % Usage: sStudy = db_get('Studies')
-    % Usage: sStudy = db_get('Studies', {'Id', 'Name'})
+
+%% ==== STUDIES ====              
+    % sStudy = db_get('Studies', Fields)
+    %        = db_get('Studies')
     case 'Studies'
         if length(args) > 0
             fields = args{1};
@@ -590,8 +642,10 @@ switch contextName
         
         varargout{1} = sql_query(sqlConn, 'select', 'Study', fields, [], ...
             'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")');
-        
-    % Usage: iSubject = db_get('SubjectFromFunctionalFile', FileId/FileName)
+
+%% ==== SUBJECT FROM FUNCTIONAL FILE ====              
+    % iSubject = db_get('SubjectFromFunctionalFile', FileId)
+    %          = db_get('SubjectFromFunctionalFile', FileName)
     case 'SubjectFromFunctionalFile'
         qry = ['SELECT Subject FROM FunctionalFile ' ...
             'LEFT JOIN Study ON Study.Id = FunctionalFile.Study WHERE FunctionalFile.'];
@@ -608,6 +662,7 @@ switch contextName
         end
         result.close();
         
+%% ==== ERROR ====      
     otherwise
         error('Invalid context : "%s"', contextName);
 end
@@ -623,10 +678,10 @@ if handleConn
 end
 end
 
-%% ==== HELPERS ====
+%% ==== LOCAL HELPERS ====
 
 % Get a specific functional file db_template structure from the generic
-% db_template('FunctionalFile') structure.
+% db_template('FunctionalFile') structure
 function sFile = getFunctionalFileStruct(type, funcFile)
     sFile = db_template(type);
     if isempty(funcFile)
@@ -692,7 +747,7 @@ function sFile = getFunctionalFileStruct(type, funcFile)
 end
 
 % Get a specific anatomy file db_template structure from the generic
-% db_template('AnatomyFile') structure.
+% db_template('AnatomyFile') structure
 function sFile = getAnatomyFileStruct(type, anatomyFile)
     sFile = db_template(type);
     if isempty(anatomyFile)
@@ -704,4 +759,3 @@ function sFile = getAnatomyFileStruct(type, anatomyFile)
         sFile.SurfaceType = anatomyFile.SurfaceType;    
     end
 end
-

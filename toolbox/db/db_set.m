@@ -1,7 +1,31 @@
 function varargout = db_set(varargin)
 % DB_SET: Set values in the protocol database from a Brainstorm structure
 % This function is a newer API than bst_set
-
+% 
+% USAGE :
+%    - db_set(contextName) or 
+%    - db_set(sqlConn, contextName)
+%
+% ====== PROTOCOLS =====================================================================
+%
+%
+% ====== SUBJECTS ======================================================================
+%
+%
+% ====== STUDIES =======================================================================
+%
+%
+% ====== ANATOMY AND FUNCTIONAL FILES ==================================================
+%    - db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
+%    - db_set('FilesWithStudy', FileType, db_template('data/timefreq/etc'), StudyID)
+%    - db_set('FilesWithStudy', sStudy, [selectedChannel/HeadModel])
+%    - db_set('FunctionalFile', 'insert', db_template('FunctionalFile'))
+%    - db_set('FunctionalFile', 'update', db_template('FunctionalFile'), struct('Id', 1))
+%    - db_set('ParentCount', ParentFile, modifier, count)    
+%
+%
+% SEE ALSO db_get
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -23,7 +47,7 @@ function varargout = db_set(varargin)
 % Authors: Martin Cousineau, 2020
 %          Raymundo Cassani, 2021
 
-% Parse inputs
+%% ==== PARSE INPUTS ====
 if isjava(varargin{1}) && nargin > 1
     handleConn = 0;         
     sqlConn = varargin{1};  
@@ -42,8 +66,12 @@ else
 end
 
 try
+varargout = {};
+   
+% Set required context structure
 switch contextName
-    % iAnat/iSurf = db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
+%% ==== FILES WITH SUBJECT ====
+    % [sAnatF, iSelected ] = db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
     case 'FilesWithSubject'
         type = lower(args{1});
         sFiles = args{2};
@@ -95,7 +123,8 @@ switch contextName
                 end
             end
         end
-        
+
+%% ==== FILES WITH STUDY ====
     % db_set('FilesWithStudy', FileType, db_template('data/timefreq/etc'), StudyID)
     % db_set('FilesWithStudy', sStudy, [selectedChannel/HeadModel])
     case 'FilesWithStudy'
@@ -283,6 +312,7 @@ switch contextName
             end
         end
         
+%% ==== FUNCTIONAL FILE ====       
     % db_set('FunctionalFile', 'insert', db_template('FunctionalFile'))
     % db_set('FunctionalFile', 'update', db_template('FunctionalFile'), struct('Id', 1))
     case 'FunctionalFile'
@@ -296,6 +326,8 @@ switch contextName
         
         varargout{1} = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition);
 
+%% ==== PARENT COUNT ====       
+    % db_set('ParentCount', ParentFile, modifier, count)
     case 'ParentCount'
         iFile = args{1};
         modifier = args{2};
@@ -315,7 +347,8 @@ switch contextName
         end
         
         sql_query(sqlConn, [qry ' WHERE Id = ' num2str(iFile)]);
-        
+
+%% ==== ERROR ====      
     otherwise
         error('Invalid context : "%s"', contextName);
 end
@@ -330,17 +363,21 @@ if handleConn
     sql_close(sqlConn);
 end
 
-    function SaveParent(type, fileName, id)
-        if strcmp(type, 'results')
-            fieldType = 'result';
-        else
-            fieldType = type;
-        end
-        parentFiles.(fieldType)(end + 1).filename = FileStandard(fileName);
-        parentFiles.(fieldType)(end).id = id;
-        parentFiles.(fieldType)(end).numChildren = 0;
-    end
+%% ==== NESTED HELPERS ====
 
+%
+function SaveParent(type, fileName, id)
+    if strcmp(type, 'results')
+        fieldType = 'result';
+    else
+        fieldType = type;
+    end
+    parentFiles.(fieldType)(end + 1).filename = FileStandard(fileName);
+    parentFiles.(fieldType)(end).id = id;
+    parentFiles.(fieldType)(end).numChildren = 0;
+end
+
+% 
 function FileId = GetParent(types, fileName)
     FileId = [];
     if isempty(fileName)
@@ -368,6 +405,9 @@ function FileId = GetParent(types, fileName)
 end
 end
 
+%% ==== LOCAL HELPERS ====
+
+% Concatenate strings using delimiter
 function outStr = str_join(cellStr, delimiter)
     outStr = '';
     for iCell = 1:length(cellStr)
@@ -378,6 +418,7 @@ function outStr = str_join(cellStr, delimiter)
     end
 end
 
+% Format FileName
 function FileName = FileStandard(FileName)
     % Replace '\' with '/'
     FileName(FileName == '\') = '/';
@@ -387,6 +428,7 @@ function FileName = FileStandard(FileName)
     end
 end
 
+% Set UNIX time when Insert or Update a FunctionalFile
 function res = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition)
     if nargin < 4
         updateCondition = [];
