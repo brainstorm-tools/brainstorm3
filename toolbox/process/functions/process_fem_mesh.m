@@ -359,21 +359,16 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 % Get tissue label
                 for iBem = 1:length(OPTIONS.BemFiles)
                     [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', OPTIONS.BemFiles{iBem});
-                    % Correct the labels to avoid error on the display (MNE surfaces labels)
-                    label = sSubject.Surface(iSurface).Comment;
-                    if ~isempty(strfind(label, 'inner')) && ~isempty(strfind(label, 'skull'))
-                        label = 'csf';
+                    % Get tissue label
+                    if ~strcmpi(sSubject.Surface(iSurface).SurfaceType, 'Other')
+                        TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).SurfaceType);
+                    else
+                        TissueLabels{iBem} = GetFemLabel(sSubject.Surface(iSurface).Comment);
                     end
-                    if ~isempty(strfind(label, 'outer')) && ~isempty(strfind(label, 'skull'))
-                        label = 'skull';
-                    end
-                    if ~isempty(strfind(label, 'inner')) && ~isempty(strfind(label, 'skin'))
-                        label = 'skull';
-                    end
-                    if  ~isempty(strfind(label, 'outer')) && ~isempty(strfind(label, 'skin'))
-                        label = 'skin'; % or 'scalp'
-                    end
-                    TissueLabels{iBem} = label;
+                end
+                % If there is a CSF layer but nothing inside: rename into BRAIN
+                if ismember('csf', TissueLabels) && ~ismember('white', TissueLabels) && ~ismember('gray', TissueLabels)
+                    TissueLabels{ismember(TissueLabels, 'csf')} = 'brain';
                 end
             end      
             % Load surfaces
@@ -396,7 +391,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             for iBem = 1:nBem
                 faceList = unique(bemMerge{2*iBem});
                 nodeList = bemMerge{2*iBem - 1}(faceList,:);
-
                 % Find the largest distance between two point
                 maxYcoor = max(nodeList(:,2));
                 minYcoor = min(nodeList(:,2));
@@ -412,9 +406,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [tmp, orderIn] = sort(distance_in);
             distance_in = distance_in(orderIn);
             % update the reorder of the labels from inner to outer
+            bemMerge = bemMerge(reshape([2*orderIn-1; 2*orderIn], 1, []));
             TissueLabels = TissueLabels(orderIn);
             listPointasSeed = listPointasSeed(orderIn,:);
-            listPointasSeed = listPointasSeed - [0 0.002 0];
+            listPointasSeed = bst_bsxfun(@minus, listPointasSeed, [0 0.002 0]);
             listPointasSeed(1,:) = center_inner;
             disp(' ');
             % Merge all the surfaces
@@ -1013,7 +1008,7 @@ function label = GetFemLabel(label)
         label = 'gray';
     elseif ~isempty(strfind(label, 'csf')) || ~isempty(strfind(label, 'inner'))
         label = 'csf';
-    elseif ~isempty(strfind(label, 'bone')) || ~isempty(strfind(label, 'skull')) || ~isempty(strfind(label, 'outer'))
+    elseif ~isempty(strfind(label, 'bone')) || ~isempty(strfind(label, 'skull')) || (~isempty(strfind(label, 'outer')) && isempty(strfind(label, 'skin')))
         label = 'skull';
     elseif ~isempty(strfind(label, 'skin')) || ~isempty(strfind(label, 'scalp')) || ~isempty(strfind(label, 'head'))
         label = 'scalp';
