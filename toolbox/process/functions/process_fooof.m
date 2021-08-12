@@ -57,7 +57,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.freqrange.Type    = 'freqrange_static';   % 'freqrange'
     sProcess.options.freqrange.Value   = {[1 40], 'Hz', 1};
     % === POWER LINE
-    sProcess.options.powerline.Comment = {'50 Hz', '60 Hz', 'Ignore power line frequencies:'; '50', '60', ''};
+    sProcess.options.powerline.Comment = {'None', '50 Hz', '60 Hz', 'Ignore power line frequencies:'; '-5', '50', '60', ''};
     sProcess.options.powerline.Type    = 'radio_linelabel';
     sProcess.options.powerline.Value   = '60';
     sProcess.options.powerline.Class   = 'Matlab';
