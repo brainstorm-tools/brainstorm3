@@ -751,6 +751,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, 'SimNIBS is not installed or not added to the system path:' 10 'the command "headreco" could not be found.' 10 10 'To install SimNIBS, visit: https://simnibs.github.io/simnibs'];
                 return;
             end
+            % Initialize SPM12+CAT12 (required for importing older CAT12 anatomy folder)
+            [isInstalled, errorMsg, PlugCat] = bst_plugin('Install', 'cat12', isInteractive, 1728);
+            if ~isInstalled
+                return;
+            end
 
             % ===== VERIFY FIDUCIALS IN T1 MRI =====
             % If the SCS transformation is not defined: compute MNI transformation to get a default one
