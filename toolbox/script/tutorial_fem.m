@@ -51,6 +51,10 @@ Latency = 0.022;
 
 
 % ===== CHECK SOFTWARE DEPENDENCIES =====
+% Start brainstorm without the GUI
+if ~brainstorm('status')
+    brainstorm nogui
+end
 % SimNIBS
 status = system('headreco --version');
 if (status ~= 0)
@@ -80,10 +84,6 @@ end
 % ===== CREATE PROTOCOL =====
 % The protocol name has to be a valid folder name (no spaces, no weird characters...)
 ProtocolName = 'TutorialFem';
-% Start brainstorm without the GUI
-if ~brainstorm('status')
-    brainstorm nogui
-end
 % Delete existing protocol
 gui_brainstorm('DeleteProtocol', ProtocolName);
 % Create new protocol
