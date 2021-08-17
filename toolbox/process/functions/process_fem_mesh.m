@@ -738,6 +738,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Relabel the tissues in the same order as the other options
             iRelabel = [5 4 3 2 1];
             elem(:,end) = reshape(iRelabel(elem(:,end)), [], 1);
+            % Flip the order of the elements
+            elem = elem(:, [2 1 3 4]);
+            % Convert positions from voxel to SCS coordinates
+            node = cs_convert(sMriT1, 'voxel', 'scs', node);
             % Name tissue labels
             TissueLabels = {'white','gray','csf','skull','scalp'};
             
