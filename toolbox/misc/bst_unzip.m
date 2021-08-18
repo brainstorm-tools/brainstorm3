@@ -24,19 +24,25 @@ function varargout = bst_unzip(zipFilename, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Juan GPC, 2021
+% Authors: Juan GPC, Francois Tadel, 2021
 
 narginchk(1,2);
 nargoutchk(0,1);
 
-disp(['BST> Unzipping plugin file: ' zipFilename]);
 try
     varargout = unzip(zipFilename, varargin{:});
 catch
-    disp('BST> Problem unzipping the file. Attempting rollback to previous unzip function. [feature(''ZIPV2'',''off'')]');
-    feature('ZIPV2','off')
-    varargout = unzip(zipFilename, varargin{:});
-    feature('ZIPV2','on')
+    if ~file_exist(zipFilename)
+        error(['File does not exist: ' zipFilename]);
+    elseif (bst_get('MatlabVersion') >= 910)
+        disp(['BST> Error unzipping the file: ' zipFilename]);
+        disp('BST> Attempting rollback to previous unzip function. [feature(''ZIPV2'',''off'')]');
+        feature('ZIPV2','off')
+        varargout = unzip(zipFilename, varargin{:});
+        feature('ZIPV2','on')
+    else
+        error(['Error unzipping the file: ' zipFilename 10 lasterr]);
+    end
 end
 
 
