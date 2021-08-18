@@ -1073,7 +1073,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % Unzip file
     switch (pkgFormat)
         case 'zip'
-            unzip(pkgFile, PlugPath);
+            bst_unzip(pkgFile, PlugPath);
         case 'tgz'
             if ispc
                 untar(pkgFile, PlugPath);
