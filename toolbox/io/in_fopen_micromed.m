@@ -1,4 +1,4 @@
-function [sFile, ChannelMat] = in_fopen_micromed(DataFile)
+function [sFile, ChannelMat] = in_fopen_micromed(DataFile, ImportOptions)
 % IN_FOPEN_MICROMED: Open a Micromed .TRC file (continuous recordings).
 
 % @=============================================================================
@@ -20,8 +20,38 @@ function [sFile, ChannelMat] = in_fopen_micromed(DataFile)
 % =============================================================================@
 %
 % Authors:  Guillaume Becq, 2010
-%           Adapted by Francois Tadel for Brainstorm, 2018
+%           Adapted by Francois Tadel for Brainstorm, 2018-2021
 
+% Parse inputs
+if (nargin < 2) || isempty(ImportOptions)
+    ImportOptions = db_template('ImportOptions');
+end
+
+%% ===== DETECT EXTRA EVT FILES =====
+% Split file name
+[fPath, fBase, fExt] = bst_fileparts(DataFile);
+% Look for .EVT file with same filename, or for a unique .EVT file in the folder
+EvtFile = [DataFile(1:end-4) '.EVT'];
+if ~file_exist(EvtFile)
+    EvtFile = [DataFile(1:end-4) '.evt'];
+    if ~file_exist(EvtFile)
+        % If there is a single pair or .TRC/.EVT file in the folder
+        dirTrc = dir(bst_fullfile(fPath, '*.TRC'));
+        if isempty(dirTrc)
+            dirTrc = dir(bst_fullfile(fPath, '*.trc'));
+        end
+        dirEvt = dir(bst_fullfile(fPath, '*.EVT'));
+        if isempty(dirEvt)
+            dirEvt = dir(bst_fullfile(fPath, '*.evt'));
+        end
+        if (length(dirTrc) == 1) && (length(dirEvt) == 1)
+            EvtFile = bst_fullfile(fPath, dirEvt(1).name);
+        else
+            EvtFile = [];
+        end
+    end
+end
+    
 
 %% ===== READ HEADER =====
 % Open file
@@ -241,19 +271,52 @@ end
 iDel = find(([hdr.note.sample] == 0) | cellfun(@isempty, {hdr.note.text}));
 hdr.note(iDel) = [];
 
+
+% Segments: Segments of the original recordings were extracted and saved in this file ("reduced files")
+fseek(fid, hdr.segment_area.start, -1);
+MAX_SEGM = 100;
+hdr.segment = repmat(struct('time', [], 'sample', []), 0);
+Ndiscont = 0;
+for i = 1:MAX_SEGM
+    segtime = fread(fid, 1, 'ulong');    % Real value of the sample, from the beginning of the original file (hdr.acquisition)
+    segsample = fread(fid, 1, 'ulong');  % Beginning of the discontinuous segment in the reduced file
+    if (segtime > 0)
+        hdr.segment(i).time = segtime;     
+        hdr.segment(i).sample = segsample;
+        if (segsample > 0)
+            Ndiscont = Ndiscont + 1;
+        end
+    elseif (i >= 2)
+        break;
+    end
+end
+% If this is a reduced file with defined segments
+hdr.smp_offset = 0;
+if (length(hdr.segment) >= 1)
+    % Warning message
+    strWarning = [...
+        'Reduced file detected: There are discontinuities in the recordings' 10 ...
+        'that cannot be handled correctly in Brainstorm.' 10 10 ...
+        'The file is read linearly, as if there were not discontinuities.' 10 ...
+        'The time for the first segment is correct, but not the following.' 10];
+    % User warning for multiple discontinuities
+    if (Ndiscont >= 1) && ImportOptions.DisplayMessages
+        java_dialog('warning', strWarning);
+    end
+    disp([10 'WARNING: ' strWarning]);
+    % Correct for a different starting point
+    if (hdr.segment(1).time > 0)
+        hdr.smp_offset = hdr.segment(1).time;
+    end
+end
+
+
 % % Flags
 % fseek(fid, hdr.flag_area.start, -1);
 % MAX_FLAG    = 100; 
 % for i = 1 : MAX_FLAG
 %     hdr.flag(i).begin = fread(fid, 1, 'ulong');
 %     hdr.flag(i).end = fread(fid, 1, 'ulong');
-% end
-% % Segms
-% fseek(fid, hdr.segment_area.start, -1);
-% MAX_SEGM = 100; 
-% for i = 1 : MAX_SEGM
-%     hdr.segment(i).time = fread(fid, 1, 'ulong'); % in samples
-%     hdr.segment(i).sample = fread(fid, 1, 'ulong');
 % end
 % % Starting Impedance
 % fseek(fid, hdr.B_impedance_area.start, -1);
@@ -396,13 +459,12 @@ sFile.byteorder    = byteorder;
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-MICROMED';
 sFile.prop.sfreq   = double(hdr.sampling_freq);
-sFile.prop.times   = [0, hdr.num_samples - 1] ./ sFile.prop.sfreq;
+sFile.prop.times   = ([0, hdr.num_samples - 1] + hdr.smp_offset) ./ sFile.prop.sfreq;  % First segment for reduced file, otherwise real start
 sFile.prop.nAvg    = 1;
 sFile.channelflag  = ones(hdr.num_channels,1);
 sFile.device       = 'Micromed';
 sFile.header       = hdr;
 % Comment: short filename
-[fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Acquisition date
 sFile.acq_date = datestr(datenum([hdr.acquisition.year, hdr.acquisition.month, hdr.acquisition.day]), 'dd-mmm-yyyy');
@@ -468,12 +530,34 @@ for iEvt = 1:length(uniqueEvt)
     iOcc = find(strcmpi(allEvt, uniqueEvt{iEvt}));
     % Create event structure
     sFile.events(iEvt).label    = uniqueEvt{iEvt};
-    sFile.events(iEvt).times    = (sort(allSmp(iOcc)) - 1) ./ sFile.prop.sfreq; % Samples are 1-based in the file, I guess?
+    sFile.events(iEvt).times    = (sort(allSmp(iOcc)) - 1 + hdr.smp_offset) ./ sFile.prop.sfreq; % Samples are 1-based in the file, I guess?
+    sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
+    sFile.events(iEvt).select   = 1;
+    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+end
+% Add events to mark discontinuities (reduced files)
+if ~isempty(hdr.segment)
+    strLabel = 'segment';
+    iEvt = length(sFile.events) + 1;
+    % Make event name unique if needed
+    if (iEvt >= 2)
+        strLabel = file_unique(strLabel, {sFile.events.label});
+    end
+    % Create event type
+    sFile.events(iEvt).label    = strLabel;
+    sFile.events(iEvt).times    = ([hdr.segment.sample] + hdr.smp_offset) ./ sFile.prop.sfreq;
     sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
     sFile.events(iEvt).select   = 1;
     sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
     sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
+
+%% ===== ADD EXTRA EVT FILE =====
+if ~isempty(EvtFile)
+    disp(['BST> Micromed .EVT found:  ' EvtFile]);
+    sFile = import_events(sFile, [], EvtFile, 'MICROMED', [], 0);
+end
 
 

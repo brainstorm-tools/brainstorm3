@@ -249,9 +249,9 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         sMat.ColormapType = 'stat2';
     end
     % Time-frequency: Change the measure type
-    if strcmpi(sInputsA(1).FileType, 'timefreq')
-        sMat.Measure = 'other';
-    end
+    % if strcmpi(sInputsA(1).FileType, 'timefreq')
+    %     sMat.Measure = 'other';
+    % end
     
     % History: Average
     if isfield(sMat, 'History')

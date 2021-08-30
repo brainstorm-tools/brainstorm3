@@ -1,8 +1,36 @@
+--------------------------------------------------------------
+August 2021
+- Doc: New FEM tutorials
+---------------------------------------------------------------
+July 2021
+- Inverse: FieldTrip DICS
+- Anatomy: Fixed O'Reilly infant templates
+- Connectivity: New coherence processes 2021
+---------------------------------------------------------------
+June 2021
+- New connectivity graphs
+- CAT12: Added support for thalamus atlas
+- Anatomy: Tissues tesselation with tess_meshlayer
+- IO: Added Blackrock NPMK libary as plugin
+- Doc: Updated introduction tutorial dataset to FreeSurfer 7.1
+---------------------------------------------------------------
+May 2021
+- Anatomy: Use imported volume parcellations as volume scouts
+- Anatomy: Updated CAT12 to version 12.8 (r1825)
+- IO: Support for Micromed .EVT
+---------------------------------------------------------------
+April 2021
+- Plugins: NIRSTORM included as a plugin (available as compiled)
+- Plugins: BrainEntropy included as a plugin (available as compiled)
+- Doc: Updated all the tutorials with the new anatomy tools
+- Events: Marking a trial as good removes the tag "bad" from all the events
+- Anatomy: Import BrainSuite multiple parcellations
 ---------------------------------------------------------------
 March 2021
 - New plugins manager: first release
 - Distrib: Reorganized compilation system to include plugins
 - IO: Bugfix export .nii qform/sform, especially after resampling
+- Anatomy: Mindboggle atlas renamed DKT atlas
 ---------------------------------------------------------------
 February 2021
 - SimMEEG: Simulate MEG/EEG signals with SimMEEG

@@ -136,22 +136,50 @@ if isempty(T1File)
 elseif (length(T1File) > 1)
     errorMsg = [errorMsg 'Multiple .nii found in top folder' 10];
 end
-% Find surfaces
-TessLhFile = file_find(CatDir, 'lh.central.*.gii', 2);
-TessRhFile = file_find(CatDir, 'rh.central.*.gii', 2);
-TessCbFile = file_find(CatDir, 'cb.central.*.gii', 2);
-TessLsphFile = file_find(CatDir, 'lh.sphere.reg.*.gii', 2);
-TessRsphFile = file_find(CatDir, 'rh.sphere.reg.*.gii', 2);
-TessCsphFile = file_find(CatDir, 'cb.sphere.reg.*.gii', 2);
-if isempty(TessLhFile)
+% Find central surfaces
+GiiLcFile = file_find(CatDir, 'lh.central.*.gii', 2);
+GiiRcFile = file_find(CatDir, 'rh.central.*.gii', 2);
+GiiCcFile = file_find(CatDir, 'cb.central.*.gii', 2);
+if isempty(GiiLcFile)
     errorMsg = [errorMsg 'Surface file was not found: lh.central' 10];
 end
-if isempty(TessRhFile)
+if isempty(GiiRcFile)
     errorMsg = [errorMsg 'Surface file was not found: rh.central' 10];
+end
+% Find pial and white surfaces: only if extra maps are requested
+if isExtraMaps
+    GiiLpFile = file_find(CatDir, 'lh.pial.*.gii', 2);
+    GiiRpFile = file_find(CatDir, 'rh.pial.*.gii', 2);
+    GiiCpFile = file_find(CatDir, 'cb.pial.*.gii', 2);
+    GiiLwFile = file_find(CatDir, 'lh.white.*.gii', 2);
+    GiiRwFile = file_find(CatDir, 'rh.white.*.gii', 2);
+    GiiCwFile = file_find(CatDir, 'cb.white.*.gii', 2);
+    GiiLsphFile = file_find(CatDir, 'lh.sphere.reg.*.gii', 2);
+    GiiRsphFile = file_find(CatDir, 'rh.sphere.reg.*.gii', 2);
+    GiiCsphFile = file_find(CatDir, 'cb.sphere.reg.*.gii', 2);
+else
+    GiiLpFile = [];
+    GiiRpFile = [];
+    GiiCpFile = [];
+    GiiLwFile = [];
+    GiiRwFile = [];
+    GiiCwFile = [];
+    GiiLsphFile = [];
+    GiiRsphFile = [];
+    GiiCsphFile = [];
 end
 % Find atlases
 AnnotLhFiles = file_find(CatDir, 'lh.*.annot', 2, 0);
 AnnotRhFiles = file_find(CatDir, 'rh.*.annot', 2, 0);
+% Re-order the files so that FreeSurfer atlases are first (for automatic region labelling)
+if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
+    iDKL = find(~cellfun(@(c)isempty(strfind(c, 'aparc_DK40')), AnnotLhFiles));
+    iDKR = find(~cellfun(@(c)isempty(strfind(c, 'aparc_DK40')), AnnotRhFiles));
+    if ~isempty(iDKL) && ~isempty(iDKR)
+        AnnotLhFiles = AnnotLhFiles([iDKL, setdiff(1:length(AnnotLhFiles), iDKL)]);
+        AnnotRhFiles = AnnotRhFiles([iDKR, setdiff(1:length(AnnotRhFiles), iDKR)]);
+    end
+end
 
 % Find tissue probability maps
 if isVolumeAtlas
@@ -161,11 +189,29 @@ if isVolumeAtlas
                 file_find(CatDir, 'p4*.nii', 2), ...  % Skull
                 file_find(CatDir, 'p5*.nii', 2), ...  % Scalp
                 file_find(CatDir, 'p6*.nii', 2)};     % Background
-    VolAtlasFiles = file_find(bst_fullfile(CatDir, 'mri_atlas'), '*.nii', 1, 0);
+    % CAT <= 12.7
+    if isdir(bst_fullfile(CatDir, 'mri_atlas'))
+        VolAtlasFiles = file_find(bst_fullfile(CatDir, 'mri_atlas'), '*.nii', 1, 0);
+    % CAT >= 12.8
+    else
+        VolAtlasFiles = {...
+            file_find(bst_fullfile(CatDir, 'mri'), 'aal3_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'anatomy3_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'cobra_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'hammers_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'ibsr_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'julichbrain_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'lpba40_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'mori_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'neuromorphometrics_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'thalamus_*.nii*', 1, 0), ...
+            file_find(bst_fullfile(CatDir, 'mri'), 'Schaefer2018_*.nii*', 1, 0)};
+        VolAtlasFiles = [VolAtlasFiles{find(~cellfun(@isempty, VolAtlasFiles))}];
+    end
 end
-% % Find MNI registration volumes
-% RegFile = file_find(CatDir, 'y_*.nii', 2);
-% RegInvFile = file_find(CatDir, 'iy_*.nii', 2);
+% Find MNI registration volumes
+RegFile = file_find(CatDir, 'y_*.nii', 2);
+RegInvFile = file_find(CatDir, 'iy_*.nii', 2);
 
 % Find extra cortical maps
 if isExtraMaps
@@ -207,6 +253,8 @@ else
         end
         return;
     end
+    % Enforce it as the permanent default MRI
+    sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 end
 
 
@@ -286,70 +334,72 @@ if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.
     return;
 end
 
+
 %% ===== MNI NORMALIZATION =====
-% % Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
-% if ~isempty(RegFile) && ~isempty(RegInvFile)
-%     bst_progress('text', 'Loading non-linear MNI transformation...');
-%     sMri = import_mnireg(sMri, RegFile, RegInvFile, 'cat12');
-%     % Save modified file
-%     bst_save(file_fullpath(BstT1File), sMri, 'v7');
+% Load y_.mat/iy_.mat (SPM deformation fields for MNI normalization)
+if ~isempty(RegFile) && ~isempty(RegInvFile)
+    bst_progress('text', 'Loading non-linear MNI transformation...');
+    sMri = import_mnireg(sMri, RegFile, RegInvFile, 'cat12');
+    % Save modified file
+    bst_save(file_fullpath(BstT1File), sMri, 'v7');
 % Compute linear MNI registration (spm_maff8)
-if isComputeMni
+elseif isComputeMni
     % Call normalize function
     [sMri, errCall] = bst_normalize_mni(BstT1File);
     errorMsg = [errorMsg errCall];
 end
 
+
 %% ===== IMPORT SURFACES =====
 % Restore CAT12 icon
 bst_plugin('SetProgressLogo', 'cat12');
+% === CENTRAL ===
+% Left central
+if ~isempty(GiiLcFile)
+    [TessLcFile, TessLcLowFile, nVertOrigLc, xLcLow, err] = ImportCatSurf(iSubject, GiiLcFile, AnnotLhFiles, GiiLsphFile, nVertHemi, 'left central');
+    errorMsg = [errorMsg err];
+end
+% Right central
+if ~isempty(GiiRcFile)
+    [TessRcFile, TessRcLowFile, nVertOrigRc, xRcLow, err] = ImportCatSurf(iSubject, GiiRcFile, AnnotRhFiles, GiiRsphFile, nVertHemi, 'right central');
+    errorMsg = [errorMsg err];
+end
+% Cerebellum central
+if ~isempty(GiiCcFile)
+    [TessCcFile, TessCcLowFile, nVertOrigCc, xCcLow, err] = ImportCatSurf(iSubject, GiiCcFile, [], GiiCsphFile, nVertHemi, 'cerebellum central');
+    errorMsg = [errorMsg err];
+end
+% === PIAL ===
 % Left pial
-if ~isempty(TessLhFile)
-    % Import file
-    [iLh, BstTessLhFile, nVertOrigL] = import_surfaces(iSubject, TessLhFile, 'GII-WORLD', 0);
-    BstTessLhFile = BstTessLhFile{1};
-    % Load atlases
-    if ~isempty(AnnotLhFiles)
-        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: left pial...');
-        [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
-        errorMsg = [errorMsg err];
-    end
-    % Load sphere
-    if ~isempty(TessLsphFile)
-        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: left pial...');
-        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLsphFile, 'GII-CAT');
-        errorMsg = [errorMsg err];
-    end
+if ~isempty(GiiLpFile)
+    [TessLpFile, TessLpLowFile, nVertOrigLp, xLpLow, err] = ImportCatSurf(iSubject, GiiLpFile, AnnotLhFiles, GiiLsphFile, nVertHemi, 'left pial');
+    errorMsg = [errorMsg err];
 end
 % Right pial
-if ~isempty(TessRhFile)
-    % Import file
-    [iRh, BstTessRhFile, nVertOrigR] = import_surfaces(iSubject, TessRhFile, 'GII-WORLD', 0);
-    BstTessRhFile = BstTessRhFile{1};
-    % Load atlases
-    if ~isempty(AnnotRhFiles)
-        bst_progress('start', 'Import CAT12 folder', 'Loading atlases: right pial...');
-        [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
-        errorMsg = [errorMsg err];
-    end
-    % Load sphere
-    if ~isempty(TessRsphFile)
-        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: right pial...');
-        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRsphFile, 'GII-CAT');
-        errorMsg = [errorMsg err];
-    end
+if ~isempty(GiiRpFile)
+    [TessRpFile, TessRpLowFile, nVertOrigRp, xRpLow, err] = ImportCatSurf(iSubject, GiiRpFile, AnnotRhFiles, GiiRsphFile, nVertHemi, 'right pial');
+    errorMsg = [errorMsg err];
 end
-% Cerebellum
-if ~isempty(TessCbFile)
-    % Import file
-    [iCb, BstTessCbFile, nVertOrigC] = import_surfaces(iSubject, TessCbFile, 'GII-WORLD', 0);
-    BstTessCbFile = BstTessCbFile{1};
-    % Load sphere
-    if ~isempty(TessCsphFile)
-        bst_progress('start', 'Import CAT12 folder', 'Loading registered sphere: cerebellum...');
-        [TessMat, err] = tess_addsphere(BstTessCbFile, TessCsphFile, 'GII-CAT');
-        errorMsg = [errorMsg err];
-    end
+% Cerebellum pial
+if ~isempty(GiiCpFile)
+    [TessCpFile, TessCpLowFile, nVertOrigCp, xCpLow, err] = ImportCatSurf(iSubject, GiiCpFile, [], GiiCsphFile, nVertHemi, 'cerebellum pial');
+    errorMsg = [errorMsg err];
+end
+% === WHITE ===
+% Left white
+if ~isempty(GiiLwFile)
+    [TessLwFile, TessLwLowFile, nVertOrigLw, xLwLow, err] = ImportCatSurf(iSubject, GiiLwFile, AnnotLhFiles, GiiLsphFile, nVertHemi, 'left white');
+    errorMsg = [errorMsg err];
+end
+% Right white
+if ~isempty(GiiRwFile)
+    [TessRwFile, TessRwLowFile, nVertOrigRw, xRwLow, err] = ImportCatSurf(iSubject, GiiRwFile, AnnotRhFiles, GiiRsphFile, nVertHemi, 'right white');
+    errorMsg = [errorMsg err];
+end
+% Cerebellum white
+if ~isempty(GiiCwFile)
+    [TessCwFile, TessCwLowFile, nVertOrigCw, xCwLow, err] = ImportCatSurf(iSubject, GiiCwFile, [], GiiCsphFile, nVertHemi, 'cerebellum white');
+    errorMsg = [errorMsg err];
 end
 
 % Process error messages
@@ -363,41 +413,72 @@ if ~isempty(errorMsg)
 end
 
 
-%% ===== DOWNSAMPLE =====
-% Downsample left and right hemispheres
-if ~isempty(TessRhFile)
-    bst_progress('start', 'Import CAT12 folder', 'Downsampling: right pial...');
-    [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
-end
-if ~isempty(TessLhFile)
-    bst_progress('start', 'Import CAT12 folder', 'Downsampling: left pial...');
-    [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
-end
-if ~isempty(TessCbFile)
-    bst_progress('start', 'Import CAT12 folder', 'Downsampling: cerebellum...');
-    [BstTessCbLowFile, iCbLow, xCbLow] = tess_downsize(BstTessCbFile, nVertHemi, 'reducepatch');
-end
-
-
 %% ===== MERGE SURFACES =====
-CortexHiFile = [];
-CortexLowFile = [];
-CortexCbHiFile = [];
-CortexCbLowFile = [];
+% === CENTRAL ===
+CentralHiFile = [];
+CentralLowFile = [];
+CentralCbHiFile = [];
+CentralCbLowFile = [];
 rmFiles = {};
 % Merge hemispheres
-if ~isempty(TessLhFile) && ~isempty(TessRhFile)
+if ~isempty(GiiLcFile) && ~isempty(GiiRcFile)
+    % Tag: "cortex" if it is the only surface, "mid" if pial and white are present
+    if ~isempty(GiiLpFile) && ~isempty(GiiRpFile) && ~isempty(GiiLwFile) && ~isempty(GiiRwFile)
+        tagCentral = 'mid';
+    else
+        tagCentral = 'cortex';
+    end
     % Merge left+right+cerebellum
-    if ~isempty(TessCbFile)
-        CortexCbHiFile  = tess_concatenate({BstTessLhFile,    BstTessRhFile,    BstTessCbFile},    sprintf('cortex_cereb_%dV', nVertOrigL + nVertOrigR + nVertOrigC), 'Cortex');
-        CortexCbLowFile = tess_concatenate({BstTessLhLowFile, BstTessRhLowFile, BstTessCbLowFile}, sprintf('cortex_cereb_%dV', length(xLhLow) + length(xRhLow) + length(xCbLow)), 'Cortex');
-        rmFiles = cat(2, rmFiles, {BstTessCbFile, BstTessCbLowFile});
+    if ~isempty(GiiCcFile)
+        CentralCbHiFile  = tess_concatenate({TessLcFile,    TessRcFile,    TessCcFile},    sprintf([tagCentral '_cereb_%dV'], nVertOrigLc + nVertOrigRc + nVertOrigCc), 'Cortex');
+        CentralCbLowFile = tess_concatenate({TessLcLowFile, TessRcLowFile, TessCcLowFile}, sprintf([tagCentral '_cereb_%dV'], length(xLcLow) + length(xRcLow) + length(xCcLow)), 'Cortex');
+        rmFiles = cat(2, rmFiles, {TessCcFile, TessCcLowFile});
     end
     % Merge left+right
-    CortexHiFile  = tess_concatenate({BstTessLhFile,    BstTessRhFile},    sprintf('cortex_%dV', nVertOrigL + nVertOrigR), 'Cortex');
-    CortexLowFile = tess_concatenate({BstTessLhLowFile, BstTessRhLowFile}, sprintf('cortex_%dV', length(xLhLow) + length(xRhLow)), 'Cortex');
+    CentralHiFile  = tess_concatenate({TessLcFile,    TessRcFile},    sprintf([tagCentral '_%dV'], nVertOrigLc + nVertOrigRc), 'Cortex');
+    CentralLowFile = tess_concatenate({TessLcLowFile, TessRcLowFile}, sprintf([tagCentral '_%dV'], length(xLcLow) + length(xRcLow)), 'Cortex');
     % Delete separate hemispheres
-    rmFiles = cat(2, rmFiles, {BstTessLhFile, BstTessRhFile, BstTessLhLowFile, BstTessRhLowFile});
+    rmFiles = cat(2, rmFiles, {TessLcFile, TessRcFile, TessLcLowFile, TessRcLowFile});
+end
+
+% === PIAL ===
+PialHiFile = [];
+PialLowFile = [];
+PialCbHiFile = [];
+PialCbLowFile = [];
+% Merge hemispheres
+if ~isempty(GiiLpFile) && ~isempty(GiiRpFile)
+    % Merge left+right+cerebellum
+    if ~isempty(GiiCpFile)
+        PialCbHiFile  = tess_concatenate({TessLpFile,    TessRpFile,    TessCpFile},    sprintf('pial_cereb_%dV', nVertOrigLp + nVertOrigRp + nVertOrigCp), 'Cortex');
+        PialCbLowFile = tess_concatenate({TessLpLowFile, TessRpLowFile, TessCpLowFile}, sprintf('pial_cereb_%dV', length(xLpLow) + length(xRpLow) + length(xCpLow)), 'Cortex');
+        rmFiles = cat(2, rmFiles, {TessCpFile, TessCpLowFile});
+    end
+    % Merge left+right
+    PialHiFile  = tess_concatenate({TessLpFile,    TessRpFile},    sprintf('pial_%dV', nVertOrigLp + nVertOrigRp), 'Cortex');
+    PialLowFile = tess_concatenate({TessLpLowFile, TessRpLowFile}, sprintf('pial_%dV', length(xLpLow) + length(xRpLow)), 'Cortex');
+    % Delete separate hemispheres
+    rmFiles = cat(2, rmFiles, {TessLpFile, TessRpFile, TessLpLowFile, TessRpLowFile});
+end
+
+% === WHITE ===
+WhiteHiFile = [];
+WhiteLowFile = [];
+WhiteCbHiFile = [];
+WhiteCbLowFile = [];
+% Merge hemispheres
+if ~isempty(GiiLwFile) && ~isempty(GiiRwFile)
+    % Merge left+right+cerebellum
+    if ~isempty(GiiCwFile)
+        WhiteCbHiFile  = tess_concatenate({TessLwFile,    TessRwFile,    TessCwFile},    sprintf('white_cereb_%dV', nVertOrigLw + nVertOrigRw + nVertOrigCw), 'Cortex');
+        WhiteCbLowFile = tess_concatenate({TessLwLowFile, TessRwLowFile, TessCwLowFile}, sprintf('white_cereb_%dV', length(xLwLow) + length(xRwLow) + length(xCwLow)), 'Cortex');
+        rmFiles = cat(2, rmFiles, {TessCwFile, TessCwLowFile});
+    end
+    % Merge left+right
+    WhiteHiFile  = tess_concatenate({TessLwFile,    TessRwFile},    sprintf('white_%dV', nVertOrigLw + nVertOrigRw), 'Cortex');
+    WhiteLowFile = tess_concatenate({TessLwLowFile, TessRwLowFile}, sprintf('white_%dV', length(xLwLow) + length(xRwLow)), 'Cortex');
+    % Delete separate hemispheres
+    rmFiles = cat(2, rmFiles, {TessLwFile, TessRwFile, TessLwLowFile, TessRwLowFile});
 end
 
 
@@ -406,32 +487,88 @@ end
 if ~isempty(rmFiles)
     file_delete(file_fullpath(rmFiles), 1);
 end
-% Rename final file: cortex
-if ~isempty(TessLhFile) && ~isempty(TessRhFile)
+% === CENTRAL ===
+% Rename final file: central
+if ~isempty(GiiLcFile) && ~isempty(GiiRcFile)
     % Rename high-res file
-    oldCortexHiFile = file_fullpath(CortexHiFile);
-    CortexHiFile    = bst_fullfile(bst_fileparts(oldCortexHiFile), 'tess_cortex_pial_high.mat');
-    file_move(oldCortexHiFile, CortexHiFile);
-    CortexHiFile = file_short(CortexHiFile);
+    oldCentralHiFile = file_fullpath(CentralHiFile);
+    CentralHiFile    = bst_fullfile(bst_fileparts(oldCentralHiFile), 'tess_cortex_central_high.mat');
+    file_move(oldCentralHiFile, CentralHiFile);
+    CentralHiFile = file_short(CentralHiFile);
     % Rename low-res file
-    oldCortexLowFile = file_fullpath(CortexLowFile);
-    CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
-    file_move(oldCortexLowFile, CortexLowFile);
-    CortexHiFile = file_short(CortexHiFile);
+    oldCentralLowFile = file_fullpath(CentralLowFile);
+    CentralLowFile    = bst_fullfile(bst_fileparts(oldCentralLowFile), 'tess_cortex_central_low.mat');
+    file_move(oldCentralLowFile, CentralLowFile);
+    CentralHiFile = file_short(CentralHiFile);
 end
-% Rename final file: cortex + cerebellum
-if ~isempty(TessCbFile) && ~isempty(TessLhFile) && ~isempty(TessRhFile)
+% Rename final file: central + cerebellum
+if ~isempty(GiiCcFile) && ~isempty(GiiLcFile) && ~isempty(GiiRcFile)
     % Rename high-res file
-    oldCortexCbHiFile = file_fullpath(CortexCbHiFile);
-    CortexCbHiFile    = bst_fullfile(bst_fileparts(oldCortexCbHiFile), 'tess_cortex_cereb_pial_high.mat');
-    file_move(oldCortexCbHiFile, CortexCbHiFile);
-    CortexCbHiFile = file_short(CortexCbHiFile);
+    oldCentralCbHiFile = file_fullpath(CentralCbHiFile);
+    CentralCbHiFile    = bst_fullfile(bst_fileparts(oldCentralCbHiFile), 'tess_cortex_cereb_central_high.mat');
+    file_move(oldCentralCbHiFile, CentralCbHiFile);
+    CentralCbHiFile = file_short(CentralCbHiFile);
     % Rename low-res file
-    oldCortexCbLowFile = file_fullpath(CortexCbLowFile);
-    CortexCbLowFile    = bst_fullfile(bst_fileparts(oldCortexCbLowFile), 'tess_cortex_cereb_pial_low.mat');
-    file_move(oldCortexCbLowFile, CortexCbLowFile);
-    CortexCbHiFile = file_short(CortexCbHiFile);
+    oldCentralCbLowFile = file_fullpath(CentralCbLowFile);
+    CentralCbLowFile    = bst_fullfile(bst_fileparts(oldCentralCbLowFile), 'tess_cortex_cereb_central_low.mat');
+    file_move(oldCentralCbLowFile, CentralCbLowFile);
+    CentralCbHiFile = file_short(CentralCbHiFile);
 end
+% === PIAL ===
+% Rename final file: pial
+if ~isempty(GiiLpFile) && ~isempty(GiiRpFile)
+    % Rename high-res file
+    oldPialHiFile = file_fullpath(PialHiFile);
+    PialHiFile    = bst_fullfile(bst_fileparts(oldPialHiFile), 'tess_cortex_pial_high.mat');
+    file_move(oldPialHiFile, PialHiFile);
+    PialHiFile = file_short(PialHiFile);
+    % Rename low-res file
+    oldPialLowFile = file_fullpath(PialLowFile);
+    PialLowFile    = bst_fullfile(bst_fileparts(oldPialLowFile), 'tess_cortex_pial_low.mat');
+    file_move(oldPialLowFile, PialLowFile);
+    PialHiFile = file_short(PialHiFile);
+end
+% Rename final file: pial + cerebellum
+if ~isempty(GiiCpFile) && ~isempty(GiiLpFile) && ~isempty(GiiRpFile)
+    % Rename high-res file
+    oldPialCbHiFile = file_fullpath(PialCbHiFile);
+    PialCbHiFile    = bst_fullfile(bst_fileparts(oldPialCbHiFile), 'tess_cortex_cereb_pial_high.mat');
+    file_move(oldPialCbHiFile, PialCbHiFile);
+    PialCbHiFile = file_short(PialCbHiFile);
+    % Rename low-res file
+    oldPialCbLowFile = file_fullpath(PialCbLowFile);
+    PialCbLowFile    = bst_fullfile(bst_fileparts(oldPialCbLowFile), 'tess_cortex_cereb_pial_low.mat');
+    file_move(oldPialCbLowFile, PialCbLowFile);
+    PialCbHiFile = file_short(PialCbHiFile);
+end
+% === WHITE ===
+% Rename final file: white
+if ~isempty(GiiLwFile) && ~isempty(GiiRwFile)
+    % Rename high-res file
+    oldWhiteHiFile = file_fullpath(WhiteHiFile);
+    WhiteHiFile    = bst_fullfile(bst_fileparts(oldWhiteHiFile), 'tess_cortex_white_high.mat');
+    file_move(oldWhiteHiFile, WhiteHiFile);
+    WhiteHiFile = file_short(WhiteHiFile);
+    % Rename low-res file
+    oldWhiteLowFile = file_fullpath(WhiteLowFile);
+    WhiteLowFile    = bst_fullfile(bst_fileparts(oldWhiteLowFile), 'tess_cortex_white_low.mat');
+    file_move(oldWhiteLowFile, WhiteLowFile);
+    WhiteHiFile = file_short(WhiteHiFile);
+end
+% Rename final file: white + cerebellum
+if ~isempty(GiiCwFile) && ~isempty(GiiLwFile) && ~isempty(GiiRwFile)
+    % Rename high-res file
+    oldWhiteCbHiFile = file_fullpath(WhiteCbHiFile);
+    WhiteCbHiFile    = bst_fullfile(bst_fileparts(oldWhiteCbHiFile), 'tess_cortex_cereb_white_high.mat');
+    file_move(oldWhiteCbHiFile, WhiteCbHiFile);
+    WhiteCbHiFile = file_short(WhiteCbHiFile);
+    % Rename low-res file
+    oldWhiteCbLowFile = file_fullpath(WhiteCbLowFile);
+    WhiteCbLowFile    = bst_fullfile(bst_fileparts(oldWhiteCbLowFile), 'tess_cortex_cereb_white_low.mat');
+    file_move(oldWhiteCbLowFile, WhiteCbLowFile);
+    WhiteCbHiFile = file_short(WhiteCbHiFile);
+end
+
 % Reload subject
 db_reload_subjects(iSubject);
 
@@ -450,47 +587,30 @@ if isVolumeAtlas && ~isempty(VolAtlasFiles)
         % Strip the subject tag from the atlas name
         [fPath, AtlasName] = bst_fileparts(VolAtlasFiles{iFile});
         AtlasName = strrep(AtlasName, ['_' SubjectTag], '');
-        % Get the labels
-        switch (AtlasName)
-            case 'aal3',               Labels = mri_getlabels_cat12_aal3();                % AAL3 - Automated Anatomical Labeling (Tzourio-Mazoyer 2002)
-            case 'anatomy3',           Labels = mri_getlabels_cat12_anatomy3();
-            case 'cobra',              Labels = mri_getlabels_cat12_cobra();
-            case 'hammers',            Labels = mri_getlabels_cat12_hammers();             % HAMMERS - Hammersmith atlas (Hammers 2003, Gousias 2008, Faillenot 2017, Wild 2017)
-            case 'ibsr',               Labels = mri_getlabels_cat12_ibsr();
-            case 'julichbrain',        Labels = mri_getlabels_cat12_julichbrain();         % Julich-Brain 2.0
-            case 'lpba40',             Labels = mri_getlabels_cat12_lpba40();              % LONI lpba40
-            case 'mori',               Labels = mri_getlabels_cat12_mori();                % Mori 2009
-            case 'neuromorphometrics', Labels = mri_getlabels_cat12_neuromorphometrics();  % MICCAI 2012 Multi-Atlas Labeling Workshop and Challenge (Neuromorphometrics)
-            case 'Schaefer2018_100Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_100();
-            case 'Schaefer2018_200Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_200();
-            case 'Schaefer2018_400Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_400();
-            case 'Schaefer2018_600Parcels_17Networks_order', Labels = mri_getlabels_cat12_schaefer17_600();
-            otherwise,                 Labels = [];
-        end
-        % Import volume
-        import_mri(iSubject, VolAtlasFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName, Labels);
+        % Import volume (attached csv labels read with mri_getlabels.m from import_mri.m)
+        import_mri(iSubject, VolAtlasFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName);
     end
 end
 
 %% ===== IMPORT THICKNESS MAPS =====
-if isExtraMaps && ~isempty(CortexHiFile)
+if isExtraMaps && ~isempty(CentralHiFile)
     % Create a condition "CAT12"
     iStudy = db_add_condition(iSubject, 'CAT12');
     % Import cortical thickness
     if ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
-        import_sources(iStudy, CortexHiFile, ThickLhFile, ThickRhFile, 'FS', 'thickness');
+        import_sources(iStudy, CentralHiFile, ThickLhFile, ThickRhFile, 'FS', 'thickness');
     end
     % Import gyrification
     if ~isempty(GyriLhFile) && ~isempty(GyriRhFile)
-        import_sources(iStudy, CortexHiFile, GyriLhFile, GyriRhFile, 'FS', 'gyrification');
+        import_sources(iStudy, CentralHiFile, GyriLhFile, GyriRhFile, 'FS', 'gyrification');
     end
     % Import sulcal depth
     if ~isempty(SulcalLhFile) && ~isempty(SulcalRhFile)
-        import_sources(iStudy, CortexHiFile, SulcalLhFile, SulcalRhFile, 'FS', 'depth');
+        import_sources(iStudy, CentralHiFile, SulcalLhFile, SulcalRhFile, 'FS', 'depth');
     end
     % Import cortex complexity
     if ~isempty(FDLhFile) && ~isempty(FDRhFile)
-        import_sources(iStudy, CortexHiFile, FDLhFile, FDRhFile, 'FS', 'fractaldimension');
+        import_sources(iStudy, CentralHiFile, FDLhFile, FDRhFile, 'FS', 'fractaldimension');
     end
 end
 
@@ -504,8 +624,8 @@ end
 
 %% ===== UPDATE GUI =====
 % Set default cortex
-if ~isempty(TessLhFile) && ~isempty(TessRhFile)
-    [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', CortexLowFile);
+if ~isempty(GiiLcFile) && ~isempty(GiiRcFile)
+    [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', CentralLowFile);
     db_surface_default(iSubject, 'Cortex', iSurface);
 end
 % Update subject node
@@ -520,8 +640,8 @@ if isInteractive
     % Display the downsampled cortex + head + ASEG
     hFig = view_surface(HeadFile);
     % Display cortex
-    if ~isempty(CortexLowFile)
-        view_surface(CortexLowFile);
+    if ~isempty(CentralLowFile)
+        view_surface(CentralLowFile);
     end
     % Set orientation
     figure_3d('SetStandardView', hFig, 'left');
@@ -533,4 +653,30 @@ if ~isProgress
 end
 
 
+end
+
+
+
+%% ===== IMPORT SURFACE+ATLASES =====
+function [TessFile, TessLowFile, nVert, xLow, errorMsg] = ImportCatSurf(iSubject, GiiFile, AnnotFiles, SphFile, nVertHemi, Comment)
+    errorMsg = '';
+    % Import file
+    [iVert, TessFile, nVert] = import_surfaces(iSubject, GiiFile, 'GII-WORLD', 0);
+    TessFile = TessFile{1};
+    % Load atlases
+    if ~isempty(AnnotFiles)
+        bst_progress('start', 'Import CAT12 folder', ['Loading atlases: ' Comment '...']);
+        [sAllAtlas, err] = import_label(TessFile, AnnotFiles, 1);
+        errorMsg = [errorMsg err];
+    end
+    % Load sphere
+    if ~isempty(SphFile)
+        bst_progress('start', 'Import CAT12 folder', ['Loading registered sphere: ' Comment '...']);
+        [TessMat, err] = tess_addsphere(TessFile, SphFile, 'GII-CAT');
+        errorMsg = [errorMsg err];
+    end
+    % Downsample
+    bst_progress('start', 'Import CAT12 folder', ['Downsampling: ' Comment '...']);
+    [TessLowFile, iLow, xLow] = tess_downsize(TessFile, nVertHemi, 'reducepatch');
+end
 

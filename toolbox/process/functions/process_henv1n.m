@@ -108,8 +108,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
-    OPTIONS.TargetA = OPTIONS.TargetB;
-    OPTIONS.TargetB = [];
 
     % === Metric options
     OPTIONS.Method        = 'henv';

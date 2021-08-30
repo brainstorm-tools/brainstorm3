@@ -2602,7 +2602,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     PlugAll = bst_plugin('GetInstalled');
     for iPlug = 1:length(PlugAll)
         if ~isempty(PlugAll(iPlug).Processes)
-            plugFunc = cat(2, plugFunc, PlugAll(iPlug).Processes);
+            % Concatenate plugin path and process function (relative to plugin path)
+            procFullPath = cellfun(@(c)bst_fullfile(PlugAll(iPlug).Path, c), PlugAll(iPlug).Processes, 'UniformOutput', 0);
+            plugFunc = cat(2, plugFunc, procFullPath);
         end
     end
     % Add plugin processes to list of processes
@@ -2637,23 +2639,31 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     % Returned variable
     defProcess = db_template('ProcessDesc');
     sProcesses = repmat(defProcess, 0);
+    matlabPath = [];
     % Get description for each file
     for iFile = 1:length(bstFunc)
         % Skip python support functions
-        if length(bstFunc{iFile} > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
+        if (length(bstFunc{iFile}) > 5) && strcmp(bstFunc{iFile}(end-4:end), '_py.m')
             continue;
         end
         % Split function names: regular process=only function name; plugin process=full path
         [fPath, fName, fExt] = bst_fileparts(bstFunc{iFile});
         % Switch folder if needed
+        isChangeDir = 0;
         if ~isempty(fPath)
-            curDir = pwd;
-            cd(fPath);
+            if isempty(matlabPath)
+                matlabPath = str_split(path, pathsep);
+            end
+            if ~ismember(fPath, matlabPath)
+                curDir = pwd;
+                cd(fPath);
+                isChangeDir = 1;
+            end
         end
         % Get function handle
         Function = str2func(fName);
         % Restore previous dir
-        if ~isempty(fPath)
+        if isChangeDir
             cd(curDir);
         end
         % Call description function
@@ -2663,10 +2673,6 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
             disp(['BST> Invalid plug-in function: "' bstFunc{iFile} '"']);
             continue;
         end
-%         % Ignore if Index is set to 0
-%         if (desc.Index == 0)
-%             continue;
-%         end
         % Copy fields to returned structure
         iProc = length(sProcesses) + 1;
         sProcesses(iProc) = defProcess;
@@ -2844,6 +2850,17 @@ function sProcess = GetProcess(ProcessName)
         % Return process if found
         if ~isempty(iProc)
             sProcess = GlobalData.Processes.All(iProc);
+        % Else: try to get its definition directly from the function (for deprecated processes)
+        elseif exist(ProcessName, 'file')
+            % Call description function
+            try
+                Function = str2func(ProcessName);
+                sProcess = Function('GetDescription');
+                sProcess = struct_copy_fields(db_template('processdesc'), sProcess, 1);
+                sProcess.Function = Function;
+            catch
+                sProcess = [];
+            end
         else
             sProcess = [];
         end
@@ -3025,7 +3042,7 @@ end
 function [procTimeVector, nFiles] = GetProcessFileVector(sProcesses, FileTimeVector, nFiles)
     % Default value
     procTimeVector = FileTimeVector;
-    if isempty(sProcesses)
+    if isempty(sProcesses) || (length(procTimeVector) < 2)
         return;
     end
     % Look for an epoching process that changes the time vector of the files

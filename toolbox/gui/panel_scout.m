@@ -366,13 +366,13 @@ function UpdatePanel()
     UpdateScoutsList();
     % Update menus
     if ~isempty(sSurf) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas) && (sSurf.iAtlas <= length(sSurf.Atlas))
-        UpdateMenus(sSurf.Atlas(sSurf.iAtlas));
+        UpdateMenus(sSurf.Atlas(sSurf.iAtlas), sSurf);
     end
 end
 
 
 %% ===== SHOW MENU =====
-function UpdateMenus(sAtlas)
+function UpdateMenus(sAtlas, sSurf)
     import org.brainstorm.icon.*;
     % Get "Scouts" panel controls
     ctrl = bst_get('PanelControls', 'Scout');
@@ -391,7 +391,7 @@ function UpdateMenus(sAtlas)
     jMenuNew = gui_component('Menu', jMenu, [], 'New atlas', IconLoader.ICON_ATLAS, [], []);
         gui_component('MenuItem', jMenuNew, [], 'Empty atlas', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SetAtlas, [], 'Add'));
         jMenuNew.addSeparator();
-        gui_component('MenuItem', jMenuNew, [], 'Copy atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
+        gui_component('MenuItem', jMenuNew, [], 'Copy current atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
         gui_component('MenuItem', jMenuNew, [], 'Copy selected scouts',  IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 0,0));
         % Create special atlases
         jMenuNew.addSeparator();
@@ -399,6 +399,22 @@ function UpdateMenus(sAtlas)
             gui_component('MenuItem', jMenuNew, [], 'Source model options', IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@CreateAtlasInverse));
         end
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
+    % Create atlas from volumes in subject anatomy
+    jMenuAnat = gui_component('Menu', jMenu, [], 'From subject anatomy', IconLoader.ICON_VOLATLAS, [], []);
+    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#')
+        sSubject = bst_get('SurfaceFile', sSurf.FileName);
+        if ~isempty(sSubject.Anatomy)
+            iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+            if ~isempty(iAnatAtlases)
+                for iAnat = iAnatAtlases
+                    gui_component('MenuItem', jMenuAnat, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@LoadScouts, file_fullpath(sSubject.Anatomy(iAnat).FileName), 1));
+                end
+            else
+                jEmpty = gui_component('MenuItem', jMenuAnat, [], '<HTML><I>No volume atlas in subject anatomy</I>', [], [], []);
+                jEmpty.setEnabled(0);
+            end
+        end
+    end
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Load atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts));
     if ~isReadOnly
@@ -472,8 +488,6 @@ function UpdateMenus(sAtlas)
     end
         
     % === MENU PROJECT ====
-    % Get current surface and atlas
-    [sAtlas, iAtlas, sSurf] = GetAtlas();
     % Offer these projection menus only for Cortex surfaces
     if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
         % Get subjectlist
@@ -987,7 +1001,7 @@ function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     if ismember(lower(sAtlas.Name), {...
             'brainvisa_tzourio-mazoyer', ... % Old default anatomy
             'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ... % Old default anatomy
-            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'mindboggle', 'structures'})  % New freesurf
+            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'structures'})  % New freesurf
         if isInteractive
             java_dialog('warning', [...
                 'This atlas is a reference and cannot be modified or deleted.' 10 10 ...
@@ -1015,7 +1029,7 @@ function SetCurrentAtlas(iAtlas, isForced)
         return;
     end
     % Update menus
-    UpdateMenus(sSurf.Atlas(iAtlas));
+    UpdateMenus(sSurf.Atlas(iAtlas), sSurf);
     % If current atlas did not change: exit
     if ~isForced && isequal(sSurf.iAtlas, iAtlas)
         return;
@@ -1712,7 +1726,12 @@ end
 %% ===== SET REGION AUTO =====
 function sScout = SetRegionAuto(sSurf, sScout)
     % Get atlases we want to test
-    iAtlases = [find(strcmpi({sSurf.Atlas.Name}, 'Mindboggle')), find(strcmpi({sSurf.Atlas.Name}, 'Desikan-Killiany')), find(strcmpi({sSurf.Atlas.Name}, 'Destrieux')), find(strcmpi({sSurf.Atlas.Name}, 'Structures'))];
+    iAtlases = [find(strcmpi({sSurf.Atlas.Name}, 'Mindboggle')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'DKT40')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'DKT')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'Desikan-Killiany')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'Destrieux')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'Structures'))];
     % Test them one after the other after we find one that contains the target point
     for i = 1:length(iAtlases)
         for iScout = 1:length(sSurf.Atlas(iAtlases(i)).Scouts)
@@ -1867,6 +1886,13 @@ function iAtlas = SetAtlas(SurfaceFile, iAtlasIn, sAtlas)
     end
     % Fix the structure of the file
     sAtlas = FixAtlasStruct(sAtlas);
+    % Set default region based on Desikan-Killiany atlas
+    if any(ismember({sAtlas.Scouts.Region}, {'UU','LU','RU','CU'})) && ~strcmpi(sAtlas.Name, 'Desikan-Killiany') && ~isempty(GlobalData.Surface(iSurf).Atlas)
+        iDK = find(strcmpi({GlobalData.Surface(iSurf).Atlas.Name}, 'Desikan-Killiany'));
+        if ~isempty(iDK)
+            sAtlas.Scouts = SetDefaultRegions(sAtlas.Scouts, GlobalData.Surface(iSurf).Atlas(iDK(1)).Scouts);
+        end
+    end
     % Make the atlas name unique
     if ~isempty(GlobalData.Surface(iSurf).Atlas) && (ischar(iAtlasIn) && strcmpi(iAtlasIn, 'Add'))
         sAtlas.Name = file_unique(sAtlas.Name, {GlobalData.Surface(iSurf).Atlas.Name});
@@ -1959,6 +1985,12 @@ function CreateAtlasVolumeGrid()
     end
     % Create new atlas
     SetAtlas([], 'Add', sAtlasVol);
+end
+
+
+%% ===== CREATE ATLAS: ANATOMY VOLUME =====
+function CreateAtlasAnat(iAnatomy)
+
 end
 
 
@@ -5168,6 +5200,33 @@ function sAtlasFix = FixAtlasStruct(sAtlas)
                 sAtlasFix(ia).Scouts(is).Vertices = sAtlasFix(ia).Scouts(is).Vertices';
             end
         end
+    end
+end
+
+
+%% ===== SET DEFAULT REGIONS =====
+function sScouts = SetDefaultRegions(sScouts, sRef)
+    % Get total number of vertices
+    Nvert = max([sScouts.Vertices, sRef.Vertices]);
+    % Build reference atlas
+    map = repmat({'UU'}, 1, Nvert);
+    for iRef = 1:length(sRef)
+        map(sRef(iRef).Vertices) = {sRef(iRef).Region};
+    end
+    % Assign region to all scouts with unknown regions
+    for iScout = 1:length(sScouts)
+        % If region is already defined: skip
+        if ~ismember(sScouts(iScout).Region, {'UU','LU','RU','CU'})
+            continue;
+        end
+        % Get the list of reference regions in this scout
+        allReg = map(sScouts(iScout).Vertices);
+        uniqueReg = unique(allReg);
+        % Count the region with the most vertices
+        countReg = cellfun(@(c)nnz(strcmpi(allReg, c)), uniqueReg);
+        [nMax, iMax] = max(countReg);
+        % Set it as the default region
+        sScouts(iScout).Region = uniqueReg{iMax};
     end
 end
 

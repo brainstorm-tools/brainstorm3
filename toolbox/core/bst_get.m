@@ -16,6 +16,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
 %    - bst_get('UserDefaultsDir')       : User defaults directory (<home>/.brainstorm/defaults/)
+%    - bst_get('UserPluginsDir')        : User plugins directory (<home>/.brainstorm/plugins/)
 %    - bst_get('BrainstormDbFile')      : User brainstorm.mat file (<home>/.brainstorm/brainstorm.mat)
 %    - bst_get('BrainstormDbDir')       : User database directory (contains all the brainstorm protocols)
 %    - bst_get('DirDefaultSubject')     : Directory name of the default subject
@@ -2257,57 +2258,57 @@ switch contextName
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
             sTemplates(end).Name = 'Kabdebon_7w';
         end
-        if ~ismember('oreilly_0.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m';
-            sTemplates(end).Name = 'Oreilly_0.5m';
+        if ~ismember('oreilly_0.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m_2021';
+            sTemplates(end).Name = 'Oreilly_0.5m_2021';
         end
-        if ~ismember('oreilly_1m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m';
-            sTemplates(end).Name = 'Oreilly_1m';
+        if ~ismember('oreilly_1m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m_2021';
+            sTemplates(end).Name = 'Oreilly_1m_2021';
         end
-        if ~ismember('oreilly_2m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m';
-            sTemplates(end).Name = 'Oreilly_2m';
+        if ~ismember('oreilly_2m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m_2021';
+            sTemplates(end).Name = 'Oreilly_2m_2021';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m')
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m';
-            sTemplates(end).Name = 'Oreilly_3m';
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m_2021')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m_2021';
+            sTemplates(end).Name = 'Oreilly_3m_2021';
         end
-        if ~ismember('oreilly_4.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m';
-            sTemplates(end).Name = 'Oreilly_4.5m';
+        if ~ismember('oreilly_4.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m_2021';
+            sTemplates(end).Name = 'Oreilly_4.5m_2021';
         end
-        if ~ismember('oreilly_6m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m';
-            sTemplates(end).Name = 'Oreilly_6m';
+        if ~ismember('oreilly_6m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m_2021';
+            sTemplates(end).Name = 'Oreilly_6m_2021';
         end
-        if ~ismember('oreilly_7.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m';
-            sTemplates(end).Name = 'Oreilly_7.5m';
+        if ~ismember('oreilly_7.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m_2021';
+            sTemplates(end).Name = 'Oreilly_7.5m_2021';
         end
-        if ~ismember('oreilly_9m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m';
-            sTemplates(end).Name = 'Oreilly_9m';
+        if ~ismember('oreilly_9m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m_2021';
+            sTemplates(end).Name = 'Oreilly_9m_2021';
         end
-        if ~ismember('oreilly_10.5m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m';
-            sTemplates(end).Name = 'Oreilly_10.5m';
+        if ~ismember('oreilly_10.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m_2021';
+            sTemplates(end).Name = 'Oreilly_10.5m_2021';
         end
-        if ~ismember('oreilly_12m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m';
-            sTemplates(end).Name = 'Oreilly_12m';
+        if ~ismember('oreilly_12m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m_2021';
+            sTemplates(end).Name = 'Oreilly_12m_2021';
         end
-        if ~ismember('oreilly_15m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m';
-            sTemplates(end).Name = 'Oreilly_15m';
+        if ~ismember('oreilly_15m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m_2021';
+            sTemplates(end).Name = 'Oreilly_15m_2021';
         end
-        if ~ismember('oreilly_18m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m';
-            sTemplates(end).Name = 'Oreilly_18m';
+        if ~ismember('oreilly_18m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m_2021';
+            sTemplates(end).Name = 'Oreilly_18m_2021';
         end
-        if ~ismember('oreilly_24m', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m';
-            sTemplates(end).Name = 'Oreilly_24m';
+        if ~ismember('oreilly_24m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m_2021';
+            sTemplates(end).Name = 'Oreilly_24m_2021';
         end
         % If a specific template was requested
         if ~isempty(AnatName)
@@ -3150,7 +3151,7 @@ switch contextName
         if isempty(argout1.Freqs)
             argout1.Freqs = defPref.Freqs;
         end
-        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+        if ~isempty(argout1.FreqBands) && (size(argout1.FreqBands,2) == 3) && ~ischar(argout1.FreqBands{1,2})
             argout1.FreqBands = defPref.FreqBands;
         end
         
@@ -3286,7 +3287,35 @@ switch contextName
                        'Labels', [])], ...
             'iMontage',     1);
         argout1 = FillMissingFields(contextName, defPref);
-        
+    
+    case 'ConnectGraphOptions'
+        defPref = struct(...
+            'LobeFullLabel', 1, ... 
+            'TextDisplayMode', [1 2], ...
+            'LabelSize', 7, ...  
+            'NodeSize', 5, ...         
+            'LinkSize', 1.5, ...           
+            'BgColor', [0 0 0], ...        
+            'HierarchyNodeIsVisible', 1);
+        % If we have an additional argument, get the default values
+        if nargin > 1
+            argout1 = defPref;
+        % Otherwise, get the saved values
+        else
+            savedValues = FillMissingFields(contextName, defPref);
+            
+            % if any of the fields are [], replace by default value
+            % do it here to avoid touching the common FillMissingFields
+            % function, as other tools may actually want to set [] as desired property           
+            fields = fieldnames(savedValues);
+            for i=1:numel(fields)
+                if(isempty(savedValues.(fields{i})))
+                    savedValues.(fields{i}) = defPref.(fields{i});
+                end
+            end
+            argout1 = savedValues;
+        end
+    
     case 'NodelistOptions'
         defPref = struct(...
             'String', '', ...         % What to search for
@@ -3579,6 +3608,7 @@ switch contextName
                     {'.evl','.txt'},   'Elekta-Neuromag Graph (*.evl;*.txt)',  'GRAPH'; ...
                     {'.txt','.mat'},   'FieldTrip trial definition (*.txt;*.mat)', 'TRL'; ...
                     {'.trg'},          'KRISS MEG (*.trg)',             'KDF'; ...
+                    {'.evt'},          'Micromed (*.evt)',              'MICROMED'; ...
                     {'.ev2'},          'Neuroscan (*.ev2)',             'NEUROSCAN'; ...
                     {'.txt'},          'Nicolet export (*.txt)',        'NICOLET'; ...
                     {'timestamps.npy'},'Open Ephys (timestamps.npy)', 'OEBIN'; ...
@@ -3606,7 +3636,7 @@ switch contextName
                     {'.elc'},                      'EEG: ANT ASA/Xensor (*.elc)',         'XENSOR'; ...
                     {'.sfp','.elp','.ela','.eps'}, 'EEG: BESA (*.sfp;*.elp;*.eps/*.ela)', 'BESA'; ...
                     {'.bvef','.bvct','.txt'},      'EEG: BrainVision electrode file (*.bvef,*.bvct,*.txt)', 'BRAINVISION'; ...
-                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, subject space mm (*.tsv)',    'BIDS-ORIG-MM'; ...
+                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, subject space mm (*.tsv)',    'BIDS-OTHER-MM'; ...
                     {'.tsv'},                      'EEG: BIDS electrodes.tsv, MNI space mm (*.tsv)',        'BIDS-MNI-MM'; ...
                     {'.els','.xyz'},               'EEG: Cartool (*.els;*.xyz)',          'CARTOOL'; ...
                     {'.eeg'},                      'EEG: MegDraw (*.eeg)',                'MEGDRAW'; ...

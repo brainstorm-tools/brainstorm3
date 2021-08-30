@@ -1,16 +1,18 @@
-function [sMri, errMsg] = bst_normalize_mni(MriFile, Method)
+function [sMriT1, errMsg] = bst_normalize_mni(T1File, Method, T2File)
 % BST_NORMALIZE_MNI: Compute deformation fields to the MNI ICBM152 space.
 %
-% USAGE:  [sMri, errMsg] = bst_normalize_mni(MriFile, Method='maff8')
-%         [sMri, errMsg] = bst_normalize_mni(sMri,    Method='maff8')
-%                          bst_normalize_mni('install')               % Only installs default SPM tpm.nii
+% USAGE:  [sMriT1, errMsg] = bst_normalize_mni(T1File, Method='maff8', T2File=[])
+%         [sMriT1, errMsg] = bst_normalize_mni(sMriT1, Method='maff8', sMriT2=[])
+%                            bst_normalize_mni('install')               % Only installs default SPM tpm.nii
 %
 % INPUTS:
-%    - MriFile : Relative path to a MRI file in the Brainstorm database
-%    - sMri    : Brainstorm MRI structure
-%    - Method  : String defining the method to use for the registration
-%                'maff8'   : SPM mutual information algorithm (affine transform)
-%                'segment' : SPM12 segment
+%    - T1File : Relative path to a T1 MRI file in the Brainstorm database
+%    - sMriT1 : Brainstorm T1 MRI structure
+%    - Method : String defining the method to use for the registration
+%               'maff8'   : SPM mutual information algorithm (affine transform)
+%               'segment' : SPM12 segment
+%    - T2File : Relative path to a T2 MRI file in the Brainstorm database
+%    - sMriT2 : Brainstorm T2 MRI structure
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -30,33 +32,45 @@ function [sMri, errMsg] = bst_normalize_mni(MriFile, Method)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2020
+% Authors: Francois Tadel, 2015-2021
 
 %% ===== PARSE INPUTS =====
 % Inializations
 global GlobalData;
 errMsg = [];
 % Usage: bst_normalize_mni('install')
-if isequal(MriFile, 'install')
+if isequal(T1File, 'install')
     isInstall = 1;
-    sMri = [];
+    sMriT1 = [];
 else
     isInstall = 0;
-    % Usage: bst_normalize_mni(sMri)
-    if ~ischar(MriFile)
-        sMri = MriFile;
-        MriFile = [];
-    % Usage: bst_normalize_mni(MriFile)
+    % Usage: bst_normalize_mni(sMriT1)
+    if ~ischar(T1File)
+        sMriT1 = T1File;
+        T1File = [];
+    % Usage: bst_normalize_mni(T1File)
     else
-        sMri = [];
+        sMriT1 = [];
     end
 end
-% Other parameters
+% Default method
 if (nargin < 2) || isempty(Method)
     Method = 'maff8';
 end
-    
-    
+% T2 MRI
+if (nargin < 3) || isempty(T2File)
+    T2File = [];
+    sMriT2 = [];
+else
+    if ~ischar(T2File)
+        sMriT2 = T2File;
+        T2File = [];
+    else
+        sMriT2 = [];
+    end
+end
+
+
 %% ===== GET SPM TEMPLATE =====
 % Open progress bar
 isProgress = bst_progress('isVisible');
@@ -113,18 +127,24 @@ end
 
 
 %% ===== LOAD ANATOMY =====
-if isempty(sMri)
+% T1 MRI
+if isempty(sMriT1)
     % Progress bar
     bst_progress('text', 'Loading input MRI...');
     % Check if it is loaded in memory
-    [sMri, iLoadedMri] = bst_memory('GetMri', MriFile);
+    [sMriT1, iLoadedMri] = bst_memory('GetMri', T1File);
     % If not: load it from the file
-    if isempty(sMri)
-        sMri = in_mri_bst(MriFile);
+    if isempty(sMriT1)
+        sMriT1 = in_mri_bst(T1File);
     end
 else
     iLoadedMri = [];
 end
+% T2 MRI
+if isempty(sMriT2) && ~isempty(T2File)
+    sMriT2 = in_mri_bst(T2File);
+end
+    
 
 %% ===== MNI NORMALIZATION =====
 TpmFiles = [];
@@ -135,10 +155,10 @@ try
             % Progress bar
             bst_progress('text', 'Resampling MRI...');
             % Resample volume if needed
-            if any(abs(sMri.Voxsize - [1 1 1]) > 0.001)
-                [sMriRes, Tres] = mri_resample(sMri, [256 256 256], [1 1 1], 'linear');
+            if any(abs(sMriT1.Voxsize - [1 1 1]) > 0.001)
+                [sMriRes, Tres] = mri_resample(sMriT1, [256 256 256], [1 1 1], 'linear');
             else
-                sMriRes = sMri;
+                sMriRes = sMriT1;
                 Tres = [];
             end
             % Compute affine transformation to MNI space
@@ -148,8 +168,8 @@ try
                 Tmni = Tmni * Tres;
             end
             % Save results into the MRI structure
-            sMri.NCS.R = Tmni(1:3,1:3);
-            sMri.NCS.T = Tmni(1:3,4);
+            sMriT1.NCS.R = Tmni(1:3,1:3);
+            sMriT1.NCS.T = Tmni(1:3,4);
             
         % SPM12 SEGMENT 
         case 'segment'
@@ -161,15 +181,15 @@ try
             % Progress bar
             bst_progress('text', 'Running SPM batch... (see command window)');
             % Compute non-linear registration to MNI space
-            [sMri, TpmFiles] = mri_normalize_segment(sMri, TpmFile);
-            if isempty(sMri)
+            [sMriT1, TpmFiles] = mri_normalize_segment(sMriT1, TpmFile, sMriT2);
+            if isempty(sMriT1)
                 errMsg = 'SPM Segment failed.';
                 return;
             end
     end
 catch
     errMsg = ['bst_normalize_mni/' Method ': ' lasterr()];
-    sMri = [];
+    sMriT1 = [];
     return;
 end
 
@@ -177,10 +197,10 @@ end
 %% ===== SAVE RESULTS =====
 bst_progress('text', 'Saving normalization...');
 % Compute default fiducials positions based on MNI coordinates
-sMri = mri_set_default_fid(sMri, 'maff8');
+sMriT1 = mri_set_default_fid(sMriT1, 'maff8');
 % Save modifications in the MRI file
-if ~isempty(MriFile)
-    bst_save(file_fullpath(MriFile), sMri, 'v6');
+if ~isempty(T1File)
+    bst_save(file_fullpath(T1File), sMriT1, 'v6');
 end
 
 
@@ -188,32 +208,32 @@ end
 % If the MRI is currently loaded
 if ~isempty(iLoadedMri)
     % Update structures
-    GlobalData.Mri(iLoadedMri).NCS.R  = sMri.NCS.R;
-    GlobalData.Mri(iLoadedMri).NCS.T  = sMri.NCS.T;
-    GlobalData.Mri(iLoadedMri).NCS.AC = sMri.NCS.AC;
-    GlobalData.Mri(iLoadedMri).NCS.PC = sMri.NCS.PC;
-    GlobalData.Mri(iLoadedMri).NCS.IH = sMri.NCS.IH;
-    GlobalData.Mri(iLoadedMri).NCS.Origin = sMri.NCS.Origin;
-    if isfield(sMri.NCS,'y') && isfield(sMri.NCS,'iy') && isfield(sMri.NCS,'y_vox2ras')
-        GlobalData.Mri(iLoadedMri).NCS.y         = sMri.NCS.y;
-        GlobalData.Mri(iLoadedMri).NCS.iy        = sMri.NCS.iy;
-        GlobalData.Mri(iLoadedMri).NCS.y_vox2ras = sMri.NCS.y_vox2ras;
+    GlobalData.Mri(iLoadedMri).NCS.R  = sMriT1.NCS.R;
+    GlobalData.Mri(iLoadedMri).NCS.T  = sMriT1.NCS.T;
+    GlobalData.Mri(iLoadedMri).NCS.AC = sMriT1.NCS.AC;
+    GlobalData.Mri(iLoadedMri).NCS.PC = sMriT1.NCS.PC;
+    GlobalData.Mri(iLoadedMri).NCS.IH = sMriT1.NCS.IH;
+    GlobalData.Mri(iLoadedMri).NCS.Origin = sMriT1.NCS.Origin;
+    if isfield(sMriT1.NCS,'y') && isfield(sMriT1.NCS,'iy') && isfield(sMriT1.NCS,'y_vox2ras')
+        GlobalData.Mri(iLoadedMri).NCS.y         = sMriT1.NCS.y;
+        GlobalData.Mri(iLoadedMri).NCS.iy        = sMriT1.NCS.iy;
+        GlobalData.Mri(iLoadedMri).NCS.y_vox2ras = sMriT1.NCS.y_vox2ras;
     end
-    GlobalData.Mri(iLoadedMri).SCS.R   = sMri.SCS.R;
-    GlobalData.Mri(iLoadedMri).SCS.T   = sMri.SCS.T;
-    GlobalData.Mri(iLoadedMri).SCS.NAS = sMri.SCS.NAS;
-    GlobalData.Mri(iLoadedMri).SCS.LPA = sMri.SCS.LPA;
-    GlobalData.Mri(iLoadedMri).SCS.RPA = sMri.SCS.RPA;
-    GlobalData.Mri(iLoadedMri).SCS.Origin = sMri.SCS.Origin;
+    GlobalData.Mri(iLoadedMri).SCS.R   = sMriT1.SCS.R;
+    GlobalData.Mri(iLoadedMri).SCS.T   = sMriT1.SCS.T;
+    GlobalData.Mri(iLoadedMri).SCS.NAS = sMriT1.SCS.NAS;
+    GlobalData.Mri(iLoadedMri).SCS.LPA = sMriT1.SCS.LPA;
+    GlobalData.Mri(iLoadedMri).SCS.RPA = sMriT1.SCS.RPA;
+    GlobalData.Mri(iLoadedMri).SCS.Origin = sMriT1.SCS.Origin;
 end
 
 
 %% ===== TISSUE CLASSIFICATION =====
 % Import tissue classification
-if ~isempty(TpmFiles) && ~isempty(MriFile)
+if ~isempty(TpmFiles) && ~isempty(T1File)
     bst_progress('text', 'Loading tissue segmentations...');
     % Get subject
-    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    [sSubject, iSubject] = bst_get('MriFile', T1File);
     % Import tissue classification
     import_mri(iSubject, TpmFiles, 'SPM-TPM', 0, 1, 'tissues_segment');
 end

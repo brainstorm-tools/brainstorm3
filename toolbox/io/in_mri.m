@@ -85,6 +85,10 @@ if ~iscell(MriFile)
         MriFile = gunzippedFile;
         [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
     end
+    % Default comment
+    Comment = fileBase;
+else
+    Comment = 'MRI';
 end
 
                 
@@ -146,7 +150,10 @@ end
 if isempty(MRI)
     return
 end
-
+% Default comment: File name
+if ~isfield(MRI, 'Comment') || isempty(MRI.Comment)
+    MRI.Comment = Comment;
+end
 % If a transformation was defined
 if ~isempty(vox2ras)
     % Prepare the history of transformations

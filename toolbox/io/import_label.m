@@ -22,7 +22,7 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2021
 
 import sun.misc.BASE64Decoder;
 
@@ -75,10 +75,15 @@ else
         case '.annot',  FileFormat = 'FS-ANNOT';
         case '.label',  FileFormat = 'FS-LABEL-SINGLE';
         case '.gii',    FileFormat = 'GII-TEX';
-        case '.mat',    FileFormat = 'BST';
         case '.dfs',    FileFormat = 'DFS';
         case '.dset',   FileFormat = 'DSET';
-        otherwise,      Messages = 'Unknown file extension.'; return;
+        case '.mat'
+            switch (file_gettype(LabelFiles{1}))
+                case 'scout',        FileFormat = 'BST';
+                case 'subjectimage', FileFormat = 'MRI-MASK-NOOVERLAP';
+                otherwise,           Messages = 'Unsupported Brainstorm file type.'; return;
+            end
+        otherwise,  Messages = 'Unknown file extension.'; return;
     end
 end
 
@@ -111,18 +116,28 @@ for iFile = 1:length(LabelFiles)
     end
     % Get filename
     [fPath, fBase, fExt] = bst_fileparts(LabelFiles{iFile});
+    % Is it a Brainstorm volume atlas from the subject anatomy?
+    isVolatlas = strcmpi(fExt, '.mat') && ~isempty(strfind(fBase, '_volatlas'));
     % New atlas structure: use filename as the atlas name
     if isNewAtlas || isempty(sSurf.Atlas) || isempty(sSurf.iAtlas)
         sAtlas = db_template('Atlas');
         iAtlas = 'Add';
         % Volume sources file
         if ~isempty(GridLoc)
-            sAtlas.Name = sprintf('Volume %d: %s', length(GridLoc), fBase);
+            if isVolatlas
+                sAtlas.Name = sprintf('Volume %d: ', length(GridLoc));
+            else
+                sAtlas.Name = sprintf('Volume %d: %s', length(GridLoc), fBase);
+            end
             sAtlas.Name = file_unique(sAtlas.Name, {sSurf.Atlas.Name});
         % Surface sources file
         else
             % Get atlas name for standard FreeSurfer and MarsAtlas files
-            sAtlas.Name = GetAtlasName(fBase);
+            if isVolatlas
+                sAtlas.Name = 'From volume: ';
+            else
+                sAtlas.Name = GetAtlasName(fBase);
+            end
         end
     % Existing atlas structure
     else
@@ -180,10 +195,12 @@ for iFile = 1:length(LabelFiles)
                 iScout = length(sAtlas.Scouts) + 1;
                 sAtlas.Scouts(iScout).Vertices = find(labels == lablist(i))';
                 if ~isempty(colortable.struct_names{iTable})
-                    % Strip CAT12 Schaeffer labels
+                    % Strip uselss parts of Schaeffer labels
                     Label = colortable.struct_names{iTable};
                     Label = strrep(Label, '17Networks_LH_', '');
                     Label = strrep(Label, '17Networks_RH_', '');
+                    Label = strrep(Label, '7Networks_LH_', '');
+                    Label = strrep(Label, '7Networks_RH_', '');
                     sAtlas.Scouts(iScout).Label = file_unique(Label, {sAtlas.Scouts.Label});
                 else
                     sAtlas.Scouts(iScout).Label = file_unique('Unknown', {sAtlas.Scouts.Label});
@@ -316,7 +333,10 @@ for iFile = 1:length(LabelFiles)
             isMni = strcmpi(FileFormat, 'MRI-MASK-MNI') || strcmpi(FileFormat, 'MRI-MASK-NOOVERLAP-MNI');
             isOverlap = strcmpi(FileFormat, 'MRI-MASK') || strcmpi(FileFormat, 'MRI-MASK-MNI');
             % Read MRI volume  (do not normalize values when reading an atlas)
-            if isMni
+            if isVolatlas
+                sMriMask = in_mri_bst(LabelFiles{iFile});
+                sAtlas.Name = [sAtlas.Name, str_remove_parenth(sMriMask.Comment)];
+            elseif isMni
                 sMriMask = in_mri(LabelFiles{iFile}, 'ALL-MNI', [], 0);
             else
                 sMriMask = in_mri(LabelFiles{iFile}, 'ALL', [], 0);
@@ -380,7 +400,11 @@ for iFile = 1:length(LabelFiles)
                         bst_saturate(vertMri(:,2), [1, size(sMriMask.Cube,2)]), ...
                         bst_saturate(vertMri(:,3), [1, size(sMriMask.Cube,3)]));
             % Try to get volume labels for this atlas
-            VolumeLabels = mri_getlabels(LabelFiles{iFile});
+            if isVolatlas
+                VolumeLabels = sMriMask.Labels;
+            else
+                VolumeLabels = mri_getlabels(LabelFiles{iFile});
+            end
             % Create one scout for each value in the volume
             for i = 1:length(allValues)
                 bst_progress('text', sprintf('Creating scouts... [%d/%d]', i, length(allValues)));
@@ -412,6 +436,9 @@ for iFile = 1:length(LabelFiles)
                             sAtlas.Scouts(iScout).Region = 'LU';
                         elseif (VolumeLabels{iLabel,2}(end-1:end) == ' R')
                             sAtlas.Scouts(iScout).Region = 'RU';
+                        end
+                        if (size(VolumeLabels,2) >= 3) && (length(VolumeLabels{iLabel,3}) == 3)
+                            sAtlas.Scouts(iScout).Color = VolumeLabels{iLabel,3} ./ 255;
                         end
                     else
                         sAtlas.Scouts(iScout).Label = file_unique(num2str(allValues(i)), {sAtlas.Scouts.Label});
@@ -509,34 +536,46 @@ for iFile = 1:length(LabelFiles)
         % ===== BrainSuite/SVReg surface file =====
         case 'DFS'
             % === READ FILE ===
-            [VertexLabelIds, labelMap] = in_label_bs(LabelFiles{iFile});
-            % Could not read the label correctly
-            if isempty(VertexLabelIds) || isempty(labelMap)
-                continue;
-            end
+            [VertexLabelIds, labelMap, AtlasName] = in_label_bs(LabelFiles{iFile});
             
             % === CONVERT TO SCOUTS ===
             % Convert to scouts structures
             lablist = unique(VertexLabelIds);
             if isNewAtlas
-                sAtlas.Name = 'SVReg';
+                if isempty(AtlasName)
+                    sAtlas.Name = 'SVReg';
+                else
+                    sAtlas.Name = AtlasName;
+                end
             end
 
             % Loop on each label
+            if isempty(labelMap)
+                new_colors = distinguishable_colors(length(lablist), [0,0,0]);
+                new_colors(1,:) = [0.5,0.5,0.5];
+            end
+
             for i = 1:length(lablist)
                 % Find label ID
                 id = lablist(i);
                 % Skip if label id is not in labelMap
-                if ~labelMap.containsKey(num2str(id))
-                    continue;
+                if isempty(labelMap)
+                    labelInfo.Name = num2str(id);
+                    labelInfo.Color = new_colors(i,:)';                    
+                    %continue;
+                elseif ~labelMap.containsKey(num2str(id))
+                    labelInfo.Name = num2str(id);
+                    labelInfo.Color = [0,0,0]';                                    
+                else
+                    entry = labelMap.get(num2str(id));
+                    labelInfo.Name = entry(1);
+                    labelInfo.Color = entry(2);
                 end
-                entry = labelMap.get(num2str(id));
-                labelInfo.Name = entry(1);
-                labelInfo.Color = entry(2);
                 % Transpose color vector
                 labelInfo.Color = labelInfo.Color(:)';
                 % Skip the "background" scout
                 if strcmpi(labelInfo.Name, 'background')
+                    labelInfo.Color = [0.5,0.5,0.5]';
                     continue;
                 end
                 % New scout index
@@ -617,17 +656,17 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Destrieux';
         case {'lh.aparc', 'rh.aparc'}
             AtlasName = 'Desikan-Killiany';
-        case {'lh.BA', 'rh.BA', 'lh.BA_exvivo', 'rh.BA_exvivo'}
+        case {'lh.ba', 'rh.ba', 'lh.ba_exvivo', 'rh.ba_exvivo'}
             AtlasName = 'Brodmann';
         case {'lh.ba.thresh', 'rh.ba.thresh', 'lh.ba_exvivo.thresh', 'rh.ba_exvivo.thresh'}
             AtlasName = 'Brodmann-thresh';
         case {'lh.aparc.dktatlas40', 'rh.aparc.dktatlas40'}
-            AtlasName = 'Mindboggle';
+            AtlasName = 'DKT40';
         case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas'}
-            AtlasName = 'Mindboggle6';
+            AtlasName = 'DKT';
         case {'lh.pals_b12_brodmann', 'rh.pals_b12_brodmann'}
             AtlasName = 'PALS-B12 Brodmann';
-        case {'lh.pals_b12_Lobes', 'rh.pals_b12_lobes'}
+        case {'lh.pals_b12_lobes', 'rh.pals_b12_lobes'}
             AtlasName = 'PALS-B12 Lobes';
         case {'lh.pals_b12_orbitofrontal', 'rh.pals_b12_orbitofrontal'}
             AtlasName = 'PALS-B12 Orbito-frontal';
@@ -659,7 +698,7 @@ function AtlasName = GetAtlasName(fBase)
                 AtlasName = 'Destrieux';
             elseif ~isempty(strfind(fBase, 'dk40'))
                 AtlasName = 'Desikan-Killiany';
-            elseif ~isempty(strfind(fBase, 'hcp_mmp'))
+            elseif ~isempty(strfind(fBase, 'hcp_mmp')) || ~isempty(strfind(fBase, 'hcp-mmp'))
                 AtlasName = 'HCP_MMP1';
             elseif ~isempty(strfind(fBase, 'schaefer2018_100parcels_17'))
                 AtlasName = 'Schaefer_100_17net';
@@ -669,6 +708,22 @@ function AtlasName = GetAtlasName(fBase)
                 AtlasName = 'Schaefer_400_17net';
             elseif ~isempty(strfind(fBase, 'schaefer2018_600parcels_17'))
                 AtlasName = 'Schaefer_600_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_800parcels_17'))
+                AtlasName = 'Schaefer_800_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_1000parcels_17'))
+                AtlasName = 'Schaefer_1000_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_100parcels_7'))
+                AtlasName = 'Schaefer_100_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_200parcels_7'))
+                AtlasName = 'Schaefer_200_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_400parcels_7'))
+                AtlasName = 'Schaefer_400_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_600parcels_7'))
+                AtlasName = 'Schaefer_600_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_800parcels_7'))
+                AtlasName = 'Schaefer_800_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_1000parcels_7'))
+                AtlasName = 'Schaefer_1000_7net';
             % FreeSurfer left/right
             elseif (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
                 AtlasName = fBase(4:end);

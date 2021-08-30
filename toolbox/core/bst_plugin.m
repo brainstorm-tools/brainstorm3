@@ -153,6 +153,18 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin'};
     
+    % === INVERSE: BRAINENTROPY ===
+    PlugDesc(end+1)              = GetStruct('brainentropy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Inverse';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'https://github.com/multi-funkim/best-brainstorm/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
+    PlugDesc(end).TestFile       = 'process_inverse_mem.m';
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
     PlugDesc(end).Version        = 'github-master';
@@ -164,6 +176,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'adi.m';
     PlugDesc(end).CompiledStatus = 0;
    
+    % === I/O: BLACKROCK ===
+    PlugDesc(end+1)              = GetStruct('blackrock');
+    PlugDesc(end).Version        = '5.5.2.0';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/refs/tags/5.5.2.0.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
+    PlugDesc(end).TestFile       = 'openNSx.m';
+    PlugDesc(end).ReadmeFile     = 'Versions.txt';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -246,6 +269,22 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'make';
+
+    % === NIRSTORM ===
+    PlugDesc(end+1)              = GetStruct('nirstorm');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'fNIRS';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/Nirstorm/nirstorm';
+    PlugDesc(end).LoadFolders    = {'bst_plugin/core','bst_plugin/forward','bst_plugin/GLM', 'bst_plugin/inverse' , 'bst_plugin/io','bst_plugin/math' ,'bst_plugin/mbll' ,'bst_plugin/misc', 'bst_plugin/OM', 'bst_plugin/preprocessing', 'bst_plugin/ppl'};
+    PlugDesc(end).TestFile       = 'process_nst_mbll.m';
+    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).GetVersionFcn  = 'nst_get_version';
+    PlugDesc(end).RequiredPlugs  = {'brainentropy'};
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
@@ -273,25 +312,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).UnloadPlugs    = {'fieldtrip', 'roast'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
-    
-%     % === BRAINENTROPY ===
-%     PlugDesc(end+1)             = GetStruct('brainentropy');
-%     PlugDesc(end).Version       = '2.7.1';
-%     PlugDesc(end).URLzip        = 'https://github.com/multi-funkim/best-brainstorm/archive/2.7.1.zip';
-%     PlugDesc(end).URLinfo       = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBEst';
-%     PlugDesc(end).TestFile      = 'process_inverse_mem.m';
-%     PlugDesc(end).ReadmeFile    = 'README.md';
-%     PlugDesc(end).LoadFolders   = {'*'};
-    
-%     % === NIRSTORM ===
-%     PlugDesc(end+1)             = GetStruct('nirstorm');
-%     PlugDesc(end).Version       = 'github-master';
-%     PlugDesc(end).URLzip        = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
-%     PlugDesc(end).URLinfo       = 'https://github.com/Nirstorm/nirstorm';
-%     PlugDesc(end).TestFile      = 'nst_install.m';
-%     PlugDesc(end).ReadmeFile    = 'README.md';
-%     PlugDesc(end).LoadFolders   = {'*'};
-    
     % ================================================================================================================
     
     % Select only one plugin
@@ -419,6 +439,11 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 disp(['BST> Checking latest online version for ' PlugName '...']);
                 str = bst_webread('http://neuroimage.usc.edu/bst/getversion_duneuro.php');
                 Version = str(1:6);
+           case 'nirstorm'
+                bst_progress('text', ['Checking latest online version for ' PlugName '...']);
+                disp(['BST> Checking latest online version for ' PlugName '...']);
+                str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
+                Version = strtrim(str(9:end));
             otherwise
                 return;
         end
@@ -584,6 +609,11 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             % Check if the file is inside the Brainstorm user folder (where it is supposed to be) => Managed plugin
             if ~isempty(strfind(TestFilePath, PlugPath))
                 PlugDesc(iPlug).isManaged = 1;
+            % Process compiled together with Brainstorm
+            elseif isCompiled && ~isempty(strfind(TestFilePath, ['.brainstorm' filesep 'plugins' filesep PlugName]))
+                compiledDir = ['.brainstorm' filesep 'plugins' filesep PlugName];
+                iPath = strfind(TestFilePath, compiledDir);
+                PlugPath = [TestFilePath(1:iPath-2), filesep, compiledDir];
             % Otherwise: Custom installation
             else
                 % If the test file was found in a defined subfolder: remove the subfolder from the plugin path
@@ -660,7 +690,8 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                 PlugMat = struct();
             end
             % Copy fields
-            loadFields = setdiff(fieldnames(db_template('PlugDesc')), {'Name', 'Path', 'isLoaded', 'isManaged'});
+            excludedFields = {'Name', 'Path', 'isLoaded', 'isManaged', 'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'};
+            loadFields = setdiff(fieldnames(db_template('PlugDesc')), excludedFields);
             for iField = 1:length(loadFields)
                 if isfield(PlugMat, loadFields{iField}) && ~isempty(PlugMat.(loadFields{iField}))
                     PlugDesc(iPlug).(loadFields{iField}) = PlugMat.(loadFields{iField});
@@ -965,9 +996,15 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     else
         % Get user confirmation
         if isInteractive
+            if ~isempty(PlugDesc.Version) && ~isequal(PlugDesc.Version, 'github-master') && ~isequal(PlugDesc.Version, 'latest')
+                strVer = ['<FONT color="#707070">Latest version: ' PlugDesc.Version '</FONT><BR><BR>'];
+            else
+                strVer = '';
+            end
             isConfirm = java_dialog('confirm', ...
                 ['<HTML>Plugin <B>' PlugName '</B> is not installed on your computer.<BR>' ...
                 '<B>Download</B> the latest version of ' PlugName ' now?<BR><BR>' ...
+                strVer, ...
                 '<FONT color="#707070">If this program is available on your computer,<BR>' ...
                 'cancel this installation and use the menu: Plugins > <BR>' ...
                 PlugName ' > Custom install > Set installation folder.</FONT><BR><BR>'], 'Plugin manager');
@@ -1036,7 +1073,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % Unzip file
     switch (pkgFormat)
         case 'zip'
-            unzip(pkgFile, PlugPath);
+            bst_unzip(pkgFile, PlugPath);
         case 'tgz'
             if ispc
                 untar(pkgFile, PlugPath);
@@ -1051,14 +1088,16 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % Save plugin.mat
     PlugDesc.Path = PlugPath;
     PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
-    PlugDescSave = rmfield(PlugDesc, {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'});
+    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
     % === SEARCH PROCESSES ===
     % Look for process_* functions in the process folder
     PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
     if ~isempty(PlugProc)
-        PlugDesc.Processes = PlugProc;
+        % Remove absolute path: use only path relative to the plugin Path
+        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
     end
     
     % === LOAD PLUGIN ===
@@ -1068,23 +1107,13 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         bst_progress('removeimage');
         return;
     end
+    
+    % === SAVE PLUGIN.MAT ===
     % Get readme and logo
     PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
     PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-    % Get installed version
-    if ~isempty(PlugDesc.GetVersionFcn)
-        try
-            if ischar(PlugDesc.GetVersionFcn)
-                PlugDesc.Version = eval(PlugDesc.GetVersionFcn);
-            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
-                PlugDesc.Version = feval(PlugDesc.GetVersionFcn);
-            end
-        catch
-            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
-        end
-    end
     % Update plugin.mat after loading
-    PlugDescSave = rmfield(PlugDesc, {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'});
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
     % === CALLBACK: POST-INSTALL ===
@@ -1093,7 +1122,30 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         return;
     end
     
+    % === GET INSTALLED VERSION ===
+    % Get installed version
+    if ~isempty(PlugDesc.GetVersionFcn)
+        testVer = [];
+        try
+            if ischar(PlugDesc.GetVersionFcn)
+                testVer = eval(PlugDesc.GetVersionFcn);
+            elseif isa(PlugDesc.GetVersionFcn, 'function_handle')
+                testVer = feval(PlugDesc.GetVersionFcn);
+            end
+        catch
+            disp(['BST> Could not get installed version with callback: ' PlugDesc.GetVersionFcn]);
+        end
+        if ~isempty(testVer)
+            PlugDesc.Version = testVer;
+            % Update plugin.mat
+            PlugDescSave.Version = testVer;
+            bst_save(PlugMatFile, PlugDescSave, 'v6');
+        end
+    end
+    
     % === SHOW PLUGIN INFO ===
+    % Log install
+    bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
     % Show plugin information (interactive mode only)
     if isInteractive
         % Hide progress bar
@@ -1364,7 +1416,7 @@ end
 
 
 %% ===== LOAD =====
-% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugName/PlugDesc)
+% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc)
 function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     % Initialize returned variables 
     isOk = 0;
@@ -1376,7 +1428,7 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     % Minimum Matlab version
     if ~isempty(PlugDesc.MinMatlabVer) && (PlugDesc.MinMatlabVer > 0) && (bst_get('MatlabVersion') < PlugDesc.MinMatlabVer)
         strMinVer = sprintf('%d.%d', ceil(PlugDesc.MinMatlabVer / 100), mod(PlugDesc.MinMatlabVer, 100));
-        errMsg = ['Plugin ', PlugName ' is not supported for versions of Matlab <= ' strMinVer];
+        errMsg = ['Plugin ', PlugDesc.Name ' is not supported for versions of Matlab <= ' strMinVer];
         return;
     end
     

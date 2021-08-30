@@ -109,8 +109,9 @@ hdr.glmax  = MaxVal;
 
 % ===== TRANSORMATION MATRICES ======
 % Use existing matrices (from the header)
-if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'}))
+if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'})) && isfield(sMri.Header, 'dim') && isfield(sMri.Header.dim, 'pixdim')
     nifti = sMri.Header.nifti;
+    hdr.pixdim = sMri.Header.dim.pixdim;
 % Use transformation matrices from other formats than .nii
 else
     % === QFORM ===
@@ -141,12 +142,18 @@ else
     end
 
     % === SFORM ===
+    % If there is a QFORM, do not define SFORM to avoid ambiguities
+    if (nifti.qform_code ~= 0)
+        nifti.sform_code = 0;
+        nifti.srow_x = [0 0 0 0];
+        nifti.srow_y = [0 0 0 0];
+        nifti.srow_z = [0 0 0 0];
     % XFORM_MNI_152: Normalized coordinates (NCS field)
-    if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
+    elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
         nifti.sform_code = 4;   % NIFTI_XFORM_MNI_152
         mri2world = cs_convert(sMri, 'mri', 'mni');
     % XFORM_ALIGNED: If no scanner coordinates (qform) or MNI normalization (sform): Just center the image on AC or the middle of the volume
-    elseif (nifti.qform_code == 0)
+    else
         nifti.sform_code = 2;   % NIFTI_XFORM_ALIGNED_ANAT
         if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
             Origin = sMri.NCS.AC;
@@ -160,12 +167,6 @@ else
             0, 1, 0, -Origin(2) ./ 1000; ...
             0, 0, 1, -Origin(3) ./ 1000; 
             0, 0, 0, 1];
-    % No sform
-    else
-        nifti.sform_code = 0;
-        nifti.srow_x = [0 0 0 0];
-        nifti.srow_y = [0 0 0 0];
-        nifti.srow_z = [0 0 0 0];
     end
     % Convert Brainstorm transformation to nifti vox2ras
     if (nifti.sform_code ~= 0)

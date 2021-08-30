@@ -146,7 +146,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 
     % ===== ADD POSITIONS =====
     % Add channel positions
-    channel_add_loc(iChanStudies, ChannelMat, 0);
+    if ~isempty(ChannelMat)
+        channel_add_loc(iChanStudies, ChannelMat, 0);
+    else
+        bst_report('Warning', sProcess, [], 'No channel positions added.');
+    end
     
     % Return input files
     OutputFiles = {sInputs.FileName};

@@ -1,10 +1,10 @@
 function sMriReg = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
-% MRI_RESLICE_MNI: Relice a MNI atlas or volume into subject space (using linear or non-linear MNI registration).
+% MRI_RESLICE_MNI: Relice a MNI parcellation or volume into subject space (using linear or non-linear MNI registration).
 %
 % USAGE:  sMriReg = mri_reslice_mni(sMriMni, sMriRef, isAtlas)
 %
 % INPUTS:
-%    - sMriMni : MNI atlas to reslice, as a Brainstorm MRI structure
+%    - sMriMni : MNI parcellation to reslice, as a Brainstorm MRI structure
 %    - sMriRef : Reference subject MRI volume, as a Brainstorm MRI structure
 %    - isAtlas : If 1, the input and output values must be only integer
 %
@@ -41,7 +41,7 @@ end
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
-    bst_progress('start', 'MNI atlas', 'Reslicing MNI atlas...');
+    bst_progress('start', 'MNI parcellation', 'Reslicing MNI parcellation...');
 end
 
 % ===== INTERPOLATE MRI VOLUME =====
@@ -69,7 +69,7 @@ Ygrid2mni = reshape(allGridMni(:,1), size(Ygrid2));
 Zgrid2mni = reshape(allGridMni(:,3), size(Zgrid2));
 
 bst_progress('text', 'Reslicing volume...');
-% Nearest neighbor interpolation (atlas labels = integers)
+% Nearest neighbor interpolation (parcellation labels = integers)
 if isAtlas
     newCube = interp3(Y1, X1, Z1, sMriMni.Cube, Xgrid2mni, Ygrid2mni, Zgrid2mni, 'nearest', NaN);
 % Cubic interpolation for floating point values

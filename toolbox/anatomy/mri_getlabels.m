@@ -58,17 +58,10 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % Get file name
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
     fBase = strrep(fBase, '.nii', '');
-    % Try to get a side .csv with the labels
+    % LABELS: Try to get a side .csv with the labels
     LabelsFile = bst_fullfile(fPath, [fBase, '.csv']);
     if file_exist(LabelsFile)
-        Labels = in_tsv(LabelsFile, {'ROIid','ROIname','ROIcolor'}, 0, ';');
-        if any(cellfun(@isempty, Labels(:)))
-            disp('BST> Error: Missing columns is CSV file: ROIid, ROIname or ROIcolor.');
-            Labels = [];
-        else
-            Labels(:,1) = cellfun(@str2double,  Labels(:,1), 'UniformOutput', 0);
-            Labels(:,3) = cellfun(@str2num,  Labels(:,3), 'UniformOutput', 0);
-        end
+        Labels = in_label_cat12(LabelsFile);
     end
     % If labels were read: use the filename as the atlas name
     fBase = lower(fBase);
@@ -79,6 +72,8 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
         AtlasName = 'freesurfer';
     elseif ~isempty(strfind(fBase, '.svreg.label.'))   % *.svreg.label.nii.gz
         AtlasName = 'svreg';
+    elseif ~isempty(strfind(fBase, '_final_contr'))
+        AtlasName = 'simnibs';
     end
 end
 % If the name of the altas is in the file comment
@@ -116,6 +111,15 @@ if isempty(Labels) && ~isempty(AtlasName)
                     3, 'CSF',           [ 44, 152, 254]; ...
                     4, 'Skull',         [255, 255, 255]; ...
                     5, 'Scalp',         [255, 205, 184]};
+        case 'simnibs'
+            Labels = {...
+                    0, 'Background',    [  0,   0,   0]; ...
+                    1, 'White',         [220, 220, 220]; ...
+                    2, 'Gray',          [130, 130, 130]; ...
+                    3, 'CSF',           [ 44, 152, 254]; ...
+                    4, 'Skull',         [255, 255, 255]; ...
+                    5, 'Scalp',         [255, 205, 184]; ...
+                    6, 'Eyes',          [255,   0, 255]};
     end
 end
 

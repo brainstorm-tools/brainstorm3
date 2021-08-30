@@ -433,7 +433,6 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
         [commonLabel, overlayLabels] = str_common_path(overlayLabels);
     end
     % Replace NaN with zeros
-    tic
     for iFile = 1:length(F)
         Nnan = nnz(isnan(F{iFile}));
         if (Nnan > 0)
@@ -441,7 +440,6 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
             F{iFile}(isnan(F{iFile})) = 0;
         end
     end
-    toc
     % Return only one file if required
     if ~isMultiOutput
         F = F{1};

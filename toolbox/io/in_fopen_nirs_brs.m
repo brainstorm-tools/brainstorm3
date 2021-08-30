@@ -218,6 +218,29 @@ if exist(optodes_file, 'file') == 2
 else % take optode coordinates from nirs data structure
     src_coords = nirs.SD.SrcPos;
     det_coords = nirs.SD.DetPos;
+    
+    % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
+    if all(src_coords(:,3)==0) && all(det_coords(:,3)==0)
+        src_coords(:,3) = 1;
+        det_coords(:,3) = 1;
+    end
+    if ~isfield(nirs.SD,'SpatialUnit')
+        scale = 0.01; % assume coordinate are in cm
+    else    
+        switch strtrim(nirs.SD.SpatialUnit)
+            case 'mm'
+                scale = 0.001;
+            case 'cm'
+                scale = 0.01;
+            case 'm'
+                scale = 1;
+            otherwise
+                scale = 1;
+        end
+    end
+    % Apply units
+    src_coords = scale .* src_coords;
+    det_coords = scale .* det_coords;
 end
 
 

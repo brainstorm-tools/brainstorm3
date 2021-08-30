@@ -272,19 +272,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             return
         end
         % Get current surface
-        iSurface = getappdata(hFig, 'iSurface');
+        iSurf = getappdata(hFig, 'iSurface');
         TessInfo = getappdata(hFig, 'Surface');
-        if isempty(iSurface) || isempty(TessInfo)
+        if isempty(iSurf) || isempty(TessInfo)
             return;
         end
         % MRI: Redraw 3 orientations
-        if strcmpi(TessInfo(iSurface).Name, 'Anatomy')
+        if strcmpi(TessInfo(iSurf).Name, 'Anatomy')
             SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
             SliderCallback([], MouseEvent(jSliderResectY, 0, 0, 0, 0, 0, 1, 0), 'ResectY');
             SliderCallback([], MouseEvent(jSliderResectZ, 0, 0, 0, 0, 0, 1, 0), 'ResectZ');
         % Surface: Call the update function only once
         else
-            TessInfo(iSurface).Resect = 'none';
+            % If updating FEM mesh, update all layers
+            if strcmpi(TessInfo(iSurf).Name, 'FEM')
+                iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
+            end
+            [TessInfo(iSurf).Resect] = deal('none');
             setappdata(hFig, 'Surface', TessInfo);
             SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
         end
@@ -1726,6 +1730,10 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                     % Replace values with clusters
                     if ~isempty(sClusters)
                         mask = 0 * TessInfo(iTess).Data;
+                        % If displaying the second of a replicated time point, which is not available in the clusters mask: ignore the time information
+                        if (length(iTime) == 1) && (iTime == 2) && (size(sClusters(1).mask,2) == 1)
+                            iTime = 1;
+                        end
                         % Plot each cluster
                         for iClust = 1:length(sClusters)
                             mask = mask | sClusters(iClust).mask(:, iTime, GlobalData.UserFrequencies.iCurrentFreq);

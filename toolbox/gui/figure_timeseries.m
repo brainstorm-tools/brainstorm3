@@ -1438,7 +1438,7 @@ function FigureKeyPressedCallback(hFig, ev)
                         % Get study
                         [sStudy, iStudy, iData] = bst_get('DataFile', DataFile);
                         % Change status
-                        process_detectbad('SetTrialStatus', DataFile, ~sStudy.Data(iData).BadTrial);
+                        SetTrialStatus(hFig, DataFile, ~sStudy.Data(iData).BadTrial);
                     case 'raw'
                         panel_record('RejectTimeSegment');
                 end
@@ -2198,6 +2198,12 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
         elseif strcmpi(sFile.format, 'EEG-SMRX') && isfield(sFile.header, 'timedate')
             t = sFile.header.timedate;
             dateTitle = [datestr(datenum(t(7), t(6), t(5), t(4), t(3), t(2)), 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
+        % Micromed TRC: Wall clock time
+        elseif strcmpi(sFile.format, 'EEG-MICROMED') && isfield(sFile.header, 'acquisition') && isfield(sFile.header.acquisition, 'sec')
+            acq = sFile.header.acquisition;
+            dstart = datenum(acq.year, acq.month, acq.day, acq.hour, acq.min, acq.sec);
+            dcur   = datenum(0, 0, 0, 0, 0, floor(GlobalData.UserTimeWindow.CurrentTime));
+            dateTitle = [datestr(dstart + dcur, 'dd-mmm-yyyy HH:MM:SS'), '.', num2str(floor(1000 * (GlobalData.UserTimeWindow.CurrentTime - floor(GlobalData.UserTimeWindow.CurrentTime))), '%03d')];
         end
     end
     % Menu title
@@ -2293,9 +2299,9 @@ function DisplayFigurePopup(hFig, menuTitle, curTime, selChan)
         % === SET TRIAL GOOD/BAD ===
         if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'recordings')
             if (sStudy.Data(iData).BadTrial == 0)
-                jItem = gui_component('MenuItem', jPopup, [], 'Reject trial', IconLoader.ICON_BAD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 1));
+                jItem = gui_component('MenuItem', jPopup, [], 'Reject trial', IconLoader.ICON_BAD, [], @(h,ev)SetTrialStatus(hFig, DataFile, 1));
             else
-                jItem = gui_component('MenuItem', jPopup, [], 'Accept trial', IconLoader.ICON_GOOD, [], @(h,ev)process_detectbad('SetTrialStatus', DataFile, 0));
+                jItem = gui_component('MenuItem', jPopup, [], 'Accept trial', IconLoader.ICON_GOOD, [], @(h,ev)SetTrialStatus(hFig, DataFile, 0));
             end
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, KeyEvent.CTRL_MASK));
         end    
@@ -5068,6 +5074,26 @@ function ReloadRawTimeBars()
         PlotRawTimeBar(iDS, iFig);
         % Resize
         ResizeCallback(hFig);
+    end
+end
+
+
+%% ===== SET TRIAL STATUS =====
+function SetTrialStatus(hFig, DataFile, isBad)
+    % Save modified markers (only when switching to good)
+    if ~isBad
+        panel_record('SaveModifications');
+    end
+    % Change trial status
+    process_detectbad('SetTrialStatus', DataFile, isBad);
+    % Update modified markers (only when switching to good)
+    if ~isBad
+        % Reload file
+        bst_memory('LoadDataFile', DataFile, 1);
+        % Reload figure
+        bst_figures('ReloadFigures', hFig, 1);
+        % Update record panel
+        panel_record('UpdatePanel', hFig);
     end
 end
 

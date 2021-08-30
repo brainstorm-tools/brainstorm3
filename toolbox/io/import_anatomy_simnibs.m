@@ -143,7 +143,7 @@ MaskNii = file_find(SimDir, '*_final_contr.nii.gz', 2, 1);
 % Find final mesh
 MshFile = file_find(SimDir, '*.msh', 1, 0);
 if isempty(MshFile) || isempty(MshFile{1})
-    errorMsg = [errorMsg 'Mesh file *.msh found in top folder.' 10];
+    errorMsg = [errorMsg 'Mesh file *.msh not found in top folder.' 10];
 elseif (length(MshFile) > 1)
     errorMsg = [errorMsg 'Multiple *.msh found in top folder.' 10];
 else

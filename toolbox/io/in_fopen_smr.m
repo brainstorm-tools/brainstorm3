@@ -101,9 +101,15 @@ end
 
 
 %% ===== READ MARKER INFORMATION =====
+iChanMissing = [];
 for iChan = 1:length(iMarkerChan)
     % Read channel
-    [d,header] = SONGetChannel(fid, iMarkerChan(iChan));
+    try
+        [d,header] = SONGetChannel(fid, iMarkerChan(iChan));
+    catch
+        iChanMissing = [iChanMissing, iMarkerChan(iChan)];
+        continue;
+    end
     if isempty(d) || isempty(header)
         continue;
     end
@@ -126,6 +132,10 @@ for iChan = 1:length(iMarkerChan)
     sFile.events(iEvt).select   = 1;
     sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
     sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+end
+% Display missing channels
+if ~isempty(iChanMissing)
+    disp(['SON> Missing channels: ' sprintf('%d ', iChanMissing)]);
 end
 
 % Close file
