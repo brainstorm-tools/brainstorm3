@@ -62,7 +62,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     sInput.A = abs(sInput.A);
     % Warning if applying this process to raw recordings
     if strcmpi(sInput.FileType, 'raw') && (isempty(sProcess.options.sensortypes.Value) || any(ismember(lower(strtrim(str_split(sProcess.options.sensortypes.Value, ',;'))), {'eeg', 'meg', 'seeg', 'ecog', 'nirs'})))
-        bst_report('Warning', sProcess, sInput, 'Applying an absolute value to raw recordigs is not indicated. Check your processing pipeline.');
+        bst_report('Warning', sProcess, sInput, 'Applying an absolute value to raw EEG, MEG, SEEG, ECoG or NIRS recordigs is not indicated. Check your processing pipeline.');
     % Change DataType
     elseif ~strcmpi(sInput.FileType, 'timefreq')
         sInput.DataType = 'abs';
