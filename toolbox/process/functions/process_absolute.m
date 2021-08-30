@@ -61,7 +61,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Opposite values
     sInput.A = abs(sInput.A);
     % Warning if applying this process to raw recordings
-    if strcmpi(sInput.FileType, 'raw')
+    if strcmpi(sInput.FileType, 'raw') &&
         bst_report('Warning', sProcess, sInput, 'Applying an absolute value to raw recordigs is not indicated. Check your processing pipeline.');
     % Change DataType
     elseif ~strcmpi(sInput.FileType, 'timefreq')
