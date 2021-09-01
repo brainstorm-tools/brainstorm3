@@ -22,7 +22,7 @@ function outString = bst_jsonencode(inStruct, indent, depth)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, 2018; Marc Lalancette, 2021
 
 if nargin < 2
     indent = 1;
@@ -56,7 +56,7 @@ for iField = 1:length(fields)
         strVal = '[';
         for iElem = 1:length(value)
             if iElem > 1
-                strVal = [strVal ', '];
+                strVal = [strVal ', ']; %#ok<*AGROW>
             end
             strVal = [strVal stringify(value{iElem}, indent)];
         end
@@ -97,7 +97,7 @@ function str = stringify(val, addDelimiter)
         if ismember(val, {'true', 'false'})
             str = val;
         else
-            str = ['"' strrep(val, '"', '\"') '"'];
+            str = ['"' strrep(strrep(val, '\', '\\'), '"', '\"') '"'];
         end
     elseif isnumeric(val)
         n = length(val);
@@ -118,6 +118,25 @@ function str = stringify(val, addDelimiter)
             end
             str = [str ']'];
         end
+    elseif islogical(val)
+        n = length(val);
+        if n == 0
+            str = '[]';
+        elseif n == 1
+            str = bool2str(val);
+        else
+            str = '[';
+            for i = 1:n
+                if i > 1
+                    str = [str ','];
+                    if addDelimiter
+                       str = [str ' '];
+                    end
+                end
+                str = [str bool2str(val(i))];
+            end
+            str = [str ']'];
+        end
     else
         error(['Unsupported type: ' class(val)]);
     end
@@ -127,5 +146,16 @@ function prefix = createIndent(depth)
     prefix = '';
     for i = 1:depth
         prefix = [prefix '    '];
+    end
+end
+
+function str = bool2str(tf)
+    if numel(tf) > 1
+        error('Scalar expected.');
+    end
+    if tf
+        str = 'true';
+    else
+        str = 'false';
     end
 end
