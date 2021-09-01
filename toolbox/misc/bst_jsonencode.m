@@ -1,4 +1,4 @@
-function outString = bst_jsonencode(inStruct, indent, depth)
+function outString = bst_jsonencode(inStruct, indent, depth, forceBstVersion)
 % BST_JSONENCODE: Encodes a Matlab structure as JSON text
 %
 % USAGE: outString = bst_jsonencode(inStruct, 1) : With space indentation
@@ -24,12 +24,16 @@ function outString = bst_jsonencode(inStruct, indent, depth)
 %
 % Authors: Martin Cousineau, 2018; Marc Lalancette, 2021
 
+if nargin < 4
+    forceBstVersion = false;
+end
+
 if nargin < 2
     indent = 1;
 end
 
 % If possible, call built-in function
-if ~indent && exist('jsonencode', 'builtin') == 5
+if ~forceBstVersion && ~indent && exist('jsonencode', 'builtin') == 5
     outString = jsonencode(inStruct);
     return;
 end
@@ -97,7 +101,15 @@ function str = stringify(val, addDelimiter)
         if ismember(val, {'true', 'false'})
             str = val;
         else
-            str = ['"' strrep(strrep(val, '\', '\\'), '"', '\"') '"'];
+            % Escape \ and "
+            val = strrep(val, '\', '\\');
+            val = strrep(val, '"', '\"');
+            % Convert unicode arrow symbols representing special characters to
+            % escaped sequences. (see bst_jsondecode)
+            val = strrep(val, char(8629), '\n'); % newline / linefeed
+            val = strrep(val, char(8592), '\r'); % carriage return
+            val = strrep(val, char(8594), '\t'); % tab
+            str = ['"' val '"'];
         end
     elseif isnumeric(val)
         n = length(val);

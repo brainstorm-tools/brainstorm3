@@ -8,6 +8,9 @@ function [outStruct, replacedFields] = bst_jsondecode(inString, forceBstVersion)
     %   - requires the "root type" to be an object: a list of key:value pairs
     %     enclosed in curly brackets.
     %   - only supports arrays of number or string.
+    %   - escaped special characters \r\n\t are decoded as unicode arrow symbols as
+    %     MATLAB does. Other escaped characters (other than \\ and \") are kept as is
+    %     and therefore would not be correctly re-encoded.
     
     % @=============================================================================
     % This function is part of the Brainstorm software:
@@ -113,8 +116,15 @@ function [outStruct, replacedFields] = bst_jsondecode(inString, forceBstVersion)
             if escape
                 if c == '"' || c == '\'
                     token(end + 1) = c; %#ok<*AGROW>
+                % Copy Matlab's hack to decode/encode escaped special characters.
+                elseif c == 'n' % newline / linefeed
+                    token(end + 1) = char(8629); % ↵
+                elseif c == 'r' % carriage return
+                    token(end + 1) = char(8592); % ←
+                elseif c == 't' % tab
+                    token(end + 1) = char(8594); % →
                 else
-                    % Unexpected, but interpret as mistakenly un-escaped '\'.
+                    % Possibly other special character. Keep as is, but won't be properly re-encoded.
                     token = [token '\' c];
                 end
                 escape = false;
