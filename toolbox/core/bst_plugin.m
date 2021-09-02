@@ -268,7 +268,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).InstalledFcn   = 'make';
+    PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
