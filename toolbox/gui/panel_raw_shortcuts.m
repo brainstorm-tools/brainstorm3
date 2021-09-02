@@ -19,7 +19,7 @@ function varargout = panel_raw_shortcuts(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2021
 
 eval(macro_method);
 end
@@ -124,7 +124,10 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     end
     function ButtonSave_Callback(varargin)
         % Save changes
-        SaveShortcuts()
+        isOk = SaveShortcuts();
+        if ~isOk
+            return;
+        end
         % Close panel
         gui_hide(panelName);
     end
@@ -135,7 +138,8 @@ end
 %  === INTERFACE CALLBACKS =========================================================
 %  =================================================================================
 %% ===== SAVE SHORTCUTS =====
-function SaveShortcuts()
+function isOk = SaveShortcuts()
+    isOk = 0;
     % Get current shortcuts
     RawViewerOptions = bst_get('RawViewerOptions');
     % Get panel controls handles
@@ -152,8 +156,21 @@ function SaveShortcuts()
             RawViewerOptions.Shortcuts{i,4} = [str2double(ctrl.jTextMin(i).getText()), str2double(ctrl.jTextMax(i).getText())] ./ 1000;
         end
     end
+    % Reject shortcuts with same name and different types (simple/extended)
+    evtNames = unique(lower(RawViewerOptions.Shortcuts(:,2)));
+    if (length(evtNames) < 9)
+        for i = 1:length(evtNames)
+            iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,2), evtNames{i}));
+            if (length(iShortcut) > 1) && any(~strcmpi(RawViewerOptions.Shortcuts(iShortcut,3), RawViewerOptions.Shortcuts(iShortcut(1),3)))
+                bst_error(['Event "' evtNames{i} '" cannot be linked to multiple shortcuts of different types.'], 'Save shortcuts', 0);
+                return;
+            end
+        end
+    end
     % Save shortcuts
     bst_set('RawViewerOptions', RawViewerOptions);
+    % Return success
+    isOk = 1;
 end
 
 
