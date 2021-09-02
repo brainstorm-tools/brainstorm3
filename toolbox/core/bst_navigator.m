@@ -34,16 +34,20 @@ end
 
 %% ===== NAVIGATION =====
 function DbNavigation( action, iDataSets )
-    global GlobalData mutexNavigator;
+    global GlobalData mutexNavigator timerNavigator;
     % ===== MUTEX =====
     % Use a mutex to prevent the function from being executed more than once at the same time
     if isempty(mutexNavigator) || (mutexNavigator > 1)
         % Entrance accepted
-        tic
+        timerNavigator = tic;
         mutexNavigator = 0;
     else
         % Entrance rejected (another call is not finished,and was call less than 1 seconds ago)
-        mutexNavigator = toc;
+        if ~isempty(timerNavigator)
+            mutexNavigator = toc(timerNavigator);
+        else
+            mutexNavigator = toc;
+        end
         disp('Call to bst_navigator() ignored...');
         return
     end
@@ -457,7 +461,7 @@ function DbNavigation( action, iDataSets )
         % Process each figure : update or close it
         iFig = 1;
         isDSUnloaded = 0;
-        while ~isDSUnloaded && (iFig <= length(GlobalData.DataSet(iDS).Figure))
+        while ~isDSUnloaded && (iDS <= length(GlobalData.DataSet)) && (iFig <= length(GlobalData.DataSet(iDS).Figure))
             Figure = GlobalData.DataSet(iDS).Figure(iFig);
             isFigureRemoved = 0;
             % Update figure appdata
