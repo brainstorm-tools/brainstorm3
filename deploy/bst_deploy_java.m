@@ -262,10 +262,11 @@ if IS_BIN
             if (PlugDesc(iPlug).CompiledStatus == 2) && ~ismember(PlugDesc(iPlug).Name, {'fieldtrip', 'spm12'})
                 PlugInst = bst_plugin('GetInstalled', PlugDesc(iPlug).Name);
                 if isempty(PlugInst)
-                    disp(['WARNING: Plugin ' PlugDesc(iPlug).Name ' is not installed.']);
+                    error(['Plugin ' PlugDesc(iPlug).Name ' is not installed.']);
                 else
                     strOpt = [strOpt '      <file>' bst_fullfile(PlugInst.Path, PlugInst.SubFolder) '</file>' 10];
                     strOpt = [strOpt '      <file>' bst_fullfile(PlugInst.Path, 'plugin.mat') '</file>' 10];
+                    bst_plugin('Load', PlugDesc(iPlug).Name);
                 end
             end
         end
