@@ -25,7 +25,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -3099,7 +3099,3 @@ function JumpToVideoTime(hFig, oldVideoTime, newVideoTime)
     % Close progress bar
     bst_progress('stop');
 end
-
-
-
-
