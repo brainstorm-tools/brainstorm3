@@ -97,7 +97,7 @@ else
             error('Multiple parcellations were downloaded, please select one of them.');
         end
         % Look for parcellation volume
-        sTemplate.FilePath = bst_fullfile(atlasDir, [lower(sTemplate.Name) '.nii.gz']);
+        sTemplate.FilePath = bst_fullfile(atlasDir, [sTemplate.Name '.nii.gz']);
     end
     % Check the existence of MNI volume
     if ~file_exist(sTemplate.FilePath)
