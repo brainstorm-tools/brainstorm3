@@ -79,7 +79,7 @@ else
     if ~isempty(strfind(sTemplate.FilePath, 'http://')) || ~isempty(strfind(sTemplate.FilePath, 'https://')) || ~isempty(strfind(sTemplate.FilePath, 'ftp://'))
         tmpDir = bst_get('BrainstormTmpDir');
         % Output file
-        ZipFile = bst_fullfile(tmpDir, [lower(sTemplate.Name) '.zip']);
+        ZipFile = bst_fullfile(tmpDir, [sTemplate.Name '.zip']);
         % Download file
         errMsg = gui_brainstorm('DownloadFile', sTemplate.FilePath, ZipFile, 'Download MNI parcellation');
         if ~isempty(errMsg)
