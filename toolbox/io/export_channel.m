@@ -1,4 +1,4 @@
-function export_channel( BstChannelFile, OutputChannelFile )
+function export_channel( BstChannelFile, OutputChannelFile, FileFormat )
 % EXPORT_CHANNEL: Export a Channel file to one of the supported file formats.
 %
 % USAGE:  export_channel( BstChannelFile, OutputChannelFile )
