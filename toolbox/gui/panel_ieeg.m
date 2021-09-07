@@ -25,7 +25,7 @@ function varargout = panel_ieeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2019
+% Authors: Francois Tadel, 2017-2021
 
 eval(macro_method);
 end
@@ -716,7 +716,8 @@ function ShowContactsMenu(jButton)
     gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS(1)));
     % Menu: Export positions
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile));            
+    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile, 0));
+    gui_component('MenuItem', jMenu, [], 'Compute atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@ExportChannelFile, 1));
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
@@ -2633,7 +2634,7 @@ end
 
 
 %% ===== EXPORT CONTACT POSITIONS =====
-function ExportChannelFile()
+function ExportChannelFile(isAtlas)
     global GlobalData;
     % Get electrodes to save
     [sElec, iElec, iDS] = GetSelectedElectrodes();
@@ -2643,14 +2644,18 @@ function ExportChannelFile()
         return;
     end
     % Get the channels corresponding to these contacts
-    iChannels = find(ismember({GlobalData.DataSet(iDS(1)).Channel.Group}, {sElec.Name}));
-    if isempty(iChannels)s
+    iChannels = find(cellfun(@(c)any(strcmpi(c,{sElec.Name})), {GlobalData.DataSet(iDS(1)).Channel.Group}));
+    if isempty(iChannels)
         bst_error('No contact positions to export.', 'Export contacts', 0);
         return;
     end
     % Force saving the modifications
     bst_memory('SaveChannelFile', iDS(1));
     % Export the file
-    export_channel(GlobalData.DataSet(iDS(1)).ChannelFile);
+    if isAtlas
+        export_channel_atlas(GlobalData.DataSet(iDS(1)).ChannelFile, iChannels);
+    else
+        export_channel(GlobalData.DataSet(iDS(1)).ChannelFile);
+    end
 end
 

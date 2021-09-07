@@ -899,8 +899,12 @@ switch (lower(action))
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
                 elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
-                end  
-                   
+                end
+                % === SEEG CONTACT LABELLING ===
+                if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                    gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
+                end
+                
                 % === ONLY ONE FILE SELECTED ===
                 if (length(bstNodes) == 1)
                     AddSeparator(jPopup);
