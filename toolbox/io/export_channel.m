@@ -1,12 +1,12 @@
-function export_channel( BstChannelFile, OutputChannelFile )
+function export_channel( BstChannelFile, OutputChannelFile, FileFormat)
 % EXPORT_CHANNEL: Export a Channel file to one of the supported file formats.
 %
-% USAGE:  export_channel( BstChannelFile, OutputChannelFile )
-%         export_channel( BstChannelFile )                 : OutputChannelFile is asked to the user
+% USAGE:  export_channel( BstChannelFile, OutputChannelFile=[ask], FileFormat=[ask])
 %
 % INPUT: 
 %     - BstChannelFile    : Full path to input Brainstorm MRI file to be exported
 %     - OutputChannelFile : Full path to target file (extension will determine the format)
+%     - FileFormat        : String, format of the exported channel file
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,7 +26,7 @@ function export_channel( BstChannelFile, OutputChannelFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 % ===== PASRSE INPUTS =====
 if (nargin < 1) || isempty(BstChannelFile)
@@ -54,13 +54,18 @@ if isempty(OutputChannelFile)
         case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
         case 'EGI',            DefaultExt = '.sfp';
         case 'BRAINSIGHT-TXT', DefaultExt = '.txt';
-        otherwise,             DefaultExt = '.txt';
+        otherwise,             DefaultExt = '.pos';
     end
-    % Build default output filename
-    [BstPath, BstBase, BstExt] = bst_fileparts(BstChannelFile);
-    DefaultOutputFile = bst_fullfile(LastUsedDirs.ExportChannel, [BstBase, DefaultExt]);
-    DefaultOutputFile = strrep(DefaultOutputFile, '_channel', '');
-    DefaultOutputFile = strrep(DefaultOutputFile, 'channel_', '');
+    % Get input study/subject
+    sStudy = bst_get('ChannelFile', BstChannelFile);
+    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+    % Default output filename
+    if (iSubject == 0) || isequal(sSubject.UseDefaultChannel, 2)
+        baseFile = 'channel';
+    else
+        baseFile = sSubject.Name;
+    end
+    DefaultOutputFile = bst_fullfile(LastUsedDirs.ExportChannel, [baseFile, DefaultExt]);
     
     % === Ask user filename ===
     [OutputChannelFile, FileFormat, FileFilter] = java_getfile( 'save', ...
