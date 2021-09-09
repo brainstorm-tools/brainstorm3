@@ -166,5 +166,13 @@ if isfield(Timefreq, 'Time') && (size(Timefreq.Time,1) > 1)
     Timefreq.Time = Timefreq.Time';
 end
 
+% ===== FIX TRANSPOSED ROWNAMES =====
+if isfield(Timefreq, 'RowNames') && (size(Timefreq.RowNames,1) > 1)
+    Timefreq.RowNames = Timefreq.RowNames';
+end
+if isfield(Timefreq, 'RefRowNames') && (size(Timefreq.RefRowNames,1) > 1)
+    Timefreq.RefRowNames = Timefreq.RefRowNames';
+end
+
 
 
