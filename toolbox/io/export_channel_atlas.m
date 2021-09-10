@@ -329,10 +329,10 @@ for i = 1:length(iColVol)
         % Get text label
         if ~isempty(intLabel) && isfield(sMriAtlas, 'Labels') && ~isempty(sMriAtlas.Labels)
             iLabel = find(intLabel == [sMriAtlas.Labels{:,1}]);
-            if (length(iLabel) == 1)
-                ChanLabel{iChan} = sMriAtlas.Labels{iLabel, 2};
-            elseif (intLabel == 0)
+            if (intLabel == 0)
                 ChanLabel{iChan} = 'N/A';
+            elseif (length(iLabel) == 1)
+                ChanLabel{iChan} = sMriAtlas.Labels{iLabel, 2};
             else
                 ChanLabel{iChan} = num2str(intLabel);
                 if isWarningNoText
