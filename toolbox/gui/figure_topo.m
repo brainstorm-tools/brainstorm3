@@ -1015,7 +1015,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
                 'Parent',              hAxes);
         end
         % Why do we have to print something else to have the labels displayed??????
-        line([-1,-1],[-1,-1],[-1,-1], 'color', [1 1 1]);
+        line([-1,-1],[-1,-1],[-1,-1], 'color', [1 1 1], 'Parent', hAxes);
     end
     
     % ===== LEGEND =====
