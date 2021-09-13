@@ -308,7 +308,7 @@ for i = 1:length(iColVol)
             % Count each label in the sphere
             voxVal = sMriAtlas.Cube(voxInd);
             % Remove background values (zero)
-            voxVal(voxVal == 0) = 0;
+            voxVal(voxVal == 0) = [];
             % Make sure the there are some non-zero voxels
             if ~isempty(voxVal)
                 [uniqueVal,tmp,J] = unique(voxVal);
