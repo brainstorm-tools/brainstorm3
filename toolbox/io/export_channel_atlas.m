@@ -1,8 +1,8 @@
-function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isInteractive)
+function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, isProba, isInteractive)
 % EXPORT_CHANNEL_ATLAS: Compute anatomical labels for SEEG/ECOG contacts from volume and surface parcellations
 %
-% USAGE:  TsvFile = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isInteractive=1)
-%         TsvFile = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isInteractive=1)
+% USAGE:  TsvFile = export_channel_atlas(ChannelFile, Modality='ECOG+SEEG', TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
+%         TsvFile = export_channel_atlas(ChannelFile, iChannels,            TsvFile=[ask], Radius=[ask], isProba=[ask], isInteractive=1)
 %
 % INPUT: 
 %     - ChannelFile   : Path to Brainstorm channel file to be processed
@@ -45,8 +45,11 @@ function TsvFile = export_channel_atlas(ChannelFile, Modality, TsvFile, Radius, 
 
 
 % ===== PASRSE INPUTS =====
-if (nargin < 5) || ismpety(isInteractive)
+if (nargin < 6) || ismpety(isInteractive)
     isInteractive = 1;
+end
+if (nargin < 5) || ismpety(isProba)
+    isProba = [];
 end
 if (nargin < 4) || ismpety(Radius)
     Radius = [];
@@ -67,8 +70,8 @@ sStudy = bst_get('ChannelFile', ChannelFile);
 if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
     error('You need the subject anatomy in order to export the sensors positions.');
 end
-% List of columnes to export
-Columns = cell(0,3);
+% List of columnes to export: {Name, Description, Labels, Probabilities}
+Columns = cell(0,4);
 isSelect = [];
 
 
@@ -122,7 +125,7 @@ for i = 1:length(iChannelMod)
         ChanNames{end+1} = sChan.Name;
     end
 end
-Columns(end+1,:) = {'SCS', 'SCS coordinates (mm)', ChanScs};
+Columns(end+1,:) = {'SCS', 'SCS coordinates (mm)', ChanScs, []};
 isSelect(end+1) = 1;
 
 
@@ -134,7 +137,7 @@ sMri = load(MriFile, 'SCS', 'NCS', 'InitTransf', 'Voxsize');
 if isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R) && isfield(sMri, 'NCS') && ~((~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)) && (~isfield(sMri.NCS, 'y') || isempty(sMri.NCS.y)))
     ChanMni = cs_convert(sMri, 'scs', 'mni', ChanScs);
     if ~isempty(ChanMni)
-        Columns(end+1,:) = {'MNI', 'MNI coordinates (mm)', ChanMni};
+        Columns(end+1,:) = {'MNI', 'MNI coordinates (mm)', ChanMni, []};
         isSelect(end+1) = 1;
     end
 else
@@ -144,7 +147,7 @@ end
 if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
     ChanWorld = cs_convert(sMri, 'scs', 'world', ChanScs);
     if ~isempty(ChanWorld)
-        Columns(end+1,:) = {'World', 'World coordinates (mm)', ChanWorld};
+        Columns(end+1,:) = {'World', 'World coordinates (mm)', ChanWorld, []};
         isSelect(end+1) = 1;
     end
 else
@@ -157,7 +160,7 @@ end
 tagVol = 'Vol: ';
 iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
 for i = 1:length(iAnatAtlases)
-    Columns(end+1,:) = {sSubject.Anatomy(iAnatAtlases(i)).Comment, [tagVol, sSubject.Anatomy(iAnatAtlases(i)).Comment], sSubject.Anatomy(iAnatAtlases(i)).FileName};
+    Columns(end+1,:) = {sSubject.Anatomy(iAnatAtlases(i)).Comment, [tagVol, sSubject.Anatomy(iAnatAtlases(i)).Comment], sSubject.Anatomy(iAnatAtlases(i)).FileName, []};
     isSelect(end+1) = 1;
 end
 % List surfaces
@@ -166,7 +169,7 @@ iCortex = find(strcmpi({sSubject.Surface.SurfaceType}, 'Cortex'));
 nVertices = zeros(1, length(iCortex));
 isWhite = zeros(1, length(iCortex));
 for i = 1:length(iCortex)
-    Columns(end+1,:) = {sSubject.Surface(iCortex(i)).Comment, [tagSurf, sSubject.Surface(iCortex(i)).Comment], sSubject.Surface(iCortex(i)).FileName};
+    Columns(end+1,:) = {sSubject.Surface(iCortex(i)).Comment, [tagSurf, sSubject.Surface(iCortex(i)).Comment], sSubject.Surface(iCortex(i)).FileName, []};
     VarInfo = whos('-file', file_fullpath(sSubject.Surface(iCortex(i)).FileName), 'Vertices');
     nVertices(i) = VarInfo.size(1);
     isWhite(i) = ~isempty(strfind(sSubject.Surface(iCortex(i)).Comment, 'white'));
@@ -268,6 +271,14 @@ end
 % ===== VOLUME ATLASES =====
 % List volume atlases
 iColVol = find(~cellfun(@(c)isempty(strfind(c, tagVol)), Columns(:,2)));
+% Ask about including probability
+if ~isempty(iColVol) && isempty(isProba)
+    isProba = java_dialog('confirm', [...
+        '<HTML>Include probability columns?<BR><BR>' ...
+        '<FONT COLOR="#707070">For each volume atlas, add a column indicate the spatial probability of the label:<BR>' ...
+        'prob = number of voxels with the label / number of voxels in the sphere * 100</FONT><BR><BR>'], ...
+        'Contact probability');
+end
 % Open progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -290,6 +301,7 @@ for i = 1:length(iColVol)
     % === LOOP ON CHANNELS ===
     % For each sensor: Get label from the volume atlas
     ChanLabel = cell(1,size(ChanScs,1));
+    ChanProba = cell(1,size(ChanScs,1));
     isWarningNoText = 1;
     for iChan = 1:size(ChanScs,1)
         % Coordinates of the closest voxel
@@ -316,15 +328,19 @@ for i = 1:length(iColVol)
                 if (length(uniqueVal) > 1)
                     nVal = accumarray(J(:),1);
                     [nMax,iMax] = max(nVal);
-                    intLabel = uniqueVal(iMax);                
+                    intLabel = uniqueVal(iMax);
+                    probLabel = nMax / size(sphXYZ,1);
                 else
                     intLabel = uniqueVal;
+                    probLabel = length(voxVal) / size(sphXYZ,1);
                 end
             else
                 intLabel = 0;
+                probLabel = 0;
             end
         else
             intLabel = sMriAtlas.Cube(C(1), C(2), C(3));
+            probLabel = 1;
         end
         % Get text label
         if ~isempty(intLabel) && isfield(sMriAtlas, 'Labels') && ~isempty(sMriAtlas.Labels)
@@ -340,16 +356,22 @@ for i = 1:length(iColVol)
                     disp(['BST> Error: Volume atlas ' Columns{iColVol(i), 1} ': Text labels not available, saving integer label.']);
                 end
             end
+            if isProba
+                ChanProba{iChan} = probLabel;
+            end
         end
     end
     % Save labels
     Columns{iColVol(i), 3} = ChanLabel;
+    if isProba
+        Columns{iColVol(i), 4} = ChanProba;
+    end
     bst_progress('inc',1);
 end
 
 
 % ===== SURFACE ATLASES =====
-SurfColumns = cell(0,3);
+SurfColumns = cell(0,4);
 % Loop on surface atlases
 for i = 1:length(iColSurf)
     bst_progress('text', ['Surface atlas: ' Columns{iColSurf(i), 1}]);
@@ -390,7 +412,7 @@ for i = 1:length(iColSurf)
             continue;
         end
         % Save channel labels as a new column
-        SurfColumns(end+1, 1:3) = {[Columns{iColSurf(i),1} ':' sSurf.Atlas(iAtlas).Name], Columns{iColSurf(i),2}, ChanLabel(:,iAtlas)};
+        SurfColumns(end+1, 1:4) = {[Columns{iColSurf(i),1} ':' sSurf.Atlas(iAtlas).Name], Columns{iColSurf(i),2}, ChanLabel(:,iAtlas), []};
     end
     bst_progress('inc',1);
 end
@@ -402,26 +424,43 @@ end
 
 % ===== GENERATE TABLE =====
 % Column headers
-ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + 1);
+ChanTable = cell(size(ChanScs,1) + 1, size(Columns,1) + nnz(~cellfun(@isempty, Columns(:,4))) + 1);
 ChanTable{1,1} = 'Channel';
+iEntry = 2;
 for iCol = 1:size(Columns,1)
-    ChanTable{1, iCol+1} = Columns{iCol,1};
+    ChanTable{1, iEntry} = Columns{iCol,1};
+    iEntry = iEntry + 1;
+    if ~isempty(Columns{iCol,4})
+        ChanTable{1, iEntry} = [Columns{iCol,1}, '_prob'];
+        iEntry = iEntry + 1;
+    end
 end
 % Loop on channels (rows)
 for iChan = 1:size(ChanScs,1)
     ChanTable{iChan+1, 1} = ChanNames{iChan};
+    iEntry = 2;
     % Loop on atlases (columns)
     for iCol = 1:size(Columns,1)
         % Numeric value (xyz coordinates - millimeters)
         if isnumeric(Columns{iCol,3}) && (iChan <= size(Columns{iCol,3},1)) && (size(Columns{iCol,3},2) == 3)
-            ChanTable{iChan+1, iCol+1} = sprintf('[%1.3f,%1.3f,%1.3f]', 1000 * Columns{iCol,3}(iChan,:));
+            ChanTable{iChan+1, iEntry} = sprintf('[%1.3f,%1.3f,%1.3f]', 1000 * Columns{iCol,3}(iChan,:));
         % Text value (atlas label)
         elseif iscell(Columns{iCol,3}) && (iChan <= length(Columns{iCol,3}))
-            ChanTable{iChan+1, iCol+1} = Columns{iCol,3}{iChan};
+            ChanTable{iChan+1, iEntry} = Columns{iCol,3}{iChan};
+            % Add probability
+            if ~isempty(Columns{iCol,4})
+                if (Columns{iCol,4}{iChan} > 0) && ~strcmpi(Columns{iCol,3}{iChan}, 'N/A')
+                    ChanTable{iChan+1, iEntry+1} = sprintf('%d%%', round(100 * Columns{iCol,4}{iChan}));
+                else
+                    ChanTable{iChan+1, iEntry+1} = 'N/A';
+                end
+                iEntry = iEntry + 1;
+            end
         % Not available
         else
-            ChanTable{iChan+1, iCol+1} = 'N/A';
+            ChanTable{iChan+1, iEntry} = 'N/A';
         end
+        iEntry = iEntry + 1;
     end
 end
 
