@@ -67,26 +67,25 @@ function varargout = db_get(varargin)
 %          Raymundo Cassani, 2021
 
 %% ==== PARSE INPUTS ====
-if isjava(varargin{1}) && nargin > 1
-    handleConn = 0;
+if (nargin > 1) && isjava(varargin{1})
     sqlConn = varargin{1};
     varargin(1) = [];
-end
-if (nargin >= 1) && ischar(varargin{1}) 
-    args = {};
-    handleConn = 1;
+    handleConn = 0;
+elseif (nargin >= 1) && ischar(varargin{1}) 
     sqlConn = sql_connect();
-    contextName = varargin{1};
-    if nargin > 1
-        args = varargin(2:end);
-    end
+    handleConn = 1;
 else
     error(['Usage : db_get(contextName) ' 10 '        db_get(sqlConn, contextName)']);
 end
 
 try
+contextName = varargin{1};
+args = {};
+if length(varargin) > 1
+    args = varargin(2:end);
+end
 varargout = {};
-
+    
 % Get required context structure
 switch contextName
 %% ==== SUBJECT ====
