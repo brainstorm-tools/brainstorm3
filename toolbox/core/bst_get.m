@@ -3130,7 +3130,7 @@ switch contextName
         if isempty(argout1.Freqs)
             argout1.Freqs = defPref.Freqs;
         end
-        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+        if ~isempty(argout1.FreqBands) && ((size(argout1.FreqBands,2) ~= 3) || ~all(cellfun(@ischar, argout1.FreqBands(:))) || any(cellfun(@(c)isempty(strtrim(c)), argout1.FreqBands(:))))
             argout1.FreqBands = defPref.FreqBands;
         end
 
