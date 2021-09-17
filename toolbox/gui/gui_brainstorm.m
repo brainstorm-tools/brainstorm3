@@ -1622,7 +1622,13 @@ function status = CloneProble(bstDir)
             header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
             options = matlab.net.http.HTTPOptions();
             request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',urlencode(res{1}),'&mdp=',urlencode(res{2})]);
-            resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
+            % Older Matlab, try with HTTP because HTTPS doesn't work:
+            % https://github.com/brainstorm-tools/brainstorm3/issues/308#issuecomment-646026943
+            if (bst_get('MatlabVersion') < 908)
+                resp = send(request, 'http://neuroimage.usc.edu/bst/check_user.php', options);
+            else
+                resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
+            end
             % Check server response
             if isempty(resp) || isempty(resp.Body) || ~isa(resp.Body, 'matlab.net.http.MessageBody')
                 status = 0;
