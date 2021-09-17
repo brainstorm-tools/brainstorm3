@@ -23,7 +23,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2021
 
 global GlobalData;  
 %% ===== PARSE INPUTS =====

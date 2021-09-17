@@ -22,7 +22,7 @@ function varargout = process_extract_cluster( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
