@@ -8,6 +8,7 @@ August 2021
 July 2021
 - Inverse: FieldTrip DICS
 - Anatomy: Fixed O'Reilly infant templates
+- IO: Added support for Axion AxIS recordings (.raw)
 - Connectivity: New coherence processes 2021
 ---------------------------------------------------------------
 June 2021
