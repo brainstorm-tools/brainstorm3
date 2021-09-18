@@ -93,10 +93,10 @@ function PlugDesc = GetSupported(SelPlug)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.2';
+    PlugDesc(end).Version        = '1.9.6';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-allinone.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.6/iso2mesh-1.9.6-allinone.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
@@ -175,7 +175,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'https://github.com/JimHokanson/adinstruments_sdk_matlab';
     PlugDesc(end).TestFile       = 'adi.m';
     PlugDesc(end).CompiledStatus = 0;
-   
+
     % === I/O: AXION ===
     PlugDesc(end+1)              = GetStruct('axion');
     PlugDesc(end).Version        = '1.0';
@@ -185,7 +185,18 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'AxisFile.m';
     % PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
-    
+
+    % === I/O: BLACKROCK ===
+    PlugDesc(end+1)              = GetStruct('blackrock');
+    PlugDesc(end).Version        = '5.5.2.0';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/refs/tags/5.5.2.0.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
+    PlugDesc(end).TestFile       = 'openNSx.m';
+    PlugDesc(end).ReadmeFile     = 'Versions.txt';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -267,7 +278,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).InstalledFcn   = 'make';
+    PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -275,7 +286,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 0;
     PlugDesc(end).AutoLoad       = 1;
-    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).CompiledStatus = 0;  % Revert to 2 when this issue gets fixed: https://github.com/Nirstorm/nirstorm/issues/155
     PlugDesc(end).URLzip         = 'https://github.com/Nirstorm/nirstorm/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/Nirstorm/nirstorm';
     PlugDesc(end).LoadFolders    = {'bst_plugin/core','bst_plugin/forward','bst_plugin/GLM', 'bst_plugin/inverse' , 'bst_plugin/io','bst_plugin/math' ,'bst_plugin/mbll' ,'bst_plugin/misc', 'bst_plugin/OM', 'bst_plugin/preprocessing', 'bst_plugin/ppl'};
@@ -1072,7 +1083,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % Unzip file
     switch (pkgFormat)
         case 'zip'
-            unzip(pkgFile, PlugPath);
+            bst_unzip(pkgFile, PlugPath);
         case 'tgz'
             if ispc
                 untar(pkgFile, PlugPath);
@@ -1143,6 +1154,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     
     % === SHOW PLUGIN INFO ===
+    % Log install
+    bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
     % Show plugin information (interactive mode only)
     if isInteractive
         % Hide progress bar

@@ -45,8 +45,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Inverse method
     sProcess.options.method.Comment = 'Inverse method:';
     sProcess.options.method.Type    = 'combobox_label';
-    sProcess.options.method.Value   = {'mne', {'LCMV beamformer', 'SAM beamformer', 'DICS beamformer', 'MNE', 'sLORETA', 'eLORETA', 'MUSIC', 'PCC', 'Residual variance'; ...
-                                               'lcmv',            'sam',            'dics',            'mne', 'sloreta', 'eloreta', 'music', 'pcc', 'rv'}};
+    sProcess.options.method.Value   = {'mne', {'LCMV beamformer', 'SAM beamformer', 'MNE', 'sLORETA', 'eLORETA', 'MUSIC', 'Residual variance'; ...
+                                               'lcmv',            'sam',            'mne', 'sloreta', 'eloreta', 'music', 'rv'}};
     % Option: Sensors selection
     sProcess.options.sensortype.Comment = 'Sensor type:';
     sProcess.options.sensortype.Type    = 'combobox_label';
@@ -150,70 +150,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     cfg.mne.lambda    = 3;
                     cfg.mne.scalesourcecov = 'yes';
                     Time = DataMat.Time;
-                    
                 case 'lcmv'
                     Time = [DataMat.Time(1), DataMat.Time(2)];
-                    
-                case 'dics'
-                    % EXAMPLE 1
-                    % cfg                = [];
-                    % cfg.grid           = grid;
-                    % cfg.frequency      = 10;
-                    % cfg.vol            = hdm;
-                    % cfg.gradfile       = 'grad.mat';
-                    % cfg.projectnoise   = 'yes';
-                    % cfg.keeptrials     = 'no';
-                    % cfg.keepfilter     = 'yes';
-                    % cfg.keepcsd        = 'yes';
-                    % cfg.keepmom        = 'yes';
-                    % cfg.lambda         = 0.1 * mean(f.powspctrm(:,nearest(cfg.frequency)),1);
-                    % cfg.method         = 'dics';
-                    % cfg.feedback       = 'textbar';
-                    % source             = ft_sourceanalysis(cfg,f);
-                    
-                    % EXAMPLE 2
-                    % % freqanalysis %
-                    % cfg=[];
-                    % cfg.method      = 'mtmfft';
-                    % cfg.output      = 'powandcsd';  % gives power and cross-spectral density matrices
-                    % cfg.foilim      = [60 60];      % analyse 40-80 Hz (60 Hz +/- 20 Hz smoothing)
-                    % cfg.taper       = 'dpss';
-                    % cfg.tapsmofrq   = 20;
-                    % cfg.keeptrials  = 'yes';        % in order to separate the conditions again afterwards, we need to keep the trials. This is not otherwise necessary to compute the common filter
-                    % cfg.keeptapers  = 'no';
-                    % 
-                    % freq = ft_freqanalysis(cfg, data);
-                    % 
-                    % % compute common spatial filter %
-                    % cfg=[];
-                    % cfg.method      = 'dics';
-                    % cfg.grid        = grid;         % previously computed grid
-                    % cfg.headmodel   = vol;          % previously computed volume conduction model
-                    % cfg.frequency   = 60;
-                    % cfg.dics.keepfilter  = 'yes';        % remember the filter
-                    % 
-                    % source = ft_sourceanalysis(cfg, freq);
-
-                case 'pcc'
-                    % % ft_freqanalysis %
-                    % cfg=[];
-                    % cfg.method      = 'mtmfft';
-                    % cfg.output      = 'fourier';  % gives the complex Fourier spectra
-                    % cfg.foilim      = [60 60];    % analyse 40-80 Hz (60 Hz +/- 20 Hz smoothing)
-                    % cfg.taper       = 'dpss';
-                    % cfg.tapsmofrq   = 20;
-                    % cfg.keeptrials  = 'yes';      % in order to separate the conditions again afterwards, we need to keep the trials. This is not otherwise necessary to compute the common filter
-                    % cfg.keeptapers  = 'yes';
-                    % freq = ft_freqanalysis(cfg, data);
-                    % 
-                    % % compute common spatial filter AND project all trials through it %
-                    % cfg=[]; 
-                    % cfg.method      = 'pcc';
-                    % cfg.grid        = grid;       % previously computed grid
-                    % cfg.headmodel   = vol;        % previously computed volume conduction model
-                    % cfg.frequency   = 60;
-                    % cfg.keeptrials  = 'yes';      % keep single trials. Only necessary if you are interested in reconstructing single trial data
-                    % source = ft_sourceanalysis(cfg, freq); 
             end
             % Call FieldTrip function
             ftSource = ft_sourceanalysis(cfg, ftData);

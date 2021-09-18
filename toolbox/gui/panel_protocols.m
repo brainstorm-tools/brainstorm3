@@ -835,21 +835,9 @@ function nodeStudy = SelectStudyNode( varargin )
     drawnow;
     % Update selected study in ProtocolInfo
     ProtocolInfo = bst_get('ProtocolInfo');
-    ProtocolInfo.iStudy = nodeStudy.getStudyIndex();
-    bst_set('ProtocolInfo', ProtocolInfo);
-    % ===== UPDATE SCOUTS PANEL =====
-    % Get parent Subject node
-    nodeSubject = nodeStudy.findAncestor('subject', -1, -1);
-    if isempty(nodeSubject)
-        nodeSubject = nodeStudy.findAncestor('studysubject', -1, -1);
-    end
-    if isempty(nodeSubject)
-        return
-    end
-    % Get subject structure
-    sSubject = bst_get('Subject', char(nodeSubject.getFileName()));
-    if isempty(sSubject)
-        return
+    if ~isempty(ProtocolInfo)
+        ProtocolInfo.iStudy = nodeStudy.getStudyIndex();
+        bst_set('ProtocolInfo', ProtocolInfo);
     end
 end
 

@@ -964,7 +964,7 @@ function LoadDefaultMontages() %#ok<DEFNU>
     sMontage.Type = 'selection';
     SetMontage(sMontage.Name, sMontage);
     % Get the path to the default .sel/.mon files
-    MontagePath = bst_fullfile(bst_get('BrainstormHomeDir'), 'toolbox', 'sensors', 'private');    
+    MontagePath = bst_fullfile(bst_fileparts(which('panel_channel_editor')), 'private');    
     % Load MNE selection files
     MontageFiles = dir(bst_fullfile(MontagePath, '*.sel'));
     for i = 1:length(MontageFiles)

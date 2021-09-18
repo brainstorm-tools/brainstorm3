@@ -76,9 +76,9 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         sOutput.ColormapType = 'stat2';
     end
     % Time-frequency: Change the measure type
-    if strcmpi(sInputsA(1).FileType, 'timefreq')
-        sOutput.Measure = 'other';
-    end
+    % if strcmpi(sInputsA(1).FileType, 'timefreq')
+    %     sOutput.Measure = 'other';
+    % end
     sOutput.nAvg = sInputsA.nAvg + sInputsB.nAvg;
     % Effective number of averages
     % Leff = 1 / sum_i(w_i^2 / Leff_i),  with w1=1 and w2=-1

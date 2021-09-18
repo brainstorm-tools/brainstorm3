@@ -762,7 +762,11 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 end
             end
             % Set time vector in input
-            sInput.TimeVector = sMat.Time(iCol);
+            if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
+                sInput.TimeVector = mean(process_tf_bands('GetBounds', sMat.TimeBands), 2);
+            else
+                sInput.TimeVector = sMat.Time(iCol);
+            end
 
             % === PROCESS ===
             % Send indices to the process
@@ -943,14 +947,20 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % ===== CREATE OUTPUT STRUCTURE =====
     % If there is a DataFile link, and the time definition changed, and results is not static: remove link
     if isfield(sMat, 'DataFile') && ~isempty(sMat.DataFile)
-        if ~isequal(sMat.Time, OutTime) && (length(OutTime) > 2)
+        if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
+            % Time bands: Do not update the file links
+        elseif ~isequal(sMat.Time, OutTime) && (length(OutTime) > 2)
             sMat.DataFile = [];
         else
             sMat.DataFile = file_short(sMat.DataFile);
         end
     end
     % Output time vector
-    sMat.Time = OutTime;
+    if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
+        % Time bands: Do not update time vector
+    else
+        sMat.Time = OutTime;
+    end
     % Output measure
     if ~isempty(OutMeasure)
         sMat.Measure = OutMeasure;

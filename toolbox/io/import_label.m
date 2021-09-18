@@ -195,10 +195,12 @@ for iFile = 1:length(LabelFiles)
                 iScout = length(sAtlas.Scouts) + 1;
                 sAtlas.Scouts(iScout).Vertices = find(labels == lablist(i))';
                 if ~isempty(colortable.struct_names{iTable})
-                    % Strip CAT12 Schaeffer labels
+                    % Strip uselss parts of Schaeffer labels
                     Label = colortable.struct_names{iTable};
                     Label = strrep(Label, '17Networks_LH_', '');
                     Label = strrep(Label, '17Networks_RH_', '');
+                    Label = strrep(Label, '7Networks_LH_', '');
+                    Label = strrep(Label, '7Networks_RH_', '');
                     sAtlas.Scouts(iScout).Label = file_unique(Label, {sAtlas.Scouts.Label});
                 else
                     sAtlas.Scouts(iScout).Label = file_unique('Unknown', {sAtlas.Scouts.Label});
@@ -664,7 +666,7 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'DKT';
         case {'lh.pals_b12_brodmann', 'rh.pals_b12_brodmann'}
             AtlasName = 'PALS-B12 Brodmann';
-        case {'lh.pals_b12_Lobes', 'rh.pals_b12_lobes'}
+        case {'lh.pals_b12_lobes', 'rh.pals_b12_lobes'}
             AtlasName = 'PALS-B12 Lobes';
         case {'lh.pals_b12_orbitofrontal', 'rh.pals_b12_orbitofrontal'}
             AtlasName = 'PALS-B12 Orbito-frontal';
@@ -696,7 +698,7 @@ function AtlasName = GetAtlasName(fBase)
                 AtlasName = 'Destrieux';
             elseif ~isempty(strfind(fBase, 'dk40'))
                 AtlasName = 'Desikan-Killiany';
-            elseif ~isempty(strfind(fBase, 'hcp_mmp'))
+            elseif ~isempty(strfind(fBase, 'hcp_mmp')) || ~isempty(strfind(fBase, 'hcp-mmp'))
                 AtlasName = 'HCP_MMP1';
             elseif ~isempty(strfind(fBase, 'schaefer2018_100parcels_17'))
                 AtlasName = 'Schaefer_100_17net';
@@ -706,6 +708,22 @@ function AtlasName = GetAtlasName(fBase)
                 AtlasName = 'Schaefer_400_17net';
             elseif ~isempty(strfind(fBase, 'schaefer2018_600parcels_17'))
                 AtlasName = 'Schaefer_600_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_800parcels_17'))
+                AtlasName = 'Schaefer_800_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_1000parcels_17'))
+                AtlasName = 'Schaefer_1000_17net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_100parcels_7'))
+                AtlasName = 'Schaefer_100_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_200parcels_7'))
+                AtlasName = 'Schaefer_200_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_400parcels_7'))
+                AtlasName = 'Schaefer_400_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_600parcels_7'))
+                AtlasName = 'Schaefer_600_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_800parcels_7'))
+                AtlasName = 'Schaefer_800_7net';
+            elseif ~isempty(strfind(fBase, 'schaefer2018_1000parcels_7'))
+                AtlasName = 'Schaefer_1000_7net';
             % FreeSurfer left/right
             elseif (length(fBase) > 3) && (strcmpi(fBase(1:3), 'lh.') || strcmpi(fBase(1:3), 'rh.'))
                 AtlasName = fBase(4:end);

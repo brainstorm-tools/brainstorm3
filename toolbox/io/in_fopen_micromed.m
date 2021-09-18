@@ -296,14 +296,14 @@ if (length(hdr.segment) >= 1)
     % Warning message
     strWarning = [...
         'Reduced file detected: There are discontinuities in the recordings' 10 ...
-        'that cannot be handled correctly in Brainstorm.' 10 ...
+        'that cannot be handled correctly in Brainstorm.' 10 10 ...
         'The file is read linearly, as if there were not discontinuities.' 10 ...
-        'The time for the first segment is correct, but not the following.'];
+        'The time for the first segment is correct, but not the following.' 10];
     % User warning for multiple discontinuities
     if (Ndiscont >= 1) && ImportOptions.DisplayMessages
         java_dialog('warning', strWarning);
     end
-    disp(['WARNING: ' strWarning]);
+    disp([10 'WARNING: ' strWarning]);
     % Correct for a different starting point
     if (hdr.segment(1).time > 0)
         hdr.smp_offset = hdr.segment(1).time;

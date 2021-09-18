@@ -186,6 +186,13 @@ if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
     if ~isempty(iBAold) && ~isempty(iBAnew)
         AnnotRhFiles(iBAold) = [];
     end
+    % Re-order the files so that FreeSurfer atlases are first (for automatic region labelling)
+    iDKL = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotLhFiles));
+    iDKR = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotRhFiles));
+    if ~isempty(iDKL) && ~isempty(iDKR)
+        AnnotLhFiles = AnnotLhFiles([iDKL, setdiff(1:length(AnnotLhFiles), iDKL)]);
+        AnnotRhFiles = AnnotRhFiles([iDKR, setdiff(1:length(AnnotRhFiles), iDKR)]);
+    end
 end
 % Find thickness maps
 if isExtraMaps

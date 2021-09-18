@@ -156,6 +156,11 @@ switch lower(Method)
         spm_jobman('run',matlabbatch)
         % Read output volume
         [sMriReg, vox2ras] = in_mri(NiiRegFile, 'ALL', 0, 0);
+        % If an error occurred in SPM
+        if isempty(sMriReg)
+            errMsg = 'An unknown error occurred while executing SPM. See the logs in the command window.';
+            return;
+        end
         % Output file tag
         fileTag = '_spm';
         % Remove logo

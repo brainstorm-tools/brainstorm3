@@ -592,6 +592,8 @@ end
 Gain = NaN * zeros(length(cfg.Channel), 3 * length(cfg.GridLoc));
 if isMeg
     Gain(cfg.iMeg,:) = GainMeg; 
+    % scaling the MEG Gain matrix 
+    Gain(cfg.iMeg,:) = GainMeg/1000; 
 end 
 if (isEeg || isEcog || isSeeg) 
     Gain(cfg.iEeg,:) = GainEeg; 
