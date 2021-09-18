@@ -288,6 +288,17 @@ if IS_BIN
     compilerPrj = fullfile(bst_get('BrainstormTmpDir'), ['bst_javabuilder_' ReleaseName(2:end) '.prj']);
     writeAsciiFile(compilerPrj, strPrj);  
     
+    % === CHECK BST-JAVA PACKAGE ===
+    % Brainstorm application .jar file
+    appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
+    % Unjar in "javabuilder" folder, just to get the SelectMcr class
+    unzip(appJar, compilerDir);
+    classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
+    classFileFull = fullfile(compilerDir, classFile);
+    if ~file_exist(classFileFull)
+        error(['Missing class in bst-java: SelectMcr' ReleaseName(2:end) '.class']);
+    end
+    
     % === COMPILING ===
     disp('DEPLOY> Starting Matlab Compiler...');
     % Starting compiler (using a system call because Matlab's version is asynchronous)
@@ -315,14 +326,10 @@ if IS_BIN
                  'Created-By: Brainstorm (' date ')' 13 10]);
     fclose(fid);
     
-    % Brainstorm application .jar file
-    appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
-    % Unjar in "javabuilder" folder, just to get the SelectMcr class
-    unzip(appJar, compilerDir);
-    classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
+    % Copy SelectMcrXXXXX.class to output package folder
     destFolder = fullfile(jarDir, fileparts(classFile));
     mkdir(destFolder);
-    copyfile(fullfile(compilerDir, classFile), destFolder);
+    copyfile(classFileFull, destFolder);
     % Copy application runner
     classFile = fullfile(deployDir, ReleaseName, 'brainstorm_run', 'org', 'brainstorm', 'RunCompiled.class');
     if file_exist(classFile)
