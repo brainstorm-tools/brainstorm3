@@ -99,7 +99,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get selected sensors
         iChannels = channel_find(ChannelMat.Channel, Modality);
         if isempty(iChannels)
-            bst_report('Error', sProcess, sInput, ['Channels "' Modality '" not found in channel file.']);
+            bst_report('Error', sProcess, sInputs, ['Channels "' Modality '" not found in channel file.']);
             return;
         end
         % Load head model
@@ -126,7 +126,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iChannelsData = setdiff(iChannels, iBadChan);
             % Error: All channels tagged as bad
             if isempty(iChannelsData)
-                bst_report('Error', sProcess, sInput, 'All the selected channels are tagged as bad.');
+                bst_report('Error', sProcess, sInputs, 'All the selected channels are tagged as bad.');
                 return;
             end
             % Convert data file to FieldTrip format
@@ -152,6 +152,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     Time = DataMat.Time;
                 case 'lcmv'
                     Time = [DataMat.Time(1), DataMat.Time(2)];
+                case {'sloreta', 'eloreta', 'sam',  'rv', 'music'}
+                    bst_report('Error', sProcess, sInputs, ['Method "' Method ' " is not supported yet, please post a request on the user forum.']);
+                    return;
             end
             % Call FieldTrip function
             ftSource = ft_sourceanalysis(cfg, ftData);
