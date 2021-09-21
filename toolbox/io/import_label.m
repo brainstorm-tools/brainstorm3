@@ -432,10 +432,12 @@ for iFile = 1:length(LabelFiles)
                     iLabel = find([VolumeLabels{:,1}] == allValues(i));
                     if ~isempty(iLabel)
                         sAtlas.Scouts(iScout).Label = file_unique(VolumeLabels{iLabel,2}, {sAtlas.Scouts.Label});
-                        if (VolumeLabels{iLabel,2}(end-1:end) == ' L')
-                            sAtlas.Scouts(iScout).Region = 'LU';
-                        elseif (VolumeLabels{iLabel,2}(end-1:end) == ' R')
-                            sAtlas.Scouts(iScout).Region = 'RU';
+                        if (length(VolumeLabels{iLabel,2}) > 2)
+                            if (VolumeLabels{iLabel,2}(end-1:end) == ' L')
+                                sAtlas.Scouts(iScout).Region = 'LU';
+                            elseif (VolumeLabels{iLabel,2}(end-1:end) == ' R')
+                                sAtlas.Scouts(iScout).Region = 'RU';
+                            end
                         end
                         if (size(VolumeLabels,2) >= 3) && (length(VolumeLabels{iLabel,3}) == 3)
                             sAtlas.Scouts(iScout).Color = VolumeLabels{iLabel,3} ./ 255;
