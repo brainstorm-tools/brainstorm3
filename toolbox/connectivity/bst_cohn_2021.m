@@ -1,7 +1,7 @@
 function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax)
 % BST_COHN_2021: Updated version of bst_cohn.m 
 %
-% USAGE:  [Gxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
+% USAGE:  [Cxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
 %
 % INPUTS:
 %    - Xs      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
@@ -20,11 +20,12 @@ function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, 
 %     versions. The recent changes are set as default. Please consider this
 %     if you want to reproduce your former analyses. 
 %     
-%     Gxy:  cross-spectral density between x and y
-%     Gxx:  autospectral density of x
-%     Gyy:  autospectral density of y
-%     Coherence function (C)            : Gxy/sqrt(Gxx*Gyy)
-%     Magnitude-squared Coherence (MSC) : |C|^2 = |Gxy|^2/(Gxx*Gyy) = Gxy*conj(Gxy)/(Gxx*Gyy) 
+%     Cxy:  cross-spectral density between x and y
+%     Cxx:  autospectral density of x
+%     Cyy:  autospectral density of y
+%     Coherence function (C)            : Cxy/sqrt(Cxx*Cyy)
+%     Magnitude-squared Coherence (MSC) : |C|^2 = |Cxy|^2/(Cxx*Cyy) 
+%                                               = Cxy*conj(Cxy)/(Cxx*Cyy) 
 %   
 %     ============ 'icohere2019', 'lcohere2019' =============
 %     Imaginary Coherence (IC)          : abs(imag(C))               
@@ -146,6 +147,9 @@ elseif minWin < minWinWarning
 end
 
 %% ===== COMPUTE Sxx, Syy, Sxy ======
+% [NxN] or [1xN]
+isNxN = isequal(Xs, Ys);
+
 % Elements for FFT
 nFFT = 2 ^ nextpow2(nWinLen * 2);
 % Window
@@ -158,99 +162,135 @@ freq = (0: nKeep-1) * (Fs / nFFT);
 nSignalsX = size(Xs{1}, 1);
 nSignalsY = size(Ys{1}, 1);
 Sxx = zeros(nSignalsX, length(freq));
-Syy = zeros(nSignalsY, length(freq));
+if isempty(ImagingKernel) && ~isNxN  
+    Syy = zeros(nSignalsY, length(freq));    
+else
+    Syy = complex(zeros(nSignalsY, nSignalsY, length(freq)));
+end
 Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
 nWin = 0;
 
 for iFile = 1 : nFiles
     bst_progress('set', round(waitStart + iFile/nFiles * 0.80 * waitMax));
-    % Compute Syy
+    %% ===== Compute Syy =====
     y = Ys{iFile};    
-    % Epoching 
     epy = epoching(y, nWinLen, nOverlap);
-    clear y;
-    nWin = nWin + size(epy, 3);
-    % Apply window
     epy = bst_bsxfun(@times, epy, win);
-    % Zero padding, FFT, keep positive 
+    % Zero padding, FFT, keep only positive frequencies
     epY = fft(epy, nFFT, 2);
     epY = epY(:, 1:nKeep, :);
-    % Sum across epochs
-    Syy = Syy + sum(epY .* conj(epY), 3);
-    %% ===== Case NxX =====
-    if isequal(Xs, Ys)
-        % Compute Sxx
-        epX = epY;
-        Sxx = Syy;
-    %% ===== Case 1xN =====
+    clear y epy;
+    if isempty(ImagingKernel) && ~isNxN       
+        % Auto-spectrum (PSD) of y
+        Syy = Syy + sum(epY .* conj(epY), 3);
     else
-        % Compute Sxx
+        % Cross-spectrum of y, needed in NxN case, or when Imagingkernel
+        for y1 = 1 : nSignalsY
+            for y2 = y1 : nSignalsY
+                tmp = sum(epY(y1, :, :) .* conj(epY(y2, :, :)), 3);
+                Syy(y1, y2, :) = squeeze(Syy(y1, y2, :)) + tmp(:);
+                Syy(y2, y1, :) = conj(Syy(y1, y2, :));
+            end
+        end        
+    end
+    nWin = nWin + size(epY, 3);
+
+    %% ===== Case 1xN =====
+    if ~isNxN
+        %% ===== Compute Sxx =====
         x = Xs{iFile};
-        % Epoching 
         epx = epoching(x, nWinLen, nOverlap);
-        clear x;
-        % Apply window
         epx = bst_bsxfun(@times, epx, win);
-        % Zero padding, FFT, keep positive 
+        % Zero padding, FFT, keep only positive frequencies
         epX = fft(epx, nFFT, 2);
         epX = epX(:, 1:nKeep, :);
+        clear x epx
         % Sum across epochs
         Sxx = Sxx + sum(epX .* conj(epX), 3);
-    end
-    % Compute Sxy (with loop)
-    for ix = 1 : nSignalsX
-        for iy = ix : nSignalsY
-            tmp = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
-            Sxy(ix, iy, :) = squeeze(Sxy(ix, iy, :)) + tmp(:);
-            % Case NxN
-            if nSignalsX ~= 1 
-                Sxy(iy, ix, :) = conj(Sxy(ix, iy, :));
+        
+        %% ===== Compute Sxy ===== (with loop)
+        for ix = 1 : nSignalsX
+            for iy = 1 : nSignalsY
+                tmp = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
+                Sxy(ix, iy, :) = squeeze(Sxy(ix, iy, :)) + tmp(:);
             end
-        end
+        end        
+%         %% ===== Compute Sxy ===== (vectorized)
+%         Sxy2 = complex(zeros(nSignalsX, nSignalsY, length(freq)));
+%         Sxy_tmp = complex(ones(nSignalsX, nSignalsY, length(freq), size(epy, 3)));
+%         epX_tmp = permute(epX, [1,4,2,3]);
+%         epY_tmp = permute(epY, [4,1,2,3]);
+%         Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, epX_tmp);
+%         Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, conj(epY_tmp));
+%         Sxy2 = Sxy2 + sum(Sxy_tmp, 4); 
     end
-%     % Compute Sxy (vectorized)
-%     Sxy_tmp = complex(ones(nSignalsX, nSignalsY, length(freq), size(epy, 3)));
-%     epX = permute(epX, [1,4,2,3]);
-%     epY = permute(epY, [4,1,2,3]);
-%     Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, epX);
-%     Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, conj(epY));
-%     Sxy = Sxy + sum(Sxy_tmp, 4);   
 end
 
-% Averages
+%% ===== Case NxN =====
+if isNxN
+    % Cross-spectrum of y
+    Sxy = Syy;
+    % Auto-spectrum (PSD) of y
+    Syy = zeros(nSignalsY, length(freq));
+    for iFreq = 1:length(freq) 
+        Syy(:, iFreq) = abs(diag(Sxy(:,:,iFreq)));
+    end
+    Sxx = Syy;
+end
+
+%% ===== Project in source space =====
+if ~isempty(ImagingKernel)  
+    nSourcesY = size(ImagingKernel,1);
+    bst_progress('text', sprintf('Projecting to source domain [%d>%d]...', nSignalsY, nSourcesY));
+    
+    %% ===== Case 1xN =====
+    if ~isNxN             
+        % Initialize Sxy and Syy in source space
+        Sxy_sources = complex(zeros(nSignalsX, nSourcesY, length(freq)));
+        Syy_sources = zeros(nSourcesY, length(freq));
+        % Projection for each frequency
+        for iFreq = 1:length(freq)
+            Sxy_sources(:,:,iFreq) = Sxy(:,:,iFreq) * ImagingKernel';
+            Syy_sources(:, iFreq)  = abs(diag(ImagingKernel * Syy(:,:,iFreq) * ImagingKernel'));
+        end
+        % Sxy and Syy in source space
+        Sxy = Sxy_sources;
+        Syy = Syy_sources;
+        % Sxx = Sxx;
+    
+    %% ===== Case NxN =====
+    else 
+        % Initialize Sxy and Syy in source space
+        Sxy_sources = complex(zeros(nSourcesY, nSourcesY, length(freq)));
+        Syy_sources = zeros(nSourcesY, length(freq));
+        % Projection for each frequency
+        for iFreq = 1:length(freq)
+            Sxy_sources(:,:,iFreq) = ImagingKernel * Sxy(:,:,iFreq) * ImagingKernel';
+            Syy_sources(:, iFreq)  = abs(diag(Sxy_sources(:,:,iFreq)));
+        end
+        % Sxy, Syy and Sxx in source space
+        Sxy = Sxy_sources;
+        Syy = Syy_sources;
+        Sxx = Syy;       
+    end
+    
+    clear Sxy_sources Syy_sources
+end
+
+% Averages across number of windows
 Sxx = Sxx / nWin;
 Syy = Syy / nWin;
 Sxy = Sxy / nWin;
-
-% Project in source space
-if ~isempty(ImagingKernel)
-    nSourcesX = size(ImagingKernel,1);
-    bst_progress('text', sprintf('Projecting to source domain [%d>%d]...', nSignalsX, nSourcesX));
-    % Initialize output matrix
-    Sxy_sources = zeros(nSourcesX, nSourcesX, length(freq));
-    Sxx_sources = zeros(nSourcesX, length(freq));
-    % Loop on the frequencies to make the multiplication
-    for iFreq = 1:length(freq)
-        Sxy_sources(:,:,iFreq) = ImagingKernel * Sxy(:,:,iFreq) * ImagingKernel';
-    end
-    % Extract autospectra from Sxy
-    for iSource = 1 : nSourcesX
-        Sxx_sources(iSource, :) = Sxy_sources(iSource, iSource, :);
-    end
-    Sxy = Sxy_sources;
-    Sxx = Sxx_sources;
-    Syy = Sxx_sources;
-    clear Sxy_sources Sxx_sources
-end
 
 %% ===== Coherence types =====
 bst_progress('set', round(waitStart + 0.90 * waitMax));
 % Add dimension to use bsxfunc(@rdivide)
 Sxx = permute(Sxx, [1, 3, 2]); % [nSignalsX or nSourcesX, 1, nKeep]
 Syy = permute(Syy, [3, 1, 2]); % [1, nSignalsY or nSourcesY, nKeep]
+Cxy = Sxy; clear Sxy
 
-% Coherency or complex coherence C = Sxy ./ sqrt(Sxx*Syy)  
-Cxy = bst_bsxfun(@rdivide, Sxy, sqrt(Sxx));
+% Coherency or complex coherence Cxy = Sxy ./ sqrt(Sxx*Syy)  
+Cxy = bst_bsxfun(@rdivide, Cxy, sqrt(Sxx));
 Cxy = bst_bsxfun(@rdivide, Cxy, sqrt(Syy));
 switch CohMeasure   
     % Magnitude-squared Coherence 
