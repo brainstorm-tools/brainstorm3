@@ -157,7 +157,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('mcxlab');
     PlugDesc(end).Version        = '2020';
     PlugDesc(end).Category       = 'Forward';
-    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).AutoUpdate     = 2;
     switch(OsType)
         case 'linux64'
             PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlab-linux-x86_64-v2020.zip';
