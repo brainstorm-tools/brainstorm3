@@ -153,6 +153,25 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'bin'};
     
+    
+    PlugDesc(end+1)              = GetStruct('mcxlab');
+    PlugDesc(end).Version        = '2020';
+    PlugDesc(end).Category       = 'Forward';
+    PlugDesc(end).AutoUpdate     = 1;
+    switch(OsType)
+        case 'linux64'
+            PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlab-linux-x86_64-v2020.zip';
+        case 'mac64'
+            PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlab-osx-x86_64-v2020.zip';
+        case 'win64'
+            PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlab-win-x86_64-v2020.zip';
+            
+    end
+    PlugDesc(end).TestFile       = 'mcxlab.m';
+    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).CompiledStatus = 1;
+    PlugDesc(end).LoadFolders    = {'*'};
+    
     % === INVERSE: BRAINENTROPY ===
     PlugDesc(end+1)              = GetStruct('brainentropy');
     PlugDesc(end).Version        = 'github-master';
