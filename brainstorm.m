@@ -275,7 +275,7 @@ switch action
             isPlugs = 1;
         end
         % Matlab < 2020a: Old compilation function using deploytool
-        if (bst_get('MatlabVersion') < 910)
+        if (bst_get('MatlabVersion') < 908)
             addpath(fullfile(BrainstormHomeDir, 'deploy', 'deprecated'));
             if isPlugs
                 bst_deploy_java('2');
