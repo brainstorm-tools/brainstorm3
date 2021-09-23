@@ -25,6 +25,64 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
 %                            bst_plugin('LinkCatSpm',           isSet)               % Create/delete a symbolic link for CAT12 in SPM12 toolbox folder
+%
+%
+% PLUGIN DEFINITION
+% =================
+%
+%     The plugins registered in Brainstorm are listed in function GetSupported(). 
+%     Each one is an entry in the PlugDesc array, following the structure defined in db_template('plugdesc'). 
+%     The fields allowed are described below.
+%
+%     Mandatory fields
+%     ================
+%     - Name     : String: Plugin name = subfolder in the Brainstorm user folder
+%     - Version  : String: Version of the plugin (eg. '1.2', '21a', 'github-master', 'latest')
+%     - URLzip   : String: Download URL, zip or tgz file accessible over HTTP/HTTPS/FTP
+%     - URLinfo  : String: Information URL = Software website
+%
+%     Optional fields
+%     ===============
+%     - AutoUpdate     : Boolean: If true, the plugin is updated automatically when there is a new version available (default: false).
+%     - AutoLoad       : Boolean: If true, the plugin is loaded automatically at Brainstorm startup
+%     - Category       : String: Sub-menu in which the plugin is listed
+%     - ExtraMenus     : Cell matrix {Nx2}: List of entries to add to the plugins menu
+%                        | ExtraMenus{i,1}: String: Label of the menu
+%                        | ExtraMenus{i,2}: String: Matlab code to eval when the menu is clicked 
+%     - TestFile       : String: Name of a file that should be located in one of the loaded folders of the plugin (eg. 'spm.m' for SPM12). 
+%                        | This is used to test whether the plugin was correctly installed, or whether it is available somewhere else in the Matlab path.
+%     - ReadmeFile     : String: Name of the text file to display after installing the plugin (must be in the plugin folder). 
+%                        | If empty, it tries using brainstorm3/doc/plugin/plugname_readme.txt
+%     - LogoFile       : String: Name of the image file to display during the plugin download, installation, and associated computations (must be in the plugin folder). 
+%                        | Supported extensions: gif, png. If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
+%     - MinMatlabVer   : Integer: Minimum Matlab version required for using this plugin, as returned by bst_get('MatlabVersion')
+%     - CompiledStatus : Integer: Behavior of this plugin in the compiled version of Brainstorm:
+%                        | 0: Plugin is not available in the compiled distribution of Brainstorm
+%                        | 1: Plugin is available for download (only for plugins based on native compiled code)
+%                        | 2: Plugin is included in the compiled distribution of Brainstorm 
+%     - RequiredPlugs  : Cell-array: Additional plugins required by this plugin, that must be installed/loaded beforehand.
+%                        | {Nx2} => {'plugname','version'; ...} or
+%                        | {Nx1} => {'plugname'; ...} 
+%     - UnloadPlugs    : Cell-array of names of incompatible plugin, to unload before loaing this one
+%     - LoadFolders    : Cell-array of subfolders to add to the Matlab path when setting up the plugin. Use {'*'} to add all the plugin subfolders.
+%     - GetVersionFcn  : String to eval or function handle to call to get the version after installation
+%     - InstalledFcn   : String to eval or function handle to call after installing the plugin
+%     - UninstalledFcn : String to eval or function handle to call after uninstalling the plugin
+%     - LoadedFcn      : String to eval or function handle to call after loading the plugin
+%     - UnloadedFcn    : String to eval or function handle to call after unloading the plugin 
+%
+%     Fields set when installing the plugin
+%     =====================================
+%     - Processes  : List of process functions to be added to the pipeline manager 
+%
+%     Fields set when loading the plugin
+%     ==================================
+%     - Path       : Installation path (eg. /home/username/.brainstorm/plugins/fieldtrip)
+%     - SubFolder  : If all the code is in a single subfolder (eg. /plugins/fieldtrip/fieldtrip-20210304), 
+%                    this is detected and the full path to the TestFile would be typically fullfile(Path, SubFolder).
+%     - isLoaded   : 0=Not loaded, 1=Loaded
+%     - isManaged  : 0=Installed manually by the user, 1=Installed automatically by Brainstorm 
+%
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
