@@ -232,7 +232,15 @@ bstJar = fullfile(binDir, 'brainstorm3.jar');
 if file_exist(bstJar)
     delete(bstJar);
 end
-system(['cd "' jarDir '" & "' JdkDir '\bin\jar.exe" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
+if ispc
+    cmdSeparator = '&';
+    jarExePath = '\bin\jar.exe'; 
+else   
+    cmdSeparator = ';';
+    jarExePath = '/bin/jar'; 
+end
+system(['cd "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.txt "' bstJar '" bst_javabuilder_' ReleaseName(2:end) ' org com']);
+
 
 
 %% ===== PACKAGE ZIP =====
