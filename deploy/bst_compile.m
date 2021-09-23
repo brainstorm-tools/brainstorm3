@@ -121,7 +121,7 @@ copyfile(classFileFull, destFolder);
 classFile = fullfile(bstDir, 'deploy', ['RunCompiled_' ReleaseName(2:end) '.class']);
 % Copy application runner
 if file_exist(classFile)
-    destFile = fullfile(jarDir, 'org', 'brainstorm', 'RunCompiled.Class');
+    destFile = fullfile(jarDir, 'org', 'brainstorm', 'RunCompiled.class');
     copyfile(classFile, destFile);
 else
     disp(['WARNING: Packaging without the installation runner, you must:' 10 ... 
