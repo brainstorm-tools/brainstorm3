@@ -541,12 +541,17 @@ switch contextName
         sSubjects = sql_query(sqlConn, 'select', 'subject', '*');
         iDefaultSubject = [];
         for iSubject = 1:length(sSubjects)
+            sSubject = sSubjects(iSubject);
             % Find default subject
-            if strcmp(sSubjects(iSubject).Name, '@default_subject')
+            if strcmp(sSubject.Name, '@default_subject')
                 iDefaultSubject = iSubject;
-            end
+            end           
             % Get all anatomy files of each subject
-            sSubjects(iSubject) = db_get(sqlConn, 'FilesWithSubject', sSubjects(iSubject));
+            sSubject.Anatomy = [repmat(db_template('Anatomy'), 0), ...
+                db_convert_anatomyfile(db_get(sqlConn, 'FilesWithSubject', sSubject.Id, 'anatomy'))]; 
+            sSubject.Surface = [repmat(db_template('Surface'), 0), ...
+                db_convert_anatomyfile(db_get(sqlConn, 'FilesWithSubject', sSubject.Id, 'surface'))]; 
+            sSubjects(iSubject) = sSubject;
         end
         
         % Separate default subject
@@ -1164,7 +1169,10 @@ switch contextName
             end
             
             % Populate Surface & Anatomy files
-            sSubject = db_get(sqlConn, 'FilesWithSubject', sSubject);
+            sSubject.Anatomy = [repmat(db_template('Anatomy'), 0), ...
+                db_convert_anatomyfile(db_get('FilesWithSubject', sSubject.Id, 'anatomy'))]; 
+            sSubject.Surface = [repmat(db_template('Surface'), 0), ...
+                db_convert_anatomyfile(db_get('FilesWithSubject', sSubject.Id, 'surface'))]; 
             
             argout1 = sSubject;
             argout2 = iSubject;
@@ -1188,10 +1196,10 @@ switch contextName
         end
         sqlConn = sql_connect();
         % Look for specific surface file
-        sFile = db_get(sqlConn, 'SurfaceFile', SurfaceFile); 
-        argout1 = db_get(sqlConn, 'Subject', sFile.Subject);
-        argout2 = sFile.Subject;
-        argout3 = sFile.Id;  
+        sAnatomyFile = db_get(sqlConn, 'AnatomyFile', SurfaceFile); 
+        argout1 = db_get(sqlConn, 'Subject', sAnatomyFile.Subject);
+        argout2 = sAnatomyFile.Subject;
+        argout3 = sAnatomyFile.Id;  
         sql_close(sqlConn);
         
 %% ==== SURFACE FILE BY TYPE ====
@@ -1298,7 +1306,7 @@ switch contextName
                 return
             end
         end
-        
+
         
 %% ==== CHANNEL FILE ====
     % Usage: [sStudy, iStudy, iChannel] = bst_get('ChannelFile', ChannelFile)

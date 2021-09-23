@@ -34,9 +34,6 @@ function varargout = db_get(varargin)
 %    - db_get('AnatomyFile', FileIDs,   Fields) : Find anatomy file(s) by ID(s) 
 %    - db_get('AnatomyFile', FileNames, Fields) : Find anatomy file(s) by FileName(s)
 %    - db_get('AnatomyFile', CondQuery, Fields) : Find anatomy file(s) with a Query
-%    - db_get('SurfaceFile', FileIDs,   Fields) : Find surface file(s) by ID(s) 
-%    - db_get('SurfaceFile', FileNames, Fields) : Find surface file(s) by FileName(s)
-%    - db_get('SurfaceFile', CondQuery, Fields) : Find surface file(s) with a Query
 %    - db_get('FunctionalFile', FileIDs,   Fields) : Find functional file(s) by ID(s) 
 %    - db_get('FunctionalFile', FileNames, Fields) : Find functional file(s) by FileName(s)
 %    - db_get('FunctionalFile', CondQuery, Fields) : Find functional file(s) with a Query
@@ -201,62 +198,14 @@ switch contextName
         varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', [], addQuery);
 
 %% ==== FILES WITH SUBJECT ====
-    % sFiles = db_get('FilesWithSubject', FileType (e.g. Anatomy), SubjectID)
+    % sAnatomyFiles = db_get('FilesWithSubject', SubjectID, AnatomyFileType)
     case 'FilesWithSubject'
-        % Special case: sSubject = db_get('FilesWithSubject', sSubject)
-        % This sets the anatomy file fields in sSubject (Anatomy, Surface)
-        if length(args) == 1
-            sSubject = args{1};
-            sSubject.Anatomy = repmat(db_template('Anatomy'), 0);
-            sSubject.Surface = repmat(db_template('Surface'), 0);
-            qryCondition = struct('Subject', sSubject.Id);
-        else
-            type = lower(args{1});
-            iSubject = args{2};
-            sSubject = [];
-            sOutFiles = repmat(db_template(type), 0);
-            qryCondition = struct('Subject', iSubject, 'Type', type);
+        condQuery.Subject = args{1};
+        if length(args) > 1 
+            condQuery.Type = lower(args{2});
         end
-        sAnatFiles = sql_query(sqlConn, 'select', 'anatomyfile', '*', qryCondition);
+        varargout{1} = db_get(sqlConn, 'AnatomyFile', condQuery);
 
-        if isempty(sAnatFiles)
-            if ~isempty(sSubject)
-                varargout{1} = sSubject;
-            else
-                varargout{1} = sAnatFiles;
-            end
-        else
-
-            for iFile = 1:length(sAnatFiles)
-                sFile = db_template(sAnatFiles(iFile).Type);
-                sFile.Comment = sAnatFiles(iFile).Name;
-                sFile.FileName = sAnatFiles(iFile).FileName;
-
-                switch sAnatFiles(iFile).Type
-                    case 'anatomy'
-                        if ~isempty(sSubject)
-                            sSubject.Anatomy(end + 1) = sFile;
-                        end
-                    case 'surface'
-                        sFile.SurfaceType = sAnatFiles(iFile).SurfaceType;
-                        if ~isempty(sSubject)
-                            sSubject.Surface(end + 1) = sFile;
-                        end
-                    otherwise
-                        error('Unsupported anatomy file type');
-                end
-
-                if isempty(sSubject)
-                    sOutFiles(end + 1) = sFile;
-                end
-            end
-
-            if ~isempty(sSubject)
-                varargout{1} = sSubject;
-            else
-                varargout{1} = sOutFiles;
-            end
-        end
 
 %% ==== FILES WITH STUDY ====
     % sFiles = db_get('FilesWithStudy', FileType (e.g. Data), StudyID)
@@ -362,11 +311,11 @@ switch contextName
             varargout{1} = sAnatFiles;
         end
 
-%% ==== ANATOMY FILE and SURFACE FILE ====
-    % [sFiles, sItems] = db_get('AnatomyFile', FileIDs,   Fields)
-    %                  = db_get('AnatomyFile', FileNames, Fields)
-    %                  = db_get('AnatomyFile', CondQuery, Fields)
-    case {'AnatomyFile', 'SurfaceFile'}
+%% ==== ANATOMY FILE ====
+    % sAnatomyFiles = db_get('AnatomyFile', FileIDs,   Fields)
+    %               = db_get('AnatomyFile', FileNames, Fields)
+    %               = db_get('AnatomyFile', CondQuery, Fields)
+    case 'AnatomyFile'
         % Parse inputs
         iFiles = args{1};
         fields = '*';                              
@@ -413,20 +362,8 @@ switch contextName
             end
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery(1));
-        end
-        sItems = [];
-        
-        % If output expected, all fields requested, and all sFiles are same Type     
-        if nargout > 1 && isequal(fields, '*') && length(unique({sFiles(:).Type})) == 1
-            nFiles = length(sFiles);
-            sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
-            for i = 1 : nFiles
-                sItems(i) = getAnatomyFileStruct(sFiles(i).Type, sFiles(i));
-            end
-        end        
-
+        end   
         varargout{1} = sFiles;
-        varargout{2} = sItems;
           
         
 %% ==== FUNCTIONAL FILE ====
@@ -742,19 +679,5 @@ function sFile = getFunctionalFileStruct(type, funcFile)
 
         otherwise
             error('Unsupported functional file type.');
-    end
-end
-
-% Get a specific anatomy file db_template structure from the generic
-% db_template('AnatomyFile') structure
-function sFile = getAnatomyFileStruct(type, anatomyFile)
-    sFile = db_template(type);
-    if isempty(anatomyFile)
-        return;
-    end
-    sFile.FileName = anatomyFile.FileName;
-    sFile.Comment  = anatomyFile.Name;
-    if strcmp(type, 'surface')
-        sFile.SurfaceType = anatomyFile.SurfaceType;    
     end
 end

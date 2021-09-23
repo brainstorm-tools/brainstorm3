@@ -149,7 +149,7 @@ switch contextName
         
         % Delete existing subjects and anatomy files
         sql_query(sqlConn, 'delete', 'subject');
-        sql_query(sqlConn, 'delete', 'anatomyfile');
+        db_set(sqlConn, 'AnatomyFile', 'delete');
         
         for iSubject = 0:length(contextValue.Subject)
             if iSubject == 0
@@ -182,11 +182,12 @@ switch contextName
             % Insert subject
             SubjectId = sql_query(sqlConn, 'insert', 'subject', sSubject);
             
-            % Insert anatomy & surface files
-            [sAnatomy, selectedFiles(1)] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, SubjectId, selectedFiles(1));
-            [sSurface, selectedFiles(2:end)] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, SubjectId, selectedFiles(2:end));
-            
-            % Update subject entry to add selected anat/surf files, if any
+            % Convert Anatomy & Surface files to AnatomyFiles and insert
+            sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
+                             db_convert_anatomyfile(sSubject.Surface, 'surface')];
+            [~, selectedFiles] = db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, SubjectId, selectedFiles);
+
+            % Update subject entry to add selected AnatomyFiles, if any
             hasSelFiles = 0;
             selFiles = struct();
             for iCat = 1:length(categories)
@@ -332,11 +333,13 @@ switch contextName
         
         if ~isempty(argout1)
             % Delete existing anatomy files
-            sql_query(sqlConn, 'delete', 'anatomyfile', struct('Subject', argout1));
+            db_set(sqlConn, 'AnatomyFile', 'delete', struct('Subject', argout1));
+                       
+            % Convert Anatomy & Surface files to AnatomyFiles and insert
+            sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
+                             db_convert_anatomyfile(sSubject.Surface, 'surface')];
+            [~, selectedFiles] = db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, argout1, selectedFiles);
             
-            % Insert new anatomy files
-            [sAnatomy, selectedFiles(1)] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, argout1, selectedFiles(1));
-            [sSurface, selectedFiles(2:end)] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, argout1, selectedFiles(2:end));
             
             % Update subject entry to add selected anat/surf files, if any
             hasSelFiles = 0;
