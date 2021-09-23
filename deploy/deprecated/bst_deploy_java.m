@@ -1,5 +1,5 @@
 function bst_deploy_java(IS_BIN)
-% BST_DEPLOY_JAVA - Brainstorm deployment script (including SPM and FieldTrip).
+% DEPRECATED: Use bst_deploy and bst_compile instead
 %
 % USAGE:  bst_deploy_java(IS_BIN=0)
 %
@@ -21,12 +21,12 @@ function bst_deploy_java(IS_BIN)
 %    - Zip stand-alone directory  (output file: <bstMakeDir>/bst_bin_os_yymmdd.zip)
 
 % @=============================================================================
-% This software is part of the Brainstorm software:
+% This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
-% as published by the Free Software Foundation. Further details on the GPL
+% as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
@@ -244,10 +244,24 @@ system('start /b cmd /c ""C:\Program Files\Git\cmd\git-gui.exe" --working-dir "C
 
 
 %% ===== MATLAB COMPILER =====
-if IS_BIN
+if IS_BIN   
+    % === CHECK BST-JAVA PACKAGE ===
+    % Brainstorm application .jar file
+    appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
+    % Unjar in "javabuilder" folder, just to get the SelectMcr class
+    unzip(appJar, compilerDir);
+    classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
+    classFileFull = fullfile(compilerDir, classFile);
+    if ~file_exist(classFileFull)
+        error(['Missing class in bst-java: SelectMcr' ReleaseName(2:end) '.class']);
+    end
+    
+    % === COMPILING ===
+    disp('DEPLOY> Starting Matlab Compiler...');
+
     % === CREATE COMPILER FILE ===
     % Load template .prj file
-    templatePrj = fullfile(bstDir, 'deploy', 'bst_javabuilder_template.prj');
+    templatePrj = fullfile(bstDir, 'deploy', 'deprecated', 'bst_javabuilder_template.prj');
     strPrj = ReadAsciiFile(templatePrj);
     % Optional folders to include
     strOpt = '';
@@ -287,23 +301,11 @@ if IS_BIN
     % Save file
     compilerPrj = fullfile(bst_get('BrainstormTmpDir'), ['bst_javabuilder_' ReleaseName(2:end) '.prj']);
     writeAsciiFile(compilerPrj, strPrj);  
-    
-    % === CHECK BST-JAVA PACKAGE ===
-    % Brainstorm application .jar file
-    appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
-    % Unjar in "javabuilder" folder, just to get the SelectMcr class
-    unzip(appJar, compilerDir);
-    classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
-    classFileFull = fullfile(compilerDir, classFile);
-    if ~file_exist(classFileFull)
-        error(['Missing class in bst-java: SelectMcr' ReleaseName(2:end) '.class']);
-    end
-    
-    % === COMPILING ===
-    disp('DEPLOY> Starting Matlab Compiler...');
+
     % Starting compiler (using a system call because Matlab's version is asynchronous)
     system(['deploytool -build ', compilerPrj]);
 
+    
     % === PACKAGING ===
     disp('DEPLOY> Packaging binary distribution...');
     % Compiled jar

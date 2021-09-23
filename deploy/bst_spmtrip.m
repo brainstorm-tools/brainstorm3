@@ -1,7 +1,5 @@
-function bst_deploy_spmtrip()
-% BST_EXTRACT_FIELDTRIP_SPM Make a copy of some of the FieldTrip and SPM
-% functions used by Brainstorm in the deployment folder, aimed to be included in
-% the MCC compilation of Brainstorm.
+function bst_spmtrip(SpmDir, FieldTripDir, OutputDir)
+% BST_SPMTRIP Make a copy of some of the FieldTrip and SPM functions compiled with Brainstorm
 %
 % Requirements: 
 %  - Run spm_make_standalone first
@@ -33,12 +31,12 @@ function bst_deploy_spmtrip()
 %    => NOT SUPPORTED YET:  ft_checkconfig (line 155) : Missing cfg.template, cfg.tmp?
 
 % @=============================================================================
-% This software is part of the Brainstorm software:
+% This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
-% as published by the Free Software Foundation. Further details on the GPL
+% as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
@@ -53,18 +51,20 @@ function bst_deploy_spmtrip()
 % Authors: Francois Tadel, 2019-2021
 
 
-% ===== CONFIGURATION =====
-% Warning SPM
-disp('Warning: Make sure you executed spm_make_standalone first.');
-% Source folders 
-FieldTripDir ='C:\Users\franc\.brainstorm\plugins\fieldtrip\fieldtrip-20210311';
-SpmDir = 'C:\Users\franc\.brainstorm\plugins\spm12\spm12';
-% Destination folder
-IncludeDir = 'C:\Work\Dev\brainstorm3_deploy\spmtrip';
-% PrivateDir = fullfile(IncludeDir, 'private');
+% ===== SPM STANDALONE =====
+if ~exist(fullfile(SpmDir, 'Contents.txt'), 'file') || ~exist(fullfile(fileparts(SpmDir), 'standalone'), 'file')
+    disp('SPMTRIP> Compiling SPM...');
+    spm eeg;
+    spm quit;
+    spm_make_standalone();
+end
 
-% List required functions
-needFunc = {
+% ===== REQUIRED FUNCTIONS =====
+% List required functions, valid for:
+%   FieldTrip v.20210920
+%   SPM12 v7771
+needFunc = {...
+    ... % === FIELDTRIP ====
     fullfile(FieldTripDir, 'ft_defaults.m'), ...
     fullfile(FieldTripDir, 'compat', 'matlablt2017b', 'isfolder.m'), ...
     fullfile(FieldTripDir, 'fileio', 'ft_read_headshape.m'), ...
@@ -107,7 +107,7 @@ needFunc = {
     fullfile(FieldTripDir, 'ft_volumesegment.m'), ...
     fullfile(FieldTripDir, 'plotting', 'ft_plot_mesh.m'), ...
     fullfile(FieldTripDir, 'plotting', 'ft_plot_sens.m'), ...
-    fullfile(FieldTripDir, 'plotting', 'ft_plot_vol.m'), ...
+    fullfile(FieldTripDir, 'compat', 'obsolete', 'ft_plot_vol.m'), ...
     fullfile(FieldTripDir, 'specest', 'ft_specest_mtmconvol.m'), ...
     fullfile(FieldTripDir, 'utilities', 'ft_datatype_sens.m'), ...
     fullfile(FieldTripDir, 'external', 'freesurfer', 'load_nifti.m'), ...
@@ -119,6 +119,7 @@ needFunc = {
     fullfile(FieldTripDir, 'external', 'freesurfer', 'vox2ras_tkreg.m'), ...
     fullfile(FieldTripDir, 'external', 'images', 'rgb2hsv.m'), ...
     ...
+    ... % === SPM12 ====
     fullfile(SpmDir, 'spm.m'), ...
     fullfile(SpmDir, 'spm_affine_priors.m'), ...
     fullfile(SpmDir, 'spm_bsplinc.m'), ...
@@ -240,13 +241,23 @@ extraFiles = {...
     fullfile(SpmDir, 'toolbox', 'OldNorm', 'T1.nii'), ...       % For ft_volumesegment
 };
 
+% Detect missing functions
+iMissing = find(~cellfun(@(c)exist(c,'file'), needFunc));
+if iMissing
+    for i = 1:length(iMissing)
+        disp(['SPMTRIP> ERROR: Missing function: ', needFunc{iMissing(i)}]);
+    end
+    error('Missing dependent functions.');
+end
+
+
 % ===== SET PATH =====
+tDepend = tic;
 % Path spmtrip
 warning off
-rmpath(genpath(IncludeDir));
+rmpath(genpath(OutputDir));
 warning on
 % Initalize FieldTrip
-tic;
 addpath(FieldTripDir);
 ft_defaults;
 if ~exist('contains', 'builtin')
@@ -267,38 +278,25 @@ addpath(fullfile(SpmDir, 'toolbox', 'OldNorm'));
 addpath(fullfile(SpmDir, 'toolbox', 'OldSeg'));
 addpath(fullfile(SpmDir, 'toolbox', 'SRender'));
 addpath(fullfile(SpmDir, 'toolbox', 'Shoot'));
-
-
-% ===== FILTER LIST =====
-% Detect missing functions
-iMissing = find(~cellfun(@(c)exist(c,'file'), needFunc));
-if iMissing
-    for i = 1:length(iMissing)
-        disp(['ERROR: Missing function: ', needFunc{iMissing(i)}]);
-    end
-    return;
-end
-
-% Destination folder (empty existing)
-if isdir(IncludeDir)
-    rmdir(IncludeDir, 's');
+% Empty destination folder
+if isdir(OutputDir)
+    rmdir(OutputDir, 's');
 end
 pause(0.2);
-mkdir(IncludeDir);
-% mkdir(PrivateDir);
+mkdir(OutputDir);
 
+
+% ===== GET DEPENDENCIES =====
 % Get all dependencies
-disp('Building dependendy list...');
+disp('SPMTRIP> Building dependendy list...');
 listDep = matlab.codetools.requiredFilesAndProducts(needFunc);
 
 % Remove everything not coming from the SPM or FieldTrip folder
 iExclude = find(cellfun(@(c)isempty(strfind(c,FieldTripDir)), listDep) & cellfun(@(c)isempty(strfind(c,SpmDir)), listDep));
 listDep(iExclude) = [];
-
 % Remove all the classes
 iClass = find(~cellfun(@(c)isempty(strfind(c, '@')), listDep));
 listDep(iClass) = [];
-
 % Add all the 64bit versions of all the included mex-files
 iMex = find(~cellfun(@(c)isempty(strfind(c, '.mexw64')), listDep));
 for i = 1:length(iMex)
@@ -309,49 +307,47 @@ for i = 1:length(iMex)
         end
     end
 end
-
 % Add extra data files
 listDep = {listDep{:}, extraFiles{:}};
-
 % Make sure the list contains unique files
 listDep = unique(listDep);
 
 
 % ===== COPY FILES =====
-disp('Copying files...');
+disp('SPMTRIP> Copying files...');
 % Copy the FieldTrip class folders entirely
 for className = {'@config'}
-    system(['xcopy "' fullfile(FieldTripDir, className{1}), '" "', fullfile(IncludeDir, className{1}), '" /s /e /y /q /i']);
+    system(['xcopy "' fullfile(FieldTripDir, className{1}), '" "', fullfile(OutputDir, className{1}), '" /s /e /y /q /i']);
 end
 % Copy the SPM class folders entirely
 for className = {'@file_array', '@gifti', '@meeg', '@nifti', '@xmltree'}
-    system(['xcopy "' fullfile(SpmDir, className{1}), '" "', fullfile(IncludeDir, className{1}), '" /s /e /y /q /i']);
+    system(['xcopy "' fullfile(SpmDir, className{1}), '" "', fullfile(OutputDir, className{1}), '" /s /e /y /q /i']);
 end
 % Copy SPM matlabbatch
-system(['xcopy "' fullfile(SpmDir, 'config'), '" "', fullfile(IncludeDir, 'config'), '" /s /e /y /q /i']);
-system(['xcopy "' fullfile(SpmDir, 'matlabbatch'), '" "', fullfile(IncludeDir, 'matlabbatch'), '" /s /e /y /q /i']);
-system(['xcopy "' fullfile(SpmDir, 'toolbox', 'DAiSS'), '" "', fullfile(IncludeDir, 'toolbox', 'DAiSS'), '" /s /e /y /q /i']);
-system(['xcopy "' fullfile(SpmDir, 'toolbox', 'TSSS'), '" "', fullfile(IncludeDir, 'toolbox', 'TSSS'), '" /s /e /y /q /i']);
+system(['xcopy "' fullfile(SpmDir, 'config'), '" "', fullfile(OutputDir, 'config'), '" /s /e /y /q /i']);
+system(['xcopy "' fullfile(SpmDir, 'matlabbatch'), '" "', fullfile(OutputDir, 'matlabbatch'), '" /s /e /y /q /i']);
+system(['xcopy "' fullfile(SpmDir, 'toolbox', 'DAiSS'), '" "', fullfile(OutputDir, 'toolbox', 'DAiSS'), '" /s /e /y /q /i']);
+system(['xcopy "' fullfile(SpmDir, 'toolbox', 'TSSS'), '" "', fullfile(OutputDir, 'toolbox', 'TSSS'), '" /s /e /y /q /i']);
 % Copy all the dependency files
 for i = 1:length(listDep)
     % If file not found: ignore
     if ~file_exist(listDep{i})
-        disp(['File not found: ' listDep{i}]);
+        disp(['SPMTRIP> File not found: ' listDep{i}]);
         continue;
     end
     % If file shadows a Matlab builtin function: skip
     [fPath, fBase, fExt] = fileparts(listDep{i});
     if exist(fBase, 'builtin')
-        disp(['Removed (Matlab builtin): ' listDep{i}]);
+        disp(['SPMTRIP> Removed (Matlab builtin): ' listDep{i}]);
         continue;
     end
     % Get source subdirectory
     srcSubdir = strrep(fPath, FieldTripDir, '');
     srcSubdir = strrep(srcSubdir, SpmDir, '');
     if ~isempty(srcSubdir)
-        destDir = fullfile(IncludeDir, srcSubdir(2:end));
+        destDir = fullfile(OutputDir, srcSubdir(2:end));
     else
-        destDir = IncludeDir;
+        destDir = OutputDir;
     end
     if ~isdir(destDir)
         mkdir(destDir);
@@ -386,14 +382,11 @@ for i = 1:length(listDep)
     end
 end
 
-% Print list of input directories
-disp([10 'Add to bst_javabuilder_2015b_spm.prj:']);
-dirList = str_split(genpath(IncludeDir), pathsep);
-for i = 1:length(dirList)
-    disp(['      <file>' dirList{i} '</file>']);
+% Print elapsed time
+stopTime = toc(tDepend);
+if (stopTime > 60)
+    disp(sprintf('SPMTRIP> Done in %dmin\n', round(stopTime/60)));
+else
+    fprintf('SPMTRIP> Done in %ds\n\n', round(stopTime));
 end
-
-
-toc
-
 
