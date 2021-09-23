@@ -142,7 +142,8 @@ end
 
 
 %% ===== EMPTY TEMPORARY DIRECTORY =====
-gui_brainstorm('EmptyTempFolder');
+% gui_brainstorm('EmptyTempFolder');
+% Execute when closing instead, to avoid conflicts
 
 
 %% ===== EMPTY REPORTS DIRECTORY =====
