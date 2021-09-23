@@ -4051,14 +4051,16 @@ function PlotScouts(iScouts, hFigSel)
         return;
     end
     % Get anatomy file
-    sFile    = db_get('SurfaceFile', sSurf.FileName, 'Subject');
-    sSubject = db_get('Subject', sFile.Subject, 'iAnatomy');    
+    sqlConn = sql_connect();
+    sAnatomyFile = db_get(sqlConn, 'AnatomyFile', sSurf.FileName, 'Subject');
+    sSubject     = db_get(sqlConn, 'Subject', sAnatomyFile.Subject, 'iAnatomy');    
     % Volume scouts: Get number of points for this atlas
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     isStructAtlas = ismember(sAtlas.Name, {'Structures', 'Source model'});
     % Get cortex + anatomy
-    sFile = db_get('AnatomyFile', sSubject.iAnatomy, 'FileName');
-    SurfaceFiles = {sSurf.FileName, sFile.FileName};
+    sAnatomyFile = db_get(sqlConn, 'AnatomyFile', sSubject.iAnatomy, 'FileName');
+    sql_close(sqlConn);
+    SurfaceFiles = {sSurf.FileName, sAnatomyFile.FileName};
     % Get all the figures concerned with Scout cortex and/or MRI surface
     [hFigures, iFigures, iDataSets, iSurfaces] = bst_figures('GetFigureWithSurface', SurfaceFiles);
     if isempty(hFigures)
