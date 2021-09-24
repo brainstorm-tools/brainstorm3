@@ -1622,7 +1622,7 @@ function status = CloneProble(bstDir)
         try
             % Send connect request
             header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
-            options = matlab.net.http.HTTPOptions();
+            options = matlab.net.http.HTTPOptions('CertificateFilename','');
             request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',urlencode(res{1}),'&mdp=',urlencode(res{2})]);
             resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
             % Check server response
