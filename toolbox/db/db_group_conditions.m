@@ -8,7 +8,7 @@ function db_group_conditions( ConditionsPaths, newConditionName )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -156,7 +156,7 @@ for iSubj = 1:length(uniqueSubjectFiles)
             % Build full source filename
             srcFilename = bst_fullfile(dirStudy, studyFiles(iFile).name);
             % Move file physically
-            movefile(srcFilename, destFilename);
+            file_move(srcFilename, destFilename);
         end
     end
 end

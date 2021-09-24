@@ -11,7 +11,8 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 %     - MriAlpha         : Transparency of MRI slices
 %     - MriColormap      : Colormap to use to display the slices
 %    (optional)
-%     - OverlayCube      : 3d-volume (same size than MRI) with specific data values
+%     - OverlayCube      : 3d-volume insensity volume (same size than MRI) with specific data values
+%                          4d-volume RGB volume [MRIsize,3], with RGB colors between 0 and 255
 %     - OverlayThreshold : Intensity threshold above which a voxel is overlayed in the MRI slices.
 %     - OverlayAlpha     : Overlayed voxels transparency 
 %     - OverlayColormap  : Colormap to use to display the overlayed data
@@ -30,7 +31,7 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -44,8 +45,9 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2006-2018
+% Authors: Francois Tadel, 2006-2020
 
+global GlobalData;
 
 %% ===== INITIALIZATION =====
 isOverlay = ~isempty(OPTIONS.OverlayCube);
@@ -70,7 +72,12 @@ switch (FigureId.Type)
         Handles = bst_figures('GetFigureHandles', hFig);
         hTarget = [Handles.imgs_mri, Handles.imgc_mri, Handles.imga_mri];
 end
-
+% Get index for 4th dimension ("time")
+if ~isempty(GlobalData.UserTimeWindow.NumberOfSamples) && (size(OPTIONS.sMri.Cube, 4) == GlobalData.UserTimeWindow.NumberOfSamples) && (GlobalData.UserTimeWindow.CurrentTime == round(GlobalData.UserTimeWindow.CurrentTime))
+    i4 = GlobalData.UserTimeWindow.CurrentTime;
+else
+    i4 = 1;
+end
 
 
 %% ===== DISPLAY SLICES =====
@@ -85,7 +92,7 @@ for iCoord = 1:3
     if OPTIONS.isMipAnatomy 
         % If the maximum is not yet computed: compute it
         if isempty(OPTIONS.MipAnatomy{iCoord})
-            sliceMri = double(mri_getslice(OPTIONS.sMri.Cube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
+            sliceMri = double(mri_getslice(OPTIONS.sMri.Cube(:,:,:,i4), OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
             OutputOptions.MipAnatomy{iCoord} = sliceMri;
         % Else: use the previously computed maximum
         else
@@ -93,30 +100,38 @@ for iCoord = 1:3
         end
     % Else: just extract a slice from the volume
     else
-        sliceMri = double(mri_getslice(OPTIONS.sMri.Cube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
+        sliceMri = double(mri_getslice(OPTIONS.sMri.Cube(:,:,:,i4), OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipAnatomy)');
     end
     
     % === GET OVERLAY SLICE ===
     % Get Overlay slice
+    sliceOverlayRGB = [];
     if isOverlay
-        MriOptions = bst_get('MriOptions');
-        % If no data (if overlaying a mask of surface, for instance) => no smoothing
-        if isequal(OPTIONS.OverlayBounds, [-1 1]) || isequal(OPTIONS.OverlayBounds, [-0.5, 0.5])
-            MriOptions.OverlaySmooth = [];
-        end
-        % If maximum intensity power required
-        if OPTIONS.isMipFunctional 
-            % If the maximum is not yet computed: compute it
-            if isempty(OPTIONS.MipFunctional{iCoord})
-                sliceOverlay = double(mri_getslice(OPTIONS.OverlayCube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipFunctional, MriOptions.OverlaySmooth, OPTIONS.sMri.Voxsize)');
-                OutputOptions.MipFunctional{iCoord} = sliceOverlay;
-            % Else: use the previously computed maximum
-            else
-                sliceOverlay = OPTIONS.MipFunctional{iCoord};
-            end
-        % Else: just extract a slice from the volume
+        % Overlay: RGB
+        if (size(OPTIONS.OverlayCube,4) > 1)
+            sliceOverlayRGB = double(mri_getslice(OPTIONS.OverlayCube, OPTIONS.cutsCoords(iCoord), iCoord)) ./ 255;
+            sliceOverlayRGB = permute(sliceOverlayRGB, [2 1 3]);
+        % Overlay: intensity values
         else
-            sliceOverlay = double(mri_getslice(OPTIONS.OverlayCube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipFunctional, MriOptions.OverlaySmooth, OPTIONS.sMri.Voxsize)');
+            MriOptions = bst_get('MriOptions');
+            % If no data (if overlaying a mask of surface, for instance) => no smoothing
+            if isequal(OPTIONS.OverlayBounds, [-1 1]) || isequal(OPTIONS.OverlayBounds, [-0.5, 0.5])
+                MriOptions.OverlaySmooth = [];
+            end
+            % If maximum intensity power required
+            if OPTIONS.isMipFunctional 
+                % If the maximum is not yet computed: compute it
+                if isempty(OPTIONS.MipFunctional{iCoord})
+                    sliceOverlay = double(mri_getslice(OPTIONS.OverlayCube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipFunctional, MriOptions.OverlaySmooth, OPTIONS.sMri.Voxsize)');
+                    OutputOptions.MipFunctional{iCoord} = sliceOverlay;
+                % Else: use the previously computed maximum
+                else
+                    sliceOverlay = OPTIONS.MipFunctional{iCoord};
+                end
+            % Else: just extract a slice from the volume
+            else
+                sliceOverlay = double(mri_getslice(OPTIONS.OverlayCube, OPTIONS.cutsCoords(iCoord), iCoord, OPTIONS.isMipFunctional, MriOptions.OverlaySmooth, OPTIONS.sMri.Voxsize)');
+            end
         end
     else
         sliceOverlay = [];
@@ -138,30 +153,36 @@ for iCoord = 1:3
 
     % === Display overlay slice ===
     if isOverlay
-        % Apply colormap to overlay slice
-        cmapOverlaySlice = ApplyColormap(sliceOverlay, OPTIONS.OverlayColormap, OPTIONS.OverlayBounds, OPTIONS.OverlayIndexed);
-        % Build overlay mask
-        overlayMask = (sliceOverlay ~= 0);
-        % Threshold data values
-        if ~OPTIONS.OverlayAbsolute && (OPTIONS.OverlayBounds(1) == -OPTIONS.OverlayBounds(2))
-            overlayMask(abs(sliceOverlay) < OPTIONS.OverlayThreshold * max(abs(OPTIONS.OverlayBounds))) = 0;
-        elseif (OPTIONS.OverlayBounds(2) <= 0)
-            overlayMask(sliceOverlay > OPTIONS.OverlayBounds(2)) = 0;
+        % Slice is already RGB 
+        if ~isempty(sliceOverlayRGB)
+            % Mask is everything that is not (0,0,0)
+            overlayMask = any(sliceOverlayRGB ~= 0, 3);
+        % Slice needs to be converted from intensity to RGB
         else
-            overlayMask((sliceOverlay < OPTIONS.OverlayBounds(1) + (OPTIONS.OverlayBounds(2)-OPTIONS.OverlayBounds(1)) * OPTIONS.OverlayThreshold)) = 0;
-        end
-
-        % Theshold objects sizes
-        if (OPTIONS.OverlaySizeThreshold > 1)
-            [maskLabel, num, sz] = dg_label(overlayMask, 8);
-            overlayMask(sz < 3 * OPTIONS.OverlaySizeThreshold) = 0;
+            % Apply colormap to overlay slice
+            sliceOverlayRGB = ApplyColormap(sliceOverlay, OPTIONS.OverlayColormap, OPTIONS.OverlayBounds, OPTIONS.OverlayIndexed);
+            % Build overlay mask
+            overlayMask = (sliceOverlay ~= 0);
+            % Threshold data values
+            if ~OPTIONS.OverlayAbsolute && (OPTIONS.OverlayBounds(1) == -OPTIONS.OverlayBounds(2))
+                overlayMask(abs(sliceOverlay) < OPTIONS.OverlayThreshold * max(abs(OPTIONS.OverlayBounds))) = 0;
+            elseif (OPTIONS.OverlayBounds(2) <= 0)
+                overlayMask(sliceOverlay > OPTIONS.OverlayBounds(2)) = 0;
+            else
+                overlayMask((sliceOverlay < OPTIONS.OverlayBounds(1) + (OPTIONS.OverlayBounds(2)-OPTIONS.OverlayBounds(1)) * OPTIONS.OverlayThreshold)) = 0;
+            end
+            % Theshold objects sizes
+            if (OPTIONS.OverlaySizeThreshold > 1)
+                [maskLabel, num, sz] = dg_label(overlayMask, 8);
+                overlayMask(sz < 3 * OPTIONS.OverlaySizeThreshold) = 0;
+            end
         end
         % Apply real transparency value
         overlayMask = double(overlayMask) * (1 - OPTIONS.OverlayAlpha);
         % Draw overlay slice over MRI slice
-        cmapSlice(:,:,1) = cmapSlice(:,:,1) .* (1 - overlayMask) + cmapOverlaySlice(:,:,1) .* overlayMask;
-        cmapSlice(:,:,2) = cmapSlice(:,:,2) .* (1 - overlayMask) + cmapOverlaySlice(:,:,2) .* overlayMask;
-        cmapSlice(:,:,3) = cmapSlice(:,:,3) .* (1 - overlayMask) + cmapOverlaySlice(:,:,3) .* overlayMask;
+        cmapSlice(:,:,1) = cmapSlice(:,:,1) .* (1 - overlayMask) + sliceOverlayRGB(:,:,1) .* overlayMask;
+        cmapSlice(:,:,2) = cmapSlice(:,:,2) .* (1 - overlayMask) + sliceOverlayRGB(:,:,2) .* overlayMask;
+        cmapSlice(:,:,3) = cmapSlice(:,:,3) .* (1 - overlayMask) + sliceOverlayRGB(:,:,3) .* overlayMask;
     end
     
     % Display function depends on figure type
@@ -227,12 +248,12 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
 end
 
 %% ===== PLOT SLICES IN 3D ======
-function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri, AlphaMap, UpsampleImage)
+function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dim, sMri, AlphaMap, UpsampleImage)
     % Get locations of the slice
     nbPts = 50;
     baseVect = linspace(0,1,nbPts);
     mriSize = size(sMri.Cube);
-    switch(dimension)
+    switch (dim)
         case 1
             voxX = ones(nbPts) .* sliceLocation; 
             voxY = meshgrid(baseVect)  .* mriSize(2);   
@@ -272,7 +293,7 @@ function hCut = PlotSlice3DViz(hAxes, cmapSlice, sliceLocation, dimension, sMri,
     end
     
     % === PLOT SURFACE ===
-    tag = sprintf('MriCut%d', dimension);
+    tag = sprintf('MriCut%d', dim);
     % Delete previous cut
     delete(findobj(hAxes, '-depth', 1, 'Tag', tag));
     % Plot new surface  
@@ -299,4 +320,7 @@ function hCut = PlotSliceMriViewer(hImg, cmapSlice)
     set(hImg, 'CData', cmapSlice);
     hCut = hImg;
 end
+
+
+
 

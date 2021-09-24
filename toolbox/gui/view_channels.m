@@ -12,7 +12,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2019
 
 global GlobalData;
 % Parse inputs
@@ -113,7 +113,23 @@ else
 end
 
 % ===== LOAD CHANNEL FILE IF NOT DONE =====
-if isempty(GlobalData.DataSet(iDS).ChannelFile) || isempty(GlobalData.DataSet(iDS).Channel)
+% Also check if we are processing the same channel file, which can be
+% different when doing real-time head position alignment (2 helmets from
+% different datasets in the same figure).
+if isempty(GlobalData.DataSet(iDS).ChannelFile) || ~strcmpi(GlobalData.DataSet(iDS).ChannelFile, ChannelFile) || ...
+   (~GlobalData.DataSet(iDS).isChannelModified && isempty(GlobalData.DataSet(iDS).Channel))
+    % Check if this channel file is already loaded and modified in another DataSet
+    iDSother = setdiff(1:length(GlobalData.DataSet), iDS);
+    if ~isempty(iDSother) && any([GlobalData.DataSet(iDSother).isChannelModified])
+        % Ask user
+        isSave = java_dialog('confirm', ...
+            ['This channel file is being edited in another window.' 10 ...
+             'Save the modifications so the new figure can show updated positions?'], 'Save modifications');
+        % Force saving of the modifications
+        if isSave
+            bst_memory('SaveChannelFile', iDSother(1));
+        end
+    end
     % Load channel file
     ChannelMat = in_bst_channel(ChannelFile);
     % Copy information in memory
@@ -148,12 +164,16 @@ if isempty(hFig)
     setappdata(hFig, 'SubjectFile',  SubjectFile);
 else
     isNewFig = 0;
+    % Get existing list of selected channels
+    if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels)
+        selChannels = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
+    end
 end
 % Make sure that the Modality is saved
 GlobalData.DataSet(iDS).Figure(iFig).Id.Modality = Modality;
 % Set application data
 setappdata(hFig, 'DataFile', '');
-setappdata(hFig, 'AllChannelsDisplayed', 1);
+setappdata(hFig, 'isSensorsOnly', 1);
 
 % ===== DISPLAY SENSORS =====
 % Update figure selection
@@ -167,7 +187,7 @@ if isempty(selChannels)
     if ~isempty(iNoLoc)
         selChannels = setdiff(selChannels, iNoLoc);
     end
-    if isempty(selChannels)
+    if isempty(selChannels) && ~isempty(iNoLoc)
         error('None of the channels have positions defined.');
     end
 end
@@ -181,7 +201,7 @@ if is3DElectrodes
     end
 elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'})
     figure_3d('PlotCoils', hFig, Modality, isMarkers);
-elseif strcmpi(Modality, 'NIRS-BRS')
+elseif ismember(lower(Modality), {'nirs','nirs-brs'})
     figure_3d('PlotNirsCap', hFig, isMarkers);
 else
     isMesh = ~isequal(Modality, 'SEEG');

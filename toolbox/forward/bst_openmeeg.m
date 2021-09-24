@@ -2,8 +2,6 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % BST_OPENMEEG: Call OpenMEEG to compute a BEM solution for Brainstorm.
 %
 % USAGE:  [Gain, errMsg] = bst_openmeeg(OPTIONS)
-%            OpenmeegDir = bst_openmeeg('update')
-%            OpenmeegDir = bst_openmeeg('download')
 %
 % INPUT: 
 %     - OPTIONS: structure with the following fields
@@ -26,7 +24,7 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,148 +38,48 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel & Alexandre Gramfort, 2011-2013
+% Authors: Francois Tadel & Alexandre Gramfort, 2011-2021
 
 
 %% ===== PARSE INPUTS =====
-% Is trying to update the program
-isUpdate   = isequal(OPTIONS, 'update');
-isDownload = isequal(OPTIONS, 'download');
+
 % Intialize variables
 Gain = [];
 errMsg = '';
 % Save current folder
 curdir = pwd;
 
-
-%% ===== DOWNLOAD OPENMEEG =====
-% Get openmeeg folder
-osType = bst_get('OsType', 0);
-OpenmeegDir = bst_fullfile(bst_get('BrainstormUserDir'), 'openmeeg', osType);
-urlFile = bst_fullfile(OpenmeegDir, 'url');
-% Force manual update: select tar.gz file
-if isUpdate
-    % Display information message
-    java_dialog('msgbox', 'Please select the package (.tar.gz) download from the OpenMEEG website.', 'Install OpenMEEG');
-    % Ask for file to install
-    tgzFile = java_getfile('open', 'Select OpenMEEG package', '', 'single', 'files', ...
-                           {{'.gz','.tgz'}, 'OpenMEEG package (*.tar.gz)', 'TGZ'}, 1);
-    if isempty(tgzFile)
-        return
-    end
-else
-    tgzFile = [];
-end
-% Get default url
-switch(osType)
-    case 'linux32',  url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-Linux32.i386-gcc-4.3.2-static.tar.gz';
-    case 'linux64',  url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-Linux.tar.gz';
-    case 'mac32',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-MacOSX.tar.gz';
-    case 'mac64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-MacOSX.tar.gz';
-    case 'sol64',    error('Solaris system is not supported');
-    case 'win32',    url = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
-    case 'win64',    url = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.0-Win64.tar.gz';
-    otherwise,       error('OpenMEEG software does not exist for your operating system.');
-end
-% Read the previous download url information
-if isdir(OpenmeegDir) && file_exist(urlFile)
-    fid = fopen(urlFile, 'r');
-    prevUrl = fread(fid, [1 Inf], '*char');
-    fclose(fid);
-else
-    prevUrl = '';
-end
-% If binary file doesnt exist: download
-if ~isdir(OpenmeegDir) || isempty(dir(bst_fullfile(OpenmeegDir, 'om_gain*'))) || ~strcmpi(prevUrl, url) || isUpdate
-    % If folder exists: delete
-    if isdir(OpenmeegDir)
-        file_delete(OpenmeegDir, 1, 3);
-    end
-    % Create folder
-    res = mkdir(OpenmeegDir);
-    if ~res
-        errMsg = ['Error: Cannot create folder' 10 OpenmeegDir];
-        return
-    end
-    % Download file from URL if not done already by user
-    if isempty(tgzFile)
-        % Message
-        if ~isDownload && OPTIONS.Interactive
-            isOk = java_dialog('confirm', ...
-                ['OpenMEEG software is not installed on your computer (or out-of-date).' 10 10 ...
-                 'Download and the latest version?'], 'OpenMEEG');
-            if ~isOk
-                return;
-            end
-        end
-        % Download file
-        tgzFile = bst_fullfile(OpenmeegDir, 'openmeeg.tar.gz');
-        errMsg = gui_brainstorm('DownloadFile', url, tgzFile, 'OpenMEEG update');
-        % If file was not downloaded correctly
-        if ~isempty(errMsg)
-            errMsg = ['Impossible to download OpenMEEG:' 10 errMsg];
-            return;
-        end
-    % Copy TGZ file to download folder
-    else
-        origTgzFile = tgzFile;
-        [fPath, fName, fExt] = bst_fileparts(origTgzFile);
-        tgzFile = bst_fullfile(OpenmeegDir, [fName, fExt]);
-        copyfile(origTgzFile, tgzFile);
-    end
-    % Display again progress bar
-    bst_progress('start', 'OpenMEEG', 'Installing OpenMEEG...');
-    % Unzip file
-    if ispc
-        untar(tgzFile, OpenmeegDir);
-    else
-        cd(fileparts(tgzFile));
-        system(['tar -xf ' tgzFile]);
-        cd(curdir);
-    end
-    % Get parent folder of the unzipped files
-    diropen = dir(fullfile(OpenmeegDir, 'OpenMEEG*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    unzipDir = bst_fullfile(OpenmeegDir, diropen(idir).name);
-    % Move all files to OpenmeegDir
-    movefile(bst_fullfile(unzipDir, 'bin', '*'), OpenmeegDir);
-    movefile(bst_fullfile(unzipDir, 'lib', '*'), OpenmeegDir);
-    try
-        movefile(bst_fullfile(unzipDir, 'doc', '*'), OpenmeegDir);
-    catch
-    end
-    % Delete files
-    file_delete({tgzFile, unzipDir}, 1, 3);
-    % Save download URL in OpenMEEG folder
-    fid = fopen(urlFile, 'w');
-    fwrite(fid, url);
-    fclose(fid);
-end
-% If only updating or downloading: exit
-if isUpdate || isDownload
-    Gain = OpenmeegDir;
-    bst_progress('stop');
+%% ===== SET UP OPENMEEG =====
+% Install/Load OpenMEEG
+[isOk, errMsg, PlugDesc] = bst_plugin('Install', 'openmeeg', OPTIONS.Interactive);
+if ~isOk
     return;
 end
-
-
-%% ===== OPENMEEG LIBRARY PATH =====
 % Progress bar
 bst_progress('text', 'OpenMEEG', 'OpenMEEG: Initialization...');
-bst_progress('setimage', 'logo_splash_openmeeg.gif');
-bst_progress('setlink', 'http://openmeeg.github.io');
-% Library path
+bst_plugin('SetProgressLogo', 'openmeeg');
+
+% Binary path
+OpenmeegDir = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder);
+binDir = bst_fullfile(OpenmeegDir, 'bin');
+% Library path: Linux and MacOS
 if ~ispc
-    if ismember(osType, {'linux32', 'linux64', 'sol64'})
-        varname = 'LD_LIBRARY_PATH';
-    else
+    % Get variable name
+    if strcmpi(bst_get('OsType'), 'mac64')
         varname = 'DYLD_LIBRARY_PATH';
+    else
+        varname = 'LD_LIBRARY_PATH';
     end
+    libDir = bst_fullfile(OpenmeegDir, 'lib');
+    % Get current library path
     libpath = getenv(varname);
-    if ~isempty(libpath)
-        libpath = [libpath ':'];
+    % If OpenMEEG is not already in the env variable
+    if isempty(strfind(libpath, libDir))
+        if ~isempty(libpath)
+            libpath = [libpath ':'];
+        end
+        setenv(varname, [libpath, OpenmeegDir, ':', libDir]);
     end
-    setenv(varname, [libpath  OpenmeegDir]);
 end
 % Set number of cores used
 try
@@ -240,7 +138,50 @@ for i = 1:length(OPTIONS.BemFiles)
     % Output MESH file
     trifiles{i} = bst_fullfile(TmpDir, sprintf('openmeeg_%d.tri', i));
     % Write MESH in tmp folder
-    [nVert(i),nFaces(i)] = out_tess_tri(OPTIONS.BemFiles{i}, trifiles{i}, 1);
+    [nVert(i), nFaces(i), TessMat] = out_tess_tri(OPTIONS.BemFiles{i}, trifiles{i}, 1);
+    % Center all the points on the center of the envelope
+    bfs_center = bst_bfs(TessMat.Vertices);
+    vDipoles = bst_bsxfun(@minus, OPTIONS.GridLoc, bfs_center(:)');
+    vLayer = bst_bsxfun(@minus, TessMat.Vertices, bfs_center(:)');
+    % Check if any dipole is outside this BEM layer
+    iDipOutside = find(~inpolyhd(vDipoles, vLayer, TessMat.Faces));
+    if ~isempty(iDipOutside)
+        errMsg = sprintf(['WARNING: %d dipole(s) outside the BEM layer "%s".\n' ...
+                          'The leadfield for these dipoles could be incorrect.\n\n'], length(iDipOutside), OPTIONS.BemNames{i});
+        if strcmpi(OPTIONS.HeadModelType, 'surface')
+            errMsg = [errMsg, 'First, try to recompute BEM surfaces with more vertices.' 10 ...
+                'Otherwise, right-click on the cortex file > Force inside skull.' 10 ...
+                'See the OpenMEEG BEM tutorial, section "Warning: dipoles outside".'];
+        end
+        disp([10 errMsg 10]);
+        if OPTIONS.Interactive
+            isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
+            if ~isConfirm
+                errMsg = [];
+                return;
+            end
+        end
+    end
+    % Check if any SEEG contact is outside this BEM layer
+    if isSeeg
+        iIntra = OPTIONS.iSeeg;
+        chLoc = bst_bsxfun(@minus, [OPTIONS.Channel(iIntra).Loc]', bfs_center(:)');
+        iChanOutside = iIntra(~inpolyhd(chLoc, vLayer, TessMat.Faces));
+        if ~isempty(iChanOutside)
+            errMsg = sprintf(['WARNING: %d SEEG contact(s) outside the BEM layer "%s" (see list in command window).\n' ...
+                              'The leadfield for these sensors could be incorrect, or OpenMEEG could crash.\n' ...
+                              'Edit the channel file and change their type to exclude them.'], length(iChanOutside), OPTIONS.BemNames{i});
+            disp([10 errMsg 10]);
+            disp(['Sensors outside "' OPTIONS.BemNames{i} '": ' sprintf('%s ', OPTIONS.Channel(iChanOutside).Name), 10]);
+            if OPTIONS.Interactive
+                isConfirm = java_dialog('confirm', [errMsg 10 10 'Do you want to run OpenMEEG anyway?'], 'OpenMEEG BEM');
+                if ~isConfirm
+                    errMsg = [];
+                    return;
+                end
+            end
+        end
+    end
 end
 % Write geometry file
 om_write_geom(geomfile, trifiles, OPTIONS.BemNames);
@@ -250,7 +191,7 @@ om_write_cond(condfile, OPTIONS.BemCond, OPTIONS.BemNames);
 dipdata = [kron(OPTIONS.GridLoc,ones(3,1)), kron(ones(nv,1), eye(3))];
 save(dipfile, 'dipdata', '-ASCII', '-double');  
 % Go to openmeeg folder
-cd(OpenmeegDir);
+cd(binDir);
 
 
 %% ===== GET EXISTING HM FILE =====
@@ -354,7 +295,7 @@ if isMeg
     for iChan = 1:length(OPTIONS.iMeg)
         sChan = OPTIONS.Channel(OPTIONS.iMeg(iChan));
         for iInteg = 1:size(sChan.Loc, 2)
-            fprintf(fid, '%d %g %g %g %g %g %g %g %g', iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg));
+            fprintf(fid, 'MEG%03d %g %g %g %g %g %g %g %g', iChan, sChan.Loc(:,iInteg)', sChan.Orient(:,iInteg)', sChan.Weight(iInteg));
             fprintf(fid, '\n');
         end
     end
@@ -479,7 +420,7 @@ if ~OPTIONS.isAdjoint && ~isempty(hmfile)
 end
 file_delete(cat(2, trifiles, allfiles), 1);
 % Remove OpenMEEG image
-bst_progress('removeimage');
+bst_plugin('SetProgressLogo', []);
 
 
 
@@ -503,8 +444,8 @@ bst_progress('removeimage');
             % Detail error
             errMsg = ['OpenMEEG call: ',  strrep(strCall, ' "', [10 '      "']),  10 10 ...
                       'OpenMEEG error #' num2str(status) ': ' 10 result 10 10 ...
-                      'Many OpenMEEG crashes are due to a lack of memory.' 10 ...
-                      'Reduce the number of vertices on each BEM layer and try again.'];
+                      'For help with OpenMEEG errors, please refer to the online tutorial:' 10 ...
+                      'https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem#Errors'];
             % Check status for standard errors
             if (status == -1073741515)
                 errMsg = [errMsg 10 'This error is probably due to incompatible binaries or missing libraries.' 10 ...

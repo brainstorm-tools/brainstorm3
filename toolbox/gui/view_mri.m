@@ -1,7 +1,7 @@
-function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
+function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 % VIEW_MRI: Display a MRI in a MriViewer figure.
 %
-% USAGE:  view_mri(MriFile, OverlayFile, Modality)
+% USAGE:  view_mri(MriFile, OverlayFile, Modality, isNewFig=0)
 %         view_mri(MriFile, 'EditMri')
 %         view_mri(MriFile, 'EditFiducials')
 %
@@ -11,6 +11,8 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 %     - Modality        : Type of sensors to interpolate (if the overlay file is a data file)
 %     - 'EditMri'       : Show the control to modify the MRI and the fiducials
 %     - 'EditFiducials' : Show the control to modify the fiducials only
+%     - isNewFig        : If 1, forces new figure creation (do not re-use a previously created figure)
+%                         If 2, creates new figure only if there are already sensors loaded in the existing figure
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the figure that was created or updated
@@ -22,7 +24,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,11 +38,14 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2021
 
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
+if (nargin < 4) || isempty(isNewFig)
+    isNewFig = 0;
+end
 if (nargin < 3) || isempty(Modality)
     Modality = '';
 end
@@ -131,14 +136,24 @@ end
 
 %% ===== CREATE FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
-[hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
-isNewFig = 0;
+switch isNewFig
+    case 0   % Always reuse figure
+        [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
+    case 1   % Always create new figure
+        hFig = [];
+    case 2   % Reuse only if no sensors loaded
+        [hFig, iFig, iOldDataSet, iSurface] = bst_figures('GetFigureWithSurface', MriFile, OverlayFile, 'MriViewer', '');
+        if ~isempty(hFig) && ~isempty(GlobalData.DataSet(iOldDataSet).Figure(iFig).SelectedChannels)
+            hFig = [];
+        end
+end
 % Make sure that only one figure was found
 if ~isempty(hFig)
     hFig  = hFig(1);
     iFig  = iFig(1);
     iDS   = iOldDataSet(1);
     iSurface = iSurface(1);
+    isNewFig = 0;
 % Else: Figure was not found
 elseif isempty(hFig)
     % Try to get a default modality from the channel file
@@ -164,9 +179,6 @@ elseif isempty(hFig)
     setappdata(hFig, 'DataFile',     '');
     setappdata(hFig, 'SubjectFile',  SubjectFile);
     setappdata(hFig, 'FigureId',     FigureId);
-    % Add colormap
-    bst_colormaps('AddColormapToFigure', hFig, 'anatomy');
-    
     % Add MRI to the figure
     iSurface = panel_surface('AddSurface', hFig, MriFile);
     if isempty(iSurface)
@@ -174,9 +186,6 @@ elseif isempty(hFig)
     end
     % Get loaded MRI
     sMri = bst_memory('LoadMri', MriFile);
-%     % If is not the primary MRI: do not allow fiducials editing
-%     if (iAnatomy ~= 1)
-%         isEditFiducials = 0;
     % If fiducials not defined: force MRI edition
     if isempty(sMri.SCS) || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || ...
            isempty(sMri.NCS) || ~isfield(sMri.NCS, 'AC')  || ~isfield(sMri.NCS, 'PC')  || ~isfield(sMri.NCS, 'IH') || ...
@@ -187,17 +196,24 @@ elseif isempty(hFig)
 end
 
 
-
 %% ===== DISPLAY MRI =====
 % Add data on the MRI slices 
-if ~isempty(OverlayFile)
-    isOk = panel_surface('SetSurfaceData', hFig, iSurface, OverlayType, OverlayFile, isStat);
+isOverlay = ~isempty(OverlayFile);
+if isOverlay
+    [isOk, TessInfo] = panel_surface('SetSurfaceData', hFig, iSurface, OverlayType, OverlayFile, isStat);
     if ~isOk
         close(hFig);
         return;
     end
 end
-isOverlay = ~isempty(OverlayFile); % && ~strcmpi(OverlayType, 'surface');
+% Try to load an anatomical atlas (if the overlay is not already an atlas)
+if ~isOverlay || isempty(TessInfo.OverlayLabels)
+    figure_mri('SetVolumeAtlas', hFig);
+% If the overlay is an atlas: simply set the atlas name in the figure
+elseif isOverlay && ~isempty(TessInfo.OverlayLabels) && strcmpi(file_gettype(OverlayFile), 'subjectimage') && ~isempty(strfind(OverlayFile, '_volatlas'))
+    [sSubject, iSubject, iAnatomy] = bst_get('MriFile', OverlayFile);
+    setappdata(hFig, 'AnatAtlas', sSubject.Anatomy(iAnatomy).Comment);
+end
 % Configure the operations that are allowed
 figure_mri('SetFigureStatus', hFig, isEditFiducials, isEditVolume, isOverlay, 0, 1);
 
@@ -214,13 +230,6 @@ bst_figures('UpdateFigureName', hFig);
 set(hFig, 'Visible', 'on');
 bst_progress('stop');
 
-% % In compiled mode, it's need to call the resize callback to redraw the controls (WHY???)
-% if exist('isdeployed', 'builtin') && isdeployed
-%     pos = get(hFig, 'Position');
-%     set(hFig, 'Position', pos - [0 0 20 20]);
-%     drawnow;
-%     set(hFig, 'Position', pos);
-% end
 % Select surface tab
 if isNewFig
     gui_brainstorm('SetSelectedTab', 'Surface');

@@ -7,7 +7,7 @@ function varargout = process_corr1n( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_corr1n( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -40,27 +40,18 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
-    % === TITLE
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
-%     % === P-VALUE THRESHOLD
-%     sProcess.options.pthresh.Comment = 'Metric significativity: &nbsp;&nbsp;&nbsp;&nbsp;p&lt;';
-%     sProcess.options.pthresh.Type    = 'value';
-%     sProcess.options.pthresh.Value   = {0.05,'',4};
     % === SCALAR PRODUCT
     sProcess.options.scalarprod.Comment    = 'Compute scalar product instead of correlation<BR>(do not remove average of the signal)';
     sProcess.options.scalarprod.Type       = 'checkbox';
     sProcess.options.scalarprod.Value      = 0;
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 
@@ -80,7 +71,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     
     % Metric options
     OPTIONS.Method     = 'corr';
-    OPTIONS.pThresh    = 0.05;  % sProcess.options.pthresh.Value{1};
+    OPTIONS.pThresh    = 0.05;
     OPTIONS.RemoveMean = ~sProcess.options.scalarprod.Value;
 
     % Compute metric
@@ -95,11 +86,10 @@ end
 %% ===== DEFINE SCOUT OPTIONS =====
 function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     % === TIME WINDOW ===
-    sProcess.options.label1.Comment = '<B><U>Input options</U></B>:';
-    sProcess.options.label1.Type    = 'label';
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
+    sProcess.options.timewindow.Group   = 'input';
     % === FROM: CONNECTIVITY [1xN] ===
     if ~isConnNN
         % === FROM: REFERENCE CHANNELS ===
@@ -107,22 +97,26 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
         sProcess.options.src_channel.Type       = 'channelname';
         sProcess.options.src_channel.Value      = 'name';
         sProcess.options.src_channel.InputTypes = {'data'};
+        sProcess.options.src_channel.Group      = 'input';
         % === FROM: ROW NAME ===
         sProcess.options.src_rowname.Comment    = 'Source rows (names or indices): ';
         sProcess.options.src_rowname.Type       = 'text';
         sProcess.options.src_rowname.Value      = '';
         sProcess.options.src_rowname.InputTypes = {'timefreq', 'matrix'};
+        sProcess.options.src_rowname.Group      = 'input';
     end
     % === TO: SENSOR SELECTION ===
     sProcess.options.dest_sensors.Comment    = 'Sensor types or names (empty=all): ';
     sProcess.options.dest_sensors.Type       = 'text';
     sProcess.options.dest_sensors.Value      = 'MEG, EEG';
     sProcess.options.dest_sensors.InputTypes = {'data'};
+    sProcess.options.dest_sensors.Group      = 'input';
     % === TO: INCLUDE BAD CHANNELS ===
     sProcess.options.includebad.Comment    = 'Include bad channels';
     sProcess.options.includebad.Type       = 'checkbox';
     sProcess.options.includebad.Value      = 1;
     sProcess.options.includebad.InputTypes = {'data'};
+    sProcess.options.includebad.Group      = 'input';
     % === SCOUTS ===
     sProcess.options.scouts.Comment = 'Use scouts';
     if isConnNN
@@ -132,16 +126,19 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     end
     sProcess.options.scouts.Value      = {};
     sProcess.options.scouts.InputTypes = {'results'};
+    sProcess.options.scouts.Group      = 'input';
     % === SCOUT FUNCTION ===
     sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
     sProcess.options.scoutfunc.Type       = 'radio_line';
     sProcess.options.scoutfunc.Value      = 1;
     sProcess.options.scoutfunc.InputTypes = {'results'};
+    sProcess.options.scoutfunc.Group      = 'input';
     % === SCOUT TIME ===
     sProcess.options.scouttime.Comment    = {'Before', 'After', 'When to apply the scout function:'};
     sProcess.options.scouttime.Type       = 'radio_line';
     sProcess.options.scouttime.Value      = 2;
     sProcess.options.scouttime.InputTypes = {'results'};
+    sProcess.options.scouttime.Group      = 'input';
 end
 
 
@@ -152,7 +149,10 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
     % Get process name
     OPTIONS.ProcessName = func2str(sProcess.Function);
     % Connectivity type: [1xN] or [NxN]
-    isConnNN = ismember(OPTIONS.ProcessName, {'process_corr1n', 'process_cohere1n', 'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_corr1n_time', 'process_cohere1n_time', 'process_pte1n'});
+    isConnNN = ismember(OPTIONS.ProcessName, {'process_corr1n', 'process_corr1n_2021', ...
+        'process_cohere1n', 'process_cohere1n_2021', 'process_cohere1n_time', 'process_cohere1n_time_2021', ...
+        'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_corr1n_time', ...
+        'process_pte1n', 'process_aec1n', 'process_henv1n'});
     
     % === TIME WINDOW ===
     if isfield(sProcess.options, 'timewindow') && isfield(sProcess.options.timewindow, 'Value') && iscell(sProcess.options.timewindow.Value) && ~isempty(sProcess.options.timewindow.Value)
@@ -223,17 +223,22 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
     end
     
     % === OUTPUT ===
-    % Output mode
-    strOutput = lower(sProcess.options.outputmode.Comment{sProcess.options.outputmode.Value});
-    if ~isempty(strfind(strOutput, 'average'))
-        OPTIONS.OutputMode = 'avg';
-    elseif ~isempty(strfind(strOutput, 'concatenate'))
-        OPTIONS.OutputMode = 'concat';
+    % Output mode: 'radio_label' option (2021)
+    if ischar(sProcess.options.outputmode.Value)
+        OPTIONS.OutputMode = sProcess.options.outputmode.Value;
+    % Output mode: 'radio' option (deprecated)
     else
-        OPTIONS.OutputMode = 'input';
+        strOutput = lower(sProcess.options.outputmode.Comment{sProcess.options.outputmode.Value});
+        if ~isempty(strfind(strOutput, 'average'))
+            OPTIONS.OutputMode = 'avg';
+        elseif ~isempty(strfind(strOutput, 'concatenate'))
+            OPTIONS.OutputMode = 'concat';
+        else
+            OPTIONS.OutputMode = 'input';
+        end
     end
     % Output study, in case of average
-    if ismember(OPTIONS.OutputMode, {'avg', 'concat'})
+    if ismember(OPTIONS.OutputMode, {'avg', 'concat', 'avgcoh'})
         [tmp, OPTIONS.iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputA);
     end
 end
@@ -257,7 +262,7 @@ function Test() %#ok<DEFNU>
     bst_process('CallProcess', 'process_snapshot', sTmp, [], ...
         'target',       11, ...  % Connectivity matrix (image)
         'modality',     1, 'orient', 1, 'time', 0, 'contact_time', [-40, 110], 'contact_nimage', 16, ...
-        'comment',      [sFile.Comment, ': ' sTmp.Comment]);
+        'Comment',      [sFile.Comment, ': ' sTmp.Comment]);
     % Save and display report
     ReportFile = bst_report('Save', sFile);
     bst_report('Open', ReportFile);

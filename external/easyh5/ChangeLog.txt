@@ -1,0 +1,23 @@
+= Change Log =
+
+Major updates are marked with a "*"
+
+== EasyH5 v0.8 (Go - Japanese 5), FangQ <q.fang (a) neu.edu> ==
+
+ 2019-09-30*[104a9ed] add regroup option for loadh5, change regexp, add demo
+ 2019-09-30*[bb762a8] support saving and restoring non-ascii group and dataset names, like JSONLab
+ 2019-09-29*[1486603] restore the original position for a grouped item
+ 2019-09-29*[d420b3d] support data compression, close #2
+ 2019-09-29*[04f12ee] transpose data when saving not loading, fix sparse array loading bug
+ 2019-09-28*[77e0d47] support saving and restoring sparse array, both real and complex, close #3
+ 2019-09-28 [f05e305] add helper functions copied from jsonlab
+ 2019-09-28 [2e385ae] collapse a single numbered group with in the form of ...1
+ 2019-09-23*[5e694b8] apply both order tracked and indexed when writing datasets
+ 2019-09-22 [289d2b6] update readme
+ 2019-09-22*[b09c80f] now reading data in creation order, fix #1, also reads specified node using rootpath
+
+== EasyH5 v0.5 (Cinco - Spanish 5), FangQ <q.fang (a) neu.edu> ==
+
+ 2019-09-19 [dc62ed5] update code name and version number
+ 2019-09-19 [66de6e2] tracking creation order, need to use links to read in loadh5
+ 2019-09-19*[69979e4] initial but fully working version

@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function [hFig, iDS, iFig] = view_channels_3d(FileNames, Modality, SurfaceType, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2018
+% Authors: Francois Tadel, 2010-2019
 
 global GlobalData;
 % Parse inputs
@@ -135,7 +135,7 @@ if (length(FileNames) == 1)
     isMarkers = ~isShowCoils || isDetails;
     [hFig, iDS, iFig] = view_channels(FileNames{1}, Modality, isMarkers, isLabels, hFig, is3DElectrodes);
     % SEEG and ECOG: Open tab "iEEG"
-    if ismember(Modality, {'SEEG', 'ECOG'})
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
     end
 % Multiple: Markers only

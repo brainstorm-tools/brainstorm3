@@ -12,7 +12,7 @@ function varargout = process_duplicate( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function varargout = process_duplicate( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2019
 
 eval(macro_method);
 end
@@ -134,7 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             for iSubj = 1:length(uniqueSubj)
                 oldName = uniqueSubj{iSubj};
                 % Cannot duplicate the default subject
-                if strcmpi(oldName, bst_get('DirDefaultSubject'));
+                if strcmpi(oldName, bst_get('DirDefaultSubject'))
                     bst_report('Error', sProcess, sInputs, 'Cannot duplicate default subject.');
                     continue;
                 end
@@ -144,7 +144,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 [newName, Messages] = DuplicateSubject(oldName, fileTag, 0);
                 % Update the filenames
                 if ~isempty(newName)
-                    OutputFiles = cat(2, OutputFiles, strrep({sInputs(iInputSubj).FileName}, oldName, newName));
+                    for iFile = 1:length(iInputSubj)
+                        fNameSplit = str_split(sInputs(iInputSubj(iFile)).FileName);
+                        OutputFiles = cat(2, OutputFiles, bst_fullfile(newName, fNameSplit{2:end}));
+                    end
                 else
                     bst_report('Error', sProcess, sInputs, Messages);
                     continue;
@@ -190,8 +193,8 @@ function [destName, Messages] = DuplicateSubject(srcName, Tag, isRefresh)
         file_delete(tmpDataDir, 1, 1);
     end
     % Copy src folders to tmp folders
-    isOk1 = copyfile(srcAnatDir, tmpAnatDir, 'f');
-    isOk2 = copyfile(srcDataDir, tmpDataDir, 'f');
+    isOk1 = file_copy(srcAnatDir, tmpAnatDir);
+    isOk2 = file_copy(srcDataDir, tmpDataDir);
     if ~isOk1 || ~isOk2
         Messages = ['Could not copy files: ' 10 srcAnatDir 10 srcDataDir];
         disp(['DUPLICATE> Error: ' Messages]);
@@ -207,8 +210,8 @@ function [destName, Messages] = DuplicateSubject(srcName, Tag, isRefresh)
     % Rename src subject to dest subject
     db_rename_subject(srcName, destName, 0);
     % Copy contents tmp folders into new subjects
-    movefile(tmpAnatDir, srcAnatDir, 'f');
-    movefile(tmpDataDir, srcDataDir, 'f');
+    file_move(tmpAnatDir, srcAnatDir);
+    file_move(tmpDataDir, srcDataDir);
     % Add new subject
     ProtocolSubjects = bst_get('ProtocolSubjects');
     ProtocolSubjects.Subject(end+1) = sSrcSubj;
@@ -271,7 +274,7 @@ function [sSubjectDest, iSubjectDest, Messages] = CopySubjectAnat(srcName, destN
             if (dirFiles(i).name(1) == '.') || ~isempty(strfind(dirFiles(i).name(1), 'brainstormsubject'))
                 continue;
             end
-            copyfile(fullfile(srcAnatDir, dirFiles(i).name), fullfile(destAnatDir, dirFiles(i).name), 'f');
+            file_copy(fullfile(srcAnatDir, dirFiles(i).name), fullfile(destAnatDir, dirFiles(i).name));
         end
         % Reload subejct anatomy
         db_reload_subjects(iSubjectDest);
@@ -316,7 +319,7 @@ function [destPath, Messages] = DuplicateCondition(srcPath, Tag, isRefresh)
         file_delete(tmpDir, 1, 1);
     end
     % Copy src folders to tmp folders
-    isOk = copyfile(srcDir, tmpDir, 'f');
+    isOk = file_copy(srcDir, tmpDir);
     if ~isOk
         Messages = ['Could not copy file:' srcDir];
         disp(['DUPLICATE> Error: ' Messages]);
@@ -331,7 +334,7 @@ function [destPath, Messages] = DuplicateCondition(srcPath, Tag, isRefresh)
     % Rename src subject to dest subject
     db_rename_condition(srcPath, destPath);
     % Copy contents tmp folder into new condition
-    movefile(tmpDir, srcDir, 'f');
+    file_move(tmpDir, srcDir);
     % Add new study
     ProtocolStudy = bst_get('ProtocolStudies');
     ProtocolStudy.Study(end+1) = sSrcStudy;

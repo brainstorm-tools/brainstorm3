@@ -7,7 +7,7 @@ function varargout = panel_coordinates(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = panel_coordinates(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -56,11 +56,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
             % Coordinates
-            jPanelCoordinates.add(JLabel('  '));
-            gui_component('label', jPanelCoordinates, 'tab', '  ');
-            gui_component('label', jPanelCoordinates, 'tab', '       X');
-            gui_component('label', jPanelCoordinates, 'tab', '       Y');
-            gui_component('label', jPanelCoordinates, 'tab', '       Z');
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', ' '));
+            jLabelX = gui_component('label', jPanelCoordinates, 'tab', '   X');
+            jLabelY = gui_component('label', jPanelCoordinates, 'tab', '   Y');
+            jLabelZ = gui_component('label', jPanelCoordinates, 'tab', '   Z');
+            jLabelX.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelY.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelZ.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelX.setFont(jFontText);
+            jLabelY.setFont(jFontText);
+            jLabelZ.setFont(jFontText);
             % === MRI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MRI: '));
             jLabelCoordMriX = JLabel('-');
@@ -95,6 +103,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelCoordinates.add('tab', jLabelCoordScsX);
             jPanelCoordinates.add('tab', jLabelCoordScsY);
             jPanelCoordinates.add('tab', jLabelCoordScsZ);
+            % === WORLD ===
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'World: '));
+            jLabelCoordWrlX = JLabel('-');
+            jLabelCoordWrlY = JLabel('-');
+            jLabelCoordWrlZ = JLabel('-');
+            jLabelCoordWrlX.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlY.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlZ.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlX.setFont(jFontText);
+            jLabelCoordWrlY.setFont(jFontText);
+            jLabelCoordWrlZ.setFont(jFontText);
+            jPanelCoordinates.add('tab', jLabelCoordWrlX);
+            jPanelCoordinates.add('tab', jLabelCoordWrlY);
+            jPanelCoordinates.add('tab', jLabelCoordWrlZ);
             % === MNI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MNI: '));
             jLabelCoordMniX = JLabel('-');
@@ -132,6 +157,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jLabelCoordScsX',   jLabelCoordScsX, ...
                                   'jLabelCoordScsY',   jLabelCoordScsY, ...
                                   'jLabelCoordScsZ',   jLabelCoordScsZ, ...
+                                  'jLabelCoordWrlX',   jLabelCoordWrlX, ...
+                                  'jLabelCoordWrlY',   jLabelCoordWrlY, ...
+                                  'jLabelCoordWrlZ',   jLabelCoordWrlZ, ...
                                   'jLabelCoordMniX',   jLabelCoordMniX, ...
                                   'jLabelCoordMniY',   jLabelCoordMniY, ...
                                   'jLabelCoordMniZ',   jLabelCoordMniZ, ...
@@ -179,7 +207,17 @@ function UpdatePanel()
         ctrl.jLabelCoordScsY.setText('-');
         ctrl.jLabelCoordScsZ.setText('-');
     end
-    % SCS
+    % World
+    if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.World)
+        ctrl.jLabelCoordWrlX.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.World(1)));
+        ctrl.jLabelCoordWrlY.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.World(2)));
+        ctrl.jLabelCoordWrlZ.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.World(3)));
+    else
+        ctrl.jLabelCoordWrlX.setText('-');
+        ctrl.jLabelCoordWrlY.setText('-');
+        ctrl.jLabelCoordWrlZ.setText('-');
+    end
+    % MNI
     if ~isempty(CoordinatesSelector) && ~isempty(CoordinatesSelector.MNI)
         ctrl.jLabelCoordMniX.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.MNI(1)));
         ctrl.jLabelCoordMniY.setText(sprintf('%3.1f', 1000 * CoordinatesSelector.MNI(2)));
@@ -290,7 +328,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
             % Get MRI
             sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
             
-        case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other'}
+        case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other', 'FEM'}
             sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
             scsLoc = sSurf.Vertices(vi,:);
             plotLoc = vout;
@@ -309,7 +347,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
                 end
             end
             % Get subject
-            sSubject = bst_get('SurfaceFile', TessInfo(iTess).SurfaceFile);
+            sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
             % == GET MRI ==
             % If subject has a MRI defined
             if ~isempty(sSubject.iAnatomy)
@@ -328,9 +366,10 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
     
     % ===== CONVERT TO ALL COORDINATES SYSTEMS =====
     % Save selected point
-    CoordinatesSelector.SCS = scsLoc;
-    CoordinatesSelector.MRI = cs_convert(sMri, 'scs', 'mri', scsLoc);
-    CoordinatesSelector.MNI = cs_convert(sMri, 'scs', 'mni', scsLoc);
+    CoordinatesSelector.SCS     = scsLoc;
+    CoordinatesSelector.MRI     = cs_convert(sMri, 'scs', 'mri', scsLoc);
+    CoordinatesSelector.MNI     = cs_convert(sMri, 'scs', 'mni', scsLoc);
+    CoordinatesSelector.World   = cs_convert(sMri, 'scs', 'world', scsLoc);
     CoordinatesSelector.iVertex = iVertex;
     CoordinatesSelector.Value   = Value;
     CoordinatesSelector.hPatch  = hPatch;
@@ -460,18 +499,10 @@ function ViewInMriViewer(varargin)
     if isempty(sSubject) || isempty(sSubject.iAnatomy)
         return 
     end
-    % Progress bar
-    bst_progress('start', 'MRI Viewer', 'Opening MRI Viewer...');
-    % Get protocol directories
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % MRI full filename
-    MriFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(MriFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
-    % Close progress bar
-    bst_progress('stop');
 end
 
 

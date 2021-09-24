@@ -1,15 +1,15 @@
 function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive, sFid)
 % IMPORT_ANATOMY_BV: Import a full BrainVISA folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_bv(iSubject, BvDir=[], nVertices=15000, isInteractive=1)
+% USAGE:  errorMsg = import_anatomy_bv(iSubject, BvDir=[ask], nVertices=[ask], isInteractive=1, sFid=[])
 %
 % INPUT:
-%    - iSubject  : Indice of the subject where to import the MRI
-%                  If iSubject=0 : import MRI in default subject
-%    - BvDir     : Full filename of the BrainVISA folder to import
-%    - nVertices : Number of vertices in the file cortex surface
-%    - isInteractive: If 0, no input or user interaction
-%    - sFid      : Structure with the fiducials coordinates
+%    - iSubject      : Indice of the subject where to import the MRI
+%                      If iSubject=0 : import MRI in default subject
+%    - BvDir         : Full filename of the BrainVISA folder to import
+%    - nVertices     : Number of vertices in the file cortex surface
+%    - isInteractive : If 0, no input or user interaction
+%    - sFid          : Structure with the fiducials coordinates
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -17,7 +17,7 @@ function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function errorMsg = import_anatomy_bv(iSubject, BvDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2020
 
 %% ===== PARSE INPUTS =====
 % Fiducials
@@ -107,17 +107,17 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE BRAINVISA FOLDER =====
 bst_progress('start', 'Import BrainVISA folder', 'Parsing folder...');
 % Find MRI
-MriFile = {file_find(BvDir, 'nobias_*.nii'), file_find(BvDir, 'nobias_*.nii.gz'), file_find(BvDir, 'nobias_*.ima')};
-MriFile(cellfun(@isempty, MriFile)) = [];
-if isempty(MriFile)
+T1File = {file_find(BvDir, 'nobias_*.nii'), file_find(BvDir, 'nobias_*.nii.gz'), file_find(BvDir, 'nobias_*.ima')};
+T1File(cellfun(@isempty, T1File)) = [];
+if isempty(T1File)
     errorMsg = [errorMsg 'MRI file was not found: nobias_*.*' 10];
 end
 % Find surfaces
 HeadFile   = {file_find(BvDir, '*head*.mesh'), file_find(BvDir, '*head*.gii')};
 TessLhFile = {file_find(BvDir, '*Lhemi*.mesh'), file_find(BvDir, '*Lhemi*.gii')};
 TessRhFile = {file_find(BvDir, '*Rhemi*.mesh'), file_find(BvDir, '*Rhemi*.gii')};
-TessLwFile = {file_find(BvDir, '*Lwhite*.mesh'), file_find(BvDir, '*Lwhite*.gii')};
-TessRwFile = {file_find(BvDir, '*Rwhite*.mesh'), file_find(BvDir, '*Rwhite*.gii')};
+TessLwFile = {file_find(BvDir, '*Lwhite*.mesh'), file_find(BvDir, '*Lwhite.gii')};
+TessRwFile = {file_find(BvDir, '*Rwhite*.mesh'), file_find(BvDir, '*Rwhite.gii')};
 % Find non-empty search results
 HeadFile(cellfun(@isempty, HeadFile)) = [];
 TessLhFile(cellfun(@isempty, TessLhFile)) = [];
@@ -127,6 +127,19 @@ TessRwFile(cellfun(@isempty, TessRwFile)) = [];
 if isempty(TessLhFile) || isempty(TessRhFile)
     errorMsg = [errorMsg 'Surface file was not found: Lhemi or Rhemi' 10];
 end
+% Find labels
+AnnotLwFiles = {file_find(BvDir, '*_Lwhite_parcels_marsAtlas.gii'), ...
+                file_find(BvDir, '*_Lwhite_parcels_model.gii'), ...
+                file_find(BvDir, '*_Lwhite_pole_cingular.gii'), ...
+                file_find(BvDir, '*_Lwhite_pole_insula.gii'), ...
+                file_find(BvDir, '*_Lwhite_sulcalines.gii')};
+AnnotRwFiles = {file_find(BvDir, '*_Rwhite_parcels_marsAtlas.gii'), ...
+                file_find(BvDir, '*_Rwhite_parcels_model.gii'), ...
+                file_find(BvDir, '*_Rwhite_pole_cingular.gii'), ...
+                file_find(BvDir, '*_Rwhite_pole_insula.gii'), ...
+                file_find(BvDir, '*_Rwhite_sulcalines.gii')};
+AnnotLwFiles(cellfun(@isempty, AnnotLwFiles)) = [];
+AnnotRwFiles(cellfun(@isempty, AnnotRwFiles)) = [];
 % Find fiducials definitions
 FidFile = file_find(BvDir, 'fiducials.m');
 % Find AC-PC file
@@ -140,7 +153,7 @@ if ~isempty(errorMsg)
     return;
 end
 % Keep only the first files
-MriFile    = MriFile{1};
+T1File     = T1File{1};
 HeadFile   = HeadFile{1};
 TessLhFile = TessLhFile{1};
 TessRhFile = TessRhFile{1};
@@ -154,16 +167,16 @@ end
 
 %% ===== IMPORT MRI =====
 % Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile);
-if isempty(BstMriFile)
+[BstT1File, sMri] = import_mri(iSubject, T1File);
+if isempty(BstT1File)
     errorMsg = 'Could not import BrainVISA folder: MRI was not imported properly';
     if isInteractive
         bst_error(errorMsg, 'Import BrainVISA folder', 0);
     end
     return;
 end
-% Size of the volume
-cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
+% Enforce it as the permanent default MRI
+sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 
 
 %% ===== READ AC-PC FILE =====
@@ -172,6 +185,8 @@ AC = [];
 PC = [];
 IH = [];
 if ~isempty(ApcFile)
+    % Size of the volume
+    cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
     % Read the entire file
     fid = fopen(ApcFile, 'r');
     txt = fread(fid, '*char')';
@@ -226,14 +241,6 @@ if ~isInteractive || ~isempty(FidFile)
         % Already loaded
     % Compute them from MNI transformation
     elseif isempty(sFid)
-%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-%         if isempty(AC) || isempty(PC) || isempty(IH)
-%             AC = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-%             PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-%             IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
-%         end
         NAS = [];
         LPA = [];
         RPA = [];
@@ -241,7 +248,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -266,19 +273,17 @@ else
     if ~isempty(ApcFile) && (~isempty(AC) || ~isempty(PC) || ~isempty(IH))
         figure_mri('SetSubjectFiducials', iSubject, [], [], [], AC, PC, IH);
     end
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
-    % Display help message: ask user to select fiducial points
-    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
-    % Close help window
-    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
-sMri = load(BstMriFile);
+warning('off','MATLAB:load:variableNotFound');
+sMri = load(BstT1File);
+warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import BrainVISA folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -291,7 +296,7 @@ end
 %% ===== MNI NORMALIZATION =====
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     % Error handling
     errorMsg = [errorMsg errCall];
 end
@@ -319,6 +324,12 @@ if ~isempty(TessLwFile)
     % Import file
     [iLw, BstTessLwFile] = import_surfaces(iSubject, TessLwFile, 'ALL', 0);
     BstTessLwFile = BstTessLwFile{1};
+    % Load atlases
+    if ~isempty(AnnotLwFiles)
+        bst_progress('start', 'Import BrainVISA folder', 'Loading atlases: left...');
+        [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLwFiles, 1);
+        errorMsg = [errorMsg err];
+    end
     % Downsample
     [BstTessLwLowFile, iLwLow] = tess_downsize(BstTessLwFile, nVertHemi, 'reducepatch');
 end
@@ -327,6 +338,12 @@ if ~isempty(TessRwFile)
     % Import file
     [iRw, BstTessRwFile] = import_surfaces(iSubject, TessRwFile, 'ALL', 0);
     BstTessRwFile = BstTessRwFile{1};
+    % Load atlases
+    if ~isempty(AnnotRwFiles)
+        bst_progress('start', 'Import BrainVISA folder', 'Loading atlases: right...');
+        [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRwFiles, 1);
+        errorMsg = [errorMsg err];
+    end
     % Downsample
     [BstTessRwLowFile, iRwLow] = tess_downsize(BstTessRwFile, nVertHemi, 'reducepatch');
 end
@@ -366,7 +383,7 @@ end
 % Head surface: Take the one from BrainVISA and fill it
 if ~isempty(HeadFile)
     % Import file
-    [iHead, BstHeadHiFile] = import_surfaces(iSubject, HeadFile, 'ALL', 0);
+    [iHead, BstHeadHiFile] = import_surfaces(iSubject, HeadFile, 'ALL', 0, [], [], 'bv_head');
     BstHeadHiFile = BstHeadHiFile{1};
     % Load MRI
     bst_progress('start', 'Import BrainVISA folder', 'Filling holes in the head surface...');
@@ -401,9 +418,9 @@ end
 
 
 %% ===== UPDATE GUI =====
-% Set default cortex
+% Set default cortex (use the white, because MarsAtlas is available on this one only)
 if ~isempty(TessLhFile) && ~isempty(TessRhFile)
-    [sSubject, iSubject, iCortex] = bst_get('SurfaceFile', CortexLowFile);
+    [sSubject, iSubject, iCortex] = bst_get('SurfaceFile', WhiteLowFile);
     db_surface_default(iSubject, 'Cortex', iCortex);
 end
 % Set the default head
@@ -418,7 +435,7 @@ bst_memory('UnloadAll', 'Forced');
 if isInteractive
     % Display the downsampled cortex and the head
     hFig = view_surface(BstHeadFile);
-    view_surface(CortexLowFile);
+    view_surface(WhiteLowFile);
     % Set orientation
     figure_3d('SetStandardView', hFig, 'left');
 end

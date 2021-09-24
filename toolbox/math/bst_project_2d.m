@@ -7,7 +7,7 @@ function [X,Y] = bst_project_2d(x, y, z, Method)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ end
 % Different projection methods
 switch (Method)
     case '2dcap'
-        % Spheric coordinates
+        % Spherical coordinates
         [TH,PHI,R] = cart2sph(x, y, z);
         % Flat projection
         R = 1 - PHI ./ pi*2;
@@ -39,7 +39,7 @@ switch (Method)
         [X,Y] = pol2cart(TH,R);
 
     case '2dlayout'
-        % Spheric coordinates
+        % Spherical coordinates
         z = z - max(z);
         [TH,PHI,R] = cart2sph(x, y, z);
         % Remove the too smal values for PHI
@@ -52,7 +52,7 @@ switch (Method)
         %     figure; 
         %     plot3(x, y, 1 + 0.2 .* (z ./ param.minZ).^2, 'Marker', '+', 'LineStyle', 'none', 'Color', [0 1 0]); axis equal; rotate3d
 
-            % Spheric coordinates
+            % Spherical coordinates
             [TH,PHI,R] = cart2sph(x, y, z);
             % Flat projection
             R = 1 - PHI ./ pi*2;

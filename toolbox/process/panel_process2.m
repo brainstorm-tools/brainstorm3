@@ -7,7 +7,7 @@ function varargout = panel_process2(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,9 +64,13 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     % Get files
     sFilesA = panel_nodelist('GetFiles', nodelistNameA);
     sFilesB = panel_nodelist('GetFiles', nodelistNameB);
-    if isempty(sFilesA) || isempty(sFilesB)
-        return
+    if isempty(sFilesA)
+        sFilesA = db_template('importfile'); 
     end
+    if isempty(sFilesB)
+        sFilesB = db_template('importfile');
+    end
+    
     % Warning for read-only
     if bst_get('ReadOnly')
         java_dialog('warning', ['The protocol is opened in read-only mode.' 10 ...
@@ -124,22 +128,6 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     % No selected processes: nothing to do
     if isempty(sProcesses)
         return
-    end
-    
-    % Check if FieldTrip needs to be added in the path
-    isFieldTrip = 0;
-    for i = 1:length(sProcesses)
-        if ~isempty(strfind(func2str(sProcesses(i).Function), 'process_ft_'))
-            isFieldTrip = 1;
-            break;
-        end
-    end
-    % Add FieldTrip in the path
-    if isFieldTrip
-        isOk = bst_ft_init(1);
-        if ~isOk
-            return;
-        end
     end
     
     % Call process function

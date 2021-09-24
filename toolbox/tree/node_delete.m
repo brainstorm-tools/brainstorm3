@@ -5,7 +5,7 @@ function node_delete(bstNodes, isUserConfirm)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function node_delete(bstNodes, isUserConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2019
 
 %% ===== INITIALIZATION =====
 % Parse inputs
@@ -98,9 +98,8 @@ switch (lower(nodeType{1}))
                         'Deleting this link will delete permanently the file associated with it.</FONT>'];
                 % Raw file to delete is NOT in the database
                 else
-                    questStr = ['<BR><BR><FONT color="#008000">Warning: Removing links to raw files does not acually remove the raw files.<BR>' ...
-                        'To remove the native files from the hard drive, use the popup menu File > Delete raw file,<BR>' ...
-                        'or do it from your operating system file manager.</FONT>'];
+                    questStr = ['<BR><BR><FONT color="#008000">Removing links to raw files does not delete the original recordings from<BR>' ...
+                        'your hard drive. You can only do this from your operating system file manager.<BR><BR></FONT>'];
                 end
             else
                 questStr = [];
@@ -128,7 +127,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== ANATOMY =====
-    case 'anatomy'
+    case {'anatomy', 'volatlas'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         % Full file names
         FullFilesList = cellfun(@(f)fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
@@ -158,7 +157,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== SURFACES =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem', 'other'}
         bst_progress('start', 'Delete nodes', 'Deleting surfaces...');
         % Full file names
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
@@ -193,7 +192,7 @@ switch (lower(nodeType{1}))
                 end
                 % Update default surfaces
                 bst_set('ProtocolSubjects', ProtocolSubjects);
-                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull'}
+                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
                     db_surface_default(iSubject, SurfType{1}, [], 0);
                 end
                 drawnow;
@@ -311,6 +310,7 @@ switch (lower(nodeType{1}))
         sStudies_dipoles  = bst_get('Study', iStudies_dipoles);
         % Build full files list 
         FullFilesList = {};
+        isRecursive = 0;
         for i = 1:length(iStudies_data)
             DataFile = bst_fullfile(ProtocolInfo.STUDIES, sStudies_data(i).Data(iDatas(i)).FileName);
             FullFilesList{end+1} = DataFile;
@@ -320,6 +320,12 @@ switch (lower(nodeType{1}))
                 BinFile = strrep(BinFile, 'data_0raw_', '');
                 if file_exist(BinFile)
                     FullFilesList{end+1} = BinFile;
+                end
+                % Spike sorting files: delete spikes folder
+                if ~isempty(strfind(DataFile, 'data_0ephys_'))
+                    DataMat = load(DataFile, 'Parent');
+                    FullFilesList{end+1} = DataMat.Parent;
+                    isRecursive = 1;
                 end
             end
         end
@@ -336,7 +342,7 @@ switch (lower(nodeType{1}))
         end
 
         % === DELETE FILES ===
-        if (file_delete(FullFilesList, ~isUserConfirm) == 1)
+        if (file_delete(FullFilesList, ~isUserConfirm, isRecursive) == 1)
             % Get unique list of studies
             uniqueStudies = unique([iStudies_data, iStudies_results]);
             for i = 1:length(uniqueStudies)

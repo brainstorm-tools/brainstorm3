@@ -1,7 +1,7 @@
-function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
-% BST_INVERSE_LINEAR_2016: Compute an inverse solution (minimum norm, dipole fitting or beamformer)
-% USAGE:  [Results,OPTIONS] = bst_inverse_linear_2016(HeadModel, OPTIONS) : Compute mininum operator
-%                   OPTIONS = bst_inverse_linear_2016()                   : Return default options
+function [Results, OPTIONS] = bst_inverse_linear_2018(HeadModel,OPTIONS)
+% BST_INVERSE_LINEAR_2018: Compute an inverse solution (minimum norm, dipole fitting or beamformer)
+% USAGE:  [Results,OPTIONS] = bst_inverse_linear_2018(HeadModel, OPTIONS) : Compute mininum operator
+%                   OPTIONS = bst_inverse_linear_2018()                   : Return default options
 %
 % DESCRIPTION:
 %     This program computes the whitened and weighted minimum-norm operator,
@@ -46,7 +46,9 @@ function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 % INPUTS:
 %    - HeadModel: Array of Brainstorm head model structures
 %         |- Gain       : Forward field matrix for all the channels (unconstrained source orientations)
+%         |- GridLoc    : Dipole locations
 %         |- GridOrient : Dipole orientation matrix
+%         |- HeadModelType : 'volume', 'surface' or 'mixed'?
 %    - OPTIONS: structure
 %         |- NoiseCovMat        : Noise covariance structure
 %         |   |- NoiseCov       : Noise covariance matrix
@@ -58,7 +60,7 @@ function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 %         |   |- nSamples       : Number of times samples used to compute those measures
 %         |- ChannelTypes   : Type of each channel (for each row of the Leadfield and the NoiseCov matrix)
 %         |- InverseMethod  : {'minnorm', 'gls', 'lcmv'}
-%         |- InverseMeasure :    | minnorm: {'amplitude',  'dspm', 'sloreta'}
+%         |- InverseMeasure :    | minnorm: {'amplitude',  'dspm2018', 'sloreta'}
 %         |                      |     gls: {'performance'}
 %         |                      |    lcmv: {'performance'}
 %         |- SourceOrient   : String or a cell array of strings specifying the type of orientation constraints for each HeadModel (default: 'fixed')
@@ -120,7 +122,7 @@ function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -163,14 +165,14 @@ if (nargin == 0)
     return
 end
 
-fprintf('\nBST_INVERSE (2016) > Modified Feb 2018\n\n');
+fprintf('\nBST_INVERSE (2018) > Modified Feb 2018\n\n');
 
 % How many head models have been passed, if greater than 1, then we are
 % doing a "DBA" or "Deep Brain Analysis"
 
 numL = size(HeadModel,2);
 
-if numL > 1,
+if numL > 1
     fprintf('\nBST_INVERSE (2018) > Deep Brain Analysis for %.0f submodels\n\n',numL);
     
     % Update the default option for Source Orientations in this case
@@ -193,7 +195,7 @@ OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
 CROSS_COVARIANCE_CHANNELTYPES = false; % do allow the cross covariance between modalities, to include GRADS, MAGS, SEEG, ECOG, etc.
 
-if CROSS_COVARIANCE_CHANNELTYPES,    
+if CROSS_COVARIANCE_CHANNELTYPES
     fprintf('\nBST_INVERSE (2018) > NOTE: Cross Covariance between sensor modalities IS CALCULATED in the noise covariance matrix\n\n')
 else
     fprintf('\nBST_INVERSE (2018) > NOTE: Cross Covariance between sensor modalities IS NOT CALCULATED in the noise covariance matrix\n\n')
@@ -224,7 +226,7 @@ if (OPTIONS.NoiseReg > 1) || (OPTIONS.NoiseReg < 0)
 end
 
 % mixed head models don't work with GLS or LCMV
-if (numL > 1 && (strcmpi(OPTIONS.InverseMeasure,'gls') || strcmpi(OPTIONS.InverseMeasure,'lcmv'))),
+if (numL > 1 && (strcmpi(OPTIONS.InverseMeasure,'gls') || strcmpi(OPTIONS.InverseMeasure,'lcmv')))
     error('BST_INVERSE (2018) > Mixed head models (deep brain analysis) do not work with GLS or LCMV')
 end
 
@@ -238,13 +240,13 @@ nChannels = length(Var_noise);
 
 % JCM: March 2015, probably don't need this, but will retain
 % Detect if the input noise covariance matrix is or should be diagonal
-if (norm(C_noise,'fro') - norm(Var_noise,'fro')) < eps(single(norm(Var_noise,'fro'))),
+if (norm(C_noise,'fro') - norm(Var_noise,'fro')) < eps(single(norm(Var_noise,'fro')))
     % no difference between the full matrix and the diagonal matrix
     disp(['BST_INVERSE > Detected diagonal noise covariance, ignoring option NoiseMethod="' OPTIONS.NoiseMethod '".']);
     OPTIONS.NoiseMethod = 'diag';
 end
 
-if strcmpi('diag',OPTIONS.NoiseMethod),
+if strcmpi('diag',OPTIONS.NoiseMethod)
     C_noise = diag(diag(C_noise)); % force matrix to be diagonal, that's all the user wants
 end
 
@@ -289,7 +291,7 @@ Unique_ChannelTypes = unique(OPTIONS.ChannelTypes);
 
 % What are their indices
 ndx_Channel_Types = cell(1,length(Unique_ChannelTypes)); % index for each channel type
-for i = 1:length(Unique_ChannelTypes),
+for i = 1:length(Unique_ChannelTypes)
     ndx_Channel_Types{i} = find(strcmpi(Unique_ChannelTypes(i),OPTIONS.ChannelTypes));
 end
 
@@ -345,14 +347,14 @@ end
 % Now remove the off_diagonal components between modalities, if desired
 Cw_noise = zeros(size(C_noise)); % initialize
 
-if CROSS_COVARIANCE_CHANNELTYPES, % do allow for cross covariances
+if CROSS_COVARIANCE_CHANNELTYPES % do allow for cross covariances
     
     ndx = [ndx_Channel_Types{:}]; % all of the channels
     Cw_noise(ndx,ndx) = C_noise(ndx,ndx); % including cross terms
     
 else % don't allow for cross covariances
     
-    for i = 1:length(Unique_ChannelTypes),
+    for i = 1:length(Unique_ChannelTypes)
         % for each unique modality
         ndx = ndx_Channel_Types{i}; % which ones
         Cw_noise(ndx,ndx) = C_noise(ndx,ndx);
@@ -392,14 +394,14 @@ FourthMoment = zeros(size(C_noise)); % initialize
 nSamples = [];
 if strcmpi(OPTIONS.NoiseMethod, 'shrink')
    % Has the user calculated the Fourth Order moments?
-   if ~isfield(OPTIONS.NoiseCovMat,'FourthMoment'),
+   if ~isfield(OPTIONS.NoiseCovMat,'FourthMoment')
       error('BST_INVERSE > For Method ''shrink'' please recalculate Noise Covariance, to include Fourth Order Moments');
    else
       FourthMoment = OPTIONS.NoiseCovMat.FourthMoment;
    end
    
    % How many samples used to calculate covariance
-   if isempty(OPTIONS.NoiseCovMat.nSamples),
+   if isempty(OPTIONS.NoiseCovMat.nSamples)
       error('BST_INVERSE > No noise samples found. For Method ''shrink'' please recalculate Noise Covariance from actual data samples.');
    else
       nSamples = OPTIONS.NoiseCovMat.nSamples(1);
@@ -414,7 +416,7 @@ end
 % separate from the GRADS separate from SEEG.
 
 % First, truncate and regularize each modality separately
-for i = 1:length(Unique_ChannelTypes),
+for i = 1:length(Unique_ChannelTypes)
    % each modality
     ndx = ndx_Channel_Types{i}; % which ones
    
@@ -436,7 +438,7 @@ end
 % diagonal terms altered by regularization), but now we don't apply any
 % additional regularization to the overall covariance matrix
 
-if length(Unique_ChannelTypes) > 1 && CROSS_COVARIANCE_CHANNELTYPES, % we do want the cross terms in the inverse
+if length(Unique_ChannelTypes) > 1 && CROSS_COVARIANCE_CHANNELTYPES % we do want the cross terms in the inverse
     ndx = [ndx_Channel_Types{:}]; % all of the channels
     % don't regularize, may still need truncation if deficient
     [Cw_noise(ndx,ndx),iWw_noise(ndx,ndx)] = ...
@@ -476,21 +478,21 @@ else
     Var_data = diag(C_data); % Diagonal vector of the noise variances per channel
     
     % quick error check
-    if nChannels ~= length(Var_data),
+    if nChannels ~= length(Var_data)
         error('BST_INVERSE > Data covariance is not the same size as noise covariance, something is wrong')
     end
     
     % Zero out any cross covariance between modalities.
     Cw_data =zeros(size(C_data));
     
-    if CROSS_COVARIANCE_CHANNELTYPES, % do allow for cross covariances
+    if CROSS_COVARIANCE_CHANNELTYPES % do allow for cross covariances
         
         ndx = [ndx_Channel_Types{:}]; % all of the channels
         Cw_data(ndx,ndx) = C_data(ndx,ndx); % including cross terms
         
     else % don't allow for cross covariances
         
-        for i = 1:length(Unique_ChannelTypes),
+        for i = 1:length(Unique_ChannelTypes)
             % for each unique modality
             ndx = ndx_Channel_Types{i}; % which ones
             Cw_data(ndx,ndx) = C_data(ndx,ndx);
@@ -518,14 +520,14 @@ else
     nSamples = [];
     if strcmpi(OPTIONS.NoiseMethod, 'shrink')
        % Has the user calculated the Fourth Order moments?
-       if ~isfield(OPTIONS.DataCovMat,'FourthMoment'),
+       if ~isfield(OPTIONS.DataCovMat,'FourthMoment')
           error('BST_INVERSE > For Method ''shrink'' please recalculate Data Covariance, to include Fourth Order Moments');
        else
           FourthMoment = OPTIONS.DataCovMat.FourthMoment;
        end
        
        % How many samples used to calculate covariance
-       if isempty(OPTIONS.DataCovMat.nSamples),
+       if isempty(OPTIONS.DataCovMat.nSamples)
           error('BST_INVERSE > No data samples found. For Method ''shrink'' please recalculate Data Covariance from actual data samples.');
        else
           nSamples = OPTIONS.DataCovMat.nSamples(1);
@@ -536,7 +538,7 @@ else
     
     
     % now apply regularization per modality
-    for i = 1:length(Unique_ChannelTypes),
+    for i = 1:length(Unique_ChannelTypes)
        % each modality
        ndx = ndx_Channel_Types{i}; % which ones
                
@@ -552,7 +554,7 @@ else
     
     % now truncate and invert the entire cross modality, if desired
     
-    if length(Unique_ChannelTypes) > 1 && CROSS_COVARIANCE_CHANNELTYPES, % we do want the cross terms in the inverse
+    if length(Unique_ChannelTypes) > 1 && CROSS_COVARIANCE_CHANNELTYPES % we do want the cross terms in the inverse
         ndx = [ndx_Channel_Types{:}]; % all of the channels
         % don't regularize, may still need truncation if deficient
         [Cw_data(ndx,ndx),iWw_data(ndx,ndx)] = ...
@@ -579,7 +581,7 @@ NumDipoles = zeros(1,numL); % per head model
 Alpha = cell(1,numL);
 WQ = cell(1,numL);
 
-for kk = 1:numL, % for each headmodel
+for kk = 1:numL % for each headmodel
     
     % Calculated separately from the data and noise covariance considerations
     % number of sources:
@@ -723,7 +725,7 @@ for kk = 1:numL, % for each headmodel
     % Not used in min norm methods
     if strcmpi(OPTIONS.InverseMethod,'gls') || strcmpi(OPTIONS.InverseMethod,'lcmv')
         tic % let's time it
-        for i = 1:NumDipoles(kk),
+        for i = 1:NumDipoles(kk)
             % index to next source in the lead field matrix
             ndx = ((1-NumDipoleComponents(kk)):0) + i*NumDipoleComponents(kk);
             [Ua,Sa,Va] = svd(L{kk}(:,ndx),'econ');
@@ -814,7 +816,7 @@ end
 
 fprintf('BST_INVERSE > Confirm units\n')
 if exist('engunits', 'file')
-    [LambdaY,~,LambdaU] = engunits(sqrt(Lambda));
+    [LambdaY,ignore,LambdaU] = engunits(sqrt(Lambda));
     fprintf('BST_INVERSE > Assumed RMS of the sources is %.3g %sA-m\n',LambdaY,LambdaU);
 else
     fprintf('BST_INVERSE > Assumed RMS of the sources is %g A-m\n', sqrt(Lambda));
@@ -827,24 +829,28 @@ fprintf('BST_INVERSE > Assumed SNR is %.1f (%.1f dB)\n',SNR,10*log10(SNR));
 switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
     case 'minnorm'
         
-        % We set a single lambda to achieve desired source variance. In min
-        % norm, all dipoles have the same lambda. We already added an
-        % optional amplifier weighting into the covariance prior above.
-        
-        % So the data covariance model in the MNE is now
-        % Cd = Lambda * L * L' + I
-        % = Lambda *UL * SL * UL' + I = UL * (LAMBDA*SL + I) * UL'
-        % so invert Cd and use for kernel
-        % xhat = Lambda * L' * inv(Cd)
-        % we reapply all of the covariances to put data back in original
-        % space in the last step.
-        
-        % as distinct from GLS, all dipoles have a common data covariance,
-        % but each has a unique noise covariance.
-        
+      % We set a single lambda to achieve desired source variance. In min
+      % norm, all dipoles have the same lambda. We already added an
+      % optional amplifier weighting into the covariance prior above.
+
+      % So the data covariance model in the MNE is now
+      % Cd = Lambda * L * L' + I
+      % = Lambda *UL * SL * UL' + I = UL * (LAMBDA*SL + I) * UL'
+      % so invert Cd and use for kernel
+      % xhat = Lambda * L' * inv(Cd)
+      % we reapply all of the covariances to put data back in original
+      % space in the last step.
+
+      % as distinct from GLS, all dipoles have a common data covariance,
+      % but each has a unique noise covariance.
+
+      % ==== April 2019 ==== Comment by JCM & JGP
+      % Next line's 'Kernel' is equal to T of eq.(11) in (PM, 2002).
+      % Reference: (PM, 2002) - Standardized low resolution brain electromagnetic
+      %             tomography (sLORETA): technical details, Pasqual-Marqui, 2002.
         Kernel = Lambda * L' * (UL * diag(1./(Lambda * SL2 + 1)) * UL');
 
-        switch OPTIONS.InverseMeasure % {'amplitude',  'dspm', 'sloreta'}
+        switch OPTIONS.InverseMeasure % {'amplitude',  'dspm2018', 'sloreta'}
             case 'amplitude'
                 OPTIONS.FunctionName = 'mn';
                 % xhat = Lambda * L' * inv(Cd)
@@ -853,8 +859,8 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                 % apply whitener
                 Kernel = Kernel * iW_noise;
                 
-            case 'dspm'
-                OPTIONS.FunctionName = 'dspm';
+            case 'dspm2018'
+                OPTIONS.FunctionName = 'dspm2018';
                 % ===== dSPM OPERATOR =====
                 % =========== NEEDS REWRITING by JCM ======
                 
@@ -923,17 +929,28 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                     Ndx = StartNdx:EndNdx;
                     
                     if (NumDipoleComponents(kk) == 1)
+                        % 'sloretadiag' is the 'Resolution Kernel' for the
+                        % scalar case of eq.(17) of the sLORETA paper (PM, 2002)
                         sloretadiag = sqrt(sum(Kernel(Ndx,:) .* L(:,Ndx)', 2));
-                        Kernel = bst_bsxfun(@rdivide, Kernel(Ndx,:), sloretadiag);
+                      
+                        % This results in the modified pseudo-statistic of
+                        % eq.(25) of (PM, 2002).
+                        Kernel(Ndx,:) = bst_bsxfun(@rdivide, Kernel(Ndx,:), sloretadiag);
                     elseif (NumDipoleComponents(kk)==3 || NumDipoleComponents(kk)==2)
-                        for spoint = StartNdx:NumDipoleComponents(kk):EndNdx,
+                        for spoint = StartNdx:NumDipoleComponents(kk):EndNdx
+                            % For each dipole location 'R' is the matrix
+                            % resolution kernel, following eq.(17) in (PM, 2002).
                             R = Kernel(spoint:spoint+NumDipoleComponents(kk)-1,:) * L(:,spoint:spoint+NumDipoleComponents(kk)-1);
                             % SIR = sqrtm(pinv(R)); % Aug 2016 can lead to errors if
                             % singular Use this more explicit form instead
                             [Ur,Sr,Vr] = svd(R); Sr = diag(Sr);
                             RNK = sum(Sr > (length(Sr) * eps(single(Sr(1))))); % single precision Rank
+                            % SIR is the square root matrix operator of 
+                            % eq.(25) in (PM, 2002).
                             SIR = Vr(:,1:RNK) * diag(1./sqrt(Sr(1:RNK))) * Ur(:,1:RNK)'; % square root of inverse
                             
+                            % Kernel is the matrix modified
+                            % pseudo-statistic of eq.(25) in (PM,2002).
                             Kernel(spoint:spoint+NumDipoleComponents(kk)-1,:) = SIR * Kernel(spoint:spoint+NumDipoleComponents(kk)-1,:);
                         end
                     end
@@ -941,7 +958,8 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
                     StartNdx = EndNdx; % next loop
 
                 end
-                
+                %We here add the overall whitener so Kernel can be applied
+                %to RAW data.
                 Kernel = Kernel * iW_noise; % overall whitener
                 
             otherwise
@@ -978,7 +996,7 @@ switch lower(OPTIONS.InverseMethod) % {minnorm, lcmv, gls}
         
         Kernel = zeros(size(L')); % preallocate
         
-        for i = 1:NumDipoles(kk),
+        for i = 1:NumDipoles(kk)
             ndx = ((1-NumDipoleComponents(kk)):0) + i*NumDipoleComponents(kk);
             %Kernel(ndx,:) =  A(i).Va*(Lambda*A(i).Sa)*inv(Lambda*A(i).Sa + I)*A(i).Ua';
             Kernel(ndx,:) =  A(i).Ua';
@@ -1014,10 +1032,10 @@ if strcmpi(OPTIONS.InverseMeasure, 'amplitude')
         Ndx = StartNdx:EndNdx;
         
         % we need to put orientation and weighting back into solution
-        if NumDipoleComponents(kk) == 3, % we are in three-d,
+        if NumDipoleComponents(kk) == 3 % we are in three-d,
             Kernel(Ndx,:) = WQ{kk} * Kernel(Ndx,:); % put the source prior back into the solution
-        elseif NumDipoleComponents(kk) == 1,
-            Kernel(Ndx,:) = diag(Alpha{kk})*Kernel(Ndx,:);  % put possible alpha weighting back in
+        elseif NumDipoleComponents(kk) == 1
+            Kernel(Ndx,:) = spdiags(Alpha{kk}',0,length(Ndx),length(Ndx))*Kernel(Ndx,:);  % put possible alpha weighting back in
         end
         
         StartNdx = EndNdx; % next loop
@@ -1044,7 +1062,7 @@ if strcmpi(OPTIONS.InverseMethod, 'lcmv')
 end
 Results.DataWhitener  = iW_data;  % full data covariance whitener, null unless lcmv
 
-if numL == 1,
+if numL == 1
     Results.nComponents   = NumDipoleComponents(1);
 else
     Results.nComponents   = 0; % flag that mixed model is being used
@@ -1095,7 +1113,7 @@ Sn = sqrt(diag(Sn2)); % singular values
 tol = length(Sn) * eps(single(Sn(1))); % single precision tolerance
 Rank_Noise = sum(Sn > tol);
 
-if VERBOSE,
+if VERBOSE
     fprintf('BST_INVERSE > Rank of the ''%s'' channels, keeping %.0f noise eigenvalues out of %.0f original set\n',...
         Type,Rank_Noise,length(Sn));
 end
@@ -1122,13 +1140,13 @@ switch(Method) % {'shrink', 'reg', 'diag', 'none', 'median'}
         % Matrix
         % Do Nothing to Cw_noise
         iW = Un*diag(1./Sn)*Un'; % inverse whitener
-        if VERBOSE,
+        if VERBOSE
             fprintf('BST_INVERSE > No regularization applied to covariance matrix.\n');
         end
         
         
     case 'median'
-        if VERBOSE,
+        if VERBOSE
             fprintf('BST_INVERSE > Covariance regularized by flattening tail of eigenvalues spectrum to the median value of %.1e\n',median(Sn));
         end
         Sn = max(Sn,median(Sn)); % removes deficient small values
@@ -1138,7 +1156,7 @@ switch(Method) % {'shrink', 'reg', 'diag', 'none', 'median'}
     case 'diag'
         Cov = diag(diag(Cov)); % strip to diagonal
         iW = diag(1./sqrt(diag(Cov))); % inverse of diagonal
-        if VERBOSE,
+        if VERBOSE
             fprintf('BST_INVERSE > Covariance matrix reduced to diagonal.\n');
         end
         
@@ -1160,7 +1178,7 @@ switch(Method) % {'shrink', 'reg', 'diag', 'none', 'median'}
         % Fixed Feb 2018:
         iW = Un*diag(1./sqrt(Sn.^2 + RidgeFactor))*Un'; % inverse whitener, symmetric
         
-        if VERBOSE,
+        if VERBOSE
             fprintf('BST_INVERSE > Diagonal of %.1f%% of the average eigenvalue added to covariance matrix.\n',NoiseReg * 100);
         end
         
@@ -1176,7 +1194,7 @@ switch(Method) % {'shrink', 'reg', 'diag', 'none', 'median'}
         % calculation? As of August 2016, still relying on a single scalar
         % number.
         [Cov,shrinkage]=cov1para_local(Cov,FourthMoment,nSamples);
-        if VERBOSE,
+        if VERBOSE
             fprintf('\nShrinkage factor is %f\n\n',shrinkage)
         end
         % we now have the "shrunk" whitened noise covariance
@@ -1186,7 +1204,7 @@ switch(Method) % {'shrink', 'reg', 'diag', 'none', 'median'}
         tol = length(Sn) * eps(single(Sn(1))); % single precision tolerance
         Rank_Noise = sum(Sn > tol);
         
-        if VERBOSE,
+        if VERBOSE
             fprintf('BST_INVERSE > Ledoit covariance regularization, after shrinkage, rank of the %s channels, keeping %.0f noise eigenvalues out of %.0f original set\n',...
                 Type,Rank_Noise,length(Sn));
         end

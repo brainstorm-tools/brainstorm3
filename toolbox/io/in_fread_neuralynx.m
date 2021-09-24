@@ -7,7 +7,7 @@ function F = in_fread_neuralynx(sFile, SamplesBounds, iChannels)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,14 +21,14 @@ function F = in_fread_neuralynx(sFile, SamplesBounds, iChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2021
 
 % Parse inputs
 if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.NumChannels;
 end
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % Initialize requested matrix
@@ -38,9 +38,9 @@ F = zeros(length(iChannels), nReadSamples);
 % Loop on the channels to read (one file per channel)
 for iChan = 1:length(iChannels)
     % Get header for this channel
-    hdr = sFile.header.chan_headers{iChan};
+    hdr = sFile.header.chan_headers{iChannels(iChan)};
     % Open file
-    ChanFile = bst_fullfile(sFile.header.BaseFolder, sFile.header.chan_files{iChan});
+    ChanFile = bst_fullfile(sFile.header.BaseFolder, sFile.header.chan_files{iChannels(iChan)});
     sfid = fopen(ChanFile, 'r', sFile.byteorder);
     if (sfid < 0)
         error(['Cannot open file: ' ChanFile]);

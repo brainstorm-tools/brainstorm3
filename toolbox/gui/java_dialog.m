@@ -8,7 +8,7 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 %         
 % INPUT:
 %    - msgType  : String that defines the icon and controls displayed in the dialog box. Possible values:
-%                 {'error', 'warning', 'msgbox', 'confirm', 'question', 'input', 'checkbox', 'radio', 'combo', 'hotkey'}
+%                 {'error', 'warning', 'msgbox', 'confirm', 'question', 'input', 'checkbox', 'radio', 'combo', 'hotkey', 'color'}
 %    - msg      : Message in the dialog box 
 %                 (can be a cell array of strings for 'input' message type)
 %    - msgTitle : Title of the dialog box
@@ -24,6 +24,7 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 %                                 OPTIONS = buttonList, defaultVals
 %                  - 'radio'    : OPTIONS = buttonList
 %                                 OPTIONS = buttonList, defaultInd
+%                  - 'color'    : No options
 % OUTPUT: 
 %    - res      : Depends on the dialog type
 %                  - 'error', 'warning', 'msgbox', 'confirm':
@@ -47,7 +48,7 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -61,16 +62,22 @@ function [res, isCancel] = java_dialog( msgType, msg, msgTitle, jParent, varargi
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2019
 
 global GlobalData;
+
+% Java imports
+import org.brainstorm.dialogs.*;
 
 % Get brainstorm frame
 jBstFrame = bst_get('BstFrame');
 
 % Parse inputs
-if (nargin < 2)
+if (nargin < 1)
     error('Invalid call to java_dialog()');
+end
+if (nargin < 2)
+    msg = '';
 end
 if (nargin < 3)
     msgTitle = '';
@@ -84,6 +91,63 @@ isCancel = 1;
 isProgress = bst_progress('isvisible');
 if isProgress
     bst_progress('hide');
+end
+
+% Headless dialog displayed in command line
+if bst_get('GuiLevel') < 0
+    switch(lower(msgType))
+        case 'error'
+            disp(['Error: ' msg]);
+            isCancel = 0;
+            res = 1;
+        case 'warning'
+            disp(['Warning: ' msg]);
+            isCancel = 0;
+            res = 1;
+        case 'msgbox'
+            disp(msg);
+            isCancel = 0;
+            res = 1;
+        case 'confirm'
+            response = lower(strtrim(input([msg ' (y/n) '], 's')));
+            if ismember(response, {'y', 'yes'})
+                isCancel = 0;
+                res = 1;
+            elseif ismember(response, {'n', 'no'}) 
+                isCancel = 0;
+                res = 0;
+            else
+                isCancel = 1;
+                res = 0;
+            end
+        case 'question'
+            if length(varargin) < 1 || isempty(varargin{1})
+                answers = {'Yes', 'No'};
+            else
+                answers = varargin{1};
+            end
+            nAnswers = length(answers);
+            
+            % Display question and possible answers
+            disp(msg);
+            for iAnswer = 1:nAnswers
+                disp([num2str(iAnswer) '. ' answers{iAnswer}]);
+            end
+            disp(' ');
+            
+            % Validate user selection
+            response = str2num(input('Select the number of your answer: ', 's'));
+            if ~isempty(response) && response >= 1 && response <= nAnswers
+                res = answers{response};
+                isCancel = 0;
+            else
+                res = [];
+                isCancel = 1;
+            end
+        otherwise
+            error('Unsupported call of java_dialog in headless mode.');
+    end
+    return;
 end
 
 % Get all the modal JDialogs
@@ -118,6 +182,15 @@ switch(lower(msgType))
             msgTitle = 'Error';
         end
         java_call('javax.swing.JOptionPane', 'showMessageDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.ERROR_MESSAGE);
+        isCancel = 0;
+        res = 1;
+    case 'errorhelp'
+        if isempty(msgTitle)
+            msgTitle = 'Error';
+        end
+        if ~java_call('org.brainstorm.dialogs.MsgServer', 'dlgErrorHelp', 'Ljava.awt.Component;Ljava.lang.String;Ljava.lang.String;[Ljava.lang.String;Ljava.lang.String;', jParent, msg, msgTitle);
+            web('https://neuroimage.usc.edu/forums/', '-browser');
+        end
         isCancel = 0;
         res = 1;
     case 'warning'
@@ -209,7 +282,7 @@ switch(lower(msgType))
             res = char(java_res);
             isCancel = 0;
         elseif iscell(msg)
-            nbInputs = length(java_res);
+            nbInputs = numel(java_res);
             res = cell(1, nbInputs);
             for i=1:nbInputs
                 res{i} = char(java_res(i));
@@ -236,23 +309,23 @@ switch(lower(msgType))
         if ~isempty(buttonList)
             jPanel = gui_river([2,2], [3,3,3,3]);
             jCheck = javaArray('javax.swing.JCheckBox', length(buttonList));
+            isLongText = any(cellfun(@length, buttonList) > 20);
             for i = 1:length(buttonList)
                 % Create check box
                 jCheck(i) = javax.swing.JCheckBox(buttonList{i});
-                % Box size
-                isLongText = (length(buttonList{i}) > 10);
-                if ~isLongText
-                    jCheck(i).setPreferredSize(java_scaled('dimension', 80, 20));
-                end
                 % Default value
                 if ~isempty(defaultVal)
                     jCheck(i).setSelected(defaultVal(i));
                 end
                 % Add: right after of on the next row ?
-                if (mod(i-1, 5) == 0) || isLongText
+                if isLongText
                     jPanel.add('br', jCheck(i));
                 else
-                    jPanel.add(jCheck(i));
+                    if (mod(i-1, 5) == 0)
+                        jPanel.add('tab br', jCheck(i));
+                    else
+                        jPanel.add('tab', jCheck(i));
+                    end
                 end
             end
         end
@@ -379,7 +452,6 @@ switch(lower(msgType))
         
     % Dialog for hotkey input from user
     case 'hotkey'
-        import org.brainstorm.dialogs.HotkeyDialog;
         % Open up hotkey dialog
         fontSize = round(11 * bst_get('InterfaceScaling') / 100);
         dialog = HotkeyDialog(fontSize);
@@ -390,6 +462,25 @@ switch(lower(msgType))
         else
             res = [];
             isCancel = 1;
+        end
+        
+    % Color picker
+    case 'color'
+        % Create color chooser
+        if ~isfield(GlobalData.Program, 'ColorChooser') || isempty(GlobalData.Program.ColorChooser)
+            jColorChooser = javax.swing.JColorChooser();
+            GlobalData.Program.ColorChooser = javax.swing.JColorChooser();
+        else
+            jColorChooser = GlobalData.Program.ColorChooser;
+        end
+        % Show question
+        answer = java_call('javax.swing.JOptionPane', 'showConfirmDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, jColorChooser, msgTitle, javax.swing.JOptionPane.OK_CANCEL_OPTION, javax.swing.JOptionPane.PLAIN_MESSAGE);
+        if (answer ~= javax.swing.JOptionPane.OK_OPTION)
+            res = [];
+        else
+            isCancel = 0;
+            color = jColorChooser.getColor();
+            res = double([color.getRed(), color.getGreen(), color.getBlue()]) ./ 255;
         end
 end
 

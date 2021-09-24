@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_itab(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,26 +54,39 @@ for i = 1:hdr.nchan
         ChannelMat.Channel(i).Loc(:,iCoil)    = hdr.ch(iChannels(i)).position(iCoil).r_s' ./ 1000;
         ChannelMat.Channel(i).Orient(:,iCoil) = hdr.ch(iChannels(i)).position(iCoil).u_s' ./ 1000;
         ChannelMat.Channel(i).Weight(1,iCoil) = hdr.ch(iChannels(i)).wgt(iCoil);
-    end    
-    % Type: everything below the "_"
-    iUnder = find(ChannelMat.Channel(i).Name == '_');
-    if (length(iUnder) == 1) && (iUnder > 1)
-        Type = ChannelMat.Channel(i).Name(1:iUnder-1);
-        % Rename some known types
-        switch (Type)
-            case 'MAG',   ChannelMat.Channel(i).Type = 'MEG';
-            case 'REF',   ChannelMat.Channel(i).Type = 'MEG REF';
-            case 'ELEC',  ChannelMat.Channel(i).Type = 'EEG';
-            otherwise,    ChannelMat.Channel(i).Type = Type;
-        end
-    else
-        ChannelMat.Channel(i).Type = 'MISC';
     end
+    % Type
+    switch (hdr.ch(iChannels(i)).type)  
+        case 1,    ChannelMat.Channel(i).Type = 'EEG';
+        case 2,    ChannelMat.Channel(i).Type = 'MEG';
+        case 4,    ChannelMat.Channel(i).Type = 'EEG';
+        case 8,    ChannelMat.Channel(i).Type = 'MEG REF';
+        case 16,   ChannelMat.Channel(i).Type = 'Misc';     %AUX
+        case 32,   ChannelMat.Channel(i).Type = 'Misc';     %PARAM
+        case 64,   ChannelMat.Channel(i).Type = 'Misc';     %DIGIT
+        case 128,  ChannelMat.Channel(i).Type = 'Misc';     %FLAG
+        otherwise, ChannelMat.Channel(i).Type = 'Misc';     %Misc 
+    end    
+    
+    % Type: everything below the "_"
+%     iUnder = find(ChannelMat.Channel(i).Name == '_');
+%     if (length(iUnder) == 1) && (iUnder > 1)
+%         Type = ChannelMat.Channel(i).Name(1:iUnder-1);
+%         % Rename some known types
+%         switch (Type)
+%             case 'MAG',   ChannelMat.Channel(i).Type = 'MEG';
+%             case 'REF',   ChannelMat.Channel(i).Type = 'MEG REF';
+%             case 'ELE',   ChannelMat.Channel(i).Type = 'EEG';
+%             otherwise,    ChannelMat.Channel(i).Type = Type;
+%         end
+%     else
+%         ChannelMat.Channel(i).Type = 'Misc';
+%     end
 end
+
 % Channel flag
 ChannelFlag = double([hdr.ch(iChannels).flag] == 0);
 ChannelFlag(ChannelFlag == 0) = -1;
-
 
 % %% ===== ADD MEG POSITIONS =====
 % iChan = channel_find(ChannelMat.Channel, 'MEG');
@@ -135,8 +148,7 @@ sFile.header     = hdr;
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.smpfq;
-sFile.prop.samples = [0, hdr.ntpdata - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, hdr.ntpdata - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ChannelFlag;
@@ -154,18 +166,17 @@ if (hdr.nsmpl >= 1)
     events = repmat(db_template('event'), 1, length(uniqueType));
     % Format list
     for iEvt = 1:length(uniqueType)
-        % Ask for a label
+        % Find list of occurences of this event
+        iOcc = find(strcmpi(allType, uniqueType(iEvt)));
+        % Fill events structure
         events(iEvt).label      = num2str(uniqueType(iEvt));
         events(iEvt).color      = [];
         events(iEvt).reactTimes = [];
         events(iEvt).select     = 1;
-        % Find list of occurences of this event
-        iOcc = find(strcmpi(allType, uniqueType(iEvt)));
-        % Get time and samples  (considering that samples are zero-based)
-        events(iEvt).samples = allStart(iOcc);
-        events(iEvt).times   = events(iEvt).samples ./ sFile.prop.sfreq;
-        % Epoch: set as 1 for all the occurrences
-        events(iEvt).epochs = ones(1, length(events(iEvt).samples));
+        events(iEvt).times      = allStart(iOcc) ./ sFile.prop.sfreq;  % Get time and samples  (considering that samples are zero-based)
+        events(iEvt).epochs     = ones(1, length(events(iEvt).times));  % Epoch: set as 1 for all the occurrences
+        events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
+        events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
     end
     % Import this list
     sFile = import_events(sFile, [], events);

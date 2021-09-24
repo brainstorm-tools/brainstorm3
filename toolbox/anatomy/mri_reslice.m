@@ -1,7 +1,7 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
-% MRI_RESLICE: Use the MNI transformation to .
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef, isAtlas)
+% MRI_RESLICE: Relice a volume based on a reference volume.
 %
-% USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+% USAGE:  [MriFileReg, errMsg, fileTag] = mri_reslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef, isAtlas=0)
 %            [sMriReg, errMsg, fileTag] = mri_reslice(sMriSrc,    sMriRef, ...)
 %
 % INPUTS:
@@ -11,6 +11,8 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 %    - sMriRef    : Brainstorm MRI structure used as a reference
 %    - TransfSrc  : Transformation for the MRI to register, or 'ncs'/'scs'/'vox2ras'
 %    - TransfRef  : Transformation for the reference MRI, or 'ncs'/'scs'/'vox2ras'
+%    - isAtlas    : If 0, interpolate using single values (cubic intepolation)
+%                   If 1, interpolate using integer values only (nearest neighbor)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
@@ -22,7 +24,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,11 +38,18 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_reslice(MriFileSrc, MriFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2020
 
 % ===== PARSE INPUTS =====
-sMriReg = [];
+% Parse inputs
+if (nargin < 5) || isempty(isAtlas)
+    isAtlas = 0;
+end
+% Initialize returned values
+MriFileReg = [];
 errMsg = [];
+fileTag = '';
+sMriReg = [];
 % Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
@@ -68,12 +77,11 @@ end
 
 
 % ===== GET NCS/SCS TRANSFORMATIONS =====
-fileTag = '';
 % Source MRI
 if ischar(TransfSrc)
     if strcmpi(TransfSrc, 'ncs')
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         if isempty(errMsg)
             TransfSrc = [sMriSrc.NCS.R, sMriSrc.NCS.T; 0 0 0 1];
@@ -90,12 +98,10 @@ if ischar(TransfSrc)
         if ~isfield(sMriSrc, 'InitTransf') || isempty(sMriSrc.InitTransf) || ~any(ismember(sMriSrc.InitTransf(:,1), 'vox2ras'))
             errMsg = 'No vox2ras transformation available for the input volume.';
         else
-            iTransfSrc = find(strcmpi(sMriSrc.InitTransf(:,1), 'vox2ras'));
-            TransfSrc = sMriSrc.InitTransf{iTransfSrc(1),2};
-            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-            TransfSrc = TransfSrc * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            % 1st operation: Convert from MRI(mm) to voxels
-            TransfSrc = TransfSrc * diag(1 ./ [sMriSrc.Voxsize, 1]);
+            % Get transformation MRI=>WORLD
+            TransfSrc = cs_convert(sMriSrc, 'mri', 'world');
+            % Convert to millimeters (to match the fiducials storage)
+            TransfSrc(1:3,4) = TransfSrc(1:3,4) .* 1000;
         end
         fileTag = '';
     end
@@ -104,7 +110,7 @@ end
 if ischar(TransfRef)
     if strcmpi(TransfRef, 'ncs')
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         if isempty(errMsg)
             TransfRef = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1];
@@ -118,34 +124,29 @@ if ischar(TransfRef)
     elseif strcmpi(TransfRef, 'vox2ras')
         if ~isfield(sMriRef, 'InitTransf') || isempty(sMriRef.InitTransf) || ~any(ismember(sMriRef.InitTransf(:,1), 'vox2ras'))
             errMsg = 'No vox2ras transformation available for the reference volume.';
-        else
-            iTransfRef = find(strcmpi(sMriRef.InitTransf(:,1), 'vox2ras'));
-            TransfRef = sMriRef.InitTransf{iTransfRef(1),2};
-            % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-            TransfRef = TransfRef * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-            % 1st operation: Convert from MRI(mm) to voxels
-            TransfRef = TransfRef * diag(1 ./ [sMriRef.Voxsize, 1]);
+        else           
+            % Get transformation MRI=>WORLD
+            TransfRef = cs_convert(sMriRef, 'mri', 'world');
+            % Convert to millimeters (to match the fiducials storage)
+            TransfRef(1:3,4) = TransfRef(1:3,4) .* 1000;
         end
     end
 end
 % Handle errors
 if ~isempty(errMsg)
-    if ~isempty(MriFileSrc)
-        bst_error(errMsg, 'MRI reslice', 0);
-    end
     return;
 end
 
 
 % ===== INTERPOLATE MRI VOLUME =====
-% Original position vectors (WHATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
-X1 = ((0:size(sMriSrc.Cube,1)-1) + 0.5);
-Y1 = ((0:size(sMriSrc.Cube,2)-1) + 0.5);
-Z1 = ((0:size(sMriSrc.Cube,3)-1) + 0.5);
+% Original position vectors (WATCH OUT FOR THE X/Y PERMUTATION OF MESHGRID!)
+X1 = (0:size(sMriSrc.Cube,1)-1) + 0.5;
+Y1 = (0:size(sMriSrc.Cube,2)-1) + 0.5;
+Z1 = (0:size(sMriSrc.Cube,3)-1) + 0.5;
 % Reference position vectors
-X2 = ((0:size(sMriRef.Cube,1)-1) + 0.5);
-Y2 = ((0:size(sMriRef.Cube,2)-1) + 0.5);
-Z2 = ((0:size(sMriRef.Cube,3)-1) + 0.5);
+X2 = (0:size(sMriRef.Cube,1)-1) + 0.5;
+Y2 = (0:size(sMriRef.Cube,2)-1) + 0.5;
+Z2 = (0:size(sMriRef.Cube,3)-1) + 0.5;
 % Mesh grids
 [Xgrid2, Ygrid2, Zgrid2] = meshgrid(Y2, X2, Z2);
 % Apply final transformation: reference MRI => common space => original MRI
@@ -162,10 +163,24 @@ Zgrid2 = reshape(allGrid(3,:), size(Zgrid2));
 % newCube = uint8(interp3(Y1, X1, Z1, double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'spline', 0));
 
 % OPTION #2: Cubic interp, very similar results, much faster
-newCube = uint8(interp3(Y1 .* sMriSrc.Voxsize(2), ...
-                        X1 .* sMriSrc.Voxsize(1), ...
-                        Z1 .* sMriSrc.Voxsize(3), ...
-                        double(sMriSrc.Cube), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+n4 = size(sMriSrc.Cube,4);
+newCube = cell(1,n4);
+for i4 = 1:n4
+    if isAtlas
+        newCube{i4} = interp3(...
+            Y1 .* sMriSrc.Voxsize(2), ...
+            X1 .* sMriSrc.Voxsize(1), ...
+            Z1 .* sMriSrc.Voxsize(3), ...
+            sMriSrc.Cube(:,:,:,i4), Xgrid2, Ygrid2, Zgrid2, 'nearest', 0);
+    else
+        newCube{i4} = single(interp3(...
+            Y1 .* sMriSrc.Voxsize(2), ...
+            X1 .* sMriSrc.Voxsize(1), ...
+            Z1 .* sMriSrc.Voxsize(3), ...
+            double(sMriSrc.Cube(:,:,:,i4)), Xgrid2, Ygrid2, Zgrid2, 'cubic', 0));
+    end
+end
+newCube = cat(4, newCube{:});
 
 %     % OPTION #3: Spline interp by block, too slow, but ok for memory usage
 %     if any(size(sMriSrc.Cube) > 256)

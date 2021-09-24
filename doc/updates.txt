@@ -1,3 +1,263 @@
+--------------------------------------------------------------
+September 2021
+- SEEG/ECOG contact labelling from volume and surface atlases
+- Distrib: Compilation with Matlab 2021a/2021b
+- Dritrib: Updated deployment and compilation scripts
+--------------------------------------------------------------
+August 2021
+- Doc: New FEM tutorials
+---------------------------------------------------------------
+July 2021
+- Inverse: FieldTrip DICS
+- Anatomy: Fixed O'Reilly infant templates
+- IO: Added support for Axion AxIS recordings (.raw)
+- Connectivity: New coherence processes 2021
+---------------------------------------------------------------
+June 2021
+- New connectivity graphs
+- CAT12: Added support for thalamus atlas
+- Anatomy: Tissues tesselation with tess_meshlayer
+- IO: Added Blackrock NPMK libary as plugin
+- Doc: Updated introduction tutorial dataset to FreeSurfer 7.1
+---------------------------------------------------------------
+May 2021
+- Anatomy: Use imported volume parcellations as volume scouts
+- Anatomy: Updated CAT12 to version 12.8 (r1825)
+- IO: Support for Micromed .EVT
+---------------------------------------------------------------
+April 2021
+- Plugins: NIRSTORM included as a plugin (available as compiled)
+- Plugins: BrainEntropy included as a plugin (available as compiled)
+- Doc: Updated all the tutorials with the new anatomy tools
+- Events: Marking a trial as good removes the tag "bad" from all the events
+- Anatomy: Import BrainSuite multiple parcellations
+---------------------------------------------------------------
+March 2021
+- New plugins manager: first release
+- Distrib: Reorganized compilation system to include plugins
+- IO: Bugfix export .nii qform/sform, especially after resampling
+- Anatomy: Mindboggle atlas renamed DKT atlas
+---------------------------------------------------------------
+February 2021
+- SimMEEG: Simulate MEG/EEG signals with SimMEEG
+- Distrib: Continued development of the plugin manager
+---------------------------------------------------------------
+January 2021
+- Anatomy: MNI normalization with SPM12 Segment
+- Anatomy: Prepared a list of standard MNI atlases: AAL2, AAL3, AICHA, 
+| Brainnetome, Hammers, Neuromorphometrics, Julich-Brain, Schaefer2018
+- Distrib: New plugin manager bst_plugin
+- IO: Added support for ADInstruments LabChart EEG (.adicht)
+- IO: Added again NWB support
+---------------------------------------------------------------
+December 2020
+- Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)
+- Anatomy: Import and reslices MNI atlases using linear/nonlinear reg
+- Distrib: Updated NIRSTORM installation scripts
+---------------------------------------------------------------
+November 2020
+- Python: New integration with Python and MNE-Python based on CPython
+- Distrib: Compiled version now includes NIRSTORM, Brain2Mesh and Iso2Mesh
+- Anatomy: Updated CAT12 to version r1733
+- Anatomy: Support for volume atlases in the database and the MRI viewer
+- Anatomy: Import all volume atlases from FreeSurfer, CAT, BrainVISA, BrainSuite
+- Anatomy: New automated import (15000 vertices, MNI fiducials)
+- FEM: Add SEEG/ECOG support in DUNEuro & other improvements
+---------------------------------------------------------------
+October 2020
+- Major bug fix: Changed units in PSD computation
+- New process: Simulate recordings from dipoles
+- Anatomy: Standard EEG caps included with infant templates
+- Anatomy: FreeSurfer import now loads all the .annot files in /label
+- ephys: Phase locking circular plots 
+- Process: Apply montage: Include processing of headmodels
+- Python: More generic initialization, using pyenv when available
+---------------------------------------------------------------
+September 2020
+- GUI: Added Y-log scale for spectrum figures
+- IO: Added export to TSV, with optional transposition for CSV/TSV/Excel
+- IO: Import Nicolet exported events (.txt)
+- Simulations: New tutorial and developments
+- MNE-Python: Wrapper for mne.preprocessing.maxwell_filter
+---------------------------------------------------------------
+August 2020
+- Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
+- IO: Support for Spike2 .smrx files
+- IO: Removed NWB support (not stable enough)
+- IO: Support for Open Ephys flat binary file (.dat/.oebin)
+- Connectivity: New envelope correction process (henv - H.Shahabi)
+- FOOF: Fitting Oscillations and One-Over-F
+---------------------------------------------------------------
+July 2020
+- Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
+- Anatomy: Use custom background threshold for head surface generation
+---------------------------------------------------------------
+June 2020
+- FEM: Computation and display of tetrahedral conductivity tensors
+- Distrib: New default binary distribution: Matlab 2020a
+- Distrib: Compatibility with Matlab 2020b prerelease
+- IO: Support for The Virtual Brain .h5 EEG recordings (TVB)
+---------------------------------------------------------------
+May 2020
+- FEM: Import and management of tissue segmentations
+- IO: Support for fNIRS format .snirf
+- Anatomy: Updated CAT12 to version 12.7
+- Anatomy: Added CAT12 extra maps (gyrification, sulcal depth)
+- Doc: Updated decoding tutorial with new processes
+---------------------------------------------------------------
+April 2020
+- FEM: Integration of bst-duneuro into Brainstorm
+- FEM: Computation of DTI tensors
+- Anatomy: Improve volume import and display (types other than uint8, negative values)
+- Anatomy: Support for time-varying volumes
+- IO: Anonymize FIF files
+- Doc: New FEM tutorials
+---------------------------------------------------------------
+March 2020
+- Anatomy: Many imporvements in FEM mesh generation and manipulations
+- Anatomy: BEM generation with FieldTrip
+- Anatomy: Fixes in coordinate system conversions for FieldTrip anatomy files
+- Anatomy: Added independent SimNIBS anatomy folder import
+- GUI: View leadfield vectors
+---------------------------------------------------------------
+February 2020
+- IO: Added support for Localite digitizer (.csv)
+- Anatomy: Update FSAverage template (new import functions + braintomme atlas)
+- Anatomy: Full integration with iso2mesh for mesh generation
+- GUI: Upgraded to 2020a (deprecated JavaFrame and javacomponent)
+- GUI: Scaling all figure elements with InterfaceScaling
+---------------------------------------------------------------
+January 2020
+- Database: New search interface
+- Anatomy: 3D mesh generation with iso2mesh, SimNIBS, ROAST and FieldTrip
+- Anatomy: Optimized 3D tetrahedral mesh display
+- Anatomy: Added vox2ras matrix to ICBM152 template (world coordinates)
+- Anatomy: Updated USCBrain and BCI-DNI templates (skull, vox2ras, electrodes)
+- IO: Added support for SimNIBS meshes
+- IO: Added support for EmotivPRO EDF recordings
+---------------------------------------------------------------
+December 2019
+- IO: Added support for Wearable Sensing CSV files
+- IO: Added support for split FIF files (> 2Gb)
+---------------------------------------------------------------
+October 2019
+- IO: Conversion functions from/to MNE-python objects (Raw, Epoched, Evoked)
+- IO: Added support for Curry epoched .dat files
+- Stat: Renamed "p-value threshold" in "significance level alpha"
+- GUI: Montage editor: New option to filter the signals in a frequency band
+- GUI: Automatically unload when loading new file with incompatible time
+- GUI: Zoom on selected windows with shift+click (time series and spectrum)
+- GUI: Display and apply SSP/ICA projectors as montages
+- Database: Support for regular expressions when importing events
+---------------------------------------------------------------
+September 2019
+- Anatomy: Added storage and display for FEM meshes
+- Anatomy: Computation of FEM meshes with ROAST and iso2mesh
+---------------------------------------------------------------
+August 2019
+- GUI: Added support for clusters with STDs
+- GUI: New colormap: Turbo, Google's JET alternative
+- IO: Import volume atlases as scouts without overlap between ROIs
+---------------------------------------------------------------
+July 2019
+- Anatomy: Import MRI segmentation output from SPM12/CAT12
+- Anatomy: Run MRI segmentation output with SPM12/CAT12
+- Anatomy: Improved algorithm for projecting multiple scouts across surfaces
+- API: Major modification in averaging: Using Leff instead of nAvg
+- Inverse: Major modification in dSPM computation: Now saving unscaled values
+- IO: Added support for MNE-FIF epoched files
+- IO: Added support for ANT EEProbe .avr files
+- IO: Neuroscan AVG: Added support for channel names and locations
+---------------------------------------------------------------
+June 2019
+- Anatomy: Added support for MarsAtlas parcellation in BrainVISA
+- IO: Support for Intan RHS+RHD files
+---------------------------------------------------------------
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
+- Database: Improved database updates between versions
+- Database: Add new type of object "fibers"
+- IO: Improved support for discontinuous EDF files (EDF+D)
+- GUI: Time series viewer: New menu to group all the display options
+- GUI: Events: New options for displaying event markers (lines, dots, hide)
+- GUI: New keyboard shortcuts for recordings viewer (F6, Shift+F6, Ctrl+L, Ctrl+H)
+- GUI: New options for custom events shortcuts (full page, extended events)
+---------------------------------------------------------------
+April 2019
+- GUI: New color picker to replace Matlab's buggy uisetcolor
+- GUI: New bipolar and avg ref montages for ECOG+SEEG
+- GUI: New default colormaps: Viridis, Magma, Dory, Royal Gramma, Mandrill
+- GUI: New EEG montage: Scalp Current Density (L->R)
+- Anatomy: Support for new fibers objects
+- Connectivity: View of functionnal connectivity along anatomical fibers
+- Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
+---------------------------------------------------------------
+March 2019
+- Anatomy: Deface MRI with FreeSurfer or SPM
+- Anatomy: World coordinates made available in MRI viewer
+- IO: Support for synchronized EEG-video (link raw and import epochs)
+- GUI: Review of synchronized EEG-video with VLC ActiveX plugin
+- GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
+- GUI: EEG Scalp Current Density (SCD) as a default montage
+- Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
+- Distrib: Compiled 2019a
+---------------------------------------------------------------
+February 2019
+- Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
+- New process2: "Standardize > Interpolate time" (+ new option 'nearest' in process_stdtime.m)
+- IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
+- IO: Added support for Tucker Davis Technologies (.tdt)
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
+- Distrib: Compiled Brainstorm now includes all SPM and FieldTrip dependencies
+- Distrib: Compiled 2018a and 2018b versions
+---------------------------------------------------------------
+January 2019
+- IO: BIDS export process supports EEG-BIDS
+- IO: Plexon 2 (.pl2) files can now be read if Plexon SDK installed
+- IO: Export EEG/SEEG electrode positions in MNI or world coordinates
+- Anatomy: Handle better world coordinates (cs_convert, import/export of channel files)
+- Stat: Colormaps adapted to t-value threshold
+- GUI: Added colormap ovun (now default for stat2 files)
+- GUI: Reorganization of the management of multiple screens for Matlab>2015b
+---------------------------------------------------------------
+December 2018
+- IO: BIDS import: Support for EEG and iEEG
+- IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
+- Bug fix: Fixed coil orientations when reading CTF .ds folders including a .pos file (MNI only)
+  https://neuroimage.usc.edu/brainstorm/Tutorials/CtfCoilOrientBugFix
+---------------------------------------------------------------
+November 2018
+- New electrophysiology toolbox
+- GUI: 2DLayout: Added new controls, new time window management
+- GUI: 2DLayout: Overlay of multiple conditions
+- GUI: 2DLayout: Overlay of NIRS wavelengths and oxy/deoxy
+---------------------------------------------------------------
+October 2018
+- IO: BIDS export process
+---------------------------------------------------------------
+September 2018
+- IO: Support for EGI-Philips MFF recordings
+- Process: Uniform epoch time: Added option "overwrite" and support for source links
+---------------------------------------------------------------
+August 2018
+- Bug fix: All the issues related with OpenMEEG 2.4 should be fixed now
+- Distrib: Improved download speed
+- Sources: Updated OpenMEEG to 2.4.1 (bug fixes)
+- GUI: Added NIRS colormap type
+- Anatomy: Added labels for FreeSurfer volume atlases: aparc+aseg, aparc.a2009s, aparc.DKTatlas
+---------------------------------------------------------------
+July 2018
+- Inverse 2018: Major modification: dSPM values are no longer scaled by number of trials
+  | https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values
+- Inverse: Enforce bst_inverse_linear_2018 as the default option
+- Stat: Added "Minimum duration" threshold in the stat tab
+- GUI: Headless support, for running scripts on computation clusters and distant servers
+- GUI: New montage "Average reference (L -> R)" for 10-20 EEG caps
+- GUI: New menu "Set acquisition date" (for automatic matching with empty-room recordings)
+- Anatomy: BrainSuite: Added subcortical structures
+- Inverse: Switched to OpenMEEG 2.4
 ---------------------------------------------------------------
 June 2018
 - Distrib: New electrophysiology toolbox

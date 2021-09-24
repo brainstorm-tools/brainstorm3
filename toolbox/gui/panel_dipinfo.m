@@ -5,7 +5,7 @@ function varargout = panel_dipinfo(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = panel_dipinfo(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2017
+% Authors: Francois Tadel, 2016-2019
 
 eval(macro_method);
 end
@@ -44,7 +44,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jToolbar.setPreferredSize(java_scaled('dimension', 100,25));
         jToolbar.add(JLabel('     '));
         % Button "View in MRI Viewer"
-        gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'View point in MRI Viewer', @ViewInMriViewer);
+        gui_component('ToolbarButton', jToolbar, [], 'View/MRI', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'Center MRI Viewer on dipole', @ViewInMriViewer);
+        % Button "View/3D"
+        gui_component('ToolbarButton', jToolbar, [], 'View/3D', IconLoader.ICON_VIEW_SCOUT_IN_MRI, 'Center 3D view on dipole', @ViewIn3D);
         % Button "Remove selection"
         gui_component('ToolbarButton', jToolbar, [], 'Reset', IconLoader.ICON_DELETE, 'Remove point selection', @RemoveSelection);
                   
@@ -52,9 +54,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelMain = gui_river();
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
-        jPanelCoordinates.setPreferredSize(java_scaled('dimension', 240,125));
+        %jPanelCoordinates.setPreferredSize(java_scaled('dimension', 240,125));
             % Coordinates
-            gui_component('label', jPanelCoordinates, 'tab', '  ');
+            gui_component('label', jPanelCoordinates, '', '  ');
             gui_component('label', jPanelCoordinates, 'tab', '       X');
             gui_component('label', jPanelCoordinates, 'tab', '       Y');
             gui_component('label', jPanelCoordinates, 'tab', '       Z');
@@ -92,6 +94,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jPanelCoordinates.add('tab', jLabelCoordScsX);
             jPanelCoordinates.add('tab', jLabelCoordScsY);
             jPanelCoordinates.add('tab', jLabelCoordScsZ);
+            % === WORLD ===
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'World: '));
+            jLabelCoordWrlX = JLabel('-');
+            jLabelCoordWrlY = JLabel('-');
+            jLabelCoordWrlZ = JLabel('-');
+            jLabelCoordWrlX.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlY.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlZ.setHorizontalAlignment(javax.swing.JLabel.RIGHT);
+            jLabelCoordWrlX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelCoordWrlX.setFont(jFontText);
+            jLabelCoordWrlY.setFont(jFontText);
+            jLabelCoordWrlZ.setFont(jFontText);
+            jPanelCoordinates.add('tab', jLabelCoordWrlX);
+            jPanelCoordinates.add('tab', jLabelCoordWrlY);
+            jPanelCoordinates.add('tab', jLabelCoordWrlZ);
             % === MNI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MNI: '));
             jLabelCoordMniX = JLabel('-');
@@ -168,6 +187,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jLabelCoordScsX',   jLabelCoordScsX, ...
                                   'jLabelCoordScsY',   jLabelCoordScsY, ...
                                   'jLabelCoordScsZ',   jLabelCoordScsZ, ...
+                                  'jLabelCoordWrlX',   jLabelCoordWrlX, ...
+                                  'jLabelCoordWrlY',   jLabelCoordWrlY, ...
+                                  'jLabelCoordWrlZ',   jLabelCoordWrlZ, ...
                                   'jLabelCoordMniX',   jLabelCoordMniX, ...
                                   'jLabelCoordMniY',   jLabelCoordMniY, ...
                                   'jLabelCoordMniZ',   jLabelCoordMniZ, ...
@@ -232,10 +254,12 @@ function UpdatePanel(hFig)
         SCS = sDip.Loc;
         MRI = cs_convert(sMri, 'scs', 'mri', SCS);
         MNI = cs_convert(sMri, 'scs', 'mni', SCS);
+        World = cs_convert(sMri, 'scs', 'world', SCS);
     else
         SCS = [];
         MRI = [];
         MNI = [];
+        World = [];
     end
 
     % Update coordinates (text fields)
@@ -259,7 +283,17 @@ function UpdatePanel(hFig)
         ctrl.jLabelCoordScsY.setText('-');
         ctrl.jLabelCoordScsZ.setText('-');
     end
-    % SCS
+    % World
+    if ~isempty(World)
+        ctrl.jLabelCoordWrlX.setText(sprintf('%3.1f', 1000 * World(1)));
+        ctrl.jLabelCoordWrlY.setText(sprintf('%3.1f', 1000 * World(2)));
+        ctrl.jLabelCoordWrlZ.setText(sprintf('%3.1f', 1000 * World(3)));
+    else
+        ctrl.jLabelCoordWrlX.setText('-');
+        ctrl.jLabelCoordWrlY.setText('-');
+        ctrl.jLabelCoordWrlZ.setText('-');
+    end
+    % MNI
     if ~isempty(MNI)
         ctrl.jLabelCoordMniX.setText(sprintf('%3.1f', 1000 * MNI(1)));
         ctrl.jLabelCoordMniY.setText(sprintf('%3.1f', 1000 * MNI(2)));
@@ -419,7 +453,6 @@ function ViewInMriViewer(varargin)
     if isempty(hFig)
         return
     end
-    
     % Get selected dipole in figure
     iDipole = getappdata(hFig, 'iDipoleSelected');
     if isempty(iDipole)
@@ -432,26 +465,39 @@ function ViewInMriViewer(varargin)
     end
     % Select dipole structure
     sDip = DipolesInfo.Dipole(iDipole);
-
     % Get subject and subject's MRI
     sSubject = bst_get('Subject', GlobalData.DataSet(iDS).SubjectFile);
     if isempty(sSubject) || isempty(sSubject.iAnatomy)
         return 
     end
-    % Progress bar
-    bst_progress('start', 'MRI Viewer', 'Opening MRI Viewer...');
-    % Get protocol directories
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % MRI full filename
-    MriFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(MriFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Select the required point
     figure_mri('SetLocation', 'scs', hFig, [], sDip.Loc);
-    % Close progress bar
-    bst_progress('stop');
 end
 
 
+%% ===== VIEW IN 3D =====
+function ViewIn3D(varargin)
+    % Get current 3D figure
+    hFig = bst_figures('GetCurrentFigure', '3D');
+    if isempty(hFig)
+        return
+    end
+    % Get selected dipole in figure
+    iDipole = getappdata(hFig, 'iDipoleSelected');
+    if isempty(iDipole)
+        return;
+    end
+    % Get Dipoles description for current figure
+    DipolesInfo = panel_dipoles('GetDipolesForFigure', hFig);
+    if isempty(DipolesInfo) || isempty(DipolesInfo.Dipole) || isempty(iDipole) || (iDipole > length(DipolesInfo.Dipole))
+        return
+    end
+    % Select dipole structure
+    sDip = DipolesInfo.Dipole(iDipole);
+    % Select the required point
+    figure_3d('SetLocationMri', hFig, 'scs', sDip.Loc);
+end
 
 

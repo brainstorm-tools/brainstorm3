@@ -15,7 +15,7 @@ function [ExportFile, sFileOut] = export_data(DataFile, ChannelMat, ExportFile, 
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,7 +29,7 @@ function [ExportFile, sFileOut] = export_data(DataFile, ChannelMat, ExportFile, 
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2019
 
 % ===== PARSE INPUTS =====
 if (nargin < 4) || isempty(FileFormat)
@@ -120,14 +120,21 @@ if isempty(ExportFile)
         case {'', 'BST-BIN'},   DefaultExt = '.bst';
         case 'FT-TIMELOCK',     DefaultExt = '.mat';
         case 'SPM-DAT',         DefaultExt = '.mat';
+        case 'EEG-BRAINAMP',    DefaultExt = '.eeg';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'EEG-EDF',         DefaultExt = '.edf';
+        case 'NIRS-SNIRF',      DefaultExt = '.snirf';
         case 'ASCII-CSV',       DefaultExt = '.csv';
         case 'ASCII-CSV-HDR',   DefaultExt = '.csv';
-        case 'ASCII-SPC',       DefaultExt = '.txt';  
-        case 'ASCII-SPC-HDR',   DefaultExt = '.txt';        
+        case 'ASCII-CSV-HDR-TR',DefaultExt = '.csv';
+        case 'ASCII-TSV',       DefaultExt = '.tsv';
+        case 'ASCII-TSV-HDR',   DefaultExt = '.tsv';
+        case 'ASCII-TSV-HDR-TR',DefaultExt = '.tsv';
+        case 'ASCII-SPC',       DefaultExt = '.txt';
+        case 'ASCII-SPC-HDR',   DefaultExt = '.txt';
         case 'EXCEL',           DefaultExt = '.xlsx';
+        case 'EXCEL-TR',        DefaultExt = '.xlsx';
         case 'BST',             DefaultExt = '_timeseries.mat';
         otherwise,              DefaultExt = '_timeseries.mat';
     end
@@ -172,11 +179,14 @@ elseif isempty(FileFormat)
     [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
     switch lower(BstExt)
         case '.bst',   FileFormat = 'BST-BIN';
+        case '.eeg',   FileFormat = 'EEG-BRAINAMP';
         case '.eph',   FileFormat = 'EEG-CARTOOL-EPH';
         case '.raw',   FileFormat = 'EEG-EGI-RAW';
         case '.edf',   FileFormat = 'EEG-EDF';
-        case '.txt',   FileFormat = 'ASCII-CSV';
-        case '.csv',   FileFormat = 'ASCII-SPC';
+        case '.snirf', FileFormat = 'NIRS-SNIRF';
+        case '.txt',   FileFormat = 'ASCII-SPC';
+        case '.csv',   FileFormat = 'ASCII-CSV-HDR';
+        case '.tsv',   FileFormat = 'ASCII-TSV-HDR';
         case '.xlsx',  FileFormat = 'EXCEL';
         case '.mat',   FileFormat = 'BST';
         otherwise,     error('Unsupported file extension.');
@@ -196,11 +206,47 @@ if isRawIn
     ImportOptions.UseSsp          = 0;
     ImportOptions.RemoveBaseline  = 'no';
 end
+
+% ===== REMOVE ANNOTATION CHANNELS =====
+% Detect annotation channels (exclude BST-BIN output, because we want to keep everything)
+if ~strcmpi(FileFormat, 'BST-BIN')
+    iAnnot = channel_find(ChannelMat.Channel, {'EDF', 'BDF', 'KDF'});
+else
+    iAnnot = [];
+end
+% List of input and output channels
+iChannelsIn = setdiff(1:length(ChannelMat.Channel), iAnnot);
+iChannelsOut = 1:length(iChannelsIn);
+% Selected channel mats
+ChannelMatIn = ChannelMat;
+ChannelMatOut = ChannelMat;
+% Remove unwanted channels from channel file
+if ~isempty(iAnnot)
+    ChannelMatOut.Channel = ChannelMatOut.Channel(iChannelsIn);
+    for iProj = 1:length(ChannelMatOut.Projector)
+        if isequal(ChannelMatOut.Projector(iProj).SingVal, 'REF')
+            ChannelMatOut.Projector(iProj).Components = ChannelMatOut.Projector(iProj).Components(iChannelsIn, iChannelsIn);
+        else
+            ChannelMatOut.Projector(iProj).Components = ChannelMatOut.Projector(iProj).Components(iChannelsIn, :);
+        end
+    end
+end
+% Remove unwanted channels from input data file
+if ~isRawIn
+    if isfield(DataMat, 'F') && ~isempty(DataMat.F)
+        DataMat.F = DataMat.F(iChannelsIn,:);
+    end
+    if isfield(DataMat, 'ChannelFlag') && ~isempty(DataMat.ChannelFlag)
+        DataMat.ChannelFlag = DataMat.ChannelFlag(iChannelsIn);
+    end
+end
+
+% ===== CREATE OUTPUT RAW FILE =====
 % Output data as raw file (continuous writers routines)
-isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF'});
+isRawOut = ismember(FileFormat, {'BST-BIN', 'EEG-EGI-RAW', 'SPM-DAT', 'EEG-EDF', 'EEG-BRAINAMP'});
 % Open output file 
 if isRawOut
-    [sFileOut, errMsg] = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMat);
+    [sFileOut, errMsg] = out_fopen(ExportFile, FileFormat, sFileIn, ChannelMatOut, iChannelsIn);
     % Error management
     if isempty(sFileOut) && ~isempty(errMsg)
         error(errMsg);
@@ -208,15 +254,6 @@ if isRawOut
         disp(['BST> Warning: ' errMsg]);
     end
 end
-% Remove EDF/BDF/KDF annotation channels
-iChannels = 1:length(ChannelMat.Channel);
-if ~isempty(ChannelMat)
-    iAnnot = channel_find(ChannelMat.Channel, {'EDF', 'BDF', 'KDF'});
-    iChannels = setdiff(iChannels, iAnnot);
-else
-    iAnnot = [];
-end
-
 
 % ===== RAW IN / RAW OUT =====
 if isRawIn && isRawOut
@@ -227,7 +264,7 @@ if isRawIn && isRawOut
     % Get default epoch size
     EpochSize = bst_process('GetDefaultEpochSize', sFileOut);
     % Process by sample blocks
-    nSamples = sFileOut.prop.samples(2) - sFileOut.prop.samples(1) + 1;
+    nSamples = round((sFileOut.prop.times(2) - sFileOut.prop.times(1)) * sFileOut.prop.sfreq) + 1;
     nBlocks = ceil(nSamples / EpochSize);
     % Show progress bar
     if ~isProgress
@@ -236,11 +273,11 @@ if isRawIn && isRawOut
     % Copy files by block
     for iBlock = 1:nBlocks
         % Get sample indices
-        SamplesBounds = sFileOut.prop.samples(1) + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
+        SamplesBounds = sFileOut.prop.times(1) * sFileOut.prop.sfreq + [(iBlock-1) * EpochSize, min(iBlock*EpochSize-1, nSamples-1)];
         % Read from input file
-        F = in_fread(sFileIn, ChannelMat, 1, SamplesBounds, iChannels, ImportOptions);
+        F = in_fread(sFileIn, ChannelMatIn, 1, SamplesBounds, iChannelsIn, ImportOptions);
         % Save to output file
-        sFileOut = out_fwrite(sFileOut, ChannelMat, 1, SamplesBounds, iChannels, F);
+        sFileOut = out_fwrite(sFileOut, ChannelMatOut, 1, SamplesBounds, iChannelsOut, F);
         % Increase progress bar
         if ~isProgress
             bst_progress('inc', 1);
@@ -251,10 +288,10 @@ if isRawIn && isRawOut
 else
     % Load full file
     if isRawIn
-        F = in_fread(sFileIn, ChannelMat, 1, [],iChannels, ImportOptions);
+        F = in_fread(sFileIn, ChannelMatIn, 1, [], iChannelsIn, ImportOptions);
     else
         if isfield(DataMat, 'F') && ~isempty(DataMat.F)
-            F = DataMat.F(iChannels,:);
+            F = DataMat.F;
         elseif isfield(DataMat, 'ImageGridAmp') && ~isempty(DataMat.ImageGridAmp)
             F = DataMat.ImageGridAmp;
         else
@@ -262,10 +299,9 @@ else
         end
     end
 
-    
     % Save full file
     if isRawOut
-        out_fwrite(sFileOut, ChannelMat, 1, [], iChannels, F);
+        out_fwrite(sFileOut, ChannelMatOut, 1, [], iChannelsOut, F);
     else
         % Switch between file formats
         switch FileFormat
@@ -273,7 +309,8 @@ else
                 DataMat.F = F;
                 bst_save(ExportFile, DataMat, 'v6');
             case 'FT-TIMELOCK'
-                ftData = out_fieldtrip_data(DataMat, ChannelMat, [], 1);
+                DataMat.F = F;
+                ftData = out_fieldtrip_data(DataMat, ChannelMatOut, [], 1);
                 bst_save(ExportFile, ftData, 'v6');
             case 'EEG-CARTOOL-EPH'
                 % Get sampling rate
@@ -282,13 +319,14 @@ else
                 dlmwrite(ExportFile, [size(F,1), size(F,2), samplingFreq], 'newline', 'unix', 'precision', '%d', 'delimiter', ' ');
                 % Write data
                 dlmwrite(ExportFile, F' * 1000, 'newline', 'unix', 'precision', '%0.7f', 'delimiter', '\t', '-append');
-            case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
-                % Removing the EDF/BDF/KDF annotation channels
-                if ~isempty(iAnnot)
-                    ChannelMat.Channel(iAnnot) = [];
+            case 'NIRS-SNIRF'
+                if isRawIn
+                    DataMat.Events = DataMat.F.events;
                 end
-                % Save data
-                out_matrix_ascii(ExportFile, F, FileFormat, {ChannelMat.Channel.Name}, DataMat.Time, []);
+                DataMat.F = F;
+                out_data_snirf(ExportFile, DataMat, ChannelMatOut);
+            case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR', 'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL', 'EXCEL-TR'}
+                out_matrix_ascii(ExportFile, F, FileFormat, {ChannelMatOut.Channel.Name}, DataMat.Time, []);
             otherwise
                 error('Unsupported format.');
         end

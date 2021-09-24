@@ -7,7 +7,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 %     - jTextMax       : Value in jTextValid must be inferior to value in jTextMax (set to [] to ignore)
 %     - TimeVector     : Either a full time vector (matrix) or {start, stop, sfreq} (cell)
 %     - TimeUnits      : Units used to represent the values: {'ms','s','scalar','list','optional'}; detected if not specified
-%     - dispPrecision  : Number of digits to display after the point (0=integer); detected if not specified
+%     - precision      : Number of digits to display after the point (0=integer); detected if not specified
 %     - initValue      : Initial value of the control
 %     - fcnCallback    : Callback that is executed after each validation of the jTextValid control
 
@@ -15,7 +15,7 @@ function [TimeUnits, precision] = gui_validate_text(jTextValid, jTextMin, jTextM
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -99,8 +99,8 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
         if ~isempty(newVal) && strcmpi(TimeUnits, 'Hzlist')
             newVal = setdiff(unique(newVal), 0);
             isChanged = 1;
-        % Int list: accept empty input
-        elseif ismember(TimeUnits, {'list','optional'}) && isempty(newVal)
+        % List/optional: accept empty input
+        elseif isempty(newVal) && ismember(TimeUnits, {'list','optional'})
             isChanged = 1;
         % If no valid value entered, use previous value
         elseif isempty(newVal) && isempty(currentValue)
@@ -121,6 +121,10 @@ java_setcb(jTextValid, 'ActionPerformedCallback', @(h,ev)TextValidation_Callback
         else
             newVal = round(newVal * sfreq) / sfreq;
             newVal = bst_saturate(newVal, bounds);
+            % Accept multiple values only for 'list'
+            if ((length(newVal) >= 2) && ~strcmpi(TimeUnits, 'list'))
+                newVal = newVal(1);
+            end
         end
         % Get min and max values from other text fields
         if ~isempty(jTextMin)

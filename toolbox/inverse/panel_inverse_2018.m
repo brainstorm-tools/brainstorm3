@@ -8,7 +8,7 @@ function varargout = panel_inverse_2018(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = panel_inverse_2018(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2021
 
 eval(macro_method);
 end
@@ -80,9 +80,12 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         % Get inverse options
         OPTIONS = sProcess.options.inverse.Value;
         % List of sensors
-        Modalities = intersect(sFiles(1).ChannelTypes, {'MEG MAG', 'MEG GRAD', 'MEG', 'EEG', 'ECOG', 'SEEG'});
-        if any(ismember({'MEG MAG','MEG GRAD'}, Modalities))
-            Modalities = setdiff(Modalities, 'MEG');
+        Modalities = {'MEG MAG', 'MEG GRAD', 'MEG', 'EEG', 'ECOG', 'SEEG'};
+        if ~isempty(sFiles(1).ChannelTypes)
+            Modalities = intersect(sFiles(1).ChannelTypes, Modalities);
+            if any(ismember({'MEG MAG','MEG GRAD'}, Modalities))
+                Modalities = setdiff(Modalities, 'MEG');
+            end
         end
         % Shared kernel
         isShared = (sProcess.options.output.Value == 1);
@@ -130,31 +133,18 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     if isProcess && isfield(OPTIONS, 'Comment') && ~isempty(OPTIONS.Comment)
         jTextComment.setText(OPTIONS.Comment);
     end
-    % Linear / Non-linear
-    jGroupLinear  = ButtonGroup(); 
-    jToogleLinear = gui_component('ToolbarToggle', jPanelTop, 'br', 'Linear', jGroupLinear, '', @(h,ev)UpdatePanel(1), []);
-    jToogleNonLin = gui_component('ToolbarToggle', jPanelTop, [], 'Non-linear', jGroupLinear, '', @(h,ev)UpdatePanel(1), []);
-    jToogleLinear.setSelected(1);
-    % Disable for shared/volume
-    if ~strcmpi(HeadModelType, 'surface') || isShared || (exist('isdeployed', 'builtin') && isdeployed)
-        jToogleNonLin.setEnabled(0);
-    end
-    
-    % ======================================================================================================
-    
-    % ==== PANEL: NON-LINEAR ====
-    jPanelNonLin = gui_river([1,1], [0,6,6,6], 'Non-linear methods');
-        jGroupNonLin  = ButtonGroup();       
-        jRadioMem = gui_component('radio', jPanelNonLin, [], 'MEM: Maximum entropy on the mean', jGroupNonLin, '', @(h,ev)UpdatePanel(), []);
-        jRadioMem.setSelected(1);
-    jPanelLeft.add(jPanelNonLin);
-    
+
     % ==== PANEL: METHOD ====
     jPanelMethod = gui_river([1,1], [0,6,6,6], 'Method');
         jGroupMethod  = ButtonGroup();
         jRadioMethodMn  = gui_component('radio', jPanelMethod, [],   'Minimum norm imaging', jGroupMethod, '', @Method_Callback, []);
         jRadioMethodBf  = gui_component('radio', jPanelMethod, 'br', 'LCMV beamformer',      jGroupMethod, '', @Method_Callback, []);
         jRadioMethodDip = gui_component('radio', jPanelMethod, 'br', 'Dipole modeling',      jGroupMethod, '', @Method_Callback, []);
+        if ~isProcess
+            jRadioMethodMem = gui_component('radio', jPanelMethod, 'br', 'MEM: Max entropy on the mean', jGroupMethod, '', @Method_Callback, []);
+        else
+            jRadioMethodMem = [];
+        end
         % Default selection
         switch lower(OPTIONS.InverseMethod)
             case 'minnorm',  jRadioMethodMn.setSelected(1);
@@ -166,6 +156,16 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         if ~isProcess && isempty(nSamplesData)
             jRadioMethodBf.setEnabled(0);
         end
+        % Disable Dipoles/Beamformer if mixed head models
+        if ~isProcess && strcmpi(HeadModelType, 'mixed')
+            jRadioMethodBf.setEnabled(0);
+            jRadioMethodDip.setEnabled(0);
+        end
+        % Disable MEM for shared/volume
+        if ~isempty(jRadioMethodMem) && ~isProcess && (~strcmpi(HeadModelType, 'surface') || isShared)
+            jRadioMethodMem.setEnabled(0);
+        end
+        
     c.gridy = 1;
     jPanelLeft.add(jPanelMethod, c);
     
@@ -174,11 +174,13 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         jGroupMnMeasure = ButtonGroup();
         jRadioMnCurrent = gui_component('radio', jPanelMeasureMN, [],   'Current density map',  jGroupMnMeasure, '', @(h,ev)UpdatePanel(1), []);
         jRadioMnDspm    = gui_component('radio', jPanelMeasureMN, 'br', 'dSPM',                 jGroupMnMeasure, '', @(h,ev)UpdatePanel(1), []);
+        jButtonDspmWarning = gui_component('label', jPanelMeasureMN, 'hfill', '<HTML><FONT color="#428bca">&nbsp;<U>Warning: unscaled values</U></FONT>', '', '', @(h,ev)WarningDspm(), []);
+        jButtonDspmWarning.setHorizontalAlignment(jButtonDspmWarning.RIGHT);
         jRadioMnSloreta = gui_component('radio', jPanelMeasureMN, 'br', 'sLORETA',              jGroupMnMeasure, '', @(h,ev)UpdatePanel(1), []);
         % Default selection
         switch lower(OPTIONS.InverseMeasure)
             case 'amplitude',    jRadioMnCurrent.setSelected(1);
-            case 'dspm',         jRadioMnDspm.setSelected(1);
+            case 'dspm2018',     jRadioMnDspm.setSelected(1);
             case 'sloreta',      jRadioMnSloreta.setSelected(1);
             otherwise,           jRadioMnCurrent.setSelected(1);
         end
@@ -262,6 +264,11 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     c.gridy = 4;
     jPanelLeft.add(jPanelSensors, c);
     
+    % ==== PANEL: MEM INFO ====
+    jPanelMemInfo = gui_river([1,1], [0,6,6,6], 'MEM');
+        gui_component('label', jPanelMemInfo, '', '<HTML><FONT color="#707070"><I>Requires the BrainEntropy plugin.<BR>Options defined in a separate panel.</I></FONT>', [], '', [], []);
+    c.gridy = 2;
+    jPanelLeft.add(jPanelMemInfo, c);
     % ======================================================================================================
     
     % ==== DEPTH WEIGHTING =====
@@ -363,8 +370,6 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
     ctrl = struct(...
             'HeadModelType',  HeadModelType, ...
             'jTextComment',   jTextComment, ...
-            'jToogleLinear',  jToogleLinear, ...
-            'jToogleNonLin',  jToogleNonLin, ...
             ... % ==== PANEL: METHOD ====
             'jRadioMethodMn',  jRadioMethodMn, ...
             'jRadioMethodBf',  jRadioMethodBf, ...
@@ -396,7 +401,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             'jRadioDiag',    jRadioDiag, ...
             'jRadioNoReg',   jRadioNoReg, ...
             ... % ==== PANEL: NON-LINEAR ====
-            'jRadioMem',     jRadioMem, ...
+            'jRadioMethodMem',     jRadioMethodMem, ...
             ... % ==== PANEL: DATA TYPE ====
             'jCheckMeg',     jCheckMeg, ...
             'jCheckMegGrad', jCheckMegGrad, ...
@@ -481,17 +486,15 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             isForced = 0;
         end
         % Get the main categories of options
-        isLinear = jToogleLinear.isSelected();
+        isLinear = isempty(jRadioMethodMem) || ~jRadioMethodMem.isSelected();
         % Expert mode / Normal mode
         if isForced
             ExpertMode = bst_get('ExpertMode');
-            % Show/hide left panels
-            jPanelMethod.setVisible(isLinear);
-            % jPanelModel.setVisible(isLinear && ~strcmpi(HeadModelType, 'mixed'));
+            % Left panels
             jPanelModel.setVisible(isLinear);
             jPanelMeasureMN.setVisible(isLinear && jRadioMethodMn.isSelected());
             jPanelMeasureBf.setVisible(isLinear && jRadioMethodBf.isSelected());
-            jPanelNonLin.setVisible(~isLinear);
+            jPanelMemInfo.setVisible(~isLinear);
             % Right panels (expert)
             jPanelRight.setVisible(ExpertMode);
             jPanelNoiseCov.setVisible(isLinear);
@@ -599,7 +602,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
             % Get comment for this method
             Comment = GetMethodComment(InverseMethod, InverseMeasure);
         else
-            if jRadioMem.isSelected()
+            if ~isempty(jRadioMethodMem) && jRadioMethodMem.isSelected()
                 Comment = 'MEM: ';
             end
         end
@@ -627,7 +630,8 @@ function s = GetPanelContents() %#ok<DEFNU>
     % Comment
     s.Comment = char(ctrl.jTextComment.getText());
     % Linear models
-    if ctrl.jToogleLinear.isSelected()
+    isLinear = isempty(ctrl.jRadioMethodMem) || ~ctrl.jRadioMethodMem.isSelected();
+    if isLinear
         % Get selected method
         [s.InverseMethod, s.InverseMeasure] = GetSelectedMethod(ctrl);
         % Source model
@@ -678,7 +682,7 @@ function s = GetPanelContents() %#ok<DEFNU>
     % Non-linear models
     else
         % Get selected method
-        if ctrl.jRadioMem.isSelected()
+        if ctrl.jRadioMethodMem.isSelected()
             s.InverseMethod = 'mem';
         end
         % Other fields that are not defined
@@ -725,7 +729,7 @@ function [Method, Measure] = GetSelectedMethod(ctrl)
         if ctrl.jRadioMnCurrent.isSelected()
             Measure = 'amplitude';
         elseif ctrl.jRadioMnDspm.isSelected()
-            Measure = 'dspm';
+            Measure = 'dspm2018';
         elseif ctrl.jRadioMnSloreta.isSelected()
             Measure = 'sloreta';
         end
@@ -747,7 +751,7 @@ function Comment = GetMethodComment(Method, Measure)
         case 'minnorm'
             switch (lower(Measure))
                 case 'amplitude', Comment = 'MN';
-                case 'dspm',      Comment = 'dSPM';
+                case 'dspm2018',  Comment = 'dSPM-unscaled';
                 case 'sloreta',   Comment = 'sLORETA';
             end
         case 'gls'
@@ -762,5 +766,14 @@ function Comment = GetMethodComment(Method, Measure)
 end
 
 
+%% ===== WARNING DSPM 2018 =====
+function WarningDspm()
+    java_dialog('msgbox', [...
+        'The dSPM implementation in "Compute sources [2018]" changed in July 2018:' 10 ...
+        'The values are not scaled by the effective number of trials any more.' 10 ...
+        'To get proper dSPM values for averages, run process "Sources > Scale averaged dSPM".' 10 10 ...
+        'You will be directed to the Brainstorm website for additional information.' 10 10], 'Warning: dSPM update.');
+    web('https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values', '-browser');
+end
 
 

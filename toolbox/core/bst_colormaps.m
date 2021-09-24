@@ -23,19 +23,19 @@ function varargout = bst_colormaps( varargin )
 %
 % ==== NOTES ====================================================================
 % Brainstorm manages five colormaps, that are saved in the user brainstorm.mat :
-%    - 'eeg'     : to display the EEG recordings (default: 'cmap_rbw',  relative)
-%    - 'meg'     : to display the MEG recordings (default: 'cmap_rbw',  relative)
-%    - 'source'  : to display the sources        (default: 'jet',  absolute)
+%    - 'eeg'     : to display the EEG recordings (default: 'mandrill',  relative)
+%    - 'meg'     : to display the MEG recordings (default: 'mandrill',  relative)
+%    - 'source'  : to display the sources        (default: 'royal_gramma',  absolute)
 %    - 'anatomy' : to display the MRIs           (default: 'bone', absolute, no colorbar)
-%    - 'time'    : to display time values        (default: 'jet',  relative)
-%    - 'stat1'   : to display the statistics / 1 input  (default: 'hot', absolute)
-%    - 'stat2'   : to display the statistics / 2 inputs (default: 'cmap_rbw', relative)
-%    - 'timefreq': time-frequency maps (default: 'jet', absolute, normalized)
-%    - 'percent' : percentage values (default: 'jet', absolute)
-%    - 'overlay' : plain overlay masks in the MRI Viewer (default: 'cmap_overlay', plain yellow)
-%    - 'connect1': connectivity values on 2D maps and surfaces (default: 'jet', absolute)
-%    - 'connectn': connectivity graphs (default: 'jet', absolute)
-%    - 'pac'     : PAC measures (default: 'jet', absolute)
+%    - 'time'    : to display time values        (default: 'viridis',  relative)
+%    - 'stat1'   : to display the statistics / 1 input  (default: 'dory', absolute)
+%    - 'stat2'   : to display the statistics / 2 inputs (default: 'mandrill', relative)
+%    - 'timefreq': time-frequency maps (default: 'magma', absolute, normalized)
+%    - 'percent' : percentage values (default: 'dory', absolute)
+%    - 'overlay' : plain overlay masks in the MRI Viewer (default: 'overlay', plain yellow)
+%    - 'connect1': connectivity values on 2D maps and surfaces (default: 'viridis', absolute)
+%    - 'connectn': connectivity graphs (default: 'viridis', absolute)
+%    - 'pac'     : PAC measures (default: 'viridis2', absolute)
 %    - 'image'   : Indexed images
 %    - 'cluster' : Statistic clusters
 %
@@ -54,7 +54,7 @@ function varargout = bst_colormaps( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -68,7 +68,8 @@ function varargout = bst_colormaps( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2019
+%          Thomas Vincent, 2019
 
 eval(macro_method);
 end
@@ -79,6 +80,7 @@ function sColormaps = Initialize() %#ok<DEFNU>
     % Create colormaps structures
     sColormaps = struct('eeg',      GetDefaults('eeg'), ...
                         'meg',      GetDefaults('meg'), ...
+                        'nirs',     GetDefaults('nirs'), ...
                         'source',   GetDefaults('source'), ...
                         'anatomy',  GetDefaults('anatomy'), ...
                         'stat1',    GetDefaults('stat1'), ...
@@ -104,82 +106,84 @@ function sColormap = GetDefaults(ColormapType)
     % Get content
     switch lower(ColormapType)
         % EEG Recordings colormap
-        case {'eeg', 'meg'}
-            sColormap.Name             = 'cmap_rbw';
-            sColormap.CMap             = cmap_rbw(DEFAULT_CMAP_SIZE);
+        case {'eeg', 'meg','nirs'}
+            sColormap.Name             = 'cmap_mandrill';
+            sColormap.CMap             = cmap_mandrill(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
         % Sources colormap
         case 'source'
-            sColormap.Name             = 'jet';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_royal_gramma';
+            sColormap.CMap             = cmap_royal_gramma(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Anatomy colormap
         case 'anatomy'
-            sColormap.Name             = 'bone';
-            sColormap.CMap             = bone(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'gray';
+            sColormap.CMap             = gray(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Stat colormap (1 inputs)
         case 'stat1'
-            sColormap.Name             = 'hot';
-            sColormap.CMap             = hot(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_dory';
+            sColormap.CMap             = cmap_dory(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Stat colormap (2 input)
         case 'stat2'
-            sColormap.Name             = 'cmap_rbw';
-            sColormap.CMap             = cmap_rbw(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_mandrill';
+            sColormap.CMap             = cmap_mandrill(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'local';
+            sColormap.UseStatThreshold = 0;
         % Time colormap
         case 'time'
-            sColormap.Name             = 'jet';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
+            sColormap.isRealMin        = 1;
         % Time-frequency maps
         case 'timefreq'
-            sColormap.Name             = 'jet';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_magma';
+            sColormap.CMap             = cmap_magma(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Connectivity links 1xN
         case 'connect1'
-            sColormap.Name             = 'jet';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Connectivity links NxN
         case 'connectn'
-            sColormap.Name             = 'jet';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % PAC Measures
         case 'pac'
-            sColormap.Name             = 'cmap_ns_green';
-            sColormap.CMap             = cmap_ns_green(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis2';
+            sColormap.CMap             = cmap_viridis2(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Image
         case 'image'
-            sColormap.Name             = 'jet';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_viridis';
+            sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Overlay colormap
         case 'overlay'
-            sColormap.Name             = 'overlay';
+            sColormap.Name             = 'cmap_overlay';
             sColormap.CMap             = cmap_overlay(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
             sColormap.DisplayColorbar  = 0;
         % Percentage colormap
         case 'percent'
-            sColormap.Name             = 'hot';
-            sColormap.CMap             = jet(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'cmap_dory';
+            sColormap.CMap             = cmap_dory(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'global';
         % Cluster colormap
@@ -216,6 +220,10 @@ function sCMap = GetColormap(ColormapType)
     if ~ischar(ColormapType)
         ColormapInfo = getappdata(ColormapType, 'Colormap');
         ColormapType = ColormapInfo.Type;
+    end
+    if isempty(ColormapType)
+        sCMap = db_template('Colormap');
+        return
     end
     % Get colormaps for a given modality
     ColormapType = lower(ColormapType);
@@ -288,6 +296,8 @@ function FireColormapChanged(ColormapType, isAbsoluteChanged)
                         figure_timefreq('ColormapChangedCallback', sFigure.hFigure);
                     case 'Connect'
                         figure_connect('ColormapChangedCallback', sFigure.hFigure);
+                    case 'ConnectViz' % new connectivity visualization tool (2021)
+                        figure_connect_viz('ColormapChangedCallback', sFigure.hFigure);
                     case 'Pac'
                         figure_pac('ColormapChangedCallback', sFigure.hFigure);
                     case 'Image'
@@ -382,8 +392,12 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                         DataType = 'pac';
                         
                     case 'Connect'
-                        DataFig = getappdata(sFigure.hFigure, 'DataMinMax');
+                        DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
                         DataType = 'connect';
+                        
+                    case 'ConnectViz' % new connectivity visualization tool (2021)
+                        DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
+                        DataType = 'connect'; 
                         
                     case 'Image'
                         DataFig = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
@@ -598,25 +612,54 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jMenuR.add(jMenuRight);
         % Output at the beginning: Left
         jMenuColormap = jMenuLeft;
+        jMenuSeq = jMenuColormap;
+        jMenuDiv = jMenuColormap;
+        jMenuRainbow = jMenuColormap;
     else
         jMenuColormap = gui_component('Menu', jMenu, [], 'Colormap');
+        jMenuSeq = gui_component('Menu', jMenuColormap, [], 'Sequential');
+        jMenuDiv = gui_component('Menu', jMenuColormap, [], 'Diverging');
+        jMenuRainbow = gui_component('Menu', jMenuColormap, [], 'Rainbow');
     end
     
     % Colormap list: Standard
-    cmapList = {'cmap_rbw', 'hot', 'cmap_hot2', 'cmap_gin', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_nih', 'jet', 'cmap_jetinv', 'cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'cmap_cluster', 'cmap_atlas'};
-    iconList = [IconLoader.ICON_COLORMAP_RBW, IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_GIN, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, ...
-                IconLoader.ICON_COLORMAP_PINK, IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, ...
-                IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, ...
-                IconLoader.ICON_COLORMAP_HSV, IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_GE,  IconLoader.ICON_COLORMAP_TPAC, ...
-                IconLoader.ICON_COLORMAP_COOL, IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_CLUSTER, IconLoader.ICON_COLORMAP_ATLAS];
-    for i = 1:length(cmapList)
+    cmapList_seq = {'hot', 'cmap_hot2', 'bone', 'gray', 'pink', 'copper', 'cmap_nih_fire', 'cmap_ge', 'cmap_tpac', 'cool', 'cmap_parula', 'cmap_magma', 'cmap_royal_gramma','cmap_viridis2','cmap_viridis','cmap_dory'};
+    iconList_seq = [IconLoader.ICON_COLORMAP_HOT, IconLoader.ICON_COLORMAP_HOT2, IconLoader.ICON_COLORMAP_BONE, IconLoader.ICON_COLORMAP_GREY, IconLoader.ICON_COLORMAP_PINK,   ...
+                    IconLoader.ICON_COLORMAP_COPPER, IconLoader.ICON_COLORMAP_NIHFIRE, IconLoader.ICON_COLORMAP_GE,  IconLoader.ICON_COLORMAP_TPAC,  IconLoader.ICON_COLORMAP_COOL, ...
+                    IconLoader.ICON_COLORMAP_PARULA, IconLoader.ICON_COLORMAP_MAGMA, IconLoader.ICON_COLORMAP_ROYAL_GRAMMA, IconLoader.ICON_COLORMAP_VIRIDIS2, IconLoader.ICON_COLORMAP_VIRIDIS, IconLoader.ICON_COLORMAP_DORY];
+    for i = 1:length(cmapList_seq)
         % If the colormap #i is currently used for this surface : check the menu
-        isSelected = strcmpi(cmapList{i}, sColormap.Name);
+        isSelected = strcmpi(cmapList_seq{i}, sColormap.Name);
         % Create menu item
-        cmapDispName = strrep(cmapList{i}, 'cmap_', '');
-        jItem = gui_component('CheckBoxMenuItem', jMenuColormap, [], cmapDispName, iconList(i), [], @(h,ev)SetColormapName(ColormapType, cmapList{i}));
+        cmapDispName = strrep(cmapList_seq{i}, 'cmap_', '');
+        jItem = gui_component('CheckBoxMenuItem', jMenuSeq, [], cmapDispName, iconList_seq(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_seq{i}));
         jItem.setSelected(isSelected);
     end
+
+    cmapList_div = {'cmap_rbw', 'cmap_gin', 'cmap_ovun', 'cmap_cluster', 'cmap_mandrill','cmap_ns_green', 'cmap_ns_white', 'cmap_ns_grey'};
+    iconList_div = [IconLoader.ICON_COLORMAP_RBW,   IconLoader.ICON_COLORMAP_GIN, IconLoader.ICON_COLORMAP_OVUN, IconLoader.ICON_COLORMAP_CLUSTER, ...
+                    IconLoader.ICON_COLORMAP_MANDRILL,IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED, IconLoader.ICON_COLORMAP_NEUROSPEED];
+    for i = 1:length(cmapList_div)
+        % If the colormap #i is currently used for this surface : check the menu
+        isSelected = strcmpi(cmapList_div{i}, sColormap.Name);
+        % Create menu item
+        cmapDispName = strrep(cmapList_div{i}, 'cmap_', '');
+        jItem = gui_component('CheckBoxMenuItem', jMenuDiv, [], cmapDispName, iconList_div(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_div{i}));
+        jItem.setSelected(isSelected);
+    end
+
+    cmapList_rainbow = {'cmap_nih', 'jet', 'cmap_jetinv', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_atlas', 'cmap_turbo'};
+    iconList_rainbow = [IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, IconLoader.ICON_COLORMAP_HSV, ...
+                        IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS, IconLoader.ICON_COLORMAP_TURBO];
+    for i = 1:length(cmapList_rainbow)
+        % If the colormap #i is currently used for this surface : check the menu
+        isSelected = strcmpi(cmapList_rainbow{i}, sColormap.Name);
+        % Create menu item
+        cmapDispName = strrep(cmapList_rainbow{i}, 'cmap_', '');
+        jItem = gui_component('CheckBoxMenuItem', jMenuRainbow, [], cmapDispName, iconList_rainbow(i), [], @(h,ev)SetColormapName(ColormapType, cmapList_rainbow{i}));
+        jItem.setSelected(isSelected);
+    end
+
     % Colormap list: Custom
     CustomColormaps = bst_get('CustomColormaps');
     if ~isempty(CustomColormaps)
@@ -653,8 +696,15 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     % Not for anatomy or time colormap
     if ~strcmpi(ColormapType, 'Anatomy') && ~strcmpi(ColormapType, 'Time') && ~strcmpi(ColormapType, 'Overlay')
         % Options : Absolute values
-        jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
-        jCheck.setSelected(sColormap.isAbsoluteValues);
+        jCheckAbs = gui_component('CheckBoxMenuItem', jMenu, [], 'Absolute values', [], [], @(h,ev)SetColormapAbsolute(ColormapType, ev.getSource.isSelected()));
+        jCheckAbs.setSelected(sColormap.isAbsoluteValues);
+        
+        % Options : use statistics threshold(s)
+        if strcmpi(ColormapType, 'stat2')
+            jCheckStatThresh = gui_component('CheckBoxMenuItem', jMenu, [], 'Use stat threshold', [], [], @(h,ev)SetUseStatThreshold(ColormapType, ev.getSource.isSelected()));
+            jCheckStatThresh.setSelected(sColormap.UseStatThreshold);
+        end
+        
         CreateSeparator(jMenu, isPermanent);
         % Options : Maximum
         jRadioGlobal = gui_component('RadioMenuItem', jMenu, [], 'Maximum: Global',    [], [], @(h,ev)SetMaxMode(ColormapType, 'global', DisplayUnits));
@@ -736,8 +786,11 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
 
     % Display/hide colorbar
     CreateSeparator(jMenu, isPermanent);
-    jCheck = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
-    jCheck.setSelected(sColormap.DisplayColorbar);
+    jCheckDisp = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
+    jCheckDisp.setSelected(sColormap.DisplayColorbar);
+    
+
+    
     % Open menu in a new window
     if ~isPermanent
         gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
@@ -814,6 +867,14 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
             java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'meg', DisplayUnits));
         else
             CreateColormapMenu(jMenuColormap, 'meg', DisplayUnits);
+        end
+    end
+    if isempty(hFig) || ismember('nirs', AllTypes)
+        jMenuColormap = gui_component('Menu', jMenu, [], [spre 'NIRS Recordings'], IconLoader.ICON_COLORMAP_RECORDINGS);
+        if isDynamic
+            java_setcb(jMenuColormap, 'MenuSelectedCallback', @(h,ev)CreateColormapMenu(ev.getSource(), 'nirs', DisplayUnits));
+        else
+            CreateColormapMenu(jMenuColormap, 'nirs', DisplayUnits);
         end
     end
     if isempty(hFig) || ismember('source', AllTypes)
@@ -1204,6 +1265,10 @@ function SetColormapAbsolute(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     isAbsoluteChanged = 1;
     FireColormapChanged(ColormapType, isAbsoluteChanged);
+    % Mutually exclusive with UseStatThreshold
+    if status && sColormap.UseStatThreshold
+        SetUseStatThreshold(ColormapType, 0);
+    end
 end
 function SetColormapRealMin(ColormapType, status)
     sColormap = GetColormap(ColormapType);
@@ -1240,7 +1305,17 @@ function SetDisplayColorbar(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
-
+function SetUseStatThreshold(ColormapType, status)
+    sColormap = GetColormap(ColormapType);
+    sColormap.UseStatThreshold = status;
+    SetColormap(ColormapType, sColormap);
+    % Fire change notificiation to all figures (3DViz and Topography)
+    FireColormapChanged(ColormapType);
+    % Mutually exclusive with Absolute
+    if status && sColormap.isAbsoluteValues
+        SetColormapAbsolute(ColormapType, 0);
+    end
+end
 
 %% ====== SLIDERS CALLBACKS ======
 function SpinnerCallback(ev, ColormapType, Modifier)
@@ -1274,6 +1349,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     hAxes     = setdiff(findobj(hFig, '-depth', 1, 'Type', 'axes'), hColorbar);
     hConnect  = getappdata(hFig, 'OpenGLDisplay');
+    if strcmpi(ColormapType, 'connectn') && isempty(hConnect)
+        hConnect = hAxes;
+        hAxes = [];
+    end
     % If a colorbar is defined
     if ~isempty(hColorbar)
         fFactor = [];
@@ -1286,6 +1365,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     dataBounds = GlobalData.DataSet(iDS).Dipoles(1).Time;
                 else
                     dataBounds = GlobalData.DataSet(iDS).Measures.Time;
+                end
+                if (length(dataBounds) == 2) && (dataBounds(1) == dataBounds(2))
+                    dataBounds(2) = dataBounds(2) + 0.001;
                 end
                 if (max(abs(dataBounds)) > 2)
                     fFactor = 1;
@@ -1309,7 +1391,6 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                 % Get minimum and maximum values in the figure color data
                 dataBounds = get(hAxes(1), 'CLim');
                 DataType = 'stat';
-            % Regular values:  get min/max from the figure
             else
                 % Get minimum and maximum values in the figure color data
                 dataBounds = get(hAxes(1), 'CLim');
@@ -1326,6 +1407,20 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             if ~isempty(DisplayUnits)
                 switch(DisplayUnits)
                     case 't',    fFactor = 1;
+                    case 'mol.l-1', fFactor = 1;
+                    case 'mmol.l-1', fFactor = 1e3;
+                    case 'umol.l-1', fFactor = 1e6;
+                    case 'U.A.'
+                        fmax = max(abs(dataBounds));
+                        if fmax < 1e3
+                            fFactor=1e6;
+                            DisplayUnits='U.A(*10^6)';
+                        elseif fmax < 1
+                            fFactor=1e3;
+                            DisplayUnits='U.A(*10^3)';
+                        else
+                            fFactor=1;
+                        end
                     otherwise,   fFactor = 1;
                 end
                 fUnits = DisplayUnits;
@@ -1397,7 +1492,7 @@ function SetColorbarVisible(hFig, isVisible) %#ok<DEFNU>
         FigureId = getappdata(hFig, 'FigureId');
         % Get color for colorbar text
         switch (FigureId.Type)
-            case {'3DViz', 'Topography', 'MriViewer', 'Connect'}
+            case {'3DViz', 'Topography', 'MriViewer', 'Connect', 'ConnectViz'} 
                 textColor = [.8 .8 .8];
             case {'Timefreq', 'Pac', 'Image'}
                 textColor = [0 0 0];
@@ -1544,6 +1639,7 @@ end
 
 %% ===== APPLY COLORMAP MODIFIERS =====
 function sColormap = ApplyColormapModifiers(sColormap)
+    
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps
     if ~isempty(sColormap.Name)
@@ -1628,6 +1724,81 @@ function RemoveColormapFromFigure(hFig, ColormapType) %#ok<DEFNU>
     end
     % Update figure app data
     setappdata(hFig, 'Colormap', ColormapInfo);
+end
+
+
+%% ===== THRESHOLD COLORMAP =====
+function cmapThreshed = StatThreshold(cMap, vMin, vMax, isAbs, tUnder, tOver, nsColor) %#ok<DEFNU>
+    % Apply double thresholding to given cmap so that the color of values between
+    % given thresholds is set to the color of the null value. 
+    % Original color dynamics is tranfered to significant values.
+    if vMin > vMax
+        error('Bad value range: vMin > vMax');
+    end
+    if isempty(tUnder) && isempty(tOver)
+        error('Both thresholds are undefined');
+    end
+    if tUnder == tOver % no thresholding -> nothing to do
+        cmapThreshed = cMap;
+        return;
+    end
+    if isempty(tUnder) % one-sided+
+       tUnder = vMin; 
+    end
+    if isempty(tOver) % one-sided-
+       tOver = vMax; 
+    end
+    if tUnder > tOver
+        error('Bad thresholds: tUnder > tOver');
+    end
+
+    if isAbs
+        % In case abs wasn't already applied to limits
+        if vMin < 0 && vMax <= 0
+            vMin = abs(vMax);
+            vMax = abs(vMin);
+        elseif vMin < 0 && vMax >= 0
+            vMin = 0;
+            vMax = max(abs(vMin), vMax);
+        end
+        % In case thresholds are not symetrical
+        if tUnder < 0 && tOver <= 0
+            tUnder = abs(tOver);
+            tOver = abs(tUnder);
+        elseif tUnder <  0 && tOver >= 0
+            tOver = min(abs(tUnder), tOver); 
+            tUnder = vMin;
+        end
+    end
+
+    nc = length(cMap);
+    % Convert value to color index, with clipping
+    v2ci = @(v) max(1, min(round((nc-1)/(vMax-vMin) * (v-vMin) + 1), nc ));
+
+    if nargin < 6
+        nsColor = cMap(v2ci(0), :); % Take color of value=zero for non-significant
+    end
+    assert(all(size(nsColor) == [1, 3]));
+    cmapThreshed = zeros(size(cMap));
+
+    % Set non-significant range
+    nsIndexes = v2ci(tUnder):v2ci(tOver);
+    cmapThreshed(nsIndexes, :) = repmat(nsColor, length(nsIndexes), 1);
+
+    % Compress initial color dynamics into significant range
+    ci0 = v2ci(0);
+    if tOver < vMax
+        sigOverIndexes = v2ci(tOver):nc;
+        posIndexes = (ci0+1):nc;
+        targetOver = round(linspace(posIndexes(1), posIndexes(end), length(sigOverIndexes)));
+        cmapThreshed(sigOverIndexes, :) = interp1(posIndexes,cMap(posIndexes,:), targetOver);
+    end
+    if tUnder > vMin
+        sigUnderIndexes = 1:v2ci(tUnder);
+        negIndexes = 1:(ci0-1);
+        targetUnder = round(linspace(negIndexes(1), negIndexes(end), length(sigUnderIndexes)));
+        cmapThreshed(sigUnderIndexes, :) = interp1(negIndexes,cMap(negIndexes, :), targetUnder);
+    end
 end
 
 

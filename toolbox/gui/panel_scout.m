@@ -43,7 +43,7 @@ function varargout = panel_scout(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -57,7 +57,7 @@ function varargout = panel_scout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -366,13 +366,13 @@ function UpdatePanel()
     UpdateScoutsList();
     % Update menus
     if ~isempty(sSurf) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas) && (sSurf.iAtlas <= length(sSurf.Atlas))
-        UpdateMenus(sSurf.Atlas(sSurf.iAtlas));
+        UpdateMenus(sSurf.Atlas(sSurf.iAtlas), sSurf);
     end
 end
 
 
 %% ===== SHOW MENU =====
-function UpdateMenus(sAtlas)
+function UpdateMenus(sAtlas, sSurf)
     import org.brainstorm.icon.*;
     % Get "Scouts" panel controls
     ctrl = bst_get('PanelControls', 'Scout');
@@ -391,7 +391,7 @@ function UpdateMenus(sAtlas)
     jMenuNew = gui_component('Menu', jMenu, [], 'New atlas', IconLoader.ICON_ATLAS, [], []);
         gui_component('MenuItem', jMenuNew, [], 'Empty atlas', IconLoader.ICON_ATLAS, [], @(h,ev)bst_call(@SetAtlas, [], 'Add'));
         jMenuNew.addSeparator();
-        gui_component('MenuItem', jMenuNew, [], 'Copy atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
+        gui_component('MenuItem', jMenuNew, [], 'Copy current atlas',            IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 1,0));
         gui_component('MenuItem', jMenuNew, [], 'Copy selected scouts',  IconLoader.ICON_COPY, [], @(h,ev)bst_call(@CreateAtlasSelected, 0,0));
         % Create special atlases
         jMenuNew.addSeparator();
@@ -399,6 +399,22 @@ function UpdateMenus(sAtlas)
             gui_component('MenuItem', jMenuNew, [], 'Source model options', IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@CreateAtlasInverse));
         end
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
+    % Create atlas from volumes in subject anatomy
+    jMenuAnat = gui_component('Menu', jMenu, [], 'From subject anatomy', IconLoader.ICON_VOLATLAS, [], []);
+    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#')
+        sSubject = bst_get('SurfaceFile', sSurf.FileName);
+        if ~isempty(sSubject.Anatomy)
+            iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+            if ~isempty(iAnatAtlases)
+                for iAnat = iAnatAtlases
+                    gui_component('MenuItem', jMenuAnat, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@LoadScouts, file_fullpath(sSubject.Anatomy(iAnat).FileName), 1));
+                end
+            else
+                jEmpty = gui_component('MenuItem', jMenuAnat, [], '<HTML><I>No volume atlas in subject anatomy</I>', [], [], []);
+                jEmpty.setEnabled(0);
+            end
+        end
+    end
     jMenu.addSeparator();
     gui_component('MenuItem', jMenu, [], 'Load atlas...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)bst_call(@LoadScouts));
     if ~isReadOnly
@@ -472,12 +488,11 @@ function UpdateMenus(sAtlas)
     end
         
     % === MENU PROJECT ====
-    % Get current surface and atlas
-    [sAtlas, iAtlas, sSurf] = GetAtlas();
     % Offer these projection menus only for Cortex surfaces
-    if ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
+    if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
+        nMenus = 0;
         % Process all the subjects
         for iSubject = 0:nSubjects
             % Get subject 
@@ -498,6 +513,7 @@ function UpdateMenus(sAtlas)
             else
                 jMenuSubj = gui_component('Menu', jMenuProject, [], sSubject.Name, IconLoader.ICON_SUBJECT, [], []);
             end
+            nMenus = nMenus + 1;
             % Loop on all the surfaces
             for iSurf = 1:length(sAllCortex)
                 % Skip the source surface
@@ -507,6 +523,9 @@ function UpdateMenus(sAtlas)
                 % Project to this cortex surface
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
+        end
+        if (nMenus > 20)
+            darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);
         end
     end
     
@@ -897,8 +916,8 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
     if file_compare(GlobalData.CurrentScoutsSurface, SurfaceFile)
         return;
     end
-    % If surface file is an MRI
-    if ~isempty(iTess) && strcmpi(TessInfo(iTess).Name, 'Anatomy')
+    % If surface file is an MRI or fibers
+    if ~isempty(iTess) && ismember(lower(TessInfo(iTess).Name), {'anatomy', 'fibers'})
         % By default: no attached surface
         SurfaceFile = [];
         % If there are some data associated with this file: get the associated scouts
@@ -911,6 +930,8 @@ function CurrentFigureChanged_Callback(oldFig, hFig)
                 if isempty(FileMat.SurfaceFile) && ~isempty(FileMat.DataFile) && strcmpi(FileMat.DataType, 'results')
                     FileMat = in_bst_results(FileMat.DataFile, 0, 'SurfaceFile');
                 end
+            elseif strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
+                FileMat = in_bst_headmodel(TessInfo(iTess).DataSource.FileName, 0, 'SurfaceFile');
             end
             if ~isempty(FileMat.SurfaceFile) % && strcmpi(file_gettype(FileMat.SurfaceFile), 'cortex')
                 SurfaceFile = FileMat.SurfaceFile;
@@ -980,7 +1001,7 @@ function isReadOnly = isAtlasReadOnly(sAtlas, isInteractive)
     if ismember(lower(sAtlas.Name), {...
             'brainvisa_tzourio-mazoyer', ... % Old default anatomy
             'freesurfer_destrieux_15000V', 'freesurfer_desikan-killiany_15000V', 'freesurfer_brodmann_15000V', ... % Old default anatomy
-            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'mindboggle', 'structures'})  % New freesurf
+            'destrieux', 'desikan-killiany', 'brodmann', 'brodmann-thresh', 'dkt40', 'dkt', 'mindboggle', 'structures'})  % New freesurf
         if isInteractive
             java_dialog('warning', [...
                 'This atlas is a reference and cannot be modified or deleted.' 10 10 ...
@@ -1008,7 +1029,7 @@ function SetCurrentAtlas(iAtlas, isForced)
         return;
     end
     % Update menus
-    UpdateMenus(sSurf.Atlas(iAtlas));
+    UpdateMenus(sSurf.Atlas(iAtlas), sSurf);
     % If current atlas did not change: exit
     if ~isForced && isequal(sSurf.iAtlas, iAtlas)
         return;
@@ -1093,7 +1114,7 @@ function [sScouts, sSurf, iSurf] = GetScouts(SurfaceFile)
     % Get loaded surface
     [sSurf, iSurf] = bst_memory('LoadSurface', SurfaceFile);
     % Get the selected scouts
-    if ~isempty(sSurf) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas)
+    if (length(sSurf) == 1) && ~isempty(sSurf.Atlas) && ~isempty(sSurf.iAtlas)
         sScouts = sSurf.Atlas(sSurf.iAtlas).Scouts;
         % Select only the required scouts
         if (any(iScouts) > length(sScouts))
@@ -1105,6 +1126,8 @@ function [sScouts, sSurf, iSurf] = GetScouts(SurfaceFile)
                 sScouts = sScouts(iScouts);
             end
         end
+    elseif (length(sSurf) > 1)
+        sSurf = sSurf(1);
     end
 end
 
@@ -1703,7 +1726,12 @@ end
 %% ===== SET REGION AUTO =====
 function sScout = SetRegionAuto(sSurf, sScout)
     % Get atlases we want to test
-    iAtlases = [find(strcmpi({sSurf.Atlas.Name}, 'Mindboggle')), find(strcmpi({sSurf.Atlas.Name}, 'Desikan-Killiany')), find(strcmpi({sSurf.Atlas.Name}, 'Destrieux')), find(strcmpi({sSurf.Atlas.Name}, 'Structures'))];
+    iAtlases = [find(strcmpi({sSurf.Atlas.Name}, 'Mindboggle')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'DKT40')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'DKT')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'Desikan-Killiany')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'Destrieux')), ...
+                find(strcmpi({sSurf.Atlas.Name}, 'Structures'))];
     % Test them one after the other after we find one that contains the target point
     for i = 1:length(iAtlases)
         for iScout = 1:length(sSurf.Atlas(iAtlases(i)).Scouts)
@@ -1858,6 +1886,13 @@ function iAtlas = SetAtlas(SurfaceFile, iAtlasIn, sAtlas)
     end
     % Fix the structure of the file
     sAtlas = FixAtlasStruct(sAtlas);
+    % Set default region based on Desikan-Killiany atlas
+    if ~isempty(sAtlas.Scouts) && any(ismember({sAtlas.Scouts.Region}, {'UU','LU','RU','CU'})) && ~strcmpi(sAtlas.Name, 'Desikan-Killiany') && ~isempty(GlobalData.Surface(iSurf).Atlas)
+        iDK = find(strcmpi({GlobalData.Surface(iSurf).Atlas.Name}, 'Desikan-Killiany'));
+        if ~isempty(iDK)
+            sAtlas.Scouts = SetDefaultRegions(sAtlas.Scouts, GlobalData.Surface(iSurf).Atlas(iDK(1)).Scouts);
+        end
+    end
     % Make the atlas name unique
     if ~isempty(GlobalData.Surface(iSurf).Atlas) && (ischar(iAtlasIn) && strcmpi(iAtlasIn, 'Add'))
         sAtlas.Name = file_unique(sAtlas.Name, {GlobalData.Surface(iSurf).Atlas.Name});
@@ -1914,29 +1949,22 @@ end
 
 %% ===== CREATE ATLAS: VOLUME GRID =====
 function CreateAtlasVolumeGrid()
-    global GlobalData;
     % Get current 3D figure
     hFig = bst_figures('GetCurrentFigure', '3D');
     if isempty(hFig)
         bst_error('No selected figure.', 'New volume atlas', 0);
         return;
     end
-    % Get current source files
-    ResultsFile = getappdata(hFig, 'ResultsFile');
-    if isempty(ResultsFile)
-        bst_error('No source results loaded in this figure.', 'New volume atlas', 0);
-        return;
-    end
-    % Load results file
-    [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-    if isempty(GlobalData.DataSet(iDS).Results(iResult).GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-        bst_error('No volume source grid loaded in this figure.', 'New volume atlas', 0);
+    % Get figure GridLoc
+    GridLoc = GetFigureGrid(hFig);
+    if isempty(GridLoc)
+        bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
         return;
     end
     % Else: Create a new empty structure
     sAtlasVol = db_template('Atlas');
     % New atlas name: append number of grid points
-    sAtlasVol.Name = ['Volume ' num2str(size(GlobalData.DataSet(iDS).Results(iResult).GridLoc, 1))];
+    sAtlasVol.Name = ['Volume ' num2str(size(GridLoc, 1))];
     % Find existing atlases
     [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
     iAtlasVol = find(strcmpi(sAtlasVol.Name, {sSurf.Atlas.Name}));
@@ -1957,6 +1985,12 @@ function CreateAtlasVolumeGrid()
     end
     % Create new atlas
     SetAtlas([], 'Add', sAtlasVol);
+end
+
+
+%% ===== CREATE ATLAS: ANATOMY VOLUME =====
+function CreateAtlasAnat(iAnatomy)
+
 end
 
 
@@ -2636,6 +2670,10 @@ function SaveModifications()
     global GlobalData;
     % Loop on all the loaded surfaces
     for iSurf = 1:length(GlobalData.Surface)
+        % Skip surfaces generated on the fly (view_surface_matrix)
+        if ~isempty(GlobalData.Surface(iSurf).FileName) && (GlobalData.Surface(iSurf).FileName(1) == '#')
+            continue;
+        end
         % If the atlas was not modified: skip
         if ~GlobalData.Surface(iSurf).isAtlasModified
             continue;
@@ -2703,7 +2741,7 @@ function CreateScoutMouse(hFig) %#ok<DEFNU>
     % Get current surface
     TessInfo = getappdata(hFig, 'Surface');
     iTess    = getappdata(hFig, 'iSurface');
-    if isempty(iTess)
+    if isempty(iTess) || (~isempty(TessInfo(iTess).SurfaceFile) && (TessInfo(iTess).SurfaceFile(1) == '#'))
         return;
     end
     % Get current atlas
@@ -2714,17 +2752,10 @@ function CreateScoutMouse(hFig) %#ok<DEFNU>
     % Volume scouts: Get grid of points
     if isVolumeAtlas
         % === GET VOLUME GRID ===
-        % Get ResultsFile and Surface
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if isempty(ResultsFile)
-            bst_error('No source file loaded in this figure', 'Create new scout', 0);
-            return;
-        end
-        % Load results file
-        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-        GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-        if isempty(GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-            bst_error('No volume sources loaded in this figure', 'Create new scout', 0);
+        % Get figure GridLoc
+        GridLoc = GetFigureGrid(hFig);
+        if isempty(GridLoc)
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
             return;
         end
         % Check number of grid points
@@ -3066,7 +3097,6 @@ end
 
 %% ===== CREATE SCOUT: MNI COORDINATES =====
 function CreateScoutMni()
-    global GlobalData;
     % Prevent edition of read-only atlas
     if isAtlasReadOnly()
         return;
@@ -3088,7 +3118,7 @@ function CreateScoutMni()
     end
     
     % Get coordinates from the user
-    res = java_dialog('input', {'<HTML>Enter the [x,y,z] coordinates in only one <BR>of the coordinate systems below.<BR><BR>MRI coordinates (millimeters):', 'SCS coordinates (millimeters)', 'MNI coordinates (millimeters)'}, 'Create scout', [], {'', '', ''});
+    res = java_dialog('input', {'<HTML>Enter the [x,y,z] coordinates in only one of<BR>the coordinate systems below (millimeters).<BR><BR>MRI coordinates:', 'SCS coordinates:', 'World coordinates:', 'MNI coordinates:'}, 'Create scout', [], {'', '', '', ''});
     % If user cancelled: return
     if isempty(res) || (length(res) < 3)
         return
@@ -3096,30 +3126,35 @@ function CreateScoutMni()
     % Get new values
     MRI = str2num(res{1}) / 1000;
     SCS = str2num(res{2}) / 1000;
-    MNI = str2num(res{3}) / 1000;
+    World = str2num(res{3}) / 1000;
+    MNI = str2num(res{4}) / 1000;
     
     % Load Mri
     sMri = bst_memory('LoadMri', iSubject);
-    % MRI coordinates
+    % Find the coordinate system that was used
     if (length(MRI) == 3)
-        SCS = cs_convert(sMri, 'mri', 'scs', MRI);
-        ScoutLabel = sprintf('%d_%d_%d', round(MRI.*1000));
-    % SCS coordinates
+        fidPos = MRI;
+        cs = 'mri';
     elseif (length(SCS) == 3)
-        % Keep SCS values unchanged
-        ScoutLabel = sprintf('%d_%d_%d', round(SCS.*1000));
-    % MNI coordinates
+        fidPos = SCS;
+        cs = 'scs';
+    elseif (length(World) == 3)
+        fidPos = World;
+        cs = 'world';
     elseif (length(MNI) == 3)
-        SCS = cs_convert(sMri, 'mni', 'scs', MNI);
-        ScoutLabel = sprintf('%d_%d_%d', round(MNI.*1000));
-        if isempty(SCS)
-            bst_error(['The MNI coordinates are not available for this subject.' 10 'Right-click on the MRI file > Compute MNI transformation.'], 'Create scout', 0);
-            return;
-        end
+        fidPos = MNI;
+        cs = 'mni';
     else
         return;
     end
-    
+    % Convert coordinates
+    SCS = cs_convert(sMri, cs, 'scs', fidPos);
+    if isempty(SCS)
+        bst_error(['The ' upper(cs) ' coordinates are not available for this subject.'], 'Create scout', 0);
+        return;
+    end
+    ScoutLabel = sprintf('%d_%d_%d', round(fidPos.*1000));
+        
     % Get atlas properties: surface or volume
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     % Volume atlas: Get grid of points
@@ -3129,17 +3164,10 @@ function CreateScoutMni()
         if isempty(hFig) || ~ishandle(hFig)
             return
         end
-        % Get ResultsFile and Surface
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if isempty(ResultsFile)
-            bst_error('No source file loaded in this figure', 'Create new scout', 0);
-            return;
-        end
-        % Load results file
-        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-        GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-        if isempty(GridLoc) || strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
-            bst_error('No volume sources loaded in this figure', 'Create new scout', 0);
+        % Get figure GridLoc
+        GridLoc = GetFigureGrid(hFig);
+        if isempty(GridLoc)
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
             return;
         end
         % Check number of grid points
@@ -3253,7 +3281,7 @@ end
 
 %% ===== EDIT SCOUTS SIZE =====
 function EditScoutsSize(action)
-    global mutexGrowScout GlobalData;
+    global mutexGrowScout;
     % Prevent edition of read-only atlas
     if isAtlasReadOnly()
         return;
@@ -3302,17 +3330,14 @@ function EditScoutsSize(action)
     % Volume scouts: Get number of points for this atlas
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     if isVolumeAtlas
-        % Get ResultsFile
-        ResultsFile = getappdata(hFig, 'ResultsFile');
-        if isempty(ResultsFile)
-            disp('BST> Error: No source file loaded in this figure');
+        % Get figure GridLoc
+        [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig);
+        if isempty(HeadModelType)
+            bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
             return;
         end
         % Load results file
-        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-        GridLoc   = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-        GridAtlas = GlobalData.DataSet(iDS).Results(iResult).GridAtlas;
-        if strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
+        if strcmpi(HeadModelType, 'surface')
             disp('BST> Error: These scouts are defined on a volume grid, but the sources were calculated on a surface.');
             return;
         elseif isempty(GridLoc) || (size(GridLoc,1) ~= nAtlasGrid)
@@ -3541,7 +3566,8 @@ function EditScoutsColor(newColor)
     % If color is not specified in argument : ask it to user
     if (nargin < 1)
         % Use previous scout color
-        newColor = uisetcolor(sSelScouts(1).Color, 'Select scout color');
+        % newColor = uisetcolor(sSelScouts(1).Color, 'Select scout color');
+        newColor = java_dialog('color');
         % If no color was selected: exit
         if (length(newColor) ~= 3) || all(sSelScouts(1).Color(:) == newColor(:))
             return
@@ -3932,7 +3958,6 @@ end
 
 %% ===== EXPORT SCOUTS TO MRI MASK =====
 function ExportScoutsToMri()
-    global GlobalData;
     % Get selected scouts
     [sScouts, iScouts, sSurf] = GetSelectedScouts();
     % If nothing selected, take all scouts
@@ -3952,24 +3977,21 @@ function ExportScoutsToMri()
     if isempty(hFig)
         return
     end
-    % Get ResultsFile
-    ResultsFile = getappdata(hFig, 'ResultsFile');
-    if isempty(ResultsFile)
-        bst_error('No source file loaded in this figure', 'Create new scout', 0);
+    % Get figure GridLoc
+    GridLoc = GetFigureGrid(hFig);
+    if isempty(GridLoc)
+        bst_error('No source grid loaded in this figure.', 'New volume atlas', 0);
         return;
     end
     % Progress bar
     bst_progress('start', 'Export MRI mask', 'Loading volume...');
-    % Load results file
-    [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-    GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
     % Load MRI
     sMri = in_mri_bst(MriFile);
     % Convert grid to MRI coordinates
     GridLoc = cs_convert(sMri, 'scs', 'voxel', GridLoc);
 
     % Loop on all the scouts to export
-    sMri.Cube = 0 * sMri.Cube;
+    sMri.Cube = 0 * sMri.Cube(:,:,:,1);
     for i = 1:length(sScouts)
         % Get vertices coordinates
         bst_progress('text', sprintf('Computing scout envelope... [%d/%d]', i, length(sScouts)));
@@ -4011,7 +4033,6 @@ end
 % USAGE:  PlotScouts(iScouts, hFigures)
 %         PlotScouts()                 : Plot all the scouts
 function PlotScouts(iScouts, hFigSel)
-    global GlobalData;
     % Selected surfaces
     if (nargin < 2) || isempty(hFigSel)
         hFigSel = [];
@@ -4034,12 +4055,15 @@ function PlotScouts(iScouts, hFigSel)
         return;
     end
     % Get anatomy file
-    [sSubject, iSubject] = bst_get('SurfaceFile', sSurf.FileName);
+    sSubject = bst_get('SurfaceFile', sSurf.FileName);
     % Volume scouts: Get number of points for this atlas
     [isVolumeAtlas, nAtlasGrid] = ParseVolumeAtlas(sAtlas.Name);
     isStructAtlas = ismember(sAtlas.Name, {'Structures', 'Source model'});
     % Get cortex + anatomy
-    SurfaceFiles = {sSurf.FileName, sSubject.Anatomy(sSubject.iAnatomy).FileName};
+    SurfaceFiles = {sSurf.FileName};
+    if ~isempty(sSubject) && ~isempty(sSubject.Anatomy)
+        SurfaceFiles{2} = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+    end
     % Get all the figures concerned with Scout cortex and/or MRI surface
     [hFigures, iFigures, iDataSets, iSurfaces] = bst_figures('GetFigureWithSurface', SurfaceFiles);
     if isempty(hFigures)
@@ -4074,16 +4098,14 @@ function PlotScouts(iScouts, hFigSel)
         
         % VOLUME SCOUTS
         if isVolumeAtlas
-            % Get ResultsFile
-            ResultsFile = getappdata(hFig, 'ResultsFile');
-            if isempty(ResultsFile)
+            % Get figure GridLoc
+            [GridLoc, HeadModelType] = GetFigureGrid(hFig);
+            if isempty(HeadModelType)
                 disp('BST> Cannot display volume atlas: No volume sources loaded in this figure.');
-                continue;
+                return;
             end
-            % Load results file
-            [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
-            GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
-            if strcmpi(GlobalData.DataSet(iDS).Results(iResult).HeadModelType, 'surface')
+            % Check type
+            if strcmpi(HeadModelType, 'surface')
                 disp('BST> Error: These scouts are defined on a volume grid, but the sources were calculated on a surface.');
                 continue;
             elseif isempty(GridLoc) || (size(GridLoc,1) ~= nAtlasGrid)
@@ -4452,10 +4474,14 @@ function ReloadScouts(hFig)
     global GlobalData;
     % If figure not defined: process current 3D figure
     if (nargin < 1) || isempty(hFig)
-        % Get subject
-        sSubject = bst_get('SurfaceFile', GlobalData.CurrentScoutsSurface);
         % Get current surface and/or subject MRI
-        hFigures = bst_figures('GetFigureWithSurface', {GlobalData.CurrentScoutsSurface, sSubject.Anatomy(sSubject.iAnatomy).FileName});
+        SurfaceFiles = {GlobalData.CurrentScoutsSurface};
+        sSubject = bst_get('SurfaceFile', GlobalData.CurrentScoutsSurface);
+        if ~isempty(sSubject) && ~isempty(sSubject.Anatomy)
+            SurfaceFiles{2} = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        end
+        % Get figures to update
+        hFigures = bst_figures('GetFigureWithSurface', SurfaceFiles);
         if isempty(hFigures)
             return;
         end
@@ -4891,7 +4917,7 @@ function iScout = EditScoutMri(iScout)
         % Display only specified vertices
         isMask = (sum(tess2mri_interp(:,iVertices),2) > 0);
         % Create mask volume (same size than the MRI)
-        initMask = reshape(uint8(full(isMask)) * 255, size(sMri.Cube));
+        initMask = reshape(uint8(full(isMask)) * 255, size(sMri.Cube(:,:,:,1)));
     else
         % No scout: empty initial mask
         initMask = [];
@@ -4915,7 +4941,7 @@ function iScout = EditScoutMri(iScout)
     
     % === EDIT MASK ===
     % Open mask editor
-    newMask = mri_editMask(sMri.Cube, sMri.Voxsize, initMask, initPosition, sColormap.Name);
+    newMask = mri_editMask(sMri.Cube(:,:,:,1), sMri.Voxsize, initMask, initPosition, sColormap.Name);
     if isempty(newMask) || isequal(logical(newMask), logical(initMask))
         return
     end
@@ -4923,7 +4949,7 @@ function iScout = EditScoutMri(iScout)
     newMask = mri_dilate(newMask);
     % Mask was modified: find the vertices inside the new mask
     rVertices = round(mriVertices);
-    iVerticesInMri = sub2ind(size(sMri.Cube), rVertices(:,1), rVertices(:,2), rVertices(:,3));
+    iVerticesInMri = sub2ind(size(newMask), rVertices(:,1), rVertices(:,2), rVertices(:,3));
     % Find the vertices inside the mask
     iVerticesInMask = find(newMask(iVerticesInMri));
     % If no vertices : cannot define a scout
@@ -5178,6 +5204,33 @@ function sAtlasFix = FixAtlasStruct(sAtlas)
 end
 
 
+%% ===== SET DEFAULT REGIONS =====
+function sScouts = SetDefaultRegions(sScouts, sRef)
+    % Get total number of vertices
+    Nvert = max([sScouts.Vertices, sRef.Vertices]);
+    % Build reference atlas
+    map = repmat({'UU'}, 1, Nvert);
+    for iRef = 1:length(sRef)
+        map(sRef(iRef).Vertices) = {sRef(iRef).Region};
+    end
+    % Assign region to all scouts with unknown regions
+    for iScout = 1:length(sScouts)
+        % If region is already defined: skip
+        if ~ismember(sScouts(iScout).Region, {'UU','LU','RU','CU'})
+            continue;
+        end
+        % Get the list of reference regions in this scout
+        allReg = map(sScouts(iScout).Vertices);
+        uniqueReg = unique(allReg);
+        % Count the region with the most vertices
+        countReg = cellfun(@(c)nnz(strcmpi(allReg, c)), uniqueReg);
+        [nMax, iMax] = max(countReg);
+        % Set it as the default region
+        sScouts(iScout).Region = uniqueReg{iMax};
+    end
+end
+
+
 %% ===== DETECT IF SOURCE FILE IS UNCONSTRAINED =====
 function isUnconstrained = isUnconstrained(ResultsMat) %#ok<DEFNU>
     isUnconstrained = 0;
@@ -5195,140 +5248,6 @@ function isUnconstrained = isUnconstrained(ResultsMat) %#ok<DEFNU>
         else
             isUnconstrained = 1;
         end
-    end
-end
-
-
-%% ===== GET VOLUME LABELS =====
-function Labels = GetVolumeLabels(MriFile, FsVersion) %#ok<DEFNU>
-    % Parse inputs
-    if (nargin < 2) || isempty(FsVersion)
-        FsVersion = [];
-    end
-    Labels = [];
-    % Get FreeSurfer ASEG atlas labels: The list is already available in this function
-    if (~isempty(strfind(MriFile, 'aseg.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto.mgz')) || ~isempty(strfind(MriFile, 'aseg.auto_noCCseg.mgz')))
-        Labels = GetAsegLabels(FsVersion);
-        return;
-    end
-    % Try to get an adjacent file that contains the labels (.txt)
-    [fPath, fBase, fExt] = bst_fileparts(MriFile);
-    LabelFile = bst_fullfile(fPath, [fBase, '.txt']);
-    % Read .txt file if it exists
-    if file_exist(LabelFile)
-        % Open file
-        fid = fopen(LabelFile, 'r');
-        if (fid < 0)
-            error('Cannot open marker file.');
-        end
-        % Read file
-        LabelsMat = textscan(fid, '%d %s %d');
-        % Close file
-        fclose(fid);
-        % Reformat labels if they are in the right format
-        Labels = [num2cell(LabelsMat{1}), LabelsMat{2}];
-        % Rename labels ending with _L or _R
-        for i = 1:size(Labels,1)
-            if (length(Labels{i,2}) > 2)
-                if strcmpi(Labels{i,2}(end-1:end), '_R')
-                    Labels{i,2}(end-1:end) = ' R';
-                elseif strcmpi(Labels{i,2}(end-1:end), '_L')
-                    Labels{i,2}(end-1:end) = ' L';
-                end
-            end
-        end 
-    end
-end
-            
-%% ===== ASEG LABELS =====
-% Reference: https://surfer.nmr.mgh.harvard.edu/fswiki/FsTutorial/AnatomicalROI/FreeSurferColorLUT
-function Labels = GetAsegLabels(FsVersion)
-    % Parse inputs
-    if (nargin < 1) || isempty(FsVersion)
-        FsVersion = 5;
-    end
-    % Classification depends on FreeSurfer version
-    switch FsVersion
-        % Versions 5 and 6
-        case 5
-            Labels = {...
-                0,  'Unknown'; ...
-                1,  'Cortex ext L'; ...
-                2,  'White L'; ...
-                3,  'Cortex L'; ...
-                4,  'Ventricle lat L'; ...
-                5,  'Ventricle inf-lat L'; ...
-                7,  'Cerebellum white L'; ...
-                8,  'Cerebellum L'; ...
-                9,  'Thalamus L'; ...
-               10,  'Thalamus L'; ...
-               11,  'Caudate L'; ...
-               12,  'Putamen L'; ...
-               13,  'Pallidum L'; ...
-               14,  '3rd-Ventricle'; ...
-               15,  '4th-Ventricle'; ...
-               16,  'Brainstem'; ...
-               17,  'Hippocampus L'; ...
-               18,  'Amygdala L'; ...
-               24,  'CSF'; ...
-               26,  'Accumbens L'; ...
-               28,  'VentralDC L'; ...
-               30,  'Vessel L'; ...
-               31,  'Choroid-plexus L'; ...
-               40,  'Cortex ext R'; ...
-               41,  'White R'; ...
-               42,  'Cortex R'; ...
-               43,  'Ventricle lat R'; ...
-               44,  'Ventricle inf-lat R'; ...
-               46,  'Cerebellum white R'; ...
-               47,  'Cerebellum R'; ...
-               48,  'Thalamus R'; ...
-               49,  'Thalamus R'; ...
-               50,  'Caudate R'; ...
-               51,  'Putamen R'; ...
-               52,  'Pallidum R'; ...
-               53,  'Hippocampus R'; ...
-               54,  'Amygdala R'; ...
-               58,  'Accumbens R'; ...
-               60,  'VentralDC R'; ...
-               62,  'Vessel R'; ...
-               63,  'Choroid-plexus R'; ...
-               72,  '5th-Ventricle'; ...
-               77,  'WM-hypointensities'; ...
-               78,  'WM-hypointensities L'; ...
-               79,  'WM-hypointensities R'; ...
-               80,  'non-WM-hypointensities'; ...
-               81,  'non-WM-hypointensities L'; ...
-               82,  'non-WM-hypointensities R'; ...
-               85,  'Optic-Chiasm'; ...
-               251, 'CC_Posterior'; ...
-               252, 'CC_Mid_Posterior'; ...
-               253, 'CC_Central'; ...
-               254, 'CC_Mid_Anterior'; ...
-               255, 'CC_Anterior'; ...
-            };
-        % Old versions: (added to support sample_neuromag dataset)
-        case 3
-            Labels = {...
-                0,  'Unknown'; ...
-                6,  'White L'; ...
-                9,  'Cortex L'; ...
-               21,  'Cerebellum white L'; ...
-               24,  'Cerebellum L'; ...
-               30,  'Thalamus L'; ...
-               36,  'Putamen L'; ...
-               39,  'Pallidum L'; ...
-               48,  'Brainstem'; ...
-               51,  'Hippocampus L'; ...
-              123,  'White R'; ...
-              126,  'Cortex R'; ...
-              138,  'Cerebellum white R'; ...
-              141,  'Cerebellum R'; ...
-              147,  'Thalamus R'; ...
-              153,  'Putamen R'; ...
-              156,  'Pallidum R'; ...
-              159,  'Hippocampus R'; ...
-            };
     end
 end
 
@@ -5362,4 +5281,30 @@ function [isVolumeAtlas, nGrid, Comment] = ParseVolumeAtlas(AtlasName)
 end
 
 
-
+%% ===== GET FIGURE GRID =====
+function [GridLoc, HeadModelType, GridAtlas] = GetFigureGrid(hFig)
+    global GlobalData;
+    GridLoc = [];
+    HeadModelType = [];
+    GridAtlas = [];
+    % Get source file displayed in the figure
+    ResultsFile = getappdata(hFig, 'ResultsFile');
+    if ~isempty(ResultsFile)
+        [iDS, iResult] = bst_memory('GetDataSetResult', ResultsFile);
+        HeadModelType = GlobalData.DataSet(iDS).Results(iResult).HeadModelType;
+        if ~isempty(GlobalData.DataSet(iDS).Results(iResult).GridLoc) && ~strcmpi(HeadModelType, 'surface')
+            GridLoc = GlobalData.DataSet(iDS).Results(iResult).GridLoc;
+            GridAtlas = GlobalData.DataSet(iDS).Results(iResult).GridAtlas;
+        end
+    end
+    % Get head model displayed in the figure
+    HeadModelFile = getappdata(hFig, 'HeadModelFile');
+    if ~isempty(HeadModelFile)
+        HeadModelMat = in_bst_headmodel(HeadModelFile, 0, 'HeadModelType', 'GridLoc', 'GridAtlas');
+        HeadModelType = HeadModelMat.HeadModelType;
+        if ~isempty(HeadModelMat.GridLoc) && ~strcmpi(HeadModelType, 'surface')
+            GridLoc = HeadModelMat.GridLoc;
+            GridAtlas = HeadModelMat.GridAtlas;
+        end
+    end
+end

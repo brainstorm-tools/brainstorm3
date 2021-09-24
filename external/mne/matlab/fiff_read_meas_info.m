@@ -70,11 +70,11 @@ end
 
 me='MNE:fiff_read_meas_info';
 
-if nargin ~= 2 & nargin ~= 1
+if nargin ~= 2 && nargin ~= 1
     error(me,'Incorrect number of arguments');
 end
 
-if nargin == 1 & nargout == 2
+if nargin == 1 && nargout == 2
     error(me,'meas output argument is not allowed with file name specified');
 end
 
@@ -110,6 +110,8 @@ end
 dev_head_t=[];
 ctf_head_t=[];
 meas_date=[];
+proj_id = [];
+proj_name = [];
 p = 0;
 for k = 1:meas_info.nent
     kind = meas_info.dir(k).kind;
@@ -143,9 +145,20 @@ for k = 1:meas_info.nent
             elseif cand.from == FIFF.FIFFV_MNE_COORD_CTF_HEAD && ...
                     cand.to == FIFF.FIFFV_COORD_HEAD
                 ctf_head_t = cand;
+            elseif cand.from == FIFF.FIFFV_COORD_HEAD && ...
+                    cand.to == FIFF.FIFFV_COORD_DEVICE
+                dev_head_t = fiff_invert_transform(cand);
             end
+        case FIFF.FIFF_PROJ_ID
+            tag = fiff_read_tag(fid,pos);
+            proj_id = tag.data;
+        case FIFF.FIFF_PROJ_NAME
+            tag = fiff_read_tag(fid,pos);
+            proj_name = tag.data;
     end
 end
+[chs, ch_rename] = fiff_read_extended_ch_info(chs, meas_info, fid);
+
 %
 %   Check that we have everything we need
 %
@@ -223,8 +236,9 @@ if length(isotrak) == 1
     end
 end
 for k = 1:length(dig)
-    dig(p).coord_frame = coord_frame;
+    dig(k).coord_frame = coord_frame;
 end
+
 if exist('dig_trans','var')
     if (dig_trans.from ~= coord_frame && dig_trans.to ~= coord_frame)
         clear('dig_trans');
@@ -253,15 +267,15 @@ end
 %
 %   Load the SSP data
 %
-projs = fiff_read_proj(fid,meas_info);
+projs = fiff_read_proj(fid,meas_info,ch_rename);
 %
 %   Load the CTF compensation data
 %
-comps = fiff_read_ctf_comp(fid,meas_info,chs);
+comps = fiff_read_ctf_comp(fid,meas_info,chs,ch_rename);
 %
 %   Load the bad channel list
 %
-bads = fiff_read_bad_channels(fid,meas_info);
+bads = fiff_read_bad_channels(fid,meas_info,ch_rename);
 %
 %   Put the data together
 %
@@ -339,6 +353,8 @@ info.projs = projs;
 info.comps = comps;
 info.acq_pars = acq_pars;
 info.acq_stim = acq_stim;
+info.proj_id = proj_id;
+info.proj_name = proj_name;
 
 if open_here
     fclose(fid);
@@ -347,7 +363,7 @@ end
 return;
 
     function [tag] = find_tag(node,findkind)
-        
+
         for p = 1:node.nent
             if node.dir(p).kind == findkind
                 tag = fiff_read_tag(fid,node.dir(p).pos);

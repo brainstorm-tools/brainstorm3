@@ -12,7 +12,7 @@ function varargout = panel_display(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -26,7 +26,7 @@ function varargout = panel_display(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017-2019
 
 eval(macro_method);
 end
@@ -67,6 +67,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jRadioFunLog   = gui_component('Radio', jPanelFunction, 'br', 'Log(power)', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFunPhase = gui_component('Radio', jPanelFunction, 'br', 'Phase',      jButtonGroup, '', @DisplayOptions_Callback);
     jPanelNew.add(jPanelFunction);
+    
+    % ===== FOOOF: PLOT OPTIONS =====
+    jPanelFOOOF = gui_river([0,1], [2,4,4,0], 'FOOOF');
+    jPanelFOOOF.setVisible(0);
+        % Radio: Select function to apply on top of the TF values
+        jButtonGroup = ButtonGroup();
+        jRadioFOverlay = gui_component('Radio', jPanelFOOOF, 'br', 'Overlay',      jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFSpectrum = gui_component('Radio', jPanelFOOOF, 'br', 'Spectrum',      jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'FOOOF Model',  jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFAperiodic   = gui_component('Radio', jPanelFOOOF, 'br', 'Aperiodic only', jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks only', jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFError = gui_component('Radio', jPanelFOOOF, 'br', 'Frequency-wise error', jButtonGroup, '', @DisplayOptions_Callback);
+    jPanelNew.add(jPanelFOOOF);
     
     % ===== PAC: PAC/FLOW/FHIGH =====
     jPanelPac = gui_river([0,1], [2,4,4,0], 'PAC value');
@@ -128,22 +141,34 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelAnatomical = gui_river([1,1], [2,2,2,2], 'Anatomy');
         % gui_component('label', jPanelAnatomical, 'br', 'Anatomy: ');
         jToggleAll  = gui_component('radio', [], [], 'All',   [], [], @ToggleAnatomicalFiltering_Callback);
-        jToggleHemi = gui_component('radio', [], [], 'Between Hemisphere',  [], [], @ToggleAnatomicalFiltering_Callback);
+        jToggleHemi = gui_component('radio', [], [], 'Between Hemispheres',  [], [], @ToggleAnatomicalFiltering_Callback);
         jToggleLobe = gui_component('radio', [], [], 'Between Lobes', [], [], @ToggleAnatomicalFiltering_Callback);
         jPanelAnatomical.add('', jToggleAll);
         jPanelAnatomical.add('br', jToggleHemi);
         jPanelAnatomical.add('br', jToggleLobe);
     jPanelNew.add(jPanelAnatomical);
+    % Fiber filtering
+    jPanelFiber = gui_river([1,1], [2,2,2,2], 'Show connections');
+        jToggleAllConns  = gui_component('radio', [], [], 'All',   [], [], @ToggleFiberFiltering_Callback);
+        jToggleAnatConsistConns = gui_component('radio', [], [], 'Anatomically accurate',  [], [], @ToggleFiberFiltering_Callback);
+        jToggleAnatInconsistConns = gui_component('radio', [], [], 'Anatomically inaccurate', [], [], @ToggleFiberFiltering_Callback);
+        jPanelFiber.add('', jToggleAllConns);
+        jPanelFiber.add('br', jToggleAnatConsistConns);
+        jPanelFiber.add('br', jToggleAnatInconsistConns);
+    jPanelFiber.setVisible(0);
+    jPanelNew.add(jPanelFiber);
     
     % Set max panel sizes
     drawnow;
     jPanelFunction.setMaximumSize(java.awt.Dimension(jPanelFunction.getMaximumSize().getWidth(), jPanelFunction.getPreferredSize().getHeight()));
+    jPanelFOOOF.setMaximumSize(java.awt.Dimension(jPanelFOOOF.getMaximumSize().getWidth(), jPanelFOOOF.getPreferredSize().getHeight()));
     jPanelPac.setMaximumSize(java.awt.Dimension(jPanelPac.getMaximumSize().getWidth(), jPanelPac.getPreferredSize().getHeight()));
     jPanelSelect.setMaximumSize(java.awt.Dimension(jPanelSelect.getMaximumSize().getWidth(), jPanelSelect.getPreferredSize().getHeight()));
     jPanelThreshold.setMaximumSize(java.awt.Dimension(jPanelThreshold.getMaximumSize().getWidth(), jPanelThreshold.getPreferredSize().getHeight()));
     jPanelDistance.setMaximumSize(java.awt.Dimension(jPanelDistance.getMaximumSize().getWidth(), jPanelDistance.getPreferredSize().getHeight()));
     jPanelLinks.setMaximumSize(java.awt.Dimension(jPanelLinks.getMaximumSize().getWidth(), jPanelLinks.getPreferredSize().getHeight()));
     jPanelAnatomical.setMaximumSize(java.awt.Dimension(jPanelAnatomical.getMaximumSize().getWidth(), jPanelAnatomical.getPreferredSize().getHeight()));
+    jPanelFiber.setMaximumSize(java.awt.Dimension(jPanelFiber.getMaximumSize().getWidth(), jPanelFiber.getPreferredSize().getHeight()));
     
     % Add an extra glue at the end, so that panel stay small
     jPanelNew.add(Box.createVerticalGlue());
@@ -156,22 +181,38 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jCheckHideEdge.setEnabled(0);
     jCheckHighRes.setEnabled(0);
     
+    jRadioFOverlay.setSelected(1);
+    jRadioFOverlay.setEnabled(0);
+    jRadioFSpectrum.setEnabled(0);
+    jRadioFModel.setEnabled(0);
+    jRadioFAperiodic.setEnabled(0);
+    jRadioFPeaks.setEnabled(0);
+    jRadioFError.setEnabled(0);
+    
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, ...
                            jPanelNew, ...
                            struct('jPanelSelect',           jPanelSelect, ...
                                   'jPanelFunction',         jPanelFunction, ...
+                                  'jPanelFOOOF',            jPanelFOOOF, ...
                                   'jPanelPac',              jPanelPac, ...
                                   'jPanelThreshold',        jPanelThreshold, ...
                                   'jPanelDistance',         jPanelDistance, ...
                                   'jPanelLinks',            jPanelLinks, ...
                                   'jPanelAnatomical',       jPanelAnatomical, ...
+                                  'jPanelFiber',            jPanelFiber, ...
                                   'jComboRows',             jComboRows, ...
                                   'jRadioFunPower',         jRadioFunPower, ...
                                   'jRadioFunMag',           jRadioFunMag, ...
                                   'jRadioFunLog',           jRadioFunLog, ...
                                   'jRadioFunPhase',         jRadioFunPhase, ...
+                                  'jRadioFSpectrum',        jRadioFSpectrum, ...
+                                  'jRadioFOverlay',         jRadioFOverlay, ...
+                                  'jRadioFModel',           jRadioFModel, ...
+                                  'jRadioFAperiodic',       jRadioFAperiodic, ...
+                                  'jRadioFPeaks',           jRadioFPeaks, ...
+                                  'jRadioFError',           jRadioFError, ...
                                   'jRadioPacMax',           jRadioPacMax, ...
                                   'jRadioPacFlow',          jRadioPacFlow, ...
                                   'jRadioPacFhigh',         jRadioPacFhigh, ...
@@ -186,7 +227,10 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jToggleBiDir',           jToggleBiDir, ...
                                   'jToggleAll',             jToggleAll, ...
                                   'jToggleHemi',            jToggleHemi, ...
-                                  'jToggleLobe',            jToggleLobe));
+                                  'jToggleLobe',            jToggleLobe, ...
+                                  'jToggleAllConns',        jToggleAllConns, ...
+                                  'jToggleAnatConsistConns', jToggleAnatConsistConns, ...
+                                  'jToggleAnatInconsistConns', jToggleAnatInconsistConns));
 
     
 %% =================================================================================
@@ -231,6 +275,18 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             AnatomicalFilter = 2;
         end
         SetAnatomicalFilteringOptions([], AnatomicalFilter);
+    end
+
+    function ToggleFiberFiltering_Callback(varargin)
+        FiberFilter = 0;
+        if (jToggleAllConns.hasFocus())
+            FiberFilter = 0;
+        elseif (jToggleAnatConsistConns.hasFocus())
+            FiberFilter = 1;
+        elseif (jToggleAnatInconsistConns.hasFocus())
+            FiberFilter = 2;
+        end
+        SetFiberFilteringOptions([], FiberFilter);
     end
 end
 
@@ -279,14 +335,22 @@ function UpdatePanel(hFig)
         ctrl.jRadioFunMag.setEnabled(0);
         ctrl.jRadioFunLog.setEnabled(0);
         ctrl.jRadioFunPhase.setEnabled(0);
+        ctrl.jRadioFOverlay.setEnabled(0);
+        ctrl.jRadioFSpectrum.setEnabled(0);
+        ctrl.jRadioFModel.setEnabled(0);
+        ctrl.jRadioFAperiodic.setEnabled(0);
+        ctrl.jRadioFPeaks.setEnabled(0);
+        ctrl.jRadioFError.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelSelect.setVisible(0);
         ctrl.jPanelFunction.setVisible(0);
+        ctrl.jPanelFOOOF.setVisible(0);
         ctrl.jPanelPac.setVisible(0);
         ctrl.jPanelThreshold.setVisible(0);
         ctrl.jPanelDistance.setVisible(0);
         ctrl.jPanelAnatomical.setVisible(0);
+        ctrl.jPanelFiber.setVisible(0);
         ctrl.jPanelLinks.setVisible(0);
         return
     end
@@ -313,13 +377,21 @@ function UpdatePanel(hFig)
         ctrl.jRadioFunMag.setEnabled(0);
         ctrl.jRadioFunLog.setEnabled(0);
         ctrl.jRadioFunPhase.setEnabled(0);
+        ctrl.jRadioFOverlay.setEnabled(0);
+        ctrl.jRadioFSpectrum.setEnabled(0);
+        ctrl.jRadioFModel.setEnabled(0);
+        ctrl.jRadioFAperiodic.setEnabled(0);
+        ctrl.jRadioFPeaks.setEnabled(0);
+        ctrl.jRadioFError.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelFunction.setVisible(0);
+        ctrl.jPanelFOOOF.setVisible(0)
         ctrl.jPanelPac.setVisible(0);
         ctrl.jPanelThreshold.setVisible(0);
         ctrl.jPanelDistance.setVisible(0);
         ctrl.jPanelAnatomical.setVisible(0);
+        ctrl.jPanelFiber.setVisible(0);
         ctrl.jPanelLinks.setVisible(0);
         
     % ===== UPDATE FREQUENCY =====
@@ -357,11 +429,46 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunLog.setEnabled(0);
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
+        % Display FOOOF panel
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+            ctrl.jPanelFOOOF.setVisible(1);
+        end
         % Entire panel
-        if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'})
+        if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'}) ...
+                || (isfield(TfInfo, 'DisplayMeasure') && ~TfInfo.DisplayMeasure)
             ctrl.jPanelFunction.setVisible(0);
         else
             ctrl.jPanelFunction.setVisible(1);
+            % If current figure is a FOOOF PSD
+            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+                ctrl.jRadioFOverlay.setEnabled(1); 
+                ctrl.jRadioFSpectrum.setEnabled(1);
+                ctrl.jRadioFModel.setEnabled(1);
+                ctrl.jRadioFAperiodic.setEnabled(1);
+                ctrl.jRadioFPeaks.setEnabled(1);
+                ctrl.jRadioFError.setEnabled(1);
+                switch TfInfo.FOOOFDisp
+                    case 'overlay', ctrl.jRadioFOverlay.setSelected(1); 
+                    case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
+                    case 'model', ctrl.jRadioFModel.setSelected(1);
+                    case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
+                    case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
+                    case 'error' 
+                        ctrl.jRadioFError.setSelected(1);
+                        % All display options can be useful here as well.
+                        %ctrl.jRadioFunPower.setEnabled(0);
+                        %ctrl.jRadioFunMag.setEnabled(0);
+                        %ctrl.jRadioFunLog.setEnabled(1);
+                end
+            else
+                ctrl.jRadioFOverlay.setSelected(1);
+                ctrl.jRadioFOverlay.setEnabled(0); 
+                ctrl.jRadioFSpectrum.setEnabled(0);
+                ctrl.jRadioFModel.setEnabled(0);
+                ctrl.jRadioFAperiodic.setEnabled(0);
+                ctrl.jRadioFPeaks.setEnabled(0);
+                ctrl.jRadioFError.setEnabled(0);
+            end                
         end
 
         % === PAC PANEL ===
@@ -380,16 +487,21 @@ function UpdatePanel(hFig)
 
         % === SELECTED DATA ===
         % Hide edge effects
-        if strcmpi(FigureId.Type, 'Timefreq') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TimeBands) % && ~iscell(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs)
+        if strcmpi(FigureId.Type, 'Timefreq') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TimeBands) && (~isfield(TfInfo, 'DisableHideEdgeEffects') || TfInfo.DisableHideEdgeEffects == 0)
             isEnabledEdge = 1;
             ctrl.jCheckHideEdge.setSelected(TfInfo.HideEdgeEffects);
         else
             isEnabledEdge = 0;
         end
         ctrl.jCheckHideEdge.setEnabled(isEnabledEdge);
-        % Resolution
-        ctrl.jCheckHighRes.setEnabled(strcmpi(FigureId.Type, 'Timefreq') || strcmpi(FigureId.Type, 'Pac'));
-        ctrl.jCheckHighRes.setSelected(TfInfo.HighResolution);
+        % Resolution (Smooth Display)
+        if (strcmpi(FigureId.Type, 'Pac') || strcmpi(FigureId.Type, 'Timefreq')) && ~TfInfo.DisplayAsDots
+            isEnabledHighRes = 1;
+            ctrl.jCheckHideEdge.setSelected(TfInfo.HighResolution);
+        else
+            isEnabledHighRes = 0;
+        end
+        ctrl.jCheckHighRes.setEnabled(isEnabledHighRes);
         % Get all row names available
         AllRows = figure_timefreq('GetRowNames', GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames);
         % Update row list
@@ -406,23 +518,26 @@ function UpdatePanel(hFig)
         ctrl.jPanelSelect.setVisible(isEnabledEdge || isEnabledRow);
 
         % === CONNECTIVITY ===
-        % Connectivity options
+       
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
         isConnect = strcmpi(FigureId.Type, 'Connect');
-        if isConnect
+       
+        % NEW Connectivity (ConnectViz) display panel options
+        if isConnectViz
             ctrl.jPanelThreshold.setVisible(1);
             % Get Threshold Min/Max
-            ThresholdMinMax = getappdata(hFig, 'ThresholdMinMax');
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
             if isempty(ThresholdMinMax)
                 ThresholdMinMax = getappdata(hFig, 'DataMinMax');
             end
             Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
             % Threshold filter
-            Threshold = getappdata(hFig, 'MeasureThreshold');
+            Threshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
             SliderValue = (Threshold - ThresholdMinMax(1)) / Diff * 100;
             ctrl.jSliderThreshold.setValue(SliderValue);
             ctrl.jLabelConnectThresh.setText(num2str(Threshold,3));
             % Distance filter
-            MinimumDistanceThresh = getappdata(hFig, 'MeasureMinDistanceFilter');
+            MinimumDistanceThresh = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
             ctrl.jSliderMinimumDistance.setValue(MinimumDistanceThresh);
             % Direction filter
             DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
@@ -433,10 +548,15 @@ function UpdatePanel(hFig)
             ctrl.jToggleBoth.setSelected(DisplayOutwardMeasure && DisplayInwardMeasure);
             ctrl.jToggleBiDir.setSelected(~DisplayOutwardMeasure && ~DisplayInwardMeasure && DisplayBidirectionalMeasure);
             % Update Anatomical filtering      
-            MeasureAnatomicalFilter = getappdata(hFig, 'MeasureAnatomicalFilter');
+            MeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
             ctrl.jToggleAll.setSelected(MeasureAnatomicalFilter == 0);
             ctrl.jToggleHemi.setSelected(MeasureAnatomicalFilter == 1);
             ctrl.jToggleLobe.setSelected(MeasureAnatomicalFilter == 2);
+            % Update fiber filtering
+            MeasureFiberFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureFiberFilter');
+            ctrl.jToggleAllConns.setSelected(MeasureFiberFilter == 0);
+            ctrl.jToggleAnatConsistConns.setSelected(MeasureFiberFilter == 1);
+            ctrl.jToggleAnatInconsistConns.setSelected(MeasureFiberFilter == 2);
             % Update filtering title
             MinIntensity = sprintf('%1.3f',ThresholdMinMax(1));
             MaxIntensity = sprintf('%1.3f',ThresholdMinMax(2));
@@ -464,13 +584,86 @@ function UpdatePanel(hFig)
                 DisplayInRegion = 0;
             end
             ctrl.jPanelAnatomical.setVisible(DisplayInRegion);
+            % Fiber panel for new tool?
+            ctrl.jPanelFiber.setVisible(0);
+        
+        % CONNECTIVITY OPTIONS %
+        elseif isConnect
+            ctrl.jPanelThreshold.setVisible(1);
+            % Get Threshold Min/Max
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
+            if isempty(ThresholdMinMax)
+                ThresholdMinMax = getappdata(hFig, 'DataMinMax');
+            end
+            Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
+            % Threshold filter
+            Threshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
+            SliderValue = (Threshold - ThresholdMinMax(1)) / Diff * 100;
+            ctrl.jSliderThreshold.setValue(SliderValue);
+            ctrl.jLabelConnectThresh.setText(num2str(Threshold,3));
+            % Distance filter
+            MinimumDistanceThresh = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
+            ctrl.jSliderMinimumDistance.setValue(MinimumDistanceThresh);
+            % Direction filter
+            DisplayOutwardMeasure = getappdata(hFig, 'DisplayOutwardMeasure');
+            DisplayInwardMeasure = getappdata(hFig, 'DisplayInwardMeasure');
+            DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure');
+            ctrl.jToggleOut.setSelected(DisplayOutwardMeasure && ~DisplayInwardMeasure);
+            ctrl.jToggleIn.setSelected(DisplayInwardMeasure && ~DisplayOutwardMeasure);
+            ctrl.jToggleBoth.setSelected(DisplayOutwardMeasure && DisplayInwardMeasure);
+            ctrl.jToggleBiDir.setSelected(~DisplayOutwardMeasure && ~DisplayInwardMeasure && DisplayBidirectionalMeasure);
+            % Update Anatomical filtering      
+            MeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
+            ctrl.jToggleAll.setSelected(MeasureAnatomicalFilter == 0);
+            ctrl.jToggleHemi.setSelected(MeasureAnatomicalFilter == 1);
+            ctrl.jToggleLobe.setSelected(MeasureAnatomicalFilter == 2);
+            % Update fiber filtering
+            MeasureFiberFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureFiberFilter');
+            ctrl.jToggleAllConns.setSelected(MeasureFiberFilter == 0);
+            ctrl.jToggleAnatConsistConns.setSelected(MeasureFiberFilter == 1);
+            ctrl.jToggleAnatInconsistConns.setSelected(MeasureFiberFilter == 2);
+            % Update filtering title
+            MinIntensity = sprintf('%1.3f',ThresholdMinMax(1));
+            MaxIntensity = sprintf('%1.3f',ThresholdMinMax(2));
+            ctrl.jPanelThreshold.get('Border').setTitle(['Intensity Thresh. (' MinIntensity ' - ' MaxIntensity ')']);
+            MinDistance = num2str(0);
+            MaxDistance = num2str(150);
+            ctrl.jPanelDistance.get('Border').setTitle(['Distance Filtering (' MinDistance ' - ' MaxDistance 'mm)']);
+
+            % Filter Distance Panel
+            HasLocationsData = getappdata(hFig, 'HasLocationsData');
+            if isempty(HasLocationsData)
+                HasLocationsData = 0;
+            end
+            ctrl.jPanelDistance.setVisible(HasLocationsData);
+
+            % Display Direction Panel
+            IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+            if isempty(IsDirectionalData)
+                IsDirectionalData = 0;
+            end
+            ctrl.jPanelLinks.setVisible(IsDirectionalData);
+            % Filter Anatomical Panel
+            DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
+            if isempty(DisplayInRegion)
+                DisplayInRegion = 0;
+            end
+            ctrl.jPanelAnatomical.setVisible(DisplayInRegion);
+            % Filter fiber panel
+            plotFibers = getappdata(hFig, 'plotFibers');
+            if isempty(plotFibers)
+                plotFibers = 0;
+            end
+            ctrl.jPanelFiber.setVisible(plotFibers);
 
         else
             ctrl.jPanelThreshold.setVisible(0);
             ctrl.jPanelDistance.setVisible(0);
             ctrl.jPanelLinks.setVisible(0);
             ctrl.jPanelAnatomical.setVisible(0);
+            ctrl.jPanelFiber.setVisible(0);
         end
+        
     end
     % Repaint just in case
     ctrl.jPanelThreshold.getParent().revalidate();
@@ -483,7 +676,19 @@ function sOptions = GetDisplayOptions()
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Display');
     if isempty(ctrl)
-        sOptions = [];
+        sOptions = struct(...
+            'RowName',  [], ...
+            'Function', 'power', ...
+            'HideEdgeEffects', 0, ...
+            'HighResolution', 0, ...
+            'DataThreshold', 0, ...
+            'MinDistanceThreshold', 0, ...
+            'DisplayOutwardMeasure', 0, ...
+            'DisplayInwardMeasure', 0, ...
+            'DisplayBothMeasure', 1, ...
+            'DisplayBidirectionalMeasure', 0, ...
+            'MeasureAnatomicalFilter', 0, ...
+            'FOOOFDisp', 'overlay');
         return
     end
     % Get current panel figure
@@ -515,6 +720,21 @@ function sOptions = GetDisplayOptions()
     else
         sOptions.Function = 'other';
     end
+    % Get FOOOF display specifics 
+    if ctrl.jRadioFOverlay.isSelected()
+        sOptions.FOOOFDisp = 'overlay';
+    elseif ctrl.jRadioFSpectrum.isSelected()
+        sOptions.FOOOFDisp = 'spectrum';
+    elseif ctrl.jRadioFModel.isSelected()
+        sOptions.FOOOFDisp = 'model';
+    elseif ctrl.jRadioFAperiodic.isSelected()
+        sOptions.FOOOFDisp = 'aperiodic';
+    elseif ctrl.jRadioFPeaks.isSelected()
+        sOptions.FOOOFDisp = 'peaks';
+    elseif ctrl.jRadioFError.isSelected()
+        sOptions.FOOOFDisp = 'error';
+    end
+    
     % Hide edge effects / Resolution
     sOptions.HideEdgeEffects = ctrl.jCheckHideEdge.isSelected();
     sOptions.HighResolution = ctrl.jCheckHighRes.isSelected();
@@ -568,11 +788,15 @@ function SetDisplayOptions(sOptions)
     else
         % Get figure configuration
         TfInfo = getappdata(hFig, 'Timefreq');
+        % Get data description
+        [iDS, iTimefreq] = bst_memory('GetDataSetTimefreq', TfInfo.FileName);
         if isempty(TfInfo)
             return
         end
+        
         % If nothing changed or RowUpdate for 2DLayout: return
         if isequal(TfInfo.Function, sOptions.Function) && ...
+           isequal(TfInfo.FOOOFDisp, sOptions.FOOOFDisp) && ...
            isequal(TfInfo.HideEdgeEffects, sOptions.HideEdgeEffects) && ...
            isequal(TfInfo.HighResolution, sOptions.HighResolution) && ...
            (isequal(TfInfo.RowName, sOptions.RowName) || ismember(TfInfo.DisplayMode, {'2DLayout', '2DLayoutOpt', 'AllSensors'}))
@@ -596,6 +820,8 @@ function SetDisplayOptions(sOptions)
                 bst_set('LastPsdDisplayFunction', sOptions.Function);
             end
         end
+        TfInfo.isFooofDispChanged = ~isequal(TfInfo.FOOOFDisp, sOptions.FOOOFDisp);
+        TfInfo.FOOOFDisp  = sOptions.FOOOFDisp;
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
         % Update figure handles
@@ -607,10 +833,11 @@ function SetDisplayOptions(sOptions)
     bst_progress('start', 'Time-frequency tab', 'Updating figures...');
     switch (GlobalData.DataSet(iDS).Figure(iFig).Id.Type)
         case 'Topography', figure_topo('UpdateTopoPlot', iDS, iFig);
-        case 'Spectrum',   figure_spectrum('DisplayOptionsChangedCallback', hFig);           
+        case 'Spectrum',   figure_spectrum('UpdateFigurePlot', hFig, 1);           
         case '3DViz',      panel_surface('UpdateSurfaceData', hFig);
         case 'MriViewer',  panel_surface('UpdateSurfaceData', hFig);
         case 'Connect',    figure_connect('UpdateFigurePlot', hFig);
+        case 'ConnectViz', figure_connect_viz('UpdateFigurePlot', hFig); 
         case 'Pac'   
             % Update this figure
             figure_pac('UpdateFigurePlot', hFig);
@@ -647,14 +874,21 @@ function SetDisplayOptions(sOptions)
             % If there is a selected RowName and if it was updated: Try updating other figures   (Skip update for RefRowName change)
             if ~isempty(sOptions.RowName) && ~isequal(sOptions.RowName, prevRowName) && isempty(TfInfo.RefRowName)
                 % Find other similar figures that could be updated
-                hFigOthers = bst_figures('GetFiguresByType', 'Timefreq');
+                hFigOthers = bst_figures('GetFiguresByType', {'Timefreq','Spectrum','Pac'});
                 hFigOthers = setdiff(hFigOthers, hFig);
                 for i = 1:length(hFigOthers)
                     % Get figure configuration
                     TfInfoOther = getappdata(hFigOthers(i), 'Timefreq');
+                    if iscell(TfInfoOther.RowName) && (length(TfInfoOther.RowName) == 1)
+                        otherRowName = TfInfoOther.RowName{1};
+                    elseif ischar(TfInfoOther.RowName)
+                        otherRowName = TfInfoOther.RowName;
+                    else
+                        otherRowName = [];
+                    end
                     % Check that the figure had the same initial RowName selection
                     % (and skip the figures showing the same file, to allow the change of row for a cloned figure)
-                    if isempty(TfInfoOther) || ~isequal(TfInfoOther.RowName, prevRowName) || isequal(TfInfo.FileName, TfInfoOther.FileName)
+                    if isempty(TfInfoOther) || ~isequal(otherRowName, prevRowName) || (isequal(TfInfo.FileName, TfInfoOther.FileName) && isequal(TfInfo.DisplayMode, TfInfoOther.DisplayMode))
                         continue;
                     end
                     % Get loaded timefreq file
@@ -665,10 +899,26 @@ function SetDisplayOptions(sOptions)
                     % If the new destination RowName also exists in this file: Update figure
                     if ismember(sOptions.RowName, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)
                         % Update figure description
-                        TfInfoOther.RowName = sOptions.RowName;
+                        if iscell(TfInfoOther.RowName)
+                            TfInfoOther.RowName{1} = sOptions.RowName;
+                        else
+                            TfInfoOther.RowName = sOptions.RowName;
+                        end
                         setappdata(hFigOthers(i), 'Timefreq', TfInfoOther);
                         % Redraw this figure
-                        figure_timefreq('UpdateFigurePlot', hFigOthers(i), 1);
+                        FigureId = getappdata(hFigOthers(i), 'FigureId');
+                        switch (FigureId.Type)
+                            case 'Timefreq'
+                                figure_timefreq('UpdateFigurePlot', hFigOthers(i), 1);
+                            case 'Spectrum'
+                                figure_spectrum('UpdateFigurePlot', hFigOthers(i), 1);
+                            case 'Pac'
+                                figure_pac('UpdateFigurePlot', hFigOthers(i));
+                            case 'Connect'
+                                warning('todo');
+                            case 'ConnectViz' 
+                                warning('todo');
+                        end
                     end
                 end
             end
@@ -678,6 +928,21 @@ function SetDisplayOptions(sOptions)
     end
     drawnow;
     bst_progress('stop');
+end
+
+
+%% ===== SET DISPLAY FUNCTION =====
+function SetDisplayFunction(newFunc) %#ok<DEFNU>
+    % Set option 
+    sOptions = GetDisplayOptions();
+    sOptions.Function = newFunc;
+    SetDisplayOptions(sOptions);
+    % Update panel
+    hFig = GetPanelFigure();
+    if isempty(hFig)
+        return
+    end
+    UpdatePanel(hFig);
 end
 
 
@@ -805,7 +1070,7 @@ function SetSelectedRowName(hFig, newRowName) %#ok<DEFNU>
     else
         iCurRow = TfInfo.RowName;
     end
-    % Get new row
+    % Get new row index
     if strcmpi(newRowName, 'downarrow')
         iNewRow = min(iCurRow + 1, length(RowNames));
     elseif strcmpi(newRowName, 'uparrow')
@@ -813,32 +1078,19 @@ function SetSelectedRowName(hFig, newRowName) %#ok<DEFNU>
     else
         iNewRow = find(strcmpi(RowNames, newRowName));
     end
-    % Update figure structure
-    if ~isempty(iNewRow)
-        if iscell(RowNames)
-            TfInfo.RowName = RowNames{iNewRow(1)};
-        else
-            TfInfo.RowName = RowNames(iNewRow(1));
-        end
-        setappdata(hFig, 'Timefreq', TfInfo);
+    if isempty(iNewRow)
+        return;
     end
-    % If row selection was modified: Update figure
-    if ~strcmpi(oldRowName, TfInfo.RowName)
-        FigureId = getappdata(hFig, 'FigureId');
-        % Redraw figure
-        switch (FigureId.Type)
-            case 'Timefreq'
-                figure_timefreq('UpdateFigurePlot', hFig);
-            case 'Spectrum'
-                figure_spectrum('UpdateFigurePlot', hFig, 1);
-            case 'Pac'
-                figure_pac('UpdateFigurePlot', hFig);
-            case 'Connect'
-                warning('todo');
-        end
-        % Update panel
-        UpdatePanel(hFig);
+    % Get new row name
+    if iscell(RowNames)
+        NewRowName = RowNames{iNewRow(1)};
+    else
+        NewRowName = RowNames(iNewRow(1));
     end
+    % Update Display panel options
+    sOptions = GetDisplayOptions();
+    sOptions.RowName = NewRowName;
+    SetDisplayOptions(sOptions);
 end
 
 
@@ -911,7 +1163,7 @@ function SetThresholdOptions(sOptions)
         isConnect = strcmpi(FigureId.Type, 'Connect');
         if isConnect
             % Threshold min/max
-            ThresholdMinMax = getappdata(hFig, 'ThresholdMinMax');
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
             if isempty(ThresholdMinMax)
                 ThresholdMinMax = getappdata(hFig, 'DataMinMax');
             end
@@ -919,7 +1171,7 @@ function SetThresholdOptions(sOptions)
             sOptions.DataThreshold = sOptions.DataThreshold * Diff + ThresholdMinMax(1);
 
             % Get current threshold
-            curDataThreshold = getappdata(hFig, 'MeasureThreshold');
+            curDataThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
             if isempty(curDataThreshold)
                 return;
             end
@@ -933,6 +1185,34 @@ function SetThresholdOptions(sOptions)
             % Update panel
             UpdatePanel(hFig);
         end
+        
+        % New ConnectViz slider logic
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+        if isConnectViz
+            % Threshold min/max
+            ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
+            if isempty(ThresholdMinMax)
+                ThresholdMinMax = getappdata(hFig, 'DataMinMax');
+            end
+            Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
+            sOptions.DataThreshold = sOptions.DataThreshold * Diff + ThresholdMinMax(1);
+
+            % Get current threshold
+            curDataThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
+            if isempty(curDataThreshold)
+                return;
+            end
+            % Nothing changed
+            if (sOptions.DataThreshold == curDataThreshold)
+                return;
+            end
+            % Refresh figure with new threshold
+            figure_connect_viz('SetMeasureThreshold', hFig, sOptions.DataThreshold);
+            figure_connect_viz('UpdateColormap', hFig);
+            % Update panel
+            UpdatePanel(hFig);
+        end
+        
         % Release mutex
         ConnectSliderMutex = [];
     else
@@ -965,7 +1245,7 @@ function SetDistanceOptions(sOptions)
         isConnect = strcmpi(FigureId.Type, 'Connect');
         if isConnect
             % Get current threshold
-            curMinDistanceThreshold = getappdata(hFig, 'MeasureMinDistanceFilter');
+            curMinDistanceThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
             if isempty(curMinDistanceThreshold)
                 return;
             end
@@ -977,6 +1257,25 @@ function SetDistanceOptions(sOptions)
             figure_connect('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, 150);
             figure_connect('UpdateColormap', hFig);
         end
+        
+        % for new connect-viz tool
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+        if isConnectViz
+            % Get current threshold
+            curMinDistanceThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
+            if isempty(curMinDistanceThreshold)
+                return;
+            end
+            % Nothing changed
+            if (sOptions.MinDistanceThreshold == curMinDistanceThreshold)
+                return;
+            end
+            % Refresh figure with new threshold
+            figure_connect_viz('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, 150);
+            figure_connect_viz('UpdateColormap', hFig);
+        end
+        
+        
         % Release mutex
         ConnectSliderMutex = [];
     else
@@ -1025,8 +1324,17 @@ function SetConnectivityDisplayOptions(sOptions, DisplayButton)
         curDisplayInwardMeasure ~= DisplayInwardMeasure || ...
         curDisplayBidirectionalMeasure ~= DisplayBidirectionalMeasure)
         % Refresh figure with new threshold
-        figure_connect('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
-        figure_connect('UpdateColormap', hFig);
+        
+        % logic for new vs old connect-viz tool
+        FigureId = getappdata(hFig, 'FigureId');
+        isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+        if isConnectViz
+            figure_connect_viz('SetDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
+            figure_connect_viz('UpdateColormap', hFig);
+        else
+            figure_connect('setDisplayMeasureMode', hFig, DisplayOutwardMeasure, DisplayInwardMeasure, DisplayBidirectionalMeasure);
+            figure_connect('UpdateColormap', hFig);
+        end
     end
     UpdatePanel(hFig);
 end
@@ -1042,7 +1350,7 @@ function SetAnatomicalFilteringOptions(sOptions, AnatomicalFilter)
         return
     end
     % Get current figure option
-    curMeasureAnatomicalFilter = getappdata(hFig, 'MeasureAnatomicalFilter');
+    curMeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
     % Get display option
     MeasureAnatomicalFilter = AnatomicalFilter;
     % Nothing changed
@@ -1050,10 +1358,45 @@ function SetAnatomicalFilteringOptions(sOptions, AnatomicalFilter)
         MeasureAnatomicalFilter = 0;
     end
     % Update figure
-    figure_connect('SetMeasureAnatomicalFilterTo', hFig, MeasureAnatomicalFilter);
-    figure_connect('UpdateColormap', hFig);
+    FigureId = getappdata(hFig, 'FigureId');
+    isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+    if isConnectViz
+        figure_connect_viz('SetMeasureAnatomicalFilterTo', hFig, MeasureAnatomicalFilter);
+        figure_connect_viz('UpdateColormap', hFig);
+    else
+        figure_connect('SetMeasureAnatomicalFilterTo', hFig, MeasureAnatomicalFilter);
+        figure_connect('UpdateColormap', hFig);
+    end
+    
     % Update panel
     UpdatePanel(hFig);
+end
+
+function SetFiberFilteringOptions(sOptions, FiberFilter)
+    % Get current display options
+    if (nargin < 1) || isempty(sOptions)
+        %sOptions = GetDisplayOptions();
+    end
+    % Get current figure
+    hFig = bst_figures('GetCurrentFigure', 'TF');
+    if isempty(hFig)
+        return
+    end
+    bst_progress('start', 'Fibers Connectivity', 'Selecting appropriate connections...');
+    % Update figure
+    FigureId = getappdata(hFig, 'FigureId');
+    isConnectViz = strcmpi(FigureId.Type, 'ConnectViz');
+    if isConnectViz
+        figure_connect_viz('SetMeasureFiberFilterTo', hFig, FiberFilter);
+        figure_connect_viz('UpdateColormap', hFig);
+    else
+        figure_connect('SetMeasureFiberFilterTo', hFig, FiberFilter);
+        figure_connect('UpdateColormap', hFig);
+    end
+    
+    % Update panel
+    UpdatePanel(hFig);
+    bst_progress('stop');
 end
 
 

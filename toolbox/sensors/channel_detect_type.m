@@ -7,7 +7,7 @@ function ChannelMat = channel_detect_type( ChannelMat, isAlign, isRemoveFid )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -53,14 +53,14 @@ for i = 1:length(iCheck)
     % Check name
     chName = lower(ChannelMat.Channel(iChan).Name);
     switch(chName)
-        case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz'}  % NASION
+        case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz', 'n'}  % NASION
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.NAS = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
                 ChannelMat.SCS.NAS = ChannelMat.Channel(iChan).Loc(:,1)';  % CHANGED 09-May-2013 (suspected bug, not tested)
             end
             ChannelMat.Channel(iChan).Type = 'Misc';
-        case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear'} % LEFT EAR
+        case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear', 'l'} % LEFT EAR
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.LPA = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
@@ -71,7 +71,7 @@ for i = 1:length(iCheck)
                 HeadPoints.Type  = [HeadPoints.Type,  'CARDINAL'];
             end
             ChannelMat.Channel(iChan).Type = 'Misc';
-        case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear'} % RIGHT EAR
+        case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear', 'r'} % RIGHT EAR
             if ~isempty(ChannelMat.Channel(iChan).Loc) && ~all(ChannelMat.Channel(iChan).Loc == 0)
                 iDelChan = [iDelChan, iChan];
                 % ChannelMat.SCS.RPA = ChannelMat.Channel(iChan).Loc(:,1)' .* 1000;
@@ -190,6 +190,9 @@ if isAlign && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(Chann
     ChannelMat.SCS.T      = transfSCS.T;
     ChannelMat.SCS.Origin = transfSCS.Origin;
     % Convert the fiducials positions
+    %   NOTE: The division/multiplication by 1000 is to compensate the T/1000 applied in the cs_convert().
+    %         This hack was added becaue cs_convert() is intended to work on sMri structures, 
+    %         in which NAS/LPA/RPA/T fields are in millimeters, while in ChannelMat they are in meters.
     ChannelMat.SCS.NAS = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.NAS ./ 1000) .* 1000;
     ChannelMat.SCS.LPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.LPA ./ 1000) .* 1000;
     ChannelMat.SCS.RPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.RPA ./ 1000) .* 1000;
@@ -200,7 +203,7 @@ if isAlign && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(Chann
             ChannelMat.Channel(i).Loc = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.Channel(i).Loc' ./ 1000)' .* 1000;
         end
         if ~isempty(ChannelMat.Channel(i).Orient)
-            ChannelMat.Channel(i).Orient = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.Channel(i).Orient' ./ 1000)' .* 1000;
+            ChannelMat.Channel(i).Orient = ChannelMat.SCS.R * ChannelMat.Channel(i).Orient;
         end
     end
     % Process the head points    % ADDED 27-May-2013

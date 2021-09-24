@@ -16,7 +16,7 @@ function db_rename_condition( oldPath, newPath, isMove, isUpdateStudyPath )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -89,7 +89,7 @@ end
 %% ===== RENAME FOLDER =====
 % Move the folder
 if isMove
-    isOk = movefile(bst_fullfile(ProtocolInfo.STUDIES, oldPath), bst_fullfile(ProtocolInfo.STUDIES, newPath), 'f');
+    isOk = file_move(bst_fullfile(ProtocolInfo.STUDIES, oldPath), bst_fullfile(ProtocolInfo.STUDIES, newPath));
     if ~isOk
         bst_error(['Error: Could not rename "' oldPath '" to "' newPath '".'], 'Rename', 0);
         return;

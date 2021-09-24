@@ -5,15 +5,17 @@ function [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, Us
 % USAGE:  [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, UseSmoothing, 'NewFigure', RefRowName)
 %         [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F)
 %         [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType)
+%         [hFig, iDS, iFig] = view_topography(MultiDataFiles, Modality, '2DLayout')
 %
 % INPUT: 
-%     - DataFile     :  Full or relative path to data file to visualize.
-%     - Modality     : {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG', 'ECOG', 'SEEG', 'NIRS'}
-%     - TopoType     : {'3DSensorCap', '2DDisc', '2DSensorCap', 2DLayout', '3DElectrodes', '3DElectrodes-Cortex', '3DElectrodes-Head', '3DElectrodes-MRI', '3DOptodes'}
-%     - F            : Data matrix to display instead of the real values from the file
-%     - UseSmoothing : Extrapolate magnetic values (for MEG only)
-%     - hFig         : Specify the figure in which to display the MRI, or "NewFigure"
-%     - RefRowName   : Reference sensor name, when displaying a NxN connectivity matrix
+%     - DataFile       : Full or relative path to data file to visualize.
+%     - MultiDataFiles : Cell array of files to display as overlays in a 2DLayout view  
+%     - Modality       : {'MEG', 'MEG GRAD', 'MEG MAG', 'EEG', 'ECOG', 'SEEG', 'NIRS'}
+%     - TopoType       : {'3DSensorCap', '2DDisc', '2DSensorCap', 2DLayout', '3DElectrodes', '3DElectrodes-Cortex', '3DElectrodes-Head', '3DElectrodes-MRI', '3DOptodes', '2DElectrodes'}
+%     - F              : Data matrix to display instead of the real values from the file
+%     - UseSmoothing   : Extrapolate magnetic values (for MEG only)
+%     - hFig           : Specify the figure in which to display the MRI, or "NewFigure"
+%     - RefRowName     : Reference sensor name, when displaying a NxN connectivity matrix
 %
 % OUTPUT: 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -24,7 +26,7 @@ function [hFig, iDS, iFig] = view_topography(DataFile, Modality, TopoType, F, Us
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,6 +66,19 @@ end
 if (nargin < 2) || isempty(Modality)
     Modality = '';
 end
+% Check for multiple files in 2DLayout
+MultiDataFiles = {};
+if iscell(DataFile)
+    if ~strcmpi(TopoType, '2DLayout')
+        error('Only 2DLayout display type accepts multiple input files.');
+    end
+    if (length(DataFile) == 1)
+        DataFile = DataFile{1};
+    else
+        MultiDataFiles = DataFile;
+        DataFile = DataFile{1};
+    end
+end
 % Detect surface type in the topo type string
 switch (TopoType)
     case '3DElectrodes-Cortex'
@@ -82,6 +97,10 @@ end
 
 %% ===== LOAD DATA =====
 bst_progress('start', 'Topography', 'Loading data file...');
+% Force short file names
+if ~isempty(DataFile) && file_exist(DataFile)
+    DataFile = file_short(DataFile);   
+end
 % Get DataFile type
 fileType = file_gettype(DataFile);
 % Load file
@@ -92,17 +111,34 @@ switch(fileType)
         if isempty(iDS)
             return;
         end
+        % Load additional files
+        for iFile = 2:length(MultiDataFiles)
+            iDSmulti = bst_memory('LoadDataFile', MultiDataFiles{iFile});
+            if isempty(iDSmulti)
+                bst_error(['An error occurred loading file: ', 10, file_short(MultiDataFiles{iFile})], 'View topography', 0);
+                return;
+            end
+            % Channel names must be the same for all the files
+            if ~isequal({GlobalData.DataSet(iDS).Channel.Name}, {GlobalData.DataSet(iDSmulti).Channel.Name})
+                bst_error(['All the files must have the same list of channels.', 10, 'Consider using the process "Standardize > Uniform list of channels".'], 'View topography', 0);
+                return;
+            end
+            % Add bad channels to the common list of bad channels (first file)
+            GlobalData.DataSet(iDS).Measures.ChannelFlag(GlobalData.DataSet(iDSmulti).Measures.ChannelFlag == -1) = -1;
+        end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Measures.ColormapType)
             ColormapType = GlobalData.DataSet(iDS).Measures.ColormapType;
         else
             switch Modality
-                case {'MEG', 'MEG MAG', 'MEG GRAD', 'MEG GRAD2', 'MEG GRAD3', 'NIRS'}
+                case {'MEG', 'MEG MAG', 'MEG GRAD', 'MEG GRAD2', 'MEG GRAD3'}
                     ColormapType = 'meg';
                 case {'EEG', 'ECOG', 'SEEG', 'ECOG+SEEG'}
                     ColormapType = 'eeg';
                 case {'MEG GRADNORM'}
                     ColormapType = 'timefreq';
+                case 'NIRS'
+                    ColormapType = 'nirs';
                 otherwise
                     error(['Modality "' Modality '" cannot be represented in 2D topography.']);
             end
@@ -123,6 +159,13 @@ switch(fileType)
         if isempty(iDS)
             return;
         end
+        % Load additional files
+        for iFile = 2:length(MultiDataFiles)
+            iDSmulti = bst_memory('LoadDataFile', MultiDataFiles{iFile});
+            if isempty(iDSmulti)
+                error(['An error occurred loading file: ' MultiDataFiles{iFile}]);
+            end
+        end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Measures.ColormapType)
             ColormapType = GlobalData.DataSet(iDS).Measures.ColormapType;
@@ -141,10 +184,14 @@ switch(fileType)
         if isempty(iDS)
             return;
         end
+        % Additional files: not supported
+        if ~isempty(MultiDataFiles)
+            error('Multiple time-frequency files are not yet supported in 2DLayout.');
+        end
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType)
             ColormapType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType;
-        elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'corr','cohere','spgranger','granger','plv','plvt'})
+        elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'corr','cohere','spgranger','granger','plv','plvt','henv'})
             ColormapType = 'connect1';
         elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'pac'})
             ColormapType = 'pac';
@@ -253,9 +300,16 @@ if UseMontage
                 MontageName = sMontage.Name;
             end
         end
-        % For NIRS (3DOptodes and 3DSensorCap): Force the selection of a montage, because not all can be displayed at once
-        if strcmpi(Modality, 'NIRS') && ismember(TopoType, {'3DSensorCap', '3DOptodes'}) && isempty(MontageName)
-            MontageName = sFigMontages(1).Name;
+        % For NIRS (: Force the selection of a montage
+        if strcmpi(Modality, 'NIRS') && isempty(MontageName)
+            % 3DOptodes and 3DSensorCap: Only one value can be displayed at a time
+            if ismember(TopoType, {'3DSensorCap', '3DOptodes'}) && length(sFigMontages) > 1
+                MontageName = sFigMontages(2).Name;
+            elseif ismember(TopoType, {'3DSensorCap', '3DOptodes'}) 
+                MontageName = sFigMontages(1).Name;
+            elseif strcmpi(TopoType, '2DLayout')
+                MontageName = sFigMontages(1).Name;
+            end
         end
     end
 end
@@ -269,6 +323,7 @@ TopoInfo.Modality   = Modality;
 TopoInfo.TopoType   = TopoType;
 TopoInfo.DataToPlot = F;
 TopoInfo.UseSmoothing = UseSmoothing;
+TopoInfo.MultiDataFiles = MultiDataFiles;
 setappdata(hFig, 'TopoInfo', TopoInfo);
 % Create recordings info structure
 TsInfo = db_template('TsInfo');
@@ -293,7 +348,9 @@ if strcmpi(FileType, 'Timefreq')
         gui_brainstorm('ShowToolTab', 'Display');
     end
     % Static dataset
-    setappdata(hFig, 'isStatic', (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 2));
+    isStatic = (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 1) || ...
+               ((GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples == 2) && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,1,:,:,:), GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,2,:,:,:)));
+    setappdata(hFig, 'isStatic', isStatic);
     isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
     setappdata(hFig, 'isStaticFreq', isStaticFreq);
     % Create options structure
@@ -393,14 +450,12 @@ if strcmpi(FileType, 'Timefreq')
     bst_figures('SetCurrentFigure', hFig, 'TF');
 end
 % 3DElectrodes: Open tab "iEEG"
-if strcmpi(TopoType, '3DElectrodes')
+if ismember(TopoType, {'3DElectrodes','2DElectrodes'}) && ismember(Modality, {'SEEG', 'ECOG'})
     gui_brainstorm('ShowToolTab', 'iEEG');
 end
 % Set figure visible
 set(hFig, 'Visible', 'on');
 bst_progress('stop');
-
-
 
 
 

@@ -5,7 +5,7 @@ function [Faces, Vertices] = mri_isosurface(mrimask, tol)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,10 +28,10 @@ if (bst_get('MatlabVersion') == 903)
     % Share the vertices manually
     relative_tolerance = 1e-12;
     sz = size(Vertices);
-    [C, ~, IC] = uniquetol(Vertices, relative_tolerance);
+    [C, ignore, IC] = uniquetol(Vertices, relative_tolerance);
     Vertices = reshape(C(IC),sz);
     % Collapse duplicate vertices.
-    [Vertices, ~, IC] = unique(Vertices, 'rows', 'stable');
+    [Vertices, ignore, IC] = unique(Vertices, 'rows', 'stable');
     Faces = IC(Faces);
 else
     [Faces, Vertices] = isosurface(mrimask, tol);

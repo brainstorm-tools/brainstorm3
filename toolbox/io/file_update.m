@@ -14,7 +14,7 @@ function varargout = file_update( fileName, action, varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -43,7 +43,7 @@ switch (action)
         % Remove all the markers from the filename
         markersList = {'brainstormsubject', 'subjectimage', 'tess', 'cortex', 'brain', 'scalp', ...
                        'head', 'skull', 'outerskull', 'innerskull', 'vertconn', 'brainstormstudy', ...
-                       'channel', 'data', 'headmodel', 'res4', 'results', 'ctf'};
+                       'channel', 'data', 'headmodel', 'res4', 'results', 'ctf', 'fibers'};
         for i=1:length(markersList)
             % Remove tags inside the filename
             fileBase = strrep(fileBase, ['_' markersList{i}], '');
@@ -62,7 +62,7 @@ switch (action)
         end
         % Add new filetype marker
         newFileName = bst_fullfile(filePath, [filetype, '_', fileBase, fileExt]);
-        % Makie new filename unique
+        % Make new filename unique
         newFileName = file_unique(newFileName);
         % Try name to rename file
         [status,errmsg,errmsgid] = movefile(fileName, newFileName);

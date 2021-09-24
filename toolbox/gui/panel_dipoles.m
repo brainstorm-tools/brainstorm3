@@ -10,7 +10,7 @@ function varargout = panel_dipoles(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -24,7 +24,8 @@ function varargout = panel_dipoles(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2010-2017
+% Authors: Elizabeth Bock, 2010-2017
+%          Francois Tadel, 2010-2020
 
 eval(macro_method);
 end
@@ -148,14 +149,14 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         
         %dipole size
         jTitleDipSize = gui_component('Label', jPanelColor, 'br', 'Point display size:');
-        jSliderDipSize = JSlider(5, 15, 8);
+        jSliderDipSize = JSlider(5, 20, 8);
         jSliderDipSize.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
         java_setcb(jSliderDipSize, 'MouseReleasedCallback', @FireUpdateDisplayOptions, ...
                                    'KeyPressedCallback',    @FireUpdateDisplayOptions);
         jPanelColor.add('tab hfill', jSliderDipSize);
         %dipole tail size
         jTitleTailWidth = gui_component('Label', jPanelColor, 'br', 'Tail display width:');
-        jSliderTailWidth = JSlider(4, 10, 8);
+        jSliderTailWidth = JSlider(4, 40, 8);
         jSliderTailWidth.setPreferredSize(Dimension(SLIDER_WIDTH, DEFAULT_HEIGHT));
         java_setcb(jSliderTailWidth, 'MouseReleasedCallback', @FireUpdateDisplayOptions, ...
                                    'KeyPressedCallback',    @FireUpdateDisplayOptions);
@@ -388,7 +389,7 @@ function DipolesInfo = GetDipolesForFigure(hFig)
     DipolesInfo.Dipole = [];
     DipolesInfo.Subset = [];
     DipolesInfo.PreferredTimes = [];
-    DipolesInfo.DisplayColorType = [];
+    DipolesInfo.DisplayColorType = 'time';
     DipolesInfo.DisplayAllTime = 0;
     DipolesInfo.DisplayMaxGoodness = 0;
     DipolesInfo.DisplaySelTimes = 0;
@@ -900,7 +901,7 @@ end
 %% ===== COMPUTE DENSITY VOLUMES =====
 function Cube = ComputeDensity(sMri, sDipoles) %#ok<DEFNU>
     % Initialize cube
-    sizeCube = size(sMri.Cube);
+    sizeCube = size(sMri.Cube(:,:,:,1));
     Cube = zeros(sizeCube);
     
     % Gaussian kernel

@@ -25,7 +25,7 @@ function [hFig, iDS, iFig] = view_image_reg(Data, Labels, iDims, DimLabels, File
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -165,7 +165,9 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
 % By default: link the 4th dimension of the data to the frequency slider
 isFreq = isequal(PageName, '$freq');
 % Configure figure
-setappdata(hFig, 'isStatic', size(Data,3) <= 2);
+isStatic = (size(Data,3) <= 1) || ...
+           ((size(Data,3) == 2) && isequal(Data(:,:,1,:,:), Data(:,:,2,:,:)));
+setappdata(hFig, 'isStatic', isStatic);
 setappdata(hFig, 'isStaticFreq', ~isFreq || size(Data,4) < 2);
 setappdata(hFig, 'FileName', FileName);
 % Set colormap

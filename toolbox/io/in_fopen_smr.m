@@ -5,7 +5,7 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,15 +20,15 @@ function [sFile, ChannelMat] = in_fopen_smr(DataFile)
 % =============================================================================@
 %
 % Authors:  Malcolm Lidierth, 2006-2007, King's College London
-%           Adapted by Francois Tadel for Brainstorm, 2017
+%           Adapted by Francois Tadel for Brainstorm, 2017-2021
 
 
 %% ===== READ HEADER =====
 % Get file type
 [fPath, fBase, fExt]=fileparts(DataFile);
-if (strcmpi(fExt,'.smr') == 1)
+if strcmpi(fExt,'.smr') || strcmpi(fExt,'.smrx')
     byteorder = 'l';  % Spike2 for Windows source file: little-endian
-elseif strcmpi(fExt,'.son')==1
+elseif strcmpi(fExt,'.son')
     byteorder = 'b';  % Spike2 for Mac file: Big-endian
 else
     error('Not a Spike2 file.');
@@ -79,8 +79,7 @@ sFile.byteorder    = byteorder;
 sFile.filename     = DataFile;
 sFile.format       = 'EEG-SMR';
 sFile.prop.sfreq   = sfreq;
-sFile.prop.samples = [0, sum(hdr.chaninfo(chMax).blocks(5,:)) - 2];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, sum(hdr.chaninfo(chMax).blocks(5,:)) - 2] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 sFile.channelflag  = ones(hdr.num_channels,1);
 sFile.device       = 'CED Spike2';
@@ -102,9 +101,15 @@ end
 
 
 %% ===== READ MARKER INFORMATION =====
-for iEvt = 1:length(iMarkerChan)
+iChanMissing = [];
+for iChan = 1:length(iMarkerChan)
     % Read channel
-    [d,header] = SONGetChannel(fid, iMarkerChan(iEvt));
+    try
+        [d,header] = SONGetChannel(fid, iMarkerChan(iChan));
+    catch
+        iChanMissing = [iChanMissing, iMarkerChan(iChan)];
+        continue;
+    end
     if isempty(d) || isempty(header)
         continue;
     end
@@ -116,12 +121,21 @@ for iEvt = 1:length(iMarkerChan)
             timeEvt = d.timings(:)';
     end
     % Create event structure
-    sFile.events(iEvt).label   = header.title;
-    sFile.events(iEvt).times   = double(timeEvt);
-    sFile.events(iEvt).samples = round(timeEvt .* sFile.prop.sfreq);
-    sFile.events(iEvt).times   = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
-    sFile.events(iEvt).epochs  = ones(size(sFile.events(iEvt).samples));
-    sFile.events(iEvt).select  = 1;
+    iEvt = length(sFile.events) + 1;
+    if ~isempty(header.title)
+        sFile.events(iEvt).label = header.title;
+    else
+        sFile.events(iEvt).label = sprintf('unknown_%02d', iEvt);
+    end
+    sFile.events(iEvt).times    = round(double(timeEvt).* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    sFile.events(iEvt).epochs   = ones(size(sFile.events(iEvt).times));
+    sFile.events(iEvt).select   = 1;
+    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+end
+% Display missing channels
+if ~isempty(iChanMissing)
+    disp(['SON> Missing channels: ' sprintf('%d ', iChanMissing)]);
 end
 
 % Close file

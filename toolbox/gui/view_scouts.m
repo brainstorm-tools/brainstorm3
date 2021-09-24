@@ -9,7 +9,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2021
 
 global GlobalData;  
 %% ===== PARSE INPUTS =====
@@ -155,6 +155,7 @@ scoutsColors   = cell(length(ResultsFiles), length(iScouts));
 axesLabels     = cell(length(ResultsFiles), length(iScouts));
 allComponents  = [];
 TimeVector     = [];
+issloreta      = 0;
 % Process each Results file
 for iResFile = 1:length(ResultsFiles)
     % Is stat
@@ -166,6 +167,9 @@ for iResFile = 1:length(ResultsFiles)
     % Load results
     if ~isTimefreq
         [iDS, iResult] = bst_memory('LoadResultsFileFull', ResultsFiles{iResFile});
+        if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta'))
+            issloreta = 1;
+        end
     else
         %[iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 1);
         [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 0);
@@ -241,6 +245,10 @@ for iResFile = 1:length(ResultsFiles)
         else
             % SORT and select unique vertices
             iVertices = sort(unique(sScouts(k).Vertices));
+        end
+        % Fix errors in color definition
+        if isequal(size(sScouts(k).Color), [3,1])
+            sScouts(k).Color = sScouts(k).Color';
         end
         % Get data (over current time window)
         if ~isTimefreq
@@ -332,10 +340,14 @@ for iResFile = 1:length(ResultsFiles)
         
         % Only one component
         if (nComponents == 1)
+            % Do not flip sign for statistics, norms or NIRS source maps
             isFlipSign = ~isStat && ~isTimefreq && ...
                          strcmpi(GlobalData.DataSet(iDS).Results(iResult).DataType, 'results') && ...
-                         isempty(strfind(ResultsFiles{iResFile}, '_abs_')) && ...
-                         isempty(strfind(ResultsFiles{iResFile}, '_norm_'));
+                         isempty(strfind(ResultsFiles{iResFile}, '_abs')) && ...
+                         isempty(strfind(ResultsFiles{iResFile}, '_norm')) && ...
+                         isempty(strfind(ResultsFiles{iResFile}, 'NIRS')) && ...
+                         (isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Results(iResult).GoodChannel) || ...
+                          ~ismember('NIRS', {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Results(iResult).GoodChannel).Type}));
             iTrace = k;
             scoutsActivity{iResFile,iTrace} = bst_scout_value(DataToPlot, ScoutFunction, VertNormals, nComponents, 'none', isFlipSign);
             if ~isempty(DataStd)
@@ -597,7 +609,11 @@ bst_progress('stop');
 % Get type of the first file
 switch (file_gettype(ResultsFiles{1}))
     case {'results', 'link'}
-        Modality = 'results';
+        if issloreta
+            Modality = 'sloreta';
+        else
+            Modality = 'results';
+        end
     case 'timefreq'
         Modality = 'timefreq';
     case 'presults'

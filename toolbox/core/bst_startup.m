@@ -12,7 +12,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,7 +27,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2017
+%          Francois Tadel, 2008-2021
 
 
 %% ===== MATLAB CHECK =====
@@ -41,9 +41,9 @@ if (MatlabVersion < 701)
     error('Brainstorm needs a version of Matlab >= 7.1');
 end
 % Is Matlab running (if not it is a compiled version)
-isMatlabRunning = ~(exist('isdeployed', 'builtin') && isdeployed);
+isCompiled = bst_iscompiled();
 % Compiled version: Force system look and feel
-if ~isMatlabRunning
+if isCompiled
     try
         javax.swing.UIManager.setLookAndFeel(javax.swing.UIManager.getSystemLookAndFeelClassName());
     catch
@@ -70,6 +70,11 @@ GlobalData.Program.GuiLevel = GuiLevel;
 GlobalData.DataBase.LastSavedTime = tic();   % Save the current time, to know when to save the database
 % Save the software home directory
 bst_set('BrainstormHomeDir', BrainstormHomeDir);
+% Test for headless mode
+if (GuiLevel >= 0) && (java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadless() || java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadlessInstance())
+    disp(' ');
+    error(['Cannot create graphic interface.' 10 'If running Brainstorm in headless mode on a distant server, run "brainstorm server".']);
+end
 % Splash screen
 if (GuiLevel == 1)
     bst_splash('show');
@@ -77,28 +82,25 @@ end
 
 % === BRAINSTORM VERSION ===
 try
-    % Read "version.txt"
-    fid = fopen(bst_fullfile(BrainstormHomeDir, 'doc', 'version.txt'),'rt');
-    Name = fgetl(fid); % the name line
-    STR2 = fgetl(fid); % the second line with version, release and date
-    % Format should be "Version 2.0 (R14) 27-June-2005" in that order.
-    %  We will read last three items as Version, Release, and Date
-    fclose(fid);
+    % Get doc folder
+    docDir = bst_get('BrainstormDocDir');
+    % Open "version.txt"
+    fid = fopen(bst_fullfile(docDir, 'version.txt'), 'rt');
+    % Get program name
+    Name = fgetl(fid);
     Name = Name(3:end); %trim the comment
-    STR2 = fliplr(STR2); % easier handling if read backwards
-    [Date,STR2] = strtok(STR2);
-    [Release,STR2] = strtok(STR2);
-    Version = strtok(STR2);
-    % reverse them to original
-    Version = fliplr(Version);
-    Release = fliplr(Release);
-    Date = fliplr(Date); 
-    Date = strrep(Date, '(', '');
-    Date = strrep(Date, ')', '');
+    % Get version and date
+    strVer = fgetl(fid);
+    cellVer = textscan(strVer(3:end), 'v. %s %s');
+    Version = cellVer{1}{1};
+    Release = cellVer{1}{1}(3:end);
+    Date = cellVer{2}{1}(2:end-1);
+    % Close file
+    fclose(fid);
 catch
     Name = 'Brainstorm';
     Version = '?';
-    Release = '?';
+    Release = '??????';
     Date    = '?';
 end
 % Save version in matlab preferences
@@ -115,7 +117,7 @@ localRel.month = str2num(Release(3:4));
 localRel.day   = str2num(Release(5:6));
 
 % Check Matlab version
-if (bst_get('MatlabVersion') <= 803)
+if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
 % % Force Matlab to recycle the files instead of deleting them
@@ -140,11 +142,12 @@ end
 
 
 %% ===== EMPTY TEMPORARY DIRECTORY =====
-gui_brainstorm('EmptyTempFolder');
+% gui_brainstorm('EmptyTempFolder');
+% Execute when closing instead, to avoid conflicts
 
 
 %% ===== EMPTY REPORTS DIRECTORY =====
-% Get temporary directory
+% Get reports directory
 reportsDir = bst_get('UserReportsDir');
 % If directory exists
 if isdir(reportsDir)
@@ -168,7 +171,7 @@ disp('BST> Loading configuration file...');
 % Get user database file : brainstorm.mat
 dbFile = bst_get('BrainstormDbFile');
 % Current DB version
-CurrentDbVersion = 4;
+CurrentDbVersion = 5.02;
 % Get default colormaps list
 sDefColormaps = bst_colormaps('Initialize');
 isDbLoaded = 0;
@@ -186,6 +189,11 @@ if file_exist(dbFile)
             ' - Try to delete files in your home folder' 10 ...
             ' - Change the temporary folder in the Brainstorm preferences' 10 ...
             ' - Import again your database folder (File > Import database).'], 'Database error');
+        bstOptions = [];
+    end
+    % Invalid structure read from dbFile
+    if any(~isfield(bstOptions, {'iProtocol', 'ProtocolsListInfo', 'ProtocolsListSubjects', 'ProtocolsListStudies', 'BrainStormDbDir'}))
+        disp(['BST> Warning: Ignoring corrupted options file: ' dbFile]);
         bstOptions = [];
     end
 else
@@ -241,14 +249,19 @@ if ~isempty(bstOptions)
             all(isfield(bstOptions.Pipelines, {'Name', 'Processes'}))
        GlobalData.Processes.Pipelines = bstOptions.Pipelines;
     end
+    % Get saved searches
+    if isfield(bstOptions, 'Searches') && isstruct(bstOptions.Searches) && ...
+            all(isfield(bstOptions.Searches, {'Name', 'Search'}))
+       GlobalData.DataBase.Searches.All = bstOptions.Searches;
+    end
     % Reset current search filter
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
     end
     % Check database structure for updates
-    % => Disabled because the database structure was not modified since 2013
-    % db_update(CurrentDbVersion);
-else
+    db_update(CurrentDbVersion);
+end
+if GlobalData.DataBase.DbVersion == 0
     % Database version is not defined, so it up-to-date
     GlobalData.DataBase.DbVersion = CurrentDbVersion;
 end
@@ -257,10 +270,8 @@ if isempty(GlobalData.Colormaps)
     GlobalData.Colormaps = sDefColormaps;
 end
 % Check that default montages are loaded
-if (length(GlobalData.ChannelMontages.Montages) < 5) || ~ismember('CTF LF', {GlobalData.ChannelMontages.Montages.Name}) || ~ismember('Bad channels', {GlobalData.ChannelMontages.Montages.Name})
+if (length(GlobalData.ChannelMontages.Montages) < 5) || any(~ismember({'CTF LF', 'Bad channels', 'Average reference (L -> R)', 'Scalp current density', 'Scalp current density (L -> R)', 'Head distance'}, {GlobalData.ChannelMontages.Montages.Name}))
     disp('BST> Loading default montages...');
-    % Reset list of montages
-    GlobalData.ChannelMontages.Montages = [];
     % Load default selections
     panel_montage('LoadDefaultMontages');
 end
@@ -272,12 +283,12 @@ if ~bst_get('AutoUpdates')
     disp('BST> Warning: Automatic updates are disabled.');
     disp('BST> Warning: Make sure your version of Brainstorm is up to date.');
 % Matlab is running: check for updates
-elseif isMatlabRunning && (GuiLevel == 1)
+elseif ~isCompiled && (GuiLevel == 1)
     % Check internect connection
     fprintf(1, 'BST> Checking internet connectivity... ');
-    [isInternet, onlineRel] = bst_check_internet();
+    [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
     % If no internet connection
-    if ~isInternet
+    if ~GlobalData.Program.isInternet
         disp('failed');
         disp('BST> Could not check for Brainstorm updates.')
     else
@@ -309,14 +320,19 @@ elseif isMatlabRunning && (GuiLevel == 1)
             end
         end
     end
+% Check online connectivity
+else
+    [GlobalData.Program.isInternet, onlineRel] = bst_check_internet();
 end
 
 
 %% ===== START BRAINSTORM GUI =====
-disp('BST> Initializing user interface...');
 % Get screen configuration
 GlobalData.Program.ScreenDef = gui_layout('GetScreenClientArea');
-% Create main window
+% Create main window (skipped in server mode)
+if (GuiLevel >= 0)
+    disp('BST> Initializing user interface...');
+end
 gui_initialize();
 % Abort if something went wrong
 if isempty(GlobalData.Program.GUI)
@@ -361,25 +377,39 @@ end
 
 
 %% ===== START OPENGL =====
-fprintf(1, 'BST> Starting OpenGL engine... ');
-[isOpenGL, DisableOpenGL] = panel_options('StartOpenGL');
-% If OpenGL cannot be used: display a warning message
-if ~isOpenGL
-    disp('BST> Warning: No OpenGL support available for this computer.');
-    disp('BST>          Display will be slow and ugly.');
-% If OpenGL is manually disabled
-elseif isOpenGL && (DisableOpenGL == 1)
-    disp('BST> Warning: ');
-    disp('BST>    * Using this option causes the display to be slow and ugly.');
-    disp('BST>    * Select only if you are experiencing serious display bugs with ');
-    disp('BST>    * the full hardware acceleration. To edit this option: ');
-    disp('BST>    * Menu: File > Set preferences... > Disable OpenGL rendering.');
+if (GuiLevel >= 0)
+    fprintf(1, 'BST> Starting OpenGL engine... ');
+    [isOpenGL, DisableOpenGL] = panel_options('StartOpenGL');
+    % If OpenGL cannot be used: display a warning message
+    if ~isOpenGL
+        disp('BST> Warning: No OpenGL support available for this computer.');
+        disp('BST>          Display will be slow and ugly.');
+    % If OpenGL is manually disabled
+    elseif isOpenGL && (DisableOpenGL == 1)
+        disp('BST> Warning: ');
+        disp('BST>    * Using this option causes the display to be slow and ugly.');
+        disp('BST>    * Select only if you are experiencing serious display bugs with ');
+        disp('BST>    * the full hardware acceleration. To edit this option: ');
+        disp('BST>    * Menu: File > Set preferences... > Disable OpenGL rendering.');
+    end
+end
+
+
+%% ===== LOAD PLUGINS =====
+% Get installed plugins
+[InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
+% Find plugins that should be loaded automatically at startup
+if ~isempty(InstPlugs)
+    iPlugLoad = find([InstPlugs.AutoLoad] & ~[InstPlugs.isLoaded]);
+    for iPlug = iPlugLoad
+        bst_plugin('Load', InstPlugs(iPlug)); 
+    end
 end
 
 
 %% ===== PARSE PROCESS FOLDER =====
 % Parse process folder
-disp('BST> Reading plugins folder...');
+disp('BST> Reading process folder...');
 panel_process_select('ParseProcessFolder', 1);
 
 
@@ -455,10 +485,11 @@ if isempty(BrainstormDbDir)
 % If database folder was passed in input
 else
     if isequal(BrainstormDbDir, 'local')
-        BrainstormDbDir = bst_fullfile(bst_get('BrainstormUserDir'), 'local_db');
+        BrainstormDbDir = bst_fullfile(BrainstormUserDir, 'local_db');
     end
     % Save brainstorm directory
     bst_set('BrainstormDbDir', BrainstormDbDir);
+    disp(['BST> Database folder: ' BrainstormDbDir]);
 end
 % If folder is not defined yet: ask user to set it
 if isempty(BrainstormDbDir)
@@ -505,16 +536,26 @@ if (GuiLevel == 1)
         jFrame.setVisible(1);
     end
 end
-% Display Brainstorm version
-jFrame.setTitle(['Brainstorm ' Date]);
-% Read the protocols list in UserDataBase
-gui_brainstorm('UpdateProtocolsList');
-% Load the selected protocol
-gui_brainstorm('SetCurrentProtocol', GlobalData.DataBase.iProtocol);
-% Update permanent panels (to disable them)
-panel_surface('UpdatePanel');
-panel_scout('UpdatePanel');
-panel_cluster('UpdatePanel');
+% Headless mode: load protocol data
+if (GuiLevel == -1)
+    if ~bst_get('isProtocolLoaded')
+        db_load_protocol(GlobalData.DataBase.iProtocol);
+    end
+% Regular GUI: Prepare protocol explorer panel
+else
+    % Display Brainstorm version
+    jFrame.setTitle(['Brainstorm ' Date]);
+    % Read the protocols list in UserDataBase
+    gui_brainstorm('UpdateProtocolsList');
+    % Load the selected protocol
+    gui_brainstorm('SetCurrentProtocol', GlobalData.DataBase.iProtocol);
+    % Update permanent panels (to disable them)
+    panel_surface('UpdatePanel');
+    panel_scout('UpdatePanel');
+    panel_cluster('UpdatePanel');
+end
+% Get decoration size
+GlobalData.Program.DecorationSize = gui_layout('GetDecorationSize', jFrame);
 disp('BST> =================================');
 disp(' ');
 % Set a flag to mark that brainstorm is now running
@@ -526,9 +567,45 @@ hMutex = bst_mutex('get', 'Brainstorm');
 set(hMutex, 'Visible', 'off');
 
 
+%% ===== DELETE OLD PLUGINS =====
+% Get user dir
+BrainstormUserDir = bst_get('BrainstormUserDir');
+% Start with GUI
+if (GuiLevel == 1)
+    % Add bst_duneuro (now called 'duneuro')
+    AllPlugs(end+1).Name = 'bst_duneuro';
+    AllPlugs(end+1).Name = 'nirstorm';
+    iOldInstall = find(cellfun(@(c)exist(fullfile(BrainstormUserDir,c),'file'), {AllPlugs.Name}));
+    % Some old plugins were detected: ask user
+    if ~isempty(iOldInstall)
+        OldPlugPath = cellfun(@(c)fullfile(BrainstormUserDir,c), {AllPlugs(iOldInstall).Name}, 'UniformOutput', 0);
+        isConfirm = java_dialog('confirm', ['The plugin system was updated.' 10 10 ...
+            'All the Brainstorm plugins are now managed from the menu "Plugins".' 10 ...
+            'The old plugins cannot be used anymore and need to be deleted.' 10 ...
+            'Next time you need them, they will be downloaded again automatically.' 10 10 ...
+            'Delete the old plugins listed below?' 10 ...
+            sprintf(' - %s\n', OldPlugPath{:})], 'Plugin manager');
+        % Delete plugin
+        if isConfirm
+            % Delete files in $HOME/.brainstorm/plugname
+            file_delete(OldPlugPath, 1, 3);
+            % NIRSTORM: Call uninstall function (it previously installed functions in various $HOME/.brainstorm subfolders)
+            if any(strcmpi({AllPlugs(iOldInstall).Name},'nirstorm')) && exist('uninstall_nirstorm')
+                cur_dir=pwd;
+                cd(bst_get('UserProcessDir'));
+                uninstall_nirstorm();
+                file_delete(fullfile(bst_get('UserProcessDir'),'uninstall_nirstorm.m'),1);
+                file_delete(fullfile(bst_get('UserProcessDir'),{'dg_voronoi.mexa64','dg_voronoi.mexglx'}),1);
+                cd(cur_dir);
+            end
+        end     
+    end
+end
+
+
 %% ===== RELOAD ALL DATABASE =====
 % Create file to indicate that Brainstorm was started
-StartFile = bst_fullfile(bst_get('BrainstormUserDir'), 'is_started.txt');
+StartFile = bst_fullfile(BrainstormUserDir, 'is_started.txt');
 % If import database was mandatory
 if isImportDb
     disp('BST> Reloading database...');
@@ -593,7 +670,7 @@ end
 
 
 %% ===== COMPILED MODE: WAIT =====
-if ~isMatlabRunning
+if isCompiled
     %     % Loop to wait for the end
     %     while brainstorm('status')
     %         pause(2);

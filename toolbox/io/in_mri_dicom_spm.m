@@ -15,7 +15,7 @@ function NiiFiles = in_mri_dicom_spm(DicomFiles, OutputFolder, isInteractive)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,7 +29,7 @@ function NiiFiles = in_mri_dicom_spm(DicomFiles, OutputFolder, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2021
 
 % Parse inputs
 if (nargin < 3) || isempty(isInteractive)
@@ -39,14 +39,19 @@ if (nargin < 2) || isempty(OutputFolder)
     OutputFolder = bst_get('BrainstormTmpDir');
 end
 
-% Check SPM installation
-bst_spm_init();
+% Initialize SPM
+[isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+if ~isInstalled
+    error(errMsg);
+end
 
 % Progress bar
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'DICOM converter (SPM)', 'Loading DICOM headers...', 0, length(DicomFiles));
+bst_plugin('SetProgressLogo', 'spm12');
 
 % Read SPM DICOM dictionnary
+disp(['Openin: ' fullfile(spm('Dir'),'spm_dicom_dict.txt')])
 dictFile = fullfile(fileparts(which('spm_dicom_convert')), 'spm_dicom_dict.txt');
 dict = spm_dicom_text_to_dict(dictFile);
 
@@ -90,7 +95,7 @@ if (length(NiiFiles) > 1) && isInteractive
         strFiles{i} = [strId ' | ' strDate ' | ' strProtocol ' | ' num2str(fInfo.bytes/1024/1024,'%1.1f') 'Mb'];
         % Rename file to Date-Protocol.nii
         newFile = file_unique(fullfile(fPath, [strDate, '_', strProtocol, '.nii']));
-        movefile(NiiFiles{i}, newFile);
+        file_move(NiiFiles{i}, newFile);
         NiiFiles{i} = newFile;
     end
     % Ask user which volumes to import

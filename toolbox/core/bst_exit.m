@@ -10,7 +10,7 @@ function status = bst_exit()
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -24,7 +24,7 @@ function status = bst_exit()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2019
 global GlobalData
 
 % Check that Brainstorm was fully started
@@ -32,6 +32,13 @@ if ~isappdata(0, 'BrainstormRunning')
     disp('BST> Warning: Brainstorm is not started.');
     status = 0;
     return
+end
+% Check if global variable was cleared
+if ~exist('GlobalData', 'var') || isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'GuiLevel') || isempty(GlobalData.Program.GuiLevel)
+    disp('BST> Error: Brainstorm global variables were cleared.');
+    disp('BST> Never call "clear all" in your scripts while Brainstorm is running.');
+    status = 0;
+    return;
 end
 % Get GUI handles
 ctrl = bst_get('BstControls');
@@ -49,39 +56,45 @@ end
 %% ===== REMOVE ALL IMPORTANT CALLBACKS =====
 % Stop execution
 rmappdata(0, 'BrainstormRunning');
-% Protocols list
-if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
-    java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
-    java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
-    java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
-    comboBoxModel = ctrl.jComboBoxProtocols.getModel();
-    java_setcb(comboBoxModel, 'ContentsChangedCallback', []);
-end
-% Panel SCOUTS
-scoutsManagerControls = bst_get('PanelControls', 'Scout');
-if ~isempty(scoutsManagerControls)
-    java_setcb(scoutsManagerControls.jListScouts, 'ValueChangedCallback', []);
-end
-% Panel CLUSTERS
-clustersManagerControls = bst_get('PanelControls', 'Cluster');
-if ~isempty(clustersManagerControls)
-    java_setcb(clustersManagerControls.jListClusters, 'ValueChangedCallback', []);
-end
-% PanelContainer TOOLS
-jTabpaneTools = bst_get('PanelContainer', 'Tools');
-if ~isempty(jTabpaneTools)
-    java_setcb(jTabpaneTools, 'StateChangedCallback', []);
+% Only in the GUI was created
+if (GlobalData.Program.GuiLevel >= 0)
+    % Protocols list
+    if isfield(ctrl, 'jComboBoxProtocols') && ~isempty(ctrl.jComboBoxProtocols)
+        java_setcb(ctrl.jToolButtonSubject,     'ItemStateChangedCallback', []);
+        java_setcb(ctrl.jToolButtonStudiesSubj, 'ItemStateChangedCallback', []);
+        java_setcb(ctrl.jToolButtonStudiesCond, 'ItemStateChangedCallback', []);
+        comboBoxModel = ctrl.jComboBoxProtocols.getModel();
+        java_setcb(comboBoxModel, 'ContentsChangedCallback', []);
+    end
+    % Panel SCOUTS
+    scoutsManagerControls = bst_get('PanelControls', 'Scout');
+    if ~isempty(scoutsManagerControls)
+        java_setcb(scoutsManagerControls.jListScouts, 'ValueChangedCallback', []);
+    end
+    % Panel CLUSTERS
+    clustersManagerControls = bst_get('PanelControls', 'Cluster');
+    if ~isempty(clustersManagerControls)
+        java_setcb(clustersManagerControls.jListClusters, 'ValueChangedCallback', []);
+    end
+    % PanelContainer TOOLS
+    jTabpaneTools = bst_get('PanelContainer', 'Tools');
+    if ~isempty(jTabpaneTools)
+        java_setcb(jTabpaneTools, 'StateChangedCallback', []);
+    end
 end
 
 
 %% ===== CLOSE WINDOW =====
-% Hide all the registered panels
-listPanels = GlobalData.Program.GUI.panels;
-for iPanel = 1:length(listPanels)
-    gui_hide(listPanels(iPanel)); 
+% Only in the GUI was created
+if (GlobalData.Program.GuiLevel >= 0)
+    % Hide all the registered panels
+    listPanels = GlobalData.Program.GUI.panels;
+    for iPanel = 1:length(listPanels)
+        gui_hide(listPanels(iPanel)); 
+    end
+    % Close Brainstorm main window
+    ctrl.jBstFrame.dispose();
 end
-% Close Brainstorm main window
-ctrl.jBstFrame.dispose();
 % Release Brainstorm global mutex
 bst_mutex('release', 'Brainstorm');
 
@@ -95,6 +108,11 @@ fclose('all');
 if file_exist(StartFile)
     file_delete(StartFile, 1);
 end
+
+
+%% ===== EMPTY TEMPORARY DIRECTORY =====
+gui_brainstorm('EmptyTempFolder');
+
 
 %% ===== RESET ALL VARIABLES =====
 % Remove global data

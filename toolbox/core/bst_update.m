@@ -11,7 +11,7 @@ function isUpdated = bst_update(AskConfirm)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,8 +25,10 @@ function isUpdated = bst_update(AskConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2019
 
+% Java imports
+import org.brainstorm.icon.*;
 % Parse inputs
 if (nargin == 0) || isempty(AskConfirm)
     AskConfirm = 0;
@@ -44,7 +46,7 @@ end
 
 % === DOWNLOAD NEW VERSION ===
 % Get update zip file
-urlUpdate  = 'https://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09';
+urlUpdate  = 'http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09&src=1';
 installDir = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
 zipFile    = fullfile(installDir, 'brainstorm_update.zip');
 
@@ -102,7 +104,7 @@ jDialog.pack();
 jDialog.setLocationRelativeTo([]);
 jDialog.setVisible(1);
 jDialog.getContentPane().repaint();
-jDialog.setIconImage(org.brainstorm.icon.IconLoader.ICON_APP.getImage());
+jDialog.setIconImage(IconLoader.ICON_APP.getImage());
 disp('BST> Update: Removing previous installation...');
 
 % Go to zip folder (to make sure we are not in a folder we are deleting)

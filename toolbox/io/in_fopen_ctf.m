@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_ctf(ds_directory)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2020
 
 
 %% ===== READ HEADER =====
@@ -30,7 +30,7 @@ if ~isdir(ds_directory)
     ds_directory = bst_fileparts(ds_directory);
 end
 % Get dataset name and file paths
-[DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file] = ctf_get_files( ds_directory );
+[DataSetName, meg4_files, res4_file, marker_file, pos_file, hc_file, badseg_file] = ctf_get_files( ds_directory );
 % Read header file
 [header, ChannelMat] = ctf_read_res4(res4_file);
 if isempty(header)
@@ -62,7 +62,9 @@ for iFile = 1:length(meg4_files)
     end
     % Record all the trials contained in this meg4 file
     header.meg4_epochs{iFile} = (1:nTrials) + nTotal;
-    nTotal = header.meg4_epochs{iFile}(end);
+    if ~isempty(header.meg4_epochs{iFile})
+        nTotal = header.meg4_epochs{iFile}(end);
+    end
 end
 
 
@@ -78,8 +80,7 @@ sFile.byteorder  = 's';
 sFile.header     = header;
 % Time and samples indices
 sFile.prop.sfreq   = double(header.gSetUp.sample_rate);
-sFile.prop.samples = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigPts);
-sFile.prop.times   = sFile.prop.samples ./ header.gSetUp.sample_rate;
+sFile.prop.times   = ([0, header.gSetUp.no_samples - 1] - header.gSetUp.preTrigPts) ./ header.gSetUp.sample_rate;
 % Acquisition date
 sFile.acq_date = str_date(header.res4.data_date);
 
@@ -99,7 +100,6 @@ if (nEpochs > 1)
         else
             sFile.epochs(i).label = sprintf('Trial (#%d)', i);
         end
-        sFile.epochs(i).samples = sFile.prop.samples;
         sFile.epochs(i).times   = sFile.prop.times;
         sFile.epochs(i).nAvg    = nAvg;
         sFile.epochs(i).select  = 1;
@@ -160,6 +160,25 @@ end
 % Read markers file
 if ~isempty(marker_file)
     sFile.events = in_events_ctf(sFile, marker_file);
+end
+% Read bad segments as events
+if ~isempty(badseg_file)
+    try
+        badsegment = load(badseg_file);
+    catch
+        disp(['Warning: Error reading bad segments from file: ' badseg_file]);
+    end
+    if ~isempty(badsegment)
+        iEvt = length(sFile.events) + 1;
+        sFile.events(iEvt).label      = 'BAD';
+        sFile.events(iEvt).color      = [1,0,0];
+        sFile.events(iEvt).epochs     = badsegment(:,1)';
+        sFile.events(iEvt).times      = badsegment(:,2:3)';
+        sFile.events(iEvt).reactTimes = [];
+        sFile.events(iEvt).select     = 1;
+        sFile.events(iEvt).channels   = cell(1, size(badsegment,1));
+        sFile.events(iEvt).notes      = cell(1, size(badsegment,1));
+    end
 end
 
 
@@ -239,45 +258,6 @@ if (length(sFile.epochs) > 1) && ~isempty(strfind(ds_directory, '_AUX'))
         % Send to the current report
         bst_report('Warning', 'process_import_data_raw', [], Messages);
     end
-        
-%     % If there are events defined in the MarkerFile of the AUX file: fix them 
-%     % => CTF bug for AUX files: triggers are generated when the Stim channel is high at the beginning of a "trial"
-%     if ~isempty(sFile.events)
-%         strMsg = '';
-%         % Build list of sample indices where the DS trials start
-%         trialStarts = sFile.prop.samples(1) + (0:sFile.header.gSetUp.no_trials-1) * sFile.header.gSetUp.no_samples;
-%         % Loop on the MarkerFile events
-%         for iEvt = 1:length(sFile.events)
-%             % Skip if no event
-%             if isempty(sFile.events(iEvt).samples)
-%                 continue;
-%             end
-%             % Find events that match the beginning of a trial
-%             iRemove = find(ismember(sFile.events(iEvt).samples(1,:), trialStarts));
-%             % If found: delete them
-%             if ~isempty(iRemove)
-%                 % Get the times to remove
-%                 tRemove = sFile.events(iEvt).times(1,iRemove);
-%                 % Remove the events occurrences
-%                 sFile.events(iEvt).times(:,iRemove)   = [];
-%                 sFile.events(iEvt).samples(:,iRemove) = [];
-%                 sFile.events(iEvt).epochs(:,iRemove)  = [];
-%                 if ~isempty(sFile.events(iEvt).reactTimes)
-%                     sFile.events(iEvt).reactTimes(:,iRemove) = [];
-%                 end
-%                 % Display message
-%                 strMsg = [strMsg, 10, 'Removed ' num2str(length(iRemove)) ' x "' sFile.events(iEvt).label, '": ', sprintf('%1.3f ', tRemove)];
-%             end
-%         end
-%         % Display message
-%         if ~isempty(strMsg)
-%             strMsg = ['Errors detected in the events of the AUX file (markers at the beginning of a trial): ' strMsg];
-%             % Display on console
-%             disp([10, 'CTF> ', strrep(strMsg, char(10), [10 'CTF> ']), 10]);
-%             % Send to the current report
-%             bst_report('Warning', 'process_import_data_raw', [], strMsg);
-%         end
-%     end
 end
 
      

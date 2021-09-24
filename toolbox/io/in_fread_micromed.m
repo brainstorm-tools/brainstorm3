@@ -7,7 +7,7 @@ function F = in_fread_micromed(sFile, sfid, SamplesBounds, ChannelsRange)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, sFile.header.num_channels];
 end
 if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = sFile.prop.samples;
+    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
 end
 
 % ===== COMPUTE OFFSETS =====
@@ -43,8 +43,14 @@ switch bytesPerVal
     case 4, dataClass = 'uint32';
 end
 
+% Sample offset of the first block, for reduced files
+if isfield(sFile.header, 'smp_offset') && ~isempty(sFile.header.smp_offset)
+    smp_offset = sFile.header.smp_offset;
+else
+    smp_offset = 0;
+end
 % Time offset
-offsetTime = round(SamplesBounds(1) * nChannels * bytesPerVal);
+offsetTime = round((SamplesBounds(1) - smp_offset) * nChannels * bytesPerVal);
 % Channel offset at the beginning and end of each channel block
 offsetChannelStart = round((ChannelsRange(1)-1) * bytesPerVal);
 offsetChannelEnd   = (nChannels - ChannelsRange(2)) * bytesPerVal;

@@ -10,7 +10,7 @@ function varargout = process_average( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,19 +65,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.avg_func.Type    = 'radio';
     sProcess.options.avg_func.Value   = 1;
     % === WEIGHTED AVERAGE
-    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(nAvg(i) * x(i)) / sum(nAvg(i))</FONT>';
+    sProcess.options.weighted.Comment    = 'Weighted average:  <FONT color="#777777">mean(x) = sum(Leff_i * x(i)) / sum(Leff_i)</FONT>';
     sProcess.options.weighted.Type       = 'checkbox';
     sProcess.options.weighted.Value      = 0;
+    sProcess.options.weightedlabel.Comment    = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;<FONT color="#777777">Leff_i = Effective number of averages for file #i</FONT>';
+    sProcess.options.weightedlabel.Type       = 'label';
     % === KEEP EVENTS
     sProcess.options.keepevents.Comment    = 'Keep all the event markers from the individual epochs';
     sProcess.options.keepevents.Type       = 'checkbox';
     sProcess.options.keepevents.Value      = 0;
     sProcess.options.keepevents.InputTypes = {'data', 'matrix'};
-    % === SCALE NORMALIZE SOURCE MAPS
+    % === SCALE NORMALIZE SOURCE MAPS (DEPRECATED OPTION AFTER INVERSE 2018)
     sProcess.options.scalenormalized.Comment    = 'Adjust normalized source maps for SNR increase.<BR><FONT color="#777777"><I>Example: dSPM(Average) = sqrt(Navg) * Average(dSPM)</I></FONT>';
     sProcess.options.scalenormalized.Type       = 'checkbox';
     sProcess.options.scalenormalized.Value      = 0;
     sProcess.options.scalenormalized.InputTypes = {'results'};
+    sProcess.options.scalenormalized.Hidden     = 1;
     % === MATCH ROWS WITH NAMES
     sProcess.options.matchrows.Comment    = 'Match signals between files using their names';
     sProcess.options.matchrows.Type       = 'checkbox';
@@ -141,7 +144,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         KeepEvents = 0;
     end
-    % Scale normalized source maps
+    % Scale normalized source maps (DEPRECATED AFTER INVERSE 2018) 
     if isfield(sProcess.options, 'scalenormalized') && isfield(sProcess.options.scalenormalized, 'Value') && ~isempty(sProcess.options.scalenormalized.Value)
         isScaleDspm = sProcess.options.scalenormalized.Value;
     else
@@ -258,7 +261,7 @@ function [iGroups, GroupComments, GroupNames] = SortFiles(sInputs, avgtype)
                                 if ~isempty(sStudyAssoc2)
                                     trialComment{iInput} = sStudyAssoc2.Data(iFileAssoc2).Comment;
                                 else
-                                    bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sStudyAssoc.Result(iFileAssoc).DataFiles]);
+                                    bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sStudyAssoc.Result(iFileAssoc).DataFile]);
                                 end
                             else
                                 bst_report('Warning', 'process_average', sInputs(iInput), ['File skipped, the parent node has been deleted:' 10 sInputs(iInput).DataFile]);
@@ -305,6 +308,7 @@ end
 
 %% ===== AVERAGE FILES =====
 function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, isWeighted, isMatchRows, isZeroBad)
+    OutputFile = [];
     % Parse inputs
     if (nargin < 7) || isempty(isZeroBad)
         isZeroBad = 1;
@@ -351,13 +355,18 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     end
     % Add messages to report
     if ~isempty(Messages)
-        bst_report('Warning', sProcess, sInputs, Messages);
+        if isempty(Stat)
+            bst_report('Error', sProcess, sInputs, Messages);
+            return;
+        else
+            bst_report('Warning', sProcess, sInputs, Messages);
+        end
     end
     
     % Load first file of the list
     [sMat, matName] = in_bst(sInputs(iAvgFile(1)).FileName);
     
-    % === SCALE dSPM VALUES ===
+    % === SCALE dSPM VALUES (DEPRECATED AFTER INVERSE 2018) ===
     % Apply a scaling to the dSPM functions, to compensate for the fact that the scaling applied to the NoiseCov was not correct
     if isScaleDspm && isResults && isfield(sMat, 'Function') && ismember(sMat.Function, {'dspm','mnp','glsp','lcmvp'}) && isfield(sMat, 'ImageGridAmp')
         if ~isWeighted
@@ -408,6 +417,7 @@ function OutputFile = AverageFiles(sProcess, sInputs, KeepEvents, isScaleDspm, i
     sMat.ChannelFlag = Stat.ChannelFlag;
     sMat.Time        = Stat.Time;
     sMat.nAvg        = Stat.nAvg;
+    sMat.Leff        = Stat.Leff;
     sMat.Comment     = Comment;
     
     % History: Average

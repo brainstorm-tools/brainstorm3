@@ -8,7 +8,7 @@ function channel_add_loc(iStudies, LocChannelFile, isInteractive)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function channel_add_loc(iStudies, LocChannelFile, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2019
 
 % Parse inputs
 if (nargin < 3) || isempty(isInteractive)
@@ -34,9 +34,13 @@ end
 Messages = '';
 
 % Get Brainstorm channel file
+isTemplate = 0;
 if ~isempty(LocChannelFile)
     if ischar(LocChannelFile)
         LocChannelMat = in_bst_channel(LocChannelFile);
+        % Check if the input file is a template
+        defaultsDir = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'eeg');
+        isTemplate = ~isempty(strfind(LocChannelFile, defaultsDir));
     else
         LocChannelMat = LocChannelFile;
         LocChannelFile = [];
@@ -109,15 +113,20 @@ for is = 1:length(iStudies)
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
             ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
             nUpdated = nUpdated + 1;
-            % Initialize list of head points as cell arrays (if not it concatenate as strings)
-            if isempty(ChannelMat.HeadPoints.Label)
-                ChannelMat.HeadPoints.Label = {};
-                ChannelMat.HeadPoints.Type = {};
+            % If not a template: add head points
+            if ~isTemplate
+                % Initialize list of head points as cell arrays (if not it concatenate as strings)
+                if isempty(ChannelMat.HeadPoints.Label)
+                    ChannelMat.HeadPoints.Label = {};
+                    ChannelMat.HeadPoints.Type = {};
+                end
+                % Add as head points (if doesn't exist yet)
+                if isempty(ChannelMat.HeadPoints.Loc) || all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc) .^ 2, 1)) > 0.0001)
+                    ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
+                    ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
+                    ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
+                end
             end
-            % Add as head points
-            ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
-            ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
-            ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
         elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
             ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
             nNotFound = nNotFound + 1;
@@ -134,8 +143,14 @@ for is = 1:length(iStudies)
     if (~isfield(ChannelMat, 'SCS') || ~isfield(ChannelMat.SCS, 'NAS') || isempty(ChannelMat.SCS.NAS)) && (isfield(LocChannelMat, 'SCS') && isfield(LocChannelMat.SCS, 'NAS') && ~isempty(LocChannelMat.SCS.NAS))
         ChannelMat.SCS = LocChannelMat.SCS;
     end
-    % Copy the head points
-    if isempty(ChannelMat.HeadPoints.Loc) && ~isempty(LocChannelMat.HeadPoints.Loc)
+    % Delete existing headpoints in the case of an EEG template (unless there are many more points than electrodes)
+    if isTemplate && ~isempty(ChannelMat.HeadPoints.Loc)
+        Messages = [Messages, sprintf('%d head points removed.\n', size(ChannelMat.HeadPoints.Loc,2))];
+        ChannelMat.HeadPoints.Loc = [];
+        ChannelMat.HeadPoints.Label = {};
+        ChannelMat.HeadPoints.Type = {};
+    % Copy the head points if they don't exist yet
+    elseif isempty(ChannelMat.HeadPoints.Loc) && ~isempty(LocChannelMat.HeadPoints.Loc)
         ChannelMat.HeadPoints = LocChannelMat.HeadPoints;
         Messages = [Messages, sprintf('%d head points added.\n', size(LocChannelMat.HeadPoints.Loc,2))];
     end

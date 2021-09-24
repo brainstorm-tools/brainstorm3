@@ -5,7 +5,7 @@ function varargout = process_evt_read( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_evt_read( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2013
+% Authors: Francois Tadel, 2012-2021
 
 eval(macro_method);
 end
@@ -53,6 +53,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.zero.Comment = 'Accept zeros as trigger values';
     sProcess.options.zero.Type    = 'checkbox';
     sProcess.options.zero.Value   = 0;
+    % Option: Min event duration
+    sProcess.options.min_duration.Comment = 'Reject events shorter than: ';
+    sProcess.options.min_duration.Type    = 'value';
+    sProcess.options.min_duration.Value   = {0, 'samples', 0};
 end
 
 
@@ -81,8 +85,9 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         case 3,  EventsTrackMode = 'ttl';
         case 4,  EventsTrackMode = 'rttl';
     end
-    % Accept zeros
+    % Other options
     isAcceptZero = sProcess.options.zero.Value;
+    MinDuration = sProcess.options.min_duration.Value{1};
     
     % ===== GET FILE DESCRIPTOR =====
     % Load the raw file descriptor
@@ -103,8 +108,25 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
         
     % ===== DETECTION =====
-    events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero);
-
+    % CTF: Read separately upper and lower bytes
+    if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
+        % Detect separately events on the upper and lower bytes of the STIM channel
+        eventsU = Compute(sFile, ChannelMat, [StimChan '__U'], EventsTrackMode, isAcceptZero, MinDuration);
+        eventsL = Compute(sFile, ChannelMat, [StimChan '__L'], EventsTrackMode, isAcceptZero, MinDuration);
+        % If there are events on both: add marker U/L
+        if ~isempty(eventsU) && ~isempty(eventsL)
+            for iEvt = 1:length(eventsU)
+                eventsU(iEvt).label = ['U', eventsU(iEvt).label];
+            end
+            for iEvt = 1:length(eventsL)
+                eventsL(iEvt).label = ['L', eventsL(iEvt).label];
+            end
+        end
+        events = [eventsL, eventsU];
+    else
+        events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
+    end
+    
     % ===== SAVE RESULT =====
     % Only save changes if something was change
     if ~isempty(events)
@@ -128,8 +150,11 @@ end
 
 
 %% ===== COMPUTE =====
-function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero)
+function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration)
     % Parse inputs
+    if (nargin < 6)
+        MinDuration = 0;
+    end
     if (nargin < 5)
         isAcceptZero = 0;
     end
@@ -141,7 +166,7 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
     end
     % Get some information
     ch_names = {ChannelMat.Channel.Name};
-    samplesBounds = sFile.prop.samples;
+    samplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
     events = [];
 
     % ===== GET STIM CHANNEL =====
@@ -184,21 +209,39 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
                 return
             end
         end
-    end                  
+    end
+    % CTF: Select only upper or lower bytes
+    isCtfUp = 0;
+    isCtfLow = 0;
+    if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'}) && (length(StimChan) > 3)
+        if strcmp(StimChan(end-2:end), '__U')
+            isCtfUp = 1;
+            StimChan = StimChan(1:end-3);
+        elseif strcmp(StimChan(end-2:end), '__L')
+            isCtfLow = 1;
+            StimChan = StimChan(1:end-3);
+        end
+    end
+    trigshift = fix(sFile.prop.sfreq * 9/1200);
 
     % ===== ASK READ MODE =====
     if strcmpi(EventsTrackMode, 'ask')
-        res = java_dialog('question', ['Please select the interpretation mode at each time sample:' 10 10 ...
-                                       '- Value: detect the changes of value on the trigger channel' 10 ...
-                                       '- Bit: detect the changes for each bit of the channel independently' 10 ...
-                                       '- TTL: detect peaks of 5V/12V on an analog channel (baseline=0V)' 10 ...
-                                       '- RTTL: detect peaks of 0V on an analog channel (baseline!=0V)'], ...
-                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Cancel'}, 'value');
+        res = java_dialog('question', ['<HTML>Please select the interpretation mode at each time sample: <BR><BR>' ...
+                                       '- <B>Value</B>: detect the changes of value on the trigger channel<BR>' ...
+                                       '- <B>Bit</B>: detect the changes for each bit of the channel independently<BR>' ...
+                                       '- <B>TTL</B>: detect peaks of 5V/12V on an analog channel (baseline=0V)<BR>' ...
+                                       '- <B>RTTL</B>: detect peaks of 0V on an analog channel (baseline!=0V)<BR>' ...
+                                       '- <B>Ignore</B>: do not read trigger channel<BR><BR>'], ...
+                                       'Type of events', [], {'Value','Bit','TTL','RTTL','Ignore','Cancel'}, 'value');
         if isempty(res) || strcmpi(res, 'Cancel')
             events = -1;
             return
         end
         EventsTrackMode = lower(res);
+    end
+    % Ignore trigger channel
+    if strcmpi(EventsTrackMode, 'ignore')
+        return;
     end
 
     % ===== READ STIM CHANNELS =====
@@ -222,26 +265,47 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
     nbBlocks = ceil(totalLength / blockLength);
     % Progress bar
     isProgressBar = bst_progress('isVisible');
-    if isProgressBar
-        bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
-    end
+    bst_progress('start', 'Import events', 'Reading events channels...', 0, nbBlocks);
 
     trackPrev = [];
+    nTooShort = 0;
     % For each block
     for iBlock = 1:nbBlocks
         % Increment progress bar
-        if isProgressBar
-            bst_progress('inc', 1);
-        end
+        bst_progress('inc', 1);
+
         % === READ BLOCK ===
         % Get samples indices for this block
         samplesBlock = samplesBounds(1) + [(iBlock - 1) * blockLength, iBlock * blockLength - 1];
         samplesBlock(2) = min(samplesBlock(2), samplesBounds(2));
         % Read block of data
         [tracks, times] = in_fread(sFile, ChannelMat, 1, samplesBlock, iChannels);
-        % Convert events values to uint16
-        tracks = reshape(double(typecast(int16(tracks(:)), 'uint16')), size(tracks));
-
+        
+        % === BLOCK EDITED 16-JUN-2021 ===
+        % Round values
+        tracks = fix(tracks);
+        % CTF: Read separately Upper and Lower bytes
+        if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
+            % Events are read as int32, while they are actually uint32: fix negative values
+            tracks(tracks<0) = tracks(tracks<0) + 2^32;
+            % Keep only upper or lower bytes
+            if isCtfUp
+                tracks = fix(tracks / 2^16);
+            elseif isCtfLow
+                tracks = double(bitand(uint32(tracks), 2^16-1));
+            end
+            % Determine the precise timing of the triggers (from FieldTrip's read_ctf_trigger)
+            upflank = [0 (diff(tracks)>0 & tracks(1:(end-1))==0)];
+            tracks = upflank(1:(end-trigshift)).*tracks((1+trigshift):end);
+        % Other formats
+        else
+            % Old code: Might be useless and/or detrimental to the reading of the events
+            % tracks = reshape(double(typecast(int16(tracks(:)), 'uint16')), size(tracks));
+            % Use the same fix as for CTF files
+            tracks(tracks<0) = tracks(tracks<0) + 2^32;
+        end
+        % =================================
+            
         % === ADD INITIAL STATE ===
         % Add the initial status of the tracks
         if isempty(trackPrev)
@@ -300,6 +364,11 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
             end
             % Process each change individually
             for i = 1:length(iSmp)
+                % Skip if shorter than MinDuration
+                if (MinDuration > 0) && ((length(tracks) - iSmp(i) < MinDuration) || ~all(tracks(iSmp(i):iSmp(i)+MinDuration) == tracks(iSmp(i))))
+                    nTooShort = nTooShort + 1;
+                    continue;
+                end
                 % Build event name
                 switch lower(EventsTrackMode)
                     case 'bit'
@@ -325,22 +394,27 @@ function events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAccept
                     iEvent = length(events) + 1;
                     events(iEvent).label      = label;
                     events(iEvent).epochs     = [];
-                    events(iEvent).samples    = [];
                     events(iEvent).times      = [];
                     events(iEvent).reactTimes = [];
                     events(iEvent).select     = 1;
+                    events(iEvent).channels   = {};
+                    events(iEvent).notes      = {};
                 end
                 % Add occurrence of this event
-                iOcc = length(events(iEvent).samples) + 1;
-                events(iEvent).epochs(iOcc)  = 1;
-                events(iEvent).samples(iOcc) = iSmp(i) + samplesBlock(1) - 1;
-                events(iEvent).times(iOcc)   = events(iEvent).samples(iOcc) ./ sFile.prop.sfreq;
+                iOcc = length(events(iEvent).times) + 1;
+                events(iEvent).epochs(iOcc)   = 1;
+                events(iEvent).times(iOcc)    = (iSmp(i) + samplesBlock(1) - 1) ./ sFile.prop.sfreq;
+                events(iEvent).channels{iOcc} = {};
+                events(iEvent).notes{iOcc}    = [];
             end
         end
     end
-
+    % Display warning with removed events
+    if (nTooShort > 0)
+        disp(sprintf('BST> %d events shorter than %d sample(s) removed.', nTooShort, MinDuration));
+    end
     % Close progress bar
-    if isProgressBar
+    if ~isProgressBar
         bst_progress('stop');
     end
 end

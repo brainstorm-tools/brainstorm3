@@ -16,7 +16,7 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -123,7 +123,11 @@ switch lower(DataType)
         
     case 'timefreq'
         [valFactor, valUnits] = GetExponent(val);
-
+        
+    case 'hlu'
+        valFactor = 1e3;
+        valUnits  = 'mm';
+        
     otherwise
         if isempty(val) || ((val < 1000) && (val > 0.1))
             valFactor = 1;

@@ -19,7 +19,7 @@ function hFig = bst_warp_prepare(ChannelFile, Options)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -264,7 +264,7 @@ atlasDir = bst_fileparts(file_fullpath(sDefSubject.FileName));
 dirScout = dir(bst_fullfile(atlasDir, 'scout_*.mat'));
 % Copy all the files file
 for i = 1:length(dirScout)
-    copyfile(bst_fullfile(atlasDir, dirScout(i).name), bst_fullfile(OutputDir, dirScout(i).name))
+    file_copy(bst_fullfile(atlasDir, dirScout(i).name), bst_fullfile(OutputDir, dirScout(i).name))
 end
 
 

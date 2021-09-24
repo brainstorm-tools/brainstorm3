@@ -8,7 +8,7 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,9 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2015; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2012-2021
+%          Martin Cousineau, 2017
+%          Hossein Shahabi, 2019-2020
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -36,8 +38,9 @@ Def_OPTIONS.IgnoreBad     = 0;             % For recordings: Ignore bad channels
 Def_OPTIONS.ScoutFunc     = 'all';         % Scout function {mean, max, pca, std, all}
 Def_OPTIONS.ScoutTime     = 'before';      % When to apply scout function: {before, after}
 Def_OPTIONS.RemoveMean    = 1;             % Option for Correlation
-Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary}
-Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence, spectral Granger)
+Def_OPTIONS.CohMeasure    = 'mscohere';    % {'mscohere'=Magnitude-square, 'icohere'=Imaginary, 'icohere2019', 'lcohere2019'}
+Def_OPTIONS.WinLen        = [];            % Option for spectral estimates (Coherence 2021)
+Def_OPTIONS.MaxFreqRes    = [];            % Option for spectral estimates (Coherence - deprecated, spectral Granger)
 Def_OPTIONS.MaxFreq       = [];            % Option for spectral estimates (Coherence, spectral Granger)
 Def_OPTIONS.CohOverlap    = 0.50;          % Option for Coherence
 Def_OPTIONS.GrangerOrder  = 10;            % Option for Granger causality
@@ -47,7 +50,7 @@ Def_OPTIONS.isMirror      = 1;             % Option for PLV
 Def_OPTIONS.PlvMeasure    = 'magnitude';   % Option for PLV
 Def_OPTIONS.isSymmetric   = [];            % Optimize processing and storage for simple matrices
 Def_OPTIONS.pThresh       = 0.05;          % Significativity threshold for the metric
-Def_OPTIONS.OutputMode    = 'input';       % {'avg','input','concat'}
+Def_OPTIONS.OutputMode    = 'input';       % {'avg','input','concat','avgcoh'}
 Def_OPTIONS.iOutputStudy  = [];
 Def_OPTIONS.isSave        = 1;
 % Return the default options
@@ -94,13 +97,13 @@ if isequal(OPTIONS.MaxFreq, 0)
     OPTIONS.MaxFreq = [];
 end
 % Frequency max resolution: 0 = error
-if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && ismember(OPTIONS.Method, {'cohere', 'spgranger'})
+if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS.WinLen) && ismember(OPTIONS.Method, {'cohere', 'spgranger'})
     bst_report('Error', OPTIONS.ProcessName, [], 'Invalid frequency resolution.');
     return;
 end
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
-    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
+    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec','henv'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
@@ -124,13 +127,20 @@ end
 sAverageA = [];
 sAverageB = [];
 nTrials = 1;
+% How to read the files
+switch (OPTIONS.OutputMode)
+    case 'concat',  isConcat = 1;
+    case 'avgcoh',  isConcat = 2;
+    otherwise,      isConcat = 0;
+end
 % Load all the data and concatenate it
-if strcmpi(OPTIONS.OutputMode, 'concat')
+if (isConcat >= 1)
     bst_progress('text', 'Loading input files...');
+
     % Number of concatenated trials to process
     nTrials = length(FilesA);
     % Concatenate FileA
-    sInputA = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptions, 1, OPTIONS.RemoveEvoked, startValue);
+    sInputA = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptions, isConcat, OPTIONS.RemoveEvoked, startValue);
     if isempty(sInputA)
         bst_report('Error', OPTIONS.ProcessName, FilesA, 'Could not calculate the average of input files A: the number of signals of all the files must be identical.');
         return;
@@ -138,7 +148,7 @@ if strcmpi(OPTIONS.OutputMode, 'concat')
     FilesA = FilesA(1);
     % Concatenate FileB
     if ~isConnNN
-        sInputB = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptions, 1, OPTIONS.RemoveEvoked, startValue);
+        sInputB = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptions, isConcat, OPTIONS.RemoveEvoked, startValue);
         if isempty(sInputB)
             bst_report('Error', OPTIONS.ProcessName, FilesB, 'Could not calculate the average of input files B: the number of signals of all the files must be identical.');
             return;
@@ -181,11 +191,12 @@ OPTIONS.isScoutB = ~isempty(OPTIONS.TargetB) && (isstruct(OPTIONS.TargetB) || is
 for iFile = 1:length(FilesA)
     bst_progress('set',  round(startValue + (iFile-1) / length(FilesA) * 100));
     %% ===== LOAD SIGNALS =====
-    if ~strcmpi(OPTIONS.OutputMode, 'concat')
+    if ismember(OPTIONS.OutputMode, {'avg','input'})
         bst_progress('text', 'Loading input files...');
         % Load reference signal
         sInputA = bst_process('LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptions);
         if (size(sInputA.Data,2) < 2)
+            bst_report('Error', OPTIONS.ProcessName, FilesA{iFile}, 'Invalid time selection, check the input time window.');
             return;
         end
         % Check for atlas-based files: no "after" option for the scouts
@@ -211,6 +222,7 @@ for iFile = 1:length(FilesA)
             % Load target signal
             sInputB = bst_process('LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptions);
             if isempty(sInputB.Data)
+                bst_report('Error', OPTIONS.ProcessName, FilesB{iFile}, 'Invalid time selection, check the input time window.');
                 return;
             end
             % Check for atlas-based files: no "after" option for the scouts
@@ -287,8 +299,19 @@ for iFile = 1:length(FilesA)
             bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             % Compute in symmetrical way only for constrained sources
             CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
-            % Estimate the coherence
-            [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+            % Estimate the coherence (2021)
+            if ~isempty(OPTIONS.WinLen)
+                if ~iscell(sInputA.Data)
+                    sInputA.Data = {sInputA.Data};
+                end
+                if ~isempty(sInputB.Data) && ~iscell(sInputB.Data)
+                    sInputB.Data = {sInputB.Data};
+                end
+                [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+            % Estimate the coherence (deprecated)
+            elseif ~isempty(OPTIONS.MaxFreqRes)
+                [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+            end
             % Error processing
             if isempty(R)
                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
@@ -330,10 +353,7 @@ for iFile = 1:length(FilesA)
                 precision = '%1.1f';
             end
             % Output comment
-            Comment = sprintf(['Coh(' precision 'Hz,%dwin): '], fStep, OPTIONS.Nwin);
-            if strcmpi(OPTIONS.CohMeasure, 'icohere')
-                Comment = ['i', Comment];
-            end
+            Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
 
         % ==== GRANGER ====
         case 'granger'
@@ -493,24 +513,20 @@ for iFile = 1:length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
                 phaseA = HA ./ abs(HA);
                 phaseB = HB ./ abs(HB);
-                cA = real(phaseA);
-                cB = real(phaseB);
-                sA = imag(phaseA);
-                sB = imag(phaseB);
                 % Compute PLV 
                 % Divide by number of time samples
-                R(:,:,iBand) = (cA*cB' + sA*sB' + 1i * (sA*cB' - cA*sB')) ./ size(cA,2);    
+                R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);    
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
@@ -535,23 +551,32 @@ for iFile = 1:length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %%%% COULD BE OPTIMIZED EXACTLY LIKE 'PLV' CASE
+                %%%% COULD BE OPTIMIZED EXACTLY LIKE 'PLV' CASE (see notes below)
                 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
                 % Replicate nB x HA, and nA x HB
                 iA = repmat(1:nA, 1, nB)';
                 iB = reshape(repmat(1:nB, nA, 1), [], 1);
                 % Compute the PLV in time for each pair
-                R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
+                R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));
+                %R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
+                
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % The implementation below is faster in the time-independent case, 
+                % here not so much for big nA and nB, still putting it for consistency
+                %phaseB = HB(iB) ./ abs(HB(iB));
+                %phaseA = HA(iA) ./ abs(HA(iA));
+                %R(:,:,iBand)=(phaseA.'.*phaseB').';
+                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
@@ -572,7 +597,7 @@ for iFile = 1:length(FilesA)
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
-                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-fft-fir', OPTIONS.isMirror);
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                 % Compute PTE
                 [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));
                 if OPTIONS.isNormalized
@@ -585,6 +610,23 @@ for iFile = 1:length(FilesA)
             % We don't want to compute again the frequency bands
             FreqBands = [];
             
+        % ==== henv ====
+        case 'henv'
+            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
+                size(sInputA.Data,1), size(sInputB.Data,1)));
+            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%1.2fs',OPTIONS.WinLength) ' | ' ...
+                sprintf('%1.2fs',OPTIONS.WinLength * OPTIONS.WinOverlap) ' | '] ;
+            
+            OPTIONS.SampleRate = sfreq;
+            OPTIONS.Freqs      = OPTIONS.Freqrange;
+
+            [R4d,timeSamples]       = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
+            sInputB.Time            = timeSamples + sInputB.Time(1) ;
+            [tmp1,tmp1,nTime,nBand] = size(R4d) ;
+            
+            % Rehaping a 4D matrix to 3 dim
+            R = reshape(R4d,[],nTime,nBand) ;
+                    
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
             return;
@@ -647,7 +689,7 @@ for iFile = 1:length(FilesA)
         case 'input'
             nAvg = 1;
             OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, FilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
-        case 'concat'
+        case {'concat', 'avgcoh'}
             nAvg = 1;
             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case 'avg'
@@ -702,7 +744,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
         FileMat.HeadModelType = sInputB.HeadModelType;
     end
     % Time vector
-    if strcmpi(OPTIONS.Method, 'plvt')
+    if ismember(OPTIONS.Method, {'plvt','henv'})
         FileMat.Time      = sInputB.Time;
         FileMat.TimeBands = [];
     else
@@ -801,8 +843,8 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
         if isempty(sTmp.Data)
             return;
         end
-        % Concatenate with previous file
-        if isConcat
+        % Concatenate with previous file (old coherence)
+        if (isConcat == 1)
             if isempty(sConcat)
                 sConcat = sTmp;
             elseif ~isequal(size(sConcat.Data,1), size(sTmp.Data,1))
@@ -811,6 +853,15 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
                 return;
             else
                 sConcat.Data = [sConcat.Data, sTmp.Data];
+                sConcat.Time = [sConcat.Time, sTmp.Time + sTmp.Time(2) - 2*sTmp.Time(1) + sConcat.Time(end)];
+            end
+        % Load a cell array (coherence 2021)
+        elseif (isConcat == 2)
+            if isempty(sConcat)
+                sConcat = sTmp;
+                sConcat.Data = {sConcat.Data};
+            else
+                sConcat.Data{end+1} = sTmp.Data;
                 sConcat.Time = [sConcat.Time, sTmp.Time + sTmp.Time(2) - 2*sTmp.Time(1) + sConcat.Time(end)];
             end
         end
@@ -830,10 +881,14 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
         end
     end
     % Remove average from concatenated files
-    if isConcat && isAverage
+    if (isConcat >= 1) && isAverage
         for iFile = 1:length(FileNames)
-            iSmp = [1, size(sAverage.Data,2)] + (iFile-1) * size(sAverage.Data,2);
-            sConcat.Data(:,iSmp(1):iSmp(2)) = sConcat.Data(:,iSmp(1):iSmp(2)) - sAverage.Data;
+            if (isConcat == 1)
+                iSmp = [1, size(sAverage.Data,2)] + (iFile-1) * size(sAverage.Data,2);
+                sConcat.Data(:,iSmp(1):iSmp(2)) = sConcat.Data(:,iSmp(1):iSmp(2)) - sAverage.Data;
+            elseif (isConcat == 2)
+                sConcat.Data{iFile} = sConcat.Data{iFile} - sAverage.Data;
+            end
         end
     end
 end

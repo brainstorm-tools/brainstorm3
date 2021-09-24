@@ -31,7 +31,7 @@ function x = bst_bandpass_fft(x, Fs, HighPass, LowPass, isFir2, isMirror, stopBa
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,7 +64,7 @@ Norig = size(x,2);
 % Nmirror = round(.1 * Norig);
 if isMirror
     Nmirror = Norig;
-    if rem(size(x,2),2)
+    if rem(Norig,2)
         if (Nmirror == Norig)
             x = [x(:,Nmirror:-1:1), x, x(:,end:-1:end-Nmirror+2)];
         else

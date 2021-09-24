@@ -1,0 +1,184 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration build-checksum="2802116058" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2015b_spm.prj" location="C:\Work\Dev\brainstorm3\deploy" name="bst_javabuilder_2015b_spm" target="target.ezdeploy.library" target-name="Library Compiler">
+    <param.appname>bst_javabuilder_2015b</param.appname>
+    <param.icon />
+    <param.icons />
+    <param.version>1.0</param.version>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
+    <param.summary />
+    <param.description />
+    <param.screenshot />
+    <param.guid />
+    <param.installpath.string>\bst_javabuilder_2015b\</param.installpath.string>
+    <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
+    <param.logo />
+    <param.install.notes />
+    <param.target.install.notes />
+    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing</param.intermediate>
+    <param.files.only>C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_redistribution_files_only</param.files.only>
+    <param.output>C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_redistribution</param.output>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.embed.ctf>true</param.embed.ctf>
+    <param.target.type>subtarget.java.package</param.target.type>
+    <param.support.packages />
+    <param.required.mcr.products>
+      <item>35000</item>
+      <item>35010</item>
+    </param.required.mcr.products>
+    <param.namespace />
+    <param.classorg />
+    <param.web.mcr>false</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <param.user.only.registration>false</param.user.only.registration>
+    <param.net.framework>option.net.framework.default</param.net.framework>
+    <param.assembly.type>false</param.assembly.type>
+    <param.encryption.key.file />
+    <param.net.enable.remoting>false</param.net.enable.remoting>
+    <param.net.tsa.enable>false</param.net.tsa.enable>
+    <param.net.tsa.assembly />
+    <param.net.tsa.interface />
+    <param.net.tsa.namespace />
+    <param.net.tsa.superclass>Run</param.net.tsa.superclass>
+    <param.net.tsa.metadata />
+    <param.net.tsa.metadata.assembly>C:\Work\Dev\brainstorm3</param.net.tsa.metadata.assembly>
+    <param.net.saved.interface />
+    <unset>
+      <param.icon />
+      <param.icons />
+      <param.version />
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.summary />
+      <param.description />
+      <param.screenshot />
+      <param.guid />
+      <param.installpath.string />
+      <param.installpath.combo />
+      <param.logo />
+      <param.target.install.notes />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.embed.ctf />
+      <param.support.packages />
+      <param.namespace />
+      <param.classorg />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.web.mcr.name />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+      <param.user.only.registration />
+      <param.net.framework />
+      <param.assembly.type />
+      <param.encryption.key.file />
+      <param.net.enable.remoting />
+      <param.net.tsa.enable />
+      <param.net.tsa.assembly />
+      <param.net.tsa.interface />
+      <param.net.tsa.namespace />
+      <param.net.tsa.superclass />
+      <param.net.tsa.metadata />
+      <param.net.tsa.metadata.assembly />
+      <param.net.saved.interface />
+    </unset>
+    <fileset.exports>
+      <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
+    </fileset.exports>
+    <fileset.classes>
+      <entity.package name="">
+        <entity.class name="Run">
+          <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
+        </entity.class>
+      </entity.package>
+    </fileset.classes>
+    <fileset.resources>
+      <file>C:\Work\Dev\brainstorm3\defaults</file>
+      <file>C:\Work\Dev\brainstorm3\deploy</file>
+      <file>C:\Work\Dev\brainstorm3\doc</file>
+      <file>C:\Work\Dev\brainstorm3\external</file>
+      <file>C:\Work\Dev\brainstorm3\java</file>
+      <file>C:\Work\Dev\brainstorm3\toolbox</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2015b\sigproc</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\canonical</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\compat</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\compat\matlablt2016b</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\compat\matlablt2017b</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\config</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\contrib</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\contrib\spike</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\EEGtemplates</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\external</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\external\fileexchange</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\external\signal</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\external\stats</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\fileio</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\forward</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\inverse</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio\src</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio\src\01_file_dir_ops</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio\src\01_file_dir_ops\01_dir_ops</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio\src\01_file_dir_ops\02_file_ops</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio\src\02_var_ops</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_basicio\src\03_run_ops</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\cfg_confgui</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\matlabbatch\examples</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\plotting</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\preproc</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\specest</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\statfun</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\DARTEL</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\FieldMap</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\Longitudinal</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\OldNorm</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\OldSeg</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\Shoot</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\toolbox\SRender</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\spmtrip\utilities</file>
+    </fileset.resources>
+    <fileset.depfun />
+    <fileset.package />
+    <build-deliverables>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing" name="bst_javabuilder_2015b.jar" optional="false">C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing\bst_javabuilder_2015b.jar</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing" name="doc" optional="false">C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing\doc</file>
+      <file location="C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing" name="readme.txt" optional="true">C:\Work\Dev\brainstorm3_deploy\R2015b\bst_javabuilder\for_testing\readme.txt</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2015b</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>6.2</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

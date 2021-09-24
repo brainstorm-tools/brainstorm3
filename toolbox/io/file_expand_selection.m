@@ -10,7 +10,7 @@ function ExpFiles = file_expand_selection(FileFilter, Files)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +36,7 @@ for i = 1:length(Files)
     if isdir(Files{i})
         isDirFile = 0;
         % If CTF/ERP format
-        if ismember(FileFormat, {'CTF', 'EEG-ERPCENTER', 'EEG-NEURALYNX', 'EEG-NEURONE'})
+        if ismember(FileFormat, {'CTF', 'EEG-ERPCENTER', 'EEG-NEURALYNX', 'EEG-NEURONE', 'EEG-EGI-MFF'})
             switch (FileFormat)
                 case 'CTF'
                     % Check if there are .meg4 or .res4 files in directory
@@ -53,6 +53,9 @@ for i = 1:length(Files)
                     % Get binary files 1-9.bin
                     dirFiles = [dir(bst_fullfile(Files{i}, '1.bin')); dir(bst_fullfile(Files{i}, '2.bin')); dir(bst_fullfile(Files{i}, '3.bin')); dir(bst_fullfile(Files{i}, '4.bin')); dir(bst_fullfile(Files{i}, '5.bin'));
                                 dir(bst_fullfile(Files{i}, '6.bin')); dir(bst_fullfile(Files{i}, '7.bin')); dir(bst_fullfile(Files{i}, '8.bin')); dir(bst_fullfile(Files{i}, '9.bin'))];
+                case 'EEG-EGI-MFF'
+                    % Check if there are .bin files in directory
+                    dirFiles = dir(bst_fullfile(Files{i}, '*.bin'));
             end
             j = 1;
             while (~isDirFile && (j <= length(dirFiles)))

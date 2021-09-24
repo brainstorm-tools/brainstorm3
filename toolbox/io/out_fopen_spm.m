@@ -5,7 +5,7 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,11 +19,12 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2021
 
-% Check if SPM is in the path
-if ~exist('file_array', 'file')
-    error('SPM must be in the Matlab path to use this feature.');
+% Initialize SPM12+CAT12
+[isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+if ~isInstalled
+    error(errMsg);
 end
 
 % Get the two output file names: .mat and .dat
@@ -33,7 +34,7 @@ DatFile = bst_fullfile(fPath, [fBase, '.dat']);
 
 % Create .mat structure
 D.type      = 'continuous';
-D.Nsamples  = sFileIn.prop.samples(2) - sFileIn.prop.samples(1) + 1;
+D.Nsamples  = round((sFileIn.prop.times(2) - sFileIn.prop.times(1)) .* sFileIn.prop.sfreq) + 1;
 D.Fsample   = sFileIn.prop.sfreq;
 D.timeOnset = sFileIn.prop.times(1);
 % Trials

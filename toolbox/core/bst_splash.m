@@ -8,7 +8,7 @@ function jSplash = bst_splash(action)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function jSplash = bst_splash(action)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2018
 
 import org.brainstorm.icon.*;
 global GlobalData BrainstormSplash;
@@ -47,7 +47,9 @@ switch lower(action)
             jSplash.setUndecorated(1);
             jSplash.setAlwaysOnTop(1);
             jSplash.setDefaultCloseOperation(jSplash.DISPOSE_ON_CLOSE);
-            jSplash.setPreferredSize(java.awt.Dimension(400, 226));
+            frameW = 400;
+            frameH = 226;
+            jSplash.setPreferredSize(java.awt.Dimension(frameW, frameH));
             % Set icon
             try
                 jSplash.setIconImage(IconLoader.ICON_APP.getImage());
@@ -61,15 +63,25 @@ switch lower(action)
             jSplash.getContentPane.add(jPanel);
 
             % Get logo path
-            logo_file = bst_fullfile(bst_get('BrainstormHomeDir'), 'doc', 'logo_splash.gif');
+            logo_file = bst_fullfile(bst_get('BrainstormDocDir'), 'logo_splash.gif');
             % Image in label
             jLabel = java_create('javax.swing.JLabel');
             jLabel.setIcon(javax.swing.ImageIcon(logo_file));
             jPanel.add(jLabel, java.awt.BorderLayout.CENTER);
 
-            % Display figure
+            % Finalize figure layouts
             jSplash.pack();
-            jSplash.setLocationRelativeTo(jSplash.getParent());
+            % Center on first screen
+            try 
+                ge = java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment();
+                jBounds = ge.getDefaultScreenDevice().getDefaultConfiguration().getBounds();
+                frameX = (jBounds.getX() + jBounds.getWidth() - frameW) ./ 2;
+                frameY = (jBounds.getY() + jBounds.getHeight() - frameH) ./ 2;
+                jSplash.setLocation(frameX, frameY);
+            catch
+                jSplash.setLocationRelativeTo([]);
+            end
+            % Display figure
             jSplash.setVisible(1);
             BrainstormSplash.jDialog = jSplash;
         end

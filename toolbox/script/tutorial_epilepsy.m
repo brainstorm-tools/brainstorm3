@@ -1,17 +1,18 @@
-function tutorial_epilepsy(tutorial_dir)
+function tutorial_epilepsy(tutorial_dir, reports_dir)
 % TUTORIAL_EPILEPSY: Script that reproduces the results of the online tutorial "EEG/Epilepsy".
 %
 % CORRESPONDING ONLINE TUTORIALS:
 %     https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy
 %
 % INPUTS: 
-%     tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
+%    - tutorial_dir: Directory where the sample_epilepsy.zip file has been unzipped
+%    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,10 +26,14 @@ function tutorial_epilepsy(tutorial_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2014-2018
+% Author: Francois Tadel, 2014-2021
 
 
 % ===== FILES TO IMPORT =====
+% Output folder for reports
+if (nargin < 2) || isempty(reports_dir) || ~isdir(reports_dir)
+    reports_dir = [];
+end
 % You have to specify the folder in which the tutorial dataset is unzipped
 if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the tutorial dataset folder.');
@@ -56,7 +61,7 @@ end
 % Delete existing protocol
 gui_brainstorm('DeleteProtocol', ProtocolName);
 % Create new protocol
-gui_brainstorm('CreateProtocol', ProtocolName, 0, 1);
+gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 % Start a new report
 bst_report('Start');
 
@@ -65,12 +70,8 @@ bst_report('Start');
 % Process: Import anatomy folder
 bst_process('CallProcess', 'process_import_anatomy', [], [], ...
     'subjectname', SubjectName, ...
-    'mrifile',     {AnatDir, 'FreeSurfer'}, ...
-    'nvertices',   15000, ...
-    'nas', [134, 222,  74], ...
-    'lpa', [ 58, 123,  69], ...
-    'rpa', [204, 120,  75]);
-
+    'mrifile',     {AnatDir, 'FreeSurfer-fast'}, ...
+    'nvertices',   15000);
 
 % ===== ACCESS THE RECORDINGS =====
 % Process: Create link to raw file
@@ -96,7 +97,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesRaw, [], ...
     'target',   1, ...  % Sensors/MRI registration
     'modality', 4, ...  % EEG
     'orient',   1, ...  % left
-    'comment',  'MEG/MRI Registration');
+    'Comment',  'MEG/MRI Registration');
 
 
 % ===== EVENTS: SPIKES AND HEARTBEATS =====
@@ -129,7 +130,7 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
 % Process: Snapshot: Frequency spectrum
 bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
     'target',   10, ...  % Frequency spectrum
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 % Process: Band-pass:0.5-80Hz
 sFilesRaw = bst_process('CallProcess', 'process_bandpass', sFilesRaw, [], ...
@@ -161,7 +162,7 @@ sFilesPsdClean = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
 % Process: Snapshot: Frequency spectrum
 bst_process('CallProcess', 'process_snapshot', sFilesPsdClean, [], ...
     'target',   10, ...  % Frequency spectrum
-    'comment',  'Power spectrum density');
+    'Comment',  'Power spectrum density');
 
 
 % ===== ICA =====
@@ -208,14 +209,14 @@ bst_set('FlipYAxis', 1);
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   5, ...  % Recordings time series
     'modality', 4, ...  % EEG
-    'comment',  'Average spike');
+    'Comment',  'Average spike');
 % Process: Snapshot: Recordings topography (contact sheet)
 bst_process('CallProcess', 'process_snapshot', sFilesAvg, [], ...
     'target',   7, ...  % Recordings topography (contact sheet)
     'modality', 4, ...  % EEG
     'contact_time',   [-0.040, 0.110], ...
     'contact_nimage', 16, ...
-    'comment',  'Average spike');
+    'Comment',  'Average spike');
 
 
 % ===== SOURCE ANALYSIS: SURFACE =====
@@ -235,7 +236,7 @@ bst_process('CallProcess', 'process_headmodel', sFilesAvg, [], ...
          'BemCond',      [1, 0.0125, 1], ...
          'BemNames',     {{'Scalp', 'Skull', 'Brain'}}, ...
          'BemFiles',     {{}}, ...
-         'isAdjoint',    0, ...
+         'isAdjoint',    1, ...
          'isAdaptative', 1, ...
          'isSplit',      0, ...
          'SplitLength',  4000));
@@ -247,7 +248,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesRaw, [], ...
     'target',         1, ...  % Noise covariance     (covariance over baseline time window)
     'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
     'identity',       0, ...
-    'copycond',       0, ...
+    'copycond',       1, ...
     'copysubj',       0, ...
     'replacefile',    1);  % Replace
 
@@ -277,7 +278,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrc, [], ...
     'orient',    3, ...  % top
     'time',      0, ...
     'threshold', 60, ...
-    'comment',   'Average spike');
+    'Comment',   'Average spike');
 
 
 % ===== SOURCE ANALYSIS: VOLUME =====
@@ -319,7 +320,7 @@ bst_process('CallProcess', 'process_snapshot', sAvgSrcVol, [], ...
     'orient',    3, ...  % top
     'time',      0, ...
     'threshold', 0, ...
-    'comment',   'Dipole modeling');
+    'Comment',   'Dipole modeling');
 
 % Process: Dipole scanning
 sDipScan = bst_process('CallProcess', 'process_dipole_scanning', sAvgSrcVol, [], ...
@@ -416,8 +417,13 @@ bst_process('CallProcess', 'process_snapshot', sAvgTfNorm, [], ...
     'rowname', 'FC1');
 
 
-
 % Save and display report
 ReportFile = bst_report('Save', []);
-bst_report('Open', ReportFile);
+if ~isempty(reports_dir) && ~isempty(ReportFile)
+    bst_report('Export', ReportFile, reports_dir);
+else
+    bst_report('Open', ReportFile);
+end
+
+disp([10 'BST> tutorial_epilepsy: Done.' 10]);
 

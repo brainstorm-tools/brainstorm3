@@ -9,7 +9,7 @@ function varargout = figure_timefreq( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function varargout = figure_timefreq( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2020
 
 eval(macro_method);
 end
@@ -31,10 +31,11 @@ end
 
 %% ===== CREATE FIGURE =====
 function hFig = CreateFigure(FigureId) %#ok<DEFNU>
+    MatlabVersion = bst_get('MatlabVersion');
     % Get renderer name
     if (bst_get('DisableOpenGL') ~= 1)
         rendererName = 'opengl';
-    elseif (bst_get('MatlabVersion') <= 803)   % zbuffer was removed in Matlab 2014b
+    elseif (MatlabVersion <= 803)   % zbuffer was removed in Matlab 2014b
         rendererName = 'zbuffer';
     else
         rendererName = 'painters';
@@ -52,7 +53,8 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'Color',         [.8 .8 .8], ...
-                  'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
+                  'Pointer',       'arrow', ...
+                  'CloseRequestFcn',         @FigureClosedCallback, ...
                   'KeyPressFcn',             @FigureKeyPressedCallback, ...
                   'WindowButtonDownFcn',     @FigureMouseDownCallback, ...
                   'WindowButtonUpFcn',       @FigureMouseUpCallback, ...
@@ -60,6 +62,10 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     % Define Mouse wheel callback separately (not supported by old versions of Matlab)
     if isprop(hFig, 'WindowScrollWheelFcn')
         set(hFig, 'WindowScrollWheelFcn',  @FigureMouseWheelCallback);
+    end
+    % Disable automatic legends (after 2017a)
+    if (MatlabVersion >= 902) 
+        set(hFig, 'defaultLegendAutoUpdate', 'off');
     end
     % Create axes
     hAxes = axes('Units',         'normalized', ...
@@ -85,6 +91,14 @@ end
 %% ===========================================================================
 %  ===== FIGURE CALLBACKS ====================================================
 %  ===========================================================================
+
+%% ===== FIGURE CLOSED CALLBACK =====
+function FigureClosedCallback(hFig, ev)
+    global GlobalData;
+    GlobalData.UserFrequencies.HideFreqPanel = 0;
+    bst_figures('DeleteFigure', hFig, ev);
+end
+
 %% ===== COLORMAP CHANGED CALLBACK =====
 function ColormapChangedCallback(hFig) %#ok<DEFNU>
     % Update colormap
@@ -154,44 +168,46 @@ function ResizeCallback(hFig, ev)
     end
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
+    colorbarWidth = 15 .* Scaling;
     if ismember(lower(TfInfo.DisplayMode), {'2dlayout', '2dlayoutopt'})
-        marginLeft   = 10;
-        marginTop    = 5;
-        marginBottom = 20;
-        marginRight  = 10;
+        marginLeft   = 10 .* Scaling;
+        marginTop    = 5 .* Scaling;
+        marginBottom = 20 .* Scaling;
+        marginRight  = 10 .* Scaling;
     else
-        marginTop    = 25;
-        marginBottom = 35;
-        marginRight  = 30;
+        marginTop    = 25 .* Scaling;
+        marginBottom = 35 .* Scaling;
+        marginRight  = 30 .* Scaling;
         % Define the size of the left margin in function of the labels that have to be displayed
         if ~iscell(GlobalData.UserFrequencies.Freqs)
             if all(GlobalData.UserFrequencies.Freqs == round(GlobalData.UserFrequencies.Freqs))
-                marginLeft = 40;
+                marginLeft = 40 .* Scaling;
             else
-                marginLeft = 55;
+                marginLeft = 55 .* Scaling;
             end
         else
             % Get the largest frequency band string
             strMax = max(cellfun(@length, GlobalData.UserFrequencies.Freqs(:,1)));
-            marginLeft = 20 + 5*strMax;
+            marginLeft = (20 + 5*strMax) .* Scaling;
         end
     end
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
     hLabelHideExp = findobj(hFig, '-depth', 1, 'tag', 'labelMaskExp');
     % Reposition the colorbar
     if ~isempty(hColorbar)
-        marginRight = 55;
+        marginRight = 55 .* Scaling;
         % Position colorbar
-        colorbarPos = [figPos(3) - marginRight + 10, ...
+        colorbarPos = [figPos(3) - marginRight + 10 .* Scaling, ...
                        marginBottom, ...
                        colorbarWidth, ...
                        max(1, figPos(4) - marginTop - marginBottom)];
                        %max(1, min(90, figPos(4) - marginTop - marginBottom))];
         set(hColorbar, 'Units', 'pixels', 'Position', colorbarPos);
         % Add mask for exponent
-        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5, ...
+        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5 .* Scaling, ...
                    figPos(3)-colorbarPos(1), figPos(4)-colorbarPos(2)-colorbarPos(4)];
         if isempty(hLabelHideExp)
             uicontrol(hFig,'style','text','units','pixels', 'pos', maskPos, 'tag', 'labelMaskExp', ...
@@ -636,7 +652,7 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                 panel_display('SetSelectedRowName', hFig, keyEvent.Key);
             end
         % === DATABASE NAVIGATOR ===
-        case {'f1', 'f2', 'f3', 'f4'}
+        case {'f1', 'f2', 'f3', 'f4', 'f6'}
             bst_figures('NavigatorKeyPress', hFig, keyEvent)
         % === DATA FILES : OTHER VIEWS ===
         % CTRL+D : Dock figure
@@ -897,16 +913,35 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
     % ===== GET DATA =====
     % Only if requested
     if (nargout >= 4)
-        % Override figure definition and get all rows
-        FigRowName    = TfInfo.RowName;
-        FigRefRowName = TfInfo.RefRowName;
-        % Get data
-        [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, FigRowName, TfInfo.iFreqs, iTime, TfInfo.Function, FigRefRowName);
+        % For FOOOF with overlay mode, start with first sensor.
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
+        if isFooof 
+            if isequal(TfInfo.FOOOFDisp, 'overlay') 
+                if isempty(TfInfo.RowName)
+                    TfInfo.RowName = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames(1);
+                %elseif iscell(TfInfo.RowName) && numel(TfInfo.RowName) > 1 % doesn't seem to happen
+                %    TfInfo.RowName = TfInfo.RowName(1);
+                end
+            else
+                TfInfo.RowName = [];
+            end
+            setappdata(hFig, 'Timefreq', TfInfo);
+            % Get data, providing FOOOFDisp.
+            [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName, TfInfo.FOOOFDisp);
+        else
+            % Override figure definition and get all rows
+            % Get data
+            [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName);
+        end
         % Get specific RowNames
-        if ~isempty(FigRefRowName)
+        if ~isempty(TfInfo.RefRowName)
             RowNames = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames;
-        elseif ~isempty(FigRowName)
-            RowNames = FigRowName;
+        elseif ~isempty(TfInfo.RowName)
+            if ischar(TfInfo.RowName)
+                RowNames = {TfInfo.RowName};
+            else
+                RowNames = TfInfo.RowName;
+            end
         % Else: get all the rows (regular timefreq file)
         else
             RowNames = GetRowNames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames);
@@ -918,6 +953,20 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
         % Data type
         DataType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DataType;
         
+        % Keep only the selected (good) channels
+        % This won't apply when displaying a single channel (e.g. FOOOF overlay mode)
+        % or when displaying connectivity matrices, or any PSD not computed directly on sensor data
+        [hFig, iFig] = bst_figures('GetFigure', hFig);
+        if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) && ...
+                numel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) < numel(iRow) && ...
+                strcmpi(DataType, 'data') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
+            iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
+            TF = TF(iSelected,:,:);
+            RowNames = RowNames(iSelected);
+        end
+        if isFooof && isequal(TfInfo.FOOOFDisp, 'overlay')
+            RowNames = {RowNames{1}, 'Background fit', 'Peak fit', 'FOOOF model'};
+        end
         % Show stat clusters
         if strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq')
             % Get displayed clusters
@@ -1017,8 +1066,8 @@ function UpdateFigurePlot(hFig, isForced)
         % If the edge effects map is available from the time-frequency file
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).TFmask)
             TFmask = GlobalData.DataSet(iDS).Timefreq(iTf).TFmask;
-        % Else: If the options of the wavelets were saved in the file
-        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).Options)
+        % Else: If the options of the wavelets were saved in the file (not for stat files)
+        elseif ~isempty(GlobalData.DataSet(iDS).Timefreq(iTf).Options) && ~strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq')
             TFmask = process_timefreq('GetEdgeEffectMask', Time, Freqs, GlobalData.DataSet(iDS).Timefreq(iTf).Options);
         end
     end
@@ -1031,22 +1080,30 @@ function UpdateFigurePlot(hFig, isForced)
             % Plot time-frequency map
             if (TfInfo.HighResolution)
                 PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask);
+            elseif TfInfo.DisplayAsDots
+                PlotTimefreqAsDots(hAxes, Time, TF);
+            elseif TfInfo.DisplayAsPhase
+                PlotTimefreqAsPhase(hAxes, Time, Freqs, TF);
             else
                 PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask);
             end
-            % Configure axes
-            ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, LowFreq);
-            % Plot current time/frequency markers
-            PlotTimefreqCursor(hAxes);
+            
+            if ~TfInfo.DisplayAsPhase
+                ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, LowFreq);
+                
+                % Plot current time/frequency markers
+                PlotTimefreqCursor(hAxes);
+            end
+            
             % Store initial XLim and YLim
             setappdata(hFig, 'XLimInit', get(hAxes, 'XLim'));
             setappdata(hFig, 'YLimInit', get(hAxes, 'YLim'));
         case '2dlayout'
-            PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, 1);
+            PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, 1);
         case '2dlayoutopt'
-            PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, 2);
+            PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, 2);
         case 'allsensors'
-            PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, 0);
+            PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, 0);
     end
     % Update figure handles
     GlobalData.DataSet(iDS).Figure(iFig).Handles = TopoHandles;
@@ -1056,6 +1113,10 @@ function UpdateFigurePlot(hFig, isForced)
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     if ~isempty(hColorbar)
         set(hColorbar, 'FontSize', bst_get('FigFont'), 'FontUnits', 'points');
+    end
+    % Do not display colorbar for single color dots
+    if TfInfo.DisplayAsDots || TfInfo.DisplayAsPhase
+        sColormap.DisplayColorbar = 0;
     end
 %     % Get figure colormap
 %     ColormapInfo = getappdata(hFig, 'Colormap');
@@ -1106,7 +1167,7 @@ function hSurf = PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask
     else
         Y = 1:size(Freqs,1)+1;
     end
-    
+
     % Grid values
     [XData,YData] = meshgrid(X,Y);
     % Plot new surface  
@@ -1140,6 +1201,52 @@ function hSurf = PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask
              end
          end
      end
+end
+
+%% ===== PLOT TIME-FREQ AS DOTS =====
+function hSurf = PlotTimefreqAsDots(hAxes, Time, TF)
+    % Delete previous objects
+    surfTag = 'TimefreqSurf';
+    hOld = findobj(hAxes, '-depth', 1, 'tag', surfTag);
+    delete(hOld);
+    % Extract coordinates
+    [X,Y,Z] = find(squeeze(TF));
+    % Convert X coordinates from samples to time
+    X = X / size(TF,2) * (Time(end) - Time(1)) + Time(1);
+    % Plot as dots
+    hSurf = line(X, Y, Z, ...
+       'Color', 'black', ...
+       'LineStyle', 'none', ...
+       'Marker', '.', ...
+       'MarkerSize', 5, ...
+       'Tag', surfTag, ...
+       'Parent', hAxes);
+end
+
+
+%% ===== PLOT TIME-FREQ AS PHASE =====
+function hSurf = PlotTimefreqAsPhase(hAxes, Time, Freqs, TF)
+    % Delete previous objects
+    surfTag = 'TimefreqSurf';
+    hOld = findobj(hAxes, '-depth', 1, 'tag', surfTag);
+    delete(hOld);
+
+    nBins = length(Freqs);
+    w = squeeze(TF(1, 1, :));
+
+    single_neuron_and_channel_phase = [];
+    for iBin = 1:nBins
+        single_neuron_and_channel_phase = [single_neuron_and_channel_phase; ones(w(iBin),1) * Freqs(iBin)];
+    end
+
+    pval_rayleigh = circ_rtest(single_neuron_and_channel_phase);
+    pval_omnibus = circ_otest(single_neuron_and_channel_phase);
+    mean_value = circ_mean(single_neuron_and_channel_phase);
+    mean_value_degrees = mean_value * (180/pi);
+
+    hSurf = circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r','Parent', hAxes);
+    set(hSurf, 'Tag', surfTag);
+    title(hAxes, {['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
 end
 
 
@@ -1250,8 +1357,22 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     % Update axes ticks
     UpdateAxesTicks(hAxes);
     % Labels
-    xlabel(hAxes, 'Time (s)');
-    ylabel(hAxes, 'Frequency (Hz)');
+    if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
+        xlabel(hAxes, 'Frequency (Hz)');
+        ylabel(hAxes, 'Electrodes');
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
+        xlabel(hAxes, 'Neurons');
+        ylabel(hAxes, 'Neurons');
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
+        xlabel(hAxes, 'Time (s)');
+        ylabel(hAxes, 'Trials');
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'spiking_phase_locking'))
+        xlabel(hAxes, ' ');
+        ylabel(hAxes, ' ');
+    else
+        xlabel(hAxes, 'Time (s)');
+        ylabel(hAxes, 'Frequency (Hz)');
+    end
     % Axes title
     if ischar(TfInfo.RowName)
         axesTitle = [TfInfo.Comment, ': ', TfInfo.RowName];
@@ -1358,48 +1479,98 @@ end
 %% ===== UPDATE LABELS =====
 function UpdateLabels(hAxes, GraphSelection)
     global GlobalData;
-    % Get current time units
-    timeUnit = panel_time('GetTimeUnit');
+    hFig = get(hAxes, 'parent');
+    TfInfo = getappdata(hFig, 'Timefreq');
     
-    % No time definition at all
-    if isempty(GraphSelection) || (numel(GraphSelection) < 2)
-        strTime = 'Time (s)';
-        strFreq = 'Frequency (Hz)';
-    % Current time/freq
-    elseif (numel(GraphSelection) == 2)
-        switch (timeUnit)
-            case 'ms',  strTime = sprintf('Time: %.2f ms', GraphSelection(1) * 1000);
-            case 's',   strTime = sprintf('Time: %.3f s',  GraphSelection(1));
-        end
-        % Get current frequency value/description
-        if ~iscell(GlobalData.UserFrequencies.Freqs)
-            strFreq = ['Frequency: ' num2str(GlobalData.UserFrequencies.Freqs(GraphSelection(2))), ' Hz'];
+    % Electrophysiology figures have different labels
+    if ~isempty(strfind(lower(TfInfo.FileName), 'spike_field_coherence'))
+        if numel(GraphSelection) > 0
+            strFreq = sprintf('Frequency: %d Hz',  round(GraphSelection(1)));
         else
-            strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{GraphSelection(2),1}];
+            strFreq = 'Frequency (Hz)';
         end
-    % Time-frequency selection
+        if numel(GraphSelection) == 2
+            [tmp, tmp, iDS] = bst_figures('GetFigure', hFig);
+            channel = GlobalData.DataSet(iDS).Channel(GraphSelection(2)).Name;
+            strElec = ['Electrodes: ' channel];
+        else
+            strElec = 'Electrodes';
+        end
+        xlabel(hAxes, strFreq);
+        ylabel(hAxes, strElec);
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'noise_correlation'))
+        if numel(GraphSelection) > 0
+            strNeur1 = ['Neuron: ' TfInfo.NeuronNames{GraphSelection(1)}];
+        else
+            strNeur1 = 'Neurons';
+        end
+        if numel(GraphSelection) > 1
+            strNeur2 = ['Neuron: ' TfInfo.NeuronNames{GraphSelection(2)}];
+        else
+            strNeur2 = 'Neurons';
+        end
+        xlabel(hAxes, strNeur1);
+        ylabel(hAxes, strNeur2);
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
+        if numel(GraphSelection) > 0
+            % Get current time units
+            timeUnit = panel_time('GetTimeUnit');
+            switch (timeUnit)
+                case 'ms',  strTime = sprintf('Time: %.2f ms', GraphSelection(1) * 1000);
+                case 's',   strTime = sprintf('Time: %.3f s',  GraphSelection(1));
+            end
+        else
+            strTime = 'Time (s)';
+        end
+        if numel(GraphSelection) > 1
+            strTrial = ['Trial: #' num2str(GraphSelection(2))];
+        else
+            strTrial= 'Trials';
+        end
+        xlabel(hAxes, strTime);
+        ylabel(hAxes, strTrial);
     else
-        switch (timeUnit)
-            case 'ms',  strTime = sprintf('Selection: [%.2f ms - %.2f ms]', min(GraphSelection(1,:)) * 1000, max(GraphSelection(1,:)) * 1000);
-            case 's',   strTime = sprintf('Selection: [%.2f s - %.2f s]', min(GraphSelection(1,:)), max(GraphSelection(1,:)));
-        end
-        % Get current frequency value/description
-        if ~iscell(GlobalData.UserFrequencies.Freqs)
-            selFreq = sort(GlobalData.UserFrequencies.Freqs(GraphSelection(2,:)));
-            strFreq = ['Selection: [' num2str(selFreq(1)) ' Hz - ' num2str(max(selFreq(2))) ' Hz]'];
+        % Get current time units
+        timeUnit = panel_time('GetTimeUnit');
+        % No time definition at all
+        if isempty(GraphSelection) || (numel(GraphSelection) < 2)
+            strTime = 'Time (s)';
+            strFreq = 'Frequency (Hz)';
+        % Current time/freq
+        elseif (numel(GraphSelection) == 2)
+            switch (timeUnit)
+                case 'ms',  strTime = sprintf('Time: %.2f ms', GraphSelection(1) * 1000);
+                case 's',   strTime = sprintf('Time: %.3f s',  GraphSelection(1));
+            end
+            % Get current frequency value/description
+            if ~iscell(GlobalData.UserFrequencies.Freqs)
+                strFreq = ['Frequency: ' num2str(GlobalData.UserFrequencies.Freqs(GraphSelection(2))), ' Hz'];
+            else
+                strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{GraphSelection(2),1}];
+            end
+        % Time-frequency selection
         else
-            selBands = sort(GraphSelection(2,:));
-            strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{selBands(1),1} ' - ' GlobalData.UserFrequencies.Freqs{selBands(2),1}];
+            switch (timeUnit)
+                case 'ms',  strTime = sprintf('Selection: [%.2f ms - %.2f ms]', min(GraphSelection(1,:)) * 1000, max(GraphSelection(1,:)) * 1000);
+                case 's',   strTime = sprintf('Selection: [%.2f s - %.2f s]', min(GraphSelection(1,:)), max(GraphSelection(1,:)));
+            end
+            % Get current frequency value/description
+            if ~iscell(GlobalData.UserFrequencies.Freqs)
+                selFreq = sort(GlobalData.UserFrequencies.Freqs(GraphSelection(2,:)));
+                strFreq = ['Selection: [' num2str(selFreq(1)) ' Hz - ' num2str(max(selFreq(2))) ' Hz]'];
+            else
+                selBands = sort(GraphSelection(2,:));
+                strFreq = ['Frequency: ' GlobalData.UserFrequencies.Freqs{selBands(1),1} ' - ' GlobalData.UserFrequencies.Freqs{selBands(2),1}];
+            end
         end
+        xlabel(hAxes, strTime);
+        ylabel(hAxes, strFreq);
     end
-    % Set labels
-    xlabel(hAxes, strTime);
-    ylabel(hAxes, strFreq);
 end
 
 
 %% ===== PLOT ALL SENSORS =====
-function PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, is2DLayout)
+function PlotAllSensors(hFig, RowNames, TF, TFmask, Freqs, MinMaxVal, is2DLayout)
     % Find axes
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'AxesTimefreq');
     cla(hAxes);
@@ -1427,21 +1598,61 @@ function PlotAllSensors(hFig, RowNames, TF, TFmask, MinMaxVal, is2DLayout)
         % Define position of the image in the figure
         XData = X(iRow) + [-.5,.5] * axesSize(1);
         YData = Y(iRow) + [-.5,.5] * axesSize(2);
-        [Xgrid, Ygrid] = meshgrid(linspace(XData(1), XData(2), size(TF_sensor,2) + 1), ...
-                                  linspace(YData(1), YData(2), size(TF_sensor,1) + 1));
-        % Create surface to show images
-        hSurf = surf('Parent',    hAxes, ...
-                     'XData',     Xgrid, ...
-                     'YData',     Ygrid, ...
-                     'ZData',     ones(size(Xgrid)), ...
-                     'CData',     TF_sensor, ...
-                     'EdgeColor', 'none', ...
-                     'tag',       'TimefreqSurfSmall', ...
-                     'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
-        % Mask edge effects
-        if ~isempty(TFmask)
-            set(hSurf, 'FaceAlpha', 'flat', ...
-                       'AlphaData', double(TFmask));
+        %
+        if TfInfo.DisplayAsDots
+            % Extract coordinates
+            [Xd,Yd,Zd] = find(TF_sensor);
+            % Reshape coordinates for small figure
+            Xd = Xd / size(TF_sensor,1) * (XData(2) - XData(1)) + XData(1);
+            Yd = Yd / size(TF_sensor,2) * (YData(2) - YData(1)) + YData(1);
+            % Create white background
+            rectangle('Position', [XData(1), YData(1), XData(2) - XData(1), YData(2) - YData(1)], ...
+                'FaceColor', 'white', ...
+                'EdgeColor', 'white', ...
+                'Parent',    hAxes, ...
+                'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+            % Create dots
+            line(Xd, Yd, Zd, ...
+                 'Color', 'black', ...
+                 'LineStyle', 'none', ...
+                 'Marker', '.', ...
+                 'MarkerSize', 3, ...
+                 'Parent',    hAxes, ...
+                 'Tag', 'TimefreqSurfSmall', ...
+                 'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+             
+             
+        elseif TfInfo.DisplayAsPhase
+            % Create white background
+            hAxes = subplot('Position', [XData(1), YData(1), XData(2) - XData(1), YData(2) - YData(1)]);
+
+            nBins = length(Freqs);
+            w = TF_sensor(:,1)';
+
+            single_neuron_and_channel_phase = [];
+            for iBin = 1:nBins
+                single_neuron_and_channel_phase = [single_neuron_and_channel_phase; ones(w(iBin),1) * Freqs(iBin)];
+            end
+            hSurf = circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r','Parent', hAxes);
+            set(hSurf, 'Tag', 'TimefreqSurfSmall');     
+        
+        else
+            [Xgrid, Ygrid] = meshgrid(linspace(XData(1), XData(2), size(TF_sensor,2) + 1), ...
+                                      linspace(YData(1), YData(2), size(TF_sensor,1) + 1));
+            % Create surface to show images
+            hSurf = surf('Parent',    hAxes, ...
+                         'XData',     Xgrid, ...
+                         'YData',     Ygrid, ...
+                         'ZData',     ones(size(Xgrid)), ...
+                         'CData',     TF_sensor, ...
+                         'EdgeColor', 'none', ...
+                         'tag',       'TimefreqSurfSmall', ...
+                         'ButtonDownFcn', @(h,ev)ImageClicked_Callback(hFig, TfInfo.FileName, RowNames{iRow}));
+            % Mask edge effects
+            if ~isempty(TFmask)
+                set(hSurf, 'FaceAlpha', 'flat', ...
+                           'AlphaData', double(TFmask));
+            end
         end
         % Add text legend
         text(X(iRow), Y(iRow)-.51*axesSize(2), 2, RowNames{iRow}, ...

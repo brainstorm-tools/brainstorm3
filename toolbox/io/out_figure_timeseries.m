@@ -34,7 +34,7 @@ function out_figure_timeseries( hFig, TSFile, varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -48,12 +48,20 @@ function out_figure_timeseries( hFig, TSFile, varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008
+% Authors: Francois Tadel, 2008-2018
 
 global GlobalData;
 
 
 %% ===== EXTRACT TIME SERIES =====
+% Check montage 
+TsInfo = getappdata(hFig, 'TsInfo');
+if ~isempty(TsInfo) && isfield(TsInfo, 'MontageName') && ~isempty(TsInfo.MontageName)
+    sMontage = panel_montage('GetMontage', TsInfo.MontageName);
+    if ~isempty(sMontage) && ~isequal(sMontage.DispNames, sMontage.ChanNames)
+        error(['Cannot export selected montage "' TsInfo.MontageName '".' 10 'Select montage "All channels" or use process "Apply montage".']);
+    end
+end
 % Get values  (this takes care of the time selection)
 [TSMat, iDS, iFig] = gui_figure_data(hFig, varargin{:});
 
@@ -69,6 +77,7 @@ if (nargin < 2) || isempty(TSFile)
     % Get default extension
     switch (DefaultFormats.DataOut)
         case 'BST-BIN',         DefaultExt = '.bst';
+        case 'EEG-BRAINAMP',    DefaultExt = '.eeg';
         case 'EEG-CARTOOL-EPH', DefaultExt = '.eph';
         case 'EEG-EGI-RAW',     DefaultExt = '.raw';
         case 'EEG-EDF',         DefaultExt = '.edf';

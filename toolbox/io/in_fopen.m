@@ -1,4 +1,4 @@
-function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions)
+function [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(DataFile, FileFormat, ImportOptions)
 % IN_FOPEN:  Open a file for reading in Brainstorm.
 %
 % USAGE:  [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions)
@@ -19,7 +19,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat] = in_fopen(DataFile, FileFormat, I
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2018
+% Authors: Francois Tadel, 2009-2021
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -66,6 +66,11 @@ switch (FileFormat)
     % ===== SUPPORTED AS CONTINUOUS FILES =====
     case 'FIF'
         [sFile, ChannelMat] = in_fopen_fif(DataFile, ImportOptions);
+        % Multiple FIF linked: add number of files to the folder name in the database
+        if strcmpi(FileFormat, 'FIF') && isfield(sFile, 'header') && isfield(sFile.header, 'fif_list') && (length(sFile.header.fif_list) >= 2)
+            [fPath,fBase] = bst_fileparts(DataFile);
+            sFile.condition = sprintf('%s_(%d)', fBase, length(sFile.header.fif_list));
+        end
     case {'CTF', 'CTF-CONTINUOUS'}
         [sFile, ChannelMat] = in_fopen_ctf(DataFile);
     case '4D'
@@ -78,10 +83,16 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_kdf(DataFile);
     case 'ITAB'
         [sFile, ChannelMat] = in_fopen_itab(DataFile);
+    case 'MEGSCAN-HDF5'
+        [sFile, ChannelMat] = in_fopen_megscan(DataFile);
+    case 'EEG-ADICHT'
+        [sFile, ChannelMat] = in_fopen_adicht(DataFile, ImportOptions.DisplayMessages);
     case 'EEG-ANT-CNT'
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
     case 'EEG-ANT-MSR'
         [sFile, ChannelMat] = in_fopen_msr(DataFile);
+    case 'EEG-AXION'
+        [sFile, ChannelMat] = in_fopen_axion(DataFile);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'
@@ -93,25 +104,29 @@ switch (FileFormat)
     case 'EEG-CURRY'
         [sFile, ChannelMat] = in_fopen_curry(DataFile);
     case {'EEG-EDF', 'EEG-BDF'}
-        [sFile, ChannelMat] = in_fopen_edf(DataFile, ImportOptions);
+        [sFile, ChannelMat, ImportOptions] = in_fopen_edf(DataFile, ImportOptions);
     case 'EEG-EEGLAB'
         [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions);
     case 'EEG-EGI-RAW'
         sFile = in_fopen_egi(DataFile, [], [], ImportOptions);
+    case 'EEG-EMOTIV'
+        [sFile, ChannelMat] = in_fopen_emotiv(DataFile);
     case 'EEG-GTEC'
         [sFile, ChannelMat] = in_fopen_gtec(DataFile);
     case 'EEG-MANSCAN'
         [sFile, ChannelMat] = in_fopen_manscan(DataFile);
+    case 'EEG-EGI-MFF'
+        [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, 0);
     case 'EEG-MICROMED'
-        [sFile, ChannelMat] = in_fopen_micromed(DataFile);
+        [sFile, ChannelMat] = in_fopen_micromed(DataFile, ImportOptions);
     case 'EEG-NEURONE'
         [sFile, ChannelMat] = in_fopen_neurone(DataFile);
     case 'EEG-NEUROSCAN-CNT'
         [sFile, ChannelMat] = in_fopen_cnt(DataFile, ImportOptions);
     case 'EEG-NEUROSCAN-EEG'
-        sFile = in_fopen_eeg(DataFile);
+        [sFile, ChannelMat] = in_fopen_eeg(DataFile);
     case 'EEG-NEUROSCAN-AVG'
-        sFile = in_fopen_avg(DataFile);
+        [sFile, ChannelMat] = in_fopen_avg(DataFile);
     case 'EEG-NEUROSCOPE'
         [sFile, ChannelMat] = in_fopen_neuroscope(DataFile);
     case 'EEG-NEURALYNX'
@@ -120,8 +135,12 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_nicolet(DataFile);
     case 'EEG-NK'
         [sFile, ChannelMat] = in_fopen_nk(DataFile);
+    case 'EEG-OEBIN'
+        [sFile, ChannelMat] = in_fopen_oebin(DataFile);
     case 'EEG-SMR'
         [sFile, ChannelMat] = in_fopen_smr(DataFile);
+    case 'EEG-SMRX'
+        [sFile, ChannelMat] = in_fopen_smrx(DataFile);
     case 'EYELINK'
         [sFile, ChannelMat] = in_fopen_eyelink(DataFile);
     case 'NIRS-BRS'
@@ -130,9 +149,23 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_bst(DataFile);
     case 'SPM-DAT'
         [sFile, ChannelMat] = in_fopen_spm(DataFile);
+    case 'EEG-INTAN'
+        [sFile, ChannelMat] = in_fopen_intan(DataFile);
+    case 'EEG-PLEXON'
+        [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+    case 'EEG-TDT'
+        [sFile, ChannelMat] = in_fopen_tdt(DataFile);
+    case {'NWB', 'NWB-CONTINUOUS'}
+        [sFile, ChannelMat] = in_fopen_nwb(DataFile);
+        
     % ===== IMPORTED STRUCTURES =====
     case 'BST-DATA'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmat(DataFile);
+        
+    % ===== OBJECTS IN MEMORY =====
+    case 'MNE-PYTHON'
+        [sFile, ChannelMat] = in_fopen_mne(DataFile, ImportOptions);
+        
     % ===== CONVERT TO CONTINUOUS =====
     case 'EEG-ASCII'
         [DataMat, ChannelMat] = in_data_ascii(DataFile);
@@ -148,21 +181,39 @@ switch (FileFormat)
         [DataMat, ChannelMat] = in_data_erplab(DataFile);
     case 'EEG-MUSE-CSV'
         [DataMat, ChannelMat] = in_data_muse_csv(DataFile);
+    case 'EEG-WS-CSV'
+        [DataMat, ChannelMat] = in_data_ws_csv(DataFile);
     case 'EEG-MAT'
         DataMat = in_data_mat(DataFile);
     case 'EEG-NEUROSCAN-DAT'
         DataMat = in_data_neuroscan_dat(DataFile);
+    case 'EEG-TVB'
+        [DataMat, ChannelMat] = in_data_tvb(DataFile);
     case 'FT-TIMELOCK'
         [DataMat, ChannelMat] = in_data_fieldtrip(DataFile);
+        % Check that time is linear
+        if (length(DataMat(1).Time) > 2) && any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
+            error(['The input file has a non-linear time vector.' 10 'This is currently not supported, interpolate your recordings on continuous time vector first.']);
+        end
+    case 'NIRS-SNIRF'
+        [DataMat, ChannelMat] = in_data_snirf(DataFile);
     otherwise
         error('Unknown file format');
 end
 
+% Replicate data points if only one
+if ~isempty(DataMat)
+    for i = 1:length(DataMat)
+        if (length(DataMat(i).Time) == 1)
+            DataMat(i).Time = DataMat(i).Time + [0, 0.001];
+            DataMat(i).F = [DataMat(i).F, DataMat(i).F];
+        end
+    end
+end
 % File can only be read in one block (imported data)
 if isempty(sFile) && ~isempty(DataMat)
     sFile = in_fopen_bstmat(DataMat);
 end
-
 % File could not be opened
 if isempty(sFile) && ischar(DataFile)
     error(['Cannot open data file: ', 10, DataFile]);
@@ -170,6 +221,9 @@ end
 
 % ===== EVENTS =====
 if isfield(sFile, 'events') && ~isempty(sFile.events)
+    % Fix structure
+    sFile.events = struct_fix_events(sFile.events);
+    
     % === SORT BY NAME ===
     % Remove the common components
     [tmp__, evtLabels] = str_common_path({sFile.events.label});
@@ -194,6 +248,16 @@ if isfield(sFile, 'events') && ~isempty(sFile.events)
         end
     end
 end
+
+% Fix output datamat structure if necessary
+if (nargout >= 4) && ~isempty(DataMat) && isfield(DataMat(1), 'Events')
+    for i = 1:length(DataMat)
+        if ~isempty(DataMat(i).Events)
+            DataMat.Events = struct_fix_events(DataMat.Events);
+        end
+    end
+end
+
 
 
 

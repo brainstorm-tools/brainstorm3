@@ -9,7 +9,7 @@ function varargout = process_epileptogenicity( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function varargout = process_epileptogenicity( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017
+% Authors: Francois Tadel, 2017-2021
 
 eval(macro_method);
 end
@@ -59,10 +59,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.sensortypes.Group   = 'input';
     % === FREQUENCY RANGE
     sProcess.options.freqband.Comment = 'Frequency band (default=[60,200]): ';
-    sProcess.options.freqband.Type    = 'freqrange';
-    sProcess.options.freqband.Value   = [];
+    sProcess.options.freqband.Type    = 'freqrange_static';
+    sProcess.options.freqband.Value   = {[60 200], 'Hz', 3};
     % === LATENCY
-    sProcess.options.latency.Comment = 'Latency, one or multiple time points (s): ';
+    sProcess.options.latency.Comment = 'Latency: <FONT COLOR="#808080"><I>(eg. "t1", "[t1,t2,...]", "start:step:stop")</I></FONT>';
     sProcess.options.latency.Type    = 'text';
     sProcess.options.latency.Value   = '0:2:20';
     % === TIME CONSTANT
@@ -96,7 +96,11 @@ end
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
     % Initialize SPM
-    bst_spm_init(0);
+    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     % Get all the options
@@ -112,6 +116,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputsB, 'Invalid latency list: no time points identified.');
         return;
     end
+    if isempty(OPTIONS.FreqBand)
+        bst_report('Error', sProcess, sInputsB, ['Invalid frequency band: ' num2str(OPTIONS.FreqBand)]);
+        return;
+    end
     if (length(sInputsA) > 1) && (~all(strcmpi(sInputsA(1).SubjectFile, {sInputsA.SubjectFile})) || ~all(strcmpi(sInputsA(1).SubjectFile, {sInputsB.SubjectFile})))
         bst_report('Error', sProcess, sInputsB, 'All the input files must be attached to the same subject.');
         return;
@@ -125,10 +133,10 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     for i = 1:length(sInputsB)
         DataMat = in_bst_data(sInputsB(i).FileName, 'Time');
         if (min(OPTIONS.Latency) < DataMat.Time(1))
-            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs is outside of an input files (%0.3f-%0.3fs).', min(OPTIONS.Latency), DataMat.Time(1), DataMat.Time(end)));
+            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs is outside of an input file: [%0.3f,-%0.3fs].', min(OPTIONS.Latency), DataMat.Time(1), DataMat.Time(end)));
             return;
         elseif (max(OPTIONS.Latency) + OPTIONS.HorizonT > DataMat.Time(end))
-            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs (+ sliding window %0.3fs) is outside of an input files: [%0.3f,%0.3f]s.', max(OPTIONS.Latency), OPTIONS.HorizonT, DataMat.Time(1), DataMat.Time(end)));
+            bst_report('Error', sProcess, sInputsB, sprintf('Latency %0.3fs (+ sliding window %0.3fs) is outside of an input file: [%0.3f,%0.3f]s.', max(OPTIONS.Latency), OPTIONS.HorizonT, DataMat.Time(1), DataMat.Time(end)));
             return;
         end
     end
@@ -141,6 +149,8 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
 
     % ===== EXPORT INPUT FILES =====
+    % Empty temporary folder
+    gui_brainstorm('EmptyTempFolder');
     % Work in Brainstorm's temporary folder
     workDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'ImaGIN_epileptogenicity');
     % Make sure Matlab is not currently in the work directory
@@ -187,25 +197,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
 
         % Convert channel positions to MRI coordinates (for surface export, keep everything in SCS)
         if strcmpi(OPTIONS.OutputType, 'volume')
-            Tscs2mri = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
-            % Get the MRI=>RAS transformation
-            if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
-                iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
-            else
-                iTransf = [];
+            % Get the transformation SCS=>MRI
+            Tscs2mri = cs_convert(sMri, 'scs', 'mri');
+            % Get the MRI=>WORLD transformation
+            Tmri2world = cs_convert(sMri, 'mri', 'world');
+            % If available, compute the transformation SCS=>WORLD
+            if ~isempty(Tmri2world)
+                Tscs2mri = Tmri2world * Tscs2mri;
             end
-            % If there is a transformation MRI=>RAS from a .nii file 
-            if ~isempty(iTransf)
-                vox2ras = sMri.InitTransf{iTransf,2};
-                % 2nd operation: Change reference from (0,0,0) to (.5,.5,.5)
-                vox2ras = vox2ras * [1 0 0 -.5; 0 1 0 -.5; 0 0 1 -.5; 0 0 0 1];
-                % 1st operation: Convert from MRI(mm) to voxels
-                vox2ras = vox2ras * diag(1 ./ [sMri.Voxsize, 1]);
-                % Convert millimeters=>meters
-                vox2ras(1:3,4) = vox2ras(1:3,4) ./ 1000;
-                % Add this transformation
-                Tscs2mri = vox2ras * Tscs2mri;
-            end
+            % Apply to electrodes positions
             ChannelMat = channel_apply_transf(ChannelMat, Tscs2mri, iChan, 1);
             ChannelMat = ChannelMat{1};
         else
@@ -358,6 +358,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         tmpMat = load(tmpFile);
         tmpMat.tmap(tmpMat.tmap < 0) = 0;
         tmpMat = bst_history('add', tmpMat, 'epilepto', strHistory);
+        % Update file in the database
         bst_save(tmpFile, tmpMat, 'v6');
     end
     
@@ -369,7 +370,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         % File comment = File name
         [tmp, Comment] = bst_fileparts(listFiles(i).name);
         % Import file
-        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's');
+        tmpFile = import_sources(iStudy, [], bst_fullfile(workDir, listFiles(i).name), [], fileFormat, Comment, 's', [min(fileLatency), max(fileLatency)]);
         % Add history field
         tmpFile = bst_history('add', tmpFile, 'epilepto', strHistory);
     end
@@ -441,8 +442,4 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         panel_protocols('UpdateNode', 'Study', iStudy);
     end
 end
-
-    
-
-
 

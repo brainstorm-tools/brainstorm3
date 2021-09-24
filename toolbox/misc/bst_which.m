@@ -8,7 +8,7 @@ function bst_which(filename, exploreMode)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -91,17 +91,23 @@ else
         
     % === FILE EXPLORERS ===
     else
+        % Any X Desktop Group (XDG) compliant
+        ixXdg = system('which xdg-open');
+        if (ixXdg == 0)          
+            system(['xdg-open "' filepath '"']);
+            return
+        end
         % NAUTILUS (GNOME)
         isGnome = system('which nautilus');
         if (isGnome == 0)
             %unix(['xterm -e "nautilus \"' filepath '\""']);
-            system(['nautilus "' filepath '"']);
+            system(['nautilus "' filepath '" &']);
             return
         end
         % KONQUEROR (KDE)
         isKde = system('which konqueror');
         if (isKde == 0)
-            system(['xterm -e "konqueror \"' filepath '\""']);
+            system(['xterm -e "konqueror \"' filepath '\"" &']);
             return
         end
         % Error

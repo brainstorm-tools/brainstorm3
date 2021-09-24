@@ -11,7 +11,7 @@ function tutorial_epileptogenicity(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -96,9 +96,9 @@ MriPre = fullfile(AnatDir, 'subjectimage_pre.mat');
 MriPost = fullfile(AnatDir, 'subjectimage_post_orig.mat');
 MriPostReslice = fullfile(AnatDir, 'subjectimage_post.mat');
 % Rename imported volumes
-movefile(file_fullpath(DbMriFilePre), MriPre);
-movefile(file_fullpath(DbMriFilePostReg), MriPost);
-movefile(file_fullpath(DbMriFilePostReslice), MriPostReslice);
+file_move(file_fullpath(DbMriFilePre), MriPre);
+file_move(file_fullpath(DbMriFilePostReg), MriPost);
+file_move(file_fullpath(DbMriFilePostReslice), MriPostReslice);
 sSubject.Anatomy(1).FileName = file_short(MriPre);
 sSubject.Anatomy(2).FileName = file_short(MriPost);
 sSubject.Anatomy(3).FileName = file_short(MriPostReslice);
@@ -109,7 +109,7 @@ panel_protocols('UpdateNode', 'Subject', iSubject);
 db_surface_default(iSubject, 'Anatomy', 1, 0);
 % Compute SPM canonical surfaces
 SurfResolution = 4;   %1=5124V, 2=8196V, 3=20484V 4=7861V+hip+amyg
-process_generate_canonical('ComputeInteractive', iSubject, 1, SurfResolution);
+process_generate_canonical('Compute', iSubject, 1, SurfResolution, 0);
 
 
 % ===== ACCESS THE RECORDINGS =====
@@ -119,6 +119,13 @@ sFilesRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'datafile',       {{Sz1File, Sz2File, Sz3File}, 'EEG-MICROMED'}, ...
     'channelreplace', 0, ...
     'channelalign',   0);
+% Process: Add EEG positions
+bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
+    'channelfile', {ElecPosFile, 'ASCII_NXYZ'});
+% Process: Set channels type
+sFilesRaw = bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], ...
+    'sensortypes', 'EEG', ...
+    'newtype',     'SEEG');
 % Process: Power spectrum density (Welch)
 sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
     'timewindow',  [], ...
@@ -133,13 +140,6 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', sFilesRaw, [], ...
          'Measure',         'magnitude', ...
          'Output',          'all', ...
          'SaveKernel',      0));
-% Process: Add EEG positions
-bst_process('CallProcess', 'process_channel_addloc', sFilesRaw, [], ...
-    'channelfile', {ElecPosFile, 'ASCII_NXYZ'});
-% Process: Set channels type
-sFilesRaw = bst_process('CallProcess', 'process_channel_settype', sFilesRaw, [], ...
-    'sensortypes', 'EEG', ...
-    'newtype',     'SEEG');
 
 
 %% ===== EVENTS AND BAD CHANNELS =====
@@ -152,25 +152,23 @@ sfreq = 512;
 sEvt1 = db_template('event');
 sEvt1(1).label   = 'Onset';
 sEvt1(1).epochs  = 1;
+sEvt1(1).channels= {{}};
+sEvt1(1).notes   = {[]};
 sEvt1(2).label   = 'Baseline';
 sEvt1(2).epochs  = 1;
+sEvt1(2).channels= {{}};
+sEvt1(2).notes   = {[]};
 % SZ1
 sEvt1(1).times   = 120.800;
 sEvt1(2).times   = [72.800; 77.800];
-sEvt1(1).samples = sEvt1(1).times .* sfreq;
-sEvt1(2).samples = sEvt1(2).times .* sfreq;
 % SZ2
 sEvt2 = sEvt1;
 sEvt2(1).times   = 143.510;
 sEvt2(2).times   = [103.510; 108.510];
-sEvt2(1).samples = sEvt2(1).times .* sfreq;
-sEvt2(2).samples = sEvt2(2).times .* sfreq;
 % SZ3
 sEvt3 = sEvt1;
 sEvt3(1).times   = 120.287;
 sEvt3(2).times   = [45.287; 50.287];
-sEvt3(1).samples = sEvt3(1).times .* sfreq;
-sEvt3(2).samples = sEvt3(2).times .* sfreq;
 % Process: Events: Import from file
 bst_process('CallProcess', 'process_evt_import', sFilesRaw(1), [], ...
     'evtfile', {sEvt1, 'struct'}, ...
@@ -227,7 +225,6 @@ TimeResolution = .2;
 ThDelay        = 0.05;
 OutputType     = 'volume';
 % Process: Epileptogenicity index (A=Baseline,B=Seizure)
-bst_report('Start', sFilesBaselines(2));
 sFilesEpilepto1 = bst_process('CallProcess', 'process_epileptogenicity', sFilesBaselines(1), sFilesOnsets(1), ...
     'sensortypes',    'SEEG', ...
     'freqband',       FreqBand, ...
@@ -246,7 +243,6 @@ TimeResolution = .2;
 ThDelay        = 0.05;
 OutputType     = 'surface';
 % Process: Epileptogenicity index (A=Baseline,B=Seizure)
-bst_report('Start', sFilesBaselines(2));
 sFilesEpilepto2 = bst_process('CallProcess', 'process_epileptogenicity', sFilesBaselines(2:3), sFilesOnsets(2:3), ...
     'sensortypes',    'SEEG', ...
     'freqband',       FreqBand, ...

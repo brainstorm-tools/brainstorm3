@@ -1,5 +1,5 @@
 function [sFile, ChannelMat] = in_fopen_brainamp(DataFile)
-% IN_FOPEN_BRAINAMP: Open a BrainVision BrainAmp .eeg file.
+% IN_FOPEN_BRAINAMP: Open a BrainVision BrainAmp .eeg/.dat file.
 %
 % USAGE:  [sFile, ChannelMat] = in_fopen_brainamp(DataFile)
 
@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_brainamp(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -110,7 +110,7 @@ while 1
                 hdr.chgain(iChan) = chFactor * chUnit;
                 
             elseif strcmpi(curBlock, 'Coordinates')
-                tmpLoc = str2num(argLine{2}); 
+                tmpLoc = str2num(argLine{2});
                 % Spherical (R,TH,PHI)
                 if (length(tmpLoc) == 3) && (tmpLoc(1) == 1)
                     % Convert Spherical(degrees) => Spherical(radians) => Cartesian
@@ -154,19 +154,19 @@ fclose(fid);
 
 
 %% ===== REBUILD ACQ INFO =====
-% BINARY and MULTIPLEXED files
-if (strcmpi(hdr.DataFormat, 'BINARY') && strcmpi(hdr.DataOrientation, 'MULTIPLEXED'))
+% BINARY files
+if strcmpi(hdr.DataFormat, 'BINARY')
     % EEG file: get size
     dirInfo = dir(DataFile);
     % Get number of samples
     switch lower(hdr.BinaryFormat)
-        case 'int_16';
+        case 'int_16'
             hdr.bytesize   = 2;
             hdr.byteformat = 'int16';
-        case 'int_32';
+        case 'int_32'
             hdr.bytesize   = 4;
             hdr.byteformat = 'int32';
-        case 'ieee_float_32';
+        case 'ieee_float_32'
             hdr.bytesize   = 4;
             hdr.byteformat = 'float32';
     end
@@ -175,7 +175,7 @@ if (strcmpi(hdr.DataFormat, 'BINARY') && strcmpi(hdr.DataOrientation, 'MULTIPLEX
 elseif (strcmpi(hdr.DataFormat, 'ASCII') && strcmpi(hdr.DataOrientation, 'VECTORIZED'))
     hdr.nsamples = hdr.DataPoints;
 else
-    error(['Only reading binary multiplexed or vectorize ASCII data format.' 10 'Please contact us if you would like to read other types of files in Brainstorm.']);
+    error(['Only reading binary or vectorized ASCII data format.' 10 'Please contact us if you would like to read other types of files in Brainstorm.']);
 end
 
 
@@ -193,8 +193,7 @@ sFile.header     = hdr;
 [tmp__, sFile.comment, tmp__] = bst_fileparts(DataFile);
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = 1e6 ./ hdr.SamplingInterval;
-sFile.prop.samples = [0, hdr.nsamples - 1];
-sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, hdr.nsamples - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
 % No info on bad channels
 sFile.channelflag = ones(hdr.NumberOfChannels, 1);
@@ -211,7 +210,7 @@ for i = 1:hdr.NumberOfChannels
     else
         ChannelMat.Channel(i).Name = sprintf('E%d', i);
     end
-    if ~isempty(hdr.chloc)
+    if ~isempty(hdr.chloc) && (i <= size(hdr.chloc,1))
         ChannelMat.Channel(i).Loc = hdr.chloc(i,:)';
     else
         ChannelMat.Channel(i).Loc = [0; 0; 0];

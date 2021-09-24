@@ -17,7 +17,7 @@ function sFile = out_fwrite(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,7 @@ function sFile = out_fwrite(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2014
+% Authors: Francois Tadel, 2009-2019
 
 
 %% ===== PARSE INPUTS =====
@@ -72,22 +72,27 @@ else
     sfid = [];
 end
 % Find EDF/BDF annotation channels
-if ~isempty(ChannelMat)
-    iAnnot = channel_find(ChannelMat.Channel, {'EDF', 'BDF', 'KDF'});
-else
-    iAnnot = [];
-end
+% if ~isempty(ChannelMat) && ismember(sFile.format, {'EEG-EGI-RAW', 'EEG-BRAINAMP'})
+%     iAnnot = channel_find(ChannelMat.Channel, {'EDF', 'BDF', 'KDF'});
+%     % Removing the EDF/BDF annotation channels
+%     if ~isempty(iAnnot)
+%         if (max(iAnnot) <= size(F,1))
+%             F(iAnnot,:) = 0 .* F(iAnnot,:);
+%         else
+%             Ftmp = zeros(max(iAnnot), size(F,2));
+%             Ftmp(1:size(F,1),:) = F;
+%             F = Ftmp;
+%         end
+%     end
+% end
 
 
 %% ===== WRITE RECORDINGS BLOCK =====
 switch (sFile.format)
     case 'EEG-EGI-RAW'
-        % Removing the EDF/BDF annotation channels
-        if ~isempty(iAnnot)
-            F(iAnnot,:) = 0 .* F(iAnnot,:);
-        end
-        % Save data
         out_fwrite_egi(sFile, sfid, SamplesBounds, ChannelRange, F);
+    case 'EEG-BRAINAMP'
+        out_fwrite_brainamp(sFile, sfid, SamplesBounds, F);
     case 'BST-BIN'
         out_fwrite_bst(sFile, sfid, SamplesBounds, ChannelRange, F);
     case 'SPM-DAT'

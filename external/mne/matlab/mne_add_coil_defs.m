@@ -66,7 +66,7 @@ elseif nargin ~= 3
     error(me,'Incorrect number of arguments');
 end
 
-% fprintf(1,'\t%d coil definition templates available\n',length(templates));
+fprintf(1,'\t%d coil definition templates available\n',length(templates));
 
 if accuracy ~= 0 && accuracy ~= 1 && accuracy ~= 2
     error(me,'Accuracy should attain one of the values 0, 1, 2');
@@ -144,9 +144,8 @@ for k = 1:nchan
         %  Did we find the template?
         %
         if isempty(temp)
-            disp(sprintf('Could not find an MEG coil template (coil type = %d accuracy = %d) for channel %s', coil_type,accuracy,chs(k).ch_name));
-            continue; 
-%             error(me,'Could not find an MEG coil template (coil type = %d accuracy = %d) for channel %s', coil_type,accuracy,chs(k).ch_name);
+            error(me,'Could not find an MEG coil template (coil type = %d accuracy = %d) for channel %s', ...
+                coil_type,accuracy,chs(k).ch_name);
         end
         %
         %  Transform the template using the coil transformation
@@ -184,7 +183,7 @@ if neeg > 0
     end
 end
 
-% fprintf(1,'\t%d MEG coil definitions and %d EEG electrodes set up\n',nmeg,neeg);
+fprintf(1,'\t%d MEG coil definitions and %d EEG electrodes set up\n',nmeg,neeg);
 
 return;
 

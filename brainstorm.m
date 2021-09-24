@@ -1,32 +1,35 @@
 function varargout = brainstorm( varargin )
 % BRAINSTORM Brainstorm startup function.
 %
-% USAGE: brainstorm               : Start Brainstorm
-%        brainstorm start         : Start Brainstorm
-%        brainstorm nogui         : Start Brainstorm without interface
-%        brainstorm server        : Start Brainstorm on a Matlab server (keeps the environment alive at the end of the execution)
-%        brainstorm ... local     : Start Brainstorm with a local database (in .brainstorm folder)
-%        brainstorm stop          : Quit Brainstorm
-%        brainstorm reset         : Re-inialize Brainstorm (delete preferences and database)
-%        brainstorm digitize      : Digitize points using a Polhemus system
-%        brainstorm update        : Download and install latest Brainstorm update
-%        brainstorm autopilot ... : Call bst_autopilot with the following arguments
-%        brainstorm setpath       : Add Brainstorm subdirectories to current path
-%        brainstorm startjava     : Add Brainstorm Java classes to dynamic classpath
-%        brainstorm info          : Open Brainstorm website
-%        brainstorm license       : Displays license agreement window
-%        brainstorm tutorial name : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa
-%        brainstorm tutorial all  : Run all the validation scripts
-%        brainstorm test          : Run a coverage test
-%        brainstorm deploy        : Create a zip file for distribution (see bst_deploy for options)
-%        brainstorm deploy 1      : Compile the current version of Brainstorm with Matlab mcc compiler
-%  res = brainstorm('status')     : Return brainstorm status (1=running, 0=stopped)
+% USAGE: brainstorm                 : Start Brainstorm
+%        brainstorm start           : Start Brainstorm
+%        brainstorm nogui           : Start Brainstorm with hidden interface (for scripts)
+%        brainstorm server          : Start Brainstorm on a distant server (completely headless)
+%        brainstorm [script] [args] : Start Brainstorm in server mode and execute the input script
+%        brainstorm ... local       : Start Brainstorm with a local database (in .brainstorm folder)
+%        brainstorm stop            : Quit Brainstorm
+%        brainstorm reset           : Re-inialize Brainstorm (delete preferences and database)
+%        brainstorm digitize        : Digitize points using a Polhemus system
+%        brainstorm update          : Download and install latest Brainstorm update
+%        brainstorm autopilot ...   : Call bst_autopilot with the following arguments
+%        brainstorm setpath         : Add Brainstorm subdirectories to current path
+%        brainstorm startjava       : Add Brainstorm Java classes to dynamic classpath
+%        brainstorm info            : Open Brainstorm website
+%        brainstorm license         : Displays license agreement window
+%        brainstorm tutorial name   : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa
+%        brainstorm tutorial all    : Run all the validation scripts
+%        brainstorm test            : Run a coverage test
+%        brainstorm deploy          : Cleanup files and copy to git repository
+%        brainstorm compile         : Compile Brainstorm with Matlab mcc compiler, including all plugins
+%        brainstorm compile noplugs : Compile Brainstorm with Matlab mcc compiler, without the plugins
+%        brainstorm workshop        : Download OpenMEEG and the SPM atlases, and run some small tests
+%  res = brainstorm('status')       : Return brainstorm status (1=running, 0=stopped)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,15 +43,15 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2021
 
 % Make sure that "more" is off
 more off
 
 % Compiled version
-if exist('isdeployed', 'builtin') && isdeployed
+isCompiled = exist('isdeployed', 'builtin') && isdeployed;
+if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
-    %disp(['Running from: ' BrainstormHomeDir]);
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));
@@ -100,7 +103,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     end
 end
 % Deployed: Remove one of the two JOGL packages from the Java classpath
-if exist('isdeployed', 'builtin') && isdeployed
+if isCompiled
     % Find the entry in the classpath
     if ~isempty(jarfile)
         jarfileRemove = setdiff({'brainstorm_jogl1.jar', 'brainstorm_jogl2.jar', 'brainstorm_jogl2.3.jar'}, jarfile);
@@ -210,6 +213,7 @@ switch action
                 bst_report('Close');
             end
         end
+        
     case 'test'
         bst_set_path(BrainstormHomeDir);
         if (nargin < 2)
@@ -217,56 +221,122 @@ switch action
         end
         test_dir = varargin{2};
         test_all(test_dir);
+        
+    case 'workshop'
+        % Runs Brainstorm normally (asks for brainstorm_db)
+        if ~isappdata(0, 'BrainstormRunning')
+            bst_set_path(BrainstormHomeDir);
+            bst_startup(BrainstormHomeDir, 1, BrainstormDbDir);
+        end
+        % Message
+        java_dialog('msgbox', 'Brainstorm will now download additional files needed for the workshop.', 'Workshop');
+        % Downloads OpenMEEG
+        bst_plugin('Install', 'openmeeg', 1);
+        % Downloads the TMP.nii SPM atlas
+        bst_normalize_mni('install');
+        % Message
+        java_dialog('msgbox', ['Brainstorm will now test your display and open a 3D figure:' 10 10 ... 
+                               ' - You should see two surfaces: a brain surface and a transparent head.' 10 ...
+                               ' - Make sure you can rotate the brain with your mouse, ' 10 ...
+                               ' - Then close the figure.' 10 10], 'Workshop');
+        % Creates an empty test protocol
+        ProtocolName = 'TestWorkshop';
+        gui_brainstorm('DeleteProtocol', ProtocolName);
+        gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
+        % Display the default anatomy cortex and head 
+        hFig = view_surface('@default_subject/tess_cortex_pial_low.mat');
+        hFig = view_surface('@default_subject/tess_head.mat', [], [], hFig);
+        waitfor(hFig);
+        % Delete test protocol
+        gui_brainstorm('DeleteProtocol', ProtocolName);
+        % Confirmation message
+        java_dialog('msgbox', 'You computer is ready for the workshop.', 'Workshop');
+        
     case 'deploy'
-        % Close Brainstorm
-        if isappdata(0, 'BrainstormRunning')
-            bst_exit();
-        end
-        % Initialize path
+        % Add path to deploy function
         bst_set_path(BrainstormHomeDir);
-        % Get Matlab version
-        ReleaseName = bst_get('MatlabReleaseName');
-        % Add path to java_dialog function
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
+        addpath(fullfile(BrainstormHomeDir, 'deploy'));
         bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        % Remove .brainstorm from the path
-        rmpath(bst_get('UserMexDir'));
-        rmpath(bst_get('UserProcessDir'));
-        % Build the name of the deployment function
-        bst_deploy_java = str2func(['bst_deploy_java_' ReleaseName(2:end)]);
-        % Update
+        % Deploy Braintorm
+        bst_deploy();
+
+    case 'compile'
+        % Add path to deploy function
+        bst_set_path(BrainstormHomeDir);
+        addpath(fullfile(BrainstormHomeDir, 'deploy'));
+        % Options
         if (nargin > 1)
-            bst_deploy_java(varargin{2:end});
+            if strcmpi(varargin{2}, 'noplugs')
+                isPlugs = 0;
+            else
+                error('Usage: brainstorm compile [noplugs]');
+            end
         else
-            bst_deploy_java();
+            isPlugs = 1;
         end
-    case 'packagebin'
-        bst_set_path(BrainstormHomeDir);
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
-        bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        bst_package_bin(varargin{2:end});
+        % Matlab < 2020a: Old compilation function using deploytool
+        if (bst_get('MatlabVersion') < 908)
+            addpath(fullfile(BrainstormHomeDir, 'deploy', 'deprecated'));
+            if isPlugs
+                bst_deploy_java('2');
+            else
+                bst_deploy_java('1');
+            end
+        else
+            bst_compile(isPlugs);
+        end
+        
     otherwise
-        disp(' ');
-        disp('Usage : brainstorm start         : Start Brainstorm');
-        disp('        brainstorm nogui         : Start Brainstorm without interface (for scripts)');
-        disp('        brainstorm stop          : Stop Brainstorm');
-        disp('        brainstorm server        : Start Brainstorm on a Matlab server');
-        disp('        brainstorm update        : Download and install latest Brainstorm update (see bst_update)');
-        disp('        brainstorm reset         : Re-initialize Brainstorm database and preferences');
-        disp('        brainstorm digitize      : Digitize electrodes positions and head shape using a Polhemus system');
-        disp('        brainstorm setpath       : Add Brainstorm subdirectories to current path');
-        disp('        brainstorm startjava     : Add Brainstorm Java classes to dynamic classpath');
-        disp('        brainstorm info          : Open Brainstorm website');
-        disp('        brainstorm forum         : Open Brainstorm forum');
-        disp('        brainstorm license       : Display license');
-        disp('        brainstorm tutorial name : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa)');
-        disp('        brainstorm tutorial all  : Run all the validation scripts');
-        disp('        brainstorm deploy        : Create a zip file for distribution (see bst_deploy)');
-        disp('        brainstorm deploy 1      : Deploy + compile the current version of Brainstorm with Matlab mcc compiler');
-        disp('        brainstorm packagebin    : Create separate zip files for all the currently available binary distributions');
-        disp(' ');
+        % Check if trying to execute a script
+        if file_exist(action)
+            ScriptFile = action;
+        elseif file_exist(fullfile(pwd, action))
+            ScriptFile = fullfile(pwd, action);
+        else
+            ScriptFile = [];
+        end
+        % Execute script
+        if ~isempty(ScriptFile)
+            % Start brainstorm in server mode (local database or not)
+            if (length(varargin) > 1) && any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
+                brainstorm server local;
+                params = setdiff(varargin(2:end), 'local');
+            else
+                brainstorm server;
+                params = [];
+            end
+            % Execute script
+            if ~isempty(params)
+                panel_command('ExecuteScript', ScriptFile, params{:});
+            else
+                panel_command('ExecuteScript', ScriptFile);
+            end
+            % Quit
+            brainstorm stop;
+            
+        % Display usage
+        else
+            disp(' ');
+            disp('Usage : brainstorm start           : Start Brainstorm');
+            disp('        brainstorm nogui           : Start Brainstorm with hidden interface (for scripts)');
+            disp('        brainstorm server          : Start Brainstorm on a distant server (completely headless)');
+            disp('        brainstorm <script> <args> : Start Brainstorm in server mode, execute the input script and quit');
+            disp('        brainstorm ... local       : Start Brainstorm with a local database (in .brainstorm folder)');
+            disp('        brainstorm stop            : Quit Brainstorm');
+            disp('        brainstorm update          : Download and install latest Brainstorm update (see bst_update)');
+            disp('        brainstorm reset           : Re-initialize Brainstorm database and preferences');
+            disp('        brainstorm digitize        : Digitize electrodes positions and head shape using a Polhemus system');
+            disp('        brainstorm setpath         : Add Brainstorm subdirectories to current path');
+            disp('        brainstorm startjava       : Add Brainstorm Java classes to dynamic classpath');
+            disp('        brainstorm info            : Open Brainstorm website');
+            disp('        brainstorm forum           : Open Brainstorm forum');
+            disp('        brainstorm license         : Display license');
+            disp('        brainstorm tutorial name   : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa)');
+            disp('        brainstorm tutorial all    : Run all the validation scripts');
+            disp('        brainstorm packagebin      : Create separate zip files for all the currently available binary distributions');
+            disp('  res = brainstorm(''status'')     : Return brainstorm status (1=running, 0=stopped)');
+            disp(' ');
+        end
 end
 
 % Return value
@@ -280,7 +350,7 @@ end
 %% ===== SET PATH =====
 function bst_set_path(BrainstormHomeDir)
     % Cancel add path in case of deployed application
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         return
     end
     % Brainstorm folder itself

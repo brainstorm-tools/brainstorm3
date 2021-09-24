@@ -8,7 +8,7 @@ function varargout = panel_cluster(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -491,7 +491,7 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
         % INDICES: Ask user to give a list of sensors indices
         elseif strcmpi(Sensors, 'Indices')
             % Ask user to enter manually the indices of the sensors
-            res = java_dialog('input', ['Enter the list of channels separated with comas.' 10 10 ...
+            res = java_dialog('input', ['Enter the list of channels separated with commas.' 10 10 ...
                                         'Channels can be selected by:' 10 ...
                                         '     1) Types: "MEG, Misc"' 10 ...
                                         '     2) Names: "EEG021, EEG023"' 10 ...
@@ -540,6 +540,8 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
     for i = 1:length(sOtherClusters)
         if isequal(sort(Sensors), sort(sOtherClusters(i).Sensors))
             bst_error('Cluster already exists.', 'Create new cluster', 0);
+            sCluster = sOtherClusters(i);
+            iCluster = i;
             return
         end
     end

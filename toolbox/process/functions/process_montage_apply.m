@@ -7,7 +7,7 @@ function varargout = process_montage_apply( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_montage_apply( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2019
 
 eval(macro_method);
 end
@@ -94,6 +94,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if ismember('NIRS', {ChannelMat.Channel.Type})
             panel_montage('AddAutoMontagesNirs', ChannelMat);
         end
+        if ~isempty(ChannelMat.Projector)
+            panel_montage('AddAutoMontagesProj', ChannelMat);
+        end
         
         % Get montage
         sMontage = panel_montage('GetMontage', MontageName);
@@ -114,11 +117,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iInput = iDataFile(ik);
             % Load input file 
             DataMat = in_bst_data(sInputs(iInput).FileName);
+            iStudyIn = sInputs(iInput).iStudy;
+            sStudyIn = bst_get('Study', iStudyIn);
             % Build average reference
-            if (strcmpi(sMontage.Name, 'Average reference'))
+            if ~isempty(strfind(sMontage.Name, 'Average reference'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 0);
             elseif ~isempty(strfind(sMontage.Name, '(local average ref)'))
                 sMontage = panel_montage('GetMontageAvgRef', sMontage, ChannelMat.Channel, DataMat.ChannelFlag, 1);
+            elseif ~isempty(strfind(sMontage.Name, 'Scalp current density'))
+                sMontage = panel_montage('GetMontageScd', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
+            elseif strcmpi(sMontage.Name, 'Head distance')
+                sMontage = panel_montage('GetMontageHeadDistance', sMontage, ChannelMat.Channel, DataMat.ChannelFlag);
             end
             % Get channels indices for the montage
             [iChannels, iMatrixChan, iMatrixDisp] = panel_montage('GetMontageChannels', sMontage, {ChannelMat.Channel.Name});
@@ -133,13 +142,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Apply montage
             if isCreateChan
-                DataMat.F = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                DataMat.F = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                 % Compute channel flag
                 ChannelFlag = ones(size(DataMat.F,1),1);
                 isChanBad = (double(sMontage.Matrix(iMatrixDisp,iMatrixChan) ~= 0) * reshape(double(DataMat.ChannelFlag(iChannels) == -1), [], 1) > 0);
                 ChannelFlag(isChanBad) = -1;
             else
-                DataMat.F(iChannels,:) = sMontage.Matrix(iMatrixDisp,iMatrixChan) * DataMat.F(iChannels,:);
+                DataMat.F(iChannels,:) = panel_montage('ApplyMontage', sMontage, DataMat.F(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
                 ChannelFlag = DataMat.ChannelFlag;
             end
 
@@ -215,8 +224,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         end
                         % Channel still not found: set to defaults
                         if isempty(iInputChan)
-                            bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
-                            ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
+                            %bst_report('Warning', sProcess, sInputs, ['Could not find a sensor definition for output channel #' num2str(iChanOut)]);
+                            %ChannelMatOut.Channel(iChanOut).Name = sprintf('M%03d', iChanOut);
+                            ChannelMatOut.Channel(iChanOut).Name = ChanNameOut;
                             ChannelMatOut.Channel(iChanOut).Type = 'Montage';
                         % Else: copy input channel info
                         else
@@ -240,10 +250,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             else
                 iStudyOut = sInputs(iInput).iStudy;
             end
+
             % Get output study
             sStudyOut = bst_get('Study', iStudyOut);
-            
-            % Edit data strcture
+            % Edit data structure
             DataMat.Comment     = [DataMat.Comment ' | ' strMontage];
             DataMat.ChannelFlag = ChannelFlag;
             DataMat = bst_history('add', DataMat, 'montage', ['Applied montage: ' sMontage.Name]);
@@ -257,6 +267,34 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             db_add_data(iStudyOut, NewDataFile, DataMat);
             % Add file to list of returned files
             OutputFiles{end+1} = NewDataFile;
+            
+            % Copy video links
+            if ~isequal(iStudyIn, iStudyOut) && ~isempty(sStudyIn.Image) && isempty(sStudyOut.Image)
+                sStudyOut = process_import_data_event('CopyVideoLinks', NewDataFile, sStudyIn);
+            end
+        end
+
+        % === PROCESS HEAD MODELS ===
+        if isCreateChan && (sSubject.UseDefaultChannel == 0) && ~isempty(sStudyChan.HeadModel)
+            % Info message about the list of bad channels used for the head models
+            bst_report('Info', sProcess, sInputs, ['The montage applied on the head model and noise covariance used the list of bad channels from data file: ' sInputs(iInput).FileName]);
+            % Loop through all the head models
+            for iFile = 1:length(sStudyChan.HeadModel)
+                % Load head model file
+                HeadModelMat = in_bst_headmodel(sStudyChan.HeadModel(iFile).FileName);
+                % Ignore the channels that have NaN values, otherwise everything in output is NaN
+                HeadModelMat.Gain(isnan(HeadModelMat.Gain)) = 0;
+                % Apply montage to it
+                HeadModelMat.Gain = panel_montage('ApplyMontage', sMontage, HeadModelMat.Gain(iChannels,:), sInputs(iInput).FileName, iMatrixDisp, iMatrixChan);
+                HeadModelMat = bst_history('add', HeadModelMat, 'montage', ['Applied montage: ' sMontage.Name]);
+                % Output filename
+                [fPath, fBase, fExt] = bst_fileparts(sStudyChan.HeadModel(iFile).FileName);
+                HeadModelFile = bst_fullfile(bst_fileparts(file_fullpath(sStudyOut.FileName)), [fBase, fExt]);
+                % Save new file
+                bst_save(HeadModelFile, HeadModelMat, 'v7');
+                % Register in database
+                sStudyOut = db_add_data(iStudyOut, HeadModelFile, HeadModelMat, []);
+            end
         end
     end
 end

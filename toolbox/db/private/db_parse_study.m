@@ -32,7 +32,7 @@ function [ sStudy ] = db_parse_study( studiesDir, studySubDir, sizeProgress )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -246,7 +246,7 @@ for iFile = 1:length(dirFiles)
                 % Else : file is not valid : rename it to avoid it slowing the parsing
                 else
                     fullfilename = bst_fullfile(studiesDir, filenameRelative);
-                    movefile(fullfilename, [fullfilename, '.bak']);
+                    file_move(fullfilename, [fullfilename, '.bak']);
                 end
 
             case 'dipoles'
@@ -258,7 +258,7 @@ for iFile = 1:length(dirFiles)
                 % Else : file is not valid : rename it to avoid it slowing the parsing
                 else
                     fullfilename = bst_fullfile(studiesDir, filenameRelative);
-                    movefile(fullfilename, [fullfilename, '.bak']);
+                    file_move(fullfilename, [fullfilename, '.bak']);
                 end
             case 'timefreq'
                 % Try to load channel info
@@ -269,7 +269,7 @@ for iFile = 1:length(dirFiles)
                 % Else : file is not valid : rename it to avoid it slowing the parsing
                 else
                     fullfilename = bst_fullfile(studiesDir, filenameRelative);
-                    movefile(fullfilename, [fullfilename, '.bak']);
+                    file_move(fullfilename, [fullfilename, '.bak']);
                 end
             case 'headmodel'
                 % Try to load headmodel info
@@ -290,7 +290,7 @@ for iFile = 1:length(dirFiles)
                 % Else : file is not valid : rename it to avoid it slowing the parsing
                 else
                     fullfilename = bst_fullfile(studiesDir, filenameRelative);
-                    movefile(fullfilename, [fullfilename, '.bak']);
+                    file_move(fullfilename, [fullfilename, '.bak']);
                 end
 
             case 'linkresults'
@@ -307,7 +307,7 @@ for iFile = 1:length(dirFiles)
                 % Else : file is not valid : rename it to avoid it slowing the parsing
                 else
                     fullfilename = bst_fullfile(studiesDir, filenameRelative);
-                    movefile(fullfilename, [fullfilename, '.bak']);
+                    file_move(fullfilename, [fullfilename, '.bak']);
                 end  
             case 'matrix'
                 % Try to load headmodel info

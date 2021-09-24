@@ -7,7 +7,7 @@ function varargout = figure_connect( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,8 +21,7 @@ function varargout = figure_connect( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sebastien Dery, Francois Tadel, 2013
-%          Francois Tadel, 2014
+% Authors: Sebastien Dery, 2013; Francois Tadel, 2013-2014; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -39,6 +38,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'DockControls',          'off', ...earnadd
                   'Units',                 'pixels', ...
                   'Color',                 [0 0 0], ...
+                  'Pointer',               'arrow', ...
                   'BusyAction',            'queue', ...
                   'Interruptible',         'off', ...
                   'HitTest',               'on', ...
@@ -63,7 +63,11 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
     %                  'Visible',  'off', ...
     %                  'BusyAction',    'queue', ...
     %                  'Interruptible', 'off');
-              
+
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
 	% Create rendering panel
     [OGL, container] = javacomponent(java_create('org.brainstorm.connect.GraphicsFramework'), [0, 0, 500, 400], hFig);
     % Resize callback
@@ -289,10 +293,12 @@ function UpdateContainer(hFig, container)
         titlePos = get(TitlesHandle(1), 'Position'); 
         titleHeight = titlePos(4);
     end
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginHeight  = 25;
-    marginWidth   = 45;
+    colorbarWidth = 15 .* Scaling;
+    marginHeight  = 25 .* Scaling;
+    marginWidth   = 45 .* Scaling;
     % If there is a colorbar 
     if ~isempty(hColorbar)
         % Reposition the colorbar
@@ -300,15 +306,15 @@ function UpdateContainer(hFig, container)
                        'Position', [figPos(3) - marginWidth, ...
                                     marginHeight, ...
                                     colorbarWidth, ...
-                                    max(1, min(90, figPos(4) - marginHeight - 3))]);
+                                    max(1, min(90, figPos(4) - marginHeight - 3 .* Scaling))]);
         % Reposition the container
         marginAxes = 0;
         if ~isempty(container)
             set(container, 'Units',    'pixels', ...
                            'Position', [marginAxes, ...
                                         marginAxes, ...
-                                        figPos(3) - colorbarWidth - marginWidth - marginAxes, ... 
-                                        figPos(4) - 2*marginAxes - titleHeight]);
+                                        max(1, figPos(3) - colorbarWidth - marginWidth - marginAxes), ... 
+                                        max(1, figPos(4) - 2*marginAxes - titleHeight)]);
         end
         uistack(hColorbar,'top',1);
     else
@@ -325,7 +331,7 @@ function HasTitle = RefreshTitle(hFig)
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
     if (DisplayInRegion)
         % Organisation level
-        OrganiseNode = getappdata(hFig, 'OrganiseNode');
+        OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
         % Label 
         hTitle = getappdata(hFig, 'TitlesHandle');
         % If data are hierarchicaly organised and we are not
@@ -472,18 +478,18 @@ function FigureMouseMoveCallback(hFig, ev)
             sColormap = bst_colormaps('ColormapChangeModifiers', ColormapInfo.Type, [motionFigure(1), motionFigure(2)] ./ 100, 0);
             set(hFig, 'Colormap', sColormap.CMap);
         case 'rotate'
-            % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
-%             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
-%             if isempty(MouseMoveCamera)
-%                 MouseMoveCamera = 0;
-%             end
-%             if (MouseMoveCamera)
-%                 motion = -motionFigure * 0.1;
-%                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
-%             else
-%                 motion = -motionFigure * 0.01;
-%                 RotateCameraAlongAxis(hFig, -motion(2), motion(1));
-%             end
+             MouseMoveCamera = getappdata(hFig, 'MouseMoveCamera');
+             if isempty(MouseMoveCamera)
+                 MouseMoveCamera = 0;
+             end
+             if (MouseMoveCamera)
+                 motion = -motionFigure * 0.05;
+                 MoveCamera(hFig, [motion(1) -motion(2) 0]);
+             else
+                 % ENABLE THE CODE BELOW TO ENABLE THE ROTATION
+                 %motion = -motionFigure * 0.01;
+                 %RotateCameraAlongAxis(hFig, -motion(2), motion(1));
+             end
     end
 end
 
@@ -567,9 +573,9 @@ function FigureKeyPressedCallback(hFig, keyEvent)
             case 'rightarrow'
                 ToggleRegionSelection(hFig, -1);
             case 'uparrow'
-                ZoomCamera(hFig, -5);
+                ZoomCamera(hFig, -10);
             case 'downarrow'
-                ZoomCamera(hFig, 5);
+                ZoomCamera(hFig, 10);
             case 'escape'
                 SetExplorationLevelTo(hFig, 1);
             case 'shift'
@@ -600,23 +606,23 @@ end
 
 function SetExplorationLevelTo(hFig, Level)
     % Last reorganisation
-    OrganiseNode = getappdata(hFig, 'OrganiseNode');
+    OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
     if (isempty(OrganiseNode) || OrganiseNode == 1)
         return;
     end
-    Paths = getappdata(hFig, 'NodePaths');
+    Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
     Path = Paths{OrganiseNode};
     NextAgregatingNode = Path(find(Path == OrganiseNode) + Level);
     if (NextAgregatingNode ~= OrganiseNode)
-        setappdata(hFig, 'OrganiseNode', NextAgregatingNode);
+        bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', NextAgregatingNode);
         UpdateFigurePlot(hFig);
     end
 end
 
 function NextNode = getNextCircularRegion(hFig, Node, Inc)
     % Construct Spiral Index
-    Levels = getappdata(hFig, 'Levels');
-    DisplayNode = find(getappdata(hFig, 'DisplayNode'));
+    Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
+    DisplayNode = find(bst_figures('GetFigureHandleField', hFig, 'DisplayNode'));
     CircularIndex = [];
     for i=1:size(Levels,1)
         CircularIndex = [CircularIndex; Levels{i}];
@@ -640,9 +646,9 @@ end
 
 function ToggleRegionSelection(hFig, Inc)
     % Get selected nodes
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get number of AgregatingNode
-    AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     % 
     if (isempty(selNodes))
         % Get first node
@@ -684,13 +690,13 @@ function JavaClickCallback(hFig, ev)
         nodeIndex = OGL.raypickNearestNode(ev.getX(), ev.getY(), minimumDistanceThreshold) + 1;
         % If a visible node is clicked on
         if (nodeIndex > 0)
-            DisplayNode = getappdata(hFig, 'DisplayNode');
+            DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
             if (DisplayNode(nodeIndex) == 1)
                 % Get selected nodes
-                selNodes = getappdata(hFig, 'SelectedNodes');
+                selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
                 % Get agregating nodes
-                MeasureNodes    = getappdata(hFig, 'MeasureNodes');
-                AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+                MeasureNodes    = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+                AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
                 % Is the node already selected ?
                 AlreadySelected = any(selNodes == nodeIndex);
                 % Is the node an agregating node ?
@@ -733,7 +739,7 @@ function JavaClickCallback(hFig, ev)
 
                     % If shift is not pressed, deselect all node
                     isShiftDown = ev.get('ShiftDown');
-                    if (strcmp(isShiftDown,'off'))
+                    if (isShiftDown == 0)
                         % Deselect
                         SetSelectedNodes(hFig, selNodes, 0, 1);
                         % Deselect picked node
@@ -755,7 +761,7 @@ function JavaClickCallback(hFig, ev)
                     return;
                     
                     if (IsAgregatingNode)
-                        OrganiseNode = getappdata(hFig, 'OrganiseNode');
+                        OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
                         if isempty(OrganiseNode)
                             OrganiseNode = 1;
                         end
@@ -773,7 +779,7 @@ function JavaClickCallback(hFig, ev)
                         % There's no exploration in 3D
                         is3DDisplay = getappdata(hFig, 'is3DDisplay');
                         if (~is3DDisplay)
-                            setappdata(hFig, 'OrganiseNode', nodeIndex)
+                            bst_figures('SetFigureHandleField', hFig, 'OrganiseNode', nodeIndex);
                             UpdateFigurePlot(hFig);
                         end
                     end
@@ -807,12 +813,12 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
         return
     end
     % Go up the hierarchy
-    NodePaths = getappdata(hFig, 'NodePaths');
+    NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
     PathToCenter = NodePaths{NodeIndex};
     % Retrieve Agregating node
     AgregatingNode = PathToCenter(find(PathToCenter == NodeIndex) + 1);
     % Get selected nodes
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get agregated nodes
     AgregatedNodesIndex = getAgregatedNodesFrom(hFig, AgregatingNode);
     % Is everything selected ?
@@ -1150,7 +1156,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
         Surface = [];
     end
     % Maximum number of data allowed
-    MaximumNumberOfData = 500;
+    MaximumNumberOfData = 5000;
    
     % === GET DATA ===
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
@@ -1221,14 +1227,14 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
                 B = sort(s, 'descend');
                 if length(B) > MaximumNumberOfData
                     t = B(MaximumNumberOfData);
-                    Valid = Valid & (M > t);
+                    Valid = Valid & (M >= t);
                 end
             else
                 [tmp,tmp,s] = find(M(Valid == 1));
                 B = sort(abs(s), 'descend');
                 if length(B) > MaximumNumberOfData
                     t = B(MaximumNumberOfData);
-                    Valid = Valid & ((M < -t) | (M > t));
+                    Valid = Valid & ((M <= -t) | (M >= t));
                 end
             end
         end
@@ -1244,11 +1250,19 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
 
     % ===== MATRIX STATISTICS ===== 
     DataMinMax = [min(DataPair(:,3)), max(DataPair(:,3))];
-    if isempty(DataMinMax) || (DataMinMax(1) == DataMinMax(2))
+    if isempty(DataMinMax)
         DataMinMax = [0 1];
+    elseif (DataMinMax(1) == DataMinMax(2))
+        if (DataMinMax(1) > 0)
+            DataMinMax = [0 DataMinMax(2)];
+        elseif (DataMinMax(2) < 0)
+            DataMinMax = [DataMinMax(1), 0];
+        else
+            DataMinMax = [0 1];
+        end
     end
     % Update figure variable
-    setappdata(hFig, 'DataMinMax', DataMinMax);
+    bst_figures('SetFigureHandleField', hFig, 'DataMinMax', DataMinMax);
     
     % Clear memory
     clear M;
@@ -1267,7 +1281,7 @@ function aDataPair = MatrixToDataPair(hFig, mMatrix)
     aDataPair(1:size(mMatrix,2)/2,2) = mMatrix(2:2:size(mMatrix,2));
     aDataPair(1:size(mMatrix,2)/2,3) = s(:);
     % Add offset
-    nAgregatingNode = size(getappdata(hFig, 'AgregatingNodes'),2);
+    nAgregatingNode = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
     aDataPair(:,1:2) = aDataPair(:,1:2) + nAgregatingNode;
 end
 
@@ -1468,10 +1482,10 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     RowColors = BuildNodeColorList(RowNames, Atlas);
     
     % Keep a copy of these variable for figure updates
-    setappdata(hFig, 'Groups', sGroups);
-    setappdata(hFig, 'RowNames', RowNames);
-    setappdata(hFig, 'RowLocs', RowLocs);
-    setappdata(hFig, 'RowColors', RowColors);
+    bst_figures('SetFigureHandleField', hFig, 'Groups', sGroups);
+    bst_figures('SetFigureHandleField', hFig, 'RowNames', RowNames);
+    bst_figures('SetFigureHandleField', hFig, 'RowLocs', RowLocs);
+    bst_figures('SetFigureHandleField', hFig, 'RowColors', RowColors);
     
     OGL = getappdata(hFig, 'OpenGLDisplay');
         
@@ -1572,7 +1586,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         Conn([idx;idx2]) = 1;% * 0.5;
         % Dijkstra 
         [tmp, AgregatingNodeConnectMap] = jk_dijkstra(Conn, Cost);
-        setappdata(hFig, 'AgregatingNodeConnectMap', AgregatingNodeConnectMap);
+        bst_figures('SetFigureHandleField', hFig, 'AgregatingNodeConnectMap', AgregatingNodeConnectMap);
         % 
         [Vertices Paths Names] = OrganiseChannelsIn3D(hFig, sGroups, RowNames, RowLocs, TempSurf);
     else
@@ -1580,12 +1594,12 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     end
     
     % Keep graph data
-    setappdata(hFig, 'NumberOfNodes', size(Vertices,1));
-    setappdata(hFig, 'Vertices', Vertices);
-    setappdata(hFig, 'NodePaths', Paths);
-    setappdata(hFig, 'Names', Names);
-    setappdata(hFig, 'DisplayNode', ones(size(Vertices,1),1));
-    setappdata(hFig, 'ValidNode', ones(size(Vertices,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'NumberOfNodes', size(Vertices,1));
+    bst_figures('SetFigureHandleField', hFig, 'Vertices', Vertices);
+    bst_figures('SetFigureHandleField', hFig, 'NodePaths', Paths);
+    bst_figures('SetFigureHandleField', hFig, 'Names', Names);
+    bst_figures('SetFigureHandleField', hFig, 'DisplayNode', ones(size(Vertices,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'ValidNode', ones(size(Vertices,1),1));
     
     % Add nodes to Java
     %   This also defines some data-based display parameters
@@ -1611,14 +1625,14 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     setappdata(hFig, 'LoadingOptions', Options);
     % Clean and compute Datapair
     DataPair = LoadConnectivityData(hFig, Options, Atlas, SurfaceMat);    
-    setappdata(hFig, 'DataPair', DataPair);
+    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
     
     % Compute distance between regions
     MeasureDistance = [];
     if ~isempty(RowLocs)
         MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
     end
-    setappdata(hFig, 'MeasureDistance', MeasureDistance);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDistance', MeasureDistance);
     
     % Build path based on region
     if is3DDisplay
@@ -1655,10 +1669,10 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     Refresh = 0;
     
     % Clear filter masks
-    setappdata(hFig, 'MeasureDistanceMask', zeros(size(DataPair,1),1));
-    setappdata(hFig, 'MeasureThresholdMask', zeros(size(DataPair,1),1));
-    setappdata(hFig, 'MeasureAnatomicalMask', zeros(size(DataPair,1),1));
-    setappdata(hFig, 'MeasureDisplayMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDistanceMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureThresholdMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureAnatomicalMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDisplayMask', zeros(size(DataPair,1),1));
     
     % Application specific display filter
     SetMeasureDisplayFilter(hFig, ones(size(DataPair,1), Refresh));
@@ -1666,6 +1680,8 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     SetMeasureDistanceFilter(hFig, 20, 150, Refresh);
     % Anatomy filter
     SetMeasureAnatomicalFilterTo(hFig, 0, Refresh);
+    % Fiber filter
+    SetMeasureFiberFilterTo(hFig, 0, Refresh);
     % Causality direction filter
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
     if (IsDirectionalData)
@@ -1682,7 +1698,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
             ThresholdMinMax = [min(abs(DataPair(:,3))), max(abs(DataPair(:,3)))];
         end
     end
-    setappdata(hFig, 'ThresholdMinMax', ThresholdMinMax);
+    bst_figures('SetFigureHandleField', hFig, 'ThresholdMinMax', ThresholdMinMax);
     % Minimum measure filter
     SetMeasureThreshold(hFig, ThresholdMinMax(1) + MinThreshold * (ThresholdMinMax(2) - ThresholdMinMax(1)), Refresh);
 
@@ -1774,7 +1790,7 @@ function UpdateFigurePlot(hFig)
     % Progress bar
     bst_progress('start', 'Functional Connectivity Display', 'Updating figures...');
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get OpenGL handle
     OGL = getappdata(hFig, 'OpenGLDisplay');
     % Clear links
@@ -1782,9 +1798,9 @@ function UpdateFigurePlot(hFig)
     % 3D display ?
     is3DDisplay = getappdata(hFig, 'is3DDisplay');
     % Get Rowlocs
-    RowLocs = getappdata(hFig, 'RowLocs');
+    RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
 
-    OrganiseNode = getappdata(hFig, 'OrganiseNode');
+    OrganiseNode = bst_figures('GetFigureHandleField', hFig, 'OrganiseNode');
     if ~isempty(OrganiseNode)
         % Reset display
         OGL.resetDisplay();
@@ -1792,16 +1808,16 @@ function UpdateFigurePlot(hFig)
         DefaultCamera(hFig);
         % Which hierarchy level are we ?
         NodeLevel = 1;
-        Levels = getappdata(hFig, 'Levels');
+        Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
         for i=1:size(Levels,1)
             if ismember(OrganiseNode,Levels{i})
                 NodeLevel = i;
             end
         end
         % 
-        Groups = getappdata(hFig, 'Groups');
-        RowNames = getappdata(hFig, 'RowNames');        
-        nAgregatingNodes = size(getappdata(hFig, 'AgregatingNodes'),2);
+        Groups = bst_figures('GetFigureHandleField', hFig, 'Groups');
+        RowNames = bst_figures('GetFigureHandleField', hFig, 'RowNames');
+        nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
         % 
         Nodes = getAgregatedNodesFrom(hFig, OrganiseNode);
         % 
@@ -1830,7 +1846,7 @@ function UpdateFigurePlot(hFig)
             Vertices = ReorganiseNodeAroundInCircle(hFig, Groups(GroupsIWant), RowNames, NodeLevel);
         end
         % 
-        setappdata(hFig, 'Vertices', Vertices);
+        bst_figures('SetFigureHandleField', hFig, 'Vertices', Vertices);
         % 
         nVertices = size(Vertices,1);
         Visible = sum(Vertices(:,1:3) ~= repmat([0 0 -5], nVertices,1),2) >= 1;
@@ -1839,10 +1855,10 @@ function UpdateFigurePlot(hFig)
         DisplayNode(OrganiseNode) = 1;
         DisplayNode(Visible) = 1;
         % 
-        setappdata(hFig, 'DisplayNode', DisplayNode);
-        setappdata(hFig, 'ValidNode', DisplayNode);
+        bst_figures('SetFigureHandleField', hFig, 'DisplayNode', DisplayNode);
+        bst_figures('SetFigureHandleField', hFig, 'ValidNode', DisplayNode);
         % Add the nodes to Java
-        ClearAndAddChannelsNode(hFig, Vertices, getappdata(hFig, 'Names'));
+        ClearAndAddChannelsNode(hFig, Vertices, bst_figures('GetFigureHandleField', hFig, 'Names'));
     else
         % We assume that if 3D display, we did not unload the polygons
         % so we simply need to load new data
@@ -1852,7 +1868,7 @@ function UpdateFigurePlot(hFig)
     % Clean and Build Datapair
     DataPair = LoadConnectivityData(hFig, Options);
     % Update structure
-    setappdata(hFig, 'DataPair', DataPair);    
+    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
         
     % Update measure distance
     MeasureDistance = [];
@@ -1860,12 +1876,12 @@ function UpdateFigurePlot(hFig)
         MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
     end
     % Update figure variable
-    setappdata(hFig, 'MeasureDistance', MeasureDistance);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDistance', MeasureDistance);
     
     % Get computed vertices
-    Vertices = getappdata(hFig, 'Vertices');
+    Vertices = bst_figures('GetFigureHandleField', hFig, 'Vertices');
     % Get computed vertices paths to center
-    NodePaths = getappdata(hFig, 'NodePaths');
+    NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
     % Build Datapair path based on region
     if is3DDisplay
         MeasureLinks = BuildRegionPath3D(hFig, NodePaths, DataPair, Vertices);
@@ -1887,10 +1903,10 @@ function UpdateFigurePlot(hFig)
     Refresh = 0;
     
     % Init Filter variables
-    setappdata(hFig, 'MeasureDistanceMask', zeros(size(DataPair,1),1));
-    setappdata(hFig, 'MeasureThresholdMask', zeros(size(DataPair,1),1));
-    setappdata(hFig, 'MeasureAnatomicalMask', zeros(size(DataPair,1),1));
-    setappdata(hFig, 'MeasureDisplayMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDistanceMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureThresholdMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureAnatomicalMask', zeros(size(DataPair,1),1));
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDisplayMask', zeros(size(DataPair,1),1));
     
     % Threshold 
     if isempty(DataPair)
@@ -1903,13 +1919,15 @@ function UpdateFigurePlot(hFig)
             ThresholdMinMax = [min(abs(DataPair(:,3))), max(abs(DataPair(:,3)))];
         end
     end
-    setappdata(hFig, 'ThresholdMinMax', ThresholdMinMax);
+    bst_figures('SetFigureHandleField', hFig, 'ThresholdMinMax', ThresholdMinMax);
 
     % Reset filters using the same thresholds
     SetMeasureDisplayFilter(hFig, ones(size(DataPair,1),1), Refresh);
-    SetMeasureDistanceFilter(hFig, getappdata(hFig,'MeasureMinDistanceFilter'), getappdata(hFig,'MeasureMaxDistanceFilter'), Refresh);
-    SetMeasureAnatomicalFilterTo(hFig, getappdata(hFig, 'MeasureAnatomicalFilter'), Refresh);
-    SetMeasureThreshold(hFig, getappdata(hFig, 'MeasureThreshold'), Refresh);
+    SetMeasureDistanceFilter(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter'), ...
+        bst_figures('GetFigureHandleField', hFig, 'MeasureMaxDistanceFilter'), ...
+        Refresh);
+    SetMeasureAnatomicalFilterTo(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter'), Refresh);
+    SetMeasureThreshold(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold'), Refresh);
     
     % Update region datapair if possible
     RegionFunction = getappdata(hFig, 'RegionFunction');
@@ -1945,9 +1963,9 @@ function SetDisplayNodeFilter(hFig, NodeIndex, IsVisible)
     if (IsVisible == 0)
         IsVisible = -1;
     end
-    DisplayNode = getappdata(hFig, 'DisplayNode');
+    DisplayNode = bst_figures('GetFigureHandleField', hFig, 'DisplayNode');
     DisplayNode(NodeIndex) = DisplayNode(NodeIndex) + IsVisible;
-    setappdata(hFig, 'DisplayNode', DisplayNode);
+    bst_figures('SetFigureHandleField', hFig, 'DisplayNode', DisplayNode);
     % Update java
     if (IsVisible <= 0)       
         Index = find(DisplayNode <= 0);
@@ -1966,9 +1984,9 @@ function HideLonelyRegionNode(hFig)
     DisplayInRegion = getappdata(hFig, 'DisplayInRegion');
     if (DisplayInRegion)
         % Get Nodes
-        AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
-%        MeasureNodes = getappdata(hFig, 'MeasureNodes');
-        ChannelData = getappdata(hFig, 'ChannelData');
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+%        MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+        ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
         for i=1:size(AgregatingNodes,2)
             % Hide nodes with only one measure node
             Search = find(ChannelData(i,:) ~= 0, 1, 'first');
@@ -2002,13 +2020,13 @@ function SetMeasureDisplayFilter(hFig, NewMeasureDisplayMask, Refresh)
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     if (Refresh)
         % Remove previous links
         SetSelectedNodes(hFig, selNodes, 0, 0);
     end
     % Update variable
-    setappdata(hFig, 'MeasureDisplayMask', NewMeasureDisplayMask);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDisplayMask', NewMeasureDisplayMask);
     if (Refresh)
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
@@ -2021,9 +2039,9 @@ function SetMeasureThreshold(hFig, NewMeasureThreshold, Refresh)
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get Datapair
-    DataPair = getappdata(hFig, 'DataPair');
+    DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
     % Get threshold option
     ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
     if (ThresholdAbsoluteValue)
@@ -2036,8 +2054,8 @@ function SetMeasureThreshold(hFig, NewMeasureThreshold, Refresh)
         SetSelectedNodes(hFig, selNodes, 0, 0);
     end
     % Update variable
-    setappdata(hFig, 'MeasureThreshold', NewMeasureThreshold);
-    setappdata(hFig, 'MeasureThresholdMask', MeasureThresholdMask);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureThreshold', NewMeasureThreshold);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureThresholdMask', MeasureThresholdMask);
     if (Refresh)
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
@@ -2049,9 +2067,9 @@ function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
     if (nargin < 3)
         Refresh = 1;
     end
-    DataPair = getappdata(hFig, 'DataPair');
+    DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');    
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Compute new mask
     NewMeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, NewMeasureAnatomicalFilter);
     if (Refresh)
@@ -2059,8 +2077,31 @@ function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
         SetSelectedNodes(hFig, selNodes, 0, 0);
     end
     % Update variable
-    setappdata(hFig, 'MeasureAnatomicalFilter', NewMeasureAnatomicalFilter);
-    setappdata(hFig, 'MeasureAnatomicalMask', NewMeasureAnatomicalMask);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureAnatomicalFilter', NewMeasureAnatomicalFilter);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureAnatomicalMask', NewMeasureAnatomicalMask);
+    if (Refresh)
+        % Redraw selected nodes
+        SetSelectedNodes(hFig, selNodes, 1, Refresh);
+    end
+end
+
+function SetMeasureFiberFilterTo(hFig, NewMeasureFiberFilter, Refresh)
+    % Refresh by default
+    if (nargin < 3)
+        Refresh = 1;
+    end
+    DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
+    % Get selected rows
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+    % Compute new mask
+    NewMeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, NewMeasureFiberFilter);
+    if (Refresh)
+        % Remove previous links
+        SetSelectedNodes(hFig, selNodes, 0, 0);
+    end
+    % Update variable
+    bst_figures('SetFigureHandleField', hFig, 'MeasureFiberFilter', NewMeasureFiberFilter);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureFiberMask', NewMeasureFiberMask);
     if (Refresh)
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
@@ -2068,7 +2109,7 @@ function SetMeasureAnatomicalFilterTo(hFig, NewMeasureAnatomicalFilter, Refresh)
 end
 
 function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, MeasureAnatomicalFilter)
-    ChannelData = getappdata(hFig, 'ChannelData');
+    ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
     MeasureAnatomicalMask = zeros(size(DataPair,1),1);
     switch (MeasureAnatomicalFilter)
         case 0 % 0 - All
@@ -2080,15 +2121,62 @@ function MeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, DataPair, Measur
     end
 end
 
+function MeasureFiberMask = GetMeasureFiberMask(hFig, DataPair, MeasureFiberFilter)
+    global GlobalData;
+    ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
+    MeasureFiberMask = zeros(size(DataPair,1),1);
+    
+    % Only filter if there are fibers shown
+    plotFibers = getappdata(hFig, 'plotFibers');
+    hFigFib = bst_figures('GetFigureHandleField', hFig, 'hFigFib');
+    if MeasureFiberFilter == 0 || isempty(plotFibers) || ~plotFibers || ~ishandle(hFigFib)
+        MeasureFiberMask(:) = 1;
+        return;
+    end
+    
+    %% Get fibers information
+    TfInfo = getappdata(hFig, 'Timefreq');
+    TessInfo = getappdata(hFigFib, 'Surface');
+    iTess = find(ismember({TessInfo.Name}, 'Fibers'));
+    [FibMat, iFib] = bst_memory('LoadFibers', TessInfo(iTess).SurfaceFile);
+    
+    %% If fibers not yet assigned to atlas, do so now
+    if isempty(FibMat.Scouts(1).ConnectFile) || ~ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile})
+        ScoutNames     = bst_figures('GetFigureHandleField', hFig, 'RowNames');
+        ScoutCentroids = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
+        FibMat = fibers_helper('AssignToScouts', FibMat, TfInfo.FileName, ScoutCentroids);
+        % Save in memory to avoid recomputing
+        GlobalData.Fibers(iFib) = FibMat;
+    end
+    
+    % Get scout assignment
+    iFile = find(ismember(TfInfo.FileName, {FibMat.Scouts.ConnectFile}));
+    assign = FibMat.Scouts(iFile).Assignment;
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+    nAgregatingNode = size(AgregatingNodes, 2);
+    DataPair = DataPair(:,1:2) - nAgregatingNode;
+    
+    %% Find nodes that have fiber assignments
+    assignBsx = reshape(assign', [1 size(assign')]);
+    % Get the matches for the pairs and for the flipped pairs
+    indices =  all(bsxfun(@eq, DataPair, assignBsx), 2) | all( bsxfun(@eq, DataPair, flip(assignBsx,2)), 2);
+    % Find the indices of the rows with a match
+    MeasureFiberMask = any(indices,3);
+        
+    if MeasureFiberFilter == 2 % Anatomically inaccurate
+        MeasureFiberMask = ~MeasureFiberMask;
+    end
+end
+
 function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureMaxDistanceFilter, Refresh)
     % Refresh by default
     if (nargin < 4)
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');        
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Get distance measures
-    MeasureDistance = getappdata(hFig, 'MeasureDistance');
+    MeasureDistance = bst_figures('GetFigureHandleField', hFig, 'MeasureDistance');
     if isempty(MeasureDistance)
         % Everything
         MeasureDistanceMask = ones(size(MeasureDistance));
@@ -2101,71 +2189,73 @@ function SetMeasureDistanceFilter(hFig, NewMeasureMinDistanceFilter, NewMeasureM
         SetSelectedNodes(hFig, selNodes, 0, 0);
     end
     % Update variable
-    setappdata(hFig, 'MeasureMinDistanceFilter', NewMeasureMinDistanceFilter);
-    setappdata(hFig, 'MeasureMaxDistanceFilter', NewMeasureMaxDistanceFilter);
-    setappdata(hFig, 'MeasureDistanceMask', MeasureDistanceMask);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureMinDistanceFilter', NewMeasureMinDistanceFilter);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureMaxDistanceFilter', NewMeasureMaxDistanceFilter);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureDistanceMask', MeasureDistanceMask);
     if (Refresh)
         % Redraw selected nodes
         SetSelectedNodes(hFig, selNodes, 1, Refresh);
     end
 end
 
-function mMeanDataPair = ComputeMeanMeasureMatrix(hFig, mDataPair)
-    Levels = getappdata(hFig, 'Levels');
-    Regions = Levels{2};
-    NumberOfNode = size(Regions,1);
-    mMeanDataPair = zeros(NumberOfNode*NumberOfNode,3);
-    %
-    for i=1:NumberOfNode
-        OutNode = getAgregatedNodesFrom(hFig, Regions(i));
-        for y=1:NumberOfNode
-            if (i ~= y)
-                InNode = getAgregatedNodesFrom(hFig, Regions(y));
-                Index = ismember(mDataPair(:,1),OutNode) & ismember(mDataPair(:,2),InNode);
-                nValue = sum(Index);
-                if (nValue > 0)
-                    Mean = sum(mDataPair(Index,3)) / sum(Index);
-                    mMeanDataPair(NumberOfNode * (i - 1) + y, :) = [Regions(i) Regions(y) Mean];
-                end
-            end
-        end
-    end
-    mMeanDataPair(mMeanDataPair(:,3) == 0,:) = [];
-end
-
-function mMaxDataPair = ComputeMaxMeasureMatrix(hFig, mDataPair)
-    Levels = getappdata(hFig, 'Levels');
+%% Updated March 16: removed double region links
+function mFunctionDataPair = ComputeRegionFunction(hFig, mDataPair, RegionFunction)
+    Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
     Regions = Levels{2};
     NumberOfRegions = size(Regions,1);
-    mMaxDataPair = zeros(NumberOfRegions*NumberOfRegions,3);
     
     % Precomputing this saves on processing time
     NodesFromRegions = cell(NumberOfRegions,1);
     for i=1:NumberOfRegions
         NodesFromRegions{i} = getAgregatedNodesFrom(hFig, Regions(i));
+    end   
+    
+    % Bidirectional data ?
+    DisplayBidirectionalMeasure = getappdata(hFig, 'DisplayBidirectionalMeasure'); 
+    if DisplayBidirectionalMeasure
+        nPairs = NumberOfRegions*NumberOfRegions-NumberOfRegions;
+    else
+        nPairs = (NumberOfRegions*NumberOfRegions-NumberOfRegions) / 2;   
     end
     
+    mFunctionDataPair = zeros(nPairs,3);   
+    iFunction = 1;
     for i=1:NumberOfRegions
-        for y=1:NumberOfRegions
-            if (i ~= y)
-                % Retrieve index
+        if DisplayBidirectionalMeasure
+            yRange = 1 : NumberOfRegions;
+            yRange(i) = []; % skip i == y
+        else
+            yRange = i + 1 : NumberOfRegions;
+        end
+        for y=yRange
+            % Retrieve index
+            if DisplayBidirectionalMeasure
                 Index = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
-                % If there is values
-                if (sum(Index) > 0)
-                    Max = max(mDataPair(Index,3));
-                    mMaxDataPair(NumberOfRegions * (i - 1) + y, :) = [Regions(i) Regions(y) Max];
+            else
+                IndexItoY = ismember(mDataPair(:,1),NodesFromRegions{i}) & ismember(mDataPair(:,2),NodesFromRegions{y});
+                IndexYtoI = ismember(mDataPair(:,1),NodesFromRegions{y}) & ismember(mDataPair(:,2),NodesFromRegions{i});
+                Index = IndexItoY | IndexYtoI;
+            end
+            % If there is values
+            if (sum(Index) > 0)
+                switch(RegionFunction)
+                    case 'max' 
+                        Value = max(mDataPair(Index,3));
+                    case 'mean'
+                        Value = mean(mDataPair(Index,3));
                 end
+                mFunctionDataPair(iFunction, :) = [Regions(i) Regions(y) Value];
+                iFunction = iFunction + 1;
             end
         end
     end
     % Eliminate empty data
-    mMaxDataPair(mMaxDataPair(:,3) == 0,:) = [];
+    mFunctionDataPair(mFunctionDataPair(:,3) == 0,:) = [];
 end
-
 
 function MeasureDistance = ComputeEuclideanMeasureDistance(hFig, aDataPair, mLoc)
     % Correct offset
-    nAgregatingNodes = size(getappdata(hFig, 'AgregatingNodes'),2);
+    nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
     aDataPair(:,1:2) = aDataPair(:,1:2) - nAgregatingNodes;
     % Compute Euclidean distance
     Minus = bsxfun(@minus, mLoc(aDataPair(:,1),:), mLoc(aDataPair(:,2),:));
@@ -2182,29 +2272,34 @@ end
 %% ===== GET DATA MASK =====
 function [DataPair, DataMask] = GetPairs(hFig)
     % Get figure data
-    DataPair = getappdata(hFig, 'DataPair');
+    DataPair = bst_figures('GetFigureHandleField', hFig, 'DataPair');
     % Thresholded list
     if (nargout >= 2)
-        MeasureDisplayMask = getappdata(hFig, 'MeasureDisplayMask');
-        MeasureDistanceMask = getappdata(hFig, 'MeasureDistanceMask');
-        MeasureAnatomicalMask = getappdata(hFig, 'MeasureAnatomicalMask');
-        MeasureThresholdMask = getappdata(hFig, 'MeasureThresholdMask'); 
+        MeasureDisplayMask = bst_figures('GetFigureHandleField', hFig, 'MeasureDisplayMask');
+        MeasureDistanceMask = bst_figures('GetFigureHandleField', hFig, 'MeasureDistanceMask');
+        MeasureAnatomicalMask = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalMask');
+        MeasureFiberMask = bst_figures('GetFigureHandleField', hFig, 'MeasureFiberMask');
+        MeasureThresholdMask = bst_figures('GetFigureHandleField', hFig, 'MeasureThresholdMask');
         
         DataMask = ones(size(DataPair,1),1);
         % Display specific filter
-        if ~isempty(MeasureDisplayMask)
+        if ~isempty(MeasureDisplayMask) && isequal(size(DataMask), size(MeasureDisplayMask))
             DataMask =  DataMask == 1 & MeasureDisplayMask == 1;
         end
         % Distance filter
-        if ~isempty(MeasureDistanceMask)
+        if ~isempty(MeasureDistanceMask) && isequal(size(DataMask), size(MeasureDistanceMask))
             DataMask =  DataMask == 1 & MeasureDistanceMask == 1;
         end
         % Anatomical filter
-        if ~isempty(MeasureAnatomicalMask)
+        if ~isempty(MeasureAnatomicalMask) && isequal(size(DataMask), size(MeasureAnatomicalMask))
             DataMask =  DataMask == 1 & MeasureAnatomicalMask == 1;
         end
+        % Fiber filter
+        if ~isempty(MeasureFiberMask) && isequal(size(DataMask), size(MeasureFiberMask))
+            DataMask = DataMask == 1 & MeasureFiberMask == 1;
+        end
         % Intensity Threshold filter
-        if ~isempty(MeasureThresholdMask)
+        if ~isempty(MeasureThresholdMask) && isequal(size(DataMask), size(MeasureThresholdMask))
             DataMask =  DataMask == 1 & MeasureThresholdMask == 1;
         end
     end
@@ -2212,39 +2307,48 @@ end
 
 function [RegionDataPair, RegionDataMask] = GetRegionPairs(hFig)
     % Get figure data
-    RegionDataPair = getappdata(hFig, 'RegionDataPair');
+    RegionDataPair = bst_figures('GetFigureHandleField', hFig, 'RegionDataPair');
     RegionDataMask = ones(size(RegionDataPair,1),1);
     if (size(RegionDataPair,1) > 0)
+        % Get colormap
+        sColormap = bst_colormaps('GetColormap', hFig);
         % Get threshold option
         ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
-        if (ThresholdAbsoluteValue)
+        if (ThresholdAbsoluteValue) || sColormap.isAbsoluteValues
             RegionDataPair(:,3) = abs(RegionDataPair(:,3));
         end
         % Get threshold
-        MeasureThreshold = getappdata(hFig, 'MeasureThreshold');
+        MeasureThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
         if (~isempty(MeasureThreshold))
             % Compute new mask
             MeasureThresholdMask = RegionDataPair(:,3) >= MeasureThreshold;
             RegionDataMask = RegionDataMask & MeasureThresholdMask;
         end
         % Get anatomical filter
-        MeasureAnatomicalFilter = getappdata(hFig, 'MeasureAnatomicalFilter');
+        MeasureAnatomicalFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter');
         if (~isempty(MeasureAnatomicalFilter))
             % Compute new mask
             NewMeasureAnatomicalMask = GetMeasureAnatomicalMask(hFig, RegionDataPair, MeasureAnatomicalFilter);
             RegionDataMask = RegionDataMask & NewMeasureAnatomicalMask;
+        end
+        % Get fiber filter
+        MeasureFiberFilter = bst_figures('GetFigureHandleField', hFig, 'MeasureFiberFilter');
+        if (~isempty(MeasureFiberFilter))
+            % Compute new mask
+            NewMeasureFiberFilterMask = GetMeasureFiberMask(hFig, RegionDataPair, MeasureFiberFilter);
+            RegionDataMask = RegionDataMask & NewMeasureFiberFilterMask;
         end
     end
 end
 
 
 %% ===== UPDATE COLORMAP =====
-function UpdateColormap(hFig)   
+function UpdateColormap(hFig)
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
     if isempty(TfInfo)
         return
-    end
+     end
     % Get data description
     iDS = bst_memory('GetDataSetTimefreq', TfInfo.FileName);
     if isempty(iDS)
@@ -2260,9 +2364,9 @@ function UpdateColormap(hFig)
     % Get figure method
     Method = getappdata(hFig, 'Method');
     % Get maximum values
-    DataMinMax = getappdata(hFig, 'DataMinMax');
+    DataMinMax = bst_figures('GetFigureHandleField', hFig, 'DataMinMax');
     % Get threshold min/max values
-    ThresholdMinMax = getappdata(hFig, 'ThresholdMinMax');
+    ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
     % === COLORMAP LIMITS ===
     % Units type
     if ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec'})
@@ -2273,13 +2377,13 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte','henv'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')
-            CLim = ThresholdMinMax;
+            CLim = DataMinMax;
             if sColormap.isAbsoluteValues
-                CLim = abs(CLim);            
+                CLim = [0, abs(CLim(2))];
             end
         else
             if sColormap.isAbsoluteValues
@@ -2332,6 +2436,17 @@ function UpdateColormap(hFig)
         if (~is3DDisplay)
             % Offset is always in absolute
             OGL.setMeasureLinkOffset(find(DataMask) - 1, Offset(:).^2 * 2);
+        end
+        
+        % === UPDATE FIBER COLORS ===
+        plotFibers = getappdata(hFig, 'plotFibers');
+        if plotFibers
+            % Get scout information
+            AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+            nAgregatingNode = size(AgregatingNodes, 2);
+            iData = find(DataMask == 1) - 1;
+            iScouts = DataPair(iData + 1, 1:2) - nAgregatingNode;
+            figure_3d('SelectFiberScouts', hFig, iScouts, StartColor, 1);
         end
     end
     
@@ -2471,7 +2586,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     % Parse inputs
     if (nargin < 2) || isempty(iNodes)
         % Get all the nodes
-        NumberOfNodes = getappdata(hFig, 'NumberOfNodes');
+        NumberOfNodes = bst_figures('GetFigureHandleField', hFig, 'NumberOfNodes');
         iNodes = 1:NumberOfNodes;
     end
     if (nargin < 3) || isempty(isSelected)
@@ -2481,7 +2596,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         isRedraw = 1;
     end
     % Get list of selected channels
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % If nodes are not specified
     if (nargin < 3)
         iNodes = selNodes;
@@ -2496,13 +2611,13 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         selNodes = setdiff(selNodes, iNodes);
     end
     % Update list of selected channels
-    setappdata(hFig, 'SelectedNodes', selNodes);
+    bst_figures('SetFigureHandleField', hFig, 'SelectedNodes', selNodes);
     
     % Get OpenGL handle
     OGL = getappdata(hFig, 'OpenGLDisplay');
     
     % Agregating nodes are not visually selected
-    AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     NoColorNodes = ismember(iNodes,AgregatingNodes);
     if (sum(~NoColorNodes) > 0)
         if isSelected
@@ -2562,7 +2677,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     end
     
     % Links are from valid node only
-    ValidNode = find(getappdata(hFig, 'ValidNode') > 0);
+    ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode') > 0);
     ValidDataForDisplay = sum(ismember(DataToFilter(:,1:2), ValidNode),2);
     DataMask = DataMask == 1 & ValidDataForDisplay == 2;
 
@@ -2588,7 +2703,7 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
     end
     
     % Propagate selection to other figures
-    NodeNames = getappdata(hFig, 'Names');
+    NodeNames = bst_figures('GetFigureHandleField', hFig, 'Names');
     if ~isempty(selNodes) && (length(selNodes) < length(NodeNames))
         % Select rows
         bst_figures('SetSelectedRows', NodeNames(selNodes));
@@ -2598,6 +2713,28 @@ function SetSelectedNodes(hFig, iNodes, isSelected, isRedraw)
         bst_figures('SetSelectedRows', []);
         panel_scout('SetSelectedScoutLabels', []);
     end
+    if isSelected
+        % If we're plotting fibers, send pairs of scouts that are to be displayed
+        plotFibers = getappdata(hFig, 'plotFibers');
+        if plotFibers
+            % Get scout information
+            nAgregatingNode = size(AgregatingNodes, 2);
+            iScouts = DataToFilter(iData + 1, 1:2) - nAgregatingNode;
+            
+            % Get color information
+            CMap = get(hFig, 'Colormap');
+            CLim = getappdata(hFig, 'CLim');
+            if isempty(CLim)
+                CLim = [0, 1];
+            end
+            Color = InterpolateColorMap(hFig, abs(DataToFilter(DataMask,:)), CMap, CLim);
+            
+            % Send to 3D fibers
+            if ~isempty(iScouts)
+                figure_3d('SelectFiberScouts', hFig, iScouts, Color);
+            end
+        end
+    end
 end
 
 
@@ -2605,9 +2742,9 @@ end
 function SetHierarchyNodeIsVisible(hFig, isVisible)
     HierarchyNodeIsVisible = getappdata(hFig, 'HierarchyNodeIsVisible');
     if (HierarchyNodeIsVisible ~= isVisible)
-        AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
         if (isVisible)
-            %ValidNode = find(getappdata(hFig, 'ValidNode'));
+            %ValidNode = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode'));
             %AgregatingNodes(ismember(AgregatingNodes,ValidNode)) = [];
         end
         SetDisplayNodeFilter(hFig, AgregatingNodes, isVisible);
@@ -2626,24 +2763,17 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
     if (isempty(DisplayInCircle) || DisplayInCircle == 0)    
         % Get data
         DataPair = GetPairs(hFig);
-        % Which function
-        switch (RegionFunction)
-            case 'mean'
-                RegionDataPair = ComputeMeanMeasureMatrix(hFig, DataPair);
-            case 'max'
-                RegionDataPair = ComputeMaxMeasureMatrix(hFig, DataPair);
-            otherwise
-                disp('The region function specified is not yet supported. Default to mean.');
-                RegionFunction = 'mean';
-                RegionDataPair = ComputeMeanMeasureMatrix(hFig, M);
-        end
+        
+        % Computes function across node pairs in region
+        RegionDataPair = ComputeRegionFunction(hFig, DataPair, RegionFunction);
+        
         %
         OGL = getappdata(hFig, 'OpenGLDisplay');
         % Clear
         OGL.clearRegionLinks();
         %
-        Paths = getappdata(hFig, 'NodePaths');
-        Vertices = getappdata(hFig, 'Vertices');
+        Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
+        Vertices = bst_figures('GetFigureHandleField', hFig, 'Vertices');
         % Build path for new datapair
         MeasureLinks = BuildRegionPath(hFig, Paths, RegionDataPair);
         % Compute spline
@@ -2657,7 +2787,7 @@ function RegionDataPair = SetRegionFunction(hFig, RegionFunction)
             OGL.setRegionLinkWidth(0:(size(RegionDataPair,1) - 1), LinkSize);
         end
         % Update figure value
-        setappdata(hFig, 'RegionDataPair', RegionDataPair);
+        bst_figures('SetFigureHandleField', hFig, 'RegionDataPair', RegionDataPair);
         setappdata(hFig, 'RegionFunction', RegionFunction);
         % Update color map
         UpdateColormap(hFig);
@@ -2678,7 +2808,7 @@ function ToggleMeasureToRegionDisplay(hFig)
             RegionLinksIsVisible = 0;
         end
         % Get selected node
-        selNodes = getappdata(hFig, 'SelectedNodes');
+        selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
         % Erase selected node
         SetSelectedNodes(hFig, selNodes, 0, 1);
         % Update visibility variable
@@ -2787,7 +2917,7 @@ function SetLinkSize(hFig, LinkSize)
     % Get display
     OGL = getappdata(hFig,'OpenGLDisplay');
     % Get # of data to update
-    nLinks = size(getappdata(hFig, 'DataPair'), 1);
+    nLinks = size(bst_figures('GetFigureHandleField', hFig, 'DataPair'), 1);
     % Update size
     OGL.setMeasureLinkWidth(0:(nLinks - 1), LinkSize);
     OGL.repaint();
@@ -2800,7 +2930,7 @@ function SetLinkTransparency(hFig, LinkTransparency)
     % Get display
     OGL = getappdata(hFig,'OpenGLDisplay');
     % 
-    nLinks = size(getappdata(hFig, 'DataPair'),1);
+    nLinks = size(bst_figures('GetFigureHandleField', hFig, 'DataPair'),1);
     % 
     OGL.setMeasureLinkTransparency(0:(nLinks - 1), LinkTransparency);
     OGL.repaint();
@@ -2853,12 +2983,12 @@ function SetBackgroundColor(hFig, BackgroundColor, TextColor)
     FigureHasText = getappdata(hFig, 'FigureHasText');
     if FigureHasText
         % Agregating node text
-        AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
         if ~isempty(AgregatingNodes)
             OGL.setTextColor(AgregatingNodes - 1, TextColor(1), TextColor(2), TextColor(3));
         end
         % Measure node text
-        MeasureNodes = getappdata(hFig, 'MeasureNodes');
+        MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         if ~isempty(MeasureNodes)
             OGL.setTextColor(MeasureNodes - 1, TextColor(1), TextColor(2), TextColor(3));
         end
@@ -2931,7 +3061,7 @@ function setDisplayMeasureMode(hFig, DisplayOutwardMeasure, DisplayInwardMeasure
         Refresh = 1;
     end
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     if (Refresh)
         % Remove previous links
         SetSelectedNodes(hFig, selNodes, 0, 0);
@@ -2957,8 +3087,8 @@ function RefreshBinaryStatus(hFig)
         IsBinaryData = 1;
     elseif (DisplayInwardMeasure || DisplayOutwardMeasure)
         IsBinaryData = 0;
-        selNodes = getappdata(hFig, 'SelectedNodes');
-        Nodes = getappdata(hFig, 'MeasureNodes');
+        selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
+        Nodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
         nSelectedMeasureNodes = sum(ismember(Nodes, selNodes));
         if (length(Nodes) == nSelectedMeasureNodes);
             IsBinaryData = 1;
@@ -2985,9 +3115,9 @@ function RefreshTextDisplay(hFig, isRedraw)
             isRedraw = 1;
         end
         % 
-        AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
-        MeasureNodes = getappdata(hFig, 'MeasureNodes');
-        ValidNode = getappdata(hFig, 'ValidNode');
+        AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+        MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+        ValidNode = bst_figures('GetFigureHandleField', hFig, 'ValidNode');
         %
         nVertices = size(AgregatingNodes,2) + size(MeasureNodes,2);
         VisibleText = zeros(nVertices,1);
@@ -3000,7 +3130,7 @@ function RefreshTextDisplay(hFig, isRedraw)
             VisibleText(AgregatingNodes) = ValidNode(AgregatingNodes);
         end
         if ismember(3,TextDisplayMode)
-            selNodes = getappdata(hFig, 'SelectedNodes');
+            selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
             VisibleText(selNodes) = ValidNode(selNodes);
         end
         InvisibleText = ~VisibleText;
@@ -3024,7 +3154,7 @@ end
 %% ===== SET DATA THRESHOLD =====
 function SetDataThreshold(hFig, DataThreshold) %#ok<DEFNU>
     % Get selected rows
-    selNodes = getappdata(hFig, 'SelectedNodes');
+    selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
     % Remove previous links
     SetSelectedNodes(hFig, selNodes, 0, 0);
     % Update threshold
@@ -3037,9 +3167,9 @@ end
 %% ===== UTILITY FUNCTIONS =====
 function NodeIndex = getAgregatedNodesFrom(hFig, AgregatingNodeIndex)
     NodeIndex = [];
-    AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
     if ismember(AgregatingNodeIndex,AgregatingNodes)
-        NodePaths = getappdata(hFig, 'NodePaths');
+        NodePaths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
         member = cellfun(@(x) ismember(AgregatingNodeIndex,x), NodePaths);
         NodeIndex = find(member == 1);
     end
@@ -3062,10 +3192,10 @@ function MeasureLinks = BuildRegionPath(hFig, mPaths, mDataPair)
         % Concat 
         MeasureLinks = cellfun(@(x,y) cat(2, x, y), ToCenter, ToDestination, 'UniformOutput', 0);
         % Level specific display
-        NumberOfLevels = getappdata(hFig, 'NumberOfLevels'); 
+        NumberOfLevels = bst_figures('GetFigureHandleField', hFig, 'NumberOfLevels');
         if (NumberOfLevels > 2)
             % Retrieve channel hierarchy
-            ChannelData = getappdata(hFig, 'ChannelData');
+            ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
             % 
             if (~isempty(ChannelData))
                 SameRegion = ChannelData(mDataPair(1:end,1),1) == ChannelData(mDataPair(1:end,2),1);
@@ -3099,7 +3229,7 @@ function MeasureLinks = BuildRegionPath3D(hFig, mPaths, mDataPair, mLoc)
         ToCenter = mPaths(mDataPair(:,1));        
         ToDestination = cellfun(@(x) bst_flip(x,2), mPaths(mDataPair(:,2)), 'UniformOutput', 0);
         % Use path based on connectivity map
-        ANCMap = getappdata(hFig, 'AgregatingNodeConnectMap');
+        ANCMap = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodeConnectMap');
         % 
         MeasureLinks = cellfun(@(x,y) [x(1) ANCMap{x(2),y(end-1)} y(end)], ToCenter, ToDestination, 'UniformOutput', 0);
     end
@@ -3348,9 +3478,9 @@ end
 function ClearAndAddChannelsNode(hFig, V, Names)
     % Get OpenGL handle
     OGL = getappdata(hFig, 'OpenGLDisplay');
-    MeasureNodes = getappdata(hFig, 'MeasureNodes');
-    AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
-    DisplayedNodes = find(getappdata(hFig, 'ValidNode'));
+    MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+    AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
+    DisplayedNodes = find(bst_figures('GetFigureHandleField', hFig, 'ValidNode'));
     DisplayedMeasureNodes = MeasureNodes(ismember(MeasureNodes,DisplayedNodes));
     NumberOfMeasureNode = length(DisplayedMeasureNodes);
     nAgregatingNodes = length(AgregatingNodes);
@@ -3422,7 +3552,7 @@ function ClearAndAddChannelsNode(hFig, V, Names)
     OGL.setNodeInnerRadius(AgregatingNodes - 1, 0.75 * RegionNodeSize);
     
     % Node are color coded to their Scout counterpart
-    RowColors = getappdata(hFig, 'RowColors');
+    RowColors = bst_figures('GetFigureHandleField', hFig, 'RowColors');
     if ~isempty(RowColors)
         for i=1:length(RowColors)
             OGL.setNodeInnerColor(nAgregatingNodes+i-1, RowColors(i,1), RowColors(i,2), RowColors(i,3));
@@ -3510,8 +3640,8 @@ end
 %     OGL = getappdata(hFig, 'OpenGLDisplay');
 %     MeasureLevelDistance = getappdata(hFig, 'MeasureLevelDistance');
 %     % 
-%     MeasureNodes = getappdata(hFig, 'MeasureNodes');
-%     AgregatingNodes = getappdata(hFig, 'AgregatingNodes');
+%     MeasureNodes = bst_figures('GetFigureHandleField', hFig, 'MeasureNodes');
+%     AgregatingNodes = bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes');
 %     NumberOfAgregatingNodes = size(AgregatingNodes,2);
 %     nMeasureNodes = size(MeasureNodes,2);
 %     % Common rendering parameters
@@ -3684,11 +3814,11 @@ function [Vertices Paths Names] = OrganiseChannelsIn3D(hFig, sGroups, aNames, aL
     
     Vertices(1:NumberOfAgregatingNodes,:) = V;
     
-    setappdata(hFig, 'AgregatingNodes', 1:NumberOfAgregatingNodes);
-    setappdata(hFig, 'MeasureNodes', (NumberOfAgregatingNodes + 1):(NumberOfAgregatingNodes + NumberOfMeasureNodes));
-    setappdata(hFig, 'NumberOfLevels', NumberOfLevels);
-    setappdata(hFig, 'Levels', Levels);
-    setappdata(hFig, 'ChannelData', ChannelData);
+    bst_figures('SetFigureHandleField', hFig, 'AgregatingNodes', 1:NumberOfAgregatingNodes);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureNodes', (NumberOfAgregatingNodes + 1):(NumberOfAgregatingNodes + NumberOfMeasureNodes));
+    bst_figures('SetFigureHandleField', hFig, 'NumberOfLevels', NumberOfLevels);
+    bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
+    bst_figures('SetFigureHandleField', hFig, 'ChannelData', ChannelData);
 end
 
 
@@ -3850,6 +3980,8 @@ function Index = LobeTagToIndex(Region)
             end
         case 'O' %Occipital
             Index = 6;
+        case 'L' %Limbic
+            Index = 7;
     end
 end
 
@@ -3889,6 +4021,8 @@ function Tag = LobeIndexToTag(Index)
             Tag = 'P';
         case 6
             Tag = 'O';
+        case 7
+            Tag = 'L';
     end
 end
 
@@ -3897,7 +4031,7 @@ function PathNames = VerticeToFullName(hFig, Index)
         return
     end
     PathNames{1} = 'All';
-    ChannelData = getappdata(hFig, 'ChannelData');
+    ChannelData = bst_figures('GetFigureHandleField', hFig, 'ChannelData');
     if (ChannelData(Index,3) ~= 0)
         switch (ChannelData(Index,3))
             case 1
@@ -3925,13 +4059,15 @@ function PathNames = VerticeToFullName(hFig, Index)
                 PathNames{3} = ' > Parietal';
             case 6
                 PathNames{3} = ' > Occipital';
+            case 7
+                PathNames{3} = ' > Limbic';
             otherwise
                 PathNames{3} = ' > Unknown';
         end
     end
     
     if (ChannelData(Index,1) ~= 0)
-        Names = getappdata(hFig, 'Names');
+        Names = bst_figures('GetFigureHandleField', hFig, 'Names');
         if isempty(Names{Index})
             PathNames{4} = ' > Sub-region';
         else
@@ -3991,13 +4127,13 @@ end
 
 % function ChannelData = BuildChannelData(hFig, aNames, sGroups)
 %     % Get number of nodes
-%     nAgregatingNodes = size(getappdata(hFig, 'AgregatingNodes'),2);
-%     nMeasureNodes = size(getappdata(hFig, 'MeasureNodes'),2);
+%     nAgregatingNodes = size(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'),2);
+%     nMeasureNodes = size(bst_figures('GetFigureHandleField', hFig, 'MeasureNodes'),2);
 %     NumberOfChannels = nAgregatingNodes + nMeasureNodes;
 %     % Get levels
-%     % Levels = getappdata(hFig, 'Levels');
+%     % Levels = bst_figures('GetFigureHandleField', hFig, 'Levels');
 %     % Number of levels
-%     NumberOfLevels = getappdata(hFig, 'NumberOfLevels');
+%     NumberOfLevels = bst_figures('GetFigureHandleField', hFig, 'NumberOfLevels');
 %     % Init structure - (Hemisphere / Lobe / Region)
 %     ChannelData = ones(NumberOfChannels, NumberOfLevels - 2);
 %     % Constant variable
@@ -4226,8 +4362,8 @@ end
 % %     % Keep Structures Statistics
 % %     AgregatingNodes = 1:NumberOfAgregatingNodes;
 % %     MeasureNodes = NumberOfAgregatingNodes+1:NumberOfAgregatingNodes+NumberOfNodes;    
-% %     setappdata(hFig, 'AgregatingNodes', AgregatingNodes);
-% %     setappdata(hFig, 'MeasureNodes', MeasureNodes);
+% %     bst_figures('SetFigureHandleField', hFig, 'AgregatingNodes', AgregatingNodes);
+% %     bst_figures('SetFigureHandleField', hFig, 'MeasureNodes', MeasureNodes);
 % 
 % end
 
@@ -4585,14 +4721,13 @@ function [Vertices Paths Names] = OrganiseNodesWithConstantLobe(hFig, aNames, sG
     
     if (~isempty(UpdateStructureStatistics) && UpdateStructureStatistics == 1)
         % Keep Structures Statistics
-        setappdata(hFig, 'AgregatingNodes', 1:NumberOfAgregatingNodes);
-        setappdata(hFig, 'MeasureNodes', (NumberOfAgregatingNodes + 1):(NumberOfAgregatingNodes + NumberOfMeasureNodes));
-        setappdata(hFig, 'Lobes', Lobes);
+        bst_figures('SetFigureHandleField', hFig, 'AgregatingNodes', 1:NumberOfAgregatingNodes);
+        bst_figures('SetFigureHandleField', hFig, 'MeasureNodes', (NumberOfAgregatingNodes + 1):(NumberOfAgregatingNodes + NumberOfMeasureNodes));
         % Levels information
-        setappdata(hFig, 'NumberOfLevels', NumberOfLevels);
-        setappdata(hFig, 'Levels', Levels);
+        bst_figures('SetFigureHandleField', hFig, 'NumberOfLevels', NumberOfLevels);
+        bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
         % Node hierarchy data
-        setappdata(hFig, 'ChannelData', ChannelData);
+        bst_figures('SetFigureHandleField', hFig, 'ChannelData', ChannelData);
     end
 end
 
@@ -4673,19 +4808,19 @@ function [Vertices Paths Names] = OrganiseNodeInCircle(hFig, aNames, sGroups)
     % Keep Structures Statistics
     AgregatingNodes = 1:NumberOfAgregatingNodes;
     MeasureNodes = NumberOfAgregatingNodes+1:NumberOfAgregatingNodes+NumberOfMeasureNodes;    
-    setappdata(hFig, 'AgregatingNodes', AgregatingNodes);
-    setappdata(hFig, 'MeasureNodes', MeasureNodes);
+    bst_figures('SetFigureHandleField', hFig, 'AgregatingNodes', AgregatingNodes);
+    bst_figures('SetFigureHandleField', hFig, 'MeasureNodes', MeasureNodes);
     % 
-    setappdata(hFig, 'NumberOfLevels', NumberOfLevels)
+    bst_figures('SetFigureHandleField', hFig, 'NumberOfLevels', NumberOfLevels);
     %
-    setappdata(hFig, 'Levels', Levels);
+    bst_figures('SetFigureHandleField', hFig, 'Levels', Levels);
 end
 
 
 function Vertices = ReorganiseNodeAroundInCircle(hFig, sGroups, aNames, Level)
 
-    Paths = getappdata(hFig, 'NodePaths');
-    nVertices = size(getappdata(hFig, 'Vertices'), 1);
+    Paths = bst_figures('GetFigureHandleField', hFig, 'NodePaths');
+    nVertices = size(bst_figures('GetFigureHandleField', hFig, 'Vertices'), 1);
     Vertices = zeros(nVertices,3);
     Vertices(:,3) = -5;
     
@@ -4694,7 +4829,7 @@ function Vertices = ReorganiseNodeAroundInCircle(hFig, sGroups, aNames, Level)
     NumberOfMeasureNodes = length([sGroups.RowNames]);
     NumberOfGroups = length(sGroups);
     
-    NumberOfAgregatingNodes = length(getappdata(hFig, 'AgregatingNodes'));
+    NumberOfAgregatingNodes = length(bst_figures('GetFigureHandleField', hFig, 'AgregatingNodes'));
     
     NumberOfNodesInGroup = zeros(NumberOfGroups,1);
     GroupsTheta = zeros(NumberOfGroups,1);

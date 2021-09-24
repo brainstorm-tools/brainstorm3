@@ -7,7 +7,6 @@ function varargout = bst_figures( varargin )
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        iDS,      FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        DataFile, FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        hFigure)
-
 %                   [hFigs] = bst_figures('GetAllFigures')
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile)
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile, DataFile, FigType, Modality)
@@ -40,7 +39,7 @@ function varargout = bst_figures( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,7 +53,8 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2021
+%          Martin Cousineau, 2017
 
 eval(macro_method);
 end
@@ -85,7 +85,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         % If at least one valid figure was found
         if ~isempty(hFigures)
             % Refine selection for certain types of figures
-            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'Pac'})
+            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'ConnectViz', 'Pac'}) 
                 for i = 1:length(hFigures)
                     TfInfo = getappdata(hFigures(i), 'Timefreq');
                     if ~isempty(TfInfo) && file_compare(TfInfo.FileName, Constrains)
@@ -187,6 +187,9 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
             case 'Connect'
                 hFig = figure_connect('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesTimefreq');
+            case 'ConnectViz' % new connectivity visualization tool (2021)
+                hFig = figure_connect_viz('CreateFigure', FigureId);
+                FigHandles = db_template('DisplayHandlesTimefreq');
             case 'Image'
                 hFig = figure_image('CreateFigure', FigureId);
                 FigHandles = db_template('DisplayHandlesImage');
@@ -211,12 +214,15 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         GlobalData.DataSet(iDS).Figure(iFig).Id      = FigureId;
         GlobalData.DataSet(iDS).Figure(iFig).hFigure = hFig;
         GlobalData.DataSet(iDS).Figure(iFig).Handles = FigHandles;
-    end   
+    end
     
     % Find selected channels
     [selChan,errMsg] = GetChannelsForFigure(iDS, iFig);
     % Error message
     if ~isempty(errMsg)
+        if isNewFig
+            GlobalData.DataSet(iDS).Figure(iFig) = [];
+        end
         error(errMsg);
     end
     % Save selected channels for this figure
@@ -253,7 +259,8 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
                            GlobalData.DataSet(iDS).Measures.ChannelFlag, ...
                            Modality);
     % If opening EEG/SEEG/ECOG topography or 3D view: exclude (0,0,0) points
-    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'})
+    if ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, {'Topography', '3DViz'}) && ismember(Modality, {'EEG','SEEG','ECOG'}) ...
+        && ~(ismember(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, {'2DLayout', '2DElectrodes'}) && ismember(Modality, {'SEEG','ECOG'}))
         % Get the locations for all the channels
         chanLoc = {GlobalData.DataSet(iDS).Channel(selChan).Loc};
         % Detect the channels without location or at (0,0,0)
@@ -262,7 +269,7 @@ function [selChan,errMsg] = GetChannelsForFigure(iDS, iFig)
         if ~isempty(iChanZero)
             % Display warning
             delNames = {GlobalData.DataSet(iDS).Channel(selChan(iChanZero)).Name};
-            disp(['BST> Warning: The position of the following sensors is not set: ' sprintf('%s ', delNames{:})]);
+            disp(['BST> Warning: The positions of the following sensors are not set: ' sprintf('%s ', delNames{:})]);
             % Remove them from the list
             selChan(iChanZero) = [];
         end
@@ -403,8 +410,12 @@ function UpdateFigureName(hFig)
             TsInfo = getappdata(hFig, 'TsInfo');
             if isempty(TsInfo) || isempty(TsInfo.MontageName) || ~isempty(TsInfo.RowNames)
                 strMontage = 'All';
-            elseif strcmpi(TsInfo.MontageName, 'Average reference') || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                 strMontage = 'AvgRef';
+            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                strMontage = 'SCD';
+            elseif strcmpi(TsInfo.MontageName, 'Head distance')
+                strMontage = 'Head';
             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                 strMontage = 'Bad';
             elseif strcmpi(TsInfo.MontageName, 'ICA components[tmp]')
@@ -417,7 +428,11 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality strMontage ': ' figureName];
         case 'ResultsTimeSeries'
             if ~isempty(figureNameModality)
-                figureName = [figureNameModality(1:end-2) ': ' figureName];
+                if ismember(figureNameModality, {'results/', 'sloreta/'})
+                    figureName = ['Scout: ' figureName];
+                else
+                    figureName = [figureNameModality(1:end-2) ': ' figureName];
+                end
             end
             % Matrix file: display the file name
             TsInfo = getappdata(hFig, 'TsInfo');
@@ -443,6 +458,11 @@ function UpdateFigureName(hFig)
                     figureName = [figureNameModality  'MriViewer: ' figureName];
                 end
             end
+            % Add atlas name
+            AnatAtlas = getappdata(hFig, 'AnatAtlas');
+            if ~isempty(AnatAtlas) && ~strcmpi(AnatAtlas, 'none')
+                figureName = [figureName ' (' str_remove_parenth(AnatAtlas) ')'];
+            end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];
         case 'Spectrum'
@@ -459,6 +479,8 @@ function UpdateFigureName(hFig)
             figureName = [figureNameModality 'PAC: ' figureName];
         case 'Connect'
             figureName = [figureNameModality 'Connect: ' figureName];
+        case 'ConnectViz' % new connectivity visualization tool (2021)
+            figureName = [figureNameModality 'ConnectViz: ' figureName];
         case 'Image'
             % Add dependent file comment
             FileName = getappdata(hFig, 'FileName');
@@ -471,8 +493,12 @@ function UpdateFigureName(hFig)
                             TsInfo = getappdata(hFig, 'TsInfo');
                             if isempty(TsInfo) || isempty(TsInfo.MontageName) || ~isempty(TsInfo.RowNames)
                                 strMontage = 'All';
-                            elseif strcmpi(TsInfo.MontageName, 'Average reference') || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Average reference')) || ~isempty(strfind(TsInfo.MontageName, '(local average ref)'))
                                 strMontage = 'AvgRef';
+                            elseif ~isempty(strfind(TsInfo.MontageName, 'Scalp current density'))
+                                strMontage = 'SCD';
+                            elseif strcmpi(TsInfo.MontageName, 'Head distance')
+                                strMontage = 'Head';
                             elseif strcmpi(TsInfo.MontageName, 'Bad channels')
                                 strMontage = 'Bad';
                             else
@@ -742,6 +768,31 @@ function [Handles,iFig,iDS] = SetFigureHandles(hFig, Handles) %#ok<DEFNU>
     GlobalData.DataSet(iDS).Figure(iFig).Handles = Handles;
 end
 
+%% ===== GET SPECIFIC FIELD OF FIGURE HANDLE =====
+function Value = GetFigureHandleField(hFig, Field) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    % Return value if figure and field exists
+    if ~isempty(iDS) && isfield(GlobalData.DataSet(iDS).Figure(iFig).Handles, Field)
+        Value = GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field);
+    else
+        Value = [];
+    end
+end
+
+%% ===== SET SPECIFIC FIELD OF FIGURE HANDLE =====
+function SetFigureHandleField(hFig, Field, Value) %#ok<DEFNU>
+    global GlobalData;
+    % Get figure description
+    [hFig,iFig,iDS] = GetFigure(hFig);
+    if isempty(iDS)
+        error('Figure is not registered in Brainstorm');
+    end
+    % Set field
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.(Field) = Value;
+end
+
 
 %% ===== DELETE FIGURE =====
 %  Usage : DeleteFigure(hFigure)
@@ -848,6 +899,11 @@ function DeleteFigure(hFigure, varargin)
     if strcmpi(Figure.Id.Type, 'Connect')
         figure_connect('Dispose', hFigure);
     end
+    
+    if strcmpi(Figure.Id.Type, 'ConnectViz')
+        figure_connect_viz('Dispose', hFigure);
+    end
+    
     % Delete graphic object
     if ishandle(hFigure)
         delete(hFigure);
@@ -922,6 +978,8 @@ function FireCurrentTimeChanged(ForceTime)
                     figure_pac('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Connect'
                     figure_connect('CurrentTimeChangedCallback', sFig.hFigure);
+                case 'ConnectViz' % new connectivity visualization tool (2021)
+                    figure_connect_viz('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Image'
                     figure_image('CurrentTimeChangedCallback', sFig.hFigure);
                 case 'Video'
@@ -969,6 +1027,11 @@ function FireCurrentFreqChanged()
                 case 'Connect'
                     bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
                     figure_connect('CurrentFreqChangedCallback', sFig.hFigure);
+                    bst_progress('stop');
+                    
+                case 'ConnectViz' % new connectivity visualization tool (2021)
+                    bst_progress('start', 'Connectivity-viz graph', 'Reloading connectivity-viz graph...');
+                    figure_connect_viz('CurrentFreqChangedCallback', sFig.hFigure);
                     bst_progress('stop');
                 case 'Image'
                     figure_image('CurrentFreqChangedCallback', sFig.hFigure);
@@ -1474,14 +1537,23 @@ function ViewTopography(hFig, UseSmoothing)
             % Get displayable sensor types
             [AllMod, DispMod, DefaultMod] = bst_get('ChannelModalities', DataFile);
             % If current modality is not MEG or EEG, cannot display topography: get default modality
-            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS'}) && ~isempty(DataFile)
+            if ~ismember(FigMod, {'MEG','MEG GRAD','MEG MAG','EEG','ECOG','SEEG','NIRS','ECOG+SEEG'}) && ~isempty(DataFile)
                 Modalities = {DefaultMod};
             % If displaying Stat on Neuromag recordings: Display all sensors separately
             elseif ismember(FigMod, {'MEG','MEG GRAD'}) && all(ismember({'MEG MAG','MEG GRAD'}, AllMod)) && ~isempty(DataFile) && (strcmpi(file_gettype(DataFile), 'pdata') || ~ismember(RecType, {'recordings','raw'}))
                 Modalities = {'MEG MAG', 'MEG GRAD2', 'MEG GRAD3'};
             else
                 Modalities = {FigMod};
-            end           
+            end
+            % Keep only the modalities that have valid data
+            iGoodMod = [];
+            for iMod = 1:length(Modalities)
+                iChan = good_channel(GlobalData.DataSet(iDS).Channel, GlobalData.DataSet(iDS).Measures.ChannelFlag, Modalities{iMod});
+                if ~isempty(iChan)
+                    iGoodMod = [iGoodMod, iMod];
+                end
+            end
+            Modalities = Modalities(iGoodMod);
                 
         case {'Timefreq', 'Spectrum', 'Pac'}
             % Get time freq information
@@ -1511,17 +1583,21 @@ function ViewTopography(hFig, UseSmoothing)
             RecType = '';
         case 'Connect'
             warning('todo');
+        case 'ConnectViz' 
+            warning('todo');
     end
     % Call view data function
     if ~isempty(DataFile) && ~isempty(Modalities)
         for i = 1:length(Modalities)
-            if ismember(Modalities{i}, {'ECOG', 'SEEG'})
+            if ismember(Modalities{i}, {'ECOG', 'SEEG', 'ECOG+SEEG'})
                 % 3D figure: plot topography in the same figure
                 if isequal(FigureType, '3DViz')
                     view_topography(DataFile, Modalities{i}, '3DElectrodes', [], [], hFig);
                 % Other types of figures: Create new figure
-                else
+                elseif ~isempty(DispMod) && ismember(Modalities{i}, DispMod)
                     view_topography(DataFile, Modalities{i}, '3DElectrodes');
+                else
+                    view_topography(DataFile, Modalities{i}, '2DElectrodes');
                 end
             elseif isequal(Modalities{i}, 'NIRS')
                 % Get montage used in figure
@@ -1644,7 +1720,7 @@ function isValid = isFigureId(FigureId)
             isfield(FigureId, 'Type') && ...
             isfield(FigureId, 'SubType') && ...
             isfield(FigureId, 'Modality') && ...
-            ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Topography', '3DViz', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Connect', 'Image'}));
+            ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Topography', '3DViz', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Connect', 'ConnectViz', 'Image'}));
         isValid = 1;
     else
         isValid = 0;
@@ -1677,11 +1753,15 @@ end
 %         ReloadFigures(hFigs)       : Reload a specific list of figures
 %         ReloadFigures()            : Reload all the figures
 %         ReloadFigures(..., isFastUpdate=1):  If 0, clear all the figures and plot them completely
-function ReloadFigures(FigureTypes, isFastUpdate)
+%         ReloadFigures(..., isResetAxes=0):   If 1, reset axes zoom configuration
+function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
     global GlobalData;
     % By default: fast update
     if (nargin < 2) || isempty(isFastUpdate)
         isFastUpdate = 1;
+    end
+    if (nargin < 3) || isempty(isResetAxes)
+        isResetAxes = 0;
     end
     % If figure type not sepcified
     isStatOnly = 0;
@@ -1735,16 +1815,35 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                             view_clusters(DataFiles, iClusters, Figure.hFigure);
                         end
                     else
+                        % Get original XLim/YLim
+                        if (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimOrig = get(Figure.Handles.hAxes, 'XLim');
+                        end
                         TsInfo = getappdata(Figure.hFigure, 'TsInfo');
+                        % Reset amplitudes
                         if TsInfo.AutoScaleY
                             GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax = [];
                         end
                         GlobalData.DataSet(iDS).Figure(iFig).Handles.DownsampleFactor = [];
+                        % Update figure
                         isOk = figure_timeseries('PlotFigure', iDS, iFig, [], [], isFastUpdate);
                         % The figure could not be refreshed: close it
                         if ~isOk
                             close(Figure.hFigure);
                             continue;
+                        end
+                        % Restore XLim/YLim
+                        if ~isResetAxes && ~isempty(XLimOrig) && (length(Figure.Handles.hAxes) == 1) && ishandle(Figure.Handles.hAxes)
+                            XLimNew = get(Figure.Handles.hAxes, 'XLim');
+                            YLimNew = get(Figure.Handles.hAxes, 'YLim');
+                            if ~isequal(XLimNew, XLimOrig) && (XLimOrig(1) >= XLimNew(1)) && (XLimOrig(2) <= XLimNew(2))
+                                set(Figure.Handles.hAxes, 'XLim', XLimOrig);
+                                % Copy the XLim from the main axes to the events bar
+                                hEventsBar = findobj(Figure.hFigure, '-depth', 1, 'Tag', 'AxesEventsBar');
+                                if ~isempty(hEventsBar)
+                                    set(hEventsBar, 'XLim', get(Figure.Handles.hAxes, 'XLim'));
+                                end
+                            end
                         end
                     end
                     UpdateFigureName(Figure.hFigure);
@@ -1847,12 +1946,18 @@ function ReloadFigures(FigureTypes, isFastUpdate)
                 case 'Timefreq'
                     figure_timefreq('UpdateFigurePlot', Figure.hFigure, 1);
                 case 'Spectrum'
-                    figure_spectrum('UpdateFigurePlot', Figure.hFigure);
+                    figure_spectrum('UpdateFigurePlot', Figure.hFigure, 1);
                     UpdateFigureName(Figure.hFigure);
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);
                 case 'Connect'
-                    warning('todo: reload figure');
+                    bst_progress('start', 'Connectivity graph', 'Reloading connectivity graph...');
+                    figure_connect('UpdateFigurePlot', Figure.hFigure);
+                    bst_progress('stop');
+                case 'ConnectViz' % new connectivity visualization tool (2021)
+                    bst_progress('start', 'Connectivity-viz graph', 'Reloading connectivity-viz graph...');
+                    figure_connect_viz('UpdateFigurePlot', Figure.hFigure);
+                    bst_progress('stop');
                 case 'Image'
                     % ReloadCall only
                 case 'Video'
@@ -1875,20 +1980,27 @@ end
 %  ===== MOUSE SELECTION ===================================================================
 %  =========================================================================================
 % ===== TOGGLE SELECTED ROW =====
-function ToggleSelectedRow(RowName)
+function ToggleSelectedRow(RowNames)
     global GlobalData;
     % Convert to cell
-    if ~iscell(RowName)
-        RowName = {RowName};
+    if ~iscell(RowNames)
+        RowNames = {RowNames};
     end
     % Remove spaces in channel names
-    RowName = cellfun(@(c)strrep(c,' ',''), RowName, 'UniformOutput', 0);
+    RowNames = cellfun(@(c)strrep(c,' ',''), RowNames, 'UniformOutput', 0);
+    % Expand bipolar montages
+    for i = 1:length(RowNames)
+        bipNames = str_split(RowNames{i}, '-');
+        if (length(bipNames) == 2)
+            RowNames = cat(2, RowNames, bipNames);
+        end
+    end
     % If row name is already in list: remove it
-    if ismember(RowName, GlobalData.DataViewer.SelectedRows)
-        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowName));
+    if ismember(RowNames, GlobalData.DataViewer.SelectedRows)
+        SetSelectedRows(setdiff(GlobalData.DataViewer.SelectedRows, RowNames));
     % Else: add it
     else
-        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowName));
+        SetSelectedRows(union(GlobalData.DataViewer.SelectedRows, RowNames));
     end
 end
 
@@ -1965,7 +2077,9 @@ function FireSelectedRowChanged()
                 case 'Pac'
                     % Nothing to do
                 case 'Connect'
-                    figure_connect('SelectedRowChangedCallback', iDS, iFig);
+                    figure_connect('SelectedRowChangedCallback', iDS, iFig); % empty callback
+                case 'ConnectViz' 
+                    % Nothing to do
                 case 'Image'
                     % Nothing to do
                 otherwise
@@ -1980,7 +2094,8 @@ end
 function SetBackgroundColor(hFig, newColor) %#ok<*DEFNU>
     % Use previous scout color
     if (nargin < 2) || isempty(newColor)
-        newColor = uisetcolor([0 0 0], 'Select scout color');
+        % newColor = uisetcolor([0 0 0], 'Select scout color');
+        newColor = java_dialog('color');
     end
     % If no color was selected: exit
     if (length(newColor) ~= 3)

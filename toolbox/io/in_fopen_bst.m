@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_bst(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [sFile, ChannelMat] = in_fopen_bst(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2015
+% Authors: Francois Tadel, 2014-2019; Martin Cousineau, 2018
         
 
 %% ===== READ HEADER =====
@@ -40,7 +40,7 @@ magic = fread(fid, [1 6], '*char');                           % CHAR(6)    : For
 if ~isequal(magic, 'BSTBIN')
     error('File is not a valid Brainstorm binary file.');
 end
-hdr.version   = fread(fid, [1 1], '*char');                   % CHAR(1)    : Version of the format
+hdr.version   = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Version of the format, starting at uint8('1') = 49 for legacy reasons
 hdr.device    = str_read(fid, 40);                            % CHAR(40)   : Device used for recording
 hdr.sfreq     = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Sampling frequency
 hdr.starttime = double(fread(fid, [1 1], 'float32'));         % FLOAT32(1) : Start time
@@ -51,7 +51,7 @@ hdr.epochsize = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Num
 hdr.nchannels = double(fread(fid, [1 1], 'uint32'));          % UINT32(1)  : Number of channels
 
 % ===== CHECK WHETHER VERSION IS SUPPORTED =====
-if hdr.version ~= '1'
+if (hdr.version > 51)
     error(['The selected version of the BST format is currently not supported.' ...
            10 'Please update Brainstorm.']);
 end
@@ -132,19 +132,42 @@ end
 % ===== EVENTS =====
 nevt = double(fread(fid, [1 1], 'uint32'));                         % UINT32(1)  : Number of event categories
 events = repmat(db_template('event'), [1, nevt]);
-for i = 1:nevt
-    events(i).label = str_read(fid, 20);                            % CHAR(20)   : Event name
-    events(i).color = double(fread(fid, [1,3], 'float32'));         % FLOAT32(3) : Event color
-    isExtended  = fread(fid, [1 1], 'int8');                        % INT8(1)    : Event type (0=regular, 1=extended)
-    nocc = double(fread(fid, [1 1], 'uint32'));                     % UINT32(1)  : Number of occurrences
-    if isExtended
-        events(i).times = double(fread(fid, [2,nocc], 'float32'));  % FLOAT32(2N): Time in seconds
+for iEvt = 1:nevt
+    if (hdr.version < 50)
+        labelLength = 20;
     else
-        events(i).times = double(fread(fid, [1,nocc], 'float32'));  % FLOAT32(2N): Time in seconds
+        labelLength = fread(fid, [1 1], 'uint8');                   % UINT8(1)   : Length of event name (1 to 255)
+    end
+    events(iEvt).label = str_read(fid, labelLength);                   % CHAR(??)   : Event name
+    events(iEvt).color = double(fread(fid, [1,3], 'float32'));         % FLOAT32(3) : Event color
+    isExtended  = fread(fid, [1 1], 'int8');                        % INT8(1)    : Event type (0=regular, 1=extended)
+    nOcc = double(fread(fid, [1 1], 'uint32'));                     % UINT32(1)  : Number of occurrences
+    if isExtended
+        events(iEvt).times = double(fread(fid, [2,nOcc], 'float32'));  % FLOAT32(2N): Time in seconds
+    else
+        events(iEvt).times = double(fread(fid, [1,nOcc], 'float32'));  % FLOAT32(2N): Time in seconds
     end
     % Rebuild missing information
-    events(i).epochs  = ones(1, nocc);
-    events(i).samples = round(events(i).times .* hdr.sfreq);
+    events(iEvt).epochs = ones(1, nOcc);
+    events(iEvt).channels = cell(1, nOcc);
+    events(iEvt).notes = cell(1, nOcc);
+    % April 2019: Channels and notes are added to events
+    if (hdr.version >= 51)
+        % Read list of channels associated to each event
+        for iOcc = 1:nOcc
+            nChannels = fread(fid, [1 1], 'uint16');                   % UINT16(1) : Number of channels associated to this event
+            events(iEvt).channels{iOcc} = cell(1, nChannels);
+            for iChan = 1:nChannels
+                labelLength = fread(fid, [1 1], 'uint8');                          % UINT8(1) : Length of channel name (1 to 255)
+                events(iEvt).channels{iOcc}{iChan} = str_read(fid, labelLength);   % CHAR(??) : Channel name
+            end
+        end
+        % Read list of notes associated to each event
+        for iOcc = 1:nOcc
+            labelLength = fread(fid, [1 1], 'uint16');               % UINT16(1) : Length of note text
+            events(iEvt).notes{iOcc} = str_read(fid, labelLength);   % CHAR(??) : Note text
+        end
+    end
 end
 
 % Save total header size (to allow fast skipping when reading)
@@ -166,8 +189,7 @@ sFile.events       = events;
 sFile.header       = hdr;
 sFile.channelflag  = ChannelFlag;
 sFile.prop.sfreq   = hdr.sfreq;
-sFile.prop.samples = round(hdr.starttime .* hdr.sfreq) + [0, hdr.nsamples-1];
-sFile.prop.times   = sFile.prop.samples ./ hdr.sfreq;
+sFile.prop.times   = (round(hdr.starttime .* hdr.sfreq) + [0, hdr.nsamples-1]) ./ hdr.sfreq;
 sFile.prop.nAvg    = hdr.navg;
 sFile.prop.currCtfComp = hdr.ctfcomp;
 sFile.prop.destCtfComp = 3;
@@ -177,6 +199,10 @@ end
 
 %% ===== READ STRING =====
 function s = str_read(fid, N)
+    % Nothing to read, return empty string
+    if (N == 0)
+        s = '';
+    end
     % Read string
     s = fread(fid, [1 N], '*uint8');
     % Remove zeros

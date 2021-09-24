@@ -9,7 +9,7 @@ function varargout = process_ft_dipolefitting( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -90,8 +90,13 @@ end
 %% ===== RUN =====
 function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     OutputFile = [];
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     
     % ===== GET OPTIONS =====
     SensorTypes = sProcess.options.sensortypes.Value;
@@ -170,13 +175,17 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     HeadModelMat = in_bst_headmodel(sHeadModel.FileName);
     % Convert head model
     ftHeadmodel = out_fieldtrip_headmodel(HeadModelMat, ChannelMat, iChannels);
+    if strcmpi(ftHeadmodel.type, 'openmeeg')
+        bst_report('Error', sProcess, sInput, 'OpenMEEG headmodel not supported for dipole fitting: Compute another head model first.');
+        return;
+    end
     % Convert data file
     ftData = out_fieldtrip_data(DataMat, ChannelMat, iChannels, 1);
     % Generate rough grid for first estimation
     GridLoc = bst_sourcegrid(GridOptions, HeadModelMat.SurfaceFile);
     
     % Initialise unlimited progress bar
-    bst_progress('start', 'ft_dipolefitting', 'Calling FieldTrip function: ft_dipolefitting...');
+    bst_progress('text', 'Calling FieldTrip function: ft_dipolefitting...');
     % Prepare FieldTrip cfg structure
     cfg = [];
     cfg.channel     = {ChannelMat.Channel(iChannels).Name};
@@ -291,6 +300,8 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     panel_protocols('UpdateNode', 'Study', sInput.iStudy);
     % Save database
     db_save();
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
     
     % Return the input file (as we cannot handle the dipole files in the pipeline editor)
     OutputFile = DipoleFile;

@@ -8,7 +8,7 @@ function varargout = panel_stat(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = panel_stat(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2019
 
 eval(macro_method);
 end
@@ -49,13 +49,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     % ===== THRESHOLDING =====
     jPanelThresh = gui_river([4,1], [2,8,4,0], 'Thresholding');
         % Threshold p-value: Title
-        gui_component('Label', jPanelThresh, [], 'p-value threshold: ');
+        jLabelThresh = gui_component('Label', jPanelThresh, [], '<HTML>Significance level &alpha;: ');
         % Threshold p-value: Value
-        jTextPThresh = gui_component('Text', jPanelThresh, [], '');
+        jTextPThresh = gui_component('Text', jPanelThresh, 'tab', '');
         jTextPThresh.setHorizontalAlignment(JLabel.RIGHT);
         jTextPThresh.setPreferredSize(java_scaled('dimension', 60,23));
         java_setcb(jTextPThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
-                                 'FocusLostCallback',       @(h,ev)SaveOptions());
+                                 'FocusLostCallback',       @(h,ev)ev.getSource().getParent().grabFocus());                               
+        % Threshold duration: Title
+        gui_component('Label', jPanelThresh, 'br', 'Minimum duration: ');
+        % Threshold duration: Value
+        jTextDurThresh = gui_component('Text', jPanelThresh, 'tab', '');
+        jTextDurThresh.setHorizontalAlignment(JLabel.RIGHT);
+        jTextDurThresh.setPreferredSize(java_scaled('dimension', 60,23));
+        java_setcb(jTextDurThresh, 'ActionPerformedCallback', @(h,ev)SaveOptions(), ...
+                                   'FocusLostCallback',       @(h,ev)ev.getSource().getParent().grabFocus());
+        gui_component('Label', jPanelThresh, '', 'ms');
+        
     jPanelTop.add('hfill', jPanelThresh);
         
     % ===== MULTIPLE COMPARISONS =====
@@ -110,7 +120,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew.add(jPanelClusterList, BorderLayout.CENTER);
     
     % Controls list
-    ctrl = struct('jTextPThresh',       jTextPThresh, ...
+    ctrl = struct('jLabelThresh',       jLabelThresh, ...
+                  'jTextPThresh',       jTextPThresh, ...
+                  'jTextDurThresh',     jTextDurThresh, ...
                   'jPanelOptions',      jPanelOptions, ...
                   'jRadioCorrNo',       jRadioCorrNo, ...
                   'jRadioCorrBonf',     jRadioCorrBonf, ...
@@ -254,11 +266,16 @@ function UpdatePanel(ctrl)
     StatThreshOptions = bst_get('StatThreshOptions');
     % p-threshold
     ctrl.jTextPThresh.setText(num2str(StatThreshOptions.pThreshold, '%g'));
+    % duration threshold
+    ctrl.jTextDurThresh.setText(num2str(round(StatThreshOptions.durThreshold * 1000), '%d'));
     % Multiple comparisons
     switch (StatThreshOptions.Correction)
-        case 'no',          ctrl.jRadioCorrNo.setSelected(1);
-        case 'bonferroni',  ctrl.jRadioCorrBonf.setSelected(1);
-        case 'fdr',         ctrl.jRadioCorrFdr.setSelected(1);
+        case 'no'
+            ctrl.jRadioCorrNo.setSelected(1);
+        case 'bonferroni'
+            ctrl.jRadioCorrBonf.setSelected(1);
+        case 'fdr'
+            ctrl.jRadioCorrFdr.setSelected(1);
     end
     % Control
     if ismember(1, StatThreshOptions.Control)
@@ -304,15 +321,19 @@ end
 %% ===== GET FIGURE CLUSTERS =====
 function [StatClusters,StatFile,iFig,iDS] = GetFigureClusters(hFig)
     global GlobalData;
+    % Initialize returned values
+    StatFile = [];
+    StatClusters = [];
     % Default current figure
     if (nargin < 1) || isempty(hFig)
         hFig = bst_figures('GetCurrentFigure');
     end
     % Get figure
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig); 
+    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
+        return;
+    end
     % Get loaded clusters
-    StatFile = [];
-    StatClusters = [];
     switch GlobalData.DataSet(iDS).Figure(iFig).Id.Type
         case 'DataTimeSeries'
             TsInfo = getappdata(hFig, 'TsInfo');
@@ -399,6 +420,12 @@ function SaveOptions()
         StatThreshOptions.pThreshold = pThresh;
     end
     ctrl.jTextPThresh.setText(num2str(StatThreshOptions.pThreshold, '%g'));
+    % Duration threshold
+    durThresh = str2double(char(ctrl.jTextDurThresh.getText()));
+    if ~isnan(durThresh) && (durThresh >= 0)
+        StatThreshOptions.durThreshold = round(durThresh) / 1000;
+    end
+    ctrl.jTextDurThresh.setText(num2str(round(StatThreshOptions.durThreshold * 1000), '%d'));
     % Multiple comparisons
     if ctrl.jRadioCorrBonf.isSelected()
         StatThreshOptions.Correction = 'bonferroni';
@@ -522,15 +549,16 @@ function [sClusters, iClusters] = GetDisplayedClusters(hFig)
             iClusters = [];
             sClusters = [];
         case 'select'
-            % If the target figure is not the figure that is currently selected: nothing to display
-            hFigCur = bst_figures('GetCurrentFigure');
-            if ~isequal(hFigCur, hFig)
-                iClusters = [];
-                sClusters = [];
-            % Get the clusters that are selected in the JList
-            else
+            % Check that the number of clusters is correct
+            % Possible error: if there are multiple files with different clusters displayed together, 
+            % the selection may apply improperly to inappropriate files
+            if (length(sClusters) == ctrl.jListClusters.getModel().getSize())
+                % Get the clusters that are selected in the JList
                 iClusters = ctrl.jListClusters.getSelectedIndices() + 1;
                 sClusters = sClusters(iClusters);
+            else
+                iClusters = [];
+                sClusters = [];
             end
         case 'all'
             % Keep all the significant clusters

@@ -21,7 +21,7 @@ function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh, Date
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2018 University of Southern California & McGill University
+% Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -46,7 +46,7 @@ if (nargin < 3) || isempty(isRefresh)
     isRefresh = 1;
 end
 if (nargin < 2)
-    ConditionName = java_dialog('input', 'New condition name: ', 'Add condition', [], 'NewCondition');
+    ConditionName = java_dialog('input', 'New folder name: ', 'Add folder', [], 'NewCondition');
     if isempty(ConditionName)
         return
     end
