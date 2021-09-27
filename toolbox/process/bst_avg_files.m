@@ -518,7 +518,7 @@ if strcmpi(matName, 'F') || (strcmpi(matName, 'Value') && isstruct(FilesListA{iF
     OutChannelFlag  = ones(NbChannels, 1);
     OutChannelFlag(MeanBadChannels) = -1;
 else
-    OutChannelFlag = ChannelFlag;
+    OutChannelFlag = [];
 end
 
 % === FINALIZE COMPUTATION ===
