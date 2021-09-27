@@ -67,6 +67,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Available variables
     Data = sInput.A;
     TimeVector = sInput.TimeVector;
+    Comment = sInput.Comment;
     % Evaluate Matlab code
     try
         eval(sProcess.options.matlab.Value);
@@ -112,6 +113,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Report results
     sInput.A = Data;
     sInput.TimeVector = TimeVector;
+    sInput.Comment = Comment;
     % Do not keep the Std field in the output
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];
