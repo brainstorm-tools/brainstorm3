@@ -45,6 +45,7 @@ if isempty(JdkDir) || ~exist(fullfile(JdkDir, 'bin'), 'file')
         'Download: https://adoptopenjdk.net/?variant=openjdk8' 10 ...
         'Set environment from Matlab: setenv(''JAVA_HOME'', ''C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot'')']);
 end
+disp([10 'COMPILE> JAVA_HOME=' JdkDir]);
 % Check if compiler is available
 if ~exist('mcc', 'file')
     error('You must install the toolboxes "Matlab Compiler" and "Matlab Compiler SDK" to run this function.');
