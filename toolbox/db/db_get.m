@@ -339,24 +339,31 @@ switch contextName
         iFiles = args{1};
         fields = '*';                              
         templateStruct = db_template('AnatomyFile');
-
+        resultStruct = templateStruct; 
+        
         if ischar(iFiles)
             iFiles = {iFiles};
         elseif isstruct(iFiles)
             condQuery = args{1};           
         end
 
+        % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            if ischar(fields)
+            % Set fields for resultStruct
+            if ischar(fields) && ~strcmp(fields, '*')
                 fields = {fields};
-            end
-            for i = 1 : length(fields)
-                resultStruct.(fields{i}) = templateStruct.(fields{i});
-            end
-        else
-            resultStruct = templateStruct;
-        end
+                % Verify requested fields
+                if ~all(isfield(templateStruct, fields))
+                    error('Invalid Fields requested in db_get()');
+                else
+                    resultStruct = [];
+                    for i = 1 : length(fields)
+                        resultStruct.(fields{i}) = templateStruct.(fields{i});
+                    end
+                end
+            end           
+        end        
 
         % Input is FileIDs and FileNames
         if ~isstruct(iFiles)
