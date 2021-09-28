@@ -538,7 +538,8 @@ switch contextName
         
         % Get all subjects
         sqlConn = sql_connect();
-        sSubjects = sql_query(sqlConn, 'select', 'subject', '*');
+        sSubjects = db_get(sqlConn, 'Subjects', 1);
+        
         iDefaultSubject = [];
         for iSubject = 1:length(sSubjects)
             sSubject = sSubjects(iSubject);
@@ -1061,10 +1062,7 @@ switch contextName
         if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
             return;
         end
-        sSubject = [];
         iSubject = [];
-        SubjectName = [];
-        SubjectFileName = [];
         % ISRAW parameter
         if (nargin < 3)
             isRaw = 0;
@@ -1077,104 +1075,55 @@ switch contextName
             iSubject = varargin{2};
             % If required subject is default subject (iSubject = 0)
             if (iSubject == 0)
-                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('Name', '@default_subject'));
+                sSubject = db_get(sqlConn, 'Subject', '@default_subject');
             % Normal subject 
             else
-                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('Id', iSubject));
+                sSubject = db_get(sqlConn, 'Subject', iSubject, '*', isRaw);
             end
-            % Subject not found
-            if isempty(sSubject)
-                sql_close(sqlConn);
-                argout1 = sSubject;
-                argout2 = iSubject;
-                return
-            end
-            
+
+        % Call: bst_get('subject', []);            
+        elseif (nargin >= 2) && isempty(varargin{2})
+            % If second argument is empty: use DefaultSubject
+            sSubject = db_get(sqlConn, 'Subject', '@default_subject');           
+
         % Call: bst_get('subject', SubjectFileName, isRaw);
         % Call: bst_get('subject', SubjectName,     isRaw);
-        elseif (nargin >= 2) && isempty(varargin{2})
-            % If study name is empty: use DefaultSubject
-            SubjectName = '@default_subject';
         elseif (nargin >= 2) && (ischar(varargin{2}))
-            [fName, fBase, fExt] = bst_fileparts(varargin{2});
+            [~, ~, fExt] = bst_fileparts(varargin{2});
             % Argument is a Matlab .mat filename
             if strcmpi(fExt, '.mat')
                 SubjectFileName = varargin{2};
             % Else : assume argument is a directory
             else
-                SubjectName = file_standardize(varargin{2});
+                SubjectFileName = bst_fullfile(file_standardize(varargin{2}), 'brainstormsubject.mat');
             end
+            sSubject = db_get(sqlConn, 'Subject', SubjectFileName, '*', isRaw);
                             
         % Call: bst_get('subject');   => looking for current subject 
         elseif (nargin < 2)
             % Get currently selected subject
-            ProtocolInfo = bst_get('ProtocolInfo');
-            if ~isempty(ProtocolInfo.iSubject)
-                iSubject = ProtocolInfo.iSubject;
-                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('Id', iSubject));
-            end
-            
-            if isempty(ProtocolInfo.iSubject) || isempty(sSubject)
-                sql_close(sqlConn);
-                argout1 = [];
-                argout2 = [];
-                return;
-            end
+            sSubject = db_get(sqlConn, 'Subject');          
         else
+            sql_close(sqlConn);
             error('Invalid call to bst_get()');
         end
-
+        
         % If Subject is defined by its filename/name
         if isempty(sSubject)
-            if ~isempty(SubjectFileName)
-                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('FileName', SubjectFileName));
-            elseif ~isempty(SubjectName)
-                sSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('Name', SubjectName));
-            else
-                error('Subject name not specified.');
-            end
-            
-            if ~isempty(sSubject)
-                if strcmpi(sSubject.Name, '@default_subject')
-                    iSubject = 0;
-                else
-                    iSubject = sSubject.Id;
-                end
-            end
-        end
-        
-        % Return found subject
-        if ~isempty(iSubject) && ~isempty(sSubject)
-            % If subject uses default subject
-            useDefaultSubject = sSubject.UseDefaultAnat && ~isRaw && iSubject ~= 0;
-            if useDefaultSubject
-                sDefaultSubject = sql_query(sqlConn, 'select', 'subject', '*', ...
-                    struct('Name', '@default_subject'));
-            end
-            if useDefaultSubject && ~isempty(sDefaultSubject)
-                % Return default subject (WITH REAL SUBJECT'S NAME)
-                sDefaultSubject.Name              = sSubject.Name;
-                sDefaultSubject.UseDefaultAnat    = sSubject.UseDefaultAnat;
-                sDefaultSubject.UseDefaultChannel = sSubject.UseDefaultChannel;
-                sSubject = sDefaultSubject;
-            end
-            
-            % Populate Surface & Anatomy files
-            sSubject.Anatomy = [repmat(db_template('Anatomy'), 0), ...
-                db_convert_anatomyfile(db_get('FilesWithSubject', sSubject.Id, 'anatomy'))]; 
-            sSubject.Surface = [repmat(db_template('Surface'), 0), ...
-                db_convert_anatomyfile(db_get('FilesWithSubject', sSubject.Id, 'surface'))]; 
-            
             argout1 = sSubject;
             argout2 = iSubject;
+        % Return found subject
+        else                 
+            % Populate Surface & Anatomy files
+            sSubject.Anatomy = [repmat(db_template('Anatomy'), 0), ...
+                db_convert_anatomyfile(db_get(sqlConn, 'FilesWithSubject', sSubject.Id, 'anatomy'))]; 
+            sSubject.Surface = [repmat(db_template('Surface'), 0), ...
+                db_convert_anatomyfile(db_get(sqlConn, 'FilesWithSubject', sSubject.Id, 'surface'))]; 
+            
+            argout1 = sSubject;
+            argout2 = sSubject.Id;
         end
-        sql_close(sqlConn);
-
+        sql_close(sqlConn);        
         
 %% ==== SURFACE FILE ====
     % Usage : [sSubject, iSubject, iSurface] = bst_get('SurfaceFile', SurfaceFile)
