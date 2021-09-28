@@ -64,6 +64,7 @@ function varargout = db_get(varargin)
 %          Raymundo Cassani, 2021
 
 %% ==== PARSE INPUTS ====
+global GlobalData;
 if (nargin > 1) && isjava(varargin{1})
     sqlConn = varargin{1};
     varargin(1) = [];
@@ -206,6 +207,15 @@ switch contextName
         end
         varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', [], addQuery);
 
+%% ==== SUBJECTS COUNT ====
+    % nSubjects = db_get('SubjectCount')
+    case 'SubjectCount'
+        if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
+            varargout{1} = 0;
+            return;
+        end
+        varargout{1} = sql_query(sqlConn, 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
+        
 %% ==== FILES WITH SUBJECT ====
     % sAnatomyFiles = db_get('FilesWithSubject', SubjectID, AnatomyFileType)
     case 'FilesWithSubject'

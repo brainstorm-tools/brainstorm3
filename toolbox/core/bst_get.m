@@ -936,11 +936,7 @@ switch contextName
 %% ==== SUBJECTS COUNT ====
     % Usage: [nbSubjects] = bst_get('SubjectCount')
     case 'SubjectCount'
-        if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
-            argout1 = 0;
-            return;
-        end
-        argout1 = sql_query([], 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
+        argout1 = db_get('SubjectCount');
         
 %% ==== NORMALIZED SUBJECT ====
     case 'NormalizedSubject'
