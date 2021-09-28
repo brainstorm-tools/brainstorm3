@@ -219,7 +219,7 @@ function [sFib,iFib] = LoadFibers(FibFile)
         % Create default structure
         sFib = db_template('LoadedFibers');
         % Load fibers matrix
-        FibMat = in_fibers(FibFile);
+        FibMat = load(file_fullpath(FibFile));
         % Build fibers structure
         for field = fieldnames(sFib)'
             if isfield(FibMat, field{1})
