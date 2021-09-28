@@ -69,6 +69,66 @@ varargout = {};
    
 % Set required context structure
 switch contextName
+%% ==== SUBJECT ====
+    % [Sucess]               db_set('Subject', 'Delete')
+    % [Sucess]               db_set('Subject', 'Delete', SubjectId)
+    % [Sucess]               db_set('Subject', 'Delete', CondQuery)
+    % [SubjectId, Subject] = db_set('Subject', Subject)
+    % [SubjectId, Subject] = db_set('Subject', Subject, SubjectId)
+    case 'Subject'
+        varargout{1} = [];
+        
+        if length(args) < 1
+            error('Error in number of arguments')
+        end
+        
+        sSubject = args{1};
+        if length(args) > 1
+            iSubject = args{2};
+        end
+        % Delete 
+        if ischar(sSubject) && strcmpi(sSubject, 'delete')
+            if ~exist('iSubject','var')
+                % Delete all rows in Subject table
+                delResult = sql_query(sqlConn, 'delete', 'subject');
+            else
+                if isstruct(iSubject)
+                    % Delete using the CondQuery
+                    delResult = sql_query(sqlConn, 'delete', 'subject', iSubject);                    
+                elseif isnumeric(iSubject)
+                    % Delete using iSubject
+                    delResult = sql_query(sqlConn, 'delete', 'subject', struct('Id', iSubject));  
+                end
+            end
+            if delResult > 0
+                varargout{1} = 1;
+            end
+            
+        % Insert or Update    
+        elseif isstruct(sSubject)
+            if ~exist('iSubject','var')
+                % Insert Subject row
+                sSubject.Id = []; 
+                iSubject = sql_query(sqlConn, 'insert', 'subject', sSubject);
+                varargout{1} = iSubject;
+            else
+                % Update Subject row
+                if ~isfield(sSubject, 'Id') || isempty(sSubject.Id) || sSubject.Id == iSubject
+                    resUpdate = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', iSubject));
+                end
+                if resUpdate>0
+                    varargout{1} = iSubject;
+                end
+            end
+            % If requested, get the inserted or updated row
+            if nargout > 1
+                varargout{2} = db_get(sqlConn, 'subject', iSubject);
+            end
+        else
+            % No action
+        end        
+
+        
 %% ==== ANATOMY FILES ====
     % [Sucess]                       db_set('AnatomyFile', 'Delete')
     % [Sucess]                       db_set('AnatomyFile', 'Delete', AnatomyFileId)
