@@ -70,12 +70,14 @@ varargout = {};
 % Set required context structure
 switch contextName
 %% ==== ANATOMY FILES ====
-    %                                db_set('AnatomyFile', 'Delete')
-    %                                db_set('AnatomyFile', 'Delete', AnatomyFileId)
-    %                                db_set('AnatomyFile', 'Delete', CondQuery)
+    % [Sucess]                       db_set('AnatomyFile', 'Delete')
+    % [Sucess]                       db_set('AnatomyFile', 'Delete', AnatomyFileId)
+    % [Sucess]                       db_set('AnatomyFile', 'Delete', CondQuery)
     % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile)
     % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile, AnatomyFileId)
     case 'AnatomyFile'
+        varargout{1} = [];
+        
         if length(args) < 1
             error('Error in number of arguments')
         end
@@ -84,30 +86,40 @@ switch contextName
         if length(args) > 1
             iAnatomyFile = args{2};
         end
-        
+        % Delete 
         if ischar(sAnatomyFile) && strcmpi(sAnatomyFile, 'delete')
             if ~exist('iAnatomyFile','var')
                 % Delete all rows in AnatomyFile table
-                sql_query(sqlConn, 'delete', 'anatomyfile');
+                delResult = sql_query(sqlConn, 'delete', 'anatomyfile');
             else
                 if isstruct(iAnatomyFile)
                     % Delete using the CondQuery
-                    disp('Delete rows using CondQuery')
-                    
-                elseif isinteger(iAnatomyFile)
+                    delResult = sql_query(sqlConn, 'delete', 'anatomyfile', iAnatomyFile);                    
+                elseif isnumeric(iAnatomyFile)
                     % Delete using iAnatomyFile
-                    disp(['Delete ' num2str(iAnatomyFile) ' row'])
+                    delResult = sql_query(sqlConn, 'delete', 'anatomyfile', struct('Id', iAnatomyFile));  
                 end
             end
+            if delResult > 0
+                varargout{1} = 1;
+            end
+            
+        % Insert or Update    
         elseif isstruct(sAnatomyFile)
             if ~exist('iAnatomyFile','var')
                 % Insert AnatomyFile row
+                sAnatomyFile.Id = []; 
                 iAnatomyFile = sql_query(sqlConn, 'insert', 'anatomyfile', sAnatomyFile);
+                varargout{1} = iAnatomyFile;
             else
                 % Update iAnatomyFile row
-                disp(['Update ' num2str(iAnatomyFile) ' row'])
+                if ~isfield(sAnatomyFile, 'Id') || isempty(sAnatomyFile.Id) || sAnatomyFile.Id == iAnatomyFile
+                    resUpdate = sql_query(sqlConn, 'update', 'anatomyfile', sAnatomyFile, struct('Id', iAnatomyFile));
+                end
+                if resUpdate>0
+                    varargout{1} = iAnatomyFile;
+                end
             end
-            varargout{1} = iAnatomyFile;
             % If requested, get the inserted or updated row
             if nargout > 1
                 varargout{2} = db_get(sqlConn, 'AnatomyFile', iAnatomyFile);
