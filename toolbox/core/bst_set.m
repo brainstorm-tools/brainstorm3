@@ -243,7 +243,7 @@ switch contextName
             end
             
             % Get ID of parent subject
-            sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudy.BrainStormSubject));
+            sSubject = db_get(sqlConn, 'Subject', sStudy.BrainStormSubject, 'Id');
             sStudy.Id = [];
             sStudy.Subject = sSubject.Id;
             sStudy.Condition = char(sStudy.Condition);
@@ -298,9 +298,9 @@ switch contextName
         
         % If default subject
         if (iSubject == 0)
-            sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Name', '@default_subject'));
+            sExistingSubject = db_get(sqlConn, 'Subject', '@default_subject', 'Id');
         else
-            sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Id', iSubject));
+            sExistingSubject = db_get(sqlConn, 'Subject', iSubject, 'Id');
         end
         
         % Extract selected anat/surf files to get inserted ID later
@@ -380,7 +380,7 @@ switch contextName
             end
             
             % Get ID of parent subject
-            sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudies(i).BrainStormSubject));
+            sSubject = db_get(sqlConn, 'Subject', sStudies(i).BrainStormSubject, 'Id');
             sStudies(i).Subject = sSubject.Id;
             
             % Extract selected channel/head model to get inserted ID later

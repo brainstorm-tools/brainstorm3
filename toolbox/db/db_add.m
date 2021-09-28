@@ -128,7 +128,7 @@ ProtocolInfo = bst_get('ProtocolInfo');
 sqlConn = sql_connect();
 if isAnatomy
     % Get destination study
-    sSubject = sql_query(sqlConn, 'select', 'Subject', 'FileName', struct('Id', iTarget));
+    sSubject = db_get(sqlConn, 'Subject', iTarget, 'FileName');
     % Build full filename
     OutputFileFull = file_unique(bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sSubject.FileName), OutputFile));
     OutputFile = file_short(OutputFileFull);

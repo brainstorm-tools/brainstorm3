@@ -500,7 +500,7 @@ function CreateStudyNode(nodeStudy) %#ok<DEFNU>
     if iStudy ~= 0
         sqlConn = sql_connect();
         sStudy = sql_query(sqlConn, 'select', 'study', '*', struct('Id', iStudy));
-        sSubject = sql_query(sqlConn, 'select', 'subject', 'UseDefaultChannel', struct('Id', sStudy.Subject));
+        sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'UseDefaultChannel');
         sql_close(sqlConn);
         if ~isempty(sStudy)
             % Get selected search tab
@@ -691,7 +691,7 @@ function UpdateNode(category, indices, isExpandTrials)
                             % Get study and associated subject
                             sqlConn = sql_connect();
                             sStudy = sql_query(sqlConn, 'select', 'Study', '*', struct('Id', iStudy));
-                            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', sStudy.Subject));
+                            sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'UseDefaultChannel');
                             sql_close(sqlConn);
                             % Create new study node (default node / normal node)
                             UseDefaultChannel = ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0);

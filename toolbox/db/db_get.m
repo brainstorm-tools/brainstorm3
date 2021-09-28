@@ -488,8 +488,7 @@ switch contextName
             % === All other nodes ===
             else
                 % Get subject attached to study
-                sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', ...
-                    struct('Id', sStudy.Subject));
+                sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'UseDefaultChannel');
                 % Subject uses default channel/headmodel
                 if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
                     sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
@@ -564,7 +563,7 @@ switch contextName
             % Return Global default study
         % === NORMAL SUBJECT ===
         else
-            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', iSubject));
+            sSubject = db_get(sqlConn, 'Subject', iSubject, 'UseDefaultChannel');
             % === GLOBAL DEFAULT STUDY ===
             if sSubject.UseDefaultChannel == 2
                 % Return Global default study

@@ -591,7 +591,7 @@ switch contextName
             end
             
             if ~isempty(sStudy)
-                sSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', struct('Id', sStudy.Subject));
+                sSubject = db_get(sqlConn, Subject, sStudy.Subject, 'FileName');
                 sStudy.BrainStormSubject = sSubject.FileName;
                 
                 if isempty(sStudy.Condition)
@@ -687,7 +687,7 @@ switch contextName
                     continue
                 end
                 
-                sSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', struct('Id', sStudy.Subject));
+                sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'FileName');
                 sStudy.BrainStormSubject = sSubject.FileName;
                 if isempty(sStudy.Condition)
                     sStudy.Condition = {sStudy.Name};
@@ -738,12 +738,11 @@ switch contextName
         
         sqlConn = sql_connect();
         % Get default subject
-        sDefaultSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', ...
-            struct('Name', '@default_subject'));
+        sDefaultSubject = db_get(sqlConn, 'Subject', '@default_subject', 'FileName');
         % If SubjectFile is the default subject filename
         if ~isempty(sDefaultSubject) && ~isempty(sDefaultSubject.FileName) && file_compare(SubjectFile{1}, sDefaultSubject.FileName)
             % Get all the subjects files that use default anatomy
-            sSubject = sql_query(sqlConn, 'select', 'subject', 'FileName', struct('UseDefaultAnat', 1));
+            sSubject = db_get(sqlConn, 'Subject', struct('UseDefaultAnat', 1), 'FileName');
             if isempty(sSubject)
                 sql_close(sqlConn);
                 return
@@ -899,7 +898,7 @@ switch contextName
         sqlConn = sql_connect();
         for i=1:length(iSubjects)
             iSubject = iSubjects(i);
-            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', iSubject));
+            sSubject = db_get(sqlConn, 'Subject', iSubject, 'UseDefaultChannel');
             % No subject: error
             if isempty(sSubject) 
                 continue
