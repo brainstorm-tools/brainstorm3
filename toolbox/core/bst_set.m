@@ -148,7 +148,7 @@ switch contextName
         sqlConn = sql_connect();
         
         % Delete existing subjects and anatomy files
-        sql_query(sqlConn, 'delete', 'subject');
+        db_set(sqlConn, 'Subject', 'delete');
         db_set(sqlConn, 'AnatomyFile', 'delete');
         
         for iSubject = 0:length(contextValue.Subject)
@@ -180,7 +180,7 @@ switch contextName
             end
             
             % Insert subject
-            SubjectId = sql_query(sqlConn, 'insert', 'subject', sSubject);
+            SubjectId = db_set(sqlConn, 'Subject', sSubject);
             
             % Convert Anatomy & Surface files to AnatomyFiles and insert
             sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
@@ -197,7 +197,7 @@ switch contextName
                 end
             end
             if hasSelFiles
-                sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', SubjectId));
+                db_set(sqlConn, 'Subject', selFiles, SubjectId);
             end
         end
         
@@ -319,13 +319,10 @@ switch contextName
         % If subject exists, UPDATE query
         if ~isempty(sExistingSubject)
             sSubject.Id = sExistingSubject.Id;
-            result = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', sExistingSubject.Id));
-            if result
-                argout1 = sExistingSubject.Id;
-            end
+            sExistingSubject.Id = db_set(sqlConn, 'Subject', sSubject, sExistingSubject.Id);
         else
             sSubject.Id = [];
-            iSubject = sql_query(sqlConn, 'insert', 'subject', sSubject);
+            iSubject = db_set(sqlConn, 'Subject', sSubject);
             if ~isempty(iSubject)
                 argout1 = iSubject;
             end
@@ -351,7 +348,7 @@ switch contextName
                 end
             end
             if hasSelFiles
-                sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', argout1));
+                db_set(sqlConn, 'Subject', selFiles, argout1);
             end
             
         end
