@@ -86,9 +86,10 @@ varargout = {};
 % Get required context structure
 switch contextName
 %% ==== SUBJECT ====
-    % sSubject = db_get('Subject', SubjectIDs,       Fields, isRaw);
-    %          = db_get('Subject', SubjectFileNames, Fields, isRaw);
-    %          = db_get('Subject', CondQuery,        Fields, isRaw);
+    % sSubject = db_get('Subject', SubjectIDs,         Fields, isRaw);
+    %          = db_get('Subject', SubjectFileNames,   Fields, isRaw);
+    %          = db_get('Subject', CondQuery,          Fields, isRaw);
+    %          = db_get('Subject', '@default_subject', Fields);    
     %          = db_get('Subject');
     % If isRaw is set: force to return the real brainstormsubject description
     % (ignoring whether it uses protocol's default anatomy or not)    
@@ -96,7 +97,8 @@ switch contextName
         % Default parameters
         fields = '*';   
         isRaw = 0;
-        templateStruct = db_template('Subject');
+        templateStruct = db_template('Subject');     
+        resultStruct = templateStruct; 
 
         % Parse first parameter
         if isempty(args)
@@ -107,7 +109,12 @@ switch contextName
         end
         % SubjectFileNames and CondQuery cases
         if ischar(iSubjects)
-            iSubjects = {iSubjects};
+            if strcmp(iSubjects, '@default_subject')
+                iSubjects = struct('Name', iSubjects);
+                condQuery = iSubjects;           
+            else
+                iSubjects = {iSubjects};
+            end
         elseif isstruct(iSubjects)
             condQuery = args{1};           
         end
@@ -115,19 +122,19 @@ switch contextName
         % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            if ischar(fields)
+            % Set fields for resultStruct
+            if ischar(fields) && ~strcmp(fields, '*')
                 fields = {fields};
-            end
-            % Verify requested fields
-            if ~all(isfield(templateStruct, fields))
-                error('Invalid Fields requested in db_get()');
-            else
-                for i = 1 : length(fields)
-                    resultStruct.(fields{i}) = templateStruct.(fields{i});
+                % Verify requested fields
+                if ~all(isfield(templateStruct, fields))
+                    error('Invalid Fields requested in db_get()');
+                else
+                    resultStruct = [];
+                    for i = 1 : length(fields)
+                        resultStruct.(fields{i}) = templateStruct.(fields{i});
+                    end
                 end
-            end
-        else
-            resultStruct = templateStruct;
+            end           
         end
                        
         % isRaw parameter
@@ -173,8 +180,10 @@ switch contextName
                 for i = 1:length(sSubjects)
                     if sSubjects(i).UseDefaultAnat 
                         tmp = sDefaultSubject;
+                        tmp.Id                = sSubjects(i).Id;
                         tmp.Name              = sSubjects(i).Name;
                         tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
+                        tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
                         tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
                         sSubjects(i) = tmp;                   
                     end    
