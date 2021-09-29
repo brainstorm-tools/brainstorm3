@@ -171,7 +171,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).UnloadPlugs    = 'mcxlab-cl';
+    PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
     
         
     PlugDesc(end+1)              = GetStruct('mcxlab-cl');
@@ -191,7 +191,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).UnloadPlugs    = 'mcxlab-cuda';
+    PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
     
     
     % === INVERSE: BRAINENTROPY ===
