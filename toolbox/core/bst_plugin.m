@@ -154,7 +154,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'bin'};
     
     
-    PlugDesc(end+1)              = GetStruct('mcxlab');
+    PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
     PlugDesc(end).Version        = '2020';
     PlugDesc(end).Category       = 'Forward';
     PlugDesc(end).AutoUpdate     = 2;
@@ -169,8 +169,30 @@ function PlugDesc = GetSupported(SelPlug)
     end
     PlugDesc(end).TestFile       = 'mcxlab.m';
     PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).UnloadPlugs    = 'mcxlab-cl';
+    
+        
+    PlugDesc(end+1)              = GetStruct('mcxlab-cl');
+    PlugDesc(end).Version        = '2020';
+    PlugDesc(end).Category       = 'Forward';
+    PlugDesc(end).AutoUpdate     = 2;
+    switch(OsType)
+        case 'linux64'
+            PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlabcl-linux-x86_64-v2020.zip';
+        case 'mac64'
+            PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlabcl-osx-x86_64-v2020.zip';
+        case 'win64'
+            PlugDesc(end).URLzip   = 'http://mcx.space/nightly/release/v2020/mcxlabcl-win-x86_64-v2020.zip';
+            
+    end
+    PlugDesc(end).TestFile       = 'mcxlabcl.m';
+    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 1;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).UnloadPlugs    = 'mcxlab-cuda';
+    
     
     % === INVERSE: BRAINENTROPY ===
     PlugDesc(end+1)              = GetStruct('brainentropy');
