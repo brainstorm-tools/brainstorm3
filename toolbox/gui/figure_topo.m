@@ -347,7 +347,7 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
                             if ~isempty(iRow2) && ~isempty(iRow3)
                                 F{iFile}(i,:) = sqrt(TF(iRow2(1),:).^2 + TF(iRow3(1),:).^2);
                             end
-                        % Reglar map
+                        % Regular map
                         else
                             % Look for a sensor that is required in TF matrix
                             iRow = find(strcmpi(selrow, RowNames));
