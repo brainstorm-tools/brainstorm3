@@ -181,20 +181,20 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).AutoUpdate     = 1;
     switch(OsType)
         case 'linux64'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-Linux.tar.gz';
             PlugDesc(end).TestFile = 'libOpenMEEG.so';
         case 'mac64'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
             PlugDesc(end).TestFile = 'om_assemble.exe';
         case 'win64'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-Win64.tar.gz';
             PlugDesc(end).TestFile = 'om_assemble.exe';
     end
     PlugDesc(end).URLinfo        = 'https://openmeeg.github.io/';
-    PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''http://openmeeg.gforge.inria.fr/download/'', ''-browser'')'; ...
+    PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''https://files.inria.fr/OpenMEEG/download/'', ''-browser'')'; ...
                                     'Download Visual C++', 'web(''http://www.microsoft.com/en-us/download/details.aspx?id=14632'', ''-browser'')'; ...
                                     'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
     PlugDesc(end).CompiledStatus = 1;
