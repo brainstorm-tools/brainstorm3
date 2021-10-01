@@ -92,6 +92,10 @@ See: [Git tools rewriting history](https://git-scm.com/book/en/v2/Git-Tools-Rewr
 6. ### **Create a new Pull Request**
 
     Once you're **happy** with all the changes that you have done, and you have pushed them to your remote repo, using the GitHub website, create a [Pull Request (PR)](https://docs.github.com/en/github/collaborating-with-pull-requests/proposing-changes-to-your-work-with-pull-requests/creating-a-pull-request) from your **remote branch** to the **master** branch in the official Brainstorm repo.
+    
+    > :warning: For greater collaboration, select the option [Allow edits by maintainers](https://docs.github.com/en/github/collaborating-with-pull-requests/working-with-forks/allowing-changes-to-a-pull-request-branch-created-from-a-fork) before creating your PR. This will allow Brainstorm maintainers to add commits to your PR branch before merging it. You can always change this setting later.
+
+ ![image](https://user-images.githubusercontent.com/8238803/135626746-aaaac892-8c44-494e-a79d-b7195e3b2b5e.png)
 
 7. ### **Code review**
 
