@@ -70,12 +70,14 @@ varargout = {};
 % Set required context structure
 switch contextName
 %% ==== SUBJECT ====
-    % [Sucess]               db_set('Subject', 'Delete')
-    % [Sucess]               db_set('Subject', 'Delete', SubjectId)
-    % [Sucess]               db_set('Subject', 'Delete', CondQuery)
+    % [Success]              db_set('Subject', 'Delete')
+    % [Success]              db_set('Subject', 'Delete', SubjectId)
+    % [Success]              db_set('Subject', 'Delete', CondQuery)
     % [SubjectId, Subject] = db_set('Subject', Subject)
     % [SubjectId, Subject] = db_set('Subject', Subject, SubjectId)
     case 'Subject'
+        % Default parameters
+        iSubject = [];       
         varargout{1} = [];
         
         if length(args) < 1
@@ -88,7 +90,7 @@ switch contextName
         end
         % Delete 
         if ischar(sSubject) && strcmpi(sSubject, 'delete')
-            if ~exist('iSubject','var')
+            if isempty(iSubject)
                 % Delete all rows in Subject table
                 delResult = sql_query(sqlConn, 'delete', 'subject');
             else
@@ -106,7 +108,7 @@ switch contextName
             
         % Insert or Update    
         elseif isstruct(sSubject)
-            if ~exist('iSubject','var')
+            if isempty(iSubject)
                 % Insert Subject row
                 sSubject.Id = []; 
                 iSubject = sql_query(sqlConn, 'insert', 'subject', sSubject);
@@ -115,6 +117,8 @@ switch contextName
                 % Update Subject row
                 if ~isfield(sSubject, 'Id') || isempty(sSubject.Id) || sSubject.Id == iSubject
                     resUpdate = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', iSubject));
+                else
+                    error('Cannot update Subject, Ids do not match');
                 end
                 if resUpdate>0
                     varargout{1} = iSubject;
@@ -130,12 +134,14 @@ switch contextName
 
         
 %% ==== ANATOMY FILES ====
-    % [Sucess]                       db_set('AnatomyFile', 'Delete')
-    % [Sucess]                       db_set('AnatomyFile', 'Delete', AnatomyFileId)
-    % [Sucess]                       db_set('AnatomyFile', 'Delete', CondQuery)
+    % [Success]                      db_set('AnatomyFile', 'Delete')
+    % [Success]                      db_set('AnatomyFile', 'Delete', AnatomyFileId)
+    % [Success]                      db_set('AnatomyFile', 'Delete', CondQuery)
     % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile)
     % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile, AnatomyFileId)
     case 'AnatomyFile'
+        % Default parameters
+        iAnatomyFile = [];       
         varargout{1} = [];
         
         if length(args) < 1
@@ -148,7 +154,7 @@ switch contextName
         end
         % Delete 
         if ischar(sAnatomyFile) && strcmpi(sAnatomyFile, 'delete')
-            if ~exist('iAnatomyFile','var')
+            if isempty(iAnatomyFile)
                 % Delete all rows in AnatomyFile table
                 delResult = sql_query(sqlConn, 'delete', 'anatomyfile');
             else
@@ -166,7 +172,7 @@ switch contextName
             
         % Insert or Update    
         elseif isstruct(sAnatomyFile)
-            if ~exist('iAnatomyFile','var')
+            if isempty(iAnatomyFile)
                 % Insert AnatomyFile row
                 sAnatomyFile.Id = []; 
                 iAnatomyFile = sql_query(sqlConn, 'insert', 'anatomyfile', sAnatomyFile);
@@ -175,6 +181,8 @@ switch contextName
                 % Update iAnatomyFile row
                 if ~isfield(sAnatomyFile, 'Id') || isempty(sAnatomyFile.Id) || sAnatomyFile.Id == iAnatomyFile
                     resUpdate = sql_query(sqlConn, 'update', 'anatomyfile', sAnatomyFile, struct('Id', iAnatomyFile));
+                else
+                    error('Cannot update AnatomyFile, Ids do not match');
                 end
                 if resUpdate>0
                     varargout{1} = iAnatomyFile;

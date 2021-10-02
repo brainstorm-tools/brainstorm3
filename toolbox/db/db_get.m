@@ -119,13 +119,14 @@ switch contextName
         elseif isstruct(iSubjects)
             condQuery = args{1};           
         end
-
+        
         % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            % Set fields for resultStruct
-            if ischar(fields) && ~strcmp(fields, '*')
-                fields = {fields};
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
                 % Verify requested fields
                 if ~all(isfield(templateStruct, fields))
                     error('Invalid Fields requested in db_get()');
@@ -135,9 +136,9 @@ switch contextName
                         resultStruct.(fields{i}) = templateStruct.(fields{i});
                     end
                 end
-            end           
-        end
-                       
+            end
+        end            
+        
         % isRaw parameter
         if length(args) > 2
             isRaw = args{3};
@@ -185,7 +186,6 @@ switch contextName
                         tmp.Name              = sSubjects(i).Name;
                         tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
                         tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
-                        tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
                         sSubjects(i) = tmp;                   
                     end    
                 end
@@ -210,10 +210,6 @@ switch contextName
 %% ==== SUBJECTS COUNT ====
     % nSubjects = db_get('SubjectCount')
     case 'SubjectCount'
-        if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
-            varargout{1} = 0;
-            return;
-        end
         varargout{1} = sql_query(sqlConn, 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
         
 %% ==== FILES WITH SUBJECT ====
@@ -355,9 +351,10 @@ switch contextName
         % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            % Set fields for resultStruct
-            if ischar(fields) && ~strcmp(fields, '*')
-                fields = {fields};
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
                 % Verify requested fields
                 if ~all(isfield(templateStruct, fields))
                     error('Invalid Fields requested in db_get()');
@@ -367,8 +364,8 @@ switch contextName
                         resultStruct.(fields{i}) = templateStruct.(fields{i});
                     end
                 end
-            end           
-        end        
+            end
+        end         
 
         % Input is FileIDs and FileNames
         if ~isstruct(iFiles)

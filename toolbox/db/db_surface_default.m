@@ -85,7 +85,10 @@ DefaultFile = file_win2unix(DefaultFile);
 % Save in database selected file
 sSubject.(['i' SurfaceType]) = iSurface;
 db_set(sqlConn, 'Subject', sSubject, iSubject);
+% Unlock Subject
+lock_release(sqlConn, LockId);
 sql_close(sqlConn);
+
 % Update SubjectFile
 matUpdate.(SurfaceType) = DefaultFile;
 bst_save(bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.FileName), matUpdate, 'v7', 1);
@@ -105,6 +108,5 @@ if isUpdate
     end
 end
 
-% Unlock Subject
-lock_release([], LockId);
+
 
