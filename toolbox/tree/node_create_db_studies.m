@@ -73,7 +73,7 @@ end
 sqlConn = sql_connect();
 sDefaultStudy  = sql_query(sqlConn, 'select', 'study', {'Id', 'FileName'}, struct('Subject', 0, 'Name', bst_get('DirDefaultStudy')));
 sAnalysisStudy = sql_query(sqlConn, 'select', 'study', {'Id', 'FileName'}, struct('Name', bst_get('DirAnalysisInter')));
-sSubjects = sql_query(sqlConn, 'select', 'subject', '*');
+sSubjects = db_get(sqlConn, 'Subjects', 1);
 sql_close(sqlConn);
 iDefaultSubject = find(strcmp({sSubjects.Name}, bst_get('DirDefaultSubject')), 1);
 iGroupSubject   = find(strcmp({sSubjects.Name}, bst_get('NormalizedSubjectName')), 1);

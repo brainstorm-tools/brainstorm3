@@ -148,8 +148,8 @@ switch contextName
         sqlConn = sql_connect();
         
         % Delete existing subjects and anatomy files
-        sql_query(sqlConn, 'delete', 'subject');
-        sql_query(sqlConn, 'delete', 'anatomyfile');
+        db_set(sqlConn, 'Subject', 'delete');
+        db_set(sqlConn, 'AnatomyFile', 'delete');
         
         for iSubject = 0:length(contextValue.Subject)
             if iSubject == 0
@@ -180,13 +180,14 @@ switch contextName
             end
             
             % Insert subject
-            SubjectId = sql_query(sqlConn, 'insert', 'subject', sSubject);
+            SubjectId = db_set(sqlConn, 'Subject', sSubject);
             
-            % Insert anatomy & surface files
-            [sAnatomy, selectedFiles(1)] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, SubjectId, selectedFiles(1));
-            [sSurface, selectedFiles(2:end)] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, SubjectId, selectedFiles(2:end));
-            
-            % Update subject entry to add selected anat/surf files, if any
+            % Convert Anatomy & Surface files to AnatomyFiles and insert
+            sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
+                             db_convert_anatomyfile(sSubject.Surface, 'surface')];
+            [~, selectedFiles] = db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, SubjectId, selectedFiles);
+
+            % Update subject entry to add selected AnatomyFiles, if any
             hasSelFiles = 0;
             selFiles = struct();
             for iCat = 1:length(categories)
@@ -196,7 +197,7 @@ switch contextName
                 end
             end
             if hasSelFiles
-                sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', SubjectId));
+                db_set(sqlConn, 'Subject', selFiles, SubjectId);
             end
         end
         
@@ -242,7 +243,7 @@ switch contextName
             end
             
             % Get ID of parent subject
-            sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudy.BrainStormSubject));
+            sSubject = db_get(sqlConn, 'Subject', sStudy.BrainStormSubject, 'Id');
             sStudy.Id = [];
             sStudy.Subject = sSubject.Id;
             sStudy.Condition = char(sStudy.Condition);
@@ -297,9 +298,9 @@ switch contextName
         
         % If default subject
         if (iSubject == 0)
-            sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Name', '@default_subject'));
+            sExistingSubject = db_get(sqlConn, 'Subject', '@default_subject', 'Id');
         else
-            sExistingSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('Id', iSubject));
+            sExistingSubject = db_get(sqlConn, 'Subject', iSubject, 'Id');
         end
         
         % Extract selected anat/surf files to get inserted ID later
@@ -318,13 +319,10 @@ switch contextName
         % If subject exists, UPDATE query
         if ~isempty(sExistingSubject)
             sSubject.Id = sExistingSubject.Id;
-            result = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', sExistingSubject.Id));
-            if result
-                argout1 = sExistingSubject.Id;
-            end
+            sExistingSubject.Id = db_set(sqlConn, 'Subject', sSubject, sExistingSubject.Id);
         else
             sSubject.Id = [];
-            iSubject = sql_query(sqlConn, 'insert', 'subject', sSubject);
+            iSubject = db_set(sqlConn, 'Subject', sSubject);
             if ~isempty(iSubject)
                 argout1 = iSubject;
             end
@@ -332,11 +330,13 @@ switch contextName
         
         if ~isempty(argout1)
             % Delete existing anatomy files
-            sql_query(sqlConn, 'delete', 'anatomyfile', struct('Subject', argout1));
+            db_set(sqlConn, 'AnatomyFile', 'delete', struct('Subject', argout1));
+                       
+            % Convert Anatomy & Surface files to AnatomyFiles and insert
+            sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
+                             db_convert_anatomyfile(sSubject.Surface, 'surface')];
+            [~, selectedFiles] = db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, argout1, selectedFiles);
             
-            % Insert new anatomy files
-            [sAnatomy, selectedFiles(1)] = db_set(sqlConn, 'FilesWithSubject', 'anatomy', sSubject.Anatomy, argout1, selectedFiles(1));
-            [sSurface, selectedFiles(2:end)] = db_set(sqlConn, 'FilesWithSubject', 'surface', sSubject.Surface, argout1, selectedFiles(2:end));
             
             % Update subject entry to add selected anat/surf files, if any
             hasSelFiles = 0;
@@ -348,7 +348,7 @@ switch contextName
                 end
             end
             if hasSelFiles
-                sql_query(sqlConn, 'update', 'subject', selFiles, struct('Id', argout1));
+                db_set(sqlConn, 'Subject', selFiles, argout1);
             end
             
         end
@@ -377,7 +377,7 @@ switch contextName
             end
             
             % Get ID of parent subject
-            sSubject = sql_query(sqlConn, 'select', 'subject', 'Id', struct('FileName', sStudies(i).BrainStormSubject));
+            sSubject = db_get(sqlConn, 'Subject', sStudies(i).BrainStormSubject, 'Id');
             sStudies(i).Subject = sSubject.Id;
             
             % Extract selected channel/head model to get inserted ID later

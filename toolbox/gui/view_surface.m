@@ -70,8 +70,10 @@ end
 
 %% ===== GET INFORMATION =====
 % Get Subject that holds this surface
-sAnatomyFile = db_get('AnatomyFile', SurfaceFile);
-sSubject = db_get('Subject', sAnatomyFile.Subject);
+sqlConn = sql_connect();
+sAnatomyFile = db_get(sqlConn, 'AnatomyFile', SurfaceFile);
+sSubject     = db_get(sqlConn, 'Subject', sAnatomyFile.Subject);
+sql_close(sqlConn);
 % If this surface does not belong to any subject
 if isempty(iDS)
     if isempty(sSubject)

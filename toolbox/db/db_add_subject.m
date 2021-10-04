@@ -78,7 +78,7 @@ if sql_row_exists(sqlConn, 'Subject', struct('Name', sSubject.Name))
 end
 
 % Add subject to database
-sql_query(sqlConn, 'insert', 'subject', sSubject);
+db_set(sqlConn, 'Subject', sSubject);
 sql_close(sqlConn);
 
 %% ===== SAVE SUBJECT FILE =====

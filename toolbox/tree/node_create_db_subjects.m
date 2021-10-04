@@ -56,7 +56,7 @@ if (isempty(ProtocolInfo))
     return
 end
 % Get current protocol subjects list
-sSubjects = sql_query([], 'select', 'subject', '*');
+sSubjects = db_get('Subjects', 1);
 iDefaultSubject = find(strcmp({sSubjects.Name}, bst_get('DirDefaultSubject')), 1);
 
 %TODO: Save current study in GlobalData, retrieve current subject and return it as bstDefaultNode

@@ -128,7 +128,7 @@ ProtocolInfo = bst_get('ProtocolInfo');
 sqlConn = sql_connect();
 if isAnatomy
     % Get destination study
-    sSubject = sql_query(sqlConn, 'select', 'Subject', 'FileName', struct('Id', iTarget));
+    sSubject = db_get(sqlConn, 'Subject', iTarget, 'FileName');
     % Build full filename
     OutputFileFull = file_unique(bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sSubject.FileName), OutputFile));
     OutputFile = file_short(OutputFileFull);
@@ -199,8 +199,8 @@ if isAnatomy
         case 'subjectimage'
             % Nothing to do: file is replaced anyway
         case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers', 'fem'}
-            sFiles = sql_query(sqlConn, 'select', 'AnatomyFile', 'Name', struct('Subject', iTarget));
-            sMat.Comment = file_unique(sMat.Comment, {sFiles.Name});
+            sAnatomyFiles = db_get(sqlConn, 'AnatomyFile', struct('Subject', 0), 'Name');
+            sMat.Comment = file_unique(sMat.Comment, {sAnatomyFiles.Name});
     end
 else
     % Add comment if missing
@@ -252,7 +252,7 @@ if isAnatomy
     sFile.FileName = OutputFile;
     sFile.Name = sMat.Comment;
     %TODO: sFile.SurfaceType
-    sql_query(sqlConn, 'insert', 'AnatomyFile', sFile);
+    db_set(sqlConn, 'AnatomyFile', sFile);
 else
     sFile = db_template('FunctionalFile');
     sFile.Study = iTarget;

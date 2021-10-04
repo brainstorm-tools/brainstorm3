@@ -48,40 +48,166 @@ function varargout = db_set(varargin)
 %          Raymundo Cassani, 2021
 
 %% ==== PARSE INPUTS ====
-if isjava(varargin{1}) && nargin > 1
-    handleConn = 0;         
-    sqlConn = varargin{1};  
+if (nargin > 1) && isjava(varargin{1})
+    sqlConn = varargin{1};
     varargin(1) = [];
-end
-if (nargin >= 1) && ischar(varargin{1}) 
-    args = {};
-    handleConn = 1;
+    handleConn = 0;
+elseif (nargin >= 1) && ischar(varargin{1}) 
     sqlConn = sql_connect();
-    contextName = varargin{1};
-    if nargin > 1
-        args = varargin(2:end);
-    end
+    handleConn = 1;
 else
     error(['Usage : db_set(contextName) ' 10 '        db_set(sqlConn, contextName)']);
 end
 
 try
+contextName = varargin{1};
+args = {};
+if length(varargin) > 1
+    args = varargin(2:end);
+end
 varargout = {};
    
 % Set required context structure
 switch contextName
-%% ==== FILES WITH SUBJECT ====
-    % [sAnatF, iSelected ] = db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
-    case 'FilesWithSubject'
-        type = lower(args{1});
-        sFiles = args{2};
-        iSubject = args{3};
-        nFiles = length(sFiles);
-        if length(args) > 3
-            if iscell(args{4})
-                selFile = args{4};
+%% ==== SUBJECT ====
+    % [Success]              db_set('Subject', 'Delete')
+    % [Success]              db_set('Subject', 'Delete', SubjectId)
+    % [Success]              db_set('Subject', 'Delete', CondQuery)
+    % [SubjectId, Subject] = db_set('Subject', Subject)
+    % [SubjectId, Subject] = db_set('Subject', Subject, SubjectId)
+    case 'Subject'
+        % Default parameters
+        iSubject = [];       
+        varargout{1} = [];
+        
+        if length(args) < 1
+            error('Error in number of arguments')
+        end
+        
+        sSubject = args{1};
+        if length(args) > 1
+            iSubject = args{2};
+        end
+        % Delete 
+        if ischar(sSubject) && strcmpi(sSubject, 'delete')
+            if isempty(iSubject)
+                % Delete all rows in Subject table
+                delResult = sql_query(sqlConn, 'delete', 'subject');
             else
-                selFile = args(4);
+                if isstruct(iSubject)
+                    % Delete using the CondQuery
+                    delResult = sql_query(sqlConn, 'delete', 'subject', iSubject);                    
+                elseif isnumeric(iSubject)
+                    % Delete using iSubject
+                    delResult = sql_query(sqlConn, 'delete', 'subject', struct('Id', iSubject));  
+                end
+            end
+            if delResult > 0
+                varargout{1} = 1;
+            end
+            
+        % Insert or Update    
+        elseif isstruct(sSubject)
+            if isempty(iSubject)
+                % Insert Subject row
+                sSubject.Id = []; 
+                iSubject = sql_query(sqlConn, 'insert', 'subject', sSubject);
+                varargout{1} = iSubject;
+            else
+                % Update Subject row
+                if ~isfield(sSubject, 'Id') || isempty(sSubject.Id) || sSubject.Id == iSubject
+                    resUpdate = sql_query(sqlConn, 'update', 'subject', sSubject, struct('Id', iSubject));
+                else
+                    error('Cannot update Subject, Ids do not match');
+                end
+                if resUpdate>0
+                    varargout{1} = iSubject;
+                end
+            end
+            % If requested, get the inserted or updated row
+            if nargout > 1
+                varargout{2} = db_get(sqlConn, 'subject', iSubject);
+            end
+        else
+            % No action
+        end        
+
+        
+%% ==== ANATOMY FILES ====
+    % [Success]                      db_set('AnatomyFile', 'Delete')
+    % [Success]                      db_set('AnatomyFile', 'Delete', AnatomyFileId)
+    % [Success]                      db_set('AnatomyFile', 'Delete', CondQuery)
+    % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile)
+    % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile, AnatomyFileId)
+    case 'AnatomyFile'
+        % Default parameters
+        iAnatomyFile = [];       
+        varargout{1} = [];
+        
+        if length(args) < 1
+            error('Error in number of arguments')
+        end
+        
+        sAnatomyFile = args{1};
+        if length(args) > 1
+            iAnatomyFile = args{2};
+        end
+        % Delete 
+        if ischar(sAnatomyFile) && strcmpi(sAnatomyFile, 'delete')
+            if isempty(iAnatomyFile)
+                % Delete all rows in AnatomyFile table
+                delResult = sql_query(sqlConn, 'delete', 'anatomyfile');
+            else
+                if isstruct(iAnatomyFile)
+                    % Delete using the CondQuery
+                    delResult = sql_query(sqlConn, 'delete', 'anatomyfile', iAnatomyFile);                    
+                elseif isnumeric(iAnatomyFile)
+                    % Delete using iAnatomyFile
+                    delResult = sql_query(sqlConn, 'delete', 'anatomyfile', struct('Id', iAnatomyFile));  
+                end
+            end
+            if delResult > 0
+                varargout{1} = 1;
+            end
+            
+        % Insert or Update    
+        elseif isstruct(sAnatomyFile)
+            if isempty(iAnatomyFile)
+                % Insert AnatomyFile row
+                sAnatomyFile.Id = []; 
+                iAnatomyFile = sql_query(sqlConn, 'insert', 'anatomyfile', sAnatomyFile);
+                varargout{1} = iAnatomyFile;
+            else
+                % Update iAnatomyFile row
+                if ~isfield(sAnatomyFile, 'Id') || isempty(sAnatomyFile.Id) || sAnatomyFile.Id == iAnatomyFile
+                    resUpdate = sql_query(sqlConn, 'update', 'anatomyfile', sAnatomyFile, struct('Id', iAnatomyFile));
+                else
+                    error('Cannot update AnatomyFile, Ids do not match');
+                end
+                if resUpdate>0
+                    varargout{1} = iAnatomyFile;
+                end
+            end
+            % If requested, get the inserted or updated row
+            if nargout > 1
+                varargout{2} = db_get(sqlConn, 'AnatomyFile', iAnatomyFile);
+            end
+        else
+            % No action
+        end
+        
+    
+%% ==== FILES WITH SUBJECT ====
+    % [sAnatomyFiles, iSelected] = db_set('FilesWithSubject', sAnatomyFiles, SubjectID, iSelected)
+    case 'FilesWithSubject'
+        sAnatomyFiles = args{1};
+        iSubject = args{2};
+        nAnatomyFiles = length(sAnatomyFiles);
+        if length(args) > 2
+            if iscell(args{3})
+                selFile = args{3};
+            else
+                selFile = args(3);
             end
             varargout{2} = cell(1, length(selFile));
         else
@@ -89,36 +215,22 @@ switch contextName
         end
 
         if nargout > 0
-            varargout{1} = repmat(db_template('AnatomyFile'), 1, nFiles);
+            varargout{1} = repmat(db_template('AnatomyFile'), 1, nAnatomyFiles);
         end
-
-        for iFile = 1:nFiles
-            anatomyFile = db_template('AnatomyFile');
-            anatomyFile.Subject = iSubject;
-            anatomyFile.Type = type;
-            anatomyFile.FileName = sFiles(iFile).FileName;
-            anatomyFile.Name = sFiles(iFile).Comment;
-
-            % Extra fields
-            switch type
-                case 'anatomy'
-                    % No extra fields
-                case 'surface'
-                    anatomyFile.SurfaceType = sFiles(iFile).SurfaceType;
-                otherwise
-                    error('Unsupported anatomy file type');
-            end
-
-            insertedId = sql_query(sqlConn, 'insert', 'anatomyfile', anatomyFile);
+        
+        for iAnatomyFile = 1 : nAnatomyFiles
+            sAnatomyFile = sAnatomyFiles(iAnatomyFile);
+            sAnatomyFile.Subject = iSubject;
+            insertedId = db_set(sqlConn, 'AnatomyFile', sAnatomyFile);
 
             if nargout > 0
-                anatomyFile.Id = insertedId;
-                varargout{1}(iFile) = anatomyFile;
+                sAnatomyFile.Id = insertedId;
+                varargout{1}(iAnatomyFile) = sAnatomyFile;
 
                 if ~isempty(selFile)
-                    iSel = find(strcmpi(anatomyFile.FileName, selFile));
+                    iSel = find(strcmpi(sAnatomyFile.FileName, selFile));
                     if ~isempty(iSel)
-                        varargout{2}(iSel) = {anatomyFile.Id};
+                        varargout{2}(iSel) = {sAnatomyFile.Id};
                     end
                 end
             end

@@ -37,7 +37,7 @@ sqlConnection = sql_connect();
 
 % Get subject ID
 if ischar(SubjectId)
-    sSubject = sql_query(sqlConnection, 'select', 'subject', 'Id', struct('Name', SubjectId));
+    sSubject = db_get(sqlConnection, 'Subject', SubjectId, 'Id');
     SubjectId = sSubject.Id;
 end
 

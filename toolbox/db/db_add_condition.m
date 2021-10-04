@@ -84,7 +84,7 @@ end
 sqlConn = sql_connect();
 for iSubject = iSubjectsList
     % Get subject definition
-    sSubject = sql_query(sqlConn, 'select', 'Subject', {'Name', 'FileName'}, struct('Id', iSubject));
+    sSubject = db_get(sqlConn, 'Subject', iSubject, {'FileName', 'Name'});
     SubjectFile = sSubject.FileName;
     SubjectName = sSubject.Name;
     % Get conditions for this subject

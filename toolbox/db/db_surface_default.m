@@ -23,9 +23,13 @@ function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdat
 %
 % Authors: Francois Tadel, 2008-2011
 
+% Lock Subject
+LockId = lock_acquire(mfilename, iSubject);
+
 % Get protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
-sSubject = bst_get('Subject', iSubject);
+sqlConn = sql_connect();
+sSubject = db_get(sqlConn, 'Subject', iSubject);
 
 % ===== GET DEFAULT SURFACE =====
 % By default: update tree
@@ -43,7 +47,7 @@ if (nargin < 3) || isempty(iSurface)
     else
         defSurfFile = [];
     end
-        
+
     % == ANATOMY ==
     if strcmpi(SurfaceType, 'Anatomy')
         % Try to find the default surface file
@@ -69,15 +73,8 @@ end
 
 % Get new default surface
 if ~isempty(iSurface)
-    if strcmpi(SurfaceType, 'Anatomy')
-        sSurface = sSubject.Anatomy(iSurface);
-    else
-        if (iSurface > length(sSubject.Surface))
-            error(sprintf('Invalid surface index #%d. Subject has only %d registered surfaces.', iSurface, length(sSubject.Surface)));
-        end
-        sSurface = sSubject.Surface(iSurface);
-    end
-    DefaultFile = sSurface.FileName;
+    sAnatomyFile = db_get(sqlConn, 'AnatomyFile', iSurface);
+    DefaultFile = sAnatomyFile.FileName;    
 else
     DefaultFile = '';
 end
@@ -87,7 +84,11 @@ DefaultFile = file_win2unix(DefaultFile);
 % ===== UPDATE DATABASE =====
 % Save in database selected file
 sSubject.(['i' SurfaceType]) = iSurface;
-bst_set('Subject', iSubject, sSubject);
+db_set(sqlConn, 'Subject', sSubject, iSubject);
+% Unlock Subject
+lock_release(sqlConn, LockId);
+sql_close(sqlConn);
+
 % Update SubjectFile
 matUpdate.(SurfaceType) = DefaultFile;
 bst_save(bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.FileName), matUpdate, 'v7', 1);

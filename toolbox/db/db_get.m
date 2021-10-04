@@ -34,9 +34,6 @@ function varargout = db_get(varargin)
 %    - db_get('AnatomyFile', FileIDs,   Fields) : Find anatomy file(s) by ID(s) 
 %    - db_get('AnatomyFile', FileNames, Fields) : Find anatomy file(s) by FileName(s)
 %    - db_get('AnatomyFile', CondQuery, Fields) : Find anatomy file(s) with a Query
-%    - db_get('SurfaceFile', FileIDs,   Fields) : Find surface file(s) by ID(s) 
-%    - db_get('SurfaceFile', FileNames, Fields) : Find surface file(s) by FileName(s)
-%    - db_get('SurfaceFile', CondQuery, Fields) : Find surface file(s) with a Query
 %    - db_get('FunctionalFile', FileIDs,   Fields) : Find functional file(s) by ID(s) 
 %    - db_get('FunctionalFile', FileNames, Fields) : Find functional file(s) by FileName(s)
 %    - db_get('FunctionalFile', CondQuery, Fields) : Find functional file(s) with a Query
@@ -67,32 +64,33 @@ function varargout = db_get(varargin)
 %          Raymundo Cassani, 2021
 
 %% ==== PARSE INPUTS ====
-if isjava(varargin{1}) && nargin > 1
-    handleConn = 0;
+global GlobalData;
+if (nargin > 1) && isjava(varargin{1})
     sqlConn = varargin{1};
     varargin(1) = [];
-end
-if (nargin >= 1) && ischar(varargin{1}) 
-    args = {};
-    handleConn = 1;
+    handleConn = 0;
+elseif (nargin >= 1) && ischar(varargin{1}) 
     sqlConn = sql_connect();
-    contextName = varargin{1};
-    if nargin > 1
-        args = varargin(2:end);
-    end
+    handleConn = 1;
 else
     error(['Usage : db_get(contextName) ' 10 '        db_get(sqlConn, contextName)']);
 end
 
 try
+contextName = varargin{1};
+args = {};
+if length(varargin) > 1
+    args = varargin(2:end);
+end
 varargout = {};
-
+    
 % Get required context structure
 switch contextName
 %% ==== SUBJECT ====
-    % sSubject = db_get('Subject', SubjectIDs,       Fields, isRaw);
-    %          = db_get('Subject', SubjectFileNames, Fields, isRaw);
-    %          = db_get('Subject', CondQuery,        Fields, isRaw);
+    % sSubject = db_get('Subject', SubjectIDs,         Fields, isRaw);
+    %          = db_get('Subject', SubjectFileNames,   Fields, isRaw);
+    %          = db_get('Subject', CondQuery,          Fields, isRaw);
+    %          = db_get('Subject', '@default_subject', Fields);    
     %          = db_get('Subject');
     % If isRaw is set: force to return the real brainstormsubject description
     % (ignoring whether it uses protocol's default anatomy or not)    
@@ -100,7 +98,8 @@ switch contextName
         % Default parameters
         fields = '*';   
         isRaw = 0;
-        templateStruct = db_template('Subject');
+        templateStruct = db_template('Subject');     
+        resultStruct = templateStruct; 
 
         % Parse first parameter
         if isempty(args)
@@ -111,29 +110,35 @@ switch contextName
         end
         % SubjectFileNames and CondQuery cases
         if ischar(iSubjects)
-            iSubjects = {iSubjects};
+            if strcmp(iSubjects, '@default_subject')
+                iSubjects = struct('Name', iSubjects);
+                condQuery = iSubjects;           
+            else
+                iSubjects = {iSubjects};
+            end
         elseif isstruct(iSubjects)
             condQuery = args{1};           
         end
-
+        
         % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            if ischar(fields)
-                fields = {fields};
-            end
-            % Verify requested fields
-            if ~all(isfield(templateStruct, fields))
-                error('Invalid Fields requested in db_get()');
-            else
-                for i = 1 : length(fields)
-                    resultStruct.(fields{i}) = templateStruct.(fields{i});
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
+                % Verify requested fields
+                if ~all(isfield(templateStruct, fields))
+                    error('Invalid Fields requested in db_get()');
+                else
+                    resultStruct = [];
+                    for i = 1 : length(fields)
+                        resultStruct.(fields{i}) = templateStruct.(fields{i});
+                    end
                 end
             end
-        else
-            resultStruct = templateStruct;
-        end
-                       
+        end            
+        
         % isRaw parameter
         if length(args) > 2
             isRaw = args{3};
@@ -177,6 +182,7 @@ switch contextName
                 for i = 1:length(sSubjects)
                     if sSubjects(i).UseDefaultAnat 
                         tmp = sDefaultSubject;
+                        tmp.Id                = sSubjects(i).Id;
                         tmp.Name              = sSubjects(i).Name;
                         tmp.UseDefaultAnat    = sSubjects(i).UseDefaultAnat;
                         tmp.UseDefaultChannel = sSubjects(i).UseDefaultChannel;
@@ -201,63 +207,25 @@ switch contextName
         end
         varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', [], addQuery);
 
+%% ==== SUBJECTS COUNT ====
+    % nSubjects = db_get('SubjectCount')
+    case 'SubjectCount'
+        varargout{1} = sql_query(sqlConn, 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
+        
 %% ==== FILES WITH SUBJECT ====
-    % sFiles = db_get('FilesWithSubject', FileType (e.g. Anatomy), SubjectID)
+    % sAnatomyFiles = db_get('FilesWithSubject', SubjectID, AnatomyFileType, Fields)
     case 'FilesWithSubject'
-        % Special case: sSubject = db_get('FilesWithSubject', sSubject)
-        % This sets the anatomy file fields in sSubject (Anatomy, Surface)
-        if length(args) == 1
-            sSubject = args{1};
-            sSubject.Anatomy = repmat(db_template('Anatomy'), 0);
-            sSubject.Surface = repmat(db_template('Surface'), 0);
-            qryCondition = struct('Subject', sSubject.Id);
-        else
-            type = lower(args{1});
-            iSubject = args{2};
-            sSubject = [];
-            sOutFiles = repmat(db_template(type), 0);
-            qryCondition = struct('Subject', iSubject, 'Type', type);
-        end
-        sAnatFiles = sql_query(sqlConn, 'select', 'anatomyfile', '*', qryCondition);
-
-        if isempty(sAnatFiles)
-            if ~isempty(sSubject)
-                varargout{1} = sSubject;
+        condQuery.Subject = args{1};
+        if length(args) > 1 
+            condQuery.Type = lower(args{2});
+            if length(args) > 2
+                fields = args{3};
             else
-                varargout{1} = sAnatFiles;
-            end
-        else
-
-            for iFile = 1:length(sAnatFiles)
-                sFile = db_template(sAnatFiles(iFile).Type);
-                sFile.Comment = sAnatFiles(iFile).Name;
-                sFile.FileName = sAnatFiles(iFile).FileName;
-
-                switch sAnatFiles(iFile).Type
-                    case 'anatomy'
-                        if ~isempty(sSubject)
-                            sSubject.Anatomy(end + 1) = sFile;
-                        end
-                    case 'surface'
-                        sFile.SurfaceType = sAnatFiles(iFile).SurfaceType;
-                        if ~isempty(sSubject)
-                            sSubject.Surface(end + 1) = sFile;
-                        end
-                    otherwise
-                        error('Unsupported anatomy file type');
-                end
-
-                if isempty(sSubject)
-                    sOutFiles(end + 1) = sFile;
-                end
-            end
-
-            if ~isempty(sSubject)
-                varargout{1} = sSubject;
-            else
-                varargout{1} = sOutFiles;
+                fields = '*';
             end
         end
+        varargout{1} = db_get(sqlConn, 'AnatomyFile', condQuery, fields);
+
 
 %% ==== FILES WITH STUDY ====
     % sFiles = db_get('FilesWithStudy', FileType (e.g. Data), StudyID)
@@ -363,33 +331,41 @@ switch contextName
             varargout{1} = sAnatFiles;
         end
 
-%% ==== ANATOMY FILE and SURFACE FILE ====
-    % [sFiles, sItems] = db_get('AnatomyFile', FileIDs,   Fields)
-    %                  = db_get('AnatomyFile', FileNames, Fields)
-    %                  = db_get('AnatomyFile', CondQuery, Fields)
-    case {'AnatomyFile', 'SurfaceFile'}
+%% ==== ANATOMY FILE ====
+    % sAnatomyFiles = db_get('AnatomyFile', FileIDs,   Fields)
+    %               = db_get('AnatomyFile', FileNames, Fields)
+    %               = db_get('AnatomyFile', CondQuery, Fields)
+    case 'AnatomyFile'
         % Parse inputs
         iFiles = args{1};
         fields = '*';                              
         templateStruct = db_template('AnatomyFile');
-
+        resultStruct = templateStruct; 
+        
         if ischar(iFiles)
             iFiles = {iFiles};
         elseif isstruct(iFiles)
             condQuery = args{1};           
         end
 
+        % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            if ischar(fields)
-                fields = {fields};
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
+                % Verify requested fields
+                if ~all(isfield(templateStruct, fields))
+                    error('Invalid Fields requested in db_get()');
+                else
+                    resultStruct = [];
+                    for i = 1 : length(fields)
+                        resultStruct.(fields{i}) = templateStruct.(fields{i});
+                    end
+                end
             end
-            for i = 1 : length(fields)
-                resultStruct.(fields{i}) = templateStruct.(fields{i});
-            end
-        else
-            resultStruct = templateStruct;
-        end
+        end         
 
         % Input is FileIDs and FileNames
         if ~isstruct(iFiles)
@@ -414,20 +390,8 @@ switch contextName
             end
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery(1));
-        end
-        sItems = [];
-        
-        % If output expected, all fields requested, and all sFiles are same Type     
-        if nargout > 1 && isequal(fields, '*') && length(unique({sFiles(:).Type})) == 1
-            nFiles = length(sFiles);
-            sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
-            for i = 1 : nFiles
-                sItems(i) = getAnatomyFileStruct(sFiles(i).Type, sFiles(i));
-            end
-        end        
-
+        end   
         varargout{1} = sFiles;
-        varargout{2} = sItems;
           
         
 %% ==== FUNCTIONAL FILE ====
@@ -533,8 +497,7 @@ switch contextName
             % === All other nodes ===
             else
                 % Get subject attached to study
-                sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', ...
-                    struct('Id', sStudy.Subject));
+                sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'UseDefaultChannel');
                 % Subject uses default channel/headmodel
                 if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
                     sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
@@ -609,7 +572,7 @@ switch contextName
             % Return Global default study
         % === NORMAL SUBJECT ===
         else
-            sSubject = sql_query(sqlConn, 'select', 'Subject', 'UseDefaultChannel', struct('Id', iSubject));
+            sSubject = db_get(sqlConn, 'Subject', iSubject, 'UseDefaultChannel');
             % === GLOBAL DEFAULT STUDY ===
             if sSubject.UseDefaultChannel == 2
                 % Return Global default study
@@ -743,19 +706,5 @@ function sFile = getFunctionalFileStruct(type, funcFile)
 
         otherwise
             error('Unsupported functional file type.');
-    end
-end
-
-% Get a specific anatomy file db_template structure from the generic
-% db_template('AnatomyFile') structure
-function sFile = getAnatomyFileStruct(type, anatomyFile)
-    sFile = db_template(type);
-    if isempty(anatomyFile)
-        return;
-    end
-    sFile.FileName = anatomyFile.FileName;
-    sFile.Comment  = anatomyFile.Name;
-    if strcmp(type, 'surface')
-        sFile.SurfaceType = anatomyFile.SurfaceType;    
     end
 end

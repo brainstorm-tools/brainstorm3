@@ -66,11 +66,14 @@ if sSubject.UseDefaultAnat && (iSubject ~= 0)
 % ==== Individual anatomy ====
 else
     sqlConn = sql_connect();
-    anatomies = sql_query(sqlConn, 'select', 'anatomyfile', '*', ...
-        struct('subject', iSubject, 'type', 'anatomy'), 'ORDER BY Id ASC');
-    surfaces  = sql_query(sqlConn, 'select', 'anatomyfile', '*', ...
-        struct('subject', iSubject, 'type', 'surface'), 'ORDER BY Id ASC');
+    anatomies = db_get(sqlConn, 'FilesWithSubject', iSubject, 'anatomy');
+    surfaces  = db_get(sqlConn, 'FilesWithSubject', iSubject, 'surface');
     sql_close(sqlConn);
+    % Sort by Id
+    [~, ixs] = sort([anatomies.Id]);
+    anatomies = anatomies(ixs);
+    [~, ixs] = sort([surfaces.Id]);
+    surfaces = surfaces(ixs);
     
     % Create list of anat files (put the default at the top)
     nAnatomies = length(anatomies);
