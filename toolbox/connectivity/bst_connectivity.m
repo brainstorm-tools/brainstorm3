@@ -73,6 +73,7 @@ OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Initialize output variables
 OutputFiles = {};
 Ravg = [];
+preRavg = [];
 nAvg = 0;
 nTime = 1;
 % Initialize progress bar
@@ -304,35 +305,32 @@ for iFile = 1:length(FilesA)
             CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
             % Estimate the coherence (2021)
             if ~isempty(OPTIONS.WinLen)
-                if ~iscell(sInputA.Data)
-                    sInputA.Data = {sInputA.Data};
-                end
-                if ~isempty(sInputB.Data) && ~iscell(sInputB.Data)
-                    sInputB.Data = {sInputB.Data};
-                end
-                [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+%                 [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+                [preR, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cross_spectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
             % Estimate the coherence (deprecated)
             elseif ~isempty(OPTIONS.MaxFreqRes)
                 [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
             end
             % Error processing
-            if isempty(R)
+            if isempty(preR)
                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
                 return;
             elseif ~isempty(Messages)
                 bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
             end
-            % Apply p-value threshold
-            R(pValues > OPTIONS.pThresh) = 0;
-            if (nnz(R) == 0)
-                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), 'No significant connections were found in this file.');
-                continue;
-            end
+%             % Apply p-value threshold
+%             R(pValues > OPTIONS.pThresh) = 0;
+%             if (nnz(R) == 0)
+%                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), 'No significant connections were found in this file.');
+%                 continue;
+%             end
             % Remove the coherence at 0Hz => Meaningless
             iZero = find(OPTIONS.Freqs == 0);
             if ~isempty(iZero)
                 OPTIONS.Freqs(iZero) = [];
-                R(:,:,iZero) = [];
+                preR.Sxx(:,iZero) = [];
+                preR.Syy(:,iZero) = [];
+                preR.Sxy(:,:,iZero) = [];
             end
             % Keep only the frequency bins we are interested in
             if ~isempty(OPTIONS.MaxFreq) && (OPTIONS.MaxFreq ~= 0)
@@ -343,11 +341,13 @@ for iFile = 1:length(FilesA)
                     return;
                 end
                 % Cut the unwanted frequencies
-                R = R(:,:,iFreq);
+                preR.Sxx = preR.Sxx(:,iFreq);
+                preR.Syy = preR.Syy(:,iFreq);
+                preR.Sxy = preR.Sxy(:,:,iFreq);
                 OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
             end
             % Add the number of windows to the report
-            bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('Using %d windows of %d samples each', OPTIONS.Nwin, OPTIONS.Lwin));
+%             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('Using %d windows of %d samples each', OPTIONS.Nwin, OPTIONS.Lwin));
             % Check precision for high frequencies
             fStep = OPTIONS.Freqs(2)-OPTIONS.Freqs(1);
             if (fStep < 0.1)
@@ -635,7 +635,7 @@ for iFile = 1:length(FilesA)
             return;
     end
     % Replace any NaN values with zeros
-    R(isnan(R)) = 0;
+%     R(isnan(R)) = 0;
     
     
     %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====
@@ -661,7 +661,7 @@ for iFile = 1:length(FilesA)
 
     %% ===== SAVE FILE =====
     % Reshape: [A*B x nTime x nFreq]
-    R = reshape(R, [], nTime, size(R,3));
+%     R = reshape(R, [], nTime, size(R,3));
     % Comment
     if isequal(FilesA, FilesB)
         % Row name
@@ -691,19 +691,22 @@ for iFile = 1:length(FilesA)
     switch (OPTIONS.OutputMode)
         case 'input'
             nAvg = 1;
+            R = compute_r_from_prer(OPTIONS.Method, preR, OPTIONS, nAvg);
             OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, FilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case {'concat', 'avgcoh'}
             nAvg = 1;
             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case 'avg'
             % Compute online average of the connectivity matrices
-            if isempty(Ravg)
-                Ravg = R ./ length(FilesA);
-            elseif ~isequal(size(Ravg), size(R))
-                bst_report('Error', OPTIONS.ProcessName, [], 'Input files have different size dimensions or different lists of bad channels.');
-                return;
+            if isempty(preRavg)
+                preRavg = preR;
+%                 Ravg = R ./ length(FilesA);
+%            elseif ~isequal(size(Ravg), size(R))
+%                bst_report('Error', OPTIONS.ProcessName, [], 'Input files have different size dimensions or different lists of bad channels.');
+%                return;
             else
-                Ravg = Ravg + R ./ length(FilesA);
+%                 Ravg = Ravg + R ./ length(FilesA);
+                preRavg = accumulate_prer(OPTIONS.Method, preRavg, preR);
             end
             nAvg = nAvg + 1;
     end
@@ -711,6 +714,7 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
+    Ravg = compute_r_from_prer(OPTIONS.Method, preRavg, OPTIONS, nAvg);
     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
 end
 
@@ -908,4 +912,98 @@ function x = normr(x)
     n = sqrt(sum(x.^2,2));
     x(n~=0,:) = bst_bsxfun(@rdivide, x(n~=0,:), n(n~=0));
     x(n==0,:) = 1 ./ sqrt(size(x,2));
+end
+
+function R = compute_r_from_prer(metric, preR, OPTIONS, nAvg)
+% Computes the connectivity matrix R from the structure preR for diff connectivity metrics
+    switch metric
+        case 'corr'
+            
+        % Coherence 
+        case 'cohere'          
+%             % Error and Warning for minimun number of windows
+%             minWinError = 2;
+%             minWinWarning = 5;
+%             % ERROR: Not enough time points
+%             if preR.nWin < minWinError
+%                 Messages = sprintf(['Input signals are too short (%d samples) for the requested frequency resolution (%1.2fHz).\n' ...
+%                         'Minimum length for this resolution: %1.3f seconds (%d samples).'], nTimes, MaxFreqRes, minTimes/Fs, minTimes);
+%                 
+%                 Messages = sprintf(['Input signals are too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
+%                                     'Provide 2 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
+%                                     nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
+%                 return;
+%             % WARNING: Maybe not enough time points
+%             elseif preR.nWin < minWinWarning
+%                 nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinWarning - 1);
+%                 Messages = sprintf(['Input signals may be too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
+%                                     'Recommendation: Provide 5 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
+%                                     nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
+%             end
+            
+            Sxx = permute(preR.Sxx, [1, 3, 2]) ./ nAvg; % [nSignalsX or nSourcesX, 1, nKeep]
+            Syy = permute(preR.Syy, [3, 1, 2]) ./ nAvg; % [1, nSignalsY or nSourcesY, nKeep]
+            Cxy = preR.Sxy ./ nAvg;
+            clear preR
+
+            % Coherency or complex coherence Cxy = Sxy ./ sqrt(Sxx*Syy)  
+            Cxy = bst_bsxfun(@rdivide, Cxy, sqrt(Sxx));
+            Cxy = bst_bsxfun(@rdivide, Cxy, sqrt(Syy));
+            clear Sxx Syy
+            switch OPTIONS.CohMeasure   
+                % Magnitude-squared Coherence 
+                case 'mscohere'
+                    % MSC = |C|^2 = C .* conj(C) = |Sxy|^2/(Sxx*Syy)
+                    Cxy = Cxy .* conj(Cxy);       
+
+                % Imaginary Coherence (2019)
+                case {'icohere2019'} 
+                    % IC = Im(C) = Im(Sxy)/sqrt(Sxx*Syy)
+                    Cxy = abs(imag(Cxy));
+
+                % Lagged Coherence (2019)
+                case 'lcohere2019'
+                    % LC = Im(C)/sqrt(1-[Re(C)]^2) = Im(Sxy)/sqrt(Sxx*Syy - [Re(Sxy)]^2)
+                    Cxy = abs(imag(Cxy)) ./ sqrt(1-real(Cxy).^2);
+
+                % Imaginary Coherence (before 2019)
+                case 'icohere' % (We only had Imaginary coherence)
+                    % Parametric estimation of the significance level
+%                     if (Overlap == 0.5)
+%                         pValues = max(0, 1 - abs(Cxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
+%                     else
+%                         pValues = max(0, 1 - abs(Cxy).^2) .^ floor(nSamples / nFFT);
+%                     end
+                    % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
+                    Cxy = imag(Cxy).^2 ./ (1-real(Cxy).^2);
+            end
+            % Make sure that there are no residual imaginary parts due to numerical errors
+            if ~isreal(Cxy)
+                Cxy = abs(Cxy);
+            end
+            R = Cxy;
+            % Check precision for high frequencies
+            fStep = OPTIONS.Freqs(2)-OPTIONS.Freqs(1);
+            if (fStep < 0.1)
+                precision = '%1.2f';
+            else
+                precision = '%1.1f';
+            end
+            % Output comment
+            Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
+    end
+    % Reshape: [A*B x nTime x nFreq]
+    R = reshape(R, [], 1, size(R,3));
+    % Replace any NaN values with zeros
+    R(isnan(R)) = 0;
+end
+
+function preRavg = accumulate_prer(metric, preRavg, preR)
+    switch metric
+        case 'cohere'
+            preRavg.Sxx  = preRavg.Sxx + preR.Sxx;
+            preRavg.Syy  = preRavg.Syy + preR.Syy;
+            preRavg.Sxy  = preRavg.Sxy + preR.Sxy;
+            preRavg.nWin = preRavg.nWin + preR.nWin;
+    end
 end
