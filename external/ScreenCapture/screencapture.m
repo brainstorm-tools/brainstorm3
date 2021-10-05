@@ -46,6 +46,7 @@ function imageData = screencapture(varargin)
 % Examples:
 %    imageData = screencapture;  % interactively select screen-capture rectangle
 %    imageData = screencapture(hListbox);  % capture image of a uicontrol
+%    imageData = screencapture(0);         % capture image of entire screen
 %    imageData = screencapture(0,  [20,30,40,50]);  % capture a small desktop region
 %    imageData = screencapture(gcf,[20,30,40,50]);  % capture a small figure region
 %    imageData = screencapture(gca,[10,20,30,40]);  % capture a small axes region
@@ -73,6 +74,7 @@ function imageData = screencapture(varargin)
 %    imshow, imwrite, print
 %
 % Release history:
+%    1.18 2021-07-21: Fixed Y coordinates of full-screen capture; avoid needless figure focus
 %    1.17 2016-05-16: Fix annoying warning about JavaFrame property becoming obsolete someday (yes, we know...)
 %    1.16 2016-04-19: Fix for deployed application suggested by Dwight Bartholomew
 %    1.10 2014-11-25: Added the 'print' target
@@ -91,7 +93,7 @@ function imageData = screencapture(varargin)
 % referenced and attributed as such. The original author maintains the right to be solely associated with this work.
 
 % Programmed and Copyright by Yair M. Altman: altmany(at)gmail.com
-% $Revision: 1.17 $  $Date: 2016/05/16 17:59:36 $
+% $Revision: 1.18 $  $Date: 2021/07/21 22:46:52 $
 
     % Ensure that java awt is enabled...
     if ~usejava('awt')
@@ -113,30 +115,39 @@ function imageData = screencapture(varargin)
 
     % Process optional arguments
     paramsStruct = processArgs(varargin{:});
-    
+
     % If toolbar button requested, add it and exit
     if ~isempty(paramsStruct.toolbar)
-        
+
         % Add the toolbar button
         addToolbarButton(paramsStruct);
-        
+
         % Return the figure to its pre-undocked state (when relevant)
         redockFigureIfRelevant(paramsStruct);
-        
+
         % Exit immediately (do NOT take a screen-capture)
         if nargout,  imageData = [];  end
         return;
     end
-    
+
+    % Get the handle to the figure that is currently in focus
+    oldFig = getCurrentFig;
+
     % Convert position from handle-relative to desktop Java-based pixels
-    [paramsStruct, msgStr] = convertPos(paramsStruct);
-    
+    [paramsStruct, msgStr, isFigureHandle] = convertPos(paramsStruct);
+
     % Capture the requested screen rectangle using java.awt.Robot
     imgData = getScreenCaptureImageData(paramsStruct.position);
-    
+
+    if isFigureHandle
+        % Set the old figure to be in focus once again
+        %set(0,'CurrentFigure',oldFig);
+        figure(oldFig)
+    end
+
     % Return the figure to its pre-undocked state (when relevant)
     redockFigureIfRelevant(paramsStruct);
-    
+
     % Save image data in file or clipboard, if specified
     if ~isempty(paramsStruct.target)
         if strcmpi(paramsStruct.target,'clipboard')
@@ -166,7 +177,7 @@ function imageData = screencapture(varargin)
     % Return image raster data to user, if requested
     if nargout
         imageData = imgData;
-        
+
     % If neither output formats was specified (neither target nor output data)
     elseif isempty(paramsStruct.target) & ~isempty(imgData)  %#ok ML6
         % Ask the user to specify a file
@@ -291,11 +302,18 @@ function paramsStruct = processArgs(varargin)
 %end  % processArgs
 
 %% Convert position from handle-relative to desktop Java-based pixels
-function [paramsStruct, msgStr] = convertPos(paramsStruct)
+function [paramsStruct, msgStr, isFigureHandle] = convertPos(paramsStruct)
     msgStr = '';
+    isFigureHandle = true;
     try
+        % Temporarily set groot's units to pixels
+        % https://mail.google.com/mail/u/0/#inbox/163d27d647a57c60
+        oldUnits = get(0,'Units');
+        set(0,'Units','pixel');
+
         % Get the screen-size for later use
         screenSize = get(0,'ScreenSize');
+        set(0,'Units',oldUnits);
 
         % Get the containing figure's handle
         hParent = paramsStruct.handle;
@@ -306,7 +324,7 @@ function [paramsStruct, msgStr] = convertPos(paramsStruct)
             paramsStruct.hFigure = ancestor(paramsStruct.handle,'figure');
         end
 
-        % To get the acurate pixel position, the figure window must be undocked
+        % To get the accurate pixel position, the figure window must be undocked
         try
             if strcmpi(get(paramsStruct.hFigure,'WindowStyle'),'docked')
                 set(paramsStruct.hFigure,'WindowStyle','normal');
@@ -331,32 +349,32 @@ function [paramsStruct, msgStr] = convertPos(paramsStruct)
         % No handle specified
         wasPositionGiven = 1;  % no true available in ML6
         if isempty(paramsStruct.handle)
-            
+
             % Set default handle, if not supplied
             paramsStruct.handle = paramsStruct.hFigure;
-            
+
             % If position was not specified, get it interactively using RBBOX
             if isempty(paramsStruct.position)
                 [paramsStruct.position, jFrameUsed, msgStr] = getInteractivePosition(paramsStruct.hFigure); %#ok<ASGLU> jFrameUsed is unused
                 paramsStruct.wasInteractive = 1;  % no true available in ML6
                 wasPositionGiven = 0;  % no false available in ML6
             end
-            
+
         elseif ~ishandle(paramsStruct.handle)
             % Handle was supplied - ensure it is a valid handle
             error('YMA:screencapture:invalidHandle','Invalid handle passed to ScreenCapture');
-            
+
         elseif isempty(paramsStruct.position)
             % Handle was supplied but position was not, so use the handle's position
             paramsStruct.position = getPixelPos(paramsStruct.handle);
             paramsStruct.position(1:2) = 0;
             wasPositionGiven = 0;  % no false available in ML6
-            
+
         elseif ~isnumeric(paramsStruct.position) | (length(paramsStruct.position) ~= 4)  %#ok ML6
             % Both handle & position were supplied - ensure a valid pixel position vector
             error('YMA:screencapture:invalidPosition','Invalid position vector passed to ScreenCapture: \nMust be a [x,y,w,h] numeric pixel array');
         end
-        
+
         % Capture current object (uicontrol/axes/figure) if w=h=0 (single-click in interactive mode)
         if paramsStruct.position(3)<=0 | paramsStruct.position(4)<=0  %#ok ML6
             %TODO - find a way to single-click another Matlab figure (the following does not work)
@@ -380,7 +398,7 @@ function [paramsStruct, msgStr] = convertPos(paramsStruct)
             % Axes position inaccuracy estimation
             deltaX = 3;
             deltaY = -1;
-            
+
             % Fix for images
             if isImage(hParent)  % | (isAxes(hParent) & strcmpi(get(hParent,'YDir'),'reverse'))  %#ok ML6
 
@@ -430,7 +448,7 @@ function [paramsStruct, msgStr] = convertPos(paramsStruct)
                         deltaX = 3;
                         deltaY = -3;
                     end
-                    
+
                 else  % axes/image position was auto-infered (entire image)
                     % Axes position inaccuracy estimation
                     if strcmpi(computer('arch'),'win64')
@@ -461,18 +479,28 @@ function [paramsStruct, msgStr] = convertPos(paramsStruct)
             deltaY = 1;
         end
         %disp(paramsStruct.position)  % for debugging
-        
+
         % Now get the pixel position relative to the monitor
         figurePos = getPixelPos(hParent);
         desktopPos = figurePos + parentPos;
 
         % Now convert to Java-based pixels based on screen size
-        % Note: multiple monitors are automatically handled correctly, since all
-        % ^^^^  Java positions are relative to the main monitor's top-left corner
-        javaX  = desktopPos(1) + paramsStruct.position(1) + deltaX + dX;
-        javaY  = screenSize(4) - desktopPos(2) - paramsStruct.position(2) - paramsStruct.position(4) + deltaY + dY;
-        width  = paramsStruct.position(3) + dW;
-        height = paramsStruct.position(4) + dH;
+        try %if isFigure(paramsStruct.handle)
+            % Special (more accurate) treatment for figure windows
+            jframe = getJFrame(paramsStruct.handle);
+            javaX  = jframe.getX      + 7;
+            javaY  = jframe.getY      + 0;
+            width  = jframe.getWidth  - 14;
+            height = jframe.getHeight - 7;
+        catch % not a figure handle
+            % Note: multiple monitors are automatically handled correctly, since all
+            % ^^^^  Java positions are relative to the main monitor's top-left corner
+            javaX  = desktopPos(1) + paramsStruct.position(1) + deltaX + dX;
+            javaY  = screenSize(4) - desktopPos(2) - paramsStruct.position(2) - paramsStruct.position(4) + deltaY + dY;
+            width  = paramsStruct.position(3) + dW;
+            height = paramsStruct.position(4) + dH;
+            isFigureHandle = false;
+        end
         paramsStruct.position = round([javaX, javaY, width, height]);
         %paramsStruct.position
 
@@ -485,9 +513,18 @@ function [paramsStruct, msgStr] = convertPos(paramsStruct)
     catch
         % Maybe root/desktop handle (root does not have a 'Position' prop so getPixelPos croaks
         if isequal(double(hParent),0)  % =root/desktop handle;  handles case of hParent=[]
+            % If no Position arg was specify, capture the entire screen
+            if isempty(paramsStruct.position)
+                paramsStruct.position = screenSize;
+            end
+            % Treat x,y==0 as special cases (user probably doesn't want capture to start at -1)
+            if paramsStruct.position(1) == 0, paramsStruct.position(1)=1; end
+            if paramsStruct.position(2) == 0, paramsStruct.position(2)=1; end
+            % Convert from Matlab to Java screen coordinates
             javaX = paramsStruct.position(1) - 1;
-            javaY = screenSize(4) - paramsStruct.position(2) - paramsStruct.position(4) - 1;
+            javaY = screenSize(4) - paramsStruct.position(2) - paramsStruct.position(4) + 1;
             paramsStruct.position = [javaX, javaY, paramsStruct.position(3:4)];
+            isFigureHandle = false;
         end
     end
 %end  % convertPos
@@ -501,7 +538,7 @@ function [positionRect, jFrameUsed, msgStr] = getInteractivePosition(hFig)
         f = figure('units','pixel','pos',[-100,-100,10,10],'HitTest','off');
         drawnow; pause(0.01);
         oldWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
-        jf = get(handle(f),'JavaFrame');
+        jf = get(handle(f),'JavaFrame'); %#ok<JAVFM>
         warning(oldWarn);
         try
             jWindow = jf.fFigureClient.getWindow;
@@ -527,7 +564,7 @@ function [positionRect, jFrameUsed, msgStr] = getInteractivePosition(hFig)
                'or single-click to capture the entire figure'};
     end
     uiwait(msgbox(msg,'ScreenCapture'));
-    
+
     k = waitforbuttonpress;  %#ok k is unused
     %hFig = getCurrentFig;
     %p1 = get(hFig,'CurrentPoint');
@@ -621,7 +658,7 @@ function pos = getPixelPos(hObj,varargin)
 
         if isFigure(hObj) %| isAxes(hObj)
         %try
-            pos = getPos(hObj,'OuterPosition','pixels');
+            pos = getPos(hObj,'OuterPosition','pixels');  %'Position'
         else  %catch
             % getpixelposition is unvectorized unfortunately!
             pos = getpixelposition(hObj,varargin{:});
@@ -772,31 +809,31 @@ function imclipboard(imgData)
         end 
         javaaddpath(MatLabFilePath, '-end'); 
     end
-        
+
     % Get System Clipboard object (java.awt.Toolkit)
     cb = getDefaultToolkit.getSystemClipboard;  % can't use () in ML6!
-    
+
     % Get image size
     ht = size(imgData, 1);
     wd = size(imgData, 2);
-    
+
     % Convert to Blue-Green-Red format
     imgData = imgData(:, :, [3 2 1]);
-    
+
     % Convert to 3xWxH format
     imgData = permute(imgData, [3, 2, 1]);
-    
+
     % Append Alpha data (not used)
     imgData = cat(1, imgData, 255*ones(1, wd, ht, 'uint8'));
-    
+
     % Create image buffer
     imBuffer = BufferedImage(wd, ht, BufferedImage.TYPE_INT_RGB);
     imBuffer.setRGB(0, 0, wd, ht, typecast(imgData(:), 'int32'), 0, wd);
-    
+
     % Create ImageSelection object
     %    % custom java class
     imSelection = ImageSelection(imBuffer);
-    
+
     % Set clipboard content to the image
     cb.setContents(imSelection, []);
 %end  %imclipboard
@@ -815,6 +852,27 @@ function flag = isAxes(hObj)
 function flag = isImage(hObj)
     flag = isa(handle(hObj),'image') | isa(hObj,'matlab.graphics.primitive.Image');
 %end  %isFigure
+
+%% Get the top-level JFrame reference handle
+function jframe = getJFrame(hFig)
+    % Get the figure's underlying Java frame
+    oldWarn = warning('off','MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
+    jf = get(handle(hFig),'JavaFrame'); %#ok<JAVFM>
+    warning(oldWarn);
+
+    % Get the Java frame's root frame handle
+    %jframe = jf.getFigurePanelContainer.getComponent(0).getRootPane.getParent;
+    try
+        jClient = jf.fFigureClient;  % This works up to R2011a
+    catch
+        try
+            jClient = jf.fHG1Client;  % This works from R2008b-R2014a
+        catch
+            jClient = jf.fHG2Client;  % This works from R2014b and up
+        end
+    end
+    jframe = jClient.getWindow;  % equivalent to above...
+%end
 
 %%%%%%%%%%%%%%%%%%%%%%%%%% TODO %%%%%%%%%%%%%%%%%%%%%%%%%
 % find a way in interactive-mode to single-click another Matlab figure for screen-capture

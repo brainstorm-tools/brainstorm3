@@ -19,9 +19,9 @@ function varargout = brainstorm( varargin )
 %        brainstorm tutorial name   : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa
 %        brainstorm tutorial all    : Run all the validation scripts
 %        brainstorm test            : Run a coverage test
-%        brainstorm deploy          : Create a zip file for distribution (see bst_deploy for options)
-%        brainstorm deploy 1        : Compile the current version of Brainstorm with Matlab mcc compiler
-%        brainstorm deploy 2        : Compile including SPM and FieldTrip functions used by Brainstorm
+%        brainstorm deploy          : Cleanup files and copy to git repository
+%        brainstorm compile         : Compile Brainstorm with Matlab mcc compiler, including all plugins
+%        brainstorm compile noplugs : Compile Brainstorm with Matlab mcc compiler, without the plugins
 %        brainstorm workshop        : Download OpenMEEG and the SPM atlases, and run some small tests
 %  res = brainstorm('status')       : Return brainstorm status (1=running, 0=stopped)
 
@@ -253,26 +253,37 @@ switch action
         java_dialog('msgbox', 'You computer is ready for the workshop.', 'Workshop');
         
     case 'deploy'
-        % Close Brainstorm
-        if isappdata(0, 'BrainstormRunning')
-            bst_exit();
-        end
-        % Initialize path
+        % Add path to deploy function
         bst_set_path(BrainstormHomeDir);
-        % Get Matlab version
-        ReleaseName = bst_get('MatlabReleaseName');
-        % Add path to java_dialog function
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
+        addpath(fullfile(BrainstormHomeDir, 'deploy'));
         bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        % Remove .brainstorm from the path
-        rmpath(bst_get('UserMexDir'));
-        rmpath(bst_get('UserProcessDir'));
-        % Update
+        % Deploy Braintorm
+        bst_deploy();
+
+    case 'compile'
+        % Add path to deploy function
+        bst_set_path(BrainstormHomeDir);
+        addpath(fullfile(BrainstormHomeDir, 'deploy'));
+        % Options
         if (nargin > 1)
-            bst_deploy_java(varargin{2:end});
+            if strcmpi(varargin{2}, 'noplugs')
+                isPlugs = 0;
+            else
+                error('Usage: brainstorm compile [noplugs]');
+            end
         else
-            bst_deploy_java();
+            isPlugs = 1;
+        end
+        % Matlab < 2020a: Old compilation function using deploytool
+        if (bst_get('MatlabVersion') < 908)
+            addpath(fullfile(BrainstormHomeDir, 'deploy', 'deprecated'));
+            if isPlugs
+                bst_deploy_java('2');
+            else
+                bst_deploy_java('1');
+            end
+        else
+            bst_compile(isPlugs);
         end
         
     otherwise

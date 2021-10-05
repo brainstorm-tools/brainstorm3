@@ -34,7 +34,7 @@ function varargout = figure_timeseries( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 %          Martin Cousineau, 2017
 %          Marc Lalancette, 2020
 
@@ -1653,7 +1653,7 @@ function FigureKeyPressedCallback(hFig, ev)
                                     % Look for last page event marked (after the current one)
                                     for i = 1:length(pageEventNames)
                                         [sEvent, iEvent] = panel_record('GetEvents', pageEventNames{i});
-                                        if ~isempty(sEvent) && ~isempty(sEvent.times) && (pageEnd < sEvent.times(2,end))
+                                        if ~isempty(sEvent) && ~isempty(sEvent.times) && (size(sEvent.times,2) == 2) && (pageEnd < sEvent.times(2,end))
                                             pageEnd = sEvent.times(2,end);
                                             iLastEvent = iEvent;
                                             iLastOccur = size(sEvent.times, 2);

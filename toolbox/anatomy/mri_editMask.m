@@ -498,6 +498,9 @@ function previewMouseClick_Callback(varargin)
 %% ===== MOUSE MOVE =====
 function figureMouseMove_Callback(varargin) %#ok<DEFNU>
     global gEditMaskData;
+    if ~isfield(gEditMaskData, 'Handles')
+        return;
+    end
     handles = gEditMaskData.Handles;
     % Mouse location on the figure
     temp = get(handles.mri_editMask, 'CurrentPoint');

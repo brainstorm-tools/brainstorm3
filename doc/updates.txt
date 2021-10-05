@@ -1,7 +1,19 @@
+--------------------------------------------------------------
+September 2021
+- SEEG/ECOG contact labelling from volume and surface atlases
+- Distrib: Compilation with Matlab 2021a/2021b
+- Dritrib: Updated deployment and compilation scripts
+- Anatomy: Connectivity display with fibers in subject space
+- New plugin: MIA
+- Bugfix: Restoring mean after the PCA (scouts or unconstrained>flat)
+--------------------------------------------------------------
+August 2021
+- Doc: New FEM tutorials
 ---------------------------------------------------------------
 July 2021
 - Inverse: FieldTrip DICS
 - Anatomy: Fixed O'Reilly infant templates
+- IO: Added support for Axion AxIS recordings (.raw)
 - Connectivity: New coherence processes 2021
 ---------------------------------------------------------------
 June 2021

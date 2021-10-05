@@ -109,6 +109,11 @@ if file_exist(StartFile)
     file_delete(StartFile, 1);
 end
 
+
+%% ===== EMPTY TEMPORARY DIRECTORY =====
+gui_brainstorm('EmptyTempFolder');
+
+
 %% ===== RESET ALL VARIABLES =====
 % Remove global data
 GlobalData = [];

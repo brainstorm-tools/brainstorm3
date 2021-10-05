@@ -220,6 +220,9 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
     [selChan,errMsg] = GetChannelsForFigure(iDS, iFig);
     % Error message
     if ~isempty(errMsg)
+        if isNewFig
+            GlobalData.DataSet(iDS).Figure(iFig) = [];
+        end
         error(errMsg);
     end
     % Save selected channels for this figure

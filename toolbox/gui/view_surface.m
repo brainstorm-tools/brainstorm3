@@ -1,18 +1,18 @@
-function [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFig)
+function [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFig, isScouts)
 % VIEW_SURFACE: Display a surface in a 3DViz figure.
 %
-% USAGE:  [hFig, iDS, iFig] = view_surface(SurfaceFile)
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, 'NewFigure')
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFig)
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, iDS)
+% USAGE:  [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha=0, SurfColor=[.6,.6,.6], TargetFigure=[], isScouts=0)
 %
 % INPUT:
 %     - SurfaceFile : full path to the surface file to display 
 %     - SurfAlpha   : value that indicates surface transparency (optional)
 %     - SurfColor   : Surface color [r,g,b] (optional)
-%     - "NewFigure" : force new figure creation (do not re-use a previously created figure)
-%     - hFig        : Specify the figure in which to display the surface
-%     - iDS         : Specify which loaded dataset to use
+%     - TargetFigure:
+%        |- "NewFigure" : Force new figure creation (do not re-use a previously created figure)
+%        |- hFig        : Specify the figure in which to display the surface
+%        |- iDS         : Specify which loaded dataset to use
+%        |- []          : Get an existing 3D figure for the subject identified from SurfaceFile
+%     - isScouts    : If 1, displays scouts for the loaded surface
 %
 % OUTPUT : 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -38,7 +38,7 @@ function [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, hFi
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2021
 
 global GlobalData;
 
@@ -46,6 +46,10 @@ global GlobalData;
 iDS  = [];
 iFig = [];
 NewFigure = 0;
+% By default: show scouts
+if (nargin < 5) || isempty(isScouts)
+    isScouts = 1;
+end
 % Get options
 if (nargin < 4) || isempty(hFig)
     hFig = [];
@@ -147,18 +151,21 @@ end
 
 % Set figure as current figure
 bst_figures('SetCurrentFigure', hFig, '3D');
-% If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
-sAtlas = panel_scout('GetAtlas', SurfaceFile);
-if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'}) && isequal(TessInfo(iSurf).Name, 'Cortex')
-    panel_scout('SetCurrentAtlas', 1);
-end
-% Show all scouts for this surface (for cortex only)
-if (iSurf > 1)
-    panel_scout('ReloadScouts', hFig);
-else
-    panel_scout('SetDefaultOptions');
-    panel_scout('PlotScouts', [], hFig);
-    panel_scout('UpdateScoutsDisplay', hFig);
+% Display scouts
+if isScouts
+    % If the default atlas is "Source model" or "Structures": Switch it back to "User scouts"
+    sAtlas = panel_scout('GetAtlas', SurfaceFile);
+    if ~isempty(sAtlas) && ismember(sAtlas.Name, {'Structures', 'Source model'}) && isequal(TessInfo(iSurf).Name, 'Cortex')
+        panel_scout('SetCurrentAtlas', 1);
+    end
+    % Show all scouts for this surface (for cortex only)
+    if (iSurf > 1)
+        panel_scout('ReloadScouts', hFig);
+    else
+        panel_scout('SetDefaultOptions');
+        panel_scout('PlotScouts', [], hFig);
+        panel_scout('UpdateScoutsDisplay', hFig);
+    end
 end
 % Make sure to update the Headlight
 camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');

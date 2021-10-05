@@ -94,7 +94,7 @@ end
 % Special case for supported acquisition systems: Save temporary files
 % using single precision instead of double to save disk space
 ImportOptions = db_template('ImportOptions');
-if ismember(sFile.format, {'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
+if ismember(sFile.format, {'EEG-AXION', 'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
     precision = 'single';
 else
     precision = 'double';
