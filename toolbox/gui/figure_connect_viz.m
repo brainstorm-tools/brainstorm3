@@ -1463,11 +1463,11 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
         MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
     end
     
-    % Note: DataPair computation already removed diagonal and capped at max 5000
-    % pairs 
+    % Note: DataPair computation already removed diagonal and capped at max 5000 pairs 
     
-    %for each link (loop backwards to pre-allocate links)
-    for i = length(DataPair):-1:1 
+    %for each link
+    Links = zeros(1, length(DataPair));
+    for i = 1:length(DataPair)
         overlap = false;
         % node positions (rescaled to *unit* circle)
         Node1 = DataPair(i, 1); Node2 = DataPair(i, 2);

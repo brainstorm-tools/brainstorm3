@@ -2,21 +2,10 @@ function varargout = fibers_helper(varargin)
 % FIBERS_HELPER: Helper function for fibers objects
 % 
 % USAGE: 
-%    - sFib = fibers_helper('Concatenate', sFibList) :
-%        Concatenates in a single file a list of fibers
 %    - sFib = fibers_helper('ComputeColor', sFib) :
 %        Computes the color of each fiber point based on local curvature
 %    - sFib = fibers_helper('AssignToScouts', sFib, ConnectFile, ScoutCentroids) :
 %        Assigns each fiber to a pair of scout based on fiber endpoints
-%    - [mat2d, shape3d] = fibers_helper('Conv3Dto2D', mat3d, iDimToKeep) :
-%        Converts a 3D shape to a 2D shape in a reversible way
-%    - mat3d = fibers_helper('Conv2Dto3D', mat2d, shape3d) :
-%        Converts back to 3D a 2D shape converted with Conv3Dto2D()
-%    - sFib = fibers_helper('ApplyMriTransfToFib', MriTransf, sFib) :
-%        Apply MRI transformation to fiber points
-%    - sSurf = fibers_helper('ApplyMriTransfToSurf', MriTransf, sSurf) :
-%        Apply MRI transformation to surface vertices
-%
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -41,19 +30,6 @@ function varargout = fibers_helper(varargin)
 eval(macro_method);
 end
 
-%% ===== CONCATENATE FIBERS FILES =====
-function NewFibers = Concatenate(Fibers)
-    for iFib = 1:length(Fibers)
-        if iFib == 1
-            NewFibers = Fibers(iFib);
-            continue;
-        else
-            nFibers = size(Fibers(iFib).Points, 2);
-            NewFibers.Points(end+1:end+nFibers, :, :) = Fibers(iFib).Points;
-            NewFibers.Colors(end+1:end+nFibers, :, :) = Fibers(iFib).Colors;
-        end
-    end
-end
 
 %% ===== COMPUTE COLOR BASED ON CURVATURE =====
 function FibMat = ComputeColor(FibMat)
@@ -79,6 +55,7 @@ function FibMat = ComputeColor(FibMat)
     FibMat.Colors(:, nPoints, 2) = FibMat.Colors(:, nPoints-1, 2);
     FibMat.Colors(:, nPoints, 3) = FibMat.Colors(:, nPoints-1, 3);
 end
+
 
 %% ===== ASSIGN FIBERS TO VERTICES =====
 function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
@@ -111,66 +88,10 @@ function FibMat = AssignToScouts(FibMat, ConnectFile, ScoutCentroids)
     bst_progress('stop');
 end
 
-%% ===== CONVERT 3D MATRICES TO 2D IN A REVERSIBLE WAY =====
-function [mat2d, shape3d] = Conv3Dto2D(mat3d, iDimToKeep)
-    shape3d = size(mat3d);
-    nDims = length(shape3d);
-    
-    if nargin < 2 || isempty(iDimToKeep)
-        iDimToKeep = nDims;
-    end
-    
-    iMergeDims = 1:nDims ~= iDimToKeep;
-    mat2d = reshape(mat3d, [prod(shape3d(iMergeDims)), shape3d(iDimToKeep)]);
-end
 
 
-%% ===== CONVERT 2D MATRICES BACK TO 3D =====
-function mat3d = Conv2Dto3D(mat2d, shape3d)
-    mat3d = reshape(mat2d, shape3d);
-end
 
-%% ===== APPLY MRI ORIENTATION =====
-function FibMat = ApplyMriTransfToFib(MriTransf, FibMat)
-    % Convert points matrix to 2D for transformation.
-    [pts, shape3d] = Conv3Dto2D(FibMat.Points);
-    % Apply transformation to points
-    pts = ApplyMriTransfToPts(MriTransf, pts);
-    % Report changes in structure
-    FibMat.Points = Conv2Dto3D(pts, shape3d);
-end
-function sSurf = ApplyMriTransfToSurf(MriTransf, sSurf)
-    % Apply transformation to vertices
-    pts = ApplyMriTransfToPts(MriTransf, sSurf.Vertices);
-    % Report changes in structure
-    sSurf.Vertices = pts;
-    % Update faces order: If the surfaces were flipped an odd number of times, invert faces orientation
-    if (mod(nnz(strcmpi(MriTransf(:,1), 'flipdim')), 2) == 1)
-        sSurf.Faces = sSurf.Faces(:,[1 3 2]);
-    end
-end
-function pts = ApplyMriTransfToPts(MriTransf, pts)
-    % Apply step by step all the transformations that have been applied to the MRI
-    for i = 1:size(MriTransf,1)
-        ttype = MriTransf{i,1};
-        val   = MriTransf{i,2};
-        switch (ttype)
-            case 'flipdim'
-                % Detect the dimensions that have constantly negative coordinates
-                iDimNeg = find(sum(sign(pts) == -1) == size(pts,1));
-                if ~isempty(iDimNeg)
-                    pts(:,iDimNeg) = -pts(:,iDimNeg);
-                end
-                % Flip dimension
-                pts(:,val(1)) = val(2)/1000 - pts(:,val(1));
-                % Restore initial negative values
-                if ~isempty(iDimNeg)
-                    pts(:,iDimNeg) = -pts(:,iDimNeg);
-                end
-            case 'permute'
-                pts = pts(:,val);
-            case 'vox2ras'
-                % Do nothing, applied earlier
-        end
-    end
-end
+
+
+
+

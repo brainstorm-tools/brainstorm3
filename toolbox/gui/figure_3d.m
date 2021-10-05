@@ -3233,7 +3233,11 @@ function UpdateSurfaceAlpha(hFig, iTess)
     % ===== HEMISPHERE SELECTION (CHAR) =====
     if ischar(Surface.Resect) && ~strcmpi(Surface.Resect, 'none')
         % Detect hemispheres
-        [rH, lH, isConnected] = tess_hemisplit(sSurf);
+        if strcmpi(Surface.Name, 'FEM')
+            isConnected = 1;
+        else
+            [rH, lH, isConnected] = tess_hemisplit(sSurf);
+        end
         % If there is no separation between  left and right: use the numeric split
         if isConnected
             iHideVert = [];

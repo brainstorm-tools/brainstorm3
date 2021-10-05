@@ -498,7 +498,7 @@ for iData = 1:length(Data)
                 end
             end
             % Invalid frequencies
-            if any(OPTIONS.Freqs <= 0)
+            if iscell(OPTIONS.Freqs) || isempty(OPTIONS.Freqs) || any(OPTIONS.Freqs <= 0)
                 Messages = 'Invalid frequency definition: All frequencies must be > 0.';
                 isError = 1;
                 return;
@@ -825,9 +825,16 @@ end
         % Apply time and frequency bands
         if ~isempty(FreqBands) || ~isempty(OPTIONS.TimeBands)
             if strcmpi(OPTIONS.Method, 'hilbert') && ~isempty(OPTIONS.TimeBands)
-                FileMat = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
+                [FileMat, Messages] = process_tf_bands('Compute', FileMat, [], OPTIONS.TimeBands);
             elseif strcmpi(OPTIONS.Method, 'morlet') || strcmpi(OPTIONS.Method, 'psd') 
-                FileMat = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
+                [FileMat, Messages] = process_tf_bands('Compute', FileMat, FreqBands, OPTIONS.TimeBands);
+            end
+            if isempty(FileMat)
+                if ~isempty(Messages)
+                    error(Messages);
+                else
+                    error('Unknow error while processing time or frequency bands.');
+                end
             end
         end
         

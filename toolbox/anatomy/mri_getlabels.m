@@ -70,7 +70,7 @@ if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriF
     % Standard atlases (FreeSurfer/ASEG, BrainSuite/SVREG)
     elseif ~isempty(strfind(fBase, 'aseg')) || ~isempty(strfind(fBase, 'aparc')) % *aseg*.mgz
         AtlasName = 'freesurfer';
-    elseif ~isempty(strfind(fBase, '.svreg.label.'))   % *.svreg.label.nii.gz
+    elseif ~isempty(strfind(fBase, '.svreg.label'))   % *.svreg.label.nii.gz
         AtlasName = 'svreg';
     elseif ~isempty(strfind(fBase, '_final_contr'))
         AtlasName = 'simnibs';

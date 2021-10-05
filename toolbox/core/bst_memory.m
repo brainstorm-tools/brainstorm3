@@ -219,7 +219,7 @@ function [sFib,iFib] = LoadFibers(FibFile)
         % Create default structure
         sFib = db_template('LoadedFibers');
         % Load fibers matrix
-        FibMat = in_fibers(FibFile);
+        FibMat = load(file_fullpath(FibFile));
         % Build fibers structure
         for field = fieldnames(sFib)'
             if isfield(FibMat, field{1})
@@ -3281,7 +3281,7 @@ function isCancel = UnloadDataSets(iDataSets)
         if (iDS > length(GlobalData.DataSet))
             continue;
         end
-        isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+        isRaw = ~isempty(GlobalData.DataSet(iDS).Measures) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
         % Raw files: save events and close files
         if ~isempty(GlobalData.DataSet(iDS).Measures) && ~isempty(GlobalData.DataSet(iDS).Measures.sFile) %  && ~isempty(GlobalData.DataSet(iDS).Measures.DataType)
             % If file was modified: ask the user to save it or not

@@ -62,7 +62,7 @@ end
 
 %% ===== OPEN FILE =====
 % Open file (for some formats, it is open in the low-level function)
-if ismember(sFile.format, {'FIF', 'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF', 'MNE-PYTHON'}) 
+if ismember(sFile.format, {'FIF', 'CTF', 'KIT', 'RICOH', 'BST-DATA', 'SPM-DAT', 'EEG-ANT-CNT', 'EEG-AXION', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-NEURONE', 'EEG-NEURALYNX', 'EEG-NICOLET', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EYELINK', 'NIRS-BRS', 'EEG-EGI-MFF', 'MNE-PYTHON'}) 
     sfid = [];
 else
     sfid = fopen(sFile.filename, 'r', sFile.byteorder);
@@ -109,6 +109,8 @@ switch (sFile.format)
         if ~isempty(iChannels)
             F = F(iChannels,:);
         end
+    case 'EEG-AXION'
+        F = in_fread_axion(sFile, SamplesBounds, iChannels, precision);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-BRAINAMP'

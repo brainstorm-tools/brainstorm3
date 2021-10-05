@@ -91,6 +91,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
     case 'EEG-ANT-MSR'
         [sFile, ChannelMat] = in_fopen_msr(DataFile);
+    case 'EEG-AXION'
+        [sFile, ChannelMat] = in_fopen_axion(DataFile);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'

@@ -39,7 +39,7 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2021
 
 %% ===== PARSE INPUTS =====
 Output = [];
@@ -415,7 +415,10 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
         if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
             % Ask user if necessary
             if isempty(isApplyVox2ras)
-                isApplyVox2ras = java_dialog('confirm', ['There is a transformation to subject coordinates available in the MRI.' 10 'Would you like to use it to align the sensors with the MRI?'], 'Apply MRI transformation');
+                isApplyVox2ras = java_dialog('confirm', [...
+                    'There is a transformation to subject coordinates available in the MRI.' 10 ...
+                    'Would you like to use it to align the sensors with the MRI?' 10 10 ...
+                    'Answer NO to use the NAS/LPA/RPA fiducials from the input file.' 10], 'Apply MRI transformation');
             end
             % Apply transformation
             if isApplyVox2ras

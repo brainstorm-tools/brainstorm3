@@ -738,6 +738,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Relabel the tissues in the same order as the other options
             iRelabel = [5 4 3 2 1];
             elem(:,end) = reshape(iRelabel(elem(:,end)), [], 1);
+            % Flip the order of the elements
+            elem = elem(:, [2 1 3 4 5]);
+            % Convert positions from voxel to SCS coordinates
+            node = cs_convert(sMriT1, 'voxel', 'scs', node);
             % Name tissue labels
             TissueLabels = {'white','gray','csf','skull','scalp'};
             
@@ -943,7 +947,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             if ~isempty(iRemove)
                 elem(iRemove,:) = [];
             end
-            % Relabel the air as skin (maybe in the future we may distinguish the aire? to check)
+            % Relabel the air as skin (maybe in the future we may distinguish the air? to check)
             iAir = find(elem(:,end) > 5);
             elem(iAir,:) = 5; 
             % Name tissue labels
@@ -1032,43 +1036,73 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     end
     % Get default options
     OPTIONS = GetDefaultOptions();
+    OPTIONS.BemFiles = BemFiles;
     % If BEM surfaces are selected, the only possible method is "iso2mesh"
     if ~isempty(BemFiles) && iscell(BemFiles)
-        res = java_dialog('question', [...
-            '<HTML><B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
-            'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
-            '<FONT COLOR="#707070"><I>Iso2mesh is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            '<HTML><B>Iso2mesh</B>:<BR>Older implementation that can be used if the new version fails.<BR><BR>' ...
-            ], 'FEM mesh generation method', [], {'Iso2mesh-2021','Iso2mesh'}, 'Iso2mesh-2021');
-        if isempty(res)
-            return
-        end
-        OPTIONS.Method = lower(res);
-        OPTIONS.BemFiles = BemFiles;
-    % Otherwise: Ask for method to use
+        FemMethods = {'Iso2mesh-2021','Iso2mesh'};
+        DefMethod = 'Iso2mesh-2021';
+    % More than 2 MRI selected: error
+    elseif (length(iMris) > 2)
+        bst_error('Too many volumes selected.', 'FEM mesh', 0);
+        return
+    % If multiple MRIs are selected, iso2mesh/FieldTrip not possible
+    elseif (length(iMris) == 2)
+        FemMethods = {'Brain2mesh','SimNIBS','ROAST'};
+        DefMethod = 'SimNIBS';
+    % One MRI selected, iso2mesh not possible
+    elseif (length(iMris) == 1)
+        FemMethods = {'Brain2mesh','SimNIBS','ROAST','FieldTrip'};
+        DefMethod = 'SimNIBS';
+    % Otherwise: Use the defaults from the folder: Ask for method to use
     else
-        res = java_dialog('question', [...
-            '<HTML><B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
-            'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
-            '<FONT COLOR="#707070"><I>Iso2mesh is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            '<HTML><B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the new one fails).<BR><BR>' ...
-            '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh.<BR>' ...
-            'Brain2mesh is downloaded and installed automatically by Brainstorm.<BR>' ...
-            '<FONT COLOR="#707070"><I>Brain2mesh and SPM12 are downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.<BR>' ...
-            '<FONT COLOR="#707070"><I>SimNIBS must be installed on the computer first.<BR>' ...
-            'Website: https://simnibs.github.io/simnibs</I></FONT><BR><BR>' ...
-             '<B>ROAST</B>:<BR>Call ROAST to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
-            '<FONT COLOR="#707070"><I>ROAST is downloaded and installed automatically when needed.</I></FONT><BR><BR>'...
-            '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
-            '<FONT COLOR="#707070"><I>FieldTrip is downloaded and installed automatically when needed.</I></FONT><BR><BR>' ...
-            ], 'FEM mesh generation method', [], {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS','ROAST','FieldTrip'}, 'Iso2mesh-2021');
+        FemMethods = {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS','ROAST','FieldTrip'};
+        DefMethod = 'Iso2mesh-2021';
+    end
+    
+    % Only one method: use it
+    if (length(FemMethods) == 1)
+        OPTIONS.Method = lower(FemMethods{1});
+    % More than one method available: ask the user
+    else
+        % Assemble description of methods
+        strQuestion = '<HTML>';
+        for i = 1:length(FemMethods)
+            switch (FemMethods{i})
+                case 'Iso2mesh-2021'
+                    strQuestion = [strQuestion, ...
+                        '<B>Iso2mesh-2021</B>:<BR>Call iso2mesh to create a tetrahedral mesh from the <B>BEM surfaces</B><BR>' ...
+                        'generated with Brainstorm (head, inner skull, outer skull).<BR>' ...
+                        '<FONT COLOR="#707070"><I>Iso2mesh is downloaded automatically as a plugin.</I></FONT><BR><BR>'];
+                case 'Iso2mesh'
+                    strQuestion = [strQuestion, ...
+                        '<B>Iso2mesh</B>:<BR>Previous version of this method (useful in case the new one fails).<BR><BR>'];
+                case 'Brain2mesh'
+                    strQuestion = [strQuestion, ...
+                        '<B>Brain2mesh</B>:<BR>Segment the <B>T1</B> (and <B>T2</B>) <B>MRI</B> with SPM12, mesh with Brain2mesh.<BR>' ...
+                        '<FONT COLOR="#707070"><I>Brain2mesh and SPM12 are downloaded automatically as plugins.</I></FONT><BR><BR>'];
+                case 'SimNIBS'
+                    strQuestion = [strQuestion, ...
+                        '<B>SimNIBS</B>:<BR>Call SimNIBS to segment and mesh the <B>T1</B> (and <B>T2</B>) <B>MRI</B>.<BR>' ...
+                        '<FONT COLOR="#707070"><I>SimNIBS must be installed on the computer first.<BR>' ...
+                        'Website: https://simnibs.github.io/simnibs</I></FONT><BR><BR>'];
+                case 'ROAST'
+                    strQuestion = [strQuestion, ...
+                        '<B>ROAST</B>:<BR>Call ROAST to segment and mesh the <B>T1</B> (and <B>T2</B>) MRI.<BR>' ...
+                        '<FONT COLOR="#707070"><I>ROAST is downloaded automatically as a plugin.</I></FONT><BR><BR>'];
+                case 'FieldTrip'
+                    strQuestion = [strQuestion, ...
+                        '<B>FieldTrip</B>:<BR>Call FieldTrip to segment and mesh the <B>T1</B> MRI.<BR>' ...
+                        '<FONT COLOR="#707070"><I>FieldTrip is downloaded automatically as a plugin.</I></FONT><BR><BR>'];
+            end
+        end
+        % Ask the user to select a method
+        res = java_dialog('question', strQuestion, 'FEM mesh generation method', [], FemMethods, DefMethod);
         if isempty(res)
             return
         end
         OPTIONS.Method = lower(res);
     end
-    
+
     % Other options: Switch depending on the method
     switch (OPTIONS.Method)
         case 'iso2mesh-2021'
@@ -1130,7 +1164,7 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
         case 'brain2mesh'
             % No extra options
             
-        case 'simnibs'    
+        case 'simnibs'
             % Ask for the Vertex density
             res = java_dialog('input', '<HTML>Vertex density:<BR>Number of nodes per mm2 of the surface meshes (0.1 - 1.5)', ...
                 'SimNIBS Vertex Density', [], num2str(OPTIONS.VertexDensity));
