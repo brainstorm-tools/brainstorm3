@@ -155,9 +155,15 @@ epy = bst_bsxfun(@times, epy, win);
 epY = fft(epy, nFFT, 2);
 epY = epY(:, 1:nKeep, :);
 clear Y epy;
-if isempty(ImagingKernel) && ~isNxN
-    % Auto-spectrum (PSD) of y
-    Syy = sum(epY .* conj(epY), 3);
+if ~isNxN
+    if isempty(ImagingKernel)
+        % Auto-spectrum (PSD) of y
+        Syy = sum(epY .* conj(epY), 3);
+    else
+        % Auto-spectrum (PSD) of y (sources)
+        epYSource = pagemtimes(ImagingKernel, epY);
+        Syy = sum(epYSource .* conj(epYSource), 3);
+    end        
 else
     % Cross-spectrum of y, needed in NxN case, or when Imagingkernel
     for y1 = 1 : nSignalsY
@@ -212,50 +218,53 @@ if isNxN
     Sxx = Syy;
 end
 
-%% ===== Project in source space =====
-if ~isempty(ImagingKernel)  
-    nSourcesY = size(ImagingKernel,1);
-    bst_progress('text', sprintf('Projecting to source domain [%d>%d]...', nSignalsY, nSourcesY));
-    
-    %% ===== Case 1xN =====
-    if ~isNxN             
-        % Initialize Sxy and Syy in source space
-        Sxy_sources = complex(zeros(nSignalsX, nSourcesY, length(freq)));
-        Syy_sources = zeros(nSourcesY, length(freq));
-        % Projection for each frequency
-        for iFreq = 1:length(freq)
-            Sxy_sources(:,:,iFreq) = Sxy(:,:,iFreq) * ImagingKernel';
-            Syy_sources(:, iFreq)  = abs(diag(ImagingKernel * Syy(:,:,iFreq) * ImagingKernel'));
-        end
-        % Sxy and Syy in source space
-        Sxy = Sxy_sources;
-        Syy = Syy_sources;
-        % Sxx = Sxx;
-    
-    %% ===== Case NxN =====
-    else 
-        % Initialize Sxy and Syy in source space
-        Sxy_sources = complex(zeros(nSourcesY, nSourcesY, length(freq)));
-        Syy_sources = zeros(nSourcesY, length(freq));
-        % Projection for each frequency
-        for iFreq = 1:length(freq)
-            Sxy_sources(:,:,iFreq) = ImagingKernel * Sxy(:,:,iFreq) * ImagingKernel';
-            Syy_sources(:, iFreq)  = abs(diag(Sxy_sources(:,:,iFreq)));
-        end
-        % Sxy, Syy and Sxx in source space
-        Sxy = Sxy_sources;
-        Syy = Syy_sources;
-        Sxx = Syy;       
-    end
-    
-    clear Sxy_sources Syy_sources
-end
+% %% ===== Project in source space =====
+% if ~isempty(ImagingKernel)  
+%     nSourcesY = size(ImagingKernel,1);
+%     bst_progress('text', sprintf('Projecting to source domain [%d>%d]...', nSignalsY, nSourcesY));
+%     
+%     %% ===== Case 1xN =====
+%     if ~isNxN             
+%         % Initialize Sxy and Syy in source space
+%         Sxy_sources = complex(zeros(nSignalsX, nSourcesY, length(freq)));
+%         %Syy_sources = zeros(nSourcesY, length(freq));
+%         % Projection for each frequency
+%         for iFreq = 1:length(freq)
+%             Sxy_sources(:,:,iFreq) = Sxy(:,:,iFreq) * ImagingKernel';
+%             %Syy_sources(:, iFreq)  = abs(diag(ImagingKernel * Syy(:,:,iFreq) * ImagingKernel'));
+%         end
+%         % Sxy and Syy in source space
+%         Sxy = Sxy_sources;
+%         %Syy = Syy_sources;
+%         % Sxx = Sxx;
+%         % Syy = Syy;
+%     
+%     %% ===== Case NxN =====
+%     else 
+%         % Initialize Sxy and Syy in source space
+%         Sxy_sources = complex(zeros(nSourcesY, nSourcesY, length(freq)));
+%         Syy_sources = zeros(nSourcesY, length(freq));
+%         % Projection for each frequency
+%         for iFreq = 1:length(freq)
+%             Sxy_sources(:,:,iFreq) = ImagingKernel * Sxy(:,:,iFreq) * ImagingKernel';
+%             Syy_sources(:, iFreq)  = abs(diag(Sxy_sources(:,:,iFreq)));
+%         end
+%         % Sxy, Syy and Sxx in source space
+%         Sxy = Sxy_sources;
+%         Syy = Syy_sources;
+%         Sxx = Syy;       
+%     end
+%     
+%     clear Sxy_sources Syy_sources
+% end
 
 % Averages across number of windows
 preCoh.Sxx  = Sxx / nWin;
 preCoh.Syy  = Syy / nWin;
 preCoh.Sxy  = Sxy / nWin;
 preCoh.nWin = nWin;
+preCoh.ImagingKernel = ImagingKernel;
+preCoh.isNxN = isNxN;
 end
 
 function epx = epoching(x, nEpochLen, nOverlap)

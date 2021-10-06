@@ -77,7 +77,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.maxfreq.Value   = {60,'Hz',2};
     % === OUTPUT MODE 2021
     sProcess.options.outputmode.Comment = {'Save individual results (one output file per input file)', 'Average cross-spectra of input files (one output file)'; ...
-                                           'input', 'avgcoh'};
+                                           'input', 'avg'};
     sProcess.options.outputmode.Type    = 'radio_label';
     sProcess.options.outputmode.Value   = 'input';
     sProcess.options.outputmode.Group   = 'output';

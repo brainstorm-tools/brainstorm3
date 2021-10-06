@@ -921,26 +921,35 @@ function R = compute_r_from_prer(metric, preR, OPTIONS, nAvg)
             
         % Coherence 
         case 'cohere'          
-%             % Error and Warning for minimun number of windows
-%             minWinError = 2;
-%             minWinWarning = 5;
-%             % ERROR: Not enough time points
-%             if preR.nWin < minWinError
-%                 Messages = sprintf(['Input signals are too short (%d samples) for the requested frequency resolution (%1.2fHz).\n' ...
-%                         'Minimum length for this resolution: %1.3f seconds (%d samples).'], nTimes, MaxFreqRes, minTimes/Fs, minTimes);
-%                 
-%                 Messages = sprintf(['Input signals are too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
-%                                     'Provide 2 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-%                                     nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
-%                 return;
-%             % WARNING: Maybe not enough time points
-%             elseif preR.nWin < minWinWarning
-%                 nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinWarning - 1);
-%                 Messages = sprintf(['Input signals may be too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
-%                                     'Recommendation: Provide 5 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-%                                     nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
-%             end
-            
+            % Project in source space if needed
+            if ~isempty(preR.ImagingKernel)  
+                [nSourcesY, nSignalsY] = size(preR.ImagingKernel);
+                nSignalsX = size(preR.Sxx, 1);
+                nFreq = size(preR.Sxx, 2);
+                bst_progress('text', sprintf('Projecting to source domain [%d>%d]...', nSignalsY, nSourcesY));
+                Sxy_sources = complex(zeros(nSignalsX, nSourcesY, nFreq));
+                % Case 1xN 
+                if ~preR.isNxN             
+                    for iFreq = 1 : nFreq
+                        Sxy_sources(:,:,iFreq) = preR.Sxy(:,:,iFreq) * preR.ImagingKernel';
+                    end
+                    preR.Sxy = Sxy_sources;
+                % Case NxN 
+                else 
+                    Syy_sources = zeros(nSourcesY, nFreq);
+                    for iFreq = 1 : nFreq
+                        Sxy_sources(:,:,iFreq) = preR.ImagingKernel * preR.Sxy(:,:,iFreq) * preR.ImagingKernel';
+                        Syy_sources(:, iFreq)  = abs(diag(Sxy_sources(:,:,iFreq)));
+                    end
+                    % Sxy, Syy and Sxx in source space
+                    preR.Sxy = Sxy_sources;
+                    preR.Syy = Syy_sources;
+                    preR.Sxx = preR.Syy;       
+                    clear Syy_sources
+                end
+                clear Sxy_sources 
+            end
+        
             Sxx = permute(preR.Sxx, [1, 3, 2]) ./ nAvg; % [nSignalsX or nSourcesX, 1, nKeep]
             Syy = permute(preR.Syy, [3, 1, 2]) ./ nAvg; % [1, nSignalsY or nSourcesY, nKeep]
             Cxy = preR.Sxy ./ nAvg;
