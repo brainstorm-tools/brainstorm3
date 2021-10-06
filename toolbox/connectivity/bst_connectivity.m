@@ -109,6 +109,7 @@ end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
 % Options for LoadInputFile(), for FilesA and FilesB separately
+LoadOptionsA.isPca = 1; % Flats Unconstrained sources
 LoadOptionsA.IgnoreBad   = OPTIONS.IgnoreBad;  % From data files: KEEP the bad channels
 LoadOptionsA.ProcessName = OPTIONS.ProcessName;
 if strcmpi(OPTIONS.ScoutTime, 'before')
@@ -117,9 +118,9 @@ else
     LoadOptionsA.TargetFunc = 'All';
 end
 % Load kernel-based results as kernel+data for coherence ONLY
-LoadOptionsA.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
+% LoadOptionsA.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
 LoadOptionsB = LoadOptionsA;
-LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
+% LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
 % Use the signal processing toolbox?
 if bst_get('UseSigProcToolbox')
     hilbert_fcn = @hilbert;
@@ -253,21 +254,21 @@ for iFile = 1:length(FilesA)
     % Round the sampling frequency at 1e6
     sfreq = round(sfreq * 1e6) * 1e-6;
     
-    % ===== CHECK UNCONSTRAINED SOURCES =====
-    % Unconstrained models?
-    isUnconstrA = ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && (sInputA.nComponents ~= 1);
-    isUnconstrB = ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && (sInputB.nComponents ~= 1);
-%     % Mixed source models not supported yet
-%     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
-%     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))
-%         bst_report('Error', OPTIONS.ProcessName, [], 'Connectivity functions are not supported yet for mixed source models.');
+%     % ===== CHECK UNCONSTRAINED SOURCES =====
+%     % Unconstrained models?
+%     isUnconstrA = ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && (sInputA.nComponents ~= 1);
+%     isUnconstrB = ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && (sInputB.nComponents ~= 1);
+% %     % Mixed source models not supported yet
+% %     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
+% %     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))
+% %         bst_report('Error', OPTIONS.ProcessName, [], 'Connectivity functions are not supported yet for mixed source models.');
+% %         return;
+% %     end
+%     % PLV: Incompatible with unconstrained sources  (saves complex values)
+%     if ismember(OPTIONS.Method, {'plv','plvt'}) && (isUnconstrA || isUnconstrB)
+%         bst_report('Error', OPTIONS.ProcessName, [], 'The PLV measures are not supported yet on unconstrained sources.');
 %         return;
 %     end
-    % PLV: Incompatible with unconstrained sources  (saves complex values)
-    if ismember(OPTIONS.Method, {'plv','plvt'}) && (isUnconstrA || isUnconstrB)
-        bst_report('Error', OPTIONS.ProcessName, [], 'The PLV measures are not supported yet on unconstrained sources.');
-        return;
-    end
     
     % ===== GET SCOUTS SCTRUCTURES =====
     % Save scouts structures in the options

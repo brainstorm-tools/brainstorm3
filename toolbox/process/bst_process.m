@@ -1824,6 +1824,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         'ProcessName',    'process_unknown', ...
         'TargetFunc',     [], ...          % Function to apply to the scouts, if input targe contains scouts
         'isNorm',         0, ...           % Take the norm of three orientations for scouts
+        'isPca',          0, ...           % Take the PCA of three orientations for scouts
         'RemoveBaseline', 'all', ...
         'UseSsp',         1);              % When reading from continuous files: 
     nSignals = 0;
@@ -1880,6 +1881,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
             'scoutfunc',      OPTIONS.TargetFunc, ... % If TargetFunc is not defined, use the scout function available in each scout
             'isflip',         isflip, ...            
             'isnorm',         OPTIONS.isNorm, ...
+            'ispca',          OPTIONS.isPca, ...
             'concatenate',    0, ...
             'save',           0, ...
             'addrowcomment',  AddRowComment, ...
@@ -1964,9 +1966,14 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
 
             case {'results', 'link', 'presults'}
                 % Norm/absolue values of the sources 
-                if OPTIONS.isNorm && isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
-                    sMat = process_source_flat('Compute', sMat, 'rms');
-                    sInput.Data = sMat.(matName);
+                if isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
+                    if OPTIONS.isNorm
+                        sMat = process_source_flat('Compute', sMat, 'rms');
+                        sInput.Data = sMat.(matName);
+                    elseif OPTIONS.isPca
+                        sMat = process_source_flat('Compute', sMat, 'pca');
+                        sInput.Data = sMat.(matName);
+                    end                  
                 end
                 % Save number of components per vertex
                 sInput.nComponents = sMat.nComponents;

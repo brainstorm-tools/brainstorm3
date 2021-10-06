@@ -63,6 +63,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isnorm.Type    = 'checkbox';
     sProcess.options.isnorm.Value   = 0;
     sProcess.options.isnorm.InputTypes = {'results'};
+    % === PCA XYZ
+    sProcess.options.model.Comment = 'Unconstrained sources: PCA of the three orientations (x,y,z)';
+    sProcess.options.ispca.Type    = 'checkbox';
+    sProcess.options.ispca.Value   = 0;
+    sProcess.options.ispca.InputTypes = {'results'};
+    sProcess.options.ispca.Hidden  = 1;   
     % === CONCATENATE
     sProcess.options.concatenate.Comment = 'Concatenate output in one unique matrix';
     sProcess.options.concatenate.Type    = 'checkbox';
@@ -149,6 +155,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     isConcatenate = sProcess.options.concatenate.Value && (length(sInputs) > 1);
     isSave = sProcess.options.save.Value;
     isNorm = isfield(sProcess.options, 'isnorm') && isfield(sProcess.options.isnorm, 'Value') && isequal(sProcess.options.isnorm.Value, 1);
+    isPca  = isfield(sProcess.options, 'ispca') && isfield(sProcess.options.ispca, 'Value') && isequal(sProcess.options.ispca.Value, 1);   
     isFlip = isfield(sProcess.options, 'isflip') && isfield(sProcess.options.isflip, 'Value') && isequal(sProcess.options.isflip.Value, 1);
     AddRowComment  = sProcess.options.addrowcomment.Value;
     AddFileComment = sProcess.options.addfilecomment.Value;
@@ -163,7 +170,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     if isNorm
         XyzFunction = 'norm';
     else
-        XyzFunction = 'none';
+        if isPca
+            XyzFunction = 'pca';
+        else
+            XyzFunction = 'none';
+        end
     end
     
     % ===== LOOP ON THE FILES =====
