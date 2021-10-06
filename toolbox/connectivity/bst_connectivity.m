@@ -634,70 +634,75 @@ for iFile = 1:length(FilesA)
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
             return;
     end
-    % Replace any NaN values with zeros
-%     R(isnan(R)) = 0;
-    
-    
-    %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====
-    if isUnconstrA || isUnconstrB
-        % If there are negative values: take the signed absolute maximum
-        if any(R(:) < 0)
-            UnconstrFunc = 'absmax';
-        % If all the values are positive: use Matlab's max()
-        else
-            UnconstrFunc = 'max';
-        end
-        % Dimension #1
-        if isUnconstrA
-            [R, sInputA.GridAtlas, sInputA.RowNames] = bst_source_orient([], sInputA.nComponents, sInputA.GridAtlas, R, UnconstrFunc, sInputA.DataType, sInputA.RowNames);
-        end
-        % Dimension #2
-        if isUnconstrB
-            R = permute(R, [2 1 3 4]);
-            [R, sInputB.GridAtlas, sInputB.RowNames] = bst_source_orient([], sInputB.nComponents, sInputB.GridAtlas, R, UnconstrFunc, sInputB.DataType, sInputB.RowNames);
-            R = permute(R, [2 1 3 4]);
-        end
+    % Compute R and Comment
+    switch (OPTIONS.OutputMode)
+        case {'input', 'concat'}
+            [R, Comment] = compute_r_from_prer(OPTIONS.Method, preR, OPTIONS, nAvg);
     end
+    
+%     %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====
+%     if isUnconstrA || isUnconstrB
+%         % If there are negative values: take the signed absolute maximum
+%         if any(R(:) < 0)
+%             UnconstrFunc = 'absmax';
+%         % If all the values are positive: use Matlab's max()
+%         else
+%             UnconstrFunc = 'max';
+%         end
+%         % Dimension #1
+%         if isUnconstrA
+%             [R, sInputA.GridAtlas, sInputA.RowNames] = bst_source_orient([], sInputA.nComponents, sInputA.GridAtlas, R, UnconstrFunc, sInputA.DataType, sInputA.RowNames);
+%         end
+%         % Dimension #2
+%         if isUnconstrB
+%             R = permute(R, [2 1 3 4]);
+%             [R, sInputB.GridAtlas, sInputB.RowNames] = bst_source_orient([], sInputB.nComponents, sInputB.GridAtlas, R, UnconstrFunc, sInputB.DataType, sInputB.RowNames);
+%             R = permute(R, [2 1 3 4]);
+%         end
+%     end
 
     %% ===== SAVE FILE =====
     % Reshape: [A*B x nTime x nFreq]
 %     R = reshape(R, [], nTime, size(R,3));
-    % Comment
+    % Comment suffix
+    CommentSuffix = [];
     if isequal(FilesA, FilesB)
         % Row name
         if (length(sInputA.RowNames) == 1)
             if iscell(sInputA.RowNames)
-                Comment = [Comment, sInputA.RowNames{1}];
+                CommentSuffix = [sInputA.RowNames{1}];
             else
-                Comment = [Comment, '#', num2str(sInputA.RowNames(1))];
+                CommentSuffix = ['#', num2str(sInputA.RowNames(1))];
             end
         % Scouts
         elseif OPTIONS.isScoutA
             if (length(OPTIONS.sScoutsA) == 1)
-                Comment = [Comment, OPTIONS.sScoutsA.Label, ', ' OPTIONS.ScoutFunc];
+                CommentSuffix = [OPTIONS.sScoutsA.Label, ', ' OPTIONS.ScoutFunc];
             else
-                Comment = [Comment, num2str(length(OPTIONS.sScoutsA)), ' scouts, ' OPTIONS.ScoutFunc];
+                CommentSuffix = [num2str(length(OPTIONS.sScoutsA)), ' scouts, ' OPTIONS.ScoutFunc];
             end
             if ~strcmpi(OPTIONS.ScoutFunc, 'All')
-                 Comment = [Comment, ' ' OPTIONS.ScoutTime];
+                 CommentSuffix = [CommentSuffix, ' ' OPTIONS.ScoutTime];
             end
         else
-            Comment = [Comment, 'Full'];
+            CommentSuffix = ['Full'];
         end
     else
-        Comment = [Comment, sInputA.Comment];
+        CommentSuffix = [sInputA.Comment];
     end
+    
     % Save each connectivity matrix as an independent file
     switch (OPTIONS.OutputMode)
         case 'input'
             nAvg = 1;
-            R = compute_r_from_prer(OPTIONS.Method, preR, OPTIONS, nAvg);
+            Comment = [Comment, CommentSuffix];
             OutputFiles{end+1} = SaveFile(R, sInputB.iStudy, FilesB{iFile}, sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case {'concat', 'avgcoh'}
             nAvg = 1;
+            Comment = [Comment, CommentSuffix];
             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case 'avg'
-            % Compute online average of the connectivity matrices
+            % Compute online accumulation of the connectivity matrices
             if isempty(preRavg)
                 preRavg = preR;
 %                 Ravg = R ./ length(FilesA);
@@ -714,7 +719,8 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
-    Ravg = compute_r_from_prer(OPTIONS.Method, preRavg, OPTIONS, nAvg);
+    [Ravg, Comment] = compute_r_from_prer(OPTIONS.Method, preRavg, OPTIONS, nAvg);
+    Comment = [Comment, CommentSuffix];
     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
 end
 
@@ -914,7 +920,7 @@ function x = normr(x)
     x(n==0,:) = 1 ./ sqrt(size(x,2));
 end
 
-function R = compute_r_from_prer(metric, preR, OPTIONS, nAvg)
+function [R, Comment] = compute_r_from_prer(metric, preR, OPTIONS, nAvg)
 % Computes the connectivity matrix R from the structure preR for diff connectivity metrics
     switch metric
         case 'corr'
@@ -953,6 +959,7 @@ function R = compute_r_from_prer(metric, preR, OPTIONS, nAvg)
             Sxx = permute(preR.Sxx, [1, 3, 2]) ./ nAvg; % [nSignalsX or nSourcesX, 1, nKeep]
             Syy = permute(preR.Syy, [3, 1, 2]) ./ nAvg; % [1, nSignalsY or nSourcesY, nKeep]
             Cxy = preR.Sxy ./ nAvg;
+            Nwin = preR.nWin;
             clear preR
 
             % Coherency or complex coherence Cxy = Sxy ./ sqrt(Sxx*Syy)  
@@ -999,8 +1006,9 @@ function R = compute_r_from_prer(metric, preR, OPTIONS, nAvg)
                 precision = '%1.1f';
             end
             % Output comment
-            Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
+            Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, Nwin);
     end
+    
     % Reshape: [A*B x nTime x nFreq]
     R = reshape(R, [], 1, size(R,3));
     % Replace any NaN values with zeros
