@@ -23,13 +23,12 @@ function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdat
 %
 % Authors: Francois Tadel, 2008-2011
 
-% Lock Subject
-LockId = lock_acquire(mfilename, iSubject);
-
 % Get protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
 sqlConn = sql_connect();
 sSubject = db_get(sqlConn, 'Subject', iSubject);
+% Lock Subject
+LockId = lock_acquire(sqlConn, mfilename, iSubject);
 
 % ===== GET DEFAULT SURFACE =====
 % By default: update tree

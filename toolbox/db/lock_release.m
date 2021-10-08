@@ -1,6 +1,13 @@
-function lock_release(sqlConnection, LockIds)
+function lock_release(varargin)
 % LOCK_RELEASE: Release (delete) an existing lock.
-
+%
+% USAGE:
+%    - lock_release(sqlConn, LockIds) or 
+%    - lock_release(LockIds) 
+%
+%
+% SEE ALSO lock_acquire lock_read
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -20,23 +27,38 @@ function lock_release(sqlConnection, LockIds)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2020
+%          Raymundo Cassani, 2021
 
+%% ==== PARSE INPUTS ====
+if (nargin > 1) && isjava(varargin{1})
+    sqlConn = varargin{1};
+    varargin(1) = [];
+    handleConn = 0;
+elseif (nargin >= 1) && isnumeric(varargin{1}) 
+    sqlConn = sql_connect();
+    handleConn = 1;
+else
+    error(['Usage : lock_release(LockIds) ' 10 '        lock_release(sqlConn, LockIds)']);
+end
+
+LockIds = varargin{1};
 if isempty(LockIds)
     return;
 end
 
-if isempty(sqlConnection)
-    closeConnection = 1;
-    sqlConnection = sql_connect();
-else
-    closeConnection = 0;
+%% ==== DELETE LOCKS ==== 
+try
+    for i = 1:length(LockIds)
+        LockId = LockIds(i);
+        sql_query(sqlConn, 'delete', 'lock', struct('Id', LockId));
+    end
+catch ME
+    % Close SQL connection if error
+    sql_close(sqlConn);
+    rethrow(ME)
 end
 
-for i = 1:length(LockIds)
-    LockId = LockIds(i);
-    sql_query(sqlConnection, 'delete', 'lock', struct('Id', LockId));
-end
-
-if closeConnection
-    sql_close(sqlConnection);
+% Close SQL connection if it was created
+if handleConn
+    sql_close(sqlConn);
 end

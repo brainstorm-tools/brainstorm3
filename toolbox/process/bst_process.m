@@ -183,7 +183,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     end
                     
                     % Release locks
-                    lock_release([], LockIds);
+                    lock_release(LockIds);
                     
                     % Increase progress bar
                     if UseProgress
@@ -252,7 +252,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                     end
                     
                     % Release locks
-                    lock_release([], LockIds);
+                    lock_release(LockIds);
                     % Add new files to the final list of output files
                     if ~isempty(tmpFiles)
                         OutputFiles = [OutputFiles, tmpFiles];
@@ -348,7 +348,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
                 end
                 
                 % Release locks
-                lock_release([], LockIds);
+                lock_release(LockIds);
         end
         % Remove empty filenames
         if iscell(OutputFiles)
