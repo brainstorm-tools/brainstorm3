@@ -252,7 +252,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
     PlugDesc(end).TestFile       = 'openNSx.m';
     PlugDesc(end).ReadmeFile     = 'Versions.txt';
-    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
 
     % === I/O: MFF ===
