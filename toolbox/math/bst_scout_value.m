@@ -263,7 +263,7 @@ end
 end
 
 
-%% ===== PCA: FIRT MODE =====
+%% ===== PCA: FIRST MODE =====
 function [F, explained] = PcaFirstMode(F)
     % Remove average over time for each row
     Fmean = mean(F,2);
@@ -271,8 +271,8 @@ function [F, explained] = PcaFirstMode(F)
     % Signal decomposition
     [U,S,V] = svd(F, 'econ');
     S = diag(S);
-    explained = S(1) / sum(S);
-    %Find where the first component projects the most over original dimensions
+    explained = S(1).^2 / sum(S.^2);
+    % Find where the first component projects the most over original dimensions
     [tmp__, nmax] = max(abs(U(:,1))); 
     % What's the sign of absolute max amplitude along this dimension?
     [tmp__, i_omaxx] = max(abs(F(nmax,:)));
@@ -282,7 +282,9 @@ function [F, explained] = PcaFirstMode(F)
     sign_Vmaxx = sign(V(i_Vmaxx,1));
     % Reconcile signs
     F = sign_Vmaxx * sign_omaxx * S(1) * V(:,1)';
-    F = F + Fmean(nmax);
+    % Add the weighted average back to the signal
+    % The mean is tderived from the original signal averages weighted by their respective contributions to the first singular vector
+    F = F + sign_Vmaxx * sign_omaxx * U(:,1)' * Fmean;
 end
 
 
