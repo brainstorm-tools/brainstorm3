@@ -618,7 +618,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % Add electrodes positions if available
                 if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
                     % Is is subject or MNI coordinates
-                    isVox2ras = ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-'));
+                    isVox2ras = ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-')) || ...
+                                ~isempty(strfind(allMeegElecFormats{iFile}, '-OTHER-'));
                     % Import 
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...

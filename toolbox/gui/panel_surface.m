@@ -1726,6 +1726,10 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                     % Replace values with clusters
                     if ~isempty(sClusters)
                         mask = 0 * TessInfo(iTess).Data;
+                        % If displaying the second of a replicated time point, which is not available in the clusters mask: ignore the time information
+                        if (length(iTime) == 1) && (iTime == 2) && (size(sClusters(1).mask,2) == 1)
+                            iTime = 1;
+                        end
                         % Plot each cluster
                         for iClust = 1:length(sClusters)
                             mask = mask | sClusters(iClust).mask(:, iTime, GlobalData.UserFrequencies.iCurrentFreq);

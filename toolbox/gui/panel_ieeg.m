@@ -2619,7 +2619,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
         MriFile = sSubject.Anatomy(iAnatomy).FileName;
     end
     % View MRI
-    [hFig, iDS, iFig] = view_mri(MriFile, [], [], 1);
+    [hFig, iDS, iFig] = view_mri(MriFile, [], [], 2);
     if isempty(hFig)
         return;
     end

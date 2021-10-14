@@ -1,6 +1,8 @@
-function [sMri, TpmFiles] = mri_normalize_segment(sMri, TpmFile)
+function [sMriT1, TpmFiles] = mri_normalize_segment(sMriT1, TpmFile, sMriT2)
 % MRI_NORMALIZE_SEGMENT: Non-linear normalization to the MNI ICBM152 space 
 % and tissue segmentation using SPM's Segment batch.
+%
+% USAGE:  [sMriT1, TpmFiles] = mri_normalize_segment(sMriT1, TpmFile, sMriT2=[])
 %
 % The MNI152 space depends on the TPM.nii file given in input:
 %    - Default in SPM12 : IXI549 template
@@ -23,25 +25,44 @@ function [sMri, TpmFiles] = mri_normalize_segment(sMri, TpmFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2020
+% Authors: Francois Tadel, 2020-2021
 
+% === PARSE INPUTS ===
+if (nargin < 3) || isempty(sMriT2)
+    sMriT2 = [];
+end
 
 % === SAVE FILES IN TMP FOLDER ===
 % Output variables
 TpmFiles = [];
-% Save source MRI in .nii format
-baseName = 'spm_segment.nii';
-NiiFile = bst_fullfile(bst_get('BrainstormTmpDir'), baseName);
-out_mri_nii(sMri, NiiFile);
+% Empty temporary folder
+gui_brainstorm('EmptyTempFolder');
+% Save T1 MRI in .nii format
+baseName = 'spm_segment_T1.nii';
+T1Nii = bst_fullfile(bst_get('BrainstormTmpDir'), baseName);
+out_mri_nii(sMriT1, T1Nii);
+% Save T2 MRI in .nii format
+if ~isempty(sMriT2)
+    T2Nii = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_segment_T2.nii');
+    out_mri_nii(sMriT1, T2Nii);
+else
+    T2Nii = [];
+end
 
 % === RUN SPM SEGMENT ===
 % Disable warnings
 warning('off', 'MATLAB:RandStream:ActivatingLegacyGenerators');
 % Prepare SPM batch
-matlabbatch{1}.spm.spatial.preproc.channel.vols = {[NiiFile ',1']};
-matlabbatch{1}.spm.spatial.preproc.channel.biasreg = 0.001;
-matlabbatch{1}.spm.spatial.preproc.channel.biasfwhm = 60;
-matlabbatch{1}.spm.spatial.preproc.channel.write = [0 0];
+matlabbatch{1}.spm.spatial.preproc.channel(1).vols = {[T1Nii ',1']};
+matlabbatch{1}.spm.spatial.preproc.channel(1).biasreg = 0.001;
+matlabbatch{1}.spm.spatial.preproc.channel(1).biasfwhm = 60;
+matlabbatch{1}.spm.spatial.preproc.channel(1).write = [0 0];
+if ~isempty(T2Nii)
+    matlabbatch{1}.spm.spatial.preproc.channel(2).vols = {[T2Nii ',1']};
+    matlabbatch{1}.spm.spatial.preproc.channel(2).biasreg = 0.001;
+    matlabbatch{1}.spm.spatial.preproc.channel(2).biasfwhm = 60;
+    matlabbatch{1}.spm.spatial.preproc.channel(2).write = [0 0];
+end
 matlabbatch{1}.spm.spatial.preproc.tissue(1).tpm = {[TpmFile, ',1']};
 matlabbatch{1}.spm.spatial.preproc.tissue(1).ngaus = 1;
 matlabbatch{1}.spm.spatial.preproc.tissue(1).native = [1 0];
@@ -88,11 +109,11 @@ RegFile = bst_fullfile(bst_get('BrainstormTmpDir'), ['y_' baseName]);
 RegInvFile = bst_fullfile(bst_get('BrainstormTmpDir'), ['iy_' baseName]);
 if ~file_exist(RegFile) || ~file_exist(RegInvFile)
     disp('BST> SPM Segment failed.');
-    sMri = [];
+    sMriT1 = [];
     return;
 end
 % Import deformation fields
-sMri = import_mnireg(sMri, RegFile, RegInvFile, 'segment');
+sMriT1 = import_mnireg(sMriT1, RegFile, RegInvFile, 'segment');
 
 % === LOAD TISSUES ===
 TpmFiles = {...

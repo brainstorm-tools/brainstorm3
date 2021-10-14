@@ -308,14 +308,16 @@ function SetTrialStatus(FileNames, isBad)
         % Remove bad events
         if ~isBad
             DataMat = in_bst_data(FileNames{i}, 'Events');
-            iDel = [];
+            isModifiedFile = 0;
             for iEvt = 1:length(DataMat.Events)
-                if panel_record('IsEventBad', DataMat.Events(iEvt).label)
-                    iDel(end+1) = iEvt;
+                [DataMat.Events(iEvt), isModifiedEvt] = panel_record('SetEventGood', DataMat.Events(iEvt), DataMat.Events);
+                if isModifiedEvt
+                    isModifiedFile = 1;
                 end
             end
-            if ~isempty(iDel)
-                DataMat.Events(iDel) = [];
+            if isModifiedFile
+                bst_report('Info', 'process_detectbad', FileNames{i}, 'Event names were modified to remove the tag "bad".');
+                disp('BST> Event names were modified to remove the tag "bad".');
                 bst_save(file_fullpath(FileNames{i}), DataMat, 'v6', 1);
             end
         end
@@ -370,7 +372,5 @@ function SetTrialStatus(FileNames, isBad)
     panel_protocols('RepaintTree');
     bst_progress('stop');
 end
-
-
 
 

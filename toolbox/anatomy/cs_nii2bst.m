@@ -41,19 +41,17 @@ for i = 1:3
     isFlip(i) = (R(i,Pmat(i)) < 0);
     TransPerm(i,Pmat(i)) = 1;
 end
+isModified = ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0]);
 
 % Ask user
-if isempty(isApply)
-    if ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0])
-        isApply = java_dialog('confirm', ['A transformation is available in the MRI file.' 10 10 ...
-                                          'Do you want to apply it to the volume now?' 10 10], 'MRI orientation');
-    else
-        isApply = 0;
-    end
+if isModified && isempty(isApply)
+    isApply = java_dialog('confirm', [...
+        'A transformation is available in the MRI file.' 10 10 ...
+        'Do you want to apply it to the volume now?' 10 10], 'MRI orientation');
 end
 
 % Apply transformations
-if isApply
+if isModified && isApply
     % Permute dimensions
     sMri.Cube = permute(sMri.Cube, [Pmat 4]);
     sMri.Voxsize = sMri.Voxsize(Pmat);
@@ -85,6 +83,8 @@ if isApply
         sMri.Header.nifti.qoffset_y  = 0;
         sMri.Header.nifti.qoffset_z  = 0;
         sMri.Header.nifti.qform      = [];
+        % Update pixdim
+        sMri.Header.dim.pixdim = [1, sMri.Voxsize, 1, 0, 0, 0];
         % Save final version
         sMri.Header.nifti.vox2ras = vox2ras;
     end

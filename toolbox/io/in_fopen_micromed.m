@@ -20,8 +20,34 @@ function [sFile, ChannelMat] = in_fopen_micromed(DataFile)
 % =============================================================================@
 %
 % Authors:  Guillaume Becq, 2010
-%           Adapted by Francois Tadel for Brainstorm, 2018
+%           Adapted by Francois Tadel for Brainstorm, 2018-2021
 
+
+%% ===== DETECT EXTRA EVT FILES =====
+% Split file name
+[fPath, fBase, fExt] = bst_fileparts(DataFile);
+% Look for .EVT file with same filename, or for a unique .EVT file in the folder
+EvtFile = [DataFile(1:end-4) '.EVT'];
+if ~file_exist(EvtFile)
+    EvtFile = [DataFile(1:end-4) '.evt'];
+    if ~file_exist(EvtFile)
+        % If there is a single pair or .TRC/.EVT file in the folder
+        dirTrc = dir(bst_fullfile(fPath, '*.TRC'));
+        if isempty(dirTrc)
+            dirTrc = dir(bst_fullfile(fPath, '*.trc'));
+        end
+        dirEvt = dir(bst_fullfile(fPath, '*.EVT'));
+        if isempty(dirEvt)
+            dirEvt = dir(bst_fullfile(fPath, '*.evt'));
+        end
+        if (length(dirTrc) == 1) && (length(dirEvt) == 1)
+            EvtFile = bst_fullfile(fPath, dirEvt(1).name);
+        else
+            EvtFile = [];
+        end
+    end
+end
+    
 
 %% ===== READ HEADER =====
 % Open file
@@ -402,7 +428,6 @@ sFile.channelflag  = ones(hdr.num_channels,1);
 sFile.device       = 'Micromed';
 sFile.header       = hdr;
 % Comment: short filename
-[fPath, fBase, fExt] = bst_fileparts(DataFile);
 sFile.comment = fBase;
 % Acquisition date
 sFile.acq_date = datestr(datenum([hdr.acquisition.year, hdr.acquisition.month, hdr.acquisition.day]), 'dd-mmm-yyyy');
@@ -475,5 +500,11 @@ for iEvt = 1:length(uniqueEvt)
     sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
 end
 
+
+%% ===== ADD EXTRA EVT FILE =====
+if ~isempty(EvtFile)
+    disp(['BST> Micromed .EVT found:  ' EvtFile]);
+    sFile = import_events(sFile, [], EvtFile, 'MICROMED', [], 0);
+end
 
 

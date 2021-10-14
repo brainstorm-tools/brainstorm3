@@ -164,7 +164,7 @@ HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
 if ~isempty(Comment)
     sHead.Comment = Comment;
 else
-    sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, bgLevel);
+    sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, round(bgLevel));
 end
 sHead = bst_history('add', sHead, 'bem', 'Head surface generated with Brainstorm');
 bst_save(HeadFile, sHead, 'v7');

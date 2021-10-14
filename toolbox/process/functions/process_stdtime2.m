@@ -34,8 +34,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 201;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity#Create_a_movie_with_the_SEEG_signals';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
-    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
+    sProcess.InputTypes  = {'data', 'results', 'timefreq', 'matrix'};
+    sProcess.OutputTypes = {'data', 'results', 'timefreq', 'matrix'};
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
     sProcess.isPaired    = 1;
@@ -69,6 +69,12 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OutputFiles = {};
     % Call recursively the function on each pair of files
     for iFile = 1:length(sInputA)
+        % Check type of FileB
+        if ~ismember(sInputB(iFile).FileType, sProcess.InputTypes)
+            bst_report('Error', sProcess, sInputB(iFile), ['Invalid input file type: ' sInputB(iFile).FileType]);
+            return;
+        end
+        % Call interploation function on pair (A,B)
         OutputFiles = cat(2, OutputFiles, process_stdtime('Run', sProcess, [sInputA(iFile), sInputB(iFile)]));
     end
 end

@@ -175,6 +175,8 @@ if isempty(BstT1File)
     end
     return;
 end
+% Enforce it as the permanent default MRI
+sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 
 
 %% ===== READ AC-PC FILE =====
