@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 %
 % INPUT: 
 %     - TimefreqFile : Path to connectivity file to visualize
-%     - DisplayMode  : {'Image', 'GraphFull', '3DGraph', 'Fibers'}
+%     - DisplayMode  : {'Image', 'GraphFull', 'Fibers'}
 %     - hFig         : If defined, display file in existing figure
 %
 % OUTPUT : 

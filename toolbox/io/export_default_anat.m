@@ -1,7 +1,7 @@
-function export_default_anat(iSubject, DefaultName, IncludeChannels)
+function ZipFile = export_default_anat(iSubject, DefaultName, IncludeChannels)
 % EXPORT_DEFAULT_ANAT: Export a subject anatomy as a user template in a .zip file.
 %
-% USAGE:  export_mri( iSubject, DefaultName=[ask], IncludeChannels=[ask] )
+% USAGE:  ZipFile = export_default_anat( iSubject, DefaultName=[ask], IncludeChannels=[ask] )
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,9 @@ function export_default_anat(iSubject, DefaultName, IncludeChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2020
+% Authors: Francois Tadel, 2013-2021
+
+ZipFile = [];
 
 % ===== GET DEFAULT NAME =====
 % Get subject 
@@ -66,12 +68,17 @@ for i = 1:length(sSubject.Anatomy)
     sMriNew.Cube    = sMri.Cube;
     sMriNew.Voxsize = sMri.Voxsize;
     sMriNew.SCS     = sMri.SCS;
-    sMriNew.NCS     = sMri.NCS;
+    if isfield(sMri, 'NCS')
+        sMriNew.NCS = sMri.NCS;
+    end
     if isfield(sMri, 'Header')
         sMriNew.Header = sMri.Header;
     end
     if isfield(sMri, 'InitTransf')
         sMriNew.InitTransf = sMri.InitTransf;
+    end
+    if isfield(sMri, 'Labels')
+        sMriNew.Labels = sMri.Labels;
     end
     % Save file back
     bst_save(MriFile, sMriNew, 'v7');

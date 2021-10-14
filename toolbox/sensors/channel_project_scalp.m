@@ -32,7 +32,7 @@ Vertices = bst_bsxfun(@minus, Vertices, center);
 p   = .2;
 th  = -pi-p   : 0.01 : pi+p;
 phi = -pi/2-p : 0.01 : pi/2+p;
-rVertices = tess_parametrize_new(Vertices, th, phi);
+rVertices = tess_parametrize(Vertices, th, phi);
 
 % Process each sensor
 for iChan = 1:size(ChanLoc,1)

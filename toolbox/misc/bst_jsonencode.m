@@ -1,4 +1,4 @@
-function outString = bst_jsonencode(inStruct, indent, depth)
+function outString = bst_jsonencode(inStruct, indent, depth, forceBstVersion)
 % BST_JSONENCODE: Encodes a Matlab structure as JSON text
 %
 % USAGE: outString = bst_jsonencode(inStruct, 1) : With space indentation
@@ -22,14 +22,18 @@ function outString = bst_jsonencode(inStruct, indent, depth)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Martin Cousineau, 2018
+% Authors: Martin Cousineau, 2018; Marc Lalancette, 2021
+
+if nargin < 4
+    forceBstVersion = false;
+end
 
 if nargin < 2
     indent = 1;
 end
 
 % If possible, call built-in function
-if ~indent && exist('jsonencode', 'builtin') == 5
+if ~forceBstVersion && ~indent && exist('jsonencode', 'builtin') == 5
     outString = jsonencode(inStruct);
     return;
 end
@@ -48,7 +52,7 @@ fields  = fieldnames(inStruct);
 for iField = 1:length(fields)
     field = fields{iField};
     value = inStruct.(field);
-
+    
     strFld = stringify(field, indent);
     if isstruct(value)
         strVal = bst_jsonencode(value, indent, depth + 1);
@@ -56,7 +60,7 @@ for iField = 1:length(fields)
         strVal = '[';
         for iElem = 1:length(value)
             if iElem > 1
-                strVal = [strVal ', '];
+                strVal = [strVal ', ']; %#ok<*AGROW>
             end
             strVal = [strVal stringify(value{iElem}, indent)];
         end
@@ -64,19 +68,19 @@ for iField = 1:length(fields)
     else
         strVal = stringify(value, indent);
     end
-
+    
     if iField > 1
         delimiter1 = ',';
     else
         delimiter1 = [];
     end
     delimiter2 = ':';
-
+    
     if indent
         delimiter1 = [delimiter1 10 createIndent(depth + 1)];
         delimiter2 = [delimiter2 ' '];
     end
-
+    
     outString = [outString delimiter1 strFld delimiter2 strVal];
 end
 
@@ -89,43 +93,81 @@ end
 
 
 function str = stringify(val, addDelimiter)
-    if nargin < 2
-        addDelimiter = 0;
-    end
+if nargin < 2
+    addDelimiter = 0;
+end
 
-    if ischar(val)
-        if ismember(val, {'true', 'false'})
-            str = val;
-        else
-            str = ['"' strrep(val, '"', '\"') '"'];
-        end
-    elseif isnumeric(val)
-        n = length(val);
-        if n == 0
-            str = '[]';
-        elseif n == 1
-            str = num2str(val);
-        else
-            str = '[';
-            for i = 1:n
-                if i > 1
-                    str = [str ','];
-                    if addDelimiter
-                       str = [str ' '];
-                    end
-                end
-                str = [str num2str(val(i))];
-            end
-            str = [str ']'];
-        end
+if ischar(val)
+    if ismember(val, {'true', 'false'})
+        str = val;
     else
-        error(['Unsupported type: ' class(val)]);
+        % Escape \ and "
+        val = strrep(val, '\', '\\');
+        val = strrep(val, '"', '\"');
+        % Convert unicode arrow symbols representing special characters to
+        % escaped sequences. (see bst_jsondecode)
+        val = strrep(val, char(8629), '\n'); % newline / linefeed
+        val = strrep(val, char(8592), '\r'); % carriage return
+        val = strrep(val, char(8594), '\t'); % tab
+        str = ['"' val '"'];
     end
+elseif isnumeric(val)
+    n = length(val);
+    if n == 0
+        str = '[]';
+    elseif n == 1
+        str = num2str(val);
+    else
+        str = '[';
+        for i = 1:n
+            if i > 1
+                str = [str ','];
+                if addDelimiter
+                    str = [str ' '];
+                end
+            end
+            str = [str num2str(val(i))];
+        end
+        str = [str ']'];
+    end
+elseif islogical(val)
+    n = length(val);
+    if n == 0
+        str = '[]';
+    elseif n == 1
+        str = bool2str(val);
+    else
+        str = '[';
+        for i = 1:n
+            if i > 1
+                str = [str ','];
+                if addDelimiter
+                    str = [str ' '];
+                end
+            end
+            str = [str bool2str(val(i))];
+        end
+        str = [str ']'];
+    end
+else
+    error(['Unsupported type: ' class(val)]);
+end
 end
 
 function prefix = createIndent(depth)
-    prefix = '';
-    for i = 1:depth
-        prefix = [prefix '    '];
-    end
+prefix = '';
+for i = 1:depth
+    prefix = [prefix '    '];
+end
+end
+
+function str = bool2str(tf)
+if numel(tf) > 1
+    error('Scalar expected.');
+end
+if tf
+    str = 'true';
+else
+    str = 'false';
+end
 end

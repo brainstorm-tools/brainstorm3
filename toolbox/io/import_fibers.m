@@ -1,24 +1,20 @@
-function [iNewFibers, OutputFibersFiles, nFibers] = import_fibers(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
+function [iNewFibers, OutputFiles, nFibers] = import_fibers(iSubject, FibersFiles, FileFormat, nPoints, CS)
 % IMPORT_FIBERS: Import a set of fibers in a Subject of Brainstorm database.
 % 
-% USAGE: iNewFibers = import_fibers(iSubject, FibersFiles, FileFormat, N, isApplyMriOrient, OffsetMri)
-%        iNewFibers = import_fibers(iSubject)   : Ask user the files to import
+% USAGE: iNewFibers = import_fibers(iSubject, FibersFiles=[ask], FileFormat, nPoints=[ask], CS=[ask])
 %
 % INPUT:
-%    - iSubject     : Indice of the subject where to import the fibers
-%                     If iSubject=0 : import fibers in default subject
-%    - FibersFiles  : Cell array of full filenames of the fibers to import (format is autodetected)
-%                     => if not specified : files to import are asked to the user
-%    - FileFormat   : String representing the file format to import.
-%                     Please see in_fibers.m to get the list of supported file formats
-%    - N            : Number of points per fiber
-%    - isApplyMriOrient: {0,1}
-%    - OffsetMri    : (x,y,z) values to add to the coordinates of the fibers before converting it to SCS
+%    - iSubject    : Indice of the subject where to import the fibers
+%                    If iSubject=0 : import fibers in default subject
+%    - FibersFiles : Cell array of full filenames of the fibers to import (format is autodetected)
+%    - FileFormat  : String representing the file format to import: {'TRK','BST'}
+%    - nPoints     : Number of points per fiber
+%    - CS          : Coordinates system: {'scs','mni','world'}
 %
 % OUTPUT:
-%    - iNewFibers        : Indices of the fibers added in database
-%    - OutputFibersFiles : Path to the newly created tess_fibers_*.mat files
-%    - nFibers           : Number of fibers imported per file
+%    - iNewFibers  : Indices of the fibers added in database
+%    - OutputFiles : Path to the newly created tess_fibers_*.mat files
+%    - nFibers     : Number of fibers imported per file
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -39,6 +35,8 @@ function [iNewFibers, OutputFibersFiles, nFibers] = import_fibers(iSubject, Fibe
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2019
+%          Francois Tadel, 2021
+
 
 %% ===== PARSE INPUTS =====
 % Check command line
@@ -57,43 +55,14 @@ else
     end
 end
 if nargin < 4
-    N = [];
-end
-if (nargin < 5) || isempty(isApplyMriOrient)
-    isApplyMriOrient = [];
-end
-if (nargin < 6) || isempty(OffsetMri)
-    OffsetMri = [];
+    nPoints = [];
 end
 iNewFibers = [];
-OutputFibersFiles = {};
+OutputFiles = {};
 nFibers = [];
-
-% Get Protocol information
-ProtocolInfo = bst_get('ProtocolInfo');
-% Get subject directory
+CS = [];
+% Get subject
 sSubject = bst_get('Subject', iSubject);
-subjectSubDir = bst_fileparts(sSubject.FileName);
-% Check the presence of the MRI: warning if no MRI
-if isempty(sSubject.Anatomy)
-    res = java_dialog('confirm', ...
-        ['WARNING: To import correctly fiber files, the subject''s MRI is needed.' 10 10 ...
-        'Import subject''s MRI now?' 10 10], 'Import fibers');
-    if res
-        import_mri(iSubject, [], [], 1);
-        return
-    end
-end
-
-if isempty(N)
-    res = java_dialog('input', ...
-        ['Please specify how many points per imported fibers (default: 100).' 10 10], 'Import fibers', [], '100');
-    if res
-        N = str2num(res);
-    else
-        N = 100;
-    end
-end
 
 
 %% ===== SELECT FIBER FILES =====
@@ -123,103 +92,147 @@ if isempty(FibersFiles)
     DefaultFormats.FibersIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
 end
-   
-
-%% ===== APPLY MRI TRANSFORM =====
-% Load MRI
-if ~isempty(sSubject.Anatomy)
-    sMri = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
-else
-    sMri = [];
+% Brainstorm format => SCS coordinates
+if strcmpi(FileFormat, 'BST')
+    CS = 'scs';
 end
-% If user transformation on MRI: ask to apply transformations on fibers
-if isempty(isApplyMriOrient) && ~isempty(sMri) && isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf)
-    isApplyMriOrient = java_dialog('confirm', ['MRI orientation was non-standard and had to be reoriented.' 10 10 ...
-                                   'Apply the same transformation to the fibers?' 10 ...
-                                   'Default answer is: NO', 10 10], 'Import fibers');
-                               
-    % Add MRI translation to the OffsetMri variable
-    if isApplyMriOrient
-        for i = 1:size(sMri.InitTransf,1)
-            ttype = sMri.InitTransf{i,1};
-            val   = sMri.InitTransf{i,2};
-            if strcmpi(ttype, 'vox2ras')
-                MyOffsetMri = -val(1:3,4)';
-                if isempty(OffsetMri)
-                    OffsetMri = MyOffsetMri;
-                else
-                    OffsetMri = OffsetMri + MyOffsetMri;
-                end
-            end
-        end
+
+%% ===== ASK COORDINATE SYSTEM =====
+if isempty(CS)
+    CS = java_dialog('question', [...
+        '<HTML>In which coordinate system are the fibers defined?<BR><BR>' ...
+        '- <B>TRK template</B>: MNI template available in MRI coordinates<BR>' ...
+        '- <B>MRI</B>: Voxel coordinates of the reference MRI<BR>' ...
+        '- <B>World</B>: Original scanner-based coordinates of the reference MRI<BR>'  ...
+        '- <B>MNI</B>: Normalized MNI152 coordinates<BR>' ...
+        '- <B>SCS</B>: Brainstorm subject coordinate system<BR><BR>'], ...
+        'Import fibers', [], {'TRK', 'MRI', 'MNI', 'World', 'SCS', 'Cancel'}, 'TRK');
+    if isempty(CS) || strcmpi(CS, 'Cancel')
+        return;
     end
-else
-    isApplyMriOrient = 0;
+    CS = lower(CS);
+end
+% For "TRK template"
+if strcmpi(CS, 'trk')
+    % If the subject is the ICBM152 template: Read as "MRI" coordinates
+    if ~isempty(strfind(sSubject.Name, 'ICBM152'))
+        CS = 'mri';
+    % Else: Load ICBM152 template MRI
+    else
+        sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
+        sMriMni = load(bst_fullfile(sTemplate.FilePath, 'subjectimage_T1.mat'));
+    end
 end
 
 
-%% ===== LOAD EACH FIBERS =====
+%% ===== ASK NUMBER OF POINTS =====
+if isempty(nPoints) && ~strcmpi(FileFormat, 'BST')
+    res = java_dialog('input', ['Specify how many points per imported fibers (default: 100).' 10 10], 'Import fibers', [], '100');
+    if isempty(res) || isempty(str2num(res))
+        return;
+    end
+    nPoints = str2num(res);
+end
+
+
+%% ===== LOAD MRI =====
+% Check the presence of the MRI: warning if no MRI
+if isempty(sSubject.Anatomy)
+    error('You must import the subject''s MRI first.');
+end
+% Load MRI
+sMri = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+
+
+%% ===== IMPORT FILES =====
 % Process all the selected fibers
 for iFile = 1:length(FibersFiles)
     FibersFile = FibersFiles{iFile};
-    
-    % ===== LOAD FIBERS FILE =====
     bst_progress('start', 'Importing fibers', ['Loading file "' FibersFile '"...']);
-    % Load fibers
-    Fibers = in_fibers(FibersFile, FileFormat, N, sMri, OffsetMri);
-    if isempty(Fibers)
+    
+    % === LOAD FIBERS ===
+    % Switch between different import functions 
+    switch (FileFormat)
+        case 'BST'
+            FibMat = load(FibersFile);
+        case 'TRK'
+            % Read using external function
+            [header, tracks] = trk_read(FibersFile);
+            % Convert to nPoints points
+            if ~isempty(nPoints)
+                bst_progress('text', ['Interpolating fibers to ' num2str(nPoints) ' points...']);
+                tracks = trk_interp(tracks, nPoints);
+            end
+            % Convert to meters
+            tracks = double(tracks) / 1000;
+            % Build Brainstorm structure
+            FibMat = db_template('fibersmat');
+            FibMat.Points = permute(tracks, [3,1,2]);
+            FibMat.Header = header;
+            FibMat.Comment = sprintf('fibers_%dPt_%dFib', nPoints, size(FibMat.Points, 1));
+            FibMat = fibers_helper('ComputeColor', FibMat);
+    end
+    % If an error occurred: return
+    if isempty(FibMat)
         bst_progress('stop');
         return
-    end
+    elseif (size(FibMat.Points,3) ~= 3) || (~isempty(nPoints) && size(FibMat.Points,2) ~= nPoints)
+        error('Invalid matrix orientation.');
+    end  
     
-    % ===== INITIALIZE NEW FIBERS =====
+    % === APPLY CS TRANSFORM ===
+    % Apply transformation
+    if ~strcmpi(CS, 'scs')
+        % Convert to 2D matrix for calling cs_convert
+        shape3d = size(FibMat.Points);
+        pts2D = reshape(FibMat.Points, [prod(shape3d(1:end-1)), shape3d(end)]);
+        % Convert coordinates to SCS
+        switch (lower(CS))
+            case 'mri'
+                pts2D = cs_convert(sMri, 'mri', 'scs', pts2D);
+            case 'mni'
+                pts2D = cs_convert(sMri, 'mni', 'scs', pts2D);
+            case 'world'
+                pts2D = cs_convert(sMri, 'mri', 'scs', pts2D);
+            case 'trk'
+                pts2D = cs_convert(sMriMni, 'mri', 'mni', pts2D);
+                pts2D = cs_convert(sMri, 'mni', 'scs', pts2D);
+        end
+        if isempty(pts2D)
+            error(['Coordinate system "' lower(CS) '" is not available.']);
+        end
+        % Restore initial matrix dimensions
+        FibMat.Points = reshape(pts2D, shape3d);
+    end
+
+    % === SAVE BST FILE ===
+    % History: File name
+    FibMat = bst_history('add', FibMat, 'import', ['Import from: ' FibersFile]);
     % Get imported base name
     [tmp__, importedBaseName] = bst_fileparts(FibersFile);
     importedBaseName = strrep(importedBaseName, 'fibers_', '');
     importedBaseName = strrep(importedBaseName, '_fibers', '');
-    
-    % Only one file
-    if (length(Fibers) == 1)
-        NewFibers = Fibers;
-    % Multiple files
-    else
-        NewFibers = fibers_helper('Concatenate', Fibers);
-        NewFibers.Comment = sprintf('fibers_%dPt_%dF', N, size(NewFibers.Points, 1));
-    end
-
-    % ===== APPLY MRI ORIENTATION =====
-    if isApplyMriOrient
-        % History: Apply MRI transformation
-        NewFibers = bst_history('add', NewFibers, 'import', 'Apply transformation that was applied to the MRI volume');
-        % Apply MRI transformation
-        NewFibers = fibers_helper('ApplyMriTransfToFib', sMri.InitTransf, NewFibers);
-    end
-
-    % ===== SAVE BST FILE =====
-    % History: File name
-    NewFibers = bst_history('add', NewFibers, 'import', ['Import from: ' FibersFile]);
     % Produce a default fibers filename
-    BstFibersFile = bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir, ['tess_fibers_' importedBaseName '.mat']);
+    BstFibersFile = bst_fullfile(bst_fileparts(file_fullpath(sSubject.FileName)), ['tess_fibers_' importedBaseName '.mat']);
     % Make this filename unique
     BstFibersFile = file_unique(BstFibersFile);
     % Save new fibers in Brainstorm format
-    bst_save(BstFibersFile, NewFibers, 'v7');
+    bst_save(BstFibersFile, FibMat, 'v7');
 
     % ===== UPDATE DATABASE ======
     % Add new fibers to database
-    BstFibFileShort = file_short(BstFibersFile);
-    iNewFibers(end+1) = db_add_surface(iSubject, BstFibFileShort, NewFibers.Comment);
+    iNewFibers(end+1) = db_add_surface(iSubject, file_short(BstFibersFile), FibMat.Comment);
     % Unload fibers from memory (if this fibers with the same name was previously loaded)
     bst_memory('UnloadSurface', BstFibersFile);
     % Save output filename
-    OutputFibersFiles{end+1} = BstFibersFile;
+    OutputFiles{end+1} = BstFibersFile;
     % Return number of fibers
-    nFibers(end+1) = length(NewFibers.Points);
+    nFibers(end+1) = length(FibMat.Points);
 end
 
 % Save database
 db_save();
 bst_progress('stop');
-end   
+
 
 

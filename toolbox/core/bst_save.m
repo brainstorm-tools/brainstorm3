@@ -70,38 +70,43 @@ while ~isStop
             save(FileName, '-struct', 'FileMat');
         end
         isStop = 1;
-        % If file could not be saved
-        catch
-            % Try again without specifying the file format
-            if ~isAppend && isSetFormat
-                isSetFormat = 0;
-                continue;
-            end
-            % Display error message
-            disp(['BST> Error: Could not write file: ' FileName 10 ...
-                  'BST> Disk full, disconnected or read-only.']);
-            % Try deleting the contents in temporary directory
-            isDelTmp = gui_brainstorm('EmptyTempFolder');
-            if (isDelTmp == -1)
+    % If file could not be saved
+    catch
+        % Try again without specifying the file format
+        if ~isAppend && isSetFormat
+            isSetFormat = 0;
+            continue;
+        end
+        if isAppend && exist(FileName, 'file') ~= 2
+            errorStr = 'Trying to append to inexistent file.';
+        else
+            errorStr = 'Disk full, disconnected or read-only.';
+        end
+        % Display error message
+        disp(['BST> Error: Could not write file: ' FileName 10 ...
+              'BST> ' errorStr]);
+        % Try deleting the contents in temporary directory
+        isDelTmp = gui_brainstorm('EmptyTempFolder');
+        if (isDelTmp == -1)
+            isStop = 1;
+        end
+        % Display error message if possible
+        [fPath, fBase, fExt] = bst_fileparts(FileName);
+        if bst_get('isGUI') && ismember(fBase, {'brainstorm', 'protocol'})
+            % Database file could not be written: ask user what to do
+            res = java_dialog('question', [...
+                'Error: ' errorStr 10 10 ...
+                'Could not write file: ' 10 FileName 10], ...
+                'Save file', [], {'Retry', 'Cancel'}, 'Retry');
+            % Stop trying
+            if ~isequal(res, 'Retry')
                 isStop = 1;
-            end
-            % Display error message if possible
-            [fPath, fBase, fExt] = bst_fileparts(FileName);
-            if bst_get('isGUI') && ismember(fBase, {'brainstorm', 'protocol'})
-                % Database file could not be written: ask user what to do
-                res = java_dialog('question', [...
-                    'Error: Disk full, disconnected or read-only.' 10 10 ...
-                    'Could not write file: ' 10 FileName 10], ...
-                    'Save file', [], {'Retry', 'Cancel'}, 'Retry');
-                % Stop trying
-                if ~isequal(res, 'Retry')
-                    isStop = 1;
-                else
-                    file_delete(FileName, 1);
-                end
             else
-                error(['Could not save file: ' FileName 10 'Disk full, disconnected or read-only.']);
+                file_delete(FileName, 1);
             end
+        else
+            error(['Could not save file: ' FileName 10 errorStr]);
+        end
     end
 end
 

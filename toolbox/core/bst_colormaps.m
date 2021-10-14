@@ -296,6 +296,8 @@ function FireColormapChanged(ColormapType, isAbsoluteChanged)
                         figure_timefreq('ColormapChangedCallback', sFigure.hFigure);
                     case 'Connect'
                         figure_connect('ColormapChangedCallback', sFigure.hFigure);
+                    case 'ConnectViz' % new connectivity visualization tool (2021)
+                        figure_connect_viz('ColormapChangedCallback', sFigure.hFigure);
                     case 'Pac'
                         figure_pac('ColormapChangedCallback', sFigure.hFigure);
                     case 'Image'
@@ -392,6 +394,10 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case 'Connect'
                         DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
                         DataType = 'connect';
+                        
+                    case 'ConnectViz' % new connectivity visualization tool (2021)
+                        DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
+                        DataType = 'connect'; 
                         
                     case 'Image'
                         DataFig = GlobalData.DataSet(iDS).Figure(iFig).Handles.DataMinMax;
@@ -1343,6 +1349,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     hAxes     = setdiff(findobj(hFig, '-depth', 1, 'Type', 'axes'), hColorbar);
     hConnect  = getappdata(hFig, 'OpenGLDisplay');
+    if strcmpi(ColormapType, 'connectn') && isempty(hConnect)
+        hConnect = hAxes;
+        hAxes = [];
+    end
     % If a colorbar is defined
     if ~isempty(hColorbar)
         fFactor = [];
@@ -1482,7 +1492,7 @@ function SetColorbarVisible(hFig, isVisible) %#ok<DEFNU>
         FigureId = getappdata(hFig, 'FigureId');
         % Get color for colorbar text
         switch (FigureId.Type)
-            case {'3DViz', 'Topography', 'MriViewer', 'Connect'}
+            case {'3DViz', 'Topography', 'MriViewer', 'Connect', 'ConnectViz'} 
                 textColor = [.8 .8 .8];
             case {'Timefreq', 'Pac', 'Image'}
                 textColor = [0 0 0];
@@ -1629,6 +1639,7 @@ end
 
 %% ===== APPLY COLORMAP MODIFIERS =====
 function sColormap = ApplyColormapModifiers(sColormap)
+    
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps
     if ~isempty(sColormap.Name)

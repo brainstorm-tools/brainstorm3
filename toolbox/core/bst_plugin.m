@@ -25,6 +25,64 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
 %                            bst_plugin('LinkCatSpm',           isSet)               % Create/delete a symbolic link for CAT12 in SPM12 toolbox folder
+%
+%
+% PLUGIN DEFINITION
+% =================
+%
+%     The plugins registered in Brainstorm are listed in function GetSupported(). 
+%     Each one is an entry in the PlugDesc array, following the structure defined in db_template('plugdesc'). 
+%     The fields allowed are described below.
+%
+%     Mandatory fields
+%     ================
+%     - Name     : String: Plugin name = subfolder in the Brainstorm user folder
+%     - Version  : String: Version of the plugin (eg. '1.2', '21a', 'github-master', 'latest')
+%     - URLzip   : String: Download URL, zip or tgz file accessible over HTTP/HTTPS/FTP
+%     - URLinfo  : String: Information URL = Software website
+%
+%     Optional fields
+%     ===============
+%     - AutoUpdate     : Boolean: If true, the plugin is updated automatically when there is a new version available (default: false).
+%     - AutoLoad       : Boolean: If true, the plugin is loaded automatically at Brainstorm startup
+%     - Category       : String: Sub-menu in which the plugin is listed
+%     - ExtraMenus     : Cell matrix {Nx2}: List of entries to add to the plugins menu
+%                        | ExtraMenus{i,1}: String: Label of the menu
+%                        | ExtraMenus{i,2}: String: Matlab code to eval when the menu is clicked 
+%     - TestFile       : String: Name of a file that should be located in one of the loaded folders of the plugin (eg. 'spm.m' for SPM12). 
+%                        | This is used to test whether the plugin was correctly installed, or whether it is available somewhere else in the Matlab path.
+%     - ReadmeFile     : String: Name of the text file to display after installing the plugin (must be in the plugin folder). 
+%                        | If empty, it tries using brainstorm3/doc/plugin/plugname_readme.txt
+%     - LogoFile       : String: Name of the image file to display during the plugin download, installation, and associated computations (must be in the plugin folder). 
+%                        | Supported extensions: gif, png. If empty, try using brainstorm3/doc/plugin/<Name>_logo.[gif|png]
+%     - MinMatlabVer   : Integer: Minimum Matlab version required for using this plugin, as returned by bst_get('MatlabVersion')
+%     - CompiledStatus : Integer: Behavior of this plugin in the compiled version of Brainstorm:
+%                        | 0: Plugin is not available in the compiled distribution of Brainstorm
+%                        | 1: Plugin is available for download (only for plugins based on native compiled code)
+%                        | 2: Plugin is included in the compiled distribution of Brainstorm 
+%     - RequiredPlugs  : Cell-array: Additional plugins required by this plugin, that must be installed/loaded beforehand.
+%                        | {Nx2} => {'plugname','version'; ...} or
+%                        | {Nx1} => {'plugname'; ...} 
+%     - UnloadPlugs    : Cell-array of names of incompatible plugin, to unload before loaing this one
+%     - LoadFolders    : Cell-array of subfolders to add to the Matlab path when setting up the plugin. Use {'*'} to add all the plugin subfolders.
+%     - GetVersionFcn  : String to eval or function handle to call to get the version after installation
+%     - InstalledFcn   : String to eval or function handle to call after installing the plugin
+%     - UninstalledFcn : String to eval or function handle to call after uninstalling the plugin
+%     - LoadedFcn      : String to eval or function handle to call after loading the plugin
+%     - UnloadedFcn    : String to eval or function handle to call after unloading the plugin 
+%
+%     Fields set when installing the plugin
+%     =====================================
+%     - Processes  : List of process functions to be added to the pipeline manager 
+%
+%     Fields set when loading the plugin
+%     ==================================
+%     - Path       : Installation path (eg. /home/username/.brainstorm/plugins/fieldtrip)
+%     - SubFolder  : If all the code is in a single subfolder (eg. /plugins/fieldtrip/fieldtrip-20210304), 
+%                    this is detected and the full path to the TestFile would be typically fullfile(Path, SubFolder).
+%     - isLoaded   : 0=Not loaded, 1=Loaded
+%     - isManaged  : 0=Installed manually by the user, 1=Installed automatically by Brainstorm 
+%
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -93,10 +151,10 @@ function PlugDesc = GetSupported(SelPlug)
     
     % === ANATOMY: ISO2MESH ===
     PlugDesc(end+1)              = GetStruct('iso2mesh');
-    PlugDesc(end).Version        = '1.9.2';
+    PlugDesc(end).Version        = '1.9.6';
     PlugDesc(end).Category       = 'Anatomy';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.2/iso2mesh-1.9.2-allinone.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/fangq/iso2mesh/releases/download/v1.9.6/iso2mesh-1.9.6-allinone.zip';
     PlugDesc(end).URLinfo        = 'http://iso2mesh.sourceforge.net';
     PlugDesc(end).TestFile       = 'iso2meshver.m';
     PlugDesc(end).ReadmeFile     = 'README.txt';
@@ -123,20 +181,20 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).AutoUpdate     = 1;
     switch(OsType)
         case 'linux64'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Linux.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-Linux.tar.gz';
             PlugDesc(end).TestFile = 'libOpenMEEG.so';
         case 'mac64'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-MacOSX.tar.gz';
             PlugDesc(end).TestFile = 'libOpenMEEG.1.1.0.dylib';
         case 'win32'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/release-2.2/OpenMEEG-2.2.0-win32-x86-cl-OpenMP-shared.tar.gz';
             PlugDesc(end).TestFile = 'om_assemble.exe';
         case 'win64'
-            PlugDesc(end).URLzip   = 'http://openmeeg.gforge.inria.fr/download/OpenMEEG-2.4.1-Win64.tar.gz';
+            PlugDesc(end).URLzip   = 'https://files.inria.fr/OpenMEEG/download/OpenMEEG-2.4.1-Win64.tar.gz';
             PlugDesc(end).TestFile = 'om_assemble.exe';
     end
     PlugDesc(end).URLinfo        = 'https://openmeeg.github.io/';
-    PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''http://openmeeg.gforge.inria.fr/download/'', ''-browser'')'; ...
+    PlugDesc(end).ExtraMenus     = {'Alternate versions', 'web(''https://files.inria.fr/OpenMEEG/download/'', ''-browser'')'; ...
                                     'Download Visual C++', 'web(''http://www.microsoft.com/en-us/download/details.aspx?id=14632'', ''-browser'')'; ...
                                     'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/TutBem'', ''-browser'')'};
     PlugDesc(end).CompiledStatus = 1;
@@ -175,7 +233,28 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'https://github.com/JimHokanson/adinstruments_sdk_matlab';
     PlugDesc(end).TestFile       = 'adi.m';
     PlugDesc(end).CompiledStatus = 0;
-   
+
+    % === I/O: AXION ===
+    PlugDesc(end+1)              = GetStruct('axion');
+    PlugDesc(end).Version        = '1.0';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'http://neuroimage.usc.edu/bst/getupdate.php?d=AxionBioSystems.zip';
+    PlugDesc(end).URLinfo        = 'https://www.axionbiosystems.com/products/software/neural-module';
+    PlugDesc(end).TestFile       = 'AxisFile.m';
+    % PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+
+    % === I/O: BLACKROCK ===
+    PlugDesc(end+1)              = GetStruct('blackrock');
+    PlugDesc(end).Version        = '5.5.2.0';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://github.com/BlackrockMicrosystems/NPMK/archive/refs/tags/5.5.2.0.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/BlackrockMicrosystems/NPMK/blob/master/NPMK/Users%20Guide.pdf';
+    PlugDesc(end).TestFile       = 'openNSx.m';
+    PlugDesc(end).ReadmeFile     = 'Versions.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -257,7 +336,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).InstalledFcn   = 'make';
+    PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -274,6 +353,21 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'nst_get_version';
     PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+     
+    % === MIA ===
+    PlugDesc(end+1)              = GetStruct('mia');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
+    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).GetVersionFcn  = 'mia_get_version';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
@@ -1062,7 +1156,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % Unzip file
     switch (pkgFormat)
         case 'zip'
-            unzip(pkgFile, PlugPath);
+            bst_unzip(pkgFile, PlugPath);
         case 'tgz'
             if ispc
                 untar(pkgFile, PlugPath);
@@ -1133,6 +1227,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     
     % === SHOW PLUGIN INFO ===
+    % Log install
+    bst_webread(['http://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=' PlugDesc.Name '&action=install']);
     % Show plugin information (interactive mode only)
     if isInteractive
         % Hide progress bar

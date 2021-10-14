@@ -35,7 +35,7 @@ sDest = in_tess_bst(destTessFile);
 p   = .2;
 th  = -pi-p   : 0.01 : pi+p;
 phi = -pi/2-p : 0.01 : pi/2+p;
-r   = tess_parametrize_new(sDest.Vertices, th, phi);
+r   = tess_parametrize(sDest.Vertices, th, phi);
 
 % Interpolate radius
 proj_s_r = interp2(th, phi, r, s_th, s_phi);

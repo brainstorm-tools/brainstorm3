@@ -21,8 +21,15 @@ function F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2021
 
+% ===== INSTALL NPMK LIBRARY =====
+if ~exist('openNSx', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'blackrock');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
 
 % Parse inputs
 if (nargin < 4) || isempty(precision)

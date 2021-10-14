@@ -91,6 +91,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_ant(DataFile);
     case 'EEG-ANT-MSR'
         [sFile, ChannelMat] = in_fopen_msr(DataFile);
+    case 'EEG-AXION'
+        [sFile, ChannelMat] = in_fopen_axion(DataFile);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'
@@ -116,7 +118,7 @@ switch (FileFormat)
     case 'EEG-EGI-MFF'
         [sFile, ChannelMat] = in_fopen_mff(DataFile, ImportOptions, 0);
     case 'EEG-MICROMED'
-        [sFile, ChannelMat] = in_fopen_micromed(DataFile);
+        [sFile, ChannelMat] = in_fopen_micromed(DataFile, ImportOptions);
     case 'EEG-NEURONE'
         [sFile, ChannelMat] = in_fopen_neurone(DataFile);
     case 'EEG-NEUROSCAN-CNT'

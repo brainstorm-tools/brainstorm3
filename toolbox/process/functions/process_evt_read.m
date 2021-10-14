@@ -19,7 +19,7 @@ function varargout = process_evt_read( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2021
 
 eval(macro_method);
 end
@@ -108,8 +108,25 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     end
         
     % ===== DETECTION =====
-    events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
-
+    % CTF: Read separately upper and lower bytes
+    if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
+        % Detect separately events on the upper and lower bytes of the STIM channel
+        eventsU = Compute(sFile, ChannelMat, [StimChan '__U'], EventsTrackMode, isAcceptZero, MinDuration);
+        eventsL = Compute(sFile, ChannelMat, [StimChan '__L'], EventsTrackMode, isAcceptZero, MinDuration);
+        % If there are events on both: add marker U/L
+        if ~isempty(eventsU) && ~isempty(eventsL)
+            for iEvt = 1:length(eventsU)
+                eventsU(iEvt).label = ['U', eventsU(iEvt).label];
+            end
+            for iEvt = 1:length(eventsL)
+                eventsL(iEvt).label = ['L', eventsL(iEvt).label];
+            end
+        end
+        events = [eventsL, eventsU];
+    else
+        events = Compute(sFile, ChannelMat, StimChan, EventsTrackMode, isAcceptZero, MinDuration);
+    end
+    
     % ===== SAVE RESULT =====
     % Only save changes if something was change
     if ~isempty(events)
@@ -192,7 +209,20 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
                 return
             end
         end
-    end                  
+    end
+    % CTF: Select only upper or lower bytes
+    isCtfUp = 0;
+    isCtfLow = 0;
+    if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'}) && (length(StimChan) > 3)
+        if strcmp(StimChan(end-2:end), '__U')
+            isCtfUp = 1;
+            StimChan = StimChan(1:end-3);
+        elseif strcmp(StimChan(end-2:end), '__L')
+            isCtfLow = 1;
+            StimChan = StimChan(1:end-3);
+        end
+    end
+    trigshift = fix(sFile.prop.sfreq * 9/1200);
 
     % ===== ASK READ MODE =====
     if strcmpi(EventsTrackMode, 'ask')
@@ -250,9 +280,32 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         samplesBlock(2) = min(samplesBlock(2), samplesBounds(2));
         % Read block of data
         [tracks, times] = in_fread(sFile, ChannelMat, 1, samplesBlock, iChannels);
-        % Convert events values to uint16
-        tracks = reshape(double(typecast(int16(tracks(:)), 'uint16')), size(tracks));
-
+        
+        % === BLOCK EDITED 16-JUN-2021 ===
+        % Round values
+        tracks = fix(tracks);
+        % CTF: Read separately Upper and Lower bytes
+        if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
+            % Events are read as int32, while they are actually uint32: fix negative values
+            tracks(tracks<0) = tracks(tracks<0) + 2^32;
+            % Keep only upper or lower bytes
+            if isCtfUp
+                tracks = fix(tracks / 2^16);
+            elseif isCtfLow
+                tracks = double(bitand(uint32(tracks), 2^16-1));
+            end
+            % Determine the precise timing of the triggers (from FieldTrip's read_ctf_trigger)
+            upflank = [0 (diff(tracks)>0 & tracks(1:(end-1))==0)];
+            tracks = upflank(1:(end-trigshift)).*tracks((1+trigshift):end);
+        % Other formats
+        else
+            % Old code: Might be useless and/or detrimental to the reading of the events
+            % tracks = reshape(double(typecast(int16(tracks(:)), 'uint16')), size(tracks));
+            % Use the same fix as for CTF files
+            tracks(tracks<0) = tracks(tracks<0) + 2^32;
+        end
+        % =================================
+            
         % === ADD INITIAL STATE ===
         % Add the initial status of the tracks
         if isempty(trackPrev)

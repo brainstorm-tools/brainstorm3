@@ -25,7 +25,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -1534,7 +1534,7 @@ function JumpToEvent(iEvent, iOccur)
     % Check if event is a "full page" shortcut
     RawViewerOptions = bst_get('RawViewerOptions');
     iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,2), events(iEvent).label));
-    isFullPage = ~isempty(iShortcut) && strcmpi(RawViewerOptions.Shortcuts(iShortcut,3), 'page') && (size(events(iEvent).times,1) == 2);
+    isFullPage = ~isempty(iShortcut) && any(strcmpi(RawViewerOptions.Shortcuts(iShortcut,3), 'page')) && (size(events(iEvent).times,1) == 2);
     % If event is outside of the current user time window
     UserTime = GlobalData.UserTimeWindow.Time;
     if (evtTime < UserTime(1)) || (evtTime > UserTime(2))
@@ -3099,7 +3099,3 @@ function JumpToVideoTime(hFig, oldVideoTime, newVideoTime)
     % Close progress bar
     bst_progress('stop');
 end
-
-
-
-

@@ -84,6 +84,10 @@ end
 
 %% ===== CREATE STUDIES =====
 for iSubject = iSubjectsList
+    % Cannot add study to default anatomy
+    if (iSubject == 0)
+        error('Cannot add folders to the default anatomy.');
+    end
     % Get subject definition
     SubjectFile = ProtocolSubjects.Subject(iSubject).FileName;
     SubjectName = ProtocolSubjects.Subject(iSubject).Name;

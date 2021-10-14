@@ -1615,13 +1615,15 @@ function status = CloneProble(bstDir)
             status = 0;
             return;
         end
-        % Connect
+        % Check password through HTTPS
+        % | Note that on older Matlab, HTTPS doesn't work:
+        % | https://github.com/brainstorm-tools/brainstorm3/issues/308#issuecomment-646026943
         bst_progress('start', 'Brainstorm login', 'Contacting server');
         try
             % Send connect request
             header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
-            options = matlab.net.http.HTTPOptions();
-            request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',res{1},'&mdp=',res{2}]);
+            options = matlab.net.http.HTTPOptions('CertificateFilename','');
+            request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',urlencode(res{1}),'&mdp=',urlencode(res{2})]);
             resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
             % Check server response
             if isempty(resp) || isempty(resp.Body) || ~isa(resp.Body, 'matlab.net.http.MessageBody')
@@ -1632,7 +1634,11 @@ function status = CloneProble(bstDir)
                 bst_error('Invalid username or password.', 'Brainstorm login', 0);
             end
         catch
-            bst_error('Could not establish a secure connection to Brainstorm server', 'Brainstorm login', 0);
+            bst_error();
+            bst_error(['Could not establish a secure connection to Brainstorm server.' 10 10 ...
+                'Password verification over HTTPS requires Matlab >= 2020a.' 10 ...
+                'Download Brainstorm from the website: https://neuroimage.usc.edu/brainstorm' 10 ...
+                'Update it from the interface, or from the command line with "brainstorm update".' 10], 'Brainstorm login', 0);
             status = 0;
         end
         bst_progress('stop');

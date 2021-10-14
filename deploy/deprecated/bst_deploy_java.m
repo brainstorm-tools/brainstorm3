@@ -1,5 +1,5 @@
 function bst_deploy_java(IS_BIN)
-% BST_DEPLOY_JAVA - Brainstorm deployment script (including SPM and FieldTrip).
+% DEPRECATED: Use bst_deploy and bst_compile instead
 %
 % USAGE:  bst_deploy_java(IS_BIN=0)
 %
@@ -21,12 +21,12 @@ function bst_deploy_java(IS_BIN)
 %    - Zip stand-alone directory  (output file: <bstMakeDir>/bst_bin_os_yymmdd.zip)
 
 % @=============================================================================
-% This software is part of the Brainstorm software:
+% This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
 % Copyright (c)2000-2020 University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
-% as published by the Free Software Foundation. Further details on the GPL
+% as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
 % 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
@@ -92,10 +92,11 @@ tic;
 
 % Compiler configuration   
 if IS_BIN
-    % JDK folder
-    jdkDir = 'C:\Program Files\Java\jdk1.8.0_241';
-    % Set JAVA_HOME environment variable
-    setenv('JAVA_HOME', jdkDir);
+    % Environment variable JAVA_HOME must point at the correct installed JDK
+    % - JDK 1.7 for Matlab < 2017b
+    % - JDK 1.8 for Matlab >= 2017b
+    jdkDir = getenv('JAVA_HOME');
+    disp([10 'DEPLOY> JAVA_HOME=' getenv('JAVA_HOME') 10]);
     % Javabuilder output
     compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
     compilerOutputDir = fullfile(compilerDir, 'for_testing');
@@ -149,7 +150,7 @@ jSplitPath = jPath.split(pathsep);
 
 
 %% ===== UPDATE VERSION.TXT =====
-disp([10 'DEPLOY> Updating: ', strrep(versionFile, bstDir, '')]);
+disp(['DEPLOY> Updating: ', strrep(versionFile, bstDir, '')]);
 % Version.txt contents
 strVersion = ['% Brainstorm' 10 ...
               '% v. ' bstVersion ' (' date ')'];
@@ -244,10 +245,24 @@ system('start /b cmd /c ""C:\Program Files\Git\cmd\git-gui.exe" --working-dir "C
 
 
 %% ===== MATLAB COMPILER =====
-if IS_BIN
+if IS_BIN   
+    % === CHECK BST-JAVA PACKAGE ===
+    % Brainstorm application .jar file
+    appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
+    % Unjar in "javabuilder" folder, just to get the SelectMcr class
+    unzip(appJar, compilerDir);
+    classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
+    classFileFull = fullfile(compilerDir, classFile);
+    if ~file_exist(classFileFull)
+        error(['Missing class in bst-java: SelectMcr' ReleaseName(2:end) '.class']);
+    end
+    
+    % === COMPILING ===
+    disp('DEPLOY> Starting Matlab Compiler...');
+
     % === CREATE COMPILER FILE ===
     % Load template .prj file
-    templatePrj = fullfile(bstDir, 'deploy', 'bst_javabuilder_template.prj');
+    templatePrj = fullfile(bstDir, 'deploy', 'deprecated', 'bst_javabuilder_template.prj');
     strPrj = ReadAsciiFile(templatePrj);
     % Optional folders to include
     strOpt = '';
@@ -262,10 +277,11 @@ if IS_BIN
             if (PlugDesc(iPlug).CompiledStatus == 2) && ~ismember(PlugDesc(iPlug).Name, {'fieldtrip', 'spm12'})
                 PlugInst = bst_plugin('GetInstalled', PlugDesc(iPlug).Name);
                 if isempty(PlugInst)
-                    disp(['WARNING: Plugin ' PlugDesc(iPlug).Name ' is not installed.']);
+                    error(['Plugin ' PlugDesc(iPlug).Name ' is not installed.']);
                 else
                     strOpt = [strOpt '      <file>' bst_fullfile(PlugInst.Path, PlugInst.SubFolder) '</file>' 10];
                     strOpt = [strOpt '      <file>' bst_fullfile(PlugInst.Path, 'plugin.mat') '</file>' 10];
+                    bst_plugin('Load', PlugDesc(iPlug).Name);
                 end
             end
         end
@@ -286,12 +302,11 @@ if IS_BIN
     % Save file
     compilerPrj = fullfile(bst_get('BrainstormTmpDir'), ['bst_javabuilder_' ReleaseName(2:end) '.prj']);
     writeAsciiFile(compilerPrj, strPrj);  
-    
-    % === COMPILING ===
-    disp('DEPLOY> Starting Matlab Compiler...');
+
     % Starting compiler (using a system call because Matlab's version is asynchronous)
     system(['deploytool -build ', compilerPrj]);
 
+    
     % === PACKAGING ===
     disp('DEPLOY> Packaging binary distribution...');
     % Compiled jar
@@ -314,14 +329,10 @@ if IS_BIN
                  'Created-By: Brainstorm (' date ')' 13 10]);
     fclose(fid);
     
-    % Brainstorm application .jar file
-    appJar = fullfile(bstDir, 'java', 'brainstorm.jar');
-    % Unjar in "javabuilder" folder, just to get the SelectMcr class
-    unzip(appJar, compilerDir);
-    classFile = fullfile('org', 'brainstorm', 'file', ['SelectMcr' ReleaseName(2:end) '.class']);
+    % Copy SelectMcrXXXXX.class to output package folder
     destFolder = fullfile(jarDir, fileparts(classFile));
     mkdir(destFolder);
-    copyfile(fullfile(compilerDir, classFile), destFolder);
+    copyfile(classFileFull, destFolder);
     % Copy application runner
     classFile = fullfile(deployDir, ReleaseName, 'brainstorm_run', 'org', 'brainstorm', 'RunCompiled.class');
     if file_exist(classFile)

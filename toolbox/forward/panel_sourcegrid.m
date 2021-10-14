@@ -25,7 +25,7 @@ function varargout = panel_sourcegrid(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2016
+% Authors: Francois Tadel, 2011-2021
 
 eval(macro_method);
 end
@@ -652,7 +652,7 @@ function ShowGrid()
     end
     % Create figure if it doesnt exist + show surface
     if isempty(hFig)
-        hFig = view_surface(ctrl.CortexFile, .9, [.6 .6 .6], 'NewFigure');
+        hFig = view_surface(ctrl.CortexFile, .9, [.6 .6 .6], 'NewFigure', 0);
         set(hFig, 'Tag', 'FigCheckGrid');
     % Figure exists: remove previous points
     else

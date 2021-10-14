@@ -1886,6 +1886,13 @@ function iAtlas = SetAtlas(SurfaceFile, iAtlasIn, sAtlas)
     end
     % Fix the structure of the file
     sAtlas = FixAtlasStruct(sAtlas);
+    % Set default region based on Desikan-Killiany atlas
+    if ~isempty(sAtlas.Scouts) && any(ismember({sAtlas.Scouts.Region}, {'UU','LU','RU','CU'})) && ~strcmpi(sAtlas.Name, 'Desikan-Killiany') && ~isempty(GlobalData.Surface(iSurf).Atlas)
+        iDK = find(strcmpi({GlobalData.Surface(iSurf).Atlas.Name}, 'Desikan-Killiany'));
+        if ~isempty(iDK)
+            sAtlas.Scouts = SetDefaultRegions(sAtlas.Scouts, GlobalData.Surface(iSurf).Atlas(iDK(1)).Scouts);
+        end
+    end
     % Make the atlas name unique
     if ~isempty(GlobalData.Surface(iSurf).Atlas) && (ischar(iAtlasIn) && strcmpi(iAtlasIn, 'Add'))
         sAtlas.Name = file_unique(sAtlas.Name, {GlobalData.Surface(iSurf).Atlas.Name});
@@ -5193,6 +5200,33 @@ function sAtlasFix = FixAtlasStruct(sAtlas)
                 sAtlasFix(ia).Scouts(is).Vertices = sAtlasFix(ia).Scouts(is).Vertices';
             end
         end
+    end
+end
+
+
+%% ===== SET DEFAULT REGIONS =====
+function sScouts = SetDefaultRegions(sScouts, sRef)
+    % Get total number of vertices
+    Nvert = max([sScouts.Vertices, sRef.Vertices]);
+    % Build reference atlas
+    map = repmat({'UU'}, 1, Nvert);
+    for iRef = 1:length(sRef)
+        map(sRef(iRef).Vertices) = {sRef(iRef).Region};
+    end
+    % Assign region to all scouts with unknown regions
+    for iScout = 1:length(sScouts)
+        % If region is already defined: skip
+        if ~ismember(sScouts(iScout).Region, {'UU','LU','RU','CU'})
+            continue;
+        end
+        % Get the list of reference regions in this scout
+        allReg = map(sScouts(iScout).Vertices);
+        uniqueReg = unique(allReg);
+        % Count the region with the most vertices
+        countReg = cellfun(@(c)nnz(strcmpi(allReg, c)), uniqueReg);
+        [nMax, iMax] = max(countReg);
+        % Set it as the default region
+        sScouts(iScout).Region = uniqueReg{iMax};
     end
 end
 

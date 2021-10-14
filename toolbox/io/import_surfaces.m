@@ -192,7 +192,7 @@ for iFile = 1:length(SurfaceFiles)
         % History: Apply MRI transformation
         NewTess = bst_history('add', NewTess, 'import', 'Apply transformation that was applied to the MRI volume');
         % Apply MRI transformation
-        NewTess = fibers_helper('ApplyMriTransfToSurf', sMri.InitTransf, NewTess);
+        NewTess = ApplyMriTransfToSurf(sMri.InitTransf, NewTess);
     end
 
     % ===== SAVE BST FILE =====
@@ -225,4 +225,42 @@ end
 db_save();
 bst_progress('stop');
 end   
+
+
+
+%% ===== APPLY MRI ORIENTATION =====
+function sSurf = ApplyMriTransfToSurf(MriTransf, sSurf)
+    % Apply transformation to vertices
+    sSurf.Vertices = ApplyMriTransfToPts(MriTransf, sSurf.Vertices);
+    % Update faces order: If the surfaces were flipped an odd number of times, invert faces orientation
+    if (mod(nnz(strcmpi(MriTransf(:,1), 'flipdim')), 2) == 1)
+        sSurf.Faces = sSurf.Faces(:,[1 3 2]);
+    end
+end
+
+function pts = ApplyMriTransfToPts(MriTransf, pts)
+    % Apply step by step all the transformations that have been applied to the MRI
+    for i = 1:size(MriTransf,1)
+        ttype = MriTransf{i,1};
+        val   = MriTransf{i,2};
+        switch (ttype)
+            case 'flipdim'
+                % Detect the dimensions that have constantly negative coordinates
+                iDimNeg = find(sum(sign(pts) == -1) == size(pts,1));
+                if ~isempty(iDimNeg)
+                    pts(:,iDimNeg) = -pts(:,iDimNeg);
+                end
+                % Flip dimension
+                pts(:,val(1)) = val(2)/1000 - pts(:,val(1));
+                % Restore initial negative values
+                if ~isempty(iDimNeg)
+                    pts(:,iDimNeg) = -pts(:,iDimNeg);
+                end
+            case 'permute'
+                pts = pts(:,val);
+            case 'vox2ras'
+                % Do nothing, applied earlier
+        end
+    end
+end
 

@@ -130,8 +130,8 @@ vTemplateInner  = bst_bsxfun(@minus, sTemplateInner.Vertices,  sTemplateCortex.c
 p   = .2;   % Padding
 th  = -pi-p   : 0.01 : pi+p;
 phi = -pi/2-p : 0.01 : pi/2+p;
-rCortex      = tess_parametrize_new(vCortex,      th, phi);
-rTemplateCortex = tess_parametrize_new(vTemplateCortex, th, phi);
+rCortex      = tess_parametrize(vCortex,      th, phi);
+rTemplateCortex = tess_parametrize(vTemplateCortex, th, phi);
 
 
 %% ===== SURFACE ALIGNMENT =====
@@ -198,10 +198,10 @@ end
 % p   = .2;   % Padding
 % th  = -pi-p   : 0.01 : pi+p;
 % phi = -pi/2-p : 0.01 : pi/2+p;
-rHead        = tess_parametrize_new(vHead,        th, phi);
-rCortex      = tess_parametrize_new(vCortex,      th, phi);
-rTemplateCortex = tess_parametrize_new(vTemplateCortex, th, phi);
-rTemplateInner  = tess_parametrize_new(vTemplateInner,  th, phi);
+rHead        = tess_parametrize(vHead,        th, phi);
+rCortex      = tess_parametrize(vCortex,      th, phi);
+rTemplateCortex = tess_parametrize(vTemplateCortex, th, phi);
+rTemplateInner  = tess_parametrize(vTemplateInner,  th, phi);
 
 
 %% ===== COMPUTE LAYER SIZES =====
@@ -287,7 +287,7 @@ end
 % === DEFORM HEAD TO INCLUDE OUTER SKULL ===
 bst_progress('text', 'BEM: Deforming head...');
 % Parametrize outer skull
-%rOuter = tess_parametrize_new(vOuter, th, phi);
+%rOuter = tess_parametrize(vOuter, th, phi);
 % Grow head so that it is not intersecting the outerskull
 %rHead = max(rHead, rOuter + .004);
 % Reinterpolate to get head surface based on cortex surface

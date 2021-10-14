@@ -31,7 +31,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Coherence NxN';
+    sProcess.Comment     = 'Coherence NxN [Deprecated]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 656;
