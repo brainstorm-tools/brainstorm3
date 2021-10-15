@@ -25,6 +25,7 @@ function varargout = process_simulate_ar( varargin )
 % =============================================================================@
 %
 % Authors: Guiomar Niso, Francois Tadel, 2013-2014
+%          Raymundo Cassani, 2021
 
 eval(macro_method);
 end
@@ -78,12 +79,42 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.C.Comment = 'Noise covariance matrix <B>C</B>: &nbsp;&nbsp;[Nsignals x Nsignals]<BR>';
     sProcess.options.C.Type    = 'textarea';
     sProcess.options.C.Value   = 'C = eye(4,4);';
+    % === DISPLAY TRANSFER FUNCTION
+    sProcess.options.display.Comment = {'process_simulate_ar(''DisplayTransferFunct'',iProcess);', '<BR>', 'View transfer function'};
+    sProcess.options.display.Type    = 'button';
+    sProcess.options.display.Value   = [];
 end
 
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
+end
+
+
+%% ===== GET COEFFICIENTS =====
+function [A, b, C] = GetCoefficients(sProcess)
+    A = [];
+    b = [];
+    C = [];
+    % Evaluate Matlab code
+    try
+        eval(sProcess.options.A.Value);
+        eval(sProcess.options.b.Value);
+        eval(sProcess.options.C.Value);
+    catch
+        e = lasterr();
+        bst_report('Error', sProcess, [], e);
+        return;
+    end    
+    % Check variables dimensions
+    if isempty(A) || isempty(b) || isempty(C)
+        bst_report('Error', sProcess, [], 'One of the variables is not defined (A, b or C).');
+        return;
+    elseif (size(A,1) ~= size(b,2)) || (size(b,1) ~= 1) || (size(A,1) ~= size(C,1)) || (size(C,1) ~= size(C,2))
+        bst_report('Error', sProcess, [], 'The dimensions of the input matrices are incompatible.');
+        return;
+    end
 end
 
 
@@ -103,28 +134,8 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     nsamples = sProcess.options.samples.Value{1};
     srate   = sProcess.options.srate.Value{1};
     
-    % ===== GENERATE SIGNALS =====
-    A = [];
-    b = [];
-    C = [];
-    % Evaluate Matlab code
-    try
-        eval(sProcess.options.A.Value);
-        eval(sProcess.options.b.Value);
-        eval(sProcess.options.C.Value);
-    catch
-        e = lasterr();
-        bst_report('Error', sProcess, [], e);
-        return;
-    end
-    % Check variables dimensions
-    if isempty(A) || isempty(b) || isempty(C)
-        bst_report('Error', sProcess, [], 'One of the variables is not defined (A, b or C).');
-        return;
-    elseif (size(A,1) ~= size(b,2)) || (size(b,1) ~= 1) || (size(A,1) ~= size(C,1)) || (size(C,1) ~= size(C,2))
-        bst_report('Error', sProcess, [], 'The dimensions of the input matrices are incompatible.');
-        return;
-    end
+    % Get coefficients
+    [A, b, C] = GetCoefficients(sProcess);
     % Generate the signal
     try
         Data = Compute(b, A, C, nsamples);
@@ -177,7 +188,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Register in database
     db_add_data(iStudy, OutputFiles{1}, FileMat);
 end
-
 
 
 %% ===== GENERATE SIGNALS =====
@@ -297,6 +307,183 @@ function [v]=arsim(w,A,C,n,ndisc)
     v = u(ndisc+p+1:ndisc+n+p,:);
 end
 
+
+%% ===== COMPUTE TRANSFER FUNCTION ===== 
+function [Hf, Af, Sf, C, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
+% Transfer function and other spectral metrics for MVAR process
+%
+% Input
+%   At : Coefficients in time domain [To, From, Order]
+%   Fs : Sampling frequency [Hz]
+%   n  : Number of frequency points for transfer function  
+%
+% Output 
+%   Hf  : Transfer function             [To, From, Freqs] REF[1]
+%   Af  : Coefficients Freq domain      [To, From, Freqs] REF[1]
+%   Sf  : Cross-power spectral density  [To, From, Freqs] REF[1] 
+%   C   : Coherency (complex coherence) [To, From, Freqs] REF[1]
+%   PC  : Partial coherence             [To, From, Freqs] REF[1,2] 
+%   DTF : Directed transfer function    [To, From, Freqs] REF[1,3]
+%   PDC : Partial directed coherence    [To, From, Freqs] REF[1,3]
+%
+% References
+% [1] Baccalá, LA (2001), Partial directed coherence: A new concept in neural structure determination. 
+%     https://doi.org/10.1007/PL00007990
+% [2] Schlögl, A (2006), Analyzing event-related EEG data with multivariate autoregressive parameters.
+%     https://doi.org/10.1016/S0079-6123(06)59009-0
+% [3] Barrett, AB (2013), Directed spectral methods. 
+%     https://doi.org/10.1007/978-1-4614-7320-6_414-2
+ 
+    % Number of signals and order
+    [n_signals, ~, n_order] = size(At);
+    V         = eye(n_signals); 
+    % Frequency range
+    deltaF = Fs/2/n;
+    w = linspace(deltaF, Fs/2, n);
+    digw = 2*pi*w./Fs; 
+    z    = exp(-1i*digw);
+    % Allocate variables size [To, From, Freqs]
+    zeros_array = zeros(n_signals, n_signals, length(w));
+    complex_zeros_array = complex(zeros_array);
+    Hf  = complex_zeros_array; % Transfer function             
+    Af  = complex_zeros_array; % Coefficients Freq domain      
+    Sf  = complex_zeros_array; % Cross-power spectral density  
+    C   = complex_zeros_array; % Complex coherence             
+    Gf  = complex_zeros_array; % Auxiliar to compute PC        
+    PC  = complex_zeros_array; % Partial coherence             
+    DTF = zeros_array;         % Directed transfer function    
+    PDC = complex_zeros_array; % Partial directed coherence    
+
+    % Transform coefficients to frequency domain
+    % Af = I - sum_{1}^{order} At * z^k
+    for iTo = 1 : n_signals
+        for iFrom = 1 : n_signals
+            Af_ij = 0;
+            for iSample = 1 : n_order
+                tmp = At(iTo, iFrom, iSample) * z.^iSample;
+                Af_ij = Af_ij + tmp;
+            end
+            if iFrom == iTo
+                Af(iTo,iFrom,:) = 1 - Af_ij;
+            else
+                Af(iTo,iFrom,:) = Af_ij;
+            end
+        end
+    end
+
+    % Compute Hf and Sf
+    for f = 1:length(w)
+        Hf(:,:,f) = pinv(Af(:,:,f));
+        Sf(:,:,f) = Hf(:,:,f) * V * ctranspose(Hf(:,:,f));
+        Gf(:,:,f) = pinv((Sf(:,:,f))); % = inv(Hf*V*ctransp(Hf)) = ctransp(Af)*inv(V)*Af
+    end
+
+    % Compute DTF, C, PC and PDC
+    for f = 1:length(w)
+        for i = 1:n_signals
+            % DFT normalized
+            DTF(i,:,f) = (abs(Hf(i,:,f)).^2)./sum(abs(Hf(i,:,f)).^2);
+            for j = 1:n_signals
+                C(i,j,f)   = Sf(i,j,f)/sqrt(Sf(i,i,f)*Sf(j,j,f));  
+                PC(i,j,f)  = Gf(i,j,f)/sqrt(Gf(i,i,f)*Gf(j,j,f));
+                PDC(i,j,f) = Af(i,j,f)/sqrt(sum(conj(Af(i,:,f)).*Af(i,:,f))); 
+            end
+        end
+    end
+end
+
+
+%% ===== DISPLAY TRANSFER FUNCTION =====
+function DisplayTransferFunct(iProcess) %#ok<DEFNU>
+    % Get current process options
+    global GlobalData;
+    sProcess = GlobalData.Processes.Current(iProcess);
+    sfreq = sProcess.options.srate.Value{1}; % Signal sampling frequency [Hz]
+    
+    % Get coefficients
+    [A, ~, ~] = GetCoefficients(sProcess); 
+    A = reshape(A, size(A,1), size(A,1), [] );
+    % Compute transfer function
+    [Hf, ~, ~, ~, ~, ~, ~, Freqs] = ComputeTransferFunct(A, sfreq, 2^10);     
+    % Transfer function description: Left panel   
+    hFig = HTransferFunctDisplay(Hf,Freqs); 
+end
+
+
+function hFig = HTransferFunctDisplay(Hf,Freqs)
+    % Progress bar
+    bst_progress('start', 'Transfer function specification', 'Updating graphs...');
+
+    % Get existing specification figure
+    hFig = findobj(0, 'Type', 'Figure', 'Tag', 'TransferFunct');
+    % If the figure doesn't exist yet: create it
+    if isempty(hFig)
+        hFig = figure(...
+            'MenuBar',     'none', ...
+            ... 'Toolbar',     'none', ...
+            'Toolbar',     'figure', ...
+            'NumberTitle', 'off', ...
+            'Name',        sprintf('Transfer function'), ...
+            'Tag',         'TransferFunct', ...
+            'Units',       'Pixels');
+        % Figure already exists: re-use it
+    else
+        clf(hFig);
+        figure(hFig);
+    end
+    % Disable the Java-related warnings after 2019b
+    if (bst_get('MatlabVersion') >= 907)
+        warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
+    end
+
+    % Plot transfer function
+    n_signals = size(Hf, 1);
+    hAxesTransferFunct = [];
+    for iFrom = 1 : n_signals
+        for iTo = 1 : n_signals
+            tmpAxes = axes('Units', 'normalized', 'Parent', hFig);
+            subplot(n_signals, n_signals, ((iFrom-1)*n_signals) + iTo, tmpAxes);
+            hAxesTransferFunct = [hAxesTransferFunct; tmpAxes];
+            area(Freqs, squeeze(abs(Hf(iTo, iFrom, :))));
+            % Title showing directionality
+            title(['Signal ', num2str(iFrom), ' \rightarrow Signal ', num2str(iTo)])
+        end
+    end
+    % Link axes
+    linkaxes(hAxesTransferFunct,'xy')
+    % Add Axes limits
+    set(hAxesTransferFunct, 'XLim', [0, max(Freqs)]);
+    
+    % Add legends
+    xlabel(hAxesTransferFunct, 'Frequency (Hz)');
+    ylabel(hAxesTransferFunct, 'Magnitude (u)');
+    % Enable zooming by default
+    %zoom(hFig, 'on');
+    
+    % Display figure title
+    titleText = '<HTML><B>Analytical transfer function H(f)</B>';
+    [jLabel1, hLabel1] = javacomponent(javax.swing.JLabel(titleText), [0 0 1 1], hFig);
+    set(hLabel1, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label1');
+    bgColor = get(hFig, 'Color');
+    jLabel1.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+    jLabel1.setVerticalAlignment(javax.swing.JLabel.CENTER);
+    jLabel1.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+
+    % Set resize function
+    set(hFig, bst_get('ResizeFunction'), @ResizeCallback);
+    % Force calling the resize function at least once
+    ResizeCallback(hFig);
+    bst_progress('stop');
+
+    % Resize function
+        function ResizeCallback(hFig, ev)
+            % Get figure position
+            figpos = get(hFig, 'Position');
+            textH = 20;        % Text Height
+            % Position figure title
+            set(hLabel1, 'Position', max(1, [1, figpos(4)-textH, figpos(3), textH]));
+        end
+end
 
 
 %% ===== TEST FUNCTION =====
