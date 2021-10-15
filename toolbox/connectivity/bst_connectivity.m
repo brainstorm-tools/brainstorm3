@@ -117,8 +117,13 @@ if strcmpi(OPTIONS.ScoutTime, 'before')
 else
     LoadOptionsA.TargetFunc = 'All';
 end
+% Note: For unconstrained sources, vertices are aggregated in scouts (ScoutFunc),
+%       resulting in an unconstrained source. Then this source is aggregated in
+%       orientation (with PCA). See function bst_scout_value().
+%       This was agreed on October 13, 2021
+
 % Load kernel-based results as kernel+data for coherence ONLY
-% LoadOptionsA.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
+% Options.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
 LoadOptionsB = LoadOptionsA;
 % LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
 % Use the signal processing toolbox?
