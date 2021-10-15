@@ -1,4 +1,4 @@
-function [preCoh, freq, nWin, nFFT, Messages] = bst_cross_spectrum(X, Y, Fs, WinLen, Overlap, isSymmetric, ImagingKernel, waitMax)
+function [preCoh, freq, nWin, nFFT, Messages] = bst_cross_spectrum(X, Y, Fs, WinLen, Overlap, MaxFreq, ImagingKernel, waitMax)
 % BST_CROSS_SPECTRUM : Compute auto-spectra Sxx and Syy and cross-spectrum Sxy 
 %                      used to to further compute coherence metrics
 %
@@ -93,8 +93,8 @@ end
 if (nargin < 7) || isempty(ImagingKernel)
     ImagingKernel = [];
 end
-if (nargin < 6) || isempty(isSymmetric)
-    isSymmetric = 0;
+if (nargin < 6) || isempty(MaxFreq) || MaxFreq == 0
+    MaxFreq = Fs;
 end
 if (nargin < 5) || isempty(Overlap)
     Overlap = 0.5;
@@ -136,6 +136,12 @@ win  = transpose(bst_window('hamming', nWinLen));
 % Keep only positive frequencies of the spectra
 nKeep = (nFFT / 2) + 1;
 freq = (0: nKeep-1) * (Fs / nFFT);
+% Keep only upto MaxFreq
+freqLim = find(freq-MaxFreq >= 0, 1, 'first');
+if ~isempty(freqLim)
+    nKeep = freqLim;
+    freq = freq(1:nKeep);
+end
 
 % Accumulators
 nSignalsX = size(X, 1);

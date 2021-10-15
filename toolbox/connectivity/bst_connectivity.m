@@ -312,7 +312,7 @@ for iFile = 1:length(FilesA)
             % Estimate the coherence (2021)
             if ~isempty(OPTIONS.WinLen)
 %                 [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
-                [preR, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cross_spectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+                [preR, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cross_spectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel, round(100/length(FilesA)));
             % Estimate the coherence (deprecated)
             elseif ~isempty(OPTIONS.MaxFreqRes)
                 [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
@@ -339,19 +339,19 @@ for iFile = 1:length(FilesA)
                 preR.Sxy(:,:,iZero) = [];
             end
             % Keep only the frequency bins we are interested in
-            if ~isempty(OPTIONS.MaxFreq) && (OPTIONS.MaxFreq ~= 0)
-                % Get frequencies of interest
-                iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
-                if isempty(iFreq)
-                    bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
-                    return;
-                end
-                % Cut the unwanted frequencies
-                preR.Sxx = preR.Sxx(:,iFreq);
-                preR.Syy = preR.Syy(:,iFreq);
-                preR.Sxy = preR.Sxy(:,:,iFreq);
-                OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
-            end
+%             if ~isempty(OPTIONS.MaxFreq) && (OPTIONS.MaxFreq ~= 0)
+%                 % Get frequencies of interest
+%                 iFreq = find(OPTIONS.Freqs <= OPTIONS.MaxFreq);
+%                 if isempty(iFreq)
+%                     bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('No frequencies estimated below the highest frequency of interest (%1.2fHz). Nothing to save...', OPTIONS.MaxFreq));
+%                     return;
+%                 end
+%                 % Cut the unwanted frequencies
+%                 preR.Sxx = preR.Sxx(:,iFreq);
+%                 preR.Syy = preR.Syy(:,iFreq);
+%                 preR.Sxy = preR.Sxy(:,:,iFreq);
+%                 OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
+%             end
             % Add the number of windows to the report
 %             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('Using %d windows of %d samples each', OPTIONS.Nwin, OPTIONS.Lwin));
             % Check precision for high frequencies
