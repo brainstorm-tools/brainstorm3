@@ -137,7 +137,7 @@ win  = transpose(bst_window('hamming', nWinLen));
 nKeep = (nFFT / 2) + 1;
 freq = (0: nKeep-1) * (Fs / nFFT);
 % Keep only upto MaxFreq
-freqLim = find(freq-MaxFreq >= 0, 1, 'first');
+freqLim = find(freq-MaxFreq <= 0, 1, 'last');
 if ~isempty(freqLim)
     nKeep = freqLim;
     freq = freq(1:nKeep);
