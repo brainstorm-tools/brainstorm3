@@ -108,8 +108,11 @@ if isempty(OPTIONS.isSymmetric)
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
+% For unconstrained sources, vertices are first aggregated in scouts (ScoutFunc),resulting in 
+%  one unconstrained source. Then this source is aggregated in orientation (with PCA). 
+%  This was agreed on October 13, 2021. See function bst_scout_value().
+LoadOptionsA.isPca = 1; % Flats unconstrained sources
 % Options for LoadInputFile(), for FilesA and FilesB separately
-LoadOptionsA.isPca = 1; % Flats Unconstrained sources
 LoadOptionsA.IgnoreBad   = OPTIONS.IgnoreBad;  % From data files: KEEP the bad channels
 LoadOptionsA.ProcessName = OPTIONS.ProcessName;
 if strcmpi(OPTIONS.ScoutTime, 'before')
@@ -117,15 +120,10 @@ if strcmpi(OPTIONS.ScoutTime, 'before')
 else
     LoadOptionsA.TargetFunc = 'All';
 end
-% Note: For unconstrained sources, vertices are aggregated in scouts (ScoutFunc),
-%       resulting in an unconstrained source. Then this source is aggregated in
-%       orientation (with PCA). See function bst_scout_value().
-%       This was agreed on October 13, 2021
-
 % Load kernel-based results as kernel+data for coherence ONLY
-% Options.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
+LoadOptionsA.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
 LoadOptionsB = LoadOptionsA;
-% LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
+LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
 % Use the signal processing toolbox?
 if bst_get('UseSigProcToolbox')
     hilbert_fcn = @hilbert;

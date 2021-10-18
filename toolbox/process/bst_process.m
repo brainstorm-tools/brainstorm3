@@ -1915,6 +1915,15 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         
     % ===== LOAD FILE =====
     else
+        % LoadFull if per-source PCA is required
+        if ismember(sInput.DataType, {'results', 'link', 'presults'}) && OPTIONS.isPca
+            tmp = in_bst_results(FileName, 0, 'nComponents');
+            if tmp.nComponents == 3
+                OPTIONS.LoadFull = 1;
+            else
+                OPTIONS.isPca = 0;
+            end
+        end            
         % Load file
         [sMat, matName] = in_bst(FileName, TimeWindow, OPTIONS.LoadFull, OPTIONS.IgnoreBad, OPTIONS.RemoveBaseline, OPTIONS.UseSsp);
         sInput.Data = sMat.(matName);
