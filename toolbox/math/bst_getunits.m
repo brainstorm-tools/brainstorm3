@@ -76,14 +76,16 @@ switch lower(DataType)
         
     case {'nirs', '$nirs'}
         % Concentrations
-        if (val < 1)
+        if ~isempty(strfind(lower(FileName), 'hb'))
             valFactor = 1e3;
             valUnits = 'mmol/l';
-        % Wavelengths
-        else
+        elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
             valFactor = 1;
             valUnits = '\DeltaOD';
-        end
+        else % Raw 
+            valFactor = 1;
+            valUnits = '\DeltaOD';
+       end
         
     case {'results', 'sources', 'source'}
         % Results in Amper.meter (display in picoAmper.meter)
