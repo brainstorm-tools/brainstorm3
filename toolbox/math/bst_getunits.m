@@ -82,25 +82,11 @@ switch lower(DataType)
         end
         
     case {'nirs', '$nirs'}
-        if isSource
-            if ~isempty(strfind(lower(FileName), 'hb')) % Concentrations
-                valFactor = 1;
-                valUnits = '\mumol.l-1'; 
-            elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
-                valFactor = 1;
-                valUnits = ''; %DoD is unitless [-log(i/I0)]
-            end    
+        if isSource && ~isempty(strfind(lower(FileName), 'hb'))
+            valFactor = 1;
+            valUnits = '\mumol.l-1'; 
         else
-            if ~isempty(strfind(lower(FileName), 'hb')) % Concentrations
-                valFactor = 1e3;
-                valUnits = 'mmol/l';
-            elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
-                valFactor = 1;
-                valUnits = ''; %DoD is unitless [-log(i/I0)]
-            else % Raw 
-                valFactor = 1;
-                valUnits = '';
-           end
+            [valFactor, valUnits] = GetExponent(val);
         end 
     case {'results', 'sources', 'source'}
         % Results in Amper.meter (display in picoAmper.meter)
@@ -169,7 +155,7 @@ function [valFactor, valUnits] = GetExponent(val)
         % Do not allow 10^-1 and 10^-2
         if (exponent == -1) || (exponent == -2)
             valFactor = 1;
-            valUnits  = 'No units';
+            valUnits  = '';
         else
             valFactor = 10 ^ -exponent;
             valUnits  = sprintf('10^{%d}', exponent);

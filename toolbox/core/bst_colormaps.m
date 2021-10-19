@@ -1407,9 +1407,14 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             if ~isempty(DisplayUnits)
                 switch(DisplayUnits)
                     case 't',    fFactor = 1;
-                    case 'mol.l-1', fFactor = 1;
-                    case 'mmol.l-1', fFactor = 1e3;
-                    case 'umol.l-1', fFactor = 1e6;
+                    case 'mol.l-1', fFactor = 1e3; DisplayUnits = 'mmol.l-1';
+                    case 'mmol.l-1', fFactor = 1;
+                    case 'umol.l-1', fFactor = 1;
+                    case '\mumol.l-1', fFactor = 1;
+                    case 'OD'
+                         fmax = max(abs(dataBounds));
+                         [fScaled, fFactor, fUnits] = bst_getunits( fmax, DataType,'nirs');
+                         DisplayUnits = sprintf('OD(%s)',fUnits);
                     case 'U.A.'
                         fmax = max(abs(dataBounds));
                         if fmax < 1e3
