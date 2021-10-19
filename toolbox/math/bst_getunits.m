@@ -75,16 +75,15 @@ switch lower(DataType)
         end
         
     case {'nirs', '$nirs'}
-        % Concentrations
-        if ~isempty(strfind(lower(FileName), 'hb'))
+        if ~isempty(strfind(lower(FileName), 'hb')) % Concentrations
             valFactor = 1e3;
             valUnits = 'mmol/l';
         elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
             valFactor = 1;
-            valUnits = '\DeltaOD';
+            valUnits = ''; %DoD is unitless [-log(i/I0)]
         else % Raw 
             valFactor = 1;
-            valUnits = '\DeltaOD';
+            valUnits = '';
        end
         
     case {'results', 'sources', 'source'}
