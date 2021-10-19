@@ -33,7 +33,6 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % Authors: Francois Tadel, 2008-2015
 
 % Check if there is something special in the filename
-isSource = 0;
 if (nargin >= 3) && ~isempty(FileName)
     % Detecting sLORETA source files
     if ismember(lower(DataType), {'results', 'sources', 'source'}) && ~isempty(strfind(lower(FileName), 'sloreta'));
@@ -42,8 +41,7 @@ if (nargin >= 3) && ~isempty(FileName)
     
    % Detecting NIRS source files
    if ismember(lower(DataType), {'results', 'sources', 'source'}) && ~isempty(strfind(lower(FileName), 'nirs'));
-        DataType = 'nirs';
-        isSource = 1;
+        DataType = 'nirs-src';
     end
 end
 
@@ -80,14 +78,15 @@ switch lower(DataType)
             valFactor = 1;
             valUnits = 'No units';
         end
-        
-    case {'nirs', '$nirs'}
-        if isSource && ~isempty(strfind(lower(FileName), 'hb'))
+    case {'nirs-src'}  
+        if ~isempty(strfind(lower(FileName), 'hb'))
             valFactor = 1;
             valUnits = '\mumol.l-1'; 
         else
             [valFactor, valUnits] = GetExponent(val);
-        end 
+        end    
+    case {'nirs', '$nirs'}
+        [valFactor, valUnits] = GetExponent(val);
     case {'results', 'sources', 'source'}
         % Results in Amper.meter (display in picoAmper.meter)
         if (val < 1e-4)
