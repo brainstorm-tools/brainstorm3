@@ -33,10 +33,17 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % Authors: Francois Tadel, 2008-2015
 
 % Check if there is something special in the filename
+isSource = 0;
 if (nargin >= 3) && ~isempty(FileName)
     % Detecting sLORETA source files
     if ismember(lower(DataType), {'results', 'sources', 'source'}) && ~isempty(strfind(lower(FileName), 'sloreta'));
         DataType = 'sloreta';
+    end
+    
+   % Detecting NIRS source files
+   if ismember(lower(DataType), {'results', 'sources', 'source'}) && ~isempty(strfind(lower(FileName), 'nirs'));
+        DataType = 'nirs';
+        isSource = 1;
     end
 end
 
@@ -75,17 +82,26 @@ switch lower(DataType)
         end
         
     case {'nirs', '$nirs'}
-        if ~isempty(strfind(lower(FileName), 'hb')) % Concentrations
-            valFactor = 1e3;
-            valUnits = 'mmol/l';
-        elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
-            valFactor = 1;
-            valUnits = ''; %DoD is unitless [-log(i/I0)]
-        else % Raw 
-            valFactor = 1;
-            valUnits = '';
-       end
-        
+        if isSource
+            if ~isempty(strfind(lower(FileName), 'hb')) % Concentrations
+                valFactor = 1;
+                valUnits = '\mumol.l-1'; 
+            elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
+                valFactor = 1;
+                valUnits = ''; %DoD is unitless [-log(i/I0)]
+            end    
+        else
+            if ~isempty(strfind(lower(FileName), 'hb')) % Concentrations
+                valFactor = 1e3;
+                valUnits = 'mmol/l';
+            elseif ~isempty(strfind(lower(FileName), 'od'))  % dOD      
+                valFactor = 1;
+                valUnits = ''; %DoD is unitless [-log(i/I0)]
+            else % Raw 
+                valFactor = 1;
+                valUnits = '';
+           end
+        end 
     case {'results', 'sources', 'source'}
         % Results in Amper.meter (display in picoAmper.meter)
         if (val < 1e-4)
