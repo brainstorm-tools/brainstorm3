@@ -227,9 +227,9 @@ function DisplayTransferFunct(iProcess) %#ok<DEFNU>
     [A, ~, ~] = GetCoefficients(sProcess); 
     A = reshape(A, size(A,1), size(A,1), [] );
     % Compute transfer function
-    [Hf, ~, ~, ~, ~, ~, ~, Freqs] = process_simulate_ar('ComputeTransferFunct', A, sfreq, 2^10);     
+    [Hf, ~, Sf, ~, ~, ~, ~, Freqs] = process_simulate_ar('ComputeTransferFunct', A, sfreq, 2^10); 
     % Transfer function description
-    hFig = process_simulate_ar('HTransferFunctDisplay', Hf,Freqs); 
+    hFig = process_simulate_ar('HTransferFunctDisplay', Hf, Sf, Freqs); 
 end
 
 %% ===== DESIGN TWO POLES FILTER =====

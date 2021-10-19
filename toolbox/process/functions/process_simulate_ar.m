@@ -404,13 +404,13 @@ function DisplayTransferFunct(iProcess) %#ok<DEFNU>
     [A, ~, ~] = GetCoefficients(sProcess); 
     A = reshape(A, size(A,1), size(A,1), [] );
     % Compute transfer function
-    [Hf, ~, ~, ~, ~, ~, ~, Freqs] = ComputeTransferFunct(A, sfreq, 2^10);     
+    [Hf, ~, Sf, ~, ~, ~, ~, Freqs] = ComputeTransferFunct(A, sfreq, 2^10);     
     % Transfer function description: Left panel   
-    hFig = HTransferFunctDisplay(Hf,Freqs); 
+    hFig = HTransferFunctDisplay(Hf, Sf, Freqs); 
 end
 
 
-function hFig = HTransferFunctDisplay(Hf,Freqs)
+function hFig = HTransferFunctDisplay(Hf,Sf,Freqs)
     % Progress bar
     bst_progress('start', 'Transfer function specification', 'Updating graphs...');
 
@@ -442,25 +442,41 @@ function hFig = HTransferFunctDisplay(Hf,Freqs)
     for iFrom = 1 : n_signals
         for iTo = 1 : n_signals
             tmpAxes = axes('Units', 'normalized', 'Parent', hFig);
-            subplot(n_signals, n_signals, ((iFrom-1)*n_signals) + iTo, tmpAxes);
+            subplot(n_signals+2, n_signals, ((iFrom-1)*n_signals) + iTo, tmpAxes);
             hAxesTransferFunct = [hAxesTransferFunct; tmpAxes];
             area(Freqs, squeeze(abs(Hf(iTo, iFrom, :))));
             % Title showing directionality
             title(['Signal ', num2str(iFrom), ' \rightarrow Signal ', num2str(iTo)])
         end
     end
-    % Link axes
-    linkaxes(hAxesTransferFunct,'xy')
-    % Add Axes limits
-    set(hAxesTransferFunct, 'XLim', [0, max(Freqs)]);
+    % Plot power spectra
+    hAxesPowerSpectrum = [];
+    for iTo = 1 : n_signals
+        tmpAxes = axes('Units', 'normalized', 'Parent', hFig);
+        subplot(n_signals+2, n_signals, ((1+n_signals)*n_signals) + iTo, tmpAxes);
+        hAxesPowerSpectrum = [hAxesPowerSpectrum; tmpAxes];
+        area(Freqs, squeeze(abs(Sf(iTo, iTo, :))));
+        % Title showing directionality
+        title(['Power spectrum, Signal ', num2str(iTo)])
+    end
     
+    % Link frequency axis
+    linkaxes([hAxesTransferFunct; hAxesPowerSpectrum],'x');
+    % Link magnitude axis
+    linkaxes(hAxesTransferFunct,'y');
+    % Link power axis
+    linkaxes(hAxesPowerSpectrum,'y');
+    
+    % Add Axes limits
+    set(hAxesTransferFunct, 'XLim', [0, max(Freqs)]);  
     % Add legends
-    xlabel(hAxesTransferFunct, 'Frequency (Hz)');
+    xlabel([hAxesTransferFunct; hAxesPowerSpectrum], 'Frequency (Hz)');
     ylabel(hAxesTransferFunct, 'Magnitude (u)');
+    ylabel(hAxesPowerSpectrum, 'Power (u^2)');   
     % Enable zooming by default
     %zoom(hFig, 'on');
     
-    % Display figure title
+    % Display figure titles
     titleText = '<HTML><B>Analytical transfer function H(f)</B>';
     [jLabel1, hLabel1] = javacomponent(javax.swing.JLabel(titleText), [0 0 1 1], hFig);
     set(hLabel1, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label1');
@@ -469,6 +485,14 @@ function hFig = HTransferFunctDisplay(Hf,Freqs)
     jLabel1.setVerticalAlignment(javax.swing.JLabel.CENTER);
     jLabel1.setHorizontalAlignment(javax.swing.JLabel.CENTER);
 
+    titleText = '<HTML><B>Power spectra X(f)</B>';
+    [jLabel2, hLabel2] = javacomponent(javax.swing.JLabel(titleText), [0 0 1 1], hFig);
+    set(hLabel2, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label2');
+    bgColor = get(hFig, 'Color');
+    jLabel2.setBackground(java.awt.Color(bgColor(1),bgColor(2),bgColor(3)));
+    jLabel2.setVerticalAlignment(javax.swing.JLabel.CENTER);
+    jLabel2.setHorizontalAlignment(javax.swing.JLabel.CENTER);   
+    
     % Set resize function
     set(hFig, bst_get('ResizeFunction'), @ResizeCallback);
     % Force calling the resize function at least once
@@ -476,13 +500,16 @@ function hFig = HTransferFunctDisplay(Hf,Freqs)
     bst_progress('stop');
 
     % Resize function
-        function ResizeCallback(hFig, ev)
-            % Get figure position
-            figpos = get(hFig, 'Position');
-            textH = 20;        % Text Height
-            % Position figure title
-            set(hLabel1, 'Position', max(1, [1, figpos(4)-textH, figpos(3), textH]));
-        end
+    function ResizeCallback(hFig,ev)
+        % Get figure position
+        figpos = get(hFig, 'Position');
+        textH = 20;        % Text Height
+        % Position transfer function title
+        set(hLabel1, 'Position', max(1, [1, figpos(4)-textH, figpos(3), textH]));
+        % Position power spectra title
+        yPosText = figpos(4) / (0.5 + n_signals);
+        set(hLabel2, 'Position', max(1, [1, yPosText, figpos(3), textH]));
+    end
 end
 
 
