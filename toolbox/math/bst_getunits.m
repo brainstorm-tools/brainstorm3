@@ -83,18 +83,12 @@ switch lower(DataType)
             valFactor = 1;
             valUnits = 'No units';
         end
-    case {'nirs-src'}  
-        if ~isempty(strfind(lower(FileName), 'hb'))
-            valFactor = 1;
-            valUnits = '\mumol.l-1'; 
+    case {'nirs', '$nirs', 'nirs-src'}
+        if ~isempty(fUnits) && ~isempty(strfind(lower(FileName), 'hb'))
+            [valFactor, valUnits] = GetSIFactor(val, fUnits);
         else
             [valFactor, valUnits] = GetExponent(val);
-        end    
-    case {'nirs', '$nirs'}
-        [valFactor, valUnits] = GetExponent(val);
-        if ~isempty(fUnits)
-           valUnits = sprintf('%s %s',valUnits,fUnits); 
-        end    
+        end   
     case {'results', 'sources', 'source'}
         % Results in Amper.meter (display in picoAmper.meter)
         if (val < 1e-4)
@@ -162,7 +156,7 @@ function [valFactor, valUnits] = GetExponent(val)
         % Do not allow 10^-1 and 10^-2
         if (exponent == -1) || (exponent == -2)
             valFactor = 1;
-            valUnits  = '';
+            valUnits  = 'No units';
         else
             valFactor = 10 ^ -exponent;
             valUnits  = sprintf('10^{%d}', exponent);
@@ -170,3 +164,52 @@ function [valFactor, valUnits] = GetExponent(val)
     end
 end
 
+function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
+    vpw = [    -24,    -21,   -18,    -15,   -12,    -9,     -6,   -3, 0   +3,    +6,    +9,   +12,   +15,  +18,    +21,    +24];
+    pfn = {'yocto','zepto','atto','femto','pico','nano','micro','milli','','kilo','mega','giga','tera','peta','exa','zetta','yotta'};
+    pfs = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };
+    sgf = 5;
+    dpw = mode(diff(vpw));
+    
+    
+    [unit, modifier] = getUnit(originalUnit);
+    
+    adj = n2pAdjust(log10(abs(val)),dpw);
+    
+    vec = val./10.^adj;
+    % Determine the number of decimal places:
+    p10 = 10.^(sgf-1-floor(log10(abs(vec))));
+    % Round coefficients to decimal places:
+    vec = round(vec.*p10)./p10;
+    % Identify which prefix is required:
+    idx = 1+any(abs(vec)==[10.^dpw,1]);
+    pwr = 1+floor(log10(abs(vec(idx))));
+    
+    % Obtain the required prefix index:
+    idp = find(adj(idx)==vpw);
+    idp = idp + modifier;
+    
+    valFactor = 10^(- vpw(idp));
+    valUnits  = sprintf('%s%s',pfs{idp}, unit);
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
+function adj = n2pAdjust(pwr,dPw)
+adj = dPw*((0:1)+floor(floor(pwr)/dPw));
+end
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n2pAdjust
+function [unit, modifier] = getUnit(data)
+% return the unit and the modifier from a string
+% getUnit('mol/l') should return mmol/l and 0
+% getUnit('mmol/l') should return mmol/l and -1 
+% getUnit('pA') should return A and -4 
+
+
+pfs = {'y'    ,'z'    ,'a'   ,'f'    ,'p'   ,'n'   ,'\mu'    ,'m' ,'','k'   ,'M'   ,'G'   ,'T'   ,'P'   ,'E'  ,'Z'    ,'Y'    };
+vpw = [    -24,    -21,   -18,    -15,   -12,    -9,     -6,   -3, 0   +3,    +6,    +9,   +12,   +15,  +18,    +21,    +24];
+
+Units = {'A','mol.l-1'};
+
+unit = Units{cellfun(@(x)contains(data,x), Units)};
+modifier = find(strcmp(strcat(pfs,unit),data)) - 9 ;
+
+end
