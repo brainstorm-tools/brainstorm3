@@ -104,14 +104,14 @@ elseif strcmpi(sFile.header.extension, '.pl2')
     precFunc = str2func(precision);
     
     for ii = 1:nChannels
-        % Skip non-analog channels which won't have proper data
-        if ~sFile.header.isMiscChannels(iChannels(ii))
+%         % Skip non-analog channels which won't have proper data
+%         if ~sFile.header.isMiscChannels(iChannels(ii))
             iChannel = sFile.header.EnabledChannels(iChannels(ii));
             ad = PL2AdSpan(sFile.filename, iChannel, SamplesBounds(1), SamplesBounds(2));
             if ~isempty(ad.Values)
                 F(ii,:) = precFunc(ad.Values) / 4096000; % Convert to Volts
             end
-        end
+%         end
     end
 
 else

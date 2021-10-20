@@ -62,6 +62,7 @@ if (nargin < 3) || isempty(nVertices)
 end
 % Initialize returned variable
 errorMsg = [];
+FemFile = [];
 % Ask folder to the user
 if (nargin < 2) || isempty(SimDir)
     % Get default import directory and formats

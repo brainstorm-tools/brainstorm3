@@ -816,7 +816,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
                   
             % === IMPORT OUTPUT FOLDER ===
-            [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], 0, 1);
+            [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], 0, 2);
             % Handle errors
             if ~isempty(errorImport)
                 errMsg = [errMsg, 'Error trying to import the SimNIBS output: ' 10 errorImport];

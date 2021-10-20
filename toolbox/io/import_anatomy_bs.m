@@ -162,7 +162,7 @@ if isempty(AnnotRhFiles)
 end
 
 if isempty(HeadFile)
-    errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.left.pial.cortex.dfs' 10];
+    errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.scalp.dfs' 10];
 end
 if isempty(InnerSkullFile) && isempty(OuterSkullFile)
     errorMsg = [errorMsg 'Inner or Outer Skull File not found' 10];
