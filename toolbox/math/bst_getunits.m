@@ -34,14 +34,15 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 
 % Check if there is something special in the filename
 if (nargin >= 3) && ~isempty(FileName)
-    % Detecting sLORETA source files
-    if ismember(lower(DataType), {'results', 'sources', 'source'}) && ~isempty(strfind(lower(FileName), 'sloreta'));
-        DataType = 'sloreta';
-    end
-    
-   % Detecting NIRS source files
-   if ismember(lower(DataType), {'results', 'sources', 'source'}) && ~isempty(strfind(lower(FileName), 'nirs'));
-        DataType = 'nirs-src';
+    % Source files
+    if ismember(lower(DataType), {'results', 'sources', 'source'})
+        % Detect sLORETA source files
+        if ~isempty(strfind(lower(FileName), 'sloreta'));
+            DataType = 'sloreta';
+        % Detect NIRS source files
+        elseif ~isempty(strfind(lower(FileName), 'nirs'))
+            DataType = 'nirs-src';
+        end
     end
 end
 
