@@ -301,11 +301,7 @@ if isRaw
             ImportOptions.BaselineRange = initBaselineRange - BlocksToRead(iFile).TimeOffset;
         end
         % Read data block
-        [F, TimeVector] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
-        load(sFile.filename,'DisplayUnits');
-        if ~exist('DisplayUnits')
-            DisplayUnits = '';
-        end    
+        [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
         
         % If block too small: ignore it
         if (size(F,2) < 3)

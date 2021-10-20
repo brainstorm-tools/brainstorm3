@@ -1,9 +1,9 @@
-function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
+function [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions)
 % IN_FREAD: Read a block a data in any recordings file previously opened with in_fopen().
 %
-% USAGE:  [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions);
-%         [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels);                 : Do not apply any pre-preprocessings
-%         [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds);                            : Read all channels
+% USAGE:  [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels, ImportOptions);
+%         [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iChannels);                 : Do not apply any pre-preprocessings
+%         [F, TimeVector, DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds);                            : Read all channels
 %
 % INPUTS:
 %     - sFile         : Structure for importing files in Brainstorm. Created by in_fopen()
@@ -15,6 +15,7 @@ function [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, SamplesBounds, iC
 % OUTPUTS:
 %     - F          : [nChannels x nTimes], block of recordings
 %     - TimeVector : [1 x nTime], time values in seconds
+%     - DisplayUnits : char, unit of the recording
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -76,6 +77,7 @@ else
 end
 
 %% ===== READ RECORDINGS BLOCK =====
+DisplayUnits = '';
 switch (sFile.format)
     case 'FIF'
         [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds, iChannels);
@@ -209,6 +211,11 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
+        load(sFile.filename,'DisplayUnits');
+        if ~exist('DisplayUnits')
+            DisplayUnits = '';
+        end    
+        
     case 'EEG-INTAN'
         F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-PLEXON'
