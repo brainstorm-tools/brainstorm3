@@ -3447,13 +3447,16 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
     if ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
-        fFactor = 1;
         fUnits = GlobalData.DataSet(iDS).Measures.DisplayUnits;
+        [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName,fUnits);
     else
         [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
     end
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
+    if isFactorChanged
+        GlobalData.DataSet(iDS).Measures.DisplayUnits = fUnits;
+    end
     % Set display Factor
     PlotHandles.DisplayFactor = fFactor;
     PlotHandles.DisplayUnits  = fUnits;

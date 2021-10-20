@@ -1,4 +1,4 @@
-function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileName )
+function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileName,fUnits )
 % BST_GETUNITS: Get in which units is expressed a value.
 %
 % USAGE:  [valScaled, valFactor, valUnits] = bst_getunits(val, DataType, FileName=[]);
@@ -31,6 +31,10 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2015
+
+if (nargin < 4)
+    fUnits = '';
+end    
 
 % Check if there is something special in the filename
 if (nargin >= 3) && ~isempty(FileName)
@@ -88,6 +92,9 @@ switch lower(DataType)
         end    
     case {'nirs', '$nirs'}
         [valFactor, valUnits] = GetExponent(val);
+        if ~isempty(fUnits)
+           valUnits = sprintf('%s %s',valUnits,fUnits); 
+        end    
     case {'results', 'sources', 'source'}
         % Results in Amper.meter (display in picoAmper.meter)
         if (val < 1e-4)
