@@ -309,7 +309,7 @@ end
 
 
 %% ===== COMPUTE TRANSFER FUNCTION ===== 
-function [Hf, Af, Sf, C, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
+function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
 % Transfer function and other spectral metrics for MVAR process
 %
 % Input
@@ -348,11 +348,11 @@ function [Hf, Af, Sf, C, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
     Hf  = complex_zeros_array; % Transfer function             
     Af  = complex_zeros_array; % Coefficients Freq domain      
     Sf  = complex_zeros_array; % Cross-power spectral density  
-    C   = complex_zeros_array; % Complex coherence             
+    Cf   = complex_zeros_array;% Complex coherence             
     Gf  = complex_zeros_array; % Auxiliar to compute PC        
     PC  = complex_zeros_array; % Partial coherence             
     DTF = zeros_array;         % Directed transfer function    
-    PDC = complex_zeros_array; % Partial directed coherence    
+    PDC = zeros_array;         % Partial directed coherence    
 
     % Transform coefficients to frequency domain
     % Af = I - sum_{1}^{order} At * z^k
@@ -384,9 +384,9 @@ function [Hf, Af, Sf, C, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
             % DFT normalized
             DTF(i,:,f) = (abs(Hf(i,:,f)).^2)./sum(abs(Hf(i,:,f)).^2);
             for j = 1:n_signals
-                C(i,j,f)   = Sf(i,j,f)/sqrt(Sf(i,i,f)*Sf(j,j,f));  
+                Cf(i,j,f)   = Sf(i,j,f)/sqrt(Sf(i,i,f)*Sf(j,j,f));  
                 PC(i,j,f)  = Gf(i,j,f)/sqrt(Gf(i,i,f)*Gf(j,j,f));
-                PDC(i,j,f) = Af(i,j,f)/sqrt(sum(conj(Af(i,:,f)).*Af(i,:,f))); 
+                PDC(i,j,f) = abs(Af(i,j,f))/sqrt(ctranspose(Af(:,j,f))*Af(:,j,f)); 
             end
         end
     end
