@@ -875,8 +875,6 @@ function DrawTimeSelection(hFig)
                 strMax = panel_time('FormatValue', max(GraphSelection), timeUnit, precision);
                 strSelection = ['Selection: [' strMin ' ' timeUnit ', ' strMax ' ' timeUnit ']'];
                 strLength = sprintf('      Duration: [%d ms]', round(abs(GraphSelection(2) - GraphSelection(1)) * 1000));
-                
-                
                 % Update label
                 set(hTextTimeSel, 'Visible', 'on', 'String', [strSelection, strLength, strMinMax]);
             end
@@ -3448,7 +3446,12 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
+    if ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
+        fFactor = 1;
+        fUnits = GlobalData.DataSet(iDS).Measures.DisplayUnits;
+    else
+        [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
+    end
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
     % Set display Factor
