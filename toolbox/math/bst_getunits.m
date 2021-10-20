@@ -84,9 +84,12 @@ switch lower(DataType)
             valUnits = 'No units';
         end
     case {'nirs', '$nirs', 'nirs-src'}
-        if ~isempty(fUnits) && ~isempty(strfind(lower(FileName), 'hb'))
+        if ~isempty(fUnits) && ~isempty(strfind(fUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, fUnits);
-        else
+        elseif ~isempty(fUnits)
+            [valFactor, valUnits] = GetExponent(val);
+            valUnits = sprintf('%s(%s)',fUnits,valUnits);
+        else    
             [valFactor, valUnits] = GetExponent(val);
         end   
     case {'results', 'sources', 'source'}
@@ -187,10 +190,9 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     
     % Obtain the required prefix index:
     idp = find(adj(idx)==vpw);
-    idp = idp + modifier;
     
     valFactor = 10^(- vpw(idp));
-    valUnits  = sprintf('%s%s',pfs{idp}, unit);
+    valUnits  = sprintf('%s%s',pfs{idp + modifier}, unit);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
 function adj = n2pAdjust(pwr,dPw)
@@ -199,8 +201,8 @@ end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n2pAdjust
 function [unit, modifier] = getUnit(data)
 % return the unit and the modifier from a string
-% getUnit('mol/l') should return mmol/l and 0
-% getUnit('mmol/l') should return mmol/l and -1 
+% getUnit('mol/l') should return mol/l and 0
+% getUnit('mmol/l') should return mol/l and -1 
 % getUnit('pA') should return A and -4 
 
 

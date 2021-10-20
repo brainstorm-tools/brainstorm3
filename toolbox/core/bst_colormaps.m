@@ -1405,28 +1405,24 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         if isempty(fFactor)
             % Use imposed units 
             if ~isempty(DisplayUnits)
-                switch(DisplayUnits)
-                    case 't',    fFactor = 1;
-                    case 'mol.l-1', fFactor = 1e3; DisplayUnits = 'mmol.l-1';
-                    case 'mmol.l-1', fFactor = 1;
-                    case 'umol.l-1', fFactor = 1;
-                    case '\mumol.l-1', fFactor = 1;
-                    case 'OD'
-                         fmax = max(abs(dataBounds));
-                         [fScaled, fFactor, fUnits] = bst_getunits( fmax, DataType,'nirs');
-                         DisplayUnits = sprintf('OD(%s)',fUnits);
-                    case 'U.A.'
-                        fmax = max(abs(dataBounds));
-                        if fmax < 1e3
-                            fFactor=1e6;
-                            DisplayUnits='U.A(*10^6)';
-                        elseif fmax < 1
-                            fFactor=1e3;
-                            DisplayUnits='U.A(*10^3)';
-                        else
-                            fFactor=1;
-                        end
-                    otherwise,   fFactor = 1;
+                if strcmp(DisplayUnits,'t')
+                    fFactor = 1;
+                elseif contains(DisplayUnits,'mol') || contains(DisplayUnits,'OD')  
+                     fmax = max(abs(dataBounds));
+                     [fScaled, fFactor, fUnits] = bst_getunits( fmax, DataType,'nirs', DisplayUnits);
+                elseif strcmp(DisplayUnits,'U.A.')
+                    fmax = max(abs(dataBounds));
+                    if fmax < 1e3
+                        fFactor=1e6;
+                        DisplayUnits='U.A(*10^6)';
+                    elseif fmax < 1
+                        fFactor=1e3;
+                        DisplayUnits='U.A(*10^3)';
+                    else
+                        fFactor=1;
+                    end
+                else
+                     fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum
