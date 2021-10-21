@@ -77,7 +77,7 @@ else
 end
 
 %% ===== READ RECORDINGS BLOCK =====
-DisplayUnits = '';
+DisplayUnits = [];
 switch (sFile.format)
     case 'FIF'
         [F,TimeVector] = in_fread_fif(sFile, iEpoch, SamplesBounds, iChannels);
@@ -211,9 +211,10 @@ switch (sFile.format)
             iChannels = 1:size(sFile.header.F,1);
         end
         F = sFile.header.F(iChannels, iTimes);
-        load(sFile.filename,'DisplayUnits');
-        if ~exist('DisplayUnits')
-            DisplayUnits = '';
+        % Load display units
+        DataMat = load(sFile.filename, 'DisplayUnits');
+        if isfield(DataMat, 'DisplayUnits') && ~isempty(DataMat.DisplayUnits)
+            DisplayUnits = DataMat.DisplayUnits;
         end    
         
     case 'EEG-INTAN'
