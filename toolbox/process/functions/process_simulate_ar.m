@@ -375,6 +375,7 @@ function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
     for f = 1:length(w)
         Hf(:,:,f) = pinv(Af(:,:,f));
         Sf(:,:,f) = Hf(:,:,f) * V * ctranspose(Hf(:,:,f));
+        Sf(:,:,f) = Sf(:,:,f) / Fs;    % Scale cross-spectra to be [u^2/Hz]
         Gf(:,:,f) = pinv((Sf(:,:,f))); % = inv(Hf*V*ctransp(Hf)) = ctransp(Af)*inv(V)*Af
     end
 
@@ -471,8 +472,8 @@ function hFig = HTransferFunctDisplay(Hf,Sf,Freqs)
     set(hAxesTransferFunct, 'XLim', [0, max(Freqs)]);  
     % Add legends
     xlabel([hAxesTransferFunct; hAxesPowerSpectrum], 'Frequency (Hz)');
-    ylabel(hAxesTransferFunct, 'Magnitude (u)');
-    ylabel(hAxesPowerSpectrum, 'Power (u^2)');   
+    ylabel(hAxesTransferFunct, 'Magnitude (signal units)');
+    ylabel(hAxesPowerSpectrum, 'Power (signal units^2/Hz)');   
     % Enable zooming by default
     %zoom(hFig, 'on');
     
