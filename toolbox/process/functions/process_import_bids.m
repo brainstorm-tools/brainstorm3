@@ -75,7 +75,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Compute BEM surfaces
     sProcess.options.bem.Comment = 'Generate BEM skull surfaces (recommended for ECoG)';
     sProcess.options.bem.Type    = 'checkbox';
-    sProcess.options.bem.Value   = 1;
+    sProcess.options.bem.Value   = 0;
     % Register anatomy
     sProcess.options.anatregister.Comment = {'SPM12', 'No', 'Coregister anatomical volumes:'; ...
                                              'spm12', 'no', ''};
@@ -108,6 +108,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
     % Other options
+    OPTIONS.isInteractive    = 0;
     OPTIONS.ChannelAlign     = 2 * double(sProcess.options.channelalign.Value);
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
     OPTIONS.isGroupSessions  = sProcess.options.groupsessions.Value;
@@ -178,43 +179,43 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     end
     OPTIONS.SelectedSubjects = unique([OPTIONS.SelectedSubjects, selSubjects]);
     
-    % ===== IDENTIFY SUBJECTS =====
-    % List all the subject folders
-    subjDir = dir(bst_fullfile(BidsDir, 'sub-*'));
-    % If no subject are available, try in the derivatives folder (if we are importing tsss data only for instance)
-    if isempty(subjDir)
-        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*'));
-    end
-    if isempty(subjDir)
-        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
-        % If the folders include the session: remove it
-        for i = 1:length(subjDir)
-            iUnder = find(subjDir(i).name == '_', 1);
-            if ~isempty(iUnder)
-                subjDir(i).name = subjDir(i).name(1:iUnder-1);
-            end
+    % ===== FIND SUBJECTS =====
+    % List all the subject folders: regular or derivatives (FreeSurfer, MEG tsss, ...)
+    subjDir = [...
+        dir(bst_fullfile(BidsDir, 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'cat12', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', 'sub-*'))];
+    % If the folders include the session: remove it
+    for i = 1:length(subjDir)
+        iUnder = find(subjDir(i).name == '_', 1);
+        if ~isempty(iUnder)
+            subjDir(i).name = subjDir(i).name(1:iUnder-1);
         end
     end
+    % Get unique subject names
+    SubjectNames = unique({subjDir.name});
+    
+    % ===== FIND SESSIONS =====
     % Loop on the subjects
     SubjectName = {};
     SubjectAnatDir = {};
     SubjectAnatFormat = {};
     SubjectSessDir = {};
     SubjectMriFiles = {};
-    for iSubj = 1:length(subjDir)
+    for iSubj = 1:length(SubjectNames)
         % Default subject name
-        subjName = subjDir(iSubj).name;
+        subjName = SubjectNames{iSubj};
         % Check if this is a subject selected for import
         if ~isempty(OPTIONS.SelectedSubjects) && ((iscell(OPTIONS.SelectedSubjects) && ~ismember(subjName, OPTIONS.SelectedSubjects)) || (ischar(OPTIONS.SelectedSubjects) && ~strcmpi(subjName, OPTIONS.SelectedSubjects)))
             disp(['BIDS> Subject "' subjName '" was not selected. Skipping...']);
             continue;
         end
-        % Get session folders
-        sessDir = dir(bst_fullfile(BidsDir, subjName, 'ses-*'));
-        % Check if sessions are defined for the derivatives
-        if isempty(sessDir) && isdir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName))
-            sessDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, 'ses-*'));
-        end
+        % Get session folders: regular or derivatives
+        sessDir = [dir(bst_fullfile(BidsDir, subjName, 'ses-*')); ...
+                   dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, 'ses-*'))];
+        % Full session paths
         if isempty(sessDir)
             sessFolders = {bst_fullfile(BidsDir, subjName)};
             derivFolders = {bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName)};
@@ -222,7 +223,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             sessFolders = cellfun(@(c)fullfile(BidsDir, subjName, c), {sessDir.name}, 'UniformOutput', 0);
             derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
         end
-        
+
         % If there is one unique segmented anatomy: group all the sessions together
         [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);
         % If there is no segmented folder, try SUBJID_SESSID
@@ -393,6 +394,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             switch (SubjectAnatFormat{iSubj})
                 case 'FreeSurfer'
                     errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 0);
+                case 'CAT12'
+                    errorMsg = import_anatomy_cat(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 1, 2, 1);
                 case 'BrainSuite'
                     errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, []);
                 case 'BrainVISA'
@@ -731,6 +734,13 @@ function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'FreeSurfer';
+        end
+    % CAT12
+    elseif file_exist(bst_fullfile(DerivDir, 'cat12', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii'))
+        TestFile = file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(bst_fileparts(TestFile));
+            AnatFormat = 'CAT12';
         end
     % BrainSuite
     elseif file_exist(bst_fullfile(DerivDir, 'brainsuite', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs'))
