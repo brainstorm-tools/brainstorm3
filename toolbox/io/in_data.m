@@ -301,7 +301,8 @@ if isRaw
             ImportOptions.BaselineRange = initBaselineRange - BlocksToRead(iFile).TimeOffset;
         end
         % Read data block
-        [F, TimeVector] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
+        [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
+        
         % If block too small: ignore it
         if (size(F,2) < 3)
             disp(sprintf('BST> Block is too small #%03d: ignoring...', iFile));
@@ -318,6 +319,7 @@ if isRaw
         DataMat.Time     = TimeVector;
         DataMat.Device   = sFile.device;
         DataMat.nAvg     = double(BlocksToRead(iFile).nAvg);
+        DataMat.DisplayUnits = DisplayUnits;
         DataMat.DataType = 'recordings';
         % Channel flag
         if ~isempty(BlocksToRead(iFile).ChannelFlag) 
