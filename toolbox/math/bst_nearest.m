@@ -69,7 +69,7 @@ end
 
 % ===== K>1 =====
 if (K > 1) || isForceFull
-    % Intialize matrices
+    % Initialize matrices
     nTest = size(testVert,1);
     I = zeros(nTest, K);
     dist = I;

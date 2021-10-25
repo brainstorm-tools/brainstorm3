@@ -76,7 +76,7 @@ end
 %list_methods = {'mosher_sym', 'moshermosher_extrap', 'moshermosher_sym', 'sin_removal_new', 'fieldtrip_bandstop'};
 list_methods = {'moshermosher_extrap', 'fieldtrip_butter', 'iirnotch'};
                 
-% Intialize arrays
+% Initialize arrays
 a  = cell(1,length(list_methods));
 el = a;
 isFigCreated = 0;
@@ -85,7 +85,7 @@ for i = 1:length(list_methods);
     try
         % Method selection
         method = list_methods{i};
-        % Run procesing function
+        % Run processing function
         tic;
         switch (method)
             case {'mosher', 'moshermosher', 'mosher_extrap', 'moshermosher_extrap', 'mosher_sym', 'moshermosher_sym', 'sin_removal_new'}
@@ -123,7 +123,7 @@ end
 linkaxes(hAxesSignal(ishandle(hAxesSignal)));
 linkaxes(hAxesSpect(ishandle(hAxesSpect)));
 
-% Plot a figure with everything overlayed
+% Plot a figure with everything overlaid
 try
     figure('Name', 'Notch: Signal overlay', 'NumberTitle', 'off', 'Toolbar', 'figure', 'Units', 'normalized', 'Position', [0 0 1 1]);
     plot(Time, [a_init', cat(1, a{:})']);

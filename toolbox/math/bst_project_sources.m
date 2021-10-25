@@ -201,7 +201,7 @@ for iGroup = 1:nGroup
             NewCondition = strrep(sSrcStudy.Condition{1}, '@raw', '');
             % Get condition
             [sDestStudy, iDestStudy] = bst_get('StudyWithCondition', [sDestSubj.Name '/' NewCondition]);
-            % Create condition if doesnt exist
+            % Create condition if doesn't exist
             if isempty(iDestStudy)
                 iDestStudy = db_add_condition(sDestSubj.Name, NewCondition, 0);
                 if isempty(iDestStudy)
@@ -328,7 +328,7 @@ for iGroup = 1:nGroup
             % Apply interpolation matrix
             ResultsMat.ImageGridAmp = muliplyInterp(Wmat, double(ResultsMat.ImageGridAmp), ResultsMat.nComponents);
             
-            % Apply interpolation to standart deviation matrix
+            % Apply interpolation to standard deviation matrix
             if isfield(ResultsMat, 'Std') && ~isempty(ResultsMat.Std)
                 ResultsMat.Std = muliplyInterp(Wmat, double(ResultsMat.Std), ResultsMat.nComponents);
             end
@@ -405,7 +405,7 @@ for iGroup = 1:nGroup
 end
 
 
-%% ===== UDPATE DISPLAY =====
+%% ===== UPDATE DISPLAY =====
 if isInteractive
     bst_progress('stop');
 end

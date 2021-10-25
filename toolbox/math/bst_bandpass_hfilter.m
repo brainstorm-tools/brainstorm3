@@ -188,7 +188,7 @@ if isempty(FiltSpec)
         b = oc_fir1(n, Wn, ftype, oc_kaiser(n+1,beta), 'noscale');
     end
     
-    % Filtering function: Detect the fastest option, if not explicitely defined
+    % Filtering function: Detect the fastest option, if not explicitly defined
     if isempty(Function)
         % The filter() function is a bit faster for low-order filters, but much slower for high-order filters
         if (n > 800)  % Empirical threshold

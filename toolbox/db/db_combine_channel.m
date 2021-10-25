@@ -12,7 +12,7 @@ function [isNewFile, Message] = db_combine_channel( iSrcStudies, iDestStudy, Use
 %                     if 0, create new channel file automatically
 %     - NoWarning   : If 1, does not display any warning/error
 %
-% OUPUT:
+% OUTPUT:
 %     - isNewFile   : 1 if a new channel file was created in destination study
 %                     0 else
 % 

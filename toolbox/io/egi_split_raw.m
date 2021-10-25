@@ -21,7 +21,7 @@ function [SplitFileNames, SplitNbEvents] = egi_split_raw(RawFileName, MaxFileSiz
 %    - At the beginning of each created file except the first one:
 %      an empty sample is added (without data, without events)
 %      => the delimiter event in present only in the second sample
-%      Cause: many softwares do not read the events of the first sample...
+%      Cause: lots of software do not read the events of the first sample...
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -191,7 +191,7 @@ for iSample = 1:headerSrc.numSamples
         
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %%%%%%% CHEAT: ADDING AN EMPTY SAMPLE 
-%%%%%%% ELSE THE FIRST EVENT IS NOT READ BY MOST OF THE SOFTWARES 
+%%%%%%% ELSE THE FIRST EVENT IS NOT READ BY MOST OF THE SOFTWARE 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
         % Write an empty sample
         fwrite(fidDest, sampleData, precision);

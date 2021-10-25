@@ -815,7 +815,7 @@ switch (lower(action))
                 % Get subject structure
                 sStudy = bst_get('Study', iStudy);
                 sSubject = bst_get('Subject', sStudy.BrainStormSubject);
-                % Get avaible modalities for this data file
+                % Get available modalities for this data file
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
                 Device = bst_get('ChannelDevice', filenameRelative);
                 % Replace SEEG+ECOG with iEEG
@@ -1523,7 +1523,7 @@ switch (lower(action))
                 % Get protocol description
                 iStudy = bstNodes(1).getStudyIndex();
                 sStudy = bst_get('Study', iStudy);
-                % Get avaible modalities for this data file
+                % Get available modalities for this data file
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
                 % One data file selected only
                 if (length(bstNodes) == 1)
@@ -1624,7 +1624,7 @@ switch (lower(action))
                     % Get protocol description
                     iStudy = bstNodes(1).getStudyIndex();
                     sStudy = bst_get('Study', iStudy);
-                    % Get avaible modalities for these data files
+                    % Get available modalities for these data files
                     [AllMod, DisplayMod] = bst_get('ChannelModalities', sStudy.Data(1).FileName);
                     if ~isempty(AllMod)
                         % === ERP IMAGE ===
@@ -2174,7 +2174,7 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     % ===== RECORDINGS =====
                     if strcmpi(DataType, 'data')
-                        % Get avaible modalities for this data file
+                        % Get available modalities for this data file
                         DisplayMod = bst_get('TimefreqDisplayModalities', filenameRelative);
                         % Add SEEG+ECOG 
                         if all(ismember({'SEEG','ECOG'}, DisplayMod))
@@ -2580,7 +2580,7 @@ end % END SWITCH( ACTION )
             end
             % Get all the studies
             sStudies = bst_get('Study', iStudies);
-            % Get first file in the datbase
+            % Get first file in the database
             [sStudy,iStudy,iTf] = bst_get('TimefreqFile', ResultFiles{1});
             % Try to get source model type from the parent file
             if ~isempty(sStudy) && ~isempty(sStudy.Timefreq(iTf).DataFile) && strcmpi(sStudy.Timefreq(iTf).DataType, 'results')
@@ -2650,7 +2650,7 @@ end % END SWITCH( ACTION )
         nCortex = nCortex + length(sDefCortex);
         
         % ===== CREATE MENUS =====
-        % SURFACE: Show a "Project sources" menu if there are more than one cortex avaiable
+        % SURFACE: Show a "Project sources" menu if there are more than one cortex available
         % or if there is one default cortex and subjects do not use default anatomy
         if ismember(HeadModelType, {'unknown','surface','mixed'}) && (nCortex > 1) || ((nCortex == 1) && ~isempty(sDefCortex) && ~UseDefaultAnat)
             if isSeparator
@@ -2890,7 +2890,7 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
     if ~isempty(AllMod) && (all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod)))
         AllMod = setdiff(AllMod, 'MEG'); 
     end
-    % Replace "MEG GRAD" with independant sensor types (MEG GRAD2, MEG GRAD3, GRADNORM)
+    % Replace "MEG GRAD" with independent sensor types (MEG GRAD2, MEG GRAD3, GRADNORM)
     if ~isempty(AllMod) && ismember('MEG GRAD', AllMod)
         AllMod = setdiff(AllMod, 'MEG GRAD'); 
         if isGradNorm
@@ -3152,7 +3152,7 @@ function SurfaceClean_Callback(TessFile, isRemove)
     end
     % Save cleaned surface file
     bst_save(TessFile, newTessMat, 'v7');
-    % Close progresss bar
+    % Close progress bar
     bst_progress('stop');
     % Display message
     if isRemove
@@ -3607,7 +3607,7 @@ function ImportChannelCheck(iAllStudies)
             res = java_dialog('confirm', [...
                 '<HTML><B>Warning</B>: There are existing channel files and data files in this folder.<BR>', ...
                 'Importing a list of channels that does not match exactly the recordings<BR>' ...
-                'may damage the database and make the data inacessible.<BR><BR>' ...
+                'may damage the database and make the data inaccessible.<BR><BR>' ...
                 'To add 3D positions for EEG electrodes in existing recordings,<BR>' ...
                 'right-click on the channel file > <B>Add EEG positions > Import from file</B>.<BR><BR>' ...
                 'Do you really want to overwrite the existing channel file?'], 'Import new channel file');

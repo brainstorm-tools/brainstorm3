@@ -69,7 +69,7 @@ else
 end
 % List of available methods
 list_methods = {'bst-hfilter-2019', 'bst-hfilter-2016', 'bst-fft', 'bst-fft-fir', 'bst-filtfilt-fir', 'bst-filtfilt-iir', 'bst-sos'};
-% Intialize arrays
+% Initialize arrays
 a  = cell(1,length(list_methods));
 el = a;
 isFigCreated = 0;
@@ -121,7 +121,7 @@ linkaxes(hAxesSignal);
 linkaxes(hAxesSpect);
 
 
-% Plot a figure with everything overlayed
+% Plot a figure with everything overlaid
 try
     figure('Name', 'Notch: Signal overlay', 'NumberTitle', 'off', 'Toolbar', 'figure', 'Units', 'normalized', 'Position', [0 0 1 1]);
     plot([a_init', cat(1, a{:})']);

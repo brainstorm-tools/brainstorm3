@@ -285,7 +285,7 @@ if ~isempty(EventFile)
         events = repmat(db_template('event'), 1, length(uniqueType));
         % Format list
         for iEvt = 1:length(uniqueType)
-            % Find list of occurences of this event
+            % Find list of occurrences of this event
             iOcc = find((allTypes == uniqueType(iEvt)) & (allStart > 0));
             % Fill events structure
             events(iEvt).label      = num2str(uniqueType(iEvt));

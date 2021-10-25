@@ -45,7 +45,7 @@ errMsg = [];
 %% ===== READ DIGITIZER FILES =====
 % In the software with the KIT system at NYU, there is no "Export" option that allows the access to the digitized head points.
 % These points can be provided separately: "_Marker1*.sqd/.mrk", "_HS.txt" and "_Points.txt".
-% The format of the files must be in the FastSCAN format (one line per point [x y z] in millimeters in the Polhemus ALS coordinate system, comment lines starting with "%")
+% The format of the files must be in the FastSCAN format (one line per point [x y z] in millimeters in the Polhemus ALSO coordinate system, comment lines starting with "%")
 
 % If the coregistration is not done yet (files were not exported properly from the Yokogawa software)
 if (header.coreg.done == 0)
@@ -402,7 +402,7 @@ if isfield(ChannelMat, 'SCS') && ~isempty(ChannelMat.SCS) && ~isempty(ChannelMat
     ChannelMat.SCS.Origin = transfSCS.Origin;
     % Convert the fiducials positions
     %   NOTE: The division/multiplication by 1000 is to compensate the T/1000 applied in the cs_convert().
-    %         This hack was added becaue cs_convert() is intended to work on sMri structures, 
+    %         This hack was added because cs_convert() is intended to work on sMri structures, 
     %         in which NAS/LPA/RPA/T fields are in millimeters, while in ChannelMat they are in meters.
     ChannelMat.SCS.NAS = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.NAS ./ 1000) .* 1000;
     ChannelMat.SCS.LPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.LPA ./ 1000) .* 1000;

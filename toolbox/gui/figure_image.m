@@ -1,5 +1,5 @@
 function varargout = figure_image( varargin )
-% FIGURE_IMAGE: Creation and callbacks for diplaying images.
+% FIGURE_IMAGE: Creation and callbacks for displaying images.
 %
 % USAGE:  hFig = figure_image('CreateFigure', FigureId)
 
@@ -305,7 +305,7 @@ function FigureMouseDownCallback(hFig, ev)
     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
     % Record action to perform when the mouse is moved
     setappdata(hFig, 'clickAction', clickAction);
-    % Record axes ibject that was clicked (usefull when more than one axes object in figure)
+    % Record axes ibject that was clicked (useful when more than one axes object in figure)
     setappdata(hFig, 'clickSource', hAxes);
     % Register MouseMoved callbacks for current figure
     set(hFig, 'WindowButtonMotionFcn', @FigureMouseMoveCallback);

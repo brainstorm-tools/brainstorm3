@@ -40,7 +40,7 @@ end
 % Open progress bar
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'Database auto-save', 'Saving database...');
-% Compatibilty with previous of Brainstorm  (Added 04-June-2013)
+% Compatibility with previous versions of Brainstorm  (Added 04-June-2013)
 if ~isfield(GlobalData.DataBase, 'isProtocolLoaded') || isempty(GlobalData.DataBase.isProtocolLoaded)
     GlobalData.DataBase.isProtocolLoaded = ones(1, length(GlobalData.DataBase.ProtocolInfo));
 end

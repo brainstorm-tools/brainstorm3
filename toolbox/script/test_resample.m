@@ -54,7 +54,7 @@ time_in = (1:size(a_init,2)) / sfreq_in;
 % List of available methods
 list_methods = {'resample', 'resample-rational', 'resample-cascade', 'interp-decimate-cascade', 'fft-spline'};
 
-% Intialize arrays
+% Initialize arrays
 a        = cell(1,length(list_methods));
 time_out = a;
 el       = a;

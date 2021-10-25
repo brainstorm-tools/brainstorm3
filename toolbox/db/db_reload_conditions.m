@@ -54,7 +54,7 @@ for i = 1:length(iSubjects)
     if ~file_exist(ProtocolInfo.STUDIES)
         bst_error(['Data folder has been deleted or moved:' 10 ProtocolInfo.STUDIES], 'Reload studies', 0);
         return
-    % Check the existance of the study's directory
+    % Check the existence of the study's directory
     elseif ~file_exist(bst_fullfile(ProtocolInfo.STUDIES, subjectSubDir)) || ...
        ~file_exist(bst_fullfile(ProtocolInfo.STUDIES, subjectSubDir, bst_get('DirDefaultStudy'))) || ...
        ~file_exist(bst_fullfile(ProtocolInfo.STUDIES, subjectSubDir, bst_get('DirAnalysisIntra')))

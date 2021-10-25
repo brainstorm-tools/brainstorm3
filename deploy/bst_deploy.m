@@ -8,7 +8,7 @@ function bst_deploy(GitDir, GitExe)
 % STEPS:
 %    - Update doc/version.txt
 %    - Update doc/license.html (update block: "Version: ...")
-%    - Update *.m inital comments (replace block "@=== ... ===@" with deploy/autocomment.txt)
+%    - Update *.m initial comments (replace block "@=== ... ===@" with deploy/autocomment.txt)
 %    - Remove *.asv files
 %    - Optional: Copy files to GIT folder and open GitGUI
 

@@ -340,7 +340,7 @@ else
     iMinVirtualRef = min(find(diffref > 1) + 1);
     ivirtual = irefsens(iMinVirtualRef:end);
 end
-% Virtual Ref dectected
+% Virtual Ref detected
 if ~isempty(ivirtual)
     % Change category from REF to OTHER
     iothersens = [iothersens, ivirtual];
@@ -477,7 +477,7 @@ gain_chan(gain_chan == 0) = eps;
 
 %% ===== CTF COMPENSATOR COEEFICIENTS =====
 % Calculus of the matrix for nth-order gradient correction.
-% Coefficients for unused reference channels are weigthed by zeros in the correction matrix.
+% Coefficients for unused reference channels are weighted by zeros in the correction matrix.
 if ~isempty(imegsens) && ~isempty(irefsens)
     % Remove virtual channels from CoefInfo
     iDel = [];

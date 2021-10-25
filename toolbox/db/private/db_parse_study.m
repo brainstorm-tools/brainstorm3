@@ -406,7 +406,7 @@ return
                     [sInfo(1).Modalities, sInfo(1).DisplayableSensorTypes] = channel_get_modalities(channelList);
                 end
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -460,7 +460,7 @@ return
                 % Copy filename
                 sInfo(1).FileName = relativeFilename;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -489,7 +489,7 @@ return
                 sInfo(1).FileName = relativeFilename;
                 sInfo(1).DataType = infoMat.DataType;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -526,7 +526,7 @@ return
                 sInfo(1).FileName = relativeFilename;
                 sInfo(1).DataFile = infoMat.DataFile;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -565,7 +565,7 @@ return
                 sInfo(1).DataFile = infoMat.DataFile;
                 sInfo(1).DataType = infoMat.DataType;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -612,7 +612,7 @@ return
                     end
                 end
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -654,7 +654,7 @@ return
                     sInfo(1).HeadModelType = 'surface';
                 end
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -689,7 +689,7 @@ return
                 sInfo(1).Comment  = infoMat.Comment;
                 sInfo(1).FileName = relativeFilename;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end
@@ -723,7 +723,7 @@ return
                 sInfo(1).Comment  = infoMat.Comment;
                 sInfo(1).FileName = relativeFilename;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Cannot open file ''%s''.', bst_fullfile(studiesDir, relativeFilename));
                 sInfo = [];
             end

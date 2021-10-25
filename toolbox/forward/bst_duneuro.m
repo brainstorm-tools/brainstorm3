@@ -144,7 +144,7 @@ if strcmpi(ElementType, 'hexahedron')
         dist = sqrt(sum([FemMat.Vertices(FemMat.Elements(:,1),1) - FemMat.Vertices(FemMat.Elements(:,2),1), ...
          FemMat.Vertices(FemMat.Elements(:,2),2) - FemMat.Vertices(FemMat.Elements(:,2),2), ...
          FemMat.Vertices(FemMat.Elements(:,2),3) - FemMat.Vertices(FemMat.Elements(:,2),3)] .^ 2, 2));
-        % If the distance is not constant: then the geomtry is adapted
+        % If the distance is not constant: then the geometry is adapted
         GeometryAdapted = (max(abs(dist - dist(1))) > 1e-9);
     end
     % Copy value in DUNEuro options
@@ -269,7 +269,7 @@ switch (cfg.HeadModelType)
                 %end
                 
                 % OPTION #3: move the vertex towards the centroid of the element, and then place the final dipole 
-                % in the symetric point to the center, as the image of the computed vertex
+                % in the symmetric point to the center, as the image of the computed vertex
                 % x-----o-----x'
                 % ^      ^      ^____ : x' the image of x, or the final dipole position 
                 % |       |_________ : o is the center of the elem, and middle of [x,x']
@@ -292,7 +292,7 @@ switch (cfg.HeadModelType)
                     cfg.GridLoc(iVertOut(i),:) = tmpVert;               
                 else % Use the option 2 defined by Francois
                     disp(sprintf('DUNEURO> iDipole %d/%d : Warning Dipole #%d moved outside the GM (%1.2fmm) (option 3 :as image)', i,length(iVertOut),iVertOut(i), distMove));
-                    nFix = 20; % with 10 it's not working for some extrem case, then I upgrade it to 20
+                    nFix = 20; % with 10 it's not working for some extreme case, so I upgrade it to 20
                     for iFix = 1: nFix
                        tmpVert = (nFix - iFix)/nFix * cfg.GridLoc(iVertOut(i),:) + iFix/nFix * ElemCenter(iTarget,:);
                       if inpolyhedron(targetFaces, gmVert, tmpVert)
@@ -326,8 +326,8 @@ switch (cfg.HeadModelType)
 %                 if ~isempty(wMindex_in)
 %                     % 1- move the dipole from inside the WM to the GM surface
 %                     % ==> this is for testing, when we use the centroide
-%                     % directely, some dipole remains within the WM ...
-%                     GMcentroide = 0; % just for testing, to use directely the GM centroides
+%                     % directly, some dipole remains within the WM ...
+%                     GMcentroide = 0; % just for testing, to use directly the GM centroides
 %                     if GMcentroide == 1
 %                         k = dsearchn(elem_centroide,sCortex.Vertices(wMindex_in,:));
 %                         NewVertices(wMindex_in ,:) = ElemCenter(k,:);

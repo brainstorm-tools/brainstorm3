@@ -48,7 +48,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
     jTextSmtpServer = JTextField();
     jPanelNew.add('br hfill', jTextSmtpServer);
     
-    % EMAIL ADRESS
+    % EMAIL ADDRESS
     jPanelNew.add('p', JLabel('Your email address:'));
     jTextUserEmail = JTextField();
     jPanelNew.add('br hfill', jTextUserEmail);
@@ -128,7 +128,7 @@ end
 %  =================================================================================
 function SendBugReport(msg) %#ok<DEFNU>
     % ================================================================
-    % Adress where the bug reports are sent
+    % Address where the bug reports are sent
     BugReportsRecipient = 'francois.tadel@chups.jussieu.fr';
     % ================================================================
     

@@ -288,7 +288,7 @@ for iFile = 1:nFiles
     clear sMat;
 
     % === DIFFERENCE A-B ===
-    % Substract file from set B, if applicable
+    % Subtract file from set B, if applicable
     if isDiff
         % Load file #iFile
         if ischar(FilesListB{iFile})
@@ -327,7 +327,7 @@ for iFile = 1:nFiles
             Messages = [Messages, sprintf('Files #A%d and #B%d have different numbers of channels or time samples.\n', iFile, iFile)];
             continue;
         end
-        % Substract two files: A - B (absolute values or relative)
+        % Subtract two files: A - B (absolute values or relative)
         switch (Function)
             case {'mean', 'meandiffnorm', 'median'}
                 matValues = matValues - double(sMat2.(matName));

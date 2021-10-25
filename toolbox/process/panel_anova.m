@@ -1,5 +1,5 @@
 function varargout = panel_anova(varargin)
-% PANEL_ANOVA: Creation and management of list of files to apply some batch proccess.
+% PANEL_ANOVA: Creation and management of list of files to apply some batch process.
 %
 % USAGE:  bstPanelNew = panel_anova('CreatePanel')
 

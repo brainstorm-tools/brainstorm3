@@ -261,7 +261,7 @@ end
                 end
                 Anatomy(1).FileName = relativeFilename;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Brainstorm:CannotOpenFile', 'Cannot open anatomy file ''%s''.', bst_fullfile(subjectsDir, relativeFilename));
             end
         else
@@ -293,7 +293,7 @@ end
                 end
                 Surface(1).FileName = relativeFilename;
             catch
-                % An error occured during the 'load' operation
+                % An error occurred during the 'load' operation
                 warning('Brainstorm:CannotOpenFile', 'Cannot open surface file ''%s''. Adding ''.bak'' to the filename.', relativeFilename);
                 fullfilename = bst_fullfile(subjectsDir, relativeFilename);
                 file_move(fullfilename, [fullfilename, '.bak']);

@@ -38,7 +38,7 @@ if (nargin == 0) || isempty(bstNodes)
         bstNodes = [bstNodes selectedPaths(iPath).getLastPathComponent()];
     end
 end
-% If no node selcted : return
+% If no node selected : return
 if isempty(bstNodes)
     return
 end

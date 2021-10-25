@@ -154,7 +154,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
         jButtonGroupOutput = ButtonGroup();
         % Kernel only
         jRadioOutputKernel = JRadioButton('Kernel only', 1);
-        jRadioOutputKernel.setToolTipText('<HTML>Time independant computation.<BR>To get the sources estimations for a time frame, <BR> the kernel is applied to the recordings (matrix product).');
+        jRadioOutputKernel.setToolTipText('<HTML>Time independent computation.<BR>To get the sources estimations for a time frame, <BR> the kernel is applied to the recordings (matrix product).');
         jButtonGroupOutput.add(jRadioOutputKernel);
         jPanelOutputMode.add('tab', jRadioOutputKernel);
         % Full results
@@ -239,7 +239,7 @@ function [bstPanelNew, panelName] = CreatePanel(Modalities, isShared, HeadModelT
                 (~isempty(jCheckDataMegGradio) && jCheckDataMegGradio.isSelected()) || ...
                 (~isempty(jCheckDataMegMagneto) && jCheckDataMegMagneto.isSelected()))
             java_dialog('warning', ['Warning: Brainstorm inverse models do not properly handle the combination of MEG and EEG yet.' 10 10 ...
-                                       'For now, we recommend to compute separatly the sources for MEG and EEG.'], 'EEG/MEG combination');
+                                       'For now, we recommend to compute separately the sources for MEG and EEG.'], 'EEG/MEG combination');
             isFirstCombinationWarning = 0;
         end
         % Update comment

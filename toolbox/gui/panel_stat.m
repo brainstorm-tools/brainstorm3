@@ -299,7 +299,7 @@ function CurrentFigureChanged_Callback(hFig) %#ok<DEFNU>
     end
     % Get figure clusters
     StatClusters = GetFigureClusters(hFig);
-    % Disable multiple comparisons panel if results are alredy corrected
+    % Disable multiple comparisons panel if results are already corrected
     isEnableCorrect = isempty(StatClusters) || ~isfield(StatClusters, 'Correction') || isempty(StatClusters.Correction) || ismember(StatClusters.Correction, {'no','none'});
     gui_enable(ctrl.jPanelOptions, isEnableCorrect, 1);
     % Progress bar

@@ -549,7 +549,7 @@ if ~isempty(iTargetStudies)
                 end
 
             case 'results'
-                % Get all results of this study that ARE NOT SHARED KERNELS (imaging kernel not attched to a datafile)
+                % Get all results of this study that ARE NOT SHARED KERNELS (imaging kernel not attached to a datafile)
                 % === Check file filters ===
                 ResultsFiles = {sStudies(i).Result.FileName};
                 ResultsComments = {sStudies(i).Result.Comment};
@@ -759,7 +759,7 @@ end
 
 
 %% ===== CHECK RESULTS TYPE =====
-% Get all results of this study that ARE SHARED KERNELS (imaging kernel not attched to a datafile)
+% Get all results of this study that ARE SHARED KERNELS (imaging kernel not attached to a datafile)
 function isPure = isPureKernel(sResults)
     isPure = cellfun(@isempty, {sResults.DataFile}) & ...
              ~cellfun(@(c)isempty(strfind(c, 'KERNEL')), {sResults.FileName});   

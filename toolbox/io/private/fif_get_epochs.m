@@ -43,7 +43,7 @@ if isempty(sets)
 else
     isEvoked = 1;
 end
-% If at least one set avaialable => evoked FIF file
+% If at least one set available => evoked FIF file
 if ~isempty(sets)
     % Initialize structure
     epochs = struct('label',   '', ...

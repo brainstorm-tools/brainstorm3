@@ -159,10 +159,10 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, Method, bandWidth
     % Remove the mean of the data before filtering
     xmean = mean(x,2);
     x = bst_bsxfun(@minus, x, xmean);
-    % Remove all the frequencies sequencially
+    % Remove all the frequencies sequentially
     for ifreq = 1:length(FreqList)
         % Define coefficients of an IIR notch filter
-        w0 = 2 * pi * FreqList(ifreq) / sfreq;      %Normalized notch frequncy
+        w0 = 2 * pi * FreqList(ifreq) / sfreq;      %Normalized notch frequency
         % Pole radius
         switch Method
             case 'hnotch' % (Default after 2019)  radius by a user defined bandwidth (-3dB)

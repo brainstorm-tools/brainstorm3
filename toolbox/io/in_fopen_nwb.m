@@ -350,7 +350,7 @@ function [obj, Fs, nChannels, nSamples, FlipMatrix, timeBounds, time_discontinui
         timeBounds = [obj.starting_time, obj.starting_time + nSamples/Fs];
         time_discontinuities = [];
     elseif ~isempty(obj.timestamps)
-        % Some recordings save timepoints irregularly. Cant do
+        % Some recordings save timepoints irregularly. Can't do
         % much about this when it comes to Brainstorm that uses a fixed
         % sampling rate
         Fs = round(mean(1./(diff(obj.timestamps.load(1,10))))); % Just load first 10 samples (consider a different approach here - there might be non-continuous segments)

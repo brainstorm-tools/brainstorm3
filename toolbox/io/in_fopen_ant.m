@@ -59,7 +59,7 @@ if isfield(hdr, 'triggers') && ~isempty(hdr.triggers)
     events = repmat(db_template('event'), 1, length(uniqueEvt));
     % Format list
     for iEvt = 1:length(uniqueEvt)
-        % Find list of occurences of this event
+        % Find list of occurrences of this event
         iOcc = find(strcmpi(allNames, uniqueEvt{iEvt}));
         % Fill event structures
         events(iEvt).label      = uniqueEvt{iEvt};

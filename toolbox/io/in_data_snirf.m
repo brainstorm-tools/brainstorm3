@@ -106,7 +106,7 @@ for iAux = 1:nAux
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
         && ( size(jnirs.nirs.data.time,1) ~= size(jnirs.nirs.aux(iAux).time,1) || jnirs.nirs.aux(iAux).timeOffset ~= 0 )
     
-        warning(sprintf('Time vector for auxilary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
+        warning(sprintf('Time vector for auxiliary measure %s is not compatible with nirs measurement',jnirs.nirs.aux(iAux).name));
         continue;
 
         % If needed, following code should work :) 

@@ -135,7 +135,7 @@ end
 %% Create template
 function RTConfig = GetTemplate()
 
-% Intialize global variable
+% Initialize global variable
     RTConfig = struct(...
         'FThost',           [], ...     % fieldtrip host address
         'FTport',           [], ...     % fieldtrip port number
@@ -279,7 +279,7 @@ function AddHeadPoints_Callback(h, ev)
         % Warp surface for new head points
         % bst_warp_prepare(ChannelFile, Options)
         %    Options     : Structure of the options
-        %         |- tolerance    : Percentage of outliers head points, ignored in the calulation of the deformation. 
+        %         |- tolerance    : Percentage of outliers head points, ignored in the calculation of the deformation. 
         %         |                 Set to more than 0 when you know your head points have some outliers.
         %         |                 If not specified: asked to the user (default 
         %         |- isInterp     : If 0, do not do a full interpolation (default: 1)
@@ -354,7 +354,7 @@ function InitFieldtripBuffer_Callback(h, ev)
             pause(1);
         end
     end
-    % Check if data is comming right now or the buffer was full before.
+    % Check if data is coming right now or the buffer was full before.
     hdr = buffer('get_hdr', [], ft_host, ft_port);
     tmp = hdr.nsamples;
     tmp2 = tmp;
@@ -473,7 +473,7 @@ function HeadPositionRaw = HeadLocalization()
     ChannelMat.SCS.T = transfSCS.T; % in m
     ChannelMat.SCS.Origin = transfSCS.Origin;
 
-    % TRANFORMATION: CTF COIL => ANATOMICAL NAS/LPA/RPA
+    % TRANSFORMATION: CTF COIL => ANATOMICAL NAS/LPA/RPA
     % Get the transformation for HPI head coordinates (POS file) to Brainstorm
     HeadPointsStudy = bst_get('StudyWithCondition', fullfile(char(ctrl.jTextCurSubject.getText()), 'HeadPoints'));
     HPChannelFile = file_fullpath(HeadPointsStudy.Channel.FileName);
@@ -484,12 +484,12 @@ function HeadPositionRaw = HeadLocalization()
         bst_error('No SCS transformation in the channel file')
         return;
     end
-    % Get the translation and rotation from the HeadPoints tranformation
+    % Get the translation and rotation from the HeadPoints transformation
     trans = HPChannelMat.TransfMeg{iTrans};
     anatR = trans(1:3, 1:3);
     anatT = trans(1:3, 4); % in m
 
-    % add the tranformation
+    % add the transformation
     transfAnat = [anatR, anatT; 0 0 0 1]*[transfSCS.R, transfSCS.T; 0 0 0 1]; % in m
 
     % Update the ChannelMat structure
@@ -742,7 +742,7 @@ function InitializeRealtimeMeasurement(ReComputeHeadModel)
         sColormap.MinValue = -2;
         sColormap.MaxValue = 2;
         bst_colormaps('SetColormap','Source', sColormap);
-        % Fire change notificiation to all figures (3DViz and Topography)
+        % Fire change notification to all figures (3DViz and Topography)
         bst_colormaps('FireColormapChanged','Source');
     end
     

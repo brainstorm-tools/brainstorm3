@@ -4,7 +4,7 @@ function [stable, transient, stablePoints, transientPoints, dEnergy] = ...
 %                         optical flow (i.e. points where flow is strongest
 %                         and weakest).
 % INPUTS:
-%   flowField           - Optical flow displacment field
+%   flowField           - Optical flow displacement field
 %   Faces               - Faces of tesselation
 %   Vertices            - Vertices of tesselation
 %   dimension           - 3 for reconstructions, 2 for projections
@@ -372,7 +372,7 @@ u = Vertices(Faces(:,2),:)-Vertices(Faces(:,1),:);
 v = Vertices(Faces(:,3),:)-Vertices(Faces(:,2),:);
 w = Vertices(Faces(:,1),:)-Vertices(Faces(:,3),:);
 
-% Length of each edges and angles bewteen edges
+% Length of each edges and angles between edges
 uu = sum(u.^2,2);
 vv = sum(v.^2,2);
 ww = sum(w.^2,2);

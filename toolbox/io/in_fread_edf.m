@@ -173,7 +173,7 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
     elseif (bytesPerVal == 2)
         precision = sprintf('%d*%s', nReadTimes, dataClass);
         F = fread(sfid, [nReadTimes, nReadChannels], precision, offsetSkip)';
-    % => WARNING: READING USING ubit24 SOMETIMES DOESNT WORK => DOING IT MANUALLY
+    % => WARNING: READING USING ubit24 SOMETIMES DOESN'T WORK => DOING IT MANUALLY
     elseif (bytesPerVal == 3)
         % Reading each bit independently
         precision = sprintf('%d*%s', 3*nReadTimes, 'uint8');

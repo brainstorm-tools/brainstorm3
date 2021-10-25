@@ -126,7 +126,7 @@ for i = 1:length(hdrlines)
             val = item{1}{2};
         end
     end
-    % Remove unuseable characters from the variable name (key)
+    % Remove unusable characters from the variable name (key)
     key = key(key ~= ':');
     % Assign the value to the header structure
     hdr.(key) = val;

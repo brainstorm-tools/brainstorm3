@@ -78,7 +78,7 @@ for iRes = 1:length(ResultsFiles)
         errMsg = 'Cannot get source subject.';
         break;
     elseif (iSubjectSrc == iSubjectDest)
-        errMsg = 'Source and destination anatomies are the same: nothing ot project.';
+        errMsg = 'Source and destination anatomies are the same: nothing or project.';
         break;
     end
     % Get destination MRI
@@ -222,7 +222,7 @@ for iRes = 1:length(ResultsFiles)
     NewCondition = strrep(sStudySrc.Condition{1}, '@raw', '');
     % Get condition
     [sStudyDest, iStudyDest] = bst_get('StudyWithCondition', [sSubjectDest.Name '/' NewCondition]);
-    % Create condition if doesnt exist
+    % Create condition if doesn't exist
     if isempty(iStudyDest)
         iStudyDest = db_add_condition(sSubjectDest.Name, NewCondition, 0);
         if isempty(iStudyDest)
@@ -289,7 +289,7 @@ if ~isempty(errMsg)
 end
 
 
-% ===== UDPATE DISPLAY =====
+% ===== UPDATE DISPLAY =====
 if isInteractive
     bst_progress('stop');
 end

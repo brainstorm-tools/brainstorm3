@@ -294,7 +294,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     end
             
     % ===== CHECK INPUT FILES =====
-    % Make sure that file type is indentical for both sets
+    % Make sure that file type is identical for both sets
     if ~isempty(sInputsA) && ~isempty(sInputsB) && ~strcmpi(sInputsA(1).FileType, sInputsB(1).FileType)
         bst_report('Error', sProcess, [], 'Cannot process inputs from different types.');
         return;

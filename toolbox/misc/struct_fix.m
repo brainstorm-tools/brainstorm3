@@ -53,7 +53,7 @@ names = intersect(namesDest, namesScr);
 for i = 1:length(sData)
     % Loop on the fields
     for iField = 1:length(names)
-        % Copy only if the fiel
+        % Copy only if the field
         sFix(i).(names{iField}) = sData(i).(names{iField});
     end
 end

@@ -198,7 +198,7 @@ for iChar = 1:length(inString)
     elseif state == STATE.START_VALUE
         % value was emptied in END_FIELD since we might continue a list of strings.
         if c == '{'
-            % Save sub-field. Needed to later check existance of renamed fields.
+            % Save sub-field. Needed to later check existence of renamed fields.
             outStruct = saveField(outStruct, path, field, [], valType);
             path{end + 1} = field;
             state = STATE.START_FIELD;

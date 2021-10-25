@@ -49,7 +49,7 @@ for i_aux=1:n_aux
     snirfdata.SNIRFData.aux(i_aux).time=DataMat.Time';
 end    
 
-% Set Probe; maybe can be simplified with the export of the measurment list
+% Set Probe; maybe can be simplified with the export of the measurement list
 [isrcs, idets, chan_measures, measure_type] = nst_unformat_channels({ChannelMatOut.Channel(nirs_channels).Name});
 
 src_pos= zeros(length(unique(isrcs)),3); 
@@ -69,7 +69,7 @@ for i_landmark=1:n_landmark
     snirfdata.SNIRFData.probe.landmarkLabels(i_landmark)=string(ChannelMatOut.HeadPoints.Label{i_landmark}); 
 end    
 
-% Set Measurment list
+% Set Measurement list
 for ichan=1:n_channel
     measurement=struct('sourceIndex',[],'detectorIndex',[],...
               'wavelengthIndex',[],'dataType',1,'dataTypeIndex',1); 

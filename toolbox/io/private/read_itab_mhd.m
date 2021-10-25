@@ -195,7 +195,7 @@ mhd.cup_vertex_center  = fread(fid, [1 1], 'float');    %  dist anc sensor  cent
 mhd.cup_fi_center  = fread(fid, [1 1], 'float');        %  fi angle of sensor center
 mhd.cup_rotation_angle  = fread(fid, [1 1], 'float');   %  rotation angle of sensor center axis
 
-mhd.dist_a1_a2  = fread(fid, [1 1], 'float');           %  head informations
+mhd.dist_a1_a2  = fread(fid, [1 1], 'float');           %  head information
 %  (used to find subject's head dimensions)
 mhd.dist_inion_nasion = fread(fid, [1 1], 'float');
 mhd.max_circ = fread(fid, [1 1], 'float');
@@ -203,7 +203,7 @@ mhd.nasion_vertex_inion = fread(fid, [1 1], 'float');
 
 %  Data analysis INFOs
 mhd.security  = fread(fid, [1 1], 'int32');          %  security flag
-mhd.ave_alignement  = fread(fid, [1 1], 'int32');    %  average data alignement 0 - FALSE
+mhd.ave_alignement  = fread(fid, [1 1], 'int32');    %  average data alignment 0 - FALSE
 %                          1 - TRUE
 
 mhd.itri  = fread(fid, [1 1], 'int32');              %  trigger channel number

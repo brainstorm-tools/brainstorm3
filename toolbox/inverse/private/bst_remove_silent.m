@@ -10,11 +10,11 @@ function [Lnew,Q] = bst_remove_silent(L)
 %     - L : Forward field matrix for all the channels
 %
 % OUTPUTS:
-%     - Lnew : New forward field matrix for all the channels containg 2/3
+%     - Lnew : New forward field matrix for all the channels containing 2/3
 %     the number of dipole components. The radial dipole components have
 %     been removed, and only the gain vectors produced by the two
 %     tangential dipole components are included.
-%     - Q: A matrix containg the orientations of the two tangential dipole
+%     - Q: A matrix containing the orientations of the two tangential dipole
 %     components per source point.
 
 % @=============================================================================

@@ -909,7 +909,7 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
             dat = F{iFile}(i,:);
             datMin = min(dat);
             datMax = max(dat);
-            % Draw sensor time serie
+            % Draw sensor time series
             PlotHandles.ChannelOffsets(i) = Xi;
             % Define lines to trace
             XData  = plotSize(1) * dat(end:-1:1) * DispFactor + Xi;
@@ -1554,7 +1554,7 @@ function ViewStatClusters(hFig)
         end
         % Plot each cluster separately
         for iClust = 1:length(sClusters)
-            % Select currnet data from mask
+            % Select current data from mask
             if ~isempty(GlobalData.UserFrequencies.iCurrentFreq) && (size(sClusters(iClust).mask,3) > 1)
                 curMask = sClusters(iClust).mask(selChan, :, GlobalData.UserFrequencies.iCurrentFreq);
             else

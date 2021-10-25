@@ -35,7 +35,7 @@ if (length(iParent) ~= 1)
     return;
 end
 dateStr = str(iParent - 7:iParent - 2);
-% Interpetation of date string
+% Interpretation of date string
 onlineRel.year  = str2num(dateStr(1:2));
 onlineRel.month = str2num(dateStr(3:4));
 onlineRel.day   = str2num(dateStr(5:6));

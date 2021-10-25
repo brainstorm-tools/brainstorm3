@@ -1,5 +1,5 @@
 function [Transf, sMri] = cs_compute(sMri, csname)
-% CS_COMPUTE: Compute the transformation to move from the MRI coordiates coordinate system to SCS/MNI
+% CS_COMPUTE: Compute the transformation to move from the MRI coordinates coordinate system to SCS/MNI
 %
 % USAGE:  [Transf, sMri] = cs_compute(sMri, csname)
 %
@@ -110,7 +110,7 @@ switch lower(csname)
         Transf.R  = [-ACPC' V1 V2]';
        
     otherwise
-        error(['No tranformation can be computed to "' csname '" coordinates system.']);
+        error(['No transformation can be computed to "' csname '" coordinates system.']);
 end
 
 

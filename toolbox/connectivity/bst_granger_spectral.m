@@ -16,7 +16,7 @@ function [connectivity, pValues, freq] = bst_granger_spectral(X, Y, Fs, order, i
 %   |-freq            - frequencies of interest if desired
 %   |-freqResolution  - maximum freq resolution in Hz, to limit NFFT
 %   |                   [DF: double, default [] (i.e. no limit)]
-%   |-nTrials         - # of trials in concantenated signal
+%   |-nTrials         - # of trials in concatenated signal
 %   |-flagFPE         - if true, optimize order for autoregression
 %   |                   if false (default), use same order in autoregression
 %   |-standardize     - if true (default), remove mean from each signal

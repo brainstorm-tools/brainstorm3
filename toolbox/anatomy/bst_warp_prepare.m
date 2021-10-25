@@ -7,7 +7,7 @@ function hFig = bst_warp_prepare(ChannelFile, Options)
 % INPUTS:
 %     - ChannelFile : Channel file that contains the HeadPoints for the deformation
 %     - Options     : Structure of the options
-%         |- tolerance    : Percentage of outliers head points, ignored in the calulation of the deformation. 
+%         |- tolerance    : Percentage of outliers head points, ignored in the calculation of the deformation. 
 %         |                 Set to more than 0 when you know your head points have some outliers.
 %         |                 If not specified: asked to the user (default 
 %         |- isInterp     : If 0, do not do a full interpolation (default: 1)

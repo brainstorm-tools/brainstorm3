@@ -202,7 +202,7 @@ if isRaw
                 BlocksToRead(end).iTimes     = smpBlock;
                 BlocksToRead(end).FileTag    = sprintf('block%03d', iBlock);
                 BlocksToRead(end).TimeOffset = 0;
-                % Build comment (seconds or miliseconds)
+                % Build comment (seconds or milliseconds)
                 BlocksToRead(end).ImportTime = smpBlock / sFile.prop.sfreq;
                 if (BlocksToRead(end).ImportTime(2) > 2)
                     BlocksToRead(end).Comment = sprintf('Raw (%1.2fs,%1.2fs)', BlocksToRead(end).ImportTime);
@@ -422,7 +422,7 @@ if isRaw
                     iOccur = find((evtSamples >= readSamples(1)) & (evtSamples <= readSamples(2)));
                     disp(sprintf('BST> Warning: Mismatch in the events structures: size(samples)=%d, size(epochs)=%d', size(evtSamples,2), size(sFile.events(iEvt).epochs,2)));
                 end
-                % If no occurence found in current time block: skip to the next event
+                % If no occurrence found in current time block: skip to the next event
                 if isempty(iOccur)
                     continue;
                 end
@@ -433,7 +433,7 @@ if isRaw
             % Extended events: Get all the events that are not either completely before or after the time window
             else
                 iOccur = find((evtSamples(2,:) >= readSamples(1)) & (evtSamples(1,:) <= readSamples(2)) & (sFile.events(iEvt).epochs(1,:) == BlocksToRead(iFile).iEpoch(1,:)));
-                % If no occurence found in current time block: skip to the next event
+                % If no occurrence found in current time block: skip to the next event
                 if isempty(iOccur)
                     continue;
                 end

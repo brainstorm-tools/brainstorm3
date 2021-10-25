@@ -245,7 +245,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     end
     
     % ===== OUTPUT STRUCTURE =====
-    % Intialize dipole structure
+    % Initialize dipole structure
     DipolesMat = db_template('dipolemat');
     DipolesMat.Time        = ftDipole.time;
     DipolesMat.DataFile    = sInput.FileName;

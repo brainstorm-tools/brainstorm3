@@ -92,7 +92,7 @@ if strcmpi(plexonFormat, '.plx')
     hdr.NumSamples        = length(one_channel.ContinuousChannels(CHANNELS_SELECTED(1)).Values); % newHeader.LastTimestamp is in samples. Brainstorm header is in seconds.
     hdr.SamplingFrequency = one_channel.ContinuousChannels(1).ADFrequency;
 
-    % Get only the channels from electrodes, not auxillary channels
+    % Get only the channels from electrodes, not auxiliary channels
     just_recording_channels = newHeader.ContinuousChannels;
 
     % Assign important fields

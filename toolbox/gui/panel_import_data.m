@@ -947,7 +947,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             % Events time range
             EventsTimeRange = [str2double(char(jTextEventsTimeStart.getText())), ...
                                str2double(char(jTextEventsTimeStop.getText()))];
-            % Conver to ms
+            % Convert to ms
             EventsTimeRange = EventsTimeRange / 1000;
             if all(~isnan(EventsTimeRange)) && (length(EventsTimeRange) == 2)
                 ImportDataOptions.EventsTimeRange = EventsTimeRange;

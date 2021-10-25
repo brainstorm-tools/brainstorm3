@@ -43,7 +43,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.warning.Comment = ['<B>Warning</B>: This process will standardize all the recordings<BR>' ...
                                         'in all the selected folders, not only the files you selected<BR>' ...
                                         'in the Process1 tab. Note it cannot process links to raw files.<BR><BR>' ...
-                                        'This proces may damage your database if not used properly.<BR>' ...
+                                        'This process may damage your database if not used properly.<BR>' ...
                                         'Backup your database before running it.<BR><BR>'];
     sProcess.options.warning.Type    = 'label';
     % === TARGET CHANNEL FILE
@@ -154,7 +154,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             [nChan, iRef] = min(nChannels);
             % Get channels
             ChanList = {ChannelMats{iRef}.Channel.Name};
-            % Remove unecessary channels
+            % Remove unnecessary channels
             iRemove = find(~ismember(ChanList, interChanNames));
             if ~isempty(iRemove)
                 ChanList(iRemove) = [];

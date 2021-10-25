@@ -43,7 +43,7 @@ if ~file_exist(HeadModelFile)
         error('Head model file not found.');
     end
 end
-% Specfied fields
+% Specified fields
 if (nargin < 3)
     % Read all fields
     HeadModel = load(HeadModelFile);
@@ -72,7 +72,7 @@ else
 end
 
 %% ===== REMOVE CELLS =====
-% In previous verisons of Brainstorm, the values were contained in cell lists
+% In previous versions of Brainstorm, the values were contained in cell lists
 % If some values are enclosed in cells, extract them from the cells
 fieldsToProcess = {'Gain', 'GridLoc', 'GridOrient'};
 % Loop over all fields

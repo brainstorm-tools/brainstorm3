@@ -73,7 +73,7 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~strcmpi(ScoutFunctio
 
     % If not all the values are of the same sign, flip
     if ~isempty(FlipMask) && ~all(FlipMask == 1)
-% DATA-DEPENDENT CANCELATION: REMOVED ON 14-APR-2016 AFTER SKYPE DISCUSSION WITH RL, JM, DP
+% DATA-DEPENDENT CANCELLATION: REMOVED ON 14-APR-2016 AFTER SKYPE DISCUSSION WITH RL, JM, DP
 %         % Multiply the values by FlipMask
 %         tmpF = bst_bsxfun(@times, F, FlipMask);
 %         % Evaluate if the maximum of the average increased 
@@ -139,7 +139,7 @@ switch (lower(ScoutFunction))
             Fs = mean(sqrt(sum(F.^2, 3)), 1);
         end
         
-    % MAX : Strongest at each time instant (in absolue values)
+    % MAX : Strongest at each time instant (in absolute values)
     case 'max'
         % If one component: max(abs)
         if (nComponents == 1)

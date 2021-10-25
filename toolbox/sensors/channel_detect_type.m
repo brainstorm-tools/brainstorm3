@@ -191,7 +191,7 @@ if isAlign && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(Chann
     ChannelMat.SCS.Origin = transfSCS.Origin;
     % Convert the fiducials positions
     %   NOTE: The division/multiplication by 1000 is to compensate the T/1000 applied in the cs_convert().
-    %         This hack was added becaue cs_convert() is intended to work on sMri structures, 
+    %         This hack was added because cs_convert() is intended to work on sMri structures, 
     %         in which NAS/LPA/RPA/T fields are in millimeters, while in ChannelMat they are in meters.
     ChannelMat.SCS.NAS = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.NAS ./ 1000) .* 1000;
     ChannelMat.SCS.LPA = cs_convert(ChannelMat, 'mri', 'scs', ChannelMat.SCS.LPA ./ 1000) .* 1000;

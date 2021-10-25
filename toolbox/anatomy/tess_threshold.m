@@ -5,7 +5,7 @@ function [Faces, iFacesRemove] = tess_threshold(Vertices, Faces, threshArea, thr
 %    - Vertices    : [Nvert x 3] surface vertices
 %    - Faces       : [Nfaces x 3] surface triangles
 %    - threshArea  : Detect large triangles (area > thresh * std)
-%    - threshRatio : Detect asymetric triangles (ratio perimeter/area > thresh * std)
+%    - threshRatio : Detect asymmetric triangles (ratio perimeter/area > thresh * std)
 %    - threshAngle : Detect triangles with angles that are too open (angle in degrees > thresh)
 
 % @=============================================================================

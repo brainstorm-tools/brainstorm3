@@ -88,7 +88,7 @@ switch (lower(nodeType{1}))
         % Ask user the confirmation for deleting subject
         if isUserConfirm
             if strcmpi(nodeType{1}, 'rawcondition')
-                % Identify if the raw file is in the brainstorm datbase or not
+                % Identify if the raw file is in the brainstorm database or not
                 sStudy = bst_get('StudyWithCondition', FileName{1});
                 if isempty(sStudy) || isempty(sStudy.Data) || ~strcmpi(sStudy.Data(1).DataType, 'raw')
                     questStr = [];

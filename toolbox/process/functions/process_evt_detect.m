@@ -353,7 +353,7 @@ function evt = Compute(F, TimeVector, OPTIONS, Fmask)
     stdF = std(Fsig);
     
     % ===== DETERMINE THRESHOLD =====
-    % Theshold, in number of times the std
+    % Threshold, in number of times the std
     threshVal = OPTIONS.threshold * stdF;
     % Find all the indices that are above the threshold
     iThresh = find(Fabs(1:end-blankSmp) > threshVal);

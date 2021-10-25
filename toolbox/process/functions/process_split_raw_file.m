@@ -312,7 +312,7 @@ function [SampleTargets, SegmentNames, BadSegments] = GetSamplesFromEvent(...
         end
         
         if isOverlap
-          fprintf('BST> Split raw file does not allow overlaping events.  Some events were truncated.\n');
+          fprintf('BST> Split raw file does not allow overlapping events.  Some events were truncated.\n');
         end
 
         % We don't need the first start sample, which is the first sample of the recording.

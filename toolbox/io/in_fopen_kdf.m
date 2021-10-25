@@ -126,7 +126,7 @@ for i = 1:hdr.nsignal
     end
     hdr.sfreq = hdr.nsamples ./ hdr.reclen;
 end
-% Preform some checks
+% Perform some checks
 if (hdr.nrec == -1)
     error('Cannot handle files where the number of recordings is unknown.');
 end

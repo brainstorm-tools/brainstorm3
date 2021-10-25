@@ -137,7 +137,7 @@ if (nmean > 0)
     kernel = exp(-(Dist.^2) ./ Sigma.^2);
     % Convolution of the slices block with the smoothing kernel
     sm = squeeze(convn(sm, kernel, 'valid'));
-    % Pad smoothed data with intial values
+    % Pad smoothed data with initial values
     s(nmean+1:end-nmean, nmean+1:end-nmean) = sm;
     % Normalize to the highest value in the original slice (before smoothing)
     if (smax ~= 0)

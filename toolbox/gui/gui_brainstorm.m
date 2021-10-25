@@ -532,7 +532,7 @@ function GUI = CreateWindow() %#ok<DEFNU>
 
 %% ===== DISPLAY MODE CHANGED =====
     function protocolDisplayModeChanged_Callback( hObject, event, varargin ) %#ok<INUSL>
-        % Only cahnges exploration mode if the button is clicked
+        % Only change exploration mode if the button is clicked
         if event.getSource.isSelected()
             % Save selected mode
             if (jToolButtonSubject.isSelected())
@@ -1003,7 +1003,7 @@ function SetCurrentProtocol(iProtocol)
                 % Redrawing tree
 %                 UpdateProtocolsList();
                 panel_protocols('UpdateTree');
-%                 %%%%% DONT'T KNOW WHY WE HAVE TO RESTORE CALLBACK ON LINUX SYSTEMS ??? 
+%                 %%%%% DON'T KNOW WHY WE HAVE TO RESTORE CALLBACK ON LINUX SYSTEMS ??? 
 %                 if ~ispc
 %                     java_setcb(jModel, 'ContentsChangedCallback', bakCallback);
 %                 end
@@ -1067,7 +1067,7 @@ function iProtocol = CreateProtocol(ProtocolName, UseDefaultAnat, UseDefaultChan
     sProtocol.UseDefaultChannel = UseDefaultChannel;
     % Add the protocol to Brainstorm database
     iProtocol = db_edit_protocol('create', sProtocol);
-    % If an error occured in protocol creation (protocol already exists, impossible to create folders...)
+    % If an error occurred in protocol creation (protocol already exists, impossible to create folders...)
     if (iProtocol <= 0)
         error('Could not create protocol.');
     end

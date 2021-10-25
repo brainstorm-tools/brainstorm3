@@ -4,7 +4,7 @@ function iNewDipoles = import_dipoles(iStudy, DataFile, DipolesFiles)
 % USAGE:  
 %         iNewDipoles = import_dipoles(iStudy, DataFile, DipolesFiles) : Read files and save them in brainstorm database
 %         iNewDipoles = import_dipoles(iStudy, DataFile)               : Ask files to user, read it, and save it in database
-%         iNewDipoles = import_dipoles(iStudy)                         : Same wihtout attaching dipoles to any data file
+%         iNewDipoles = import_dipoles(iStudy)                         : Same without attaching dipoles to any data file
 %
 % INPUT:
 %    - iStudy       : Index of the study where to import the DipolesFiles
@@ -46,7 +46,7 @@ end
 % Detect file format
 FileFormat = '';
 if ~isempty(DipolesFiles)
-    % Get the file extenstion
+    % Get the file extension
     [fPath, fBase, fExt] = bst_fileparts(DipolesFiles{1});
     if ~isempty(fExt)
         fExt = lower(fExt(2:end));

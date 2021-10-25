@@ -279,7 +279,7 @@ end
 function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
 
     % ===== GET INPUTS =====
-    % Intialize returned variables
+    % Initialize returned variables
     newMat = [];
     newFileType = [];
     OutValue = cell(1, length(sInputs));

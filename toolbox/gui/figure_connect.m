@@ -664,10 +664,10 @@ function ToggleRegionSelection(hFig, Inc)
     % Is node an agregating node
     IsAgregatingNode = ismember(NextNode, AgregatingNodes);
     if (IsAgregatingNode)
-        % Get agregated nodes
+        % Get aggregated nodes
         AgregatedNodeIndex = getAgregatedNodesFrom(hFig, NextNode); 
         if (~isempty(AgregatedNodeIndex))
-            % Select agregated node
+            % Select aggregated node
             SetSelectedNodes(hFig, AgregatedNodeIndex, 1, 1);
         end    
     end
@@ -716,11 +716,11 @@ function JavaClickCallback(hFig, ev)
                         end
                         % Aggragtive nodes: select blocks of nodes
                         if IsAgregatingNode
-                            % Get agregated nodes
+                            % Get aggregated nodes
                             AgregatedNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
                             % How many are already selected
                             NodeAlreadySelected = ismember(AgregatedNodeIndex, selNodes);
-                            % Get selected agregated nodes
+                            % Get selected aggregated nodes
 %                             AgregatingNodeAlreadySelected = ismember(AgregatingNodes, selNodes);
                             % If the agregating node and his measure node are the only selected nodes, then select all
                             if (sum(NodeAlreadySelected) == size(selNodes,1))
@@ -747,7 +747,7 @@ function JavaClickCallback(hFig, ev)
                     end
                 
                     if (IsAgregatingNode)
-                        % Get agregated nodes
+                        % Get aggregated nodes
                         SelectNodeIndex = getAgregatedNodesFrom(hFig, nodeIndex);
                         % Select
                         SetSelectedNodes(hFig, [SelectNodeIndex(:); nodeIndex], Select);
@@ -819,7 +819,7 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
     AgregatingNode = PathToCenter(find(PathToCenter == NodeIndex) + 1);
     % Get selected nodes
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
-    % Get agregated nodes
+    % Get aggregated nodes
     AgregatedNodesIndex = getAgregatedNodesFrom(hFig, AgregatingNode);
     % Is everything selected ?
     if (size(AgregatedNodesIndex,1) == sum(ismember(AgregatedNodesIndex, selNodes)))
@@ -1099,7 +1099,7 @@ function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] =
     end
     
     % ===== GET FREQUENCIES =====
-    % Get the current freqency
+    % Get the current frequency
     TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
     if isempty(TfInfo.iFreqs)
         Freqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs;
@@ -1162,7 +1162,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     [Time, Freqs, TfInfo, M, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig);
     % Zero-out the diagonal because its useless
     M = M - diag(diag(M));
-    % If the matrix is symetric and Not directional
+    % If the matrix is symmetric and Not directional
     if (isequal(M, M') && ~IsDirectionalData(hFig))
         % We don't need the upper half
         for i = 1:size(M,1)
@@ -3374,7 +3374,7 @@ function [aSplines] = ComputeSpline(hFig, MeasureLinks, Vertices)
                 W = Weights{Order == nFrames};
                 % 
                 Spline = W * Frames;
-                % Specifiy link length for Java
+                % Specify link length for Java
                 aSplines(Index) = LinkDetail;
                 % Assign spline vertices in a one dimension structure
                 aSplines(Index+1:Index + (LinkDetail) * 3) = reshape(Spline',[],1);
@@ -3460,7 +3460,7 @@ end
 %                     W = Weights{y};
 %                     Spline(:,:) = Spline(:,:) + bsxfun(@times, W, Frames(y,:)');
 %                 end            
-%                 % Specifiy link length for Java
+%                 % Specify link length for Java
 %                 aSplines(Index) = LinkDetail;
 %                 % Assign spline vertices in a one dimension structure
 %                 aSplines(Index+1:Index + (LinkDetail) * 3) = reshape(Spline,[],1);

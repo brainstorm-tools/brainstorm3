@@ -1,5 +1,5 @@
 function TessMat = in_tess_gii(TessFile)
-% IN_TESS_GII: Import GIfTI/BrainVisa .gii tessellation files.
+% IN_TESS_GII: Import GIfTI/BrainVisa .gii tesselation files.
 %
 % USAGE:  TessMat = in_tess_gii(TessFile);
 %

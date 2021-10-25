@@ -133,7 +133,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         % Apply process #iProc
         switch lower(sProcesses(iProc).Category)
             case {'filter', 'filter2'}
-                % Make sure that file type is indentical for both sets
+                % Make sure that file type is identical for both sets
                 if strcmpi(sProcesses(iProc).Category, 'filter2') && ~isempty(sInputs) && ~isempty(sInputs2) && ~strcmpi(sInputs(1).FileType, sInputs2(1).FileType)
                     bst_report('Error', sProcesses(iProc), [], 'Cannot process inputs from different types.');
                     break;
@@ -809,7 +809,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 end
             end
 
-            % If an error occured
+            % If an error occurred
             if isempty(sInput)
                 return;
             end
@@ -1173,7 +1173,7 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
     % ===== PROCESS =====
     % Apply process function
     sOutput = sProcess.Function('Run', sProcess, sInputA, sInputB);
-    % If an error occured
+    % If an error occurred
     if isempty(sOutput)
         OutputFile = [];
         return;
@@ -1963,7 +1963,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
                 sInput.RowNames = {ChannelMat.Channel(iRows).Name};
 
             case {'results', 'link', 'presults'}
-                % Norm/absolue values of the sources 
+                % Norm/absolute values of the sources 
                 if OPTIONS.isNorm && isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
                     sMat = process_source_flat('Compute', sMat, 'rms');
                     sInput.Data = sMat.(matName);
@@ -2592,7 +2592,7 @@ function [MatFile, errMsg] = SaveRawFile(sFileIn, ChannelMat, studyPath, DateOfS
     % Update tree display
     panel_protocols('UpdateNode', 'Study', iOutputStudy);
     
-    % === OUTPUT CHANNE FILE ===
+    % === OUTPUT CHANNEL FILE ===
     % If no default channel file: create new channel file
     sSubject = bst_get('Subject', SubjectName);
     if (sSubject.UseDefaultChannel == 0)

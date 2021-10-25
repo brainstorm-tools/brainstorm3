@@ -295,7 +295,7 @@ bst_progress('text', 'BEM: Deforming head...');
 rHead = interp2(th, phi, rHead, thHead, phiHead);
 [vHead(:,1), vHead(:,2), vHead(:,3)] = sph2cart(thHead, phiHead, rHead);
 
-% Reproject into intial coordinates system
+% Reproject into initial coordinates system
 sInner.Vertices = bst_bsxfun(@plus, vInner * inv(sCortex.R), sCortex.center);
 sOuter.Vertices = bst_bsxfun(@plus, vOuter * inv(sCortex.R), sCortex.center);
 sHead.Vertices  = bst_bsxfun(@plus, vHead  * inv(sCortex.R), sCortex.center);

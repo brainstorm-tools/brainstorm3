@@ -74,7 +74,7 @@ fclose(fid);
 
 
 % % LATER: If we need to visualize data within gmsh
-% % bloc physical Names
+% % block physical Names
 % fprintf(fid,'%s' EndLine],'$PhysicalNames');
 % fprintf(fid,'%i ' EndLine],length(unique(newelem(:,6))));
 % fprintf(fid,'%i %i %s' EndLine],'1 1 toto1');

@@ -24,7 +24,7 @@ function [NoiseCov, SensorsNames] = in_noisecov_fif( fname )
 % Authors: Francois Tadel, 2009
 %          (Based on scripts from M.Hamalainen)
 
-% Intialize returned matrix
+% Initialize returned matrix
 NoiseCov = [];
 % Get fiff constants
 global FIFF;

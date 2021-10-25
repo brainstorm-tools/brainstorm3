@@ -212,7 +212,7 @@ switch ObjType
             else
                 annotDuration = 0 .* annotOnset;
             end
-            % Add annotations to MNE objet
+            % Add annotations to MNE object
             mneObj.annotations.append(annotOnset, annotDuration, repmat({DataMat.Events(iEvt).label}, 1, size(annotOnset,2)));
         end
         

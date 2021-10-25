@@ -163,9 +163,9 @@ for iScoutSrc = 1:length(ResultsMat.GridAtlas.Scouts)
 end
 
 % Create sparse conversion matrices between indices
-% Vert2Grid: Correspondance between the vertices of the cortex surface and the GridLoc field
+% Vert2Grid: Correspondence between the vertices of the cortex surface and the GridLoc field
 destGridAtlas.Vert2Grid   = logical(sparse(iVert2Grid(:,2), iVert2Grid(:,1), ones(size(iVert2Grid,1),1)));
-% Grid2Source: Correspondance between the GridLoc and ImageGridamp matrices (identity matrix because the source maps must be flatten before projecting)
+% Grid2Source: Correspondence between the GridLoc and ImageGridamp matrices (identity matrix because the source maps must be flatten before projecting)
 destGridAtlas.Grid2Source = logical(speye(size(destGridLoc,1)));  
 
 

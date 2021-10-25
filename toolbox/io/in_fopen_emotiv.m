@@ -88,7 +88,7 @@ if ~isempty(Fevt) && any(Fevt ~= 0)
     end
     % List events
     uniqueEvt = setdiff(unique(Fevt), 0);
-    % Initialize events structur
+    % Initialize events structure
     events = repmat(db_template('event'), 1, length(uniqueEvt));
     % Build Brainstorm events structure
     for iEvt = 1:length(uniqueEvt)

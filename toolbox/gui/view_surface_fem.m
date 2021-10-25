@@ -132,7 +132,7 @@ setappdata(hFig, 'SubjectFile',  SubjectFile);
 FemMat = load(file_fullpath(SurfaceFile));
 % Hexa => convert to tetra
 if (size(FemMat.Elements,2) == 8)
-    % Convert the mesh to tetra for diplay purpose
+    % Convert the mesh to tetra for display purposes
     [tetraElem,tetraNode,tetraLabel] = hex2tet(double(FemMat.Elements), FemMat.Vertices, double(FemMat.Tissue), 3);
     % Updates FemMat for display purpose
     FemMat.Vertices = tetraNode;

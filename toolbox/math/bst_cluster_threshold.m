@@ -8,8 +8,8 @@ function Y = bst_cluster_threshold(X, thd, vc, dim)
 %       bigger than (or equal to) thd:
 %               for each cluster clu{i}=[ ... ],  sum(X([clu{i}])) >= thd;
 %       Adjacency/connectivity must be specified in vc 
-%           * use vc=1 for continous data (e.g. time samples)
-%           * use a conectivity matrix or cell array of neighbors otherwise
+%           * use vc=1 for continuous data (e.g. time samples)
+%           * use a connectivity matrix or cell array of neighbors otherwise
 %       By default [dim] is the first non singleton dimension of X
 %
 %       Outputs Y (of the same size as X) such that Y=X where the clusters

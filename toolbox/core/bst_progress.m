@@ -407,7 +407,7 @@ end
 % 
 %                 %3) Use Java robot to execute a CTRL+C in the (now focused) command window.
 % 
-%                 %3.1)  Setup a timer to relase CTRL + C in 0.3 second
+%                 %3.1)  Setup a timer to release CTRL + C in 0.3 second
 %                 %  Try to reuse an existing timer if possible (this would be a holdover
 %                 %  from a previous execution)
 %                 t_all = timerfindall;

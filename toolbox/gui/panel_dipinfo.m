@@ -249,7 +249,7 @@ function UpdatePanel(hFig)
     % Load MRI
     MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
     sMri = bst_memory('LoadMri', MriFile);
-    % Convert corrdinates
+    % Convert coordinates
     if ~isempty(sDip)
         SCS = sDip.Loc;
         MRI = cs_convert(sMri, 'scs', 'mri', SCS);

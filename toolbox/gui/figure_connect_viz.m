@@ -590,7 +590,7 @@ function ToggleRegionSelection(hFig, Inc)
     % Is the next node an agregating node?
     IsAgregatingNode = ismember(NextNode, AgregatingNodes);
     if (IsAgregatingNode)
-        % Get agregated nodes
+        % Get aggregated nodes
         AgregatedNodeIndices = GetAgregatedNodesFrom(hFig, NextNode); 
         if (~isempty(AgregatedNodeIndices))
             % Select all nodes associated to NextNode
@@ -651,7 +651,7 @@ function NodeClickEvent(hFig, NodeIndex)
 
             % Agregative nodes: select blocks of nodes
             if IsAgregatingNode
-                % Get agregated nodes
+                % Get aggregated nodes
                 AgregatedNodeIndex = GetAgregatedNodesFrom(hFig, NodeIndex);
                 % How many are already selected
                 NodeAlreadySelected = ismember(AgregatedNodeIndex, SelNodes);
@@ -717,7 +717,7 @@ function UpdateHierarchySelection(hFig, NodeIndex, Select)
     AgregatingNode = PathToCenter(find(PathToCenter == NodeIndex) + 1);
     % Get selected nodes
     selNodes = bst_figures('GetFigureHandleField', hFig, 'SelectedNodes');
-    % Get agregated nodes
+    % Get aggregated nodes
     AgregatedNodesIndex = GetAgregatedNodesFrom(hFig, AgregatingNode);
     % Is everything selected ?
     if (size(AgregatedNodesIndex, 1) == sum(ismember(AgregatedNodesIndex, selNodes)))
@@ -963,7 +963,7 @@ function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] =
     end
     
     % ===== GET FREQUENCIES =====
-    % Get the current freqency
+    % Get the current frequency
     TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
     if isempty(TfInfo.iFreqs)
         Freqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs;
@@ -1027,7 +1027,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     % Zero-out the diagonal because its useless
     M = M - diag(diag(M));
     
-    % If the matrix is symetric and Not directional
+    % If the matrix is symmetric and Not directional
     if (isequal(M, M') && ~IsDirectionalData(hFig))
         % We don't need the upper half
         for i = 1:size(M, 1)
@@ -3020,7 +3020,7 @@ function ToggleLobeLabels(hFig)
     end
 end
 
-%% ===== NODE & LABEL SIZE IN SIGNLE FUNCTION =====
+%% ===== NODE & LABEL SIZE IN SINGLE FUNCTION =====
 function SetNodeLabelSize(hFig, NodeSize, LabelSize)
     AllNodes = getappdata(hFig, 'AllNodes');
     for i = 1:size(AllNodes, 2)

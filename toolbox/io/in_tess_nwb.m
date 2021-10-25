@@ -28,7 +28,7 @@ error('This code is outdated, see: https://neuroimage.usc.edu/forums/t/error-ope
 % Configure for nwb-ecog should call:  generateCore(bst_fullfile('ecog.namespace.yaml'))
 
 
-%%  INITIALIALIZE NWB SDK AND ECOG LIBRARY (FOR NOW THESE ARE SEPARATE)
+%%  INITIALIZE NWB SDK AND ECOG LIBRARY (FOR NOW THESE ARE SEPARATE)
 
 
 %% ===== INSTALL NWB LIBRARY =====
@@ -76,7 +76,7 @@ try
     nwb2 = nwbRead(TessFile);
     
     if isempty(nwb2.general_subject.cortical_surfaces.surface)
-        error('There doesnt appear to be a surface present in this .nwb file')
+        error('There doesn''t appear to be a surface present in this .nwb file')
     else
         % Get all surfaces
         all_surface_keys = keys(nwb2.general_subject.cortical_surfaces.surface)';

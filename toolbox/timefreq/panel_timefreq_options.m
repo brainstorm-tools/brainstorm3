@@ -74,7 +74,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         isClusterAll = 0;
     end
     
-    % Determine which function is calling this pannel
+    % Determine which function is calling this panel
     isProcHenv = ismember(func2str(sProcess.Function), {'process_henv1', 'process_henv1n', 'process_henv2'});
     if isProcHenv
         Method = sProcess.options.tfmeasure.Value;
@@ -96,7 +96,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     else
         strTimeInput = sprintf('[%1.2f : %1.2f : %1.2f] ms', procOPTIONS.TimeVector(1)*1000, (procOPTIONS.TimeVector(2)-procOPTIONS.TimeVector(1))*1000, procOPTIONS.TimeVector(end)*1000);
     end
-    % Are we procesing only one file ?
+    % Are we processing only one file ?
     isOneFile = (procOPTIONS.nInputs == 1);
     % Processing sources? kernels?
     isSource = (strcmpi(procOPTIONS.DataType, 'results') && ~isCluster);
@@ -715,7 +715,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             error('No time defined.');
         end
         % Ask the duration of each time band
-        strDuration = java_dialog('input', 'Enter the duration of each time band (in miliseconds)', 'Create time bands', [], '100');
+        strDuration = java_dialog('input', 'Enter the duration of each time band (in milliseconds)', 'Create time bands', [], '100');
         if isempty(strDuration)
             return
         end

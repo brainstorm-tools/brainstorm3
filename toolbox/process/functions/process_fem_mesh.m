@@ -463,7 +463,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 % figure; plotmesh(node(elemList,:),'r.');xlabel('x');ylabel('y');zlabel('z');hold on; plotmesh([maxYpoint;minYpoint],'bo') 
                 distance_out(ind) = norm(maxYpoint-minYpoint);
             end
-            % Sort weired elements, works in all case even when there are more output tissues than inputs
+            % Sort weird elements, works in all case even when there are more output tissues than inputs
             distOut_tmp = distance_out;
             for ind = 1 : length(distance_in)
                 tmp = find(round(distOut_tmp,3)<=round(distance_in(ind),3));

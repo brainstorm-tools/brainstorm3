@@ -13,9 +13,9 @@ function [hCuts, OutputOptions] = mri_draw_cuts(hFig, OPTIONS)
 %    (optional)
 %     - OverlayCube      : 3d-volume insensity volume (same size than MRI) with specific data values
 %                          4d-volume RGB volume [MRIsize,3], with RGB colors between 0 and 255
-%     - OverlayThreshold : Intensity threshold above which a voxel is overlayed in the MRI slices.
-%     - OverlayAlpha     : Overlayed voxels transparency 
-%     - OverlayColormap  : Colormap to use to display the overlayed data
+%     - OverlayThreshold : Intensity threshold above which a voxel is overlaid in the MRI slices.
+%     - OverlayAlpha     : Overlaid voxels transparency 
+%     - OverlayColormap  : Colormap to use to display the overlaid data
 %     - OverlayBounds    : [minValue, maxValue]: amplitude of the OverlayColormap
 %     - isMipAnatomy     : 1=compute maximum intensity projection in the MRI volume
 %     - isMipFunctional  : 1=compute maximum intensity projection in the OVerlay volume
@@ -171,7 +171,7 @@ for iCoord = 1:3
             else
                 overlayMask((sliceOverlay < OPTIONS.OverlayBounds(1) + (OPTIONS.OverlayBounds(2)-OPTIONS.OverlayBounds(1)) * OPTIONS.OverlayThreshold)) = 0;
             end
-            % Theshold objects sizes
+            % Threshold objects sizes
             if (OPTIONS.OverlaySizeThreshold > 1)
                 [maskLabel, num, sz] = dg_label(overlayMask, 8);
                 overlayMask(sz < 3 * OPTIONS.OverlaySizeThreshold) = 0;

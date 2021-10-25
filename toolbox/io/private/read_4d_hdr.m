@@ -6,7 +6,7 @@ function header = read_4d_hdr(datafile, configfile)
 % CONTRIBUTORS:
 %    - This function was created based on the read_4d_hdr.m file from FieldTrip toolbox:
 %      Copyright (C) 2008-2009, Centre for Cognitive Neuroimaging, Glasgow, Gavin Paterson & J.M.Schoffelen
-%    - The intial file was based on MSI>>Matlab code written by Eugene Kronberg
+%    - The initial file was based on MSI>>Matlab code written by Eugene Kronberg
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

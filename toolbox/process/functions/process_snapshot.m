@@ -66,7 +66,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.contact_nimage.Comment = 'Contact sheet (number of images):';
     sProcess.options.contact_nimage.Type    = 'value';
     sProcess.options.contact_nimage.Value   = {12, '', 0};
-    % === THRESOLD
+    % === THRESHOLD
     sProcess.options.threshold.Comment = 'Source amplitude threshold:';
     sProcess.options.threshold.Type    = 'value';
     sProcess.options.threshold.Value   = {30, '%', 0};

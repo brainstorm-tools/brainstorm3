@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_image_reg(Data, Labels, iDims, DimLabels, File
 %
 % INPUT: 
 %     - Data         : [N1 x N2 x Ntime x Nfreq] numeric matrix to display
-%     - Labels       : [1x4] cell array with the labels of the entries of each dimentions
+%     - Labels       : [1x4] cell array with the labels of the entries of each dimensions
 %     - iDims        : Indices of the dimensions that are displayed along axes x and y
 %     - DimLabels    : [1x4] cell array with the description of each dimension
 %     - FileName     : Relative path to the file to display

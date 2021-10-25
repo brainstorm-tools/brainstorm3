@@ -50,7 +50,7 @@ for iStudy = iStudies
     end
     % Get study directory
     studySubDir = bst_fileparts(sStudy.FileName);
-    % Check the existance of the study's directory
+    % Check the existence of the study's directory
     if ~file_exist(bst_fullfile(ProtocolInfo.STUDIES, studySubDir))
         db_fix_protocol();
         bst_progress('stop');

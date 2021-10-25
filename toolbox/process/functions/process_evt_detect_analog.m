@@ -377,7 +377,7 @@ function evt = Compute(F, TimeVector, EventSamps, OPTIONS, Fmask)
     % Standard deviation
     if ~isempty(Fmask)
         Fsig = F(Fmask);
-        % ignore the first and last 5% of the signal (incase of artifacts)
+        % ignore the first and last 5% of the signal (in case of artifacts)
         Fsig = Fsig(length(Fsig)*0.05:end-(length(Fsig)*0.05));
         stdF = std(Fsig);
     else
@@ -387,7 +387,7 @@ function evt = Compute(F, TimeVector, EventSamps, OPTIONS, Fmask)
     end
     
     % ===== DETERMINE THRESHOLD =====
-    % Theshold, in number of times the std
+    % Threshold, in number of times the std
     threshVal = OPTIONS.threshold * stdF;
     if OPTIONS.isfalling
         % Find all the indices that are above the threshold

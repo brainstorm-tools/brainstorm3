@@ -1,7 +1,7 @@
 function [Results, OPTIONS, HeadModel] = bst_wmne_mosher(HeadModel,OPTIONS)
 % BST_WMNE: Compute the whitened and weighted minimum-norm operator (wMNE imaging kernel)
 %
-% USAGE:  [Results,OPTIONS] = bst_wmne(HeadModel, OPTIONS) : Compute mininum operator
+% USAGE:  [Results,OPTIONS] = bst_wmne(HeadModel, OPTIONS) : Compute minimum operator
 %                   OPTIONS = bst_wmne()                   : Return default options
 %
 % DESCRIPTION:
@@ -71,7 +71,7 @@ function [Results, OPTIONS, HeadModel] = bst_wmne_mosher(HeadModel,OPTIONS)
 %     - Orientation constrains for dipoles (.SourceOrient field)
 %         - "fixed"     : Dipoles constrained to point normal to cortical surfaces
 %         - "free"      : No constraints, dipoles point in x,y,z directions
-%         - "loose"     : Source variances of dipole components pointing tangentially to the cortical surfaces are multipled by OPTIONS.loose
+%         - "loose"     : Source variances of dipole components pointing tangentially to the cortical surfaces are multiplied by OPTIONS.loose
 %         - "truncated" : An SVD of the gain matrix for each source point is 
 %                         used to remove the dipole component with least variance, which for
 %                         the Single Sphere Head Model, corresponds to the radialsilent component).
@@ -81,8 +81,8 @@ function [Results, OPTIONS, HeadModel] = bst_wmne_mosher(HeadModel,OPTIONS)
 %          This has to correspond with the HeadModel Structure 
 %
 %     - The output HeadModel param is used here in return to save LOTS of memory in the bst_wmne function,
-%       event if it seems to be absolutely useless. Having a parameter in both input and output have the
-%       effect in Matlab of passing them "by referece". So please, do NOT remove it from the function description
+%       even if it seems to be absolutely useless. Having a parameter in both input and output has the
+%       effect in Matlab of passing them "by reference". So please, do NOT remove it from the function description
 %
 %     - sLORETA: Output values are multiplied by 1e12 for display in Brainstorm (time series and cortical maps).
 
@@ -355,7 +355,7 @@ for k = 1:numL
     end    
     switch OPTIONS.SourceOrient{k}
         case 'fixed'
-            display('wMNE> Appying fixed dipole orientations.')
+            display('wMNE> Applying fixed dipole orientations.')
             Lk = bst_gain_orient(Lk,HeadModel(k).GridOrient);
         case 'free'
             display('wMNE> Using free dipole orientations. No constraints.')        

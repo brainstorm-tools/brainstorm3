@@ -125,7 +125,7 @@ if strcmpi(res, 'Yes')
     isWarp = 1;
 end
 
-% Create if subject doesnt exist
+% Create if subject doesn"t exist
 if isempty(iSubject)
     [sSubject, iSubject] = db_add_subject(SubjectName, [], 1, 0);
 end
@@ -158,7 +158,7 @@ sSubject = bst_get('Subject', iSubject);
 % If warping: we need a channel file in HeadPoints, this will be populated
 % with the head points measured and saved in a .pos file
 if isWarp
-    % Create if condition doesnt exist
+    % Create if condition doesn't exist
     if isempty(sStudy)
         iStudy = db_add_condition(SubjectName, ConditionHeadPoints);
         sStudy = bst_get('Study', iStudy);
@@ -215,7 +215,7 @@ if isWarp
     % Warp surface for new head points
     % bst_warp_prepare(ChannelFile, Options)
     %    Options     : Structure of the options
-    %         |- tolerance    : Percentage of outliers head points, ignored in the calulation of the deformation. 
+    %         |- tolerance    : Percentage of outliers head points, ignored in the calculation of the deformation. 
     %         |                 Set to more than 0 when you know your head points have some outliers.
     %         |                 If not specified: asked to the user (default 
     %         |- isInterp     : If 0, do not do a full interpolation (default: 1)
@@ -239,7 +239,7 @@ end
 %% ===== PREPARE CONDITION: CHANNEL POSITIONS =====
 % Get condition
 [sStudyChan, iStudyChan] = bst_get('StudyWithCondition', [SubjectName '/' ConditionChan]);
-% Create if condition doesnt exist, this will be populated with sensor
+% Create if condition doesn't exist, this will be populated with sensor
 % positions measured from real-time res4 file
 if isempty(sStudyChan)
     iStudyChan = db_add_condition(SubjectName, ConditionChan);
@@ -444,12 +444,12 @@ function SaveAlignChannelFile(HPChannelFile, iStudyAlign, ChannelMat)
         bst_error('No SCS transformation in the head points channel file')
         return;
     end
-    % Get the translation and rotation from the HeadPoints tranformation
+    % Get the translation and rotation from the HeadPoints transformation
     trans = HPChannelMat.TransfMeg{iTrans};
     anatR = trans(1:3, 1:3);
     anatT = trans(1:3, 4) * 1000; % convert from m to mm
 
-    % Combine the tranformations
+    % Combine the transformations
     transfAnat = [anatR, anatT; 0 0 0 1]*[ChannelMat.SCS.R, ChannelMat.SCS.T; 0 0 0 1]; % in mm
 
     % Update the ChannelMat structure

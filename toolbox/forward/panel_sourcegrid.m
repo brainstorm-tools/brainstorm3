@@ -650,7 +650,7 @@ function ShowGrid()
         end
         return;
     end
-    % Create figure if it doesnt exist + show surface
+    % Create figure if it doesn't exist + show surface
     if isempty(hFig)
         hFig = view_surface(ctrl.CortexFile, .9, [.6 .6 .6], 'NewFigure', 0);
         set(hFig, 'Tag', 'FigCheckGrid');

@@ -11,7 +11,7 @@ function bst_deploy_java(IS_BIN)
 % STEPS:
 %    - Update doc/version.txt
 %    - Update doc/license.html (update block: "Version: ...")
-%    - Update *.m inital comments (replace block "@=== ... ===@" with deploy/autocomment.txt)
+%    - Update *.m initial comments (replace block "@=== ... ===@" with deploy/autocomment.txt)
 %    - Remove *.asv files
 %    - Copy files to GIT folder and open GitGUI
 %    - Zip brainstorm3 directory (output file: <bstMakeDir>/brainstorm_yymmdd.zip)

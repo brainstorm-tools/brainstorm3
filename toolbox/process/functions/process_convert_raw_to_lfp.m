@@ -69,7 +69,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     sProcess.options.binsize.Comment = 'Memory to use for demultiplexing';
     sProcess.options.binsize.Type    = 'value';
-    sProcess.options.binsize.Value   = {1, 'GB', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), ot the temp folder was emptied 
+    sProcess.options.binsize.Value   = {1, 'GB', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), or the temp folder was emptied 
     
 end
 
@@ -269,7 +269,7 @@ function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilt
         data = sMat.data';
     end
     
-    % Aplly final filter
+    % Apply final filter
     data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
     data = downsample(data, round(Fs/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz.
 end
@@ -335,7 +335,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             S = zeros(length(data_deligned_temp),1);
             iSpk = round(spkSamples - nSegment/2);
             iSpk = iSpk(iSpk > 0); % Only keep positive indices
-            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
+            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the through of the spike
             data_derived = despikeLFP(data_deligned_temp,S,Bs,g,opts);
             data_derived = data_derived.z';
             data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
@@ -346,7 +346,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             S = zeros(length(data_deligned),1);
             iSpk = round(spkSamples - nSegment/2);
             iSpk = iSpk(iSpk > 0); % Only keep positive indices
-            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
+            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the through of the spike
 
             data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
             data_derived = data_derived.z';

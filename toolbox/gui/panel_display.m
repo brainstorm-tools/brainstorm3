@@ -1118,7 +1118,7 @@ function SetSelectedPage(hFig, newPageName) %#ok<DEFNU>
     else
         iNewPage = find(strcmpi(Labels, newPageName));
     end
-    % Nothing to udpate
+    % Nothing to update
     if isempty(iNewPage) || isequal(iCurPage, iNewPage)
         return;
     end

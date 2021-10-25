@@ -14,7 +14,7 @@ function isDeleted = file_delete( fileList, isForced, isRecursive )
 %                     if -1, do not allow to delete a folder (default)
 % OUTPUT:
 %     - isDeleted :  0 if user aborted deletion
-%                   -1 if an error occured
+%                   -1 if an error occurred
 %                    1 if success
 
 % @=============================================================================

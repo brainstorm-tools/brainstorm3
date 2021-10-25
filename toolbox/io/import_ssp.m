@@ -1,5 +1,5 @@
 function [Projector, errMsg] = import_ssp(ChannelFile, SspFiles, ApplyToData, SaveChannelFile, strComment)
-% IMPORT_SSP: Reads SSP projectors from a list of FIF files, add it to the channel file and to all the dependant data.
+% IMPORT_SSP: Reads SSP projectors from a list of FIF files, add it to the channel file and to all the dependent data.
 %
 % USAGE:  [Projector, errMsg] = import_ssp(ChannelFile, SspFiles, ApplyToData, SaveChannelFile, strComment)
 %         [Projector, errMsg] = import_ssp(ChannelFile, Projector, ApplyToData, SaveChannelFile, strComment)
@@ -45,7 +45,7 @@ elseif ~ischar(SspFiles)
 end
 % Detect file format
 if ~isempty(SspFiles)
-    % Get the file extenstion
+    % Get the file extension
     [fPath, fBase, fExt] = bst_fileparts(SspFiles{1});
     if ~isempty(fExt)
         % Detect file format by extension

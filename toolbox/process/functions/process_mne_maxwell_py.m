@@ -150,7 +150,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     newStudyPath = file_unique(bst_fullfile(pathSubj, [rawBaseIn, '_', fileTag]));
     % New file comment
     Comment = [strrep(sMat.Comment, 'Link to raw file', 'Raw') ' | ' fileTag];
-    % Add hitory enty
+    % Add history entry
     sMat = bst_history('add', sMat, 'process', sProcess.Comment);
     % Save raw file to database
     [OutputFile, errMsg] = bst_process('SaveRawFile', sFile, ChannelMat, newStudyPath, sInputStudy.DateOfStudy, Comment, sMat.History);

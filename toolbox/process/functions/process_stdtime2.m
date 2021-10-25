@@ -74,7 +74,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
             bst_report('Error', sProcess, sInputB(iFile), ['Invalid input file type: ' sInputB(iFile).FileType]);
             return;
         end
-        % Call interploation function on pair (A,B)
+        % Call interpolation function on pair (A,B)
         OutputFiles = cat(2, OutputFiles, process_stdtime('Run', sProcess, [sInputA(iFile), sInputB(iFile)]));
     end
 end

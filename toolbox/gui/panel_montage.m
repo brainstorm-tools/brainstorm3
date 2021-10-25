@@ -450,7 +450,7 @@ function LoadFigure(hFig)
         listModel.addElement(BstListItem('', '', [Channels{i} '       '], i));
     end
     ctrl.jListSensors.setModel(listModel);
-    % Update channel selection fot the first time
+    % Update channel selection for the first time
     UpdateEditor(hFig);
     % Set callbacks
     java_setcb(ctrl.jButtonAll,      'ActionPerformedCallback', @(h,ev)ButtonAll_Callback(hFig));
@@ -884,7 +884,7 @@ function newName = NewMontage(MontageType, ChanNames, hFig)
         % Create a bi-polar montage: 1 on the diagonal and -1 for the reference
         MontageMatrix = eye(length(ChanNames), length(ChanNames));
         MontageMatrix(:,iRef) = -1 ./ length(iRef);
-        % Remove all the unecessary rows/columns
+        % Remove all the unnecessary rows/columns
         iAll = 1:length(ChanNames);
         MontageMatrix(setdiff(iAll,iChannelsDisp), :) = [];
         MontageMatrix(:, setdiff(iAll,iChannelsRef)) = [];
@@ -1156,7 +1156,7 @@ function DeleteMontage(MontageName)
         disp(['BST> Error: Montage "' MontageName '" was not found.']);
         return;
     elseif (length(sMontage) >= 2)
-        disp(['BST> Error: Mulitple montages "' MontageName '" were found. Deleting only the first one.']);
+        disp(['BST> Error: Multiple montages "' MontageName '" were found. Deleting only the first one.']);
         sMontage = sMontage(1);
         iMontage = iMontage(1);
     end
@@ -2551,7 +2551,7 @@ function [letters, number] = GetEeg1020ChannelParts(channelName)
     end
 
     % Break down of regexp:
-    %  ^\s*          : Skip begginning spaces if any
+    %  ^\s*          : Skip beginning spaces if any
     %  ([A-Zp]{1,3}) : Extract 1 to 3 letters (all uppercase except 'p')
     %  (z|[1-9]|10)  : Extract 1-10 number or 'z' for zero
     %  h?            : The 10-5 extension adds an 'h' to some channels, ignore

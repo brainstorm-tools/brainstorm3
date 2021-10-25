@@ -14,7 +14,7 @@ function [clu,sz,mc,v2c] = bst_clustering(X, vc)
 %            vertice_connectivity (cell list)
 %            adjacency matrix
 %
-% OUPUTS:
+% OUTPUTS:
 %    - clu     : Clusters found ss a cell list of indices in X, ordered in decreasing size
 %    - sz      : size of each cluster
 %    - mc      : mass of each cluster, mc(i)=sum(X(clu{i}))

@@ -254,7 +254,7 @@ function [DestRowNames, AllRowNames, iRowsSrc, iRowsDest, msgError] = GetUniform
             [tmp, iRef] = min(nRows);
             % Get rows
             DestRowNames = AllRowNames{iRef};
-            % Remove unecessary rows
+            % Remove unnecessary rows
             iRemove = find(~ismember(DestRowNames, interRowNames));
             if ~isempty(iRemove)
                 DestRowNames(iRemove) = [];

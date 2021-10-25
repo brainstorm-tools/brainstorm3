@@ -40,7 +40,7 @@ else
 end
 
 
-%% ===== REBUILD COIL-CHANNEL CORRESPONDANCE =====
+%% ===== REBUILD COIL-CHANNEL CORRESPONDENCE =====
 projList = {};
 if ~isempty(grad)
     % Initialize FieldTrip

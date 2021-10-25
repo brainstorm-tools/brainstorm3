@@ -706,7 +706,7 @@ for ifreq=1:nFa
         
         % Add previous and next point to the interval to give the algorithm 
         % to find the local peaks even if they are in the first and last 
-        % point of interst in the spectrum
+        % point of interest in the spectrum
         if ind(1)>1
             ind(1) = ind(1)-1;
         end
@@ -737,7 +737,7 @@ for ifreq=1:nFa
             locs_orig = locs_orig(pks_orig>0.1);            
             
             % Confirming the peak
-            max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in evelope and the original signal's PSD
+            max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in envelope and the original signal's PSD
             count = 1;
             check_pks = 1;
             fp_loc = [];

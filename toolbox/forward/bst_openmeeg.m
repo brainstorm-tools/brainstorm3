@@ -43,7 +43,7 @@ function [Gain, errMsg] = bst_openmeeg(OPTIONS)
 
 %% ===== PARSE INPUTS =====
 
-% Intialize variables
+% Initialize variables
 Gain = [];
 errMsg = '';
 % Save current folder

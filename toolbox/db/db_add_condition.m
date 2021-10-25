@@ -9,7 +9,7 @@ function iStudies = db_add_condition(SubjectName, ConditionName, isRefresh, Date
 %     - SubjectName   : String, name of the target subject. 
 %                       Use '*' to specify all the subjects
 %     - ConditionName : String, name of the condition to add.
-%                       If empty or ommitted, asked to the user
+%                       If empty or omitted, asked to the user
 %     - isRefresh     : If 0, tree is not refreshed after adding condition
 %                       If 1, tree is refreshed
 %     - DateOfStudy   : String 'dd-MMM-yyyy', force Study entries created in the database to use this acquisition date

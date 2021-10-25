@@ -23,7 +23,7 @@ function events = in_events_csv(sFile, EventFile)
 %
 % Authors: Francois Tadel, 2019
 
-% Intialize returned variable
+% Initialize returned variable
 events = [];
 % Open file
 fid = fopen(EventFile, 'r');

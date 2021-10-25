@@ -86,7 +86,7 @@ for i = 1:nChannels
     elseif ischar(D.channels(i).label) && ~isempty(D.channels(i).label)
         ChannelMat.Channel(i).Name = D.channels(i).label;
     else
-        disp(sprintf('BST> Warning: No information avaible for channel #%d.', i));
+        disp(sprintf('BST> Warning: No information available for channel #%d.', i));
     end
     % Convert channel types
     switch upper(D.channels(i).type)

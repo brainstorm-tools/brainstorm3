@@ -167,7 +167,7 @@ end
         end
         % Apply action
         iProtocol = db_edit_protocol(action, sProtocol, iProtocol);
-        % If an error occured, don't close the editor
+        % If an error occurred, don't close the editor
         if (iProtocol <= 0)
             return
         end

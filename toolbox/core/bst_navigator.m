@@ -262,7 +262,7 @@ function DbNavigation( action, iDataSets )
                 % Move to the next one in the trial group
                 if (moveDirection == 1) && (nnz(iData2List(iOldData+1:end) == iList) > 0)
                     iNewData = iOldData + find(iData2List(iOldData+1:end) == iList, 1, 'first');
-                % Move to the pervious one in the trial group
+                % Move to the previous one in the trial group
                 elseif (moveDirection == -1) && (nnz(iData2List(1:iOldData-1) == iList) > 0)
                     iNewData = find(iData2List(1:iOldData-1) == iList, 1, 'last');
                 % Else go to the next/previous file in the .Data structure

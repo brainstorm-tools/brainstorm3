@@ -211,12 +211,12 @@ switch(lower(msgType))
         if isempty(msgTitle)
             msgTitle = 'Confirmation';
         end
-        reponse = java_call('javax.swing.JOptionPane', 'showConfirmDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.YES_NO_OPTION);
-        if reponse == javax.swing.JOptionPane.CLOSED_OPTION
+        response = java_call('javax.swing.JOptionPane', 'showConfirmDialog', 'Ljava.awt.Component;Ljava.lang.Object;Ljava.lang.String;I', jParent, msg, msgTitle, javax.swing.JOptionPane.YES_NO_OPTION);
+        if response == javax.swing.JOptionPane.CLOSED_OPTION
             res = 0;
             isCancel = 1;
         else
-            res = (reponse == javax.swing.JOptionPane.OK_OPTION);
+            res = (response == javax.swing.JOptionPane.OK_OPTION);
             isCancel = 0;
         end
     % OPTIONS: buttonList; buttonDefault

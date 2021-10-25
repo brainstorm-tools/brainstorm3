@@ -133,7 +133,7 @@ elseif ~isempty(response.warning)
 elseif isempty(response.url) && ~isempty(response.message)
     error(response.message);
 elseif isempty(response.url)
-    error('Could not send figure to Plotly. An unknown error occured.');
+    error('Could not send figure to Plotly. An unknown error occurred.');
 end
 
 % Display figure URL

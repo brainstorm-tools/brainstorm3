@@ -1,5 +1,5 @@
 function [Lf_cortex, Q_cortex] = bst_xyz2lf(Lf_xyz, normals)
-%   This program takes a leadfield matix computed for dipole components
+%   This program takes a leadfield matrix computed for dipole components
 %   pointing in the x, y, and z directions, and outputs a new lead field
 %   matrix for dipole components pointing in the normal direction of the 
 %   cortical surfaces and in the two tangential directions to the cortex

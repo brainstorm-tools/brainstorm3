@@ -52,7 +52,7 @@ for i = 1:length(iSubjects)
     else
         subjectSubDir = bst_fileparts(ProtocolSubjects.Subject(iSubject).FileName);
     end
-    % Check the existance of the subject's directory
+    % Check the existence of the subject's directory
     if ~file_exist(bst_fullfile(ProtocolInfo.SUBJECTS, subjectSubDir))
         db_fix_protocol();
         bst_progress('stop');

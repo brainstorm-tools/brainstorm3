@@ -160,7 +160,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         OldHeadFile = db_surface_type(OldHeadFile, 'Scalp');
         % Downsample
         NewHeadFile = tess_downsize(OldHeadFile, nVertHead, 'reducepatch');
-        % Delete intial file
+        % Delete initial file
         if ~file_compare(OldHeadFile, NewHeadFile)
             file_delete(file_fullpath(OldHeadFile), 1);
             NewHeadFile = file_fullpath(NewHeadFile);
@@ -178,7 +178,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         OldCortexFile1 = OldCortexFile1{1};
         % Downsample
         NewCortexFile1 = tess_downsize(OldCortexFile1, nVertCortex, 'reducepatch');
-        % Delete intial file
+        % Delete initial file
         if ~file_compare(NewCortexFile1, OldCortexFile1)
             file_delete(file_fullpath(OldCortexFile1), 1);
             NewCortexFile1 = file_fullpath(NewCortexFile1);
@@ -191,7 +191,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         OldCortexFile2 = OldCortexFile2{1};
         % Downsample
         NewCortexFile2 = tess_downsize(OldCortexFile2, nVertCortex, 'reducepatch');
-        % Delete intial file
+        % Delete initial file
         if ~file_compare(NewCortexFile2, OldCortexFile2)
             file_delete(file_fullpath(OldCortexFile2), 1);
             NewCortexFile2 = file_fullpath(NewCortexFile2);
@@ -226,7 +226,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update Comment field
         InnerMat.Comment = 'Inner skull';
         bst_save(file_fullpath(NewInnerFile), InnerMat, 'v7', 1);
-        % Delete intial file
+        % Delete initial file
         if ~file_compare(OldInnerFile, NewInnerFile)
             file_delete(file_fullpath(OldInnerFile), 1);
         end
@@ -244,7 +244,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update Comment field
         OuterMat.Comment = 'Outer skull';
         bst_save(file_fullpath(NewOuterFile), OuterMat, 'v7', 1);
-        % Delete intial file
+        % Delete initial file
         if ~file_compare(OldOuterFile, NewOuterFile)
             file_delete(file_fullpath(OldOuterFile), 1);
         end

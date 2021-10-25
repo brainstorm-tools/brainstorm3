@@ -1,5 +1,5 @@
 function varargout = panel_process_select(varargin)
-% PANEL_PROCESS_SELECT: Creation and management of list of files to apply some batch proccess.
+% PANEL_PROCESS_SELECT: Creation and management of list of files to apply some batch process.
 %
 % USAGE:             bstPanelNew = panel_process_select('CreatePanel')
 %         [sOutputs, sProcesses] = panel_process_select('ShowPanel', FileNames, ProcessNames, FileTimeVector)

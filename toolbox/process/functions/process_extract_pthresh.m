@@ -64,7 +64,7 @@ function sProcess = DefineOptions(sProcess)
     sProcess.options.correction.Type    = 'radio';
     sProcess.options.correction.Value   = 1;
     % === CONTROL 
-    sProcess.options.label2.Comment = '<BR>Contol over dimensions:';
+    sProcess.options.label2.Comment = '<BR>Control over dimensions:';
     sProcess.options.label2.Type    = 'label';
     sProcess.options.control1.Comment = '1: Signals';
     sProcess.options.control1.Type    = 'checkbox';
@@ -288,7 +288,7 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
         end
         % SPM must be installed
         if ~exist('spm_uc', 'file')
-            warning('SPM must be in the Matlab path to compute the statistical thresold for this file.');
+            warning('SPM must be in the Matlab path to compute the statistical threshold for this file.');
             pmask = ones(size(StatMat.tmap));
         else
             % Threshold each time point independently

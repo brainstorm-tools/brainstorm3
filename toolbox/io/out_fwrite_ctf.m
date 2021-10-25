@@ -88,7 +88,7 @@ end
 
 
 %% ===== REMOVE CHANNELS GAIN =====
-% Value are stored in integer values, restore those intial values
+% Value are stored in integer values, restore those initial values
 % Get gains
 gain_chan = double(sFile.header.gain_chan(ChannelsRange(1):ChannelsRange(2)));
 if (size(gain_chan, 1) == 1)

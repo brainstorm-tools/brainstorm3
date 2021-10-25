@@ -56,11 +56,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.ttest_title.Comment    = '<BR>';
     sProcess.options.ttest_title.Type       = 'label';
     sProcess.options.ttest_title.InputTypes = {'results'};
-    % === Absolue values: legend:
+    % === Absolute values: legend:
     % 'Warning: This test may not be adapted for processing sources.<BR><BR>' ...
     sProcess.options.abs_label.Comment    = 'Test:  t = mean(D) ./ std(D) .* sqrt(n)';
     sProcess.options.abs_label.Type       = 'label';
-    % === Absolue values: type
+    % === Absolute values: type
     sProcess.options.abs_type.Comment = {'D = abs(A)-abs(B)', ...
                                          'D = A-B'};
     sProcess.options.abs_type.Type    = 'radio';
@@ -126,7 +126,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     else
         Function = 'mean';
     end
-    % Make sure that file type is indentical for both sets
+    % Make sure that file type is identical for both sets
     if ~isempty(sInputsA) && ~isempty(sInputsB) && ~strcmpi(sInputsA(1).FileType, sInputsB(1).FileType)
         bst_report('Error', sProcess, sInputsA, 'Cannot process inputs from different types.');
         sOutput = [];

@@ -1,5 +1,5 @@
 function varargout = process_compress_sym( varargin )
-% PROCESS_COMPRESS_SYM: Compress/expand symetric matrices.
+% PROCESS_COMPRESS_SYM: Compress/expand symmetric matrices.
 %
 % USAGE:  
 %         TF = process_compress_sym('Expand', TF, nRows)

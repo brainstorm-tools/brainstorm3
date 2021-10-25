@@ -48,7 +48,7 @@ nwb2 = sFile.header.nwb; % Having the header saved, saves a ton of time instead 
 
 ChannelsModuleStructure = sFile.header.ChannelsModuleStructure;
 
-% % If time for the ephys signals doesnt start from 0, adjust
+% % If time for the ephys signals doesn't start from 0, adjust
 % samples_adjustment = 0;
 % for iModule = 1:length(ChannelsModuleStructure)
 %     if ChannelsModuleStructure(iModule).isElectrophysiology

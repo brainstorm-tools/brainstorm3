@@ -519,7 +519,7 @@ function FigureMouseDownCallback(hFig, ev)
     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
     % Record action to perform when the mouse is moved
     setappdata(hFig, 'clickAction', clickAction);
-    % Record axes ibject that was clicked (usefull when more than one axes object in figure)
+    % Record axes object that was clicked (useful when more than one axes object in figure)
     setappdata(hFig, 'clickSource', hAxes);
     % Record the action to perform if mouse was not moved
     setappdata(hFig, 'noMoveAction', noMoveAction);
@@ -1910,7 +1910,7 @@ end
 %           RowNames         = GetFigSelectedRows(hFig);
 function [RowNames, iRows] = GetFigSelectedRows(hFig, AllRows)
     global GlobalData;
-    % Initialize retuned values
+    % Initialize returned values
     RowNames = [];
     iRows = [];
     % Find figure
@@ -2059,7 +2059,7 @@ function SetProperty(hFig, propName, propVal)
     end
     % Update TsInfo 
     setappdata(hFig, 'TsInfo', TsInfo);
-    % Correspondance for graphic property
+    % Correspondence for graphic property
     if isequal(TsInfo.(propName), 0)
         propGraph = 'off';
     else
@@ -3643,7 +3643,7 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
     if ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta')
         % Find all the separators
         iSep = find(cellfun(@(c)isempty(strtrim(c)), LinesLabels));
-        % Replace separator names with unique names, so that they are not overlayed in the same line
+        % Replace separator names with unique names, so that they are not overlaid in the same line
         if ~isempty(iSep)
             for i = 1:length(iSep)
                 LinesLabels{iSep(i)} = sprintf('###%d', i);
@@ -3659,7 +3659,7 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, TsInfo, TimeVector, F,
             for i = 1:nRows
                 iRowMap(strcmpi(uniqueLabels{i}, LinesLabels)) = i;
             end
-            % Use only one row per group of overlayed channels
+            % Use only one row per group of overlaid channels
             LinesLabels = uniqueLabels;
         end
         % Remove the separator temporary labels

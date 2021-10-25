@@ -209,7 +209,7 @@ if ~isempty(hdr.rejected_segments)
     % Look for event name in events list
     evtLabel = 'BAD_CNT';
     iEvtGroup = find(strcmpi({sFile.events.label}, evtLabel)); 
-    % If event doesnt exist yet: create one
+    % If event doesn't exist yet: create one
     if isempty(iEvtGroup)
         iEvtGroup = length(sFile.events) + 1;
     end

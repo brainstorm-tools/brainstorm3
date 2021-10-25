@@ -197,7 +197,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         end
         % Switch between actions
         switch (event.getKeyCode())
-            % ENTER/SPACE = MOUSE DOUBLECLICK
+            % ENTER/SPACE = MOUSE DOUBLE-CLICK
             case {event.VK_ENTER, event.VK_SPACE}
                 bst_call(@tree_callbacks, targetNodes(1), 'doubleclick');
             % DELETE/BACKSPACE : DELETE NODE CALLBACK
@@ -820,7 +820,7 @@ function nodeStudy = SelectStudyNode( varargin )
         nodeStudy = nodeStudy(1);
     end
     % ===== UNMARK ALL OTHER NODES =====
-    % Umark all marked nodes
+    % Unmark all marked nodes
     for i=1:length(TreeMarkedNode)
         if ishandle(TreeMarkedNode(i))
             TreeMarkedNode(i).setMarked(0);

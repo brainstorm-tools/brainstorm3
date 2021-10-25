@@ -30,7 +30,7 @@ else
     iTagBegin = iTagBegin(1);
     % Find the end of the tag (minimum number of digits: 2)
     iTagEnd = iTagBegin + 6;
-    % Find the last dot (extenstion: to be removed)
+    % Find the last dot (extension: to be removed)
     iLastDot = strfind(s, '.');
     if isempty(iLastDot)
         iLastDot = length(s) + 1;

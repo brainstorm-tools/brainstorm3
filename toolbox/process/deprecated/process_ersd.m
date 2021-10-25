@@ -1,5 +1,5 @@
 function varargout = process_ersd( varargin )
-% PROCESS_ERSD: Compute event related perturbation (synchrnonization / desynchrnonization)
+% PROCESS_ERSD: Compute event related perturbation (synchronization / desynchrnonization)
 %
 % DESCRIPTION: 
 %    This function calculates event related perturbation (ERS/ERD) as the percentage of a 

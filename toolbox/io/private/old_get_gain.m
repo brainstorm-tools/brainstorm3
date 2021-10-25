@@ -1,5 +1,5 @@
 function A = old_get_gain(fid,ndx)
-% GET_GAIN: Get a set of source foward fields from a .bin gain matrix file.
+% GET_GAIN: Get a set of source forward fields from a .bin gain matrix file.
 %
 % USAGE:  A = old_get_gain(fid,ndx);
 %

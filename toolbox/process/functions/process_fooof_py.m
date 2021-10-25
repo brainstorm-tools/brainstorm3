@@ -35,7 +35,7 @@ function [fs, fg] = FOOOF_python(TF, Freqs, opt)
     if ~any(strcmp('scipy',modules)), py.importlib.import_module('scipy'); end
     if ~any(strcmp('numpy',modules)), py.importlib.import_module('numpy'); end
     
-    % Initalize FOOOF structs
+    % Initialize FOOOF structs
     fg = repmat(struct('FOOOF',[]), 1, size(TF,1));
     % Iterate across channels
     for chan = 1:size(TF,1)
@@ -81,7 +81,7 @@ function fooof_results = fooof_py(freqs, power_spectrum, f_range, settings)
 %       settings.verbose
 %
 % Outputs:
-%   fooof_results   = fooof model ouputs, in a struct, including:
+%   fooof_results   = fooof model outputs, in a struct, including:
 %       fooof_results.aperiodic_params
 %       fooof_results.peak_params
 %       fooof_results.gaussian_params

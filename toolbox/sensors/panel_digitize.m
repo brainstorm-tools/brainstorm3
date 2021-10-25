@@ -50,7 +50,7 @@ function Start() %#ok<DEFNU>
     % Get subject
     SubjectName = 'Digitize';
     [sSubject, iSubject] = bst_get('Subject', SubjectName);
-    % Create if subject doesnt exist
+    % Create if subject doesn't exist
     if isempty(iSubject)
         % Default anat / one channel file per subject
         UseDefaultAnat = 1;
@@ -73,7 +73,7 @@ function Start() %#ok<DEFNU>
     bst_set('DigitizeOptions', DigitizeOptions);
     
     % ===== INITIALIZE CONNECTION =====
-    % Intialize global variable
+    % Initialize global variable
     Digitize = struct(...
         'SerialConnection', [], ...
         'Mode',             0, ...
@@ -835,7 +835,7 @@ function DeletePoint_Callback(h, ev) %#ok<INUSD>
 end
 
 
-%% ===== COMPUTE TRANFORMATION =====
+%% ===== COMPUTE TRANSFORMATION =====
 function ComputeTransform()
     global Digitize
     % Get controls
@@ -844,7 +844,7 @@ function ComputeTransform()
     % Get options
     DigitizeOptions = bst_get('DigitizeOptions');
     
-    % if MEG coils are used, these will determine the coodinate system
+    % if MEG coils are used, these will determine the coordinate system
     if DigitizeOptions.isMEG
         % find the difference between the first two collections to determine error
         if (size(Digitize.Points.hpiN, 1) > 1)
@@ -981,7 +981,7 @@ function PlotCoordinate(Loc, Label, Type, iPoint)
     ChannelFile = file_fullpath(sStudy.Channel.FileName);
     ChannelMat = load(ChannelFile);
 
-    % Add EEG sensor locations to channel stucture
+    % Add EEG sensor locations to channel structure
     if strcmp(Type, 'EEG')
         if isempty(ChannelMat.Channel)
             % first point in the list
@@ -1139,7 +1139,7 @@ function AddMontage()
     end
     % Get filename
     [MontageDir, MontageName] = bst_fileparts(MontageFile);
-    % Intialize new montage
+    % Initialize new montage
     newMontage.Name = MontageName;
     newMontage.Labels = {};
     
@@ -1413,7 +1413,7 @@ function BytesAvailable_Callback(h, ev) %#ok<INUSD>
             end
         catch
             disp(['Error reading data point. Try again.' 10, ...
-                'If the problem persits, reset the serial connnection.' 10, ...
+                'If the problem persits, reset the serial connection.' 10, ...
                 data]);
             return;
         end

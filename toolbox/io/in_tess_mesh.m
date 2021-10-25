@@ -1,5 +1,5 @@
 function TessMat = in_tess_mesh(TessFile)
-% IN_TESS_MESH: Import BrainVisa .mesh tessellation files.
+% IN_TESS_MESH: Import BrainVisa .mesh tesselation files.
 %
 % USAGE:  TessMat = in_tess_mesh(TessFile);
 %
@@ -45,7 +45,7 @@ file_format = char(fread(fid, 5, '*uchar'))' ;
 % Check format
 if ~strcmpi(file_format, 'binar')
     fclose(fid);
-    error('Cannot import MESH files that are not in "binar" format.');
+    error('Cannot import MESH files that are not in "binary" format.');
 end
 % Big/little endian
 lbindian = char(fread(fid, 4, '*uchar'))' ;

@@ -1318,7 +1318,7 @@ function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isSt
     % Get figure index in DataSet figures list
     [tmp__, iFig, iDS] = bst_figures('GetFigure', hFig);
     if isempty(iDS)
-        error('No DataSet acessible for this 3D figure');
+        error('No DataSet accessible for this 3D figure');
     end
     % Get surfaces list for this figure
     TessInfo = getappdata(hFig, 'Surface');
@@ -1567,7 +1567,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
     [tmp__, iFig, iDS] = bst_figures('GetFigure', hFig);
     % Find the DataSet indice that corresponds to the current figure
     if isempty(iDS)
-        error('No DataSet acessible for this 3D figure');
+        error('No DataSet accessible for this 3D figure');
     end
     
     % For each surface
@@ -1930,7 +1930,7 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
     [tmp__, iFig, iDS] = bst_figures('GetFigure', hFig);
     % Find the DataSet indice that corresponds to the current figure
     if isempty(iDS)
-        error('No DataSet acessible for this 3D figure');
+        error('No DataSet accessible for this 3D figure');
     end
     DataType = [];
     
@@ -2445,7 +2445,7 @@ function SetSurfaceSmooth(hFig, iSurf, value, isSave)
     else
         % Smooth surface
         figure_callback(hFig, 'UpdateSurfaceAlpha', hFig, iSurf);
-        % Update scouts displayed on this surfce
+        % Update scouts displayed on this surface
         panel_scout('UpdateScoutsVertices', TessInfo(iSurf).SurfaceFile);
         % Set the new value as the default value
         if isSave

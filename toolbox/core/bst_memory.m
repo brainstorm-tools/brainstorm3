@@ -89,7 +89,7 @@ function [sMri,iMri] = LoadMri(MriFile)
         sSubject = bst_get('Subject', iSubject);
         % If subject does not have a MRI
         if isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy)
-            error('No MRI avaialable for subject "%s".', sSubject.Name);
+            error('No MRI available for subject "%s".', sSubject.Name);
         end
         % Get MRI file
         MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
@@ -1452,7 +1452,7 @@ function [iDS, iDipoles] = LoadDipolesFile(DipolesFile, isTimeCheck) %#ok<DEFNU>
     % Load results .Mat
     DipolesMat = load(DipolesFullFile);
     Time = DipolesMat.Time;
-    % If there is only one dipole, add artifical temporal dimension
+    % If there is only one dipole, add artificial temporal dimension
     if (length(Time) == 1)
         Time = [Time Time+0.001];
     end
@@ -3255,7 +3255,7 @@ function isCancel = UnloadAll(varargin)
         % Clear some display options
         GlobalData.Preferences.TopoLayoutOptions.TimeWindow = [];
     end
-    % Close all unecessary tabs when forced, or when no data left
+    % Close all unnecessary tabs when forced, or when no data left
     if isForced || isempty(GlobalData.DataSet)
         gui_hide('Dipoles');
         gui_hide('FreqPanel');

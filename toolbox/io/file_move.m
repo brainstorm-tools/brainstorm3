@@ -4,7 +4,7 @@ function SUCCESS = file_move(SOURCE, DESTINATION)
 % DESCRIPTION:
 %     Replacement for the Matlab builtin call movefile() that may return errors when the
 %     access rights of the source file cannot be applied to the destination file.
-%     This may occurr in the context of Windows shares mounted on a Linux system
+%     This may occur in the context of Windows shares mounted on a Linux system
 %     as SMB or CIFS file systems.
 %    
 %     By default this function simply calls the function movefile(), unless the option

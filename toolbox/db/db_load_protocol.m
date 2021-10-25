@@ -91,7 +91,7 @@ for i = 1:length(iProtocols)
     % Reload protocol
     if isReload
         db_reload_database(iProtocols(i));
-    % Protocol loaded successfully: Copy protoco.mat fields in memory
+    % Protocol loaded successfully: Copy protocol.mat fields in memory
     else
         GlobalData.DataBase.ProtocolInfo(iProtocols(i)).iStudy            = ProtocolMat.ProtocolInfo.iStudy;
         GlobalData.DataBase.ProtocolInfo(iProtocols(i)).UseDefaultAnat    = ProtocolMat.ProtocolInfo.UseDefaultAnat;

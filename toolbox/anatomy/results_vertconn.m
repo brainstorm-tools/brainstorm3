@@ -60,7 +60,7 @@ switch lower(HeadModelType)
     case 'volume'
         % Use the positions of the grid points from the headmodel
         GridLoc = ResultsMat.GridLoc;
-        % If we explicitely need the vertex connectivity: Compute from the grid points with Delaunay triangulations
+        % If we explicitly need the vertex connectivity: Compute from the grid points with Delaunay triangulations
         if isComputeVertConn
             VertConn = grid_vertconn(GridLoc);
         else
@@ -71,7 +71,7 @@ switch lower(HeadModelType)
         CortexMat = in_tess_bst(ResultsMat.SurfaceFile);
         % Use the positions of the grid points from the headmodel
         GridLoc = ResultsMat.GridLoc;
-        % If we explicitely need the vertex connectivity: Compute from the grid points with Delaunay triangulations
+        % If we explicitly need the vertex connectivity: Compute from the grid points with Delaunay triangulations
         if isComputeVertConn && ~isempty(ResultsMat.GridAtlas)
             VertConn = sparse(size(GridLoc,1), size(GridLoc,1));
             % Loop on each region

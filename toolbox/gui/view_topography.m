@@ -383,7 +383,7 @@ end
 
 %% ===== PLOT FIGURE =====
 isOk = figure_topo('PlotFigure', iDS, iFig, 1);
-% If an error occured: delete figure
+% If an error occurred: delete figure
 if ~isOk
     close(hFig);
     bst_progress('stop');

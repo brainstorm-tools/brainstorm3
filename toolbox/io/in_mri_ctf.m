@@ -39,7 +39,7 @@ function MRI = in_mri_ctf(MriFile, ByteOrder)
 %
 %     see below the others tag which may be use in mri file V4 for future
 %     use of Brainstorm (see 'FileFormats' chapter page 90 of ctf
-%     documentation for more informations).
+%     documentation for more information).
 %         _CTFMRI_UID                      string
 %         _CTFMRI _INTERPOLATEDFLAG        short
 %         _CTFMRI _TRANSFORMMATRIX         string
@@ -139,9 +139,9 @@ if (strncmp(Header.identifierversion,'WS1_',4))
     
     % == READ HEADER V4 =
     fseek(file,4,'bof'); % put the cursor next the identifier version
-    [all_tag] = read_mri_CTFV4(file); % read all informations of header
+    [all_tag] = read_mri_CTFV4(file); % read all information of header
 
-    % We select only interesting informations of header V4
+    % We select only interesting information of header V4
     % Header : General information
     Header.identifierString = Header.identifierversion;
     Header.imageSize = all_tag(locate_tag_CTFV4(all_tag,'_CTFMRI_SIZE')).value;
@@ -459,7 +459,7 @@ function [header] = read_mri_CTFV4(file)
             % binary or Cstring
             value_lenght = fread(file,1,'uint32','ieee-be');
         else
-            % other and usefullness
+            % other and usefulness
             value_lenght = 0;
         end
         

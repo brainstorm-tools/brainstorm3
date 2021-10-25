@@ -10,7 +10,7 @@ function [iSourceRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices
 %                     If 0, the number varies, the properties of each region are defined in input GridAtlas
 %    - GridAtlas    : Set of scouts that defines the properties of the source space regions, when nComponents=0
 %                     GridAtlas.Scouts(i).Region(2) is the source type (V=volume, S=surface, D=dba, X=exclude)
-%                     GridAtlas.Scouts(i).Region(3) is the orientation constrain (U=unconstrained, C=contrained, L=loose)
+%                     GridAtlas.Scouts(i).Region(3) is the orientation constraint (U=unconstrained, C=constrained, L=loose)
 %    - isSurfaceInd : If 1, the indices iVertices are referring to Surface.Vertices, and require a conversion in the case of mixed models
 %                     If 0, the indices iVertices are referring to Results.GridLoc
 %

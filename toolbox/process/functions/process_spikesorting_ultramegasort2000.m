@@ -274,7 +274,7 @@ function downloadAndInstallUltraMegaSort2000()
     zipFile = bst_fullfile(UltraMegaSort2000TmpDir, 'master.zip');
     errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'UltraMegaSort2000 download');
     
-    % Check if the download was succesful and try again if it wasn't
+    % Check if the download was successful and try again if it wasn't
     time_before_entering = clock;
     updated_time = clock;
     time_out = 60;% timeout within 60 seconds of trying to download the file

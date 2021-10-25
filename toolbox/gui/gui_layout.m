@@ -281,7 +281,7 @@ end
 %   1) | BST | Figures |   OR   2) | Figures | BST |
 %      '---------------'           '---------------'
 function [jBstArea, FigArea, nbScreens, jFigArea, jInsets] = GetScreenBrainstormAreas(jBstWindow)
-    % Jave window not provided
+    % Java window not provided
     if (nargin < 1) || isempty(jBstWindow)
         jBstWindow = bst_get('BstFrame');
     end
@@ -633,7 +633,7 @@ function TileWindows(UseWeights)
             PositionFigure(Figures(iBlock).fRawViewer(iRawFig), figRawArea, decorationSize);
         end
         % === MRI VIEWER FIGURES ===
-        % Set to the whole avaiable space
+        % Set to the whole available space
         if isSkipMriViewer || ((nbBlocks == 1) && (nbOtherFigures == 1))
             for iMriFig = 1:length(Figures(iBlock).fMriViewer)
                 PositionFigure(Figures(iBlock).fMriViewer(iMriFig), FigArea, decorationSize);
@@ -642,7 +642,7 @@ function TileWindows(UseWeights)
     end
 
     % === MASK EDITOR ===
-    % Set to the entire avaiable space
+    % Set to the entire available space
     global gEditMaskData;
     if ~isempty(gEditMaskData) && isfield(gEditMaskData, 'Handles') && ishandle(gEditMaskData.Handles.mri_editMask)
         PositionFigure(gEditMaskData.Handles.mri_editMask, FigArea, decorationSize);
@@ -702,7 +702,7 @@ function PositionFigure(hFigure, figArea, decorationSize)
                         decorationSize(4), ...
                         - decorationSize(1) - decorationSize(3), ...
                         - decorationSize(2) - decorationSize(4) - menubarHeight - toolbarHeight];
-    % Older versions of Matlab/MacOSX have random 22px positionning problem (fixed for versions >= R2011b)
+    % Older versions of Matlab/MacOSX have random 22px positioning problem (fixed for versions >= R2011b)
     if strncmp(computer, 'MAC', 3) && (bst_get('MatlabVersion') <= 712)
         figDim(2) = figDim(2) - 22;
     end
@@ -799,7 +799,7 @@ function CreateNewSetup()
     % Loop on all the figures
     for iDS = 1:length(GlobalData.DataSet)
         for iFig = 1:length(GlobalData.DataSet(iDS).Figure)
-            % Get figure infor
+            % Get figure information
             Figure = GlobalData.DataSet(iDS).Figure(iFig);
             AppData = getappdata(Figure.hFigure);
             % Keep only simple figures with a data file

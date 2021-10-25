@@ -45,7 +45,7 @@ else
 end
 % Convert Channel locations to Brainstorm format
 if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && isfield(SetFileMat.EEG.chanlocs(1), 'X')
-    % Check coordinates sytem
+    % Check coordinates system
     isNormalizedCs = (max([SetFileMat.EEG.chanlocs.X]) <= 1);
     if isempty(isNormalizedCs)
         isNormalizedCs = 0;

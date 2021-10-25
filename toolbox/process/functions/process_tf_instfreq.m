@@ -102,7 +102,7 @@ function IF = Compute(Time, TF, IfMethod, L)
     % Switch amongst methods
     switch lower(IfMethod)
         case 'baillet'
-            % Calulate instantaneous frequency
+            % Calculate instantaneous frequency
             IF = abs( diff(unwrap(angle(TF),[],2),[],2) ) ./ (2 * pi * dt);
             IF = [IF, IF(:,end,:)];
             

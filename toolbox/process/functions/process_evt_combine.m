@@ -205,7 +205,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             
             % === CREATE NEW EVENTS ===
-            % If some couples stim/response were detected: create or udpate the correpsonding events
+            % If some couples stim/response were detected: create or update the correpsonding events
             if ~isempty(iNewStim)
                 isModified = 1;
                 % === NEW STIM ===

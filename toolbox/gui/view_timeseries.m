@@ -271,7 +271,7 @@ end
 bst_figures('SetCurrentFigure', hFig, '2D');
 % Plot figure
 isOk = figure_timeseries('PlotFigure', iDS, iFig);
-% Some error occured during the display procedure: close the window and stop process
+% Some error occurred during the display procedure: close the window and stop process
 if ~isOk
     close(hFig);
     return;

@@ -154,7 +154,7 @@ function GridLoc = SampleVolume(Vertices, Faces, scaleLayers, reduceLayers)
 %             set(hPatch, 'EdgeColor', 'none', 'MarkerFaceColor', [0,1,0], 'MarkerEdgeColor', [0,1,0], 'Marker', 'o', 'MarkerSize', 7);
 %         end
     end
-    % Go back to intial coordinates system
+    % Go back to initial coordinates system
     GridLoc = bst_bsxfun(@plus, GridLoc, center);
     % Remove duplicate points
     GridLoc = unique(GridLoc, 'rows');

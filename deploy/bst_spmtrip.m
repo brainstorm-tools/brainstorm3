@@ -257,7 +257,7 @@ tDepend = tic;
 warning off
 rmpath(genpath(OutputDir));
 warning on
-% Initalize FieldTrip
+% Initialize FieldTrip
 addpath(FieldTripDir);
 ft_defaults;
 if ~exist('contains', 'builtin')
@@ -266,7 +266,7 @@ end
 if ~exist('isfolder', 'builtin')
     addpath(fullfile(FieldTripDir, 'compat', 'matlablt2017b'));
 end
-% Initalize SPM
+% Initialize SPM
 addpath(SpmDir);
 addpath(fullfile(SpmDir, 'config'));
 addpath(fullfile(SpmDir, 'matlabbatch'));

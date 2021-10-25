@@ -1,5 +1,5 @@
 function CallbackFunction = java_getcb(jObj, CallbackName)
-%JAVA_GETCB: Get Matlab callback assiocated with a Java object.
+%JAVA_GETCB: Get Matlab callback associated with a Java object.
 % 
 % USAGE:  CallbackFunction = java_setcb(jObj, CallbackName)
 

@@ -49,7 +49,7 @@ if (bst_get('GuiLevel') <= -1)
     % Face normals
     n = cross(Vertices(A,:)-Vertices(B,:), Vertices(C,:)-Vertices(A,:)); %area weighted
     % Vertice normals
-    VertNormals = zeros(size(Vertices)); % init vertix normals
+    VertNormals = zeros(size(Vertices)); % init vertices normals
     for i = 1:size(Faces,1) % step through faces (a vertex can be reference any number of times)
         VertNormals(A(i),:) = VertNormals(A(i),:) + n(i,:); % sum face normals
         VertNormals(B(i),:) = VertNormals(B(i),:) + n(i,:);

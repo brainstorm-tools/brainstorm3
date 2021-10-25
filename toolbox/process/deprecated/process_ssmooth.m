@@ -54,7 +54,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.label2.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Euclidean distance</B>: norm(v1-v2)', ...
                                        '<B>Path length</B>: number of edges between v1 and v2', ...
-                                       '<B>Average</B>: (euclidian distance + path length) / 2'};
+                                       '<B>Average</B>: (euclidean distance + path length) / 2'};
     sProcess.options.method.Type    = 'radio';
     sProcess.options.method.Value   = 3; 
 end

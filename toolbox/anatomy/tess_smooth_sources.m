@@ -9,14 +9,14 @@ function W = tess_smooth_sources(Vertices, Faces, VertConn, FWHM, Method)
 %    - VertConn : Vertices connectivity, logical sparse matrix [Nvert,Nvert]
 %    - FWHM     : Full width at half maximum, in meters (default=0.010)
 %    - Method   : {'euclidian', 'path', 'average', 'surface'}
-% OUPUT:
+% OUTPUT:
 %    - W: smoothing matrix (sparse)
 %
 % DESCRIPTION: 
 %    - The distance between two points is an average of:
-%        - the direct euclidian between the two points and
+%        - the direct euclidean between the two points and
 %        - the number of edges between the two points * the average length of an edge
-%    - Gaussian smoothing function on the euclidian distance:
+%    - Gaussian smoothing function on the euclidean distance:
 %      f(r) = 1 / sqrt(2*pi*sigma^2) * exp(-(r.^2/(2*sigma^2)))
 %    - Full Width at Half Maximum (FWHM) is related to sigma by:
 %      FWHM = 2 * sqrt(2*log2(2)) * sigma
@@ -70,7 +70,7 @@ nIter = min(10, ceil(FWHM / meanDist));
 
 % ===== COMPUTE DISTANCE =====
 switch lower(Method)
-    % === METHOD 1: USE EUCLIDIAN DISTANCE ===
+    % === METHOD 1: USE EUCLIDEAN DISTANCE ===
     case 'euclidian'
         % Get the neighborhood around each vertex
         VertConn = mpower(VertConn, nIter);

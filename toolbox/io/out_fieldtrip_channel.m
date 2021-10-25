@@ -92,7 +92,7 @@ end
 
 % ===== MEG =====
 if ~isempty(iMeg)
-    % Average all the intergration points of the various coils
+    % Average all the integration points of the various coils
     chantype = cell(1,length(iMegAll));
     for i = 1:length(iMegAll)
         switch (ChannelMat.Channel(iMegAll(i)).Type)
@@ -117,7 +117,7 @@ if ~isempty(iMeg)
     % Coils positions
     grad.coilpos = [ChannelMat.Channel(iMegAll).Loc]';
     grad.coilori = [ChannelMat.Channel(iMegAll).Orient]';
-    % Correspondance channel-coil
+    % Correspondence channel-coil
     grad.tra = sparse(length(iMegAll), length(grad.coilpos));
     k = 1;
     for i = 1:length(iMegAll)

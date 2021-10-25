@@ -40,7 +40,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %      ======= SOURCE SPACE ===============================================
 %      .HeadModelType      : {'surface', 'volume'}
 %      .SourceSpaceOptions : Structure of options for the selected source space type
-%      .CortexFile   : File name of a Brainstorm tessellation file containing the cortex tessellation,
+%      .CortexFile   : File name of a Brainstorm tesselation file containing the cortex tesselation,
 %                      Use it as the source space if present.
 %      .GridLoc      : Nx3 matrix that contains the locations of the sources at which the forward model
 %                      will be computed. Default is empty (Information taken from OPTIONS.CortexFile).

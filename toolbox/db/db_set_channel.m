@@ -158,7 +158,7 @@ db_save();
 %% ===== AUTOMATIC ALIGNMENT =====
 % Performed registration
 if (ChannelAlign >= 1)
-    % Display intial registration
+    % Display initial registration
     if (ChannelAlign == 1)
         % No modality that can be used
         if isempty(Modality)

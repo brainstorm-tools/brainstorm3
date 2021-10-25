@@ -181,7 +181,7 @@ function ViewTable(Data, Description, Time, wndTitle)
             colTitle = cat(2, firstCol, colTitle);
         end
     end
-    % Create tabel model
+    % Create table model
     model = DefaultTableModel(size(rows,1), size(rows,2));
     for i = 1:size(rows)
         model.insertRow(i-1, rows(i,:));

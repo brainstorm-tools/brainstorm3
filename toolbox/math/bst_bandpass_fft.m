@@ -151,7 +151,7 @@ else
             H(iLowPass:iLowStop) = linspace(1,0,iLowStop-iLowPass+1);
         end
     end
-    % Symetric
+    % Symmetric
     if (mod(N,2) == 0)
         H = [H, fliplr(H)];
     else

@@ -738,7 +738,7 @@ missedPcount = 0;
 % mirrorEffectSample = 40;            % Number of samples that can be affected due to mirroring effect
 
 
-% ==== ADDING MARGING TO THE DATA => AVOID EDGE ARTIFACT (FILTERS AND HILBERT TRANSFORM) ====
+% ==== ADDING MARGIN TO THE DATA => AVOID EDGE ARTIFACT (FILTERS AND HILBERT TRANSFORM) ====
 nMargin = fix(margin*sRate);
 nHilMar = fix(nMargin*hilMar);
 if Options.margin_included
@@ -833,7 +833,7 @@ for ifreq=1:nFa
         
         % Adding one point to the beginning and the end of interval to give the algorithm 
         % to find the local peaks even if they are in the first and last 
-        % point of interst in the spectrum
+        % point of interest in the spectrum
         if ind(1)>1
             ind(1) = ind(1)-1;
         end
@@ -871,7 +871,7 @@ for ifreq=1:nFa
 
             
             % Confirming the peak
-            max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in evelope and the original signal's PSD
+            max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in envelope and the original signal's PSD
             count = 1;
             check_pks = 1;
             fp_loc = [];

@@ -132,7 +132,7 @@ Time = bst_memory('GetTimeVector', iDS);
 % ===== THRESHOLD CLUSTER MAPS =====
 % Get significant clusters
 [sClusters, PosClust, NegClust] = panel_stat('GetSignificantClusters', StatClusters);
-% Set all the values that are not is a signficant cluster to zero
+% Set all the values that are not in a significant cluster to zero
 if isempty(PosClust)
     StatClusters.posclusterslabelmat = zeros(nRows, length(Time));
 else

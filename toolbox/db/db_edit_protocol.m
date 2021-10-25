@@ -16,7 +16,7 @@ function iProtocol = db_edit_protocol(action, sProtocol, iProtocol)
 %     - iProtocol : Indice of the sProtocol structure in the Brainstorm database
 %
 % OUTPUT:
-%     - iProtocol : Indice of the created protocol, or -1 if an error occured
+%     - iProtocol : Indice of the created protocol, or -1 if an error occurred
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

@@ -163,7 +163,7 @@ switch (Method)
 
         % Progress bar
         bst_progress('start', 'Resample surface', 'Analyzing surface...');
-        % Calulate face areas and perimeter
+        % Calculate face areas and perimeter
         FaceArea  = tess_area(NewTessMat.Vertices, NewTessMat.Faces);
         % Vertex connectivity, normals, Curvature
         VertConn    = tess_vertconn(NewTessMat.Vertices, NewTessMat.Faces);
@@ -263,7 +263,7 @@ switch (Method)
                     iter = iter + 1;
                 end
             end
-            % If an error occured: skip face
+            % If an error occurred: skip face
             if (iter > iter_max)
                 disp(sprintf('BST> Cannot subdivide big face #%d (more than %d nodes distance), skipping...', i, iter_max));
                 continue;
@@ -448,9 +448,9 @@ end
 NewTessFile = file_unique(bst_fullfile(filepath, sprintf('%s_%dV%s', filebase, newNbVertices, fileext)));
 NewComment  = sprintf('%s%s_%dV', NewComment, MethodTag, size(NewTessMat.Vertices,1));
 
-% As per MMII convention - there should be one tessellation file per envelope
+% As per MMII convention - there should be one tesselation file per envelope
 % A downsized version of e.g. a cortex is considered as a different envelope 
-% ans is therefore saved in a separate tessellation file than the original.
+% and is therefore saved in a separate tesselation file than the original.
 NewTessMat.Comment  = NewComment;
 % Copy history field
 if isfield(TessMat, 'History')

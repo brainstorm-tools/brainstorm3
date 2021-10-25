@@ -107,7 +107,7 @@ sProtocol = db_template('ProtocolInfo');
 sProtocol.Comment  = ProtocolName;
 sProtocol.SUBJECTS = subjectDir;
 sProtocol.STUDIES  = studyDir;
-% Copy informatin from the protocol.mat in this protocol
+% Copy information from the protocol.mat in this protocol
 protocolFile = bst_fullfile(ProtocolDir, 'data', 'protocol.mat');
 if file_exist(protocolFile)
     ProtocolMat = load(protocolFile);

@@ -1594,7 +1594,7 @@ function SetScoutTextVisible(isVisible, isUpdate)
     end
 end
 
-%% ===== SET SCOUT DISPAY SELECTION =====
+%% ===== SET SCOUT DISPLAY SELECTION =====
 function SetScoutShowSelection(showSelection) %#ok<DEFNU>
     % Get "Scouts" panel controls
     ctrl = bst_get('PanelControls', 'Scout');
@@ -2156,7 +2156,7 @@ function [iAtlas, err] = CreateMLCCluster()
     end
     iAtlasNew = CreateAtlasBasedOnCluster(Labels, sResults.SurfaceFile);
     if isempty(iAtlasNew)
-        err = 'An error occured during the Atlas creation.';
+        err = 'An error occurred during the Atlas creation.';
         return;        
     end
     % Progress bar
@@ -2286,7 +2286,7 @@ function [iAtlas, err] = CreateFunctionalCluster()
     end
     iAtlasNew = CreateAtlasBasedOnCluster(Labels, sResults.SurfaceFile);
     if isempty(iAtlasNew)
-        err = 'An error occured during the Atlas creation.';
+        err = 'An error occurred during the Atlas creation.';
         return;        
     end
     % Progress bar
@@ -2388,7 +2388,7 @@ function SubdivideScouts(isAllScouts, Method, param)
     if (nargin < 1)
         isAllScouts = 1;
     end
-    % Ask for methid if not provided
+    % Ask for method if not provided
     if (nargin < 2) || isempty(Method)
         Method = [];
     end
@@ -2417,7 +2417,7 @@ function SubdivideScouts(isAllScouts, Method, param)
     end
     
     % === GET PARAMETERS ===
-    % Ask for methid if not provided
+    % Ask for method if not provided
     if isempty(Method)
         Method = java_dialog('question', ['Subdivide each scout in:' 10 ...
             ' - a fixed number of sub-regions (fixed)' 10 ...
@@ -3047,7 +3047,7 @@ function CreateScoutMax(iScout)
     if isNewScout
         % Get surface file to which the scout will be attached
         if strcmpi(TessInfo(iTess).Name, 'Anatomy')
-            % If anatomy surface : use correspondant cortex surface instead
+            % If anatomy surface : use correspondent cortex surface instead
             sSurfCortex = bst_get('SurfaceFileByType', TessInfo(iTess).SurfaceFile, 'Cortex');
             SurfaceFile = sSurfCortex.FileName;
         else
@@ -4002,7 +4002,7 @@ function ExportScoutsToMri()
         else
             Faces = convhulln(Vertices);
         end
-        % Compute interpolation matrix from tessellation to MRI voxel grid
+        % Compute interpolation matrix from tesselation to MRI voxel grid
         bst_progress('text', sprintf('Computing interpolation... [%d/%d]', i, length(sScouts)));
         tess2mri_interp = tess_tri_interp(Vertices, Faces, size(sMri.Cube));
         % Compute scout mask
@@ -4461,7 +4461,7 @@ function PlotScouts(iScouts, hFigSel)
         set(0, 'CurrentFigure', hFig);
         set(hFig, 'CurrentAxes', findobj(hFig, '-depth', 1, 'tag', 'Axes3D'));
     end
-    % Update scout defintion
+    % Update scout definition
     SetScouts([], iScouts, sScouts);
     % Close progress bar
     if isProgress

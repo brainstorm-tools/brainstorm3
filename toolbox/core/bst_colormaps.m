@@ -951,7 +951,7 @@ function CreateAllMenus(jMenu, hFig, isDynamic) %#ok<DEFNU>
     end
 end
 
-%% ===== CREATE PRESISTENT MENU =====
+%% ===== CREATE PERSISTENT MENU =====
 function CreatePermanentMenu(ColormapType)
     import java.awt.BorderLayout;
     global GlobalData;
@@ -1021,7 +1021,7 @@ function SetColormapName(ColormapType, colormapName)
     sColormap.Brightness = 0;
     % Update colormap description
     SetColormap(ColormapType, sColormap);   
-    % Fire change notificiation to all figures (3DViz and Topography)
+    % Fire change notification to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
 
@@ -1262,7 +1262,7 @@ function SetColormapAbsolute(ColormapType, status)
     sColormap = GetColormap(ColormapType);
     sColormap.isAbsoluteValues = status;
     SetColormap(ColormapType, sColormap);
-    % Fire change notificiation to all figures (3DViz and Topography)
+    % Fire change notification to all figures (3DViz and Topography)
     isAbsoluteChanged = 1;
     FireColormapChanged(ColormapType, isAbsoluteChanged);
     % Mutually exclusive with UseStatThreshold
@@ -1274,7 +1274,7 @@ function SetColormapRealMin(ColormapType, status)
     sColormap = GetColormap(ColormapType);
     sColormap.isRealMin = status;
     SetColormap(ColormapType, sColormap);
-    % Fire change notificiation to all figures (3DViz and Topography)
+    % Fire change notification to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
 function SetMaxMode(ColormapType, maxmode, DisplayUnits)
@@ -1294,7 +1294,7 @@ function SetMaxMode(ColormapType, maxmode, DisplayUnits)
         sColormap = GetColormap(ColormapType);
         sColormap.MaxMode = lower(maxmode);
         SetColormap(ColormapType, sColormap);
-        % Fire change notificiation to all figures (3DViz and Topography)
+        % Fire change notification to all figures (3DViz and Topography)
         FireColormapChanged(ColormapType);
     end
 end
@@ -1302,14 +1302,14 @@ function SetDisplayColorbar(ColormapType, status)
     sColormap = GetColormap(ColormapType);
     sColormap.DisplayColorbar = status;
     SetColormap(ColormapType, sColormap);
-    % Fire change notificiation to all figures (3DViz and Topography)
+    % Fire change notification to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
 function SetUseStatThreshold(ColormapType, status)
     sColormap = GetColormap(ColormapType);
     sColormap.UseStatThreshold = status;
     SetColormap(ColormapType, sColormap);
-    % Fire change notificiation to all figures (3DViz and Topography)
+    % Fire change notification to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
     % Mutually exclusive with Absolute
     if status && sColormap.isAbsoluteValues
@@ -1731,7 +1731,7 @@ end
 function cmapThreshed = StatThreshold(cMap, vMin, vMax, isAbs, tUnder, tOver, nsColor) %#ok<DEFNU>
     % Apply double thresholding to given cmap so that the color of values between
     % given thresholds is set to the color of the null value. 
-    % Original color dynamics is tranfered to significant values.
+    % Original color dynamics is transferred to significant values.
     if vMin > vMax
         error('Bad value range: vMin > vMax');
     end
@@ -1761,7 +1761,7 @@ function cmapThreshed = StatThreshold(cMap, vMin, vMax, isAbs, tUnder, tOver, ns
             vMin = 0;
             vMax = max(abs(vMin), vMax);
         end
-        % In case thresholds are not symetrical
+        % In case thresholds are not symmetrical
         if tUnder < 0 && tOver <= 0
             tUnder = abs(tOver);
             tOver = abs(tUnder);

@@ -287,7 +287,7 @@ function [bstPanelNew, panelName] = CreatePanel(searchRoot)  %#ok<DEFNU>
         jSearchEqual = GetSearchElement(panel, orGroup, andRow, 2);
         jSearchFor = GetSearchElement(panel, orGroup, andRow, 4);
         c = layout.getConstraints(jSearchFor);
-        % Get curent value
+        % Get current value
         if isa(jSearchFor, 'javax.swing.JTextField')
             searchForVal = jSearchFor.getText();
         else

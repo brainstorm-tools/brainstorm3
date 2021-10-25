@@ -162,7 +162,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif isfield(sMat, 'F') && (size(sMat.F,2) == 1)
             sMat.F = [sMat.F, sMat.F];
         end
-        % Do not accecpt time bands
+        % Do not accept time bands
         if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
             bst_report('Error', sProcess, sInputs(iInput), 'Time bands are not supported yet by this process.');
             continue;

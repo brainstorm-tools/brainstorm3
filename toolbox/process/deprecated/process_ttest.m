@@ -67,11 +67,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                                'v1,v2: Unbiased estimator of the variance across the files</FONT><BR>'];
     sProcess.options.ttest_label.Type       = 'label';
     
-    % === Absolue values: legend
+    % === Absolute values: legend
     sProcess.options.abs_label.Comment    = '<BR>Function to estimate the average across the files:';
     sProcess.options.abs_label.Type       = 'label';
     sProcess.options.abs_label.InputTypes = {'data', 'results', 'matrix'};
-    % === Absolue values: type
+    % === Absolute values: type
     sProcess.options.avg_func.Comment = {'Arithmetic average: <FONT color="#777777">mean(x)&nbsp;&nbsp;&nbsp;&nbsp;</FONT>', ...
                                          'Absolute value of average: <FONT color="#777777">abs(mean(x))&nbsp;&nbsp;&nbsp;&nbsp;[WRONG]</FONT>', ...
                                          'Average of absolute values:  <FONT color="#777777">mean(abs(x))</FONT>'};
@@ -118,7 +118,7 @@ end
 %% ===== RUN =====
 function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % ===== PARSE INPUTS =====
-    % Make sure that file type is indentical for both sets
+    % Make sure that file type is identical for both sets
     if ~isempty(sInputsA) && ~isempty(sInputsB) && ~strcmpi(sInputsA(1).FileType, sInputsB(1).FileType)
         bst_report('Error', sProcess, sInputsA, 'Cannot process inputs from different types.');
         sOutput = [];

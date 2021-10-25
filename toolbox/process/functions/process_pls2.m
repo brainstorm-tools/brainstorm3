@@ -84,7 +84,7 @@ function  OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputsA, 'Sensor type must be identified.');
         return;
     end
-    % Make sure that file type is indentical for both sets
+    % Make sure that file type is identical for both sets
     if ~isempty(sInputsA) && ~isempty(sInputsB) && ~strcmpi(sInputsA(1).FileType, sInputsB(1).FileType)
         bst_report('Error', sProcess, sInputsA, 'Cannot process inputs from different types.');
         return;

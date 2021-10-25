@@ -332,7 +332,7 @@ function evt = Compute(F, TimeVector, OPTIONS)
         F = F - beta*x;
     end
     
-    % Absolute valuse
+    % Absolute values
     if OPTIONS.isAbsolute
         F = abs(F);
     end
@@ -348,7 +348,7 @@ function evt = Compute(F, TimeVector, OPTIONS)
     end
     
     % Group time points into extended events
-    % group events that occur withing 10ms of each other
+    % group events that occur within 10ms of each other
     minNewEvent = round(sFreq*.02);
     
     diffThreshMask = diff([0 threshMask 0]);

@@ -1,5 +1,5 @@
 function [isrc, idet, measure, channel_type] = nst_unformat_channel(channel_label, warn_bad_channel)
-% NST_UNFORMAT_CHANNEL extract source, dectector and measure information from channel label.
+% NST_UNFORMAT_CHANNEL extract source, detector and measure information from channel label.
 %
 %   [ISRC, IDET, MEAS, CHAN_TYPE] = NST_UNFORMAT_CHANNEL(CHANNEL_LABEL)
 %       CHANNEL_LABEL (str): 

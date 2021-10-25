@@ -1,5 +1,5 @@
 function varargout = process_evt_remove_simult( varargin )
-% PROCESS_EVT_REMOVE_SIMULT: Remove occurences of an event A occurring at the same time as an event B.
+% PROCESS_EVT_REMOVE_SIMULT: Remove occurrences of an event A occurring at the same time as an event B.
 %
 % USAGE:  OutputFiles = process_evt_remove_simult('Run', sProcess, sInputs)
 

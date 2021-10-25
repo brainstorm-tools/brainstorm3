@@ -41,7 +41,7 @@ isMatrix    = any(strcmpi(varargin, 'Matrix'));
 TfInfo = getappdata(hFig, 'Timefreq');
 TfFile = file_fullpath(TfInfo.FileName);
 iExportDb = 0;
-% Get structure from intial file
+% Get structure from initial file
 TfMat = load(TfFile);
 % If image filename is not specified
 if (nargin < 2) || isempty(OutputFile)   

@@ -450,7 +450,7 @@ function [exePath, talFile, faceFile, errMsg] = InstallMriDeface(isInteractive)
     exePath = bst_fullfile(mriDefaceDir, 'mri_deface');
     talFile = bst_fullfile(mriDefaceDir, 'talairach_mixed_with_skull.gca');
     faceFile = bst_fullfile(mriDefaceDir, 'face.gca');
-    % If binary file doesnt exist: download
+    % If binary file doesn't exist: download
     if ~isdir(mriDefaceDir) || ~file_exist(exePath) || ~strcmpi(prevUrl, url)
         % If folder exists: delete
         if isdir(mriDefaceDir)

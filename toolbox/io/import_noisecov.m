@@ -70,7 +70,7 @@ Output = [];
 % Detect file format
 FileFormat = '';
 if ~isempty(NoiseCovFile)
-    % Get the file extenstion
+    % Get the file extension
     [fPath, fBase, fExt] = bst_fileparts(NoiseCovFile);
     if ~isempty(fExt)
         fExt = lower(fExt(2:end));
@@ -130,7 +130,7 @@ if isempty(NoiseCovMat)
     if ~isProgressBar
         bst_progress('start', 'Import noise covariance file', ['Loading file "' NoiseCovFile '"...']);
     end
-    % Get the file extenstion
+    % Get the file extension
     [fPath, fBase, fExt] = bst_fileparts(NoiseCovFile);
     if ~isempty(fExt)
         fExt = lower(fExt(2:end));

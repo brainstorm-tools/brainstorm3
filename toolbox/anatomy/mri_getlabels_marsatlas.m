@@ -1,6 +1,6 @@
 function Labels = mri_getlabels_marsatlas()
 % ATLAS     : MarsAtlas (Auzias 2016)
-% REFERENCE : http://www.meca-brain.org/softwares/cortical-parcellation-marsatlas/
+% REFERENCE : http://www.meca-brain.org/software/cortical-parcellation-marsatlas/
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

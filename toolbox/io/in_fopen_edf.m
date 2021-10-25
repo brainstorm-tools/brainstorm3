@@ -96,7 +96,7 @@ fclose(fid);
 %% ===== RECONSTRUCT INFO =====
 % Individual signal gain
 for i = 1:hdr.nsignal
-    % Interpet units
+    % Interpret units
     switch (hdr.signal(i).unit)
         case 'mV',                        unit_gain = 1e3;
         case {'uV', char([166 204 86])},  unit_gain = 1e6;
@@ -104,11 +104,11 @@ for i = 1:hdr.nsignal
     end
     % Check min/max values
     if isempty(hdr.signal(i).digital_min) || isnan(hdr.signal(i).digital_min)
-        disp(['EDF> Warning: The digitial minimum is not set for channel "' hdr.signal(i).label '".']);
+        disp(['EDF> Warning: The digital minimum is not set for channel "' hdr.signal(i).label '".']);
         hdr.signal(i).digital_min = -2^15;
     end
     if isempty(hdr.signal(i).digital_max) || isnan(hdr.signal(i).digital_max)
-        disp(['EDF> Warning: The digitial maximum is not set for channel "' hdr.signal(i).label '".']);
+        disp(['EDF> Warning: The digital maximum is not set for channel "' hdr.signal(i).label '".']);
         hdr.signal(i).digital_max = -2^15;
     end
     if isempty(hdr.signal(i).physical_min) || isnan(hdr.signal(i).physical_min)
@@ -140,7 +140,7 @@ for i = 1:hdr.nsignal
     hdr.signal(i).sfreq = hdr.signal(i).nsamples ./ hdr.reclen;
 end
 % Find annotations channel
-iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));  % Mutliple "EDF Annotation" channels allowed in EDF+
+iAnnotChans = find(strcmpi({hdr.signal.label}, 'EDF Annotations'));  % Multiple "EDF Annotation" channels allowed in EDF+
 iStatusChan = find(strcmpi({hdr.signal.label}, 'Status'), 1);        % Only one "Status" channel allowed in BDF
 iOtherChan = setdiff(1:hdr.nsignal, [iAnnotChans iStatusChan]);
 % % Remove channels with lower sampling rates

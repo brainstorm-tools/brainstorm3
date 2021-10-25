@@ -84,7 +84,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     [uniqueComments,tmp,iData2List] = unique(listComments);
     nLists = length(uniqueComments);
     
-    % Process each even group seperately
+    % Process each even group separately
     for iList = 1:nLists
         sCurrentInputs = sInputs(iData2List == iList);
     
@@ -151,9 +151,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         [tmp, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
 
                         unique_bin = unique(bin_it_belongs_to);
-                        occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
+                        occurrences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
 
-                        single_file_binning(iNeuron,occurences(1,:)) = occurences(2,:); 
+                        single_file_binning(iNeuron,occurrences(1,:)) = occurrences(2,:); 
                         break
                     end
                 end

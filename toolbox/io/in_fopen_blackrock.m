@@ -152,7 +152,7 @@ if ~isempty(NevFile)
         end
     end
     
-    % Use digitial IO
+    % Use digital IO
     if ~isempty(nev.Data.SerialDigitalIO.TimeStamp)
         % Get on which electrode the spike is happening
         allTypes = [nev.Data.SerialDigitalIO.Type', nev.Data.SerialDigitalIO.Value'];

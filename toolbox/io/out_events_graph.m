@@ -36,7 +36,7 @@ for i = 1:length(sFile.events)
     % Simple events
     if (size(sFile.events(i).times, 1) == 1)
         allTime = [allTime, [sFile.events(i).times; 0*sFile.events(i).times]];
-    % Extented events
+    % Extended events
     elseif (size(sFile.events(i).times, 1) == 2)
         disp('BST> Warning: Extended events not suported');
     end

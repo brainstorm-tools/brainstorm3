@@ -53,7 +53,7 @@ if ((nargin == 3) || (nargin == 4))
     
     % Orientation
     orientation = varargin{2};
-    % Interprete the direction
+    % Interpret the direction
     switch lower(orientation)
         case {'sagittal', 'x'}
             dim = 1;

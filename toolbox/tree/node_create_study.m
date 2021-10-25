@@ -480,7 +480,7 @@ end
 % Display stat node
 if isfield(sStudy, 'Stat')
     for iStat = 1:length(sStudy.Stat)
-        % Get node infor
+        % Get node information
         nodeComment = sStudy.Stat(iStat).Comment;
         statType    = sStudy.Stat(iStat).Type;
         if isempty(statType)

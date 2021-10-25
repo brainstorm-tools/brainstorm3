@@ -102,7 +102,7 @@ ChannelMat = in_bst_channel(sStudy.Channel.FileName);
 % Get all the valid channels
 iChan = good_channel(ChannelMat.Channel, [], {'MEG','EEG','ECOG','SEEG'});
 nChanAll = length(ChannelMat.Channel);
-% Get the possible channe types
+% Get the possible channel types
 ChannelTypes = unique({ChannelMat.Channel(iChan).Type});
 
 

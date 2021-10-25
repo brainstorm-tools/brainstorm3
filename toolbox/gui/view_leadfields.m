@@ -376,7 +376,7 @@ bst_progress('stop');
             LeadFieldReordered = LeadField(ind,:);
             cdf = cumsum(col1); % Compute cdf
             cdf = cdf/cdf(end); % Normalize
-            % Find index bellow or above the thresholding
+            % Find index below or above the thresholding
             if thresholdBalance == 0 % 0 ==> inferior and 1 is superior 
                 index = find(cdf <= thresholdAmplitude);
                 iSymbole = '<=';

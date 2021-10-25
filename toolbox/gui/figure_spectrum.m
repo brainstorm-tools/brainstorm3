@@ -132,7 +132,7 @@ end
 
 %% ===== DISPLAY OPTIONS CHANGED =====
 function DisplayOptionsChangedCallback(hFig) %#ok<DEFNU>
-    % Restore intial view
+    % Restore initial view
     %ResetView(hFig);
     % Update display
     UpdateFigurePlot(hFig, 1);
@@ -257,7 +257,7 @@ function FigureMouseDownCallback(hFig, ev)
     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
     % Record action to perform when the mouse is moved
     setappdata(hFig, 'clickAction', clickAction);
-    % Record axes ibject that was clicked (usefull when more than one axes object in figure)
+    % Record axes ibject that was clicked (useful when more than one axes object in figure)
     setappdata(hFig, 'clickSource', hAxes);
     % Register MouseMoved callbacks for current figure
     set(hFig, 'WindowButtonMotionFcn', @FigureMouseMoveCallback);
@@ -1621,7 +1621,7 @@ function PlotHandles = PlotAxesColumn(hAxes, PlotHandles, X, TF, LinesLabels)
     % ===== SPLIT IN BLOCKS =====
     % Normalized range of Y values
     YLim = [0, 1];
-    % Data minumum/maximum
+    % Data minimum/maximum
     Fmax = PlotHandles.DataMinMax;
     Frange = Fmax(2) - Fmax(1);
     % Subdivide Y-range in nLines blocks

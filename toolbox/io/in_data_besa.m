@@ -104,7 +104,7 @@ switch lower(fExt)
         DataMat.F = cat(1, allLines{:})';
         
         % Ask for time window
-        res = java_dialog('input', {'Start time (in miliseconds):', 'Sampling frequency'}, ...
+        res = java_dialog('input', {'Start time (in milliseconds):', 'Sampling frequency'}, ...
                                     'Time definition (in Hz)', [], {'0','1000'});
         if isempty(res) || (length(str2num(res{1})) ~= 1) || (length(str2num(res{2})) ~= 1)
             DataMat = [];

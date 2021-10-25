@@ -37,7 +37,7 @@ function errorMsg = import_anatomy_civet(iSubject, CivetDir, nVertices, isIntera
 
 
 %% ===== PARSE INPUTS =====
-% Extrac cortical maps
+% Extract cortical maps
 if (nargin < 6) || isempty(isExtraMaps)
     isExtraMaps = 0;
 end

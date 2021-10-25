@@ -245,7 +245,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     end
 
     % ===== READ STIM CHANNELS =====
-    % Intialize returned events structure
+    % Initialize returned events structure
     events = repmat(db_template('event'), 0);
     % Get channel indices
     iChannels = channel_find(ChannelMat.Channel, StimChan);
@@ -350,7 +350,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         % === GET EVENTS ===
         % Get the changes on each track
         diffTrack = diff(tracks, [], 2);
-        % Remove intial state from tracks
+        % Remove initial state from tracks
         tracks(:,1) = [];
         % Process each track separately
         for iTrack = 1:size(tracks, 1)

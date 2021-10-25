@@ -2,8 +2,8 @@ function OutputFiles = db_set_noisecov(iSrcStudy, Target, isDataCov, ReplaceFile
 % DB_SET_NOISECOV: Apply a noise covariance node to other studies
 %
 % USAGE:  OutputFiles = db_set_noisecov(iSrcStudy, iDestStudies, isDataCov=0, ReplaceFile=[ask])  : Apply to the target studies
-%         OutputFiles = db_set_noisecov(iSrcStudy, 'AllConditions')                               : Apply to all the conditons in the same subject
-%         OutputFiles = db_set_noisecov(iSrcStudy, 'AllSubjects')                                 : Apply to all the conditons in all the subjects
+%         OutputFiles = db_set_noisecov(iSrcStudy, 'AllConditions')                               : Apply to all the conditions in the same subject
+%         OutputFiles = db_set_noisecov(iSrcStudy, 'AllSubjects')                                 : Apply to all the conditions in all the subjects
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -104,7 +104,7 @@ for i = 1:length(iDestChanStudies)
     end
     % Load destination channel file
     DestChannelMat = in_bst_channel(sDestStudy.Channel.FileName);
-    % Intialize destination noise covariance matrix
+    % Initialize destination noise covariance matrix
     nbDestChan = length(DestChannelMat.Channel);
     DestNoiseCovMat = SrcNoiseCovMat;
     DestNoiseCovMat.NoiseCov = zeros(nbDestChan);

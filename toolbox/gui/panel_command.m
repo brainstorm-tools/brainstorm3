@@ -91,7 +91,7 @@ function ExecuteScript(ScriptFile, varargin) %#ok<DEFNU>
             return;
         end
     end
-    % Check file existance
+    % Check file existence
     if ~file_exist(ScriptFile)
         error(['File does not exist: ' ScriptFile]);
     end

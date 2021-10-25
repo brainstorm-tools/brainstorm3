@@ -44,7 +44,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
 
     % === CONNECT INPUT
     sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
-    % === REMOVE EVOKED REPONSE
+    % === REMOVE EVOKED RESPONSE
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
     sProcess.options.removeevoked.Value   = 0;

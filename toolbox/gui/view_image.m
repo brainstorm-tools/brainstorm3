@@ -189,7 +189,7 @@ if ~isRGB
             cmap = eval(sprintf('%s(%d);', colormapName, colormapContrast));
             set(hItemGray, 'Checked', 'on');
         end
-        % Try to check the correspondant menu in the colormap Menu
+        % Try to check the correspondent menu in the colormap Menu
         try
             cmapMaj = lower(cmap);
             cmapMaj(1) = upper(cmapMaj(1));
@@ -450,7 +450,7 @@ isWindowInitialized = 1;
 end
 
 
-%% -------- Colormap and constrast functions --------------------------
+%% -------- Colormap and contrast functions ---------------------------
 % ---------------------------------------------------------------------    
 % Update colormap
 function fncUpdateColormap(colormapName, colormapContrast)

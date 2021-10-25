@@ -1,17 +1,17 @@
 function H = tess_tri_interp(Vertices,Faces,dims,isProgress)
-% TRI_INTERP: Compute the interpolation matrix from a cortical tessellation to the MRI volume.
+% TRI_INTERP: Compute the interpolation matrix from a cortical tesselation to the MRI volume.
 %
 % INPUT:
 %    - Vertices : [Mx3], Coordinates (integers) of the cortical vertices in the MR cube
 %    - Faces : [Nx3], Connectivity matrix of the vertices to form the triangles
-%    - dims  : 3-element vector : size of the orginal (MR) volume
+%    - dims  : 3-element vector : size of the original (MR) volume
 % OUTPUT:
-%    - H : interpolation matrix from values on triangular tessellation to voxels
+%    - H : interpolation matrix from values on triangular tesselation to voxels
 % NOTES:
 %     H is a one-time computed large but sparse matrix (nvoxels X nvertices) and is used as follows.
 %     Values of currents at each MRI voxel are obtained by
 %         MRIcurrent = H x SurfaceCurrent
-%     SurfaceCurrent is a nvertices-tall vector of estimated currents on the tessellated surface
+%     SurfaceCurrent is a nvertices-tall vector of estimated currents on the tesselated surface
 %     MRIcurrent is a nvoxels-tall vector of 3D-interpolated current values at each MR voxels.
 %     The index of each MRIcurrent entry corresponds to the index in the 3D cube of the MR.
 %     MRs in Brainstorm are stored as n1 X n2 X n3 data arrays.

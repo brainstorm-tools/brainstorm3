@@ -30,7 +30,7 @@ end
 if (nargin < 3) || isempty(isWarning)
     isWarning = 1;
 end
-% Intialize returned variable
+% Initialize returned variable
 cTsv = {};
 % Open file
 fid = fopen(TsvFile, 'r');

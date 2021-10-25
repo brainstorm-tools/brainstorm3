@@ -11,7 +11,7 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 %   The .nirs file is a matlab file with the following expected variables:
 %     - SD (structure):
 %         - Lambda (1 x nb_wavelengths):
-%             The wavelengths used to measure NIRS. The index asscociated
+%             The wavelengths used to measure NIRS. The index associated
 %             to each wavelength value is used in variable 'ml'
 %         - SrcPos (nb_sources x 3 double):
 %             3D coordinates of sources, in the acquisition referential.
@@ -42,7 +42,7 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 %   following format:
 %     - line starting with character '#' are comments
 %     - Coordinates are stored as a table: one line by digitized point.
-%       Values are seperated by tabulations and columns are:
+%       Values are separated by tabulations and columns are:
 %         - col 1: Sample Name (eg: S1, D1, Nasion, LeftEar, RightEar)
 %         - col 2: Session Name
 %         - col 3: Index (specific to Brainsight)

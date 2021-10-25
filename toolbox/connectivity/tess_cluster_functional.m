@@ -10,7 +10,7 @@ function [Labels,err] = tess_cluster_functional(sSurf, ImagingKernel, Leadfield,
 %
 % OUTPUTS:
 %    - Labels : N-source vector with each number corresponding to an
-%    agregation of source (0 means not assigned).
+%    aggregation of source (0 means not assigned).
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:

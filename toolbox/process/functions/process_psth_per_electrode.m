@@ -138,9 +138,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     [tmp, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
                      
                     unique_bin = unique(bin_it_belongs_to);
-                    occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
+                    occurrences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
                      
-                    single_file_binning(ielectrode,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate
+                    single_file_binning(ielectrode,occurrences(1,:)) = occurrences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate
                     break
                 end
             end

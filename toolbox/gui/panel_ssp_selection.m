@@ -177,7 +177,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         if (Status == 2)
             return
         end
-        % Get selected catgory
+        % Get selected category
         [sCat,iCat] = GetSelectedCat();
         if isempty(iCat)
             return;

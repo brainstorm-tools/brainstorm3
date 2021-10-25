@@ -1069,7 +1069,7 @@ bst_report('Snapshot', [hFigTf1 hFigTf2], sFilesHilbertCortexErsd.FileName, 'Hil
 bst_memory('UnloadAll', 'Forced');
 
 
-%% ===== TUTORIAL #25: DIFFRERENCE ===================================================
+%% ===== TUTORIAL #25: DIFFERENCE ===================================================
 %  ===================================================================================
 disp([10 'DEMO> Tutorial #25: Difference' 10]);
 
@@ -1219,7 +1219,7 @@ hFigHisto = view_histogram({sHistoDeviant.FileName, sHistoStandard.FileName});
 bst_report('Snapshot', hFigHisto, sHistoDeviant.FileName, 'Histograms for MLP57/160ms');
 close(hFigHisto);
 
-% ===== EXEMPLE #1: PARAMETRIC/DATA =====
+% ===== EXAMPLE #1: PARAMETRIC/DATA =====
 % Process: t-test [equal] [-100ms,500ms]          H0:(A-B = 0)
 sTestParamData = bst_process('CallProcess', 'process_test_parametric2', sEpochDeviant, sEpochStandard, ...
     'timewindow',    [-0.1, 0.5], ...
@@ -1249,7 +1249,7 @@ bst_process('CallProcess', 'process_snapshot', sTestParamData, [], ...
     'time',           0.16, ...
     'Comment',        'Parametric t-test (p<0.05, FDR)');
 
-% ===== EXEMPLE #2: NON-PARAMETRIC/DATA =====
+% ===== EXAMPLE #2: NON-PARAMETRIC/DATA =====
 % Process: Perm t-test equal [-100ms,500ms MEG]          H0:(A=B), H1:(A<>B)
 sTestPermData = bst_process('CallProcess', 'process_test_permutation2', sEpochDeviant, sEpochStandard, ...
     'timewindow',     [-0.1, 0.5], ...
@@ -1275,7 +1275,7 @@ bst_process('CallProcess', 'process_snapshot', sTestPermData, [], ...
     'time',           0.16, ...
     'Comment',        'Non-parametric t-test (p<0.05, FDR)');
 
-% ===== EXEMPLE #3: CLUSTER/DATA =====
+% ===== EXAMPLE #3: CLUSTER/DATA =====
 % Process: FT t-test unequal cluster [-100ms,500ms MEG]          H0:(A=B), H1:(A<>B)
 sTestClustData = bst_process('CallProcess', 'process_ft_timelockstatistics', sEpochDeviant, sEpochStandard, ...
     'sensortypes',    'MEG', ...

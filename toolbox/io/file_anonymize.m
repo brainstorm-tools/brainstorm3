@@ -23,7 +23,7 @@ function OutputFile = file_anonymize(InputFile)
 
 OutputFile = [];
 
-% Find file in databas
+% Find file in database
 [sStudy, iStudy] = bst_get('AnyFile', InputFile);
 if ~isempty(sStudy)
     FileType = file_gettype(InputFile);

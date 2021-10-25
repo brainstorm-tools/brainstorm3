@@ -1,5 +1,5 @@
 function F = bst_window( Method, L, R )
-% BST_WINDOW: Generate a window of length L, ot the given type: hann, hamming, blackman, parzen, tukey
+% BST_WINDOW: Generate a window of length L, of the given type: hann, hamming, blackman, parzen, tukey
 % 
 % USAGE:  F = bst_window( Method, L, R )
 % 

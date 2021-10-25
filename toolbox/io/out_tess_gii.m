@@ -1,5 +1,5 @@
 function out_tess_gii( TessMat, OutputFile, isSPM )
-% OUT_TESS_GII: Exports a surface to a GIfTI/BrainVisa .gii tessellation files.
+% OUT_TESS_GII: Exports a surface to a GIfTI/BrainVisa .gii tesselation files.
 % 
 % USAGE:  out_tess_gii( TessMat,  OutputFile, isSPM=0 )
 %         out_tess_gii( TessFile, OutputFile, isSPM=0 )

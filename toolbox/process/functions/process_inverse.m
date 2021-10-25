@@ -300,7 +300,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         end
         % Override default options
         OPTIONS = struct_copy_fields(OPTIONS, sMethod, 1);
-        % Get mthod options
+        % Get method options
         switch (OPTIONS.InverseMethod)
             % === MINIMUM NORM ===
             case {'wmne','dspm','sloreta','gls','glsr','mnej','gls_p','glsr_p','mnej_p'}
@@ -503,7 +503,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                     errMessage = 'All data files must have the same number of channels.';
                     continue;
                 end
-                % Count number of times the channe is bad
+                % Count number of times the channel is bad
                 if isempty(BadChannels)
                     BadChannels = double(DataMat.ChannelFlag < 0);
                 else

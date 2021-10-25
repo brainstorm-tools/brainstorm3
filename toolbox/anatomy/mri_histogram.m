@@ -171,7 +171,7 @@ minIndex = minIndex(1:length(maxIndex)-1);
 if (length(maxIndex) < 1)
     [null, maxIndex] = max(histoY);
     Histogram.max = struct('x', histoX(maxIndex(1)), 'y', histoY(maxIndex(i)), 'power', 0);
-    % Else, normally extracts the maxima informations
+    % Else, normally extracts the maxima information
 else
     Histogram.max = repmat(struct('x', [], 'y', [], 'power', []), 1, length(maxIndex));
     for i=1:length(maxIndex)
@@ -193,7 +193,7 @@ end
 if (length(minIndex) < 1)
     [null, minIndex] = min(histoY);
     Histogram.min = struct('x', histoX(minIndex(1)), 'y', histoY(minIndex(i)), 'power', 0);
-    % Else, normally extracts the minima informations
+    % Else, normally extracts the minima information
 else
     Histogram.min = repmat(struct('x', [], 'y', [], 'power', []), 1, length(minIndex));
     for i=1:length(minIndex)

@@ -87,7 +87,7 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    % Convert to method index in the average proces
+    % Convert to method index in the average process
     switch sProcess.options.group.Value 
         case 1,  avgtype = 3;   % By folder (subject average)
         case 2,  avgtype = 5;   % By trial group (folder average)

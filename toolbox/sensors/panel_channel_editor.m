@@ -344,7 +344,7 @@ function [columnNames, channelsData] = LoadChannelFile()
     end
     % Load file
     ChannelMat = in_bst_channel(ChannelFile);
-    % Store intial Channel structure in GlobalData
+    % Store initial Channel structure in GlobalData
     GlobalData.ChannelEditor.ChannelMat = ChannelMat;
     GlobalData.ChannelEditor.isModified = 0;
     % Get number of channels in this file
@@ -625,7 +625,7 @@ function SetChannelSelection(SelChan, isGlobalUpdate) %#ok<DEFNU>
     oldCbk = java_getcb(jSelectionModel, 'ValueChangedCallback');
     java_setcb(jSelectionModel, 'ValueChangedCallback', []);
 
-    % Select rows coresponding to the selected channels
+    % Select rows corresponding to the selected channels
     jSelectionModel.clearSelection();
     for i = 1:length(iSelChan)
         jSelectionModel.addSelectionInterval(iSelChan(i) - 1, iSelChan(i) - 1);

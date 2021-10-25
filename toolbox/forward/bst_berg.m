@@ -6,7 +6,7 @@ function [mu_berg,lam_berg,f] = bst_berg(R,sigma,nmax,J,mu_berg_init,lam_berg_in
 %         [mu_berg,lam_berg]   = bst_berg(R,sigma,nmax)
 %         [mu_berg,lam_berg]   = bst_berg(R,sigma)
 %
-% DESCTIPTION:
+% DESCRIPTION:
 %     This function computes the Berg Eccentricity and Magnitude parameters associated with 
 %     a series Approximiation of a Single Dipole in a Multilayer Sphere -by-
 %     multiple dipoles in a single shell. Zhang: Eq (1i,2i,1i',5i'' and 7i).
@@ -60,7 +60,7 @@ function [mu_berg,lam_berg,f] = bst_berg(R,sigma,nmax,J,mu_berg_init,lam_berg_in
 % Authors: John J.Ermer, 1999
 % ----------------------------- Script History ---------------------------------
 % JJE  5-May-1999  Creation
-% JJE 21-Jun-1999  Addded Legendre Expansion weights as optional output (JE)
+% JJE 21-Jun-1999  Added Legendre Expansion weights as optional output (JE)
 % JJE 30-Sep-1999  Fixed Logic to pass Initial Berg Parameters (JE)
 %  SB    Nov-2001  Replaced fmins syntax (obsolete in Matlab R12) by fminsearch
 % ------------------------------------------------------------------------------
@@ -77,11 +77,11 @@ if nargin < 3    % Check # terms to see if number of Legendre expansion terms is
     nmax = 200;  % Default # of Legendre Terms                
 end
 %
-if nargin < 4  % Check # of Berg Paramters to be generated
+if nargin < 4  % Check # of Berg Parameters to be generated
     J=3;       % Default # of Berg Parameters                
 end
 %
-if (nargin < 5)   % Check if user specified initial value for Berg Paramters
+if (nargin < 5)   % Check if user specified initial value for Berg Parameters
     mu_berg_init = (1/(J+2))*(1:1:J);  % Default Value for Initial Eccentricity Parameters 
    lam_berg_init = 0.2*ones(1,J);      % Default Value for Initial Magnitude Parameters
 else

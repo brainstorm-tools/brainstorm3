@@ -3,7 +3,7 @@ function [MeanChannelMat, Message] = channel_average(ChannelMats)
 %
 % INPUT:
 %     - ChannelMats : Cell array of channel.mat structures
-% OUPUT:
+% OUTPUT:
 %     - MeanChannelMat : Average channel mat
 
 % @=============================================================================

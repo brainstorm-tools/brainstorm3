@@ -147,7 +147,7 @@ for iSubj = 1:16
             'channelreplace', 1, ...
             'channelalign',   0);
         % Set acquisition date: The real acquisition dates were removed from the .fif files for ananymization purposes,
-        % here we set an artifical acquisition date, corresponding to the matching empty-room recordings, according to the 
+        % here we set an artificial acquisition date, corresponding to the matching empty-room recordings, according to the 
         % field "AssociatedEmptyRoom" in the .json BIDS meta-data in the MEG session folder.
         % This will allow process_noisecov to match automatically the noise recordings with the subject's recordings
         % (called further in this script)
@@ -395,7 +395,7 @@ bst_process('CallProcess', 'process_noisecov', sFilesNoise, [], ...
 % This call copies automatically the noise covariance files computed to the appropriate subjects folders
 % based on the matching of the acquisition dates of the empty-room recordings and the subjects' recordings.
 % The acquisition dates for the subjects' recordings were not available, but set previously in this script
-% to match the cooresponding empty-room recrodings, based on the BIDS .json meta-data)
+% to match the corresponding empty-room recrodings, based on the BIDS .json meta-data)
 
 
 %% ===== SOURCE ESTIMATION =====

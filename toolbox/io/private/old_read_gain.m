@@ -1,5 +1,5 @@
 function G = old_read_gain(FILENAME,chanID,srcID)
-% READ_GAIN: Extract parts or a compete gain matrix from .bin binay gain file.
+% READ_GAIN: Extract parts or a compete gain matrix from .bin binary gain file.
 %
 % USAGE:  G = old_read_gain(FILENAME,chanID,srcID);
 %

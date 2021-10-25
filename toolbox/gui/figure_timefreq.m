@@ -306,7 +306,7 @@ function FigureMouseDownCallback(hFig, ev)
     setappdata(hFig, 'clickPositionFigure', get(hFig, 'CurrentPoint'));
     % Record action to perform when the mouse is moved
     setappdata(hFig, 'clickAction', clickAction);
-    % Record axes ibject that was clicked (usefull when more than one axes object in figure)
+    % Record axes ibject that was clicked (useful when more than one axes object in figure)
     setappdata(hFig, 'clickSource', hAxes);
     % Register MouseMoved callbacks for current figure
     set(hFig, 'WindowButtonMotionFcn', @FigureMouseMoveCallback);
@@ -895,7 +895,7 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
     if getappdata(hFig, 'isStaticFreq') && ~iscell(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs)
         Freqs = [];
     else
-        % Get all the freqencies
+        % Get all the frequencies
         if isempty(TfInfo.iFreqs)
             Freqs = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs;
         % Get a set of frequencies (continuous)
@@ -1394,7 +1394,7 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     end
     % Set title
     hTitle = title(hAxes, axesTitle, 'Interpreter', 'none');
-    % On MacOS: Force the title to be displayed in normal font weigth, if not the last character disappears
+    % On MacOS: Force the title to be displayed in normal font weight, if not the last character disappears
     if strncmp(computer,'MAC',3) && (bst_get('MatlabVersion') >= 804)
         set(hTitle, 'FontWeight', 'normal');
     end
@@ -1836,7 +1836,7 @@ function [X, Y, axesSize] = OptimizeLayout(X, Y)
     Y = Y ./ axesSize(2) + round(Mdim/2);
     % Compute the center
     c = [mean(X), mean(Y)];
-    % Compute the distance to teh center of each point
+    % Compute the distance to the center of each point
     dist = sqrt((X - c(1)).^2 + (Y - c(2)).^2);
     [dist, iSort] = sort(dist);
     % Loop on the points to place on the grid
@@ -1984,7 +1984,7 @@ function SynchronizeFigures(hFig)
     for i = 1:length(hFigOthers)
         % Get figure configuration
         TfInfoOther = getappdata(hFigOthers(i), 'Timefreq');
-        % Check that the figure has a different selecte RowName
+        % Check that the figure has a different selected RowName
         if isempty(TfInfoOther) || isempty(TfInfoOther.RowName) || isequal(TfInfoOther.RowName, TfInfo.RowName)
             continue;
         end

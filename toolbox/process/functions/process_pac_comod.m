@@ -25,7 +25,7 @@ function varargout = process_pac_comod( varargin )
 % v 1.5.2: SS, A bug in including multiple trials in analysis is fixed,
 %              Nov. 2016
 % v 1.6:   SS, Computing phase Comodulogram is added to the function, Dec. 2016
-% v 1.7:   SS, change in fp direction resoultion
+% v 1.7:   SS, change in fp direction resolution
 % v 1.8:   SS, files with different format in time and FA are ignored
 % v 1.9:   SS, The phase of extracted phase has the same orientation as
 %          comod phase, May 2017

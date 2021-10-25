@@ -184,7 +184,7 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Remove unnecessary structure level, allowing easy concatenation across channels, e.g. for display.
                 FOOOF_data = FOOOF_data.FOOOF;
             otherwise
-                error('Invalid implentation.');
+                error('Invalid implementation.');
         end
 
         % === FOOOF ANALYSIS ===
@@ -235,7 +235,7 @@ function [fs, fg] = FOOOF_matlab(TF, Freqs, opt, hOT)
     spec = log10(squeeze(TF(:,1,fMask))); % extract log spectra
     nChan = size(TF,1);
     if nChan == 1, spec = spec'; end
-    % Initalize FOOOF structs
+    % Initialize FOOOF structs
     fg(nChan) = struct(...
             'aperiodic_params', [],...
             'peak_params',      [],...
@@ -823,7 +823,7 @@ function guess = drop_peak_overlap(guess, proxThresh)
 %       Note
 %       -----
 %       For any gaussians with an overlap that crosses the threshold,
-%       the lowest height guess guassian is dropped.
+%       the lowest height guess gaussian is dropped.
 
     % Sort the peak guesses, so can check overlap of adjacent peaks
     guess = sortrows(guess);

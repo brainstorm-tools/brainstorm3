@@ -89,7 +89,7 @@ end
 clear ScoutsArg;
 
 
-%% ===== CHECK CORRESPONDANCE SCOUTS/SURFACES =====
+%% ===== CHECK CORRESPONDENCE SCOUTS/SURFACES =====
 iDroppedRes = [];
 FileType = {};
 % Check each results file

@@ -48,7 +48,7 @@ end
 DefaultName = file_standardize(DefaultName);
 % Check if this default already exists
 if ~isempty(bst_get('AnatomyDefaults', DefaultName))
-	bst_error(['Template "' DefaultName '" aleady exists.'], 'Create new template', 0);
+	bst_error(['Template "' DefaultName '" already exists.'], 'Create new template', 0);
     return;
 end
 

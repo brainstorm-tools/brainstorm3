@@ -597,7 +597,7 @@ end
     
 
 %% ===== GET ALL FIGURES =====
-% Return handles of all the figures registred by Brainstorm
+% Return handles of all the figures registered by Brainstorm
 function hFigures = GetAllFigures()
     global GlobalData;
     hFigures  = [];
@@ -1763,7 +1763,7 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
     if (nargin < 3) || isempty(isResetAxes)
         isResetAxes = 0;
     end
-    % If figure type not sepcified
+    % If figure type not specified
     isStatOnly = 0;
     hFigs = [];
     if (nargin == 0)

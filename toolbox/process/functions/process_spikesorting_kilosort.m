@@ -567,7 +567,7 @@ function downloadAndInstallKiloSort()
     if exist(KiloSortZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_KiloSort, KiloSortZipFile, 'KiloSort download');
         
-        % Check if the download was succesful and try again if it wasn't
+        % Check if the download was successful and try again if it wasn't
         time_before_entering = clock;
         updated_time = clock;
         time_out = 60;% timeout within 60 seconds of trying to download the file
@@ -592,7 +592,7 @@ function downloadAndInstallKiloSort()
     if exist(KiloSortWrapperZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_KiloSort_wrapper, KiloSortWrapperZipFile, 'KiloSortWrapper download');
         
-        % Check if the download was succesful and try again if it wasn't
+        % Check if the download was successful and try again if it wasn't
         time_before_entering = clock;
         updated_time = clock;
         time_out = 60;% timeout within 60 seconds of trying to download the file
@@ -616,7 +616,7 @@ function downloadAndInstallKiloSort()
     if exist(PhyZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_Phy, PhyZipFile, 'Phy download');
         
-        % Check if the download was succesful and try again if it wasn't
+        % Check if the download was successful and try again if it wasn't
         time_before_entering = clock;
         updated_time = clock;
         time_out = 60;% timeout within 60 seconds of trying to download the file
@@ -640,7 +640,7 @@ function downloadAndInstallKiloSort()
     if exist(npyZipFile, 'file') ~= 2
         errMsg = gui_brainstorm('DownloadFile', url_npy, npyZipFile, 'npy-matlab download');
         
-        % Check if the download was succesful and try again if it wasn't
+        % Check if the download was successful and try again if it wasn't
         time_before_entering = clock;
         updated_time = clock;
         time_out = 60;% timeout within 60 seconds of trying to download the file

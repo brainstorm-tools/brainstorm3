@@ -202,7 +202,7 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
         errMsg = '';
     % Regular coregistration options between volumes
     else
-        % If some transformation where made to the intial volume: apply them to the new one ?
+        % If some transformation where made to the initial volume: apply them to the new one ?
         if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), {'permute', 'flipdim'}))
             if ~isInteractive || java_dialog('confirm', ['A transformation was applied to the reference MRI.' 10 10 'Do you want to apply the same transformation to this new volume?' 10 10], 'Import MRI')
                 % Apply step by step all the transformations that have been applied to the original MRI

@@ -17,7 +17,7 @@ function [Labels, AtlasName] = mri_getlabels(MriFile, sMri, isForced)
 %               Labels{i,2} = string, human-readable label (eg. 'Amygdala L')
 %               Labels{i,3} = color, as a [1x3] double
 %
-% REFERECES:
+% REFERENCES:
 %    - https://www.lead-dbs.org/helpsupport/knowledge-base/atlasesresources/cortical-atlas-parcellations-mni-space/
 %    - https://www.lead-dbs.org/helpsupport/knowledge-base/atlasesresources/atlases/
 

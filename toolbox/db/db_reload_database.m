@@ -53,7 +53,7 @@ for i = 1:length(iProtocolsList)
     % Change current protocol
     bst_set('iProtocol', iProtocolsList(i));
     ProtocolInfo = GlobalData.DataBase.ProtocolInfo(iProtocolsList(i));
-    % Skipping the protocols that cannnot be mounted
+    % Skipping the protocols that cannot be mounted
     if ~file_exist(ProtocolInfo.STUDIES) || ~file_exist(ProtocolInfo.SUBJECTS)
         disp(['BST> Error: Protocol "' ProtocolInfo.Comment '" is not accessible.']);
         isError(i) = 1;

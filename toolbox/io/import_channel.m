@@ -99,7 +99,7 @@ isProgressBar = bst_progress('isVisible');
 if ~isProgressBar
     bst_progress('start', 'Import channel file', ['Loading file "' ChannelFile '"...']);
 end
-% Get the file extenstion
+% Get the file extension
 [fPath, fBase, fExt] = bst_fileparts(ChannelFile);
 if ~isempty(fExt)
     fExt = lower(fExt(2:end));

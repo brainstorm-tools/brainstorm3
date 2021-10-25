@@ -507,7 +507,7 @@ for iFile = 1:length(FilesA)
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             
             % ===== IMPLEMENTATION G.DUMAS =====
-            % Intitialize returned matrix
+            % Initialize returned matrix
             R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreqBands
@@ -540,7 +540,7 @@ for iFile = 1:length(FilesA)
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Time: vector of file B
             nTime = length(sInputB.Time);
-            % Intitialize returned matrix
+            % Initialize returned matrix
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
             R = zeros(nA * nB, nTime, nFreqBands);
@@ -592,7 +592,7 @@ for iFile = 1:length(FilesA)
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
-            % Intitialize returned matrix
+            % Initialize returned matrix
             R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreqBands

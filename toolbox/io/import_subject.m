@@ -155,7 +155,7 @@ end
 if isReload
     db_reload_database(iProtocol);
 end
-% If an error occured: display a message
+% If an error occurred: display a message
 if ~isempty(errMsg)
     bst_error(errMsg, 'Import subjects', 0);
 end

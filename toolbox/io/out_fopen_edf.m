@@ -311,14 +311,14 @@ function factors = full_factors(n)
         factors = [];
         return;
     end
-    [occurences, factors] = hist(factors, unique(factors));
-    factors = factors(occurences > 0);
-    occurences = occurences(occurences > 0);
+    [occurrences, factors] = hist(factors, unique(factors));
+    factors = factors(occurrences > 0);
+    occurrences = occurrences(occurrences > 0);
     nFactors = length(factors);
-    possibleFactors = ones(sum(occurences) * nFactors * nFactors);
+    possibleFactors = ones(sum(occurrences) * nFactors * nFactors);
     iPos = 1;
     for iFactor = 1:nFactors
-        for iOcc = 1:occurences(iFactor)
+        for iOcc = 1:occurrences(iFactor)
             fact = factors(iFactor) ^ iOcc;
             possibleFactors(iPos) = fact;
             iPos = iPos + 1;

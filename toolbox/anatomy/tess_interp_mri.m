@@ -39,7 +39,7 @@ if ~isfield(MRI,'SCS') || ~isfield(MRI.SCS,'R') || ~isfield(MRI.SCS,'T') || isem
            'Please define the SCS fiducials on this MRI.']);
 end
 cubeSize = size(MRI.Cube(:,:,:,1));
-% Progres bar
+% Progress bar
 isProgress = bst_progress('isVisible');
 if ~isProgress
     bst_progress('start', 'Compute interpolation: surface/MRI', 'Initialization...');
@@ -82,7 +82,7 @@ if isfield(sSurf, 'tess2mri_interp') && ~isempty(sSurf.tess2mri_interp)
     tess2mri_interp = sSurf.tess2mri_interp;
 % Else: Compute it 
 else
-    % Compute interpolation matrix from tessellation to MRI voxel grid
+    % Compute interpolation matrix from tesselation to MRI voxel grid
     tess2mri_interp = tess_tri_interp(Vertices, Faces, cubeSize);
     % Get full surface filename
     SurfaceFile = file_fullpath(SurfaceFile);

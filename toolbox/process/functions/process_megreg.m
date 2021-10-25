@@ -117,7 +117,7 @@ function [OutputFiles, maxDist] = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             % Check that for all the channel files have the same sizes for the Loc fields
             if ~isempty(ChannelMats) && ~isequal(cellfun(@(c)size(c),{chanMat.Channel.Loc},'UniformOutput',0), cellfun(@(c)size(c),{ChannelMats{1}.Channel.Loc},'UniformOutput',0))
-                bst_report('Error', sProcess, sInputs(iInput), ['Channels Loc fiels have a different structure in this file than the previous ones: "' sInputs(iInput).ChannelFile '".']);
+                bst_report('Error', sProcess, sInputs(iInput), ['Channels Loc fields have a different structure in this file than the previous ones: "' sInputs(iInput).ChannelFile '".']);
                 iInputSkip(end+1) = iInput;
                 continue;
             end

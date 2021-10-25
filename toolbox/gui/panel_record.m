@@ -669,7 +669,7 @@ function SetRawViewerOptions(propName, propVal)
 end
 
 
-%% ===== UDPATE DISPLAY OPTIONS =====
+%% ===== UPDATE DISPLAY OPTIONS =====
 function UpdateDisplayOptions(hFig)
     % Parse inputs
     if (nargin < 1) || isempty(hFig)
@@ -823,7 +823,7 @@ function InitializePanel() %#ok<DEFNU>
     for iDS = 1:length(GlobalData.DataSet)
         sFile = GlobalData.DataSet(iDS).Measures.sFile;
         if strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw') && ~isempty(sFile)
-            % Intialize FullTimeWindow structure
+            % Initialize FullTimeWindow structure
             GlobalData.FullTimeWindow.CurrentEpoch = 1;
             % Epochs in the file
             if ~isempty(sFile.epochs)
@@ -1421,7 +1421,7 @@ function [iEvent, iOccur] = GetCurrentEvent()
             TimeSel = GetTimeSelection();
             % No time selection: pick the first event that is available at the current time
             if isempty(TimeSel)
-                % Get teh current time
+                % Get the current time
                 CurrentTime = GlobalData.UserTimeWindow.CurrentTime;
                 % Find an extended event that contains the current time
                 iOccur = find((CurrentTime >= sEvent.times(1,:) - epsilon) & ...
@@ -1688,7 +1688,7 @@ function iEvent = EventTypeAdd(sEvent)
     events = GetEvents([], 1);
     
     % ===== DEFINE EVENT =====
-    % Event strcture in argument
+    % Event structure in argument
     if (nargin == 1) && isstruct(sEvent)
         % Just keep it
     else
@@ -1860,7 +1860,7 @@ function EventTypeToggleVisible()
         iEvent = iSelEvents(i);
         % Get event (ignore current epoch)
         sEvent = GetEvents(iEvent, 1);
-        % Toogle selected
+        % Toggle selected
         if isempty(sEvent.select)
             sEvent.select = 0;
         else

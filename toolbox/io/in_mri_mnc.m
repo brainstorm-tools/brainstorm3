@@ -96,7 +96,7 @@ MRI.Header  = hdr;
 % [status, result] = system(exe);
 % % Restore initial folder
 % cd(curdir);
-% % Exectution worked: convert MNC to NII
+% % Execution worked: convert MNC to NII
 % if (status == 0)
 %     % Import tmp.nii using standard NIfTI functions
 %     MRI = in_mri_nii(bst_fullfile(bstTmp, 'tmp.nii'));

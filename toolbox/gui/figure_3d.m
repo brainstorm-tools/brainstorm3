@@ -681,7 +681,7 @@ function FigureMouseUpCallback(hFig, varargin)
             elseif ~isempty(hElectrodeGrid)
                 % Select the nearest sensor from the mouse
                 [p, v, vi] = select3d(hElectrodeGrid(1));
-                % Get the correspondance electrodes/vertex
+                % Get the correspondence electrodes/vertex
                 UserData = get(hElectrodeGrid(1), 'UserData');
                 % If sensor index is not valid
                 if isempty(vi) || (vi > length(UserData)) || (vi <= 0)
@@ -693,7 +693,7 @@ function FigureMouseUpCallback(hFig, varargin)
             elseif ~isempty(hNirsCapPatch)
                 % Select the nearest sensor from the mouse
                 [p, v, vi] = select3d(hNirsCapPatch);
-                % Get the correspondance electrodes/vertex
+                % Get the correspondence electrodes/vertex
                 UserData = get(hNirsCapPatch, 'UserData');
                 % If sensor index is not valid
                 if isempty(vi) || (vi > length(UserData)) || (vi <= 0)
@@ -1442,7 +1442,7 @@ function ApplyViewToAllFigures(hSrcFig, isView, isSurfProp)
                         UpdateSurfaceAlpha(hDestFig, iTess);
                         UpdateSurfaceColor(hDestFig, iTess);
                     end
-                    % Update scouts displayed on this surfce
+                    % Update scouts displayed on this surface
                     panel_scout('UpdateScoutsVertices', DestTessInfo(iTess).SurfaceFile);
                 end
             end
@@ -2091,7 +2091,7 @@ end
 %           SelRows         = GetFigSelectedRows(hFig);
 function [SelRows, iRows] = GetFigSelectedRows(hFig)
     global GlobalData;
-    % Initialize retuned values
+    % Initialize returned values
     SelRows = [];
     iRows = [];
     % Find figure
@@ -3042,7 +3042,7 @@ end
 
 
 %% ===== BLEND ANATOMY DATA =====
-% Compute the RGB color values for each vertex of an enveloppe.
+% Compute the RGB color values for each vertex of an envelope.
 % INPUT:
 %    - SulciMap     : [nVertices] vector with 0 or 1 values (0=gyri, 1=sulci)
 %    - Data         : [nVertices] vector 

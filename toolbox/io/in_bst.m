@@ -13,7 +13,7 @@ function [sMatrix, matName] = in_bst(FileName, TimeBounds, isLoadFull, isIgnoreB
 %    - TimeBounds : [Start,Stop] values of the time segment to read (in seconds)
 %    - isLoadFull : If 0, read the kernel-based results separately as Kernel+Recordings
 %    - isIgnoreBad: If 1, do not return the bad segments in the file
-%    - RemoveBaseline: {'all','no'}, only usefull when reading RAW files
+%    - RemoveBaseline: {'all','no'}, only useful when reading RAW files
 %
 % OUTPUT:
 %    - sMatrix     : Full content of the file
@@ -208,7 +208,7 @@ switch(fileType)
         % Keep required values
         if ~isempty(TimeBounds) && (size(sMatrix.TF,2) > 1)
             if isfield(sMatrix, 'TimeBands') && ~isempty(sMatrix.TimeBands)
-                % Select the bands that have their center in the selectd time window
+                % Select the bands that have their center in the selected time window
                 TimeBandsCenter = mean(process_tf_bands('GetBounds', sMatrix.TimeBands), 2)';
                 iTime = find((TimeBandsCenter >= TimeBounds(1)) & (TimeBandsCenter <= TimeBounds(2)));
                 % Remove time bands from the output: use the center of the bands as the time

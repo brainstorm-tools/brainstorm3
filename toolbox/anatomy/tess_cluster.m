@@ -1,5 +1,5 @@
 function Labels = tess_cluster(VertConn, nClusters, isRandom, VERBOSE)
-% TESS_CLUSTER: Spatial clustering of connected cortical nodes of a surface tessellation.
+% TESS_CLUSTER: Spatial clustering of connected cortical nodes of a surface tesselation.
 %
 % INPUTS: 
 %     - VertConn  : A cell-array of vertex connectivity of the nodes (see vertices_connectivity.m)
@@ -8,7 +8,7 @@ function Labels = tess_cluster(VertConn, nClusters, isRandom, VERBOSE)
 %     - VERBOSE   : if 1, displays message while processing
 %
 % OUTPUTS:
-%     - Labels : A vector specifying the cluster for each node in the tessellation 
+%     - Labels : A vector specifying the cluster for each node in the tesselation 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

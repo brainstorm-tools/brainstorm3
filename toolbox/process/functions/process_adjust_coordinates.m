@@ -231,7 +231,7 @@ end
 %                     ChannelMat.TransfMeg(iTransf(2:end)) = [];
 %                     ChannelMat.TransfMegLabels(iTransf(2:end)) = [];
 %                 elseif isempty(iTransf)
-%                     % Look for head point refinment.
+%                     % Look for head point refinement.
 %                     iTransf = find(strcmp(ChannelMat.TransfMegLabels, 'refine registration: head points'));
 %                     if isempty(iTransf)
 %                         iTransf = end+1;
@@ -251,7 +251,7 @@ end
 %                     ChannelMat.TransfEeg(iTransf(2:end)) = [];
 %                     ChannelMat.TransfEegLabels(iTransf(2:end)) = [];
 %                 elseif isempty(iTransf)
-%                     % Look for head point refinment.
+%                     % Look for head point refinement.
 %                     iTransf = find(strcmp(ChannelMat.TransfEegLabels, 'refine registration: head points'));
 %                     if isempty(iTransf)
 %                         iTransf = end+1;
@@ -419,7 +419,7 @@ function ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInput, sPro
             % Apply inverse transformation.
             ChannelMat = channel_apply_transf(ChannelMat, Transf, iChan, ~isMegOnly);
             ChannelMat = ChannelMat{1};
-            % Remove last tranformation we just added and the one it cancels.
+            % Remove last transformation we just added and the one it cancels.
             ChannelMat.TransfMegLabels([iUndoMeg, end]) = [];
             ChannelMat.TransfMeg([iUndoMeg, end]) = [];
             if ~isMegOnly
@@ -640,7 +640,7 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
         NasDist = 0.10;
         InitLoc = [[NasDist; 0; 0; 1], [0; LeftRightDist/2; 0; 1], [0; -LeftRightDist/2; 0; 1]];
     end
-    % InitLoc above is in Native coordiates (if pre head loc didn't fail).
+    % InitLoc above is in Native coordinates (if pre head loc didn't fail).
     % Bring it back to Dewar coordinates to compare with HLU channels.
     %
     % Take into account if the initial/reference head position was
@@ -761,7 +761,7 @@ function [TransfMat, TransfAdjust] = LocationTransform(Loc, ...
     
     % TransfMat at this stage is a transformation from the current system
     % back to the now adjusted Native system.  We thus need to reapply the
-    % following tranformations.
+    % following transformations.
     
     if nargout > 1
         % Transform from non-adjusted native coordinates to newly adjusted native

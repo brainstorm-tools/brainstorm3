@@ -278,7 +278,7 @@ if ~isSymmetric
     end
     
     
-%% ===== VERSION 2: Vectorized + Symetrical =====
+%% ===== VERSION 2: Vectorized + Symmetrical =====
 else
     % Indices for the multiplication
     [iY,iX] = meshgrid(1:nX,1:nY);

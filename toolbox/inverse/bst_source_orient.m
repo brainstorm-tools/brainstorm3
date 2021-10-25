@@ -10,7 +10,7 @@ function [SourceValues, GridAtlas, RowNames] = bst_source_orient(iVertices, nCom
 %                     If 0, the number varies, the properties of each region are defined in input GridAtlas
 %    - GridAtlas    : Set of scouts that defines the properties of the source space regions, when nComponents=0
 %                     GridAtlas.Scouts(i).Region(2) is the source type (V=volume, S=surface, D=dba, X=exclude)
-%                     GridAtlas.Scouts(i).Region(3) is the orientation constrain (U=unconstrained, C=contrained, L=loose)
+%                     GridAtlas.Scouts(i).Region(3) is the orientation constraint (U=unconstrained, C=constrained, L=loose)
 %    - SourceValues : [Nvertices x Nsensors] or [Nvertices x Ntime], source values
 %    - Function     : Name of the function to apply to group multiple components {'sum', 'sum_power', 'rms', 'max', 'pca', 'mean'}
 %    - DataType     : Type of data being processed {'data', 'results', 'scouts', 'matrix'}
@@ -106,7 +106,7 @@ if (nComponents == 0)
     if ~isempty(RowNames) && iscell(RowNames)
         RowNames = cat(2, RowNamesBlocks{:});
     end
-    % Modify the grid/row correspondance matrix
+    % Modify the grid/row correspondence matrix
     if ~isempty(GridAtlas.Grid2Source)
         GridAtlas.Grid2Source = speye(size(SourceValues,1));
     end

@@ -180,7 +180,7 @@ elseif strcmpi(TSFile, 'Database')
     if isSelectedChannels && isempty(iRows)
         iRows = GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels;
     end
-    % Get the real ammount of channels
+    % Get the real amount of channels
     nChannels = length(GlobalData.DataSet(iDS).Measures.ChannelFlag);
     % Initialize returned data matrix
     F = zeros(nChannels, size(TSMat.F{1},2));

@@ -1,5 +1,5 @@
 function [vert, faces] = tess_sphere(nvert, DEBUG)
-% TESS_SPHERE: Create an apolar sphere based on the refinment of an icosahedron
+% TESS_SPHERE: Create an apolar sphere based on the refinement of an icosahedron
 %
 % USAGE:  [vert, faces] = tess_sphere(nvert);
 %

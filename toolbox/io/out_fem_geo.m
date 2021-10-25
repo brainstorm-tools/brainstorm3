@@ -59,7 +59,7 @@ if mod(nNodes,2)   % Write last node if odd number of nodes
     fprintf(fid, '   %1.7f %1.7f %1.7f\n', FemMat.Vertices(end,:));
 end
 fprintf(fid, 'EOI - KOORDINATENKARTE\n');
-% Write elemets
+% Write elements
 fprintf(fid, '===================================================================\n');
 fprintf(fid, '===================================================================\n');
 fprintf(fid, 'BOI - ELEMENTKNOTENKARTE\n');

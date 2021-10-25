@@ -93,7 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     [uniqueComments,tmp,iData2List] = unique(listComments);
     nLists = length(uniqueComments);
     
-    % Process each event group seperately
+    % Process each event group separately
     for iList = 1:nLists
         sCurrentInputs = sInputs(iData2List == iList);
     

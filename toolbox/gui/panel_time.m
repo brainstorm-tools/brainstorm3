@@ -275,7 +275,7 @@ function [timeUnit, isRaw, precision] = GetTimeUnit()
     if isempty(TimeBounds)
         return;
     end
-    % If max time large: use seconds instead of miliseconds
+    % If max time large: use seconds instead of milliseconds
     if (abs(TimeBounds(2)) > 2)
         timeUnit = 's';
         dt = GlobalData.UserTimeWindow.SamplingRate;
@@ -300,7 +300,7 @@ function strVal = FormatValue(val, units, precision)
     if strcmpi(units, 'ms')
         val = 1000 * val;
     end
-    % Adapted fromat for required precision
+    % Adapted format for required precision
     if (precision == 0)
         textFormat = '%d';
         val = round(val);

@@ -24,7 +24,7 @@ function delta = zhang_fit(berg,R,f)
 %
 % OUTPUT:
 %    - delta: Minimization function output. Best fit of 
-%             Berg Eccentricity and Magnitude Paramters occurs when
+%             Berg Eccentricity and Magnitude Parameters occurs when
 %             this value is minimized
 
 % @=============================================================================

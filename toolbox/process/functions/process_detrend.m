@@ -68,7 +68,7 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
     else
         TimeBounds = [];
     end
-    % Comment: seconds or miliseconds
+    % Comment: seconds or milliseconds
     if isempty(TimeBounds)
         Comment = [sProcess.Comment, ': All file'];
     elseif any(abs(TimeBounds) > 2)

@@ -359,7 +359,7 @@ for iData = 1:length(Data)
                     F = F(ResultsMat.GoodChannel, :);
                     nAvg = sMat.nAvg;
                     OPTIONS.TimeVector = sMat.Time;
-                % Full results: Proces the sources time series
+                % Full results: Process the sources time series
                 else
                     F    = ResultsMat.ImageGridAmp;
                     nAvg = ResultsMat.nAvg;
@@ -545,7 +545,7 @@ for iData = 1:length(Data)
         case 'hilbert'
             % Get bounds of each frequency bands
             BandBounds = process_tf_bands('GetBounds', FreqBands);
-            % Intitialize returned matrix
+            % Initialize returned matrix
             TF = zeros(size(F,1), size(F,2), size(BandBounds,1));
             % Loop on each frequency band
             for iBand = 1:size(BandBounds,1)

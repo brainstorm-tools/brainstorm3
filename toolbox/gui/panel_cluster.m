@@ -725,7 +725,7 @@ function LoadClusters(varargin)
         for i = 1:length(ClusterMat.Clusters)
             % Make all clusters names unique
             ClusterMat.Clusters(i).Label = UniqueClusterLabel(ClusterMat.Clusters(i).Label);
-            % Add "Function" field if is doesnt exist
+            % Add "Function" field if is doesn't exist
             if ~isfield(ClusterMat.Clusters, 'Function')
                 defCluster = db_template('cluster');
                 ClusterMat.Clusters(i).Function   = defCluster.Function;

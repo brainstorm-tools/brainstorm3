@@ -5,7 +5,7 @@ function DataMat = in_bst_data( DataFile, varargin )
 %         DataMat = in_bst_data( DataFile );
 % INPUT: 
 %     - DataFile    : full path to a recordings file
-%     - FieldsToRead: List of strings decribing the fields to be read in the file
+%     - FieldsToRead: List of strings describing the fields to be read in the file
 % OUTPUT:
 %     - DataMat:  Brainstorm MRI structure
 

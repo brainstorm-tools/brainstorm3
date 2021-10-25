@@ -13,7 +13,7 @@ function [connectivity, pValue, connectivityV, pValueV, X, Y] = bst_granger(X, Y
 %   order         - maximum lag in AR model for causality in mean
 %                   [p: nonnegative integer]
 %   inputs        - structure of parameters:
-%   |-nTrials     - # of trials in concantenated signal
+%   |-nTrials     - # of trials in concatenated signal
 %   |               [T: positive integer]
 %   |-standardize - if true (default), remove mean from each signal.
 %   |               if false, assume signal has already been detrended
@@ -303,7 +303,7 @@ end
 % causality in mean: F statistic of connectivity when multiplied by number of regressors
 pValue = 1 - betainc(connectivity ./ (1 + connectivity), order / 2, (nSamples - order * inputs.nTrials - 2 * order - 1) / 2, 'lower');
 % here we assume we have many more samples than the order of the MVAR model so that in all cases we use the second condition below to compute the p-value
-% note: if connectivity = 0 (auto-causality or two of the same signals) then this formula evalutes pValue = 1 which is desired (no significant causality)
+% note: if connectivity = 0 (auto-causality or two of the same signals) then this formula evaluates pValue = 1 which is desired (no significant causality)
   
 % causality in mean: F statistic of connectivity when multiplied by number of regressors
 % tic
@@ -335,4 +335,4 @@ pValueV = 1 - gammainc(connectivityV .* (nSamples - order * inputs.nTrials - inp
 % chi2cdf(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1), 2 * inputs.lag)
 % = gamcdf(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1), (2 * inputs.lag)/2 = inputs.lag, 2)
 % = gammainc(connectivityV .* (nSamples - order * inputs.nTrials - inputs.lag - 1) / 2, inputs.lag)
-% note: if connectivityV = 0 (auto-causality or two of the same signals) then this formula evalutes pValueV = 1 which is desired (no significant causality)
+% note: if connectivityV = 0 (auto-causality or two of the same signals) then this formula evaluates pValueV = 1 which is desired (no significant causality)

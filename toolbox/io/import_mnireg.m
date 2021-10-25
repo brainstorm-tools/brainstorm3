@@ -6,10 +6,10 @@ function sMri = import_mnireg(sMri, RegFile, RegInvFile, Method)
 % INPUTS:
 %    - sMri       : Brainstorm MRI structure
 %    - RegFile    : SPM file y_*.nii, forward MNI deformation field
-%                   Used for coverting from MNI to MRI coordinates in cs_convert
+%                   Used for converting from MNI to MRI coordinates in cs_convert
 %                   The .nii must contain 3 volumes (X,Y,Z)
 %    - RegInvFile : SPM file iy_*.nii, inverse MNI deformation field
-%                   Used for coverting from MNI to MRI coordinates in cs_convert
+%                   Used for converting from MNI to MRI coordinates in cs_convert
 %                   The .nii must contain 3 volumes (X,Y,Z)
 
 % @=============================================================================

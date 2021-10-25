@@ -104,7 +104,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             bst_report('Error', sProcess, sInputs, ['Invalid montage name "' MontageName '".']);
             return;
         end
-        % If not creating a new channel file: montage output has to be compatible with curent channel structure
+        % If not creating a new channel file: montage output has to be compatible with current channel structure
         isCompatibleChan = ~strcmpi(sMontage.Type, 'selection') && (~strcmpi(sMontage.Type, 'text') || all(sum(sMontage.Matrix,2) == 0));
         if ~isCreateChan && ~isCompatibleChan
             bst_report('Error', sProcess, [], ['The montage "' sMontage.Name '" cannot be applied without writing a new folders.']);

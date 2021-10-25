@@ -122,21 +122,21 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
     for iTrialB = 1:nTrials
         syncCountB = 0;
         
-        while syncCountB < nSyncEvent.B(iTrialB)  %loop trough multiple trials in A, if multiple trials are associated with one trial in B
+        while syncCountB < nSyncEvent.B(iTrialB)  %loop through multiple trials in A, if multiple trials are associated with one trial in B
         
             % Decide which trial of data set A must be used
             if nSyncEvent.A(iTrialA) == syncCountA   %last event of this trial already used, skip to next trial
                 iTrialA = iTrialA+1;
                 syncCountA = 0;
             elseif nSyncEvent.A(iTrialA) < syncCountA % this should hopefully not happen.
-                bst_report('Error', sProcess, sInputs.A, 'Error in chosing the right trial in data set A.');
+                bst_report('Error', sProcess, sInputs.A, 'Error in choosing the right trial in data set A.');
             end            
         
             % === Synchronization ===  
             
             % Calculation of offset between the two data sets
-            syncIdcsA = syncCountA+1 : syncCountA + min([nSyncEvent.B(iTrialB) nSyncEvent.A(iTrialA)]);    %find out which sync event indeces in this trial of A to use now
-            syncIdcsB = syncCountB+1 : syncCountB + min([nSyncEvent.B(iTrialB) nSyncEvent.A(iTrialA)]);    %find out which sync event indeces in this trial of B to use now
+            syncIdcsA = syncCountA+1 : syncCountA + min([nSyncEvent.B(iTrialB) nSyncEvent.A(iTrialA)]);    %find out which sync event indices in this trial of A to use now
+            syncIdcsB = syncCountB+1 : syncCountB + min([nSyncEvent.B(iTrialB) nSyncEvent.A(iTrialA)]);    %find out which sync event indices in this trial of B to use now
             
             Offsets = sEvents.A{iTrialA}(iSyncEvent.A(iTrialA)).times(syncIdcsA) - sEvents.B{iTrialB}(iSyncEvent.B(iTrialB)).times(syncIdcsB);
             tOffsetA = median(Offsets);

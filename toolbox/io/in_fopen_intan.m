@@ -8,7 +8,7 @@ function [sFile, ChannelMat] = in_fopen_intan(DataFile)
 %       3. A separate file for each type of channel (one file for all data-files, one file for aux etc.)
 %    This code supports 1 and 2.
 %
-%    The events are read from a parallel port, and all Digital outputs are saved in seperate files as well.
+%    The events are read from a parallel port, and all Digital outputs are saved in separate files as well.
 %    Information for the datatypes can be found at:
 %        http://intantech.com/files/Intan_RHD2000_data_file_formats.pdf
 %        http://intantech.com/files/Intan_RHS2000_data_file_formats.pdf

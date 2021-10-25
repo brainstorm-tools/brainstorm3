@@ -385,7 +385,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 else
                     LeffAll(i) = 1;
                 end
-                % Count number of times the channe is bad
+                % Count number of times the channel is bad
                 if isempty(BadChannels)
                     BadChannels = double(DataMat.ChannelFlag < 0);
                 else

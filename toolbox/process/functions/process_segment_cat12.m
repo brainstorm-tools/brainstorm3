@@ -253,7 +253,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     bst_progress('text', 'Saving temporary files...');
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
-    % Create temporay folder for CAT12 output
+    % Create temporary folder for CAT12 output
     catDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'cat12');
     mkdir(catDir);
     % Save MRI in .nii format

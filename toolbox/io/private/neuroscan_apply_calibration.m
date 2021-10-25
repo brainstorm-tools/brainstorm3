@@ -35,7 +35,7 @@ for iChan = 1:hdr.data.nchannels
     sensitivity = hdr.electloc(iChan).sensitivity;
     n = hdr.electloc(iChan).n;
     
-    % Apply thoses factors to channel #i (and convert to Volts)
+    % Apply those factors to channel #i (and convert to Volts)
     switch lower(hdr.fileFormat)
         case 'avg'
             chanCalib = calibration ./ n .* 1e-6;

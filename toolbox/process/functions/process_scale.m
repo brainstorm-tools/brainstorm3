@@ -1,5 +1,5 @@
 function varargout = process_scale( varargin )
-% PROCESS_SCALE: Sacle values by a constant factor.
+% PROCESS_SCALE: Scale values by a constant factor.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:

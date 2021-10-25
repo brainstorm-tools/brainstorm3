@@ -90,7 +90,7 @@ if numBlocks>1
     tranLen  = 5 * Fs ;
     % Compute the length of each block
     blockLen3D = actLen + 2*tranLen ; 
-    % Pre-define the data in 3D format (Signals x Samples x Blcoks)
+    % Pre-define the data in 3D format (Signals x Samples x Blocks)
     Data3D = zeros(nSig,blockLen3D,numBlocks) ; 
     % Divide data into a 3D structure with overlapping periods 
     for k = 1:numBlocks

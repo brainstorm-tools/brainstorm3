@@ -1,6 +1,6 @@
 function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 % BST_INVERSE_LINEAR_2016: Compute an inverse solution (minimum norm, dipole fitting or beamformer)
-% USAGE:  [Results,OPTIONS] = bst_inverse_linear_2016(HeadModel, OPTIONS) : Compute mininum operator
+% USAGE:  [Results,OPTIONS] = bst_inverse_linear_2016(HeadModel, OPTIONS) : Compute minimum operator
 %                   OPTIONS = bst_inverse_linear_2016()                   : Return default options
 %
 % DESCRIPTION:
@@ -94,7 +94,7 @@ function [Results, OPTIONS] = bst_inverse_linear_2016(HeadModel,OPTIONS)
 %         - "free"      : No constraints, dipoles point in x,y,z directions
 %         - "loose"     : Source variances of dipole components pointing
 %                         tangentially to the cortical surfaces are
-%                         multipled by OPTIONS.Loose
+%                         multiplied by OPTIONS.Loose
 %         - "optimal"   : NEW IN 2015: Optimal orientation is returned
 %                         in GridOrients for each dipole
 %       => OBSOLETE IN 2015: For dealing with multiple source spaces with different types of orientation constraints use for example,
@@ -365,7 +365,7 @@ end
 
 % For convenience in the later modeling, let's combine into one whitener
 
-iW_noise = iWw_noise; % * iPrior_Matrix; % August 2016, iPrior is simpy I
+iW_noise = iWw_noise; % * iPrior_Matrix; % August 2016, iPrior is simply I
 
 
 %% ======== Data Covariance Manipulation, if there is one =============

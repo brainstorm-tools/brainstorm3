@@ -146,7 +146,7 @@ for iFile = 1:length(ErpFiles)
         warning('BST:InvalidFile', ['Data file is empty : ' ErpFiles{iFile}]);
         continue
     end
-    % Transposing data matix
+    % Transposing data matrix
     read_data = read_data';
     % Get file comment
     [tmp___, Comment] = bst_fileparts(ErpFiles{iFile});

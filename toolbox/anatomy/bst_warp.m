@@ -5,7 +5,7 @@ function [OutputSurfaces, OutputMri] = bst_warp(destPts, srcPts, SurfaceFiles, M
 %
 % INPUTS:
 %     - destPts      : landmarks in real head coordinates, i.e. from a Polhemus or
-%     - srcPts       : landmarks in intial anatomy coordinates
+%     - srcPts       : landmarks in initial anatomy coordinates
 %     - SurfaceFiles : Cell array of the surface files to be warped (full path)
 %     - MriFile      : MRI file name (full path)
 %     - OutputTag    : Tag to add at the end of the filenames of the wrapped files
@@ -116,7 +116,7 @@ if ~isSurfaceOnly
         rv = [xv;yv;zv]';
         % Unwarp MRI coordinates
         rv_inv = warp_lm(rv, Amr_inv, Wmr_inv, destPts_mr) + rv;
-        % Round coordinates (nearest neighor interpolation)
+        % Round coordinates (nearest neighbor interpolation)
         rv_inv = round(rv_inv);
         % Remove values that are outside the volume
         iOutside = find(sum((rv_inv < 1) | (rv_inv > repmat(sizeMri,size(rv_inv,1),1)),2) > 0);
@@ -186,7 +186,7 @@ end
 %  =====================================================================================
 
 %% ===== WARP TRANSFORM =====
-% Calculates nonlinear transformation coefficents (see Ermer's Thesis)
+% Calculates nonlinear transformation coefficients (see Ermer's Thesis)
 % INPUT:  
 %    - p : Landmarks in system 1
 %    - q : Landmarks in system 2

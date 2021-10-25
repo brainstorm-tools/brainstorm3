@@ -156,7 +156,7 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
         x = bst_bsxfun(@minus, x, xmean);
     end
     
-    % Remove all the frequencies sequencially
+    % Remove all the frequencies sequentially
     for ifreq = 1 %:length(FreqList)
         % Frequency band to remove
         FreqBand = [FreqList(ifreq) - FreqWidth/2, FreqList(ifreq) + FreqWidth/2];

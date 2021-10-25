@@ -1,5 +1,5 @@
 function TessMat = in_tess_dsgl(TessFile)
-% IN_TESS_DSGL: Load the old BrainSuite .dsgl format tessellation file.
+% IN_TESS_DSGL: Load the old BrainSuite .dsgl format tesselation file.
 %
 % USAGE:  TessMat = in_tess_dsgl(TessFile);
 %

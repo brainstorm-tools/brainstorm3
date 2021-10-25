@@ -221,7 +221,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iBadChanMod = find((p2p < Threshold(1)) | (p2p > Threshold(2)));
             % If some bad channels were detected
             if ~isempty(iBadChanMod)
-                % Convert indices back into the intial Channels structure
+                % Convert indices back into the initial Channels structure
                 iBadChan = [iBadChan, iChan(iBadChanMod)];
             end
         end

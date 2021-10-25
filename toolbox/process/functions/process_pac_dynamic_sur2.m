@@ -552,7 +552,7 @@ mirrorEffectSample = 40;            % Number of samples that can be affected due
 
 N = 5; % Number of blocks for shuffling
 
-% ==== ADDING MARGING TO THE DATA => AVOID EDGE ARTIFACT (FILTERS AND HILBERT TRANSFORM) ====
+% ==== ADDING MARGIN TO THE DATA => AVOID EDGE ARTIFACT (FILTERS AND HILBERT TRANSFORM) ====
 nMargin = fix(margin*sRate);
 nHilMar = fix(nMargin*hilMar);
 
@@ -599,7 +599,7 @@ nSources = size(Xinput,1);
 isources = 1:nSources;
 nTime = fix((nTS-fix(winLen*sRate))/fix(tStep*sRate))+1;
 TimeOut = winLen/2 : tStep : winLen/2+(nTime-1)*tStep;        % Sec
-nSur = Options.nSur;                % Number of surrogate itterations
+nSur = Options.nSur;                % Number of surrogate iterations
 PAC = zeros(nFa,nTime,nSources,nSur);               % PAC measure
 nestingFreq = zeros(nFa,nTime,nSources,nSur);
 DynamicPhase= zeros(nFa,nTime,nSources);               % PAC measure
@@ -651,7 +651,7 @@ for ifreq=1:nFa
         
                 % Add previous and next point to the interval to give the algorithm 
         % to find the local peaks even if they are in the first and last 
-        % point of interst in the spectrum
+        % point of interest in the spectrum
         if ind(1)>1
             ind(1) = ind(1)-1;
         end
@@ -675,7 +675,7 @@ for ifreq=1:nFa
             locs_orig = locs_orig(pks_orig>0.1);
 
             % Confirming the peak
-            max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in evelope and the original signal's PSD
+            max_dist = max(1.5/winLen,1.5);     % maximum acceptable distance between peaks in envelope and the original signal's PSD
             count = 1;
             check_pks = 1;
             fp_loc = [];
