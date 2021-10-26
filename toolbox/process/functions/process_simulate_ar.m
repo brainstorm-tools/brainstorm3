@@ -79,8 +79,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.C.Comment = 'Noise covariance matrix <B>C</B>: &nbsp;&nbsp;[Nsignals x Nsignals]<BR>';
     sProcess.options.C.Type    = 'textarea';
     sProcess.options.C.Value   = 'C = eye(4,4);';
-    % === DISPLAY TRANSFER FUNCTION
-    sProcess.options.display.Comment = {'process_simulate_ar(''DisplayTransferFunct'',iProcess);', '<BR>', 'View transfer function'};
+    % === SPECTRAL METRIC
+    sProcess.options.metric.Comment  = {'Transfer function', ...
+                                        'Magnitude squared coherence', ...
+                                        'Directed transfer function', ...
+                                        'Partial directed coherence'; ...
+                                        'transferFunct', 'msc', 'dtf', 'pdc'};
+    sProcess.options.metric.Type     = 'radio_label';
+    sProcess.options.metric.Value    = 'transferFunct';  
+    % === DISPLAY SPECTRAL METRIC
+    sProcess.options.display.Comment = {'process_simulate_ar(''DisplayMetric'',iProcess);', '<BR>', 'View spectral metric'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
 end
@@ -308,8 +316,8 @@ function [v]=arsim(w,A,C,n,ndisc)
 end
 
 
-%% ===== COMPUTE TRANSFER FUNCTION ===== 
-function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
+%% ===== COMPUTE SPECTRAL METRICS =====
+function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeMetric(At, Fs, n)
 % Transfer function and other spectral metrics for MVAR process
 %
 % Input
@@ -385,7 +393,7 @@ function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
             % DFT normalized
             DTF(i,:,f) = (abs(Hf(i,:,f)).^2)./sum(abs(Hf(i,:,f)).^2);
             for j = 1:n_signals
-                Cf(i,j,f)   = Sf(i,j,f)/sqrt(Sf(i,i,f)*Sf(j,j,f));  
+                Cf(i,j,f)  = Sf(i,j,f)/sqrt(Sf(i,i,f)*Sf(j,j,f));  
                 PC(i,j,f)  = Gf(i,j,f)/sqrt(Gf(i,i,f)*Gf(j,j,f));
                 PDC(i,j,f) = abs(Af(i,j,f))/sqrt(ctranspose(Af(:,j,f))*Af(:,j,f)); 
             end
@@ -394,26 +402,49 @@ function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeTransferFunct(At, Fs, n)
 end
 
 
-%% ===== DISPLAY TRANSFER FUNCTION =====
-function DisplayTransferFunct(iProcess) %#ok<DEFNU>
+%% ===== DISPLAY SPECTRAL METRIC =====
+function DisplayMetric(iProcess) %#ok<DEFNU>
     % Get current process options
     global GlobalData;
     sProcess = GlobalData.Processes.Current(iProcess);
-    sfreq = sProcess.options.srate.Value{1}; % Signal sampling frequency [Hz]
+    sfreq  = sProcess.options.srate.Value{1}; % Signal sampling frequency [Hz]
+    Metric = sProcess.options.metric.Value;
     
     % Get coefficients
     [A, ~, ~] = GetCoefficients(sProcess); 
     A = reshape(A, size(A,1), size(A,1), [] );
-    % Compute transfer function
-    [Hf, ~, Sf, ~, ~, ~, ~, Freqs] = ComputeTransferFunct(A, sfreq, 2^10);     
-    % Transfer function description: Left panel   
-    hFig = HTransferFunctDisplay(Hf, Sf, Freqs); 
+    % Compute transfer function and other spectral metrics
+    [Hf, ~, Sf, Cf, DTF, ~, PDC, Freqs] = ComputeMetric(A, sfreq, 2^10);     
+    hFig = HMetricDisplay(Hf, Sf, Cf, DTF, PDC, Freqs, Metric); 
 end
 
 
-function hFig = HTransferFunctDisplay(Hf,Sf,Freqs)
+function hFig = HMetricDisplay(Hf,Sf,Cf,DTF,PDC,Freqs, Metric)
+    switch Metric 
+        case 'transferFunct'
+            metric.title   = 'Transfer function |H(f)|';
+            metric.value   = abs(Hf);
+            metric.ylimits = [];
+            metric.ylabel  = '|H|';
+        case 'msc'
+            metric.title   = 'Magnitude squared coherence MSC(f)';
+            metric.value   = abs(Cf).^2;
+            metric.ylimits = [0, 1];
+            metric.ylabel  = 'MSC';
+        case 'dtf'
+            metric.title   = 'Directed transfer function DTF(f)';
+            metric.value   = DTF;    % Already normalized
+            metric.ylimits = [0, 1];
+            metric.ylabel  = 'DTF';
+        case 'pdc'
+            metric.title   = 'Partial directed coherence PDC(f)';
+            metric.value   = abs(PDC).^2; % Normalized PDC
+            metric.ylimits = [0, 1];
+            metric.ylabel  = 'PDC';
+    end
+        
     % Progress bar
-    bst_progress('start', 'Transfer function specification', 'Updating graphs...');
+    bst_progress('start', metric.title, 'Updating graphs...');
 
     % Get existing specification figure
     hFig = findobj(0, 'Type', 'Figure', 'Tag', 'TransferFunct');
@@ -424,7 +455,7 @@ function hFig = HTransferFunctDisplay(Hf,Sf,Freqs)
             ... 'Toolbar',     'none', ...
             'Toolbar',     'figure', ...
             'NumberTitle', 'off', ...
-            'Name',        sprintf('Transfer function'), ...
+            'Name',         metric.title, ...
             'Tag',         'TransferFunct', ...
             'Units',       'Pixels');
         % Figure already exists: re-use it
@@ -437,48 +468,50 @@ function hFig = HTransferFunctDisplay(Hf,Sf,Freqs)
         warning('off', 'MATLAB:ui:javacomponent:FunctionToBeRemoved');
     end
 
-    % Plot transfer function
+    % Plot spectral metric
     n_signals = size(Hf, 1);
-    hAxesTransferFunct = [];
     for iFrom = 1 : n_signals
         for iTo = 1 : n_signals
             tmpAxes = axes('Units', 'normalized', 'Parent', hFig);
             subplot(n_signals+2, n_signals, ((iFrom-1)*n_signals) + iTo, tmpAxes);
-            hAxesTransferFunct = [hAxesTransferFunct; tmpAxes];
-            area(Freqs, squeeze(abs(Hf(iTo, iFrom, :))));
+            area(Freqs, squeeze(metric.value(iTo, iFrom, :)));
             % Title showing directionality
             title(['Signal ', num2str(iFrom), ' \rightarrow Signal ', num2str(iTo)])
+            hAxesMetric(iFrom, iTo) = tmpAxes;
         end
     end
+    
     % Plot power spectra
-    hAxesPowerSpectrum = [];
     for iTo = 1 : n_signals
         tmpAxes = axes('Units', 'normalized', 'Parent', hFig);
         subplot(n_signals+2, n_signals, ((1+n_signals)*n_signals) + iTo, tmpAxes);
-        hAxesPowerSpectrum = [hAxesPowerSpectrum; tmpAxes];
+        hAxesPowerSpectrum(iTo) = tmpAxes;
         area(Freqs, squeeze(abs(Sf(iTo, iTo, :))));
         % Title showing directionality
         title(['Power spectrum, Signal ', num2str(iTo)])
     end
     
-    % Link frequency axis
-    linkaxes([hAxesTransferFunct; hAxesPowerSpectrum],'x');
-    % Link magnitude axis
-    linkaxes(hAxesTransferFunct,'y');
-    % Link power axis
-    linkaxes(hAxesPowerSpectrum,'y');
+    % Frequency axis
+    linkaxes([hAxesMetric(:); hAxesPowerSpectrum(:)],'x');
+    set(hAxesMetric(1), 'XLim', [0, max(Freqs)]);  
+    xlabel([hAxesMetric(end, :), hAxesPowerSpectrum], 'Frequency (Hz)');
+
+    % Metric y axis
+    linkaxes(hAxesMetric(:),'y');
+    if ~isempty(metric.ylimits)
+        set(hAxesMetric(1), 'YLim', metric.ylimits);     
+    end
+    ylabel(hAxesMetric(:,1), metric.ylabel);
     
-    % Add Axes limits
-    set(hAxesTransferFunct, 'XLim', [0, max(Freqs)]);  
-    % Add legends
-    xlabel([hAxesTransferFunct; hAxesPowerSpectrum], 'Frequency (Hz)');
-    ylabel(hAxesTransferFunct, 'Magnitude (signal units)');
-    ylabel(hAxesPowerSpectrum, 'Power (signal units^2/Hz)');   
+    % PSD y axis
+    linkaxes(hAxesPowerSpectrum,'y');
+    ylabel(hAxesPowerSpectrum(1), 'Power (signal units^2/Hz)');
+
     % Enable zooming by default
-    %zoom(hFig, 'on');
+    zoom(hFig, 'on');
     
     % Display figure titles
-    titleText = '<HTML><B>Analytical transfer function H(f)</B>';
+    titleText = ['<HTML><B>', metric.title, '</B>'];
     [jLabel1, hLabel1] = javacomponent(javax.swing.JLabel(titleText), [0 0 1 1], hFig);
     set(hLabel1, 'Units', 'pixels', 'BackgroundColor', get(hFig, 'Color'), 'Tag', 'Label1');
     bgColor = get(hFig, 'Color');
@@ -505,7 +538,7 @@ function hFig = HTransferFunctDisplay(Hf,Sf,Freqs)
         % Get figure position
         figpos = get(hFig, 'Position');
         textH = 20;        % Text Height
-        % Position transfer function title
+        % Position metric title
         set(hLabel1, 'Position', max(1, [1, figpos(4)-textH, figpos(3), textH]));
         % Position power spectra title
         yPosText = figpos(4) / (0.5 + n_signals);
