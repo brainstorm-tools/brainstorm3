@@ -75,16 +75,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                              '2, 2 / 10, 25 / 1.0, 0.0', 10 ...
                                              '3, 3 / 10, 25 / 1.0, 0.2', 10 ...
                                              '1, 3 / 10, 25 / 0.0, 0.6'];
-    % === SPECTRAL METRIC
-    sProcess.options.metric.Comment  = {'Transfer function', ...
-                                        'Magnitude squared coherence', ...
-                                        'Directed transfer function', ...
-                                        'Partial directed coherence'; ...
-                                        'transferFunct', 'msc', 'dtf', 'pdc'};
-    sProcess.options.metric.Type     = 'radio_label';
-    sProcess.options.metric.Value    = 'transferFunct';  
-    % === DISPLAY SPECTRAL METRIC
-    sProcess.options.display.Comment = {'process_simulate_ar_spectra(''DisplayMetric'',iProcess);', '<BR>', 'View spectral metric'};
+    % === DISPLAY SPECTRAL METRICS
+    sProcess.options.display.Comment = {'process_simulate_ar_spectra(''DisplayMetrics'',iProcess);', '<BR>', 'View spectral metrics'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
 end
@@ -225,19 +217,17 @@ end
 
 
 %% ===== DISPLAY SPECTRAL METRIC =====
-function DisplayMetric(iProcess) %#ok<DEFNU>
+function DisplayMetrics(iProcess) %#ok<DEFNU>
     % Get current process options
     global GlobalData;
     sProcess = GlobalData.Processes.Current(iProcess);
     sfreq = sProcess.options.srate.Value{1}; % Signal sampling frequency [Hz]
-    Metric = sProcess.options.metric.Value;
 
     % Get coefficients
     [A, ~, ~] = GetCoefficients(sProcess); 
     A = reshape(A, size(A,1), size(A,1), [] );
-    % Compute transfer function and other spectral metrics
-    [Hf, ~, Sf, Cf, DTF, ~, PDC, Freqs] = process_simulate_ar('ComputeMetric', A, sfreq, 2^10); 
-    hFig = process_simulate_ar('HMetricDisplay', Hf, Sf, Cf, DTF, PDC, Freqs, Metric); 
+    % Display spectral metrics
+    hFig = process_simulate_ar('HDisplayMetrics', A, sfreq); 
 end
 
 %% ===== DESIGN TWO POLES FILTER =====
