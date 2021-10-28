@@ -79,6 +79,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.display.Comment = {'process_simulate_ar_spectra(''DisplayMetrics'',iProcess);', '<BR>', 'View spectral metrics'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
+    % === DISPLAY COEFFICIENT MATRIX
+    sProcess.options.coeff.Comment = {'process_simulate_ar_spectra(''DisplayCoefficients'',iProcess);', '<BR>', 'Get coefficients matrix'};
+    sProcess.options.coeff.Type    = 'button';
+    sProcess.options.coeff.Value   = [];        
 end
 
 
@@ -229,6 +233,80 @@ function DisplayMetrics(iProcess) %#ok<DEFNU>
     % Display spectral metrics
     hFig = process_simulate_ar('HDisplayMetrics', A, sfreq); 
 end
+
+%% ===== DISPLAY SPECTRAL METRIC =====
+function DisplayCoefficients(iProcess) %#ok<DEFNU>
+    % Get current process options
+    global GlobalData;
+    sProcess = GlobalData.Processes.Current(iProcess);
+    % Get coefficients
+    [A, b, C] = GetCoefficients(sProcess);  
+    % Get existing specification figure
+    hFig = findall(0, 'Type', 'Figure', 'Tag', 'CoeffMatrix');
+    % If the figure doesn't exist yet: create it
+    if isempty(hFig)
+        hFig = uifigure(...
+            'Name',        'AR Coefficients', ...
+            'Tag',         'CoeffMatrix', ...
+            'Units',       'Pixels',...
+            'HandleVisibility', 'on');
+    % Figure already exists: re-use it
+    else
+        clf(hFig);
+        figure(hFig);
+    end
+    
+    figpos = get(hFig, 'Position');
+    wLabel = figpos(3) - 60;
+    
+    % Display A
+    labelA = uilabel(hFig, 'Position', [30, 260, wLabel, 220], ...
+             'Text',['<BR>Using the ARSIM function from ARFIT Toolbox (T.Schneider):<BR>' ...
+                     '&nbsp;&nbsp;&nbsp;&nbsp;X = <B>b</B> + <B>A1</B>.X1 + ... + <B>Ap</B>.Xp + <B>noise</B><BR><BR>' ... 
+                     'Coefficient matrix <B>A</B> =  [A1 ... Ap]<BR>' ...
+                     '&nbsp;&nbsp;&nbsp;&nbsp; - p is the order of the autorregresive model<BR>' ...
+                     '&nbsp;&nbsp;&nbsp;&nbsp; - Ai: [Nsignals_to x Nsignals_from]<BR>'], ...
+             'Interpreter', 'html', 'FontSize', 12);
+    % Reshape A to [nSignals, nSignals, nOrder]
+    nSignals = size(A, 1);
+    A = reshape(A, nSignals, nSignals, []);
+    nOrder = size(A,3);
+    textA = [];
+    textAtot = 'A = [';
+    for iOrder = 1 : nOrder
+        tmpA = A(:,:,iOrder);
+        tmpTextA = evalc('disp(tmpA)');
+        tmptextA = ['A', num2str(iOrder), ' = [' 10, tmpTextA(1:end-1), '];', 10];
+        textA = [textA, tmptextA];
+        textAtot  = [textAtot, 'A', num2str(iOrder), ' '];
+    end
+    textA = [textA, textAtot(1:end-1), '];'];
+    textareaA = uitextarea(hFig, 'Position',[30, 165, wLabel, 150], ...
+                                 'Value', textA, ...
+                                 'WordWrap', 'off');
+    % Display B
+    labelB = uilabel(hFig, 'Position', [30, 135, wLabel, 20], ...
+             'Text', 'Intercept <B>b</B>: &nbsp;&nbsp;[1 x Nsignals]', ...
+             'Interpreter', 'html', 'FontSize', 12);
+    textB = 'b = [';
+    for iSignal = 1 : nSignals
+        textB = [textB, '0 '];
+    end
+    textB = [textB(1:end-1), '];'];
+    textareaC = uitextarea(hFig, 'Position',[30, 105, wLabel, 30], ...
+                                 'Value', textB, ...
+                                 'WordWrap', 'off');
+    
+    % Display C
+    labelC = uilabel(hFig, 'Position', [30, 75, wLabel, 20], ...
+             'Text', 'Noise covariance matrix <B>C</B>: &nbsp;&nbsp;[Nsignals x Nsignals]<BR>', ...
+             'Interpreter', 'html', 'FontSize', 12);
+    textC = ['C = eye(', num2str(nSignals), ', ', num2str(nSignals), ');'];
+    textareaC = uitextarea(hFig, 'Position',[30, 45, wLabel, 30], ...
+                                 'Value', textC, ...
+                                 'WordWrap', 'off');
+end
+
 
 %% ===== DESIGN TWO POLES FILTER =====
 function [b, a, n_order, rads, bws, rel_gains] = DesignTwoPoles(fs, freqs, gains, n_order)
