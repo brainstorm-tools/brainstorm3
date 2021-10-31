@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Simulate AR signals (random)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Simulate'; 
-    sProcess.Index       = 903; 
+    sProcess.Index       = 904; 
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};

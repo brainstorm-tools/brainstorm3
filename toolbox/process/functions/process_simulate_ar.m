@@ -449,6 +449,7 @@ function hFig = HDisplayMetrics(A, sfreq)
     hFig = findobj(0, 'Type', 'Figure', 'Tag', 'SpectralMetrics');
     % If the figure doesn't exist yet: create it
     if isempty(hFig)
+        % Create figure
         hFig = figure(...
             'MenuBar',     'none', ...
             'Toolbar',     'figure', ...
@@ -456,9 +457,10 @@ function hFig = HDisplayMetrics(A, sfreq)
             'Name',        'Spectral metrics', ...
             'Tag',         'SpectralMetrics', ...
             'Units',       'Pixels');
-        figpos = get(hFig, 'Position');
-        figpos(3:4) = figpos(3:4) * 1.8;
-        set(hFig, 'Position', figpos);
+        % Resize figure to use all the figure area
+        decorationSize = gui_layout('GetDecorationSize');
+        [~, figArea] = gui_layout('GetScreenBrainstormAreas');
+        gui_layout('PositionFigure', hFig, figArea, decorationSize);
     % Figure already exists: re-use it
     else
         clf(hFig);
