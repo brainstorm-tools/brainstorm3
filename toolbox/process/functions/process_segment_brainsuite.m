@@ -197,7 +197,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
         return    
     end
 
-    % ===== 2. BIAS FIELD CORRECTION (BFC) =====
+    % ===== 2. SVREG =====
     bst_progress('text', '<HTML>2/2: SVREG... &nbsp;&nbsp;&nbsp;<FONT COLOR="#707070"><I>(see command window)</I></FONT>');
     AtlasPath = fullfile(BsDir, 'svreg', 'BrainSuiteAtlas1', 'mri');
     strCall = ['"' svreg_exe '" "' NiiFile(1:end-4) '" "' AtlasPath '"'];
@@ -208,6 +208,13 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
         errMsg = ['BrainSuite failed at step 2/2 (SVREG).', 10, 'Check the Matlab command window for more information.'];
         return
     end
+
+    % ===== 3. SKULL EXTRACTION =====
+    % cmd=[skullfinder_exe,' -i ', subbasename,'.nii.gz -o ',subbasename,'.skull.label.nii.gz -m ',subbasename,'.mask.nii.gz --scalplabel ',subbasename,'.scalp.label.nii.gz -s ',subbasename];
+    % '$HOME/BrainSuite21a/bin/skullfinder' -i subject.nii.gz -o subject.skull.label.nii.gz -m subject.mask.nii.gz -s subject
+    % 
+    % Anand 28-Oct-2022: There is a caveat. It seems that due to a bug in the executable, outer skull and scalp surfaces are swapped.
+    % For now, we can write a code that swaps subject.scalp.dfs and subject.outer_skull.dfs
 
     % ===== IMPORT OUTPUT FOLDER =====
     % Import BrainSuite anatomy folder

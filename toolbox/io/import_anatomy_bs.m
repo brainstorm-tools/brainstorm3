@@ -195,17 +195,22 @@ end
 
 
 %% ===== IMPORT MRI =====
-% Read MRI
-[BstT1File, sMri] = import_mri(iSubject, T1File);
-if isempty(BstT1File)
-    errorMsg = 'Could not import BrainSuite folder: MRI was not imported properly';
-    if isInteractive
-        bst_error(errorMsg, 'Import BrainSuite folder', 0);
+if isKeepMri && ~isempty(sSubject.Anatomy)
+    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+else
+    bst_progress('text', 'Loading MRI...');
+    % Read MRI
+    [BstT1File, sMri] = import_mri(iSubject, T1File);
+    if isempty(BstT1File)
+        errorMsg = 'Could not import BrainSuite folder: MRI was not imported properly';
+        if isInteractive
+            bst_error(errorMsg, 'Import BrainSuite folder', 0);
+        end
+        return;
     end
-    return;
+    % Enforce it as the permanent default MRI
+    sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 end
-% Enforce it as the permanent default MRI
-sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 
 
 %% ===== DEFINE FIDUCIALS =====
@@ -266,7 +271,7 @@ if ~isInteractive || ~isempty(FidFile)
         figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
     end
 % Define with the MRI Viewer
-else
+elseif ~isKeepMri
     % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
     hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
