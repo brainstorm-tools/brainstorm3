@@ -43,7 +43,7 @@ function [varargout] = bst_plugin(varargin)
 %
 %     Optional fields
 %     ===============
-%     - AutoUpdate     : Boolean: If true, the plugin is updated automatically when there is a new version available (default: false).
+%     - AutoUpdate     : Boolean: If true, the plugin is updated automatically when there is a new version available (default: true).
 %     - AutoLoad       : Boolean: If true, the plugin is loaded automatically at Brainstorm startup
 %     - Category       : String: Sub-menu in which the plugin is listed
 %     - ExtraMenus     : Cell matrix {Nx2}: List of entries to add to the plugins menu
@@ -259,6 +259,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 0;
     PlugDesc(end).URLzip         = 'https://github.com/arnodelorme/mffmatlabio/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/arnodelorme/mffmatlabio';
     PlugDesc(end).TestFile       = 'eegplugin_mffmatlabio.m';
