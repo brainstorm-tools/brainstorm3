@@ -7,6 +7,7 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 %    - val       : Value to analyze
 %    - DataType  : Type of data in the value "val". Possible strings: 
 %                  'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', '$MEG', '$EEG', '$ECOG', '$SEEG', 'results', 'sources', 'source', 'stat', ...
+%    - fUnits : Units of the file (eg "" if unknown, "cm", "pA", "mml/l")
 % OUTPUT:
 %    - valScaled : value in the detected units (val * valFactor)
 %    - valFactor : factor to convert val -> valScaled
@@ -83,9 +84,18 @@ switch lower(DataType)
             valFactor = 1;
             valUnits = 'No units';
         end
-    case {'nirs', '$nirs', 'nirs-src'}
+    case  'nirs-src'
+        if ~isempty(strfind(lower(FileName), 'hb')) 
+             [valFactor, valUnits] = GetSIFactor(val, '\mumol.l-1');
+        else
+             [valFactor, valUnits] = GetExponent(val);
+        end     
+    case {'nirs', '$nirs'}
         if ~isempty(fUnits) && ~isempty(strfind(fUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, fUnits);
+        elseif ~isempty(fUnits) && ~isempty(strfind(fUnits, 'cm'))
+            valFactor = 1;
+            valUnits  = 'cm';
         elseif ~isempty(fUnits)
             [valFactor, valUnits] = GetExponent(val);
             valUnits = sprintf('%s(%s)',fUnits,valUnits);
