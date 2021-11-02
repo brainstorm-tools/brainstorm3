@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid, isVolumeAtlas)
+function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid, isVolumeAtlas, isKeepMri)
 % IMPORT_ANATOMY_BS: Import a full BrainSuite folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_bs(iSubject, BsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isVolumeAtlas=1)
+% USAGE:  errorMsg = import_anatomy_bs(iSubject, BsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isVolumeAtlas=1, isKeepMri=0)
 %
 % INPUT:
 %    - iSubject      : Indice of the subject where to import the MRI
@@ -11,6 +11,9 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 %    - isInteractive : If 0, no input or user interaction
 %    - sFid          : Structure with the fiducials coordinates
 %    - isVolumeAtlas : If 1, imports the svreg atlas as a set of surfaces
+%    - isKeepMri     : 0=Delete all existing anatomy files
+%                      1=Keep existing MRI volumes (when running segmentation from Brainstorm)
+%                      2=Keep existing MRI and surfaces
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -32,12 +35,16 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author   : Francois Tadel, 2012-2020
+% Author   : Francois Tadel, 2012-2021
 % Modified : Andrew Krause, 2013
 
 %% ===== PARSE INPUTS =====
+% Keep MRI
+if (nargin < 7) || isempty(isKeepMri)
+    isKeepMri = 0;
+end
 % Import volume atlas
-if (nargin < 7) || isempty(isVolumeAtlas)
+if (nargin < 6) || isempty(isVolumeAtlas)
     isVolumeAtlas = 1;
 end
 % Fiducials
@@ -80,7 +87,7 @@ bst_memory('UnloadAll', 'Forced');
 % Get subject definition
 sSubject = bst_get('Subject', iSubject);
 % Check for existing anatomy
-if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
+if (~isempty(sSubject.Anatomy) && (isKeepMri == 0)) || (~isempty(sSubject.Surface) && (isKeepMri < 2))
     % Ask user whether the previous anatomy should be removed
     if isInteractive
         isDel = java_dialog('confirm', ['Warning: There is already an anatomy defined for this subject.' 10 10 ...
@@ -94,7 +101,7 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         return;
     end
     % Delete anatomy
-    sSubject = db_delete_anatomy(iSubject);
+    sSubject = db_delete_anatomy(iSubject, isKeepMri);
 end
 
 
@@ -162,10 +169,12 @@ if isempty(AnnotRhFiles)
 end
 
 if isempty(HeadFile)
-    errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.scalp.dfs' 10];
+    %errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.scalp.dfs' 10];
+    disp(['BST> Warning: Scalp file was not found: ' FilePrefix '.scalp.dfs']);
 end
 if isempty(InnerSkullFile) && isempty(OuterSkullFile)
-    errorMsg = [errorMsg 'Inner or Outer Skull File not found' 10];
+    %errorMsg = [errorMsg 'Inner or Outer Skull File not found' 10];
+    disp('BST> Warning: Inner or Outer Skull File not found.');
 end
 if isempty(TessLhFile) 
     errorMsg = [errorMsg 'Surface file was not found: ' FilePrefix '.left.pial.cortex.svreg.dfs' 10];
@@ -186,17 +195,22 @@ end
 
 
 %% ===== IMPORT MRI =====
-% Read MRI
-[BstT1File, sMri] = import_mri(iSubject, T1File);
-if isempty(BstT1File)
-    errorMsg = 'Could not import BrainSuite folder: MRI was not imported properly';
-    if isInteractive
-        bst_error(errorMsg, 'Import BrainSuite folder', 0);
+if isKeepMri && ~isempty(sSubject.Anatomy)
+    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+else
+    bst_progress('text', 'Loading MRI...');
+    % Read MRI
+    [BstT1File, sMri] = import_mri(iSubject, T1File);
+    if isempty(BstT1File)
+        errorMsg = 'Could not import BrainSuite folder: MRI was not imported properly';
+        if isInteractive
+            bst_error(errorMsg, 'Import BrainSuite folder', 0);
+        end
+        return;
     end
-    return;
+    % Enforce it as the permanent default MRI
+    sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 end
-% Enforce it as the permanent default MRI
-sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 
 
 %% ===== DEFINE FIDUCIALS =====
@@ -257,7 +271,7 @@ if ~isInteractive || ~isempty(FidFile)
         figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
     end
 % Define with the MRI Viewer
-else
+elseif ~isKeepMri
     % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
     hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;

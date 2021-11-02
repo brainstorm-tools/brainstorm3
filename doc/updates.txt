@@ -1,4 +1,7 @@
 --------------------------------------------------------------
+October 2021
+- Anatomy: Run MRI segmentation with BrainSuite
+--------------------------------------------------------------
 September 2021
 - SEEG/ECOG contact labelling from volume and surface atlases
 - Distrib: Compilation with Matlab 2021a/2021b
