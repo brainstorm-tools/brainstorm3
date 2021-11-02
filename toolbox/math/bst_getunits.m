@@ -1,4 +1,4 @@
-function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileName,fUnits )
+function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileName)
 % BST_GETUNITS: Get in which units is expressed a value.
 %
 % USAGE:  [valScaled, valFactor, valUnits] = bst_getunits(val, DataType, FileName=[]);
@@ -33,12 +33,15 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 %
 % Authors: Francois Tadel, 2008-2015
 
-if (nargin < 4)
-    fUnits = '';
-end    
-
+fUnits = [];
 % Check if there is something special in the filename
 if (nargin >= 3) && ~isempty(FileName)
+    
+    tmp = load(file_fullpath(FileName), 'DisplayUnits');
+    if ~isempty(tmp.DisplayUnits)
+        fUnits = tmp.DisplayUnits;
+    end
+
     % Source files
     if ismember(lower(DataType), {'results', 'sources', 'source'})
         % Detect sLORETA source files

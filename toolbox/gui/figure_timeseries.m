@@ -3454,12 +3454,8 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    if ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
-        fUnits = GlobalData.DataSet(iDS).Measures.DisplayUnits;
-        [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName,fUnits);
-    else
-        [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
-    end
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName);
+
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
     if isFactorChanged
