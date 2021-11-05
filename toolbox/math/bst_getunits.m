@@ -31,17 +31,11 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2021
+%          Edouard Delaire, 2021
 
-fUnits = [];
 % Check if there is something special in the filename
 if (nargin >= 3) && ~isempty(FileName)
-    
-    tmp = load(file_fullpath(FileName), 'DisplayUnits');
-    if ~isempty(tmp.DisplayUnits)
-        fUnits = tmp.DisplayUnits;
-    end
-
     % Source files
     if ismember(lower(DataType), {'results', 'sources', 'source'})
         % Detect sLORETA source files
@@ -94,6 +88,14 @@ switch lower(DataType)
              [valFactor, valUnits] = GetExponent(val);
         end     
     case {'nirs', '$nirs'}
+        % Try reading DisplayUnits field from file
+        fUnits = [];
+        if (nargin >= 3) && ~isempty(FileName)
+            tmp = load(file_fullpath(FileName), 'DisplayUnits');
+            if ~isempty(tmp.DisplayUnits)
+                fUnits = tmp.DisplayUnits;
+            end
+        end
         if ~isempty(fUnits) && ~isempty(strfind(fUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, fUnits);
         elseif ~isempty(fUnits) && ~isempty(strfind(fUnits, 'cm'))
