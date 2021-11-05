@@ -189,6 +189,11 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     
     
     [unit, modifier] = getUnit(originalUnit);
+    if abs(val) < eps
+        valFactor = 1;
+        valUnits = originalUnit;
+        return
+    end    
     
     adj = n2pAdjust(log10(abs(val)),dpw);
     

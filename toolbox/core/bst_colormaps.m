@@ -1407,8 +1407,13 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             if ~isempty(DisplayUnits)
                 if strcmp(DisplayUnits,'t')
                     fFactor = 1;
-                elseif contains(DisplayUnits,'mol')  
-                     fFactor = 1;                     
+                elseif contains(DisplayUnits,'mol')
+                     fmax = max(abs(dataBounds));
+                     if round(log10(fmax)) < -3
+                         fFactor = 1e6;
+                     else    
+                        fFactor = 1;  
+                     end   
                 elseif contains(DisplayUnits,'OD') 
                     fFactor = 1e3;
                     DisplayUnits='OD(*10^-3)';
