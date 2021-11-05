@@ -19,7 +19,7 @@ function varargout = process_average_time( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2013
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -47,34 +47,40 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
-    % === VARIANCE
-    sProcess.options.isstd.Comment = 'Compute standard deviation instead of average';
-    sProcess.options.isstd.Type    = 'checkbox';
-    sProcess.options.isstd.Value   = 0;
+    % === FUNCTION
+    sProcess.options.label2.Comment = '<U><B>Function</B></U>:';
+    sProcess.options.label2.Type    = 'label';
+    sProcess.options.avg_func.Comment = {'Arithmetic average:  <FONT color="#777777">mean(x)</FONT>', ...
+                                         'Root mean square (RMS):  <FONT color="#777777">sqrt(sum(x.^2)/N)</FONT>', ...
+                                         'Standard deviation:  <FONT color="#777777">sqrt(var(x))</FONT>', ...
+                                         'Median:  <FONT color="#777777">median(x)</FONT>'; ...
+                                         'mean', 'rms', 'std', 'median'};
+    sProcess.options.avg_func.Type    = 'radio_label';
+    sProcess.options.avg_func.Value   = 'mean';
 end
 
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     % Get time window
-    Comment = [sProcess.Comment, ': [', process_extract_time('GetTimeString', sProcess), ']'];
+    Comment = [upper(GetFileTag(sProcess)), ': [', process_extract_time('GetTimeString', sProcess), ']'];
     % Absolute values 
     if isfield(sProcess.options, 'source_abs') && sProcess.options.source_abs.Value
         Comment = [Comment, ', abs'];
-    end
-    % Standard deviation
-    if sProcess.options.isstd.Value
-        Comment = [Comment, ', std'];
     end
 end
 
 
 %% ===== GET FILE TAG =====
 function fileTag = GetFileTag(sProcess)
-    if sProcess.options.isstd.Value
+    % Old version of the process: option isstd={0,1}
+    if isfield(sProcess.options, 'isstd') && ~isempty(sProcess.options.isstd) && sProcess.options.isstd.Value
         fileTag = 'std';
+    % New version of the process: avg_fun={'mean','std','rms','median'}
+    elseif isfield(sProcess.options, 'avg_func') && ~isempty(sProcess.options.avg_func) && ~isempty(sProcess.options.avg_func.Value)
+        fileTag = sProcess.options.avg_func.Value;
     else
-        fileTag = 'avg';
+        fileTag = 'mean';
     end
 end
 
@@ -92,12 +98,16 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
         sInput = [];
         return;
     end
-    % Variance across time
-    if sProcess.options.isstd.Value
-        sInput.A = sqrt(var(sInput.A(:, iTime, :), 0, 2));
-    % Mean across time
-    else
-        sInput.A = mean(sInput.A(:, iTime, :), 2);
+    % Apply function
+    switch GetFileTag(sProcess)
+        case 'mean'
+            sInput.A = mean(sInput.A(:,iTime,:), 2);
+        case 'rms'
+            sInput.A = sqrt(sum(sInput.A(:,iTime,:).^2, 2) / length(iTime));
+        case 'std'
+            sInput.A = sqrt(var(sInput.A(:,iTime,:), 0, 2));
+        case 'median'
+            sInput.A = median(sInput.A(:,iTime,:), 2);
     end
     % Copy values to represent the time window
     sInput.A = [sInput.A, sInput.A];
