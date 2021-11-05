@@ -25,7 +25,7 @@ function tess_align_manual( RefFile, SurfaceFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2011
+% Authors: Francois Tadel, 2008-2021
 
 global gTessAlign;
 gTessAlign = [];
@@ -36,37 +36,54 @@ panel_scout('SaveModifications');
 
 % ===== VIEW REFERENCE FILE =====
 % Get reference type (MRI or surface)
-fileType = file_gettype(RefFile);
-isRefMri  = strcmpi(fileType, 'subjectimage');
-isRefTess = any(strcmpi(fileType, {'cortex','scalp','innerskull','outerskull','tess'}));
-% Display reference file in 3D
-if isRefTess
-    % View surface
-    gTessAlign.hFig = view_surface(RefFile, .3);   
-elseif isRefMri
-    % View MRI
-    gTessAlign.hFig = view_mri_3d(RefFile, [], 0);   
-else
-    error('Invalid reference for surface realignment');
+switch file_gettype(RefFile)
+    case {'cortex','scalp','innerskull','outerskull','tess'}
+        gTessAlign.hFig = view_surface(RefFile, .3);
+    case 'fem'
+        gTessAlign.hFig = view_surface_fem(RefFile, .3);
+    case 'subjectimage'
+        gTessAlign.hFig = view_mri_3d(RefFile, [], 0);
+    otherwise
+        error('Invalid reference for surface realignment');
 end
 % Check that figure was created
 if isempty(gTessAlign.hFig)
     return
 end
-% Get handle to reference surface
-hRefPatch = findobj(gTessAlign.hFig, 'type', 'Patch');
 
 % ===== VIEW SURFACE TO ALIGN =====
-view_surface(SurfaceFile, .3, [1 .6 0], gTessAlign.hFig);
-% Get display info
-TessInfo = getappdata(gTessAlign.hFig, 'Surface');
-% Get handle to the surface to align
-iTess = find(file_compare(file_short(SurfaceFile), {TessInfo.SurfaceFile}));
-if isempty(iTess) || (length(iTess) > 1)
-    error('Target surface file was not displayed.');
+% Get reference type (MRI or surface)
+switch file_gettype(SurfaceFile)
+    case {'cortex','scalp','innerskull','outerskull','tess'}
+        % Display surface
+        gTessAlign.hFig = view_surface(SurfaceFile, .3, [1 .6 0], gTessAlign.hFig);
+        % Get handle to the surface to align
+        TessInfo = getappdata(gTessAlign.hFig, 'Surface');
+        iTess = find(file_compare(file_short(SurfaceFile), {TessInfo.SurfaceFile}));
+        if isempty(iTess) || (length(iTess) > 1)
+            error('Target surface file was not displayed.');
+        end
+    case 'fem'
+        % Display all FEM layers
+        gTessAlign.hFig = view_surface_fem(SurfaceFile, .3, [1 .6 0], [0 0 0], gTessAlign.hFig);
+        % Find all the FEM layers
+        TessInfo = getappdata(gTessAlign.hFig, 'Surface');
+        iTessAll = find(~cellfun(@(c)isempty(strfind(file_short(c), file_short(SurfaceFile))), {TessInfo.SurfaceFile}));
+        % Remove all of them but the first one
+        for i = length(iTessAll):-1:2
+            panel_surface('RemoveSurface', gTessAlign.hFig, iTessAll(i));
+        end
+        panel_surface('UpdatePanel');
+        % Update info structures
+        TessInfo = getappdata(gTessAlign.hFig, 'Surface');
+        iTess = iTessAll(1);
+        % Update the color of the first layer
+        panel_surface('SetSurfaceColor', gTessAlign.hFig, iTess, [1 .6 0]);
+    otherwise
+        error('Invalid surface type');
 end
+% Get vertex locations from patch
 gTessAlign.hSurfPatch = TessInfo(iTess).hPatch;
-% Get sensor locations from patch
 gTessAlign.SurfVertices = get(gTessAlign.hSurfPatch, 'Vertices');
 
 % ===== CONFIGURE FIGURE =====
@@ -314,13 +331,24 @@ function buttonOk_Callback(varargin)
     bst_progress('start', 'Align surfaces', 'Processing surfaces...', 0, 2*length(SurfaceFiles));
     % Process each surface
     for i = 1:length(SurfaceFiles)
-        % Load old SurfaceFile
-        oldMat = in_tess_bst(SurfaceFiles{i}, 0);
         % Increment progress bar
         bst_progress('inc', 1);
-        % Copy only basic fields
+        % Initialize new structure
         newMat = db_template('surfacemat');
-        newMat.Faces    = oldMat.Faces;
+        % Load old SurfaceFile (FEM or mesh)
+        if isequal(file_gettype(SurfaceFiles{i}), 'fem')
+            oldMat = load(file_fullpath(SurfaceFiles{i}));
+            % Copy FEM fields
+            newMat.Elements = oldMat.Elements;
+            newMat.Tissue = oldMat.Tissue;
+            newMat.TissueLabels = oldMat.TissueLabels;
+            newMat.Tensors = oldMat.Tensors;
+        else
+            oldMat = in_tess_bst(SurfaceFiles{i}, 0);
+            % Copy mesh fields
+            newMat.Faces = oldMat.Faces;
+        end
+        % Copy basic fields
         newMat.Vertices = oldMat.Vertices;
         newMat.Comment  = oldMat.Comment;
 

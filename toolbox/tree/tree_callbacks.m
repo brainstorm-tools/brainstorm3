@@ -1137,22 +1137,7 @@ switch (lower(action))
                             % === ALIGN ALL SURFACES ===
                             gui_component('MenuItem', jMenuAlign, [], 'Edit fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
                             % === MENU: ALIGN SURFACE MANUALLY ===
-                            jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
-                                % ADD ANATOMIES
-                                for iAnat = 1:length(sSubject.Anatomy)
-                                    if isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
-                                        fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
-                                        gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
-                                    end
-                                end
-                                % ADD SURFACES
-                                for iSurf = 1:length(sSubject.Surface)
-                                    % Ignore itself
-                                    fullSurfFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iSurf).FileName);
-                                    if ~file_compare(fullSurfFile, filenameFull)
-                                        gui_component('MenuItem', jMenuAlignManual, [], sSubject.Surface(iSurf).Comment, IconLoader.ICON_SURFACE, [], @(h,ev)tess_align_manual(fullSurfFile, filenameFull));
-                                    end
-                                end
+                            fcnPopupAlign();
                             % === MENU: LOAD FREESURFER SPHERE ===
                             AddSeparator(jMenuAlign);
                             gui_component('MenuItem', jMenuAlign, [], 'Load FreeSurfer sphere...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSphere(filenameRelative));
@@ -1225,6 +1210,13 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
                         gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
                     end
+                    % === MENU: ALIGN SURFACE MANUALLY ===
+                    % Get subject
+                    iSubject = bstNodes(1).getStudyIndex();
+                    sSubject = bst_get('Subject', iSubject);
+                    % Menu: Align manually
+                    AddSeparator(jPopup);
+                    fcnPopupAlign();
                 end
                 
 %% ===== POPUP: NOISECOV =====
@@ -2721,6 +2713,27 @@ end % END SWITCH( ACTION )
             gui_component('MenuItem', jMenu, [], 'Scouts time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)tree_view_scouts(bstNodes));
         %end
     end
+
+%% ===== MENU: ALIGN SURFACES MANUALLY =====
+    function fcnPopupAlign()
+        jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
+        % ADD ANATOMIES
+        for iAnat = 1:length(sSubject.Anatomy)
+            if isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
+                fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
+                gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
+            end
+        end
+        % ADD SURFACES
+        for iSurf = 1:length(sSubject.Surface)
+            % Ignore itself
+            fullSurfFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iSurf).FileName);
+            if ~file_compare(fullSurfFile, filenameFull)
+                gui_component('MenuItem', jMenuAlignManual, [], sSubject.Surface(iSurf).Comment, IconLoader.ICON_SURFACE, [], @(h,ev)tess_align_manual(fullSurfFile, filenameFull));
+            end
+        end
+    end
+
 end % END FUNCTION
 
 
