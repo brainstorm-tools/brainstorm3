@@ -870,18 +870,12 @@ function DrawTimeSelection(hFig)
             % Get selection label
             hTextTimeSel = findobj(hFig, '-depth', 1, 'Tag', 'TextTimeSel');
             if ~isempty(hTextTimeSel)
-                % Format string
+                % Format string: Selection
                 strMin = panel_time('FormatValue', min(GraphSelection), timeUnit, precision);
                 strMax = panel_time('FormatValue', max(GraphSelection), timeUnit, precision);
                 strSelection = ['Selection: [' strMin ' ' timeUnit ', ' strMax ' ' timeUnit ']'];
-                
-                if abs(GraphSelection(2) - GraphSelection(1)) < 1
-                    strDur = panel_time('FormatValue', abs(GraphSelection(2) - GraphSelection(1))*1000, timeUnit, max(0,precision-3));
-                    timeUnit = 'ms';
-                    
-                else
-                    strDur = panel_time('FormatValue', abs(GraphSelection(2) - GraphSelection(1)), timeUnit, precision);
-                end    
+                % Format string: Duration
+                strDur = panel_time('FormatValue', max(abs(GraphSelection(2) - GraphSelection(1))), timeUnit, precision);
                 strLength = sprintf('      Duration: [%s %s]', strDur, timeUnit);
                 % Update label
                 set(hTextTimeSel, 'Visible', 'on', 'String', [strSelection, strLength, strMinMax]);
