@@ -1405,23 +1405,31 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         if isempty(fFactor)
             % Use imposed units 
             if ~isempty(DisplayUnits)
-                switch(DisplayUnits)
-                    case 't',    fFactor = 1;
-                    case 'mol.l-1', fFactor = 1;
-                    case 'mmol.l-1', fFactor = 1e3;
-                    case 'umol.l-1', fFactor = 1e6;
-                    case 'U.A.'
-                        fmax = max(abs(dataBounds));
-                        if fmax < 1e3
-                            fFactor=1e6;
-                            DisplayUnits='U.A(*10^6)';
-                        elseif fmax < 1
-                            fFactor=1e3;
-                            DisplayUnits='U.A(*10^3)';
-                        else
-                            fFactor=1;
-                        end
-                    otherwise,   fFactor = 1;
+                if strcmp(DisplayUnits,'t')
+                    fFactor = 1;
+                elseif ~isempty(strfind(DisplayUnits,'mol'))
+                     fmax = max(abs(dataBounds));
+                     if round(log10(fmax)) < -3
+                         fFactor = 1e6;
+                     else    
+                        fFactor = 1;  
+                     end   
+                elseif ~isempty(strfind(DisplayUnits,'OD'))
+                    fFactor = 1e3;
+                    DisplayUnits='OD(*10^-3)';
+                elseif strcmp(DisplayUnits,'U.A.')
+                    fmax = max(abs(dataBounds));
+                    if fmax < 1e3
+                        fFactor=1e6;
+                        DisplayUnits='U.A(*10^6)';
+                    elseif fmax < 1
+                        fFactor=1e3;
+                        DisplayUnits='U.A(*10^3)';
+                    else
+                        fFactor=1;
+                    end
+                else
+                     fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum

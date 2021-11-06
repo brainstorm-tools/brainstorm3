@@ -870,11 +870,13 @@ function DrawTimeSelection(hFig)
             % Get selection label
             hTextTimeSel = findobj(hFig, '-depth', 1, 'Tag', 'TextTimeSel');
             if ~isempty(hTextTimeSel)
-                % Format string
+                % Format string: Selection
                 strMin = panel_time('FormatValue', min(GraphSelection), timeUnit, precision);
                 strMax = panel_time('FormatValue', max(GraphSelection), timeUnit, precision);
                 strSelection = ['Selection: [' strMin ' ' timeUnit ', ' strMax ' ' timeUnit ']'];
-                strLength = sprintf('      Duration: [%d ms]', round(abs(GraphSelection(2) - GraphSelection(1)) * 1000));
+                % Format string: Duration
+                strDur = panel_time('FormatValue', max(abs(GraphSelection(2) - GraphSelection(1))), timeUnit, precision);
+                strLength = sprintf('      Duration: [%s %s]', strDur, timeUnit);
                 % Update label
                 set(hTextTimeSel, 'Visible', 'on', 'String', [strSelection, strLength, strMinMax]);
             end
@@ -3446,14 +3448,13 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    if ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
-        fFactor = 1;
-        fUnits = GlobalData.DataSet(iDS).Measures.DisplayUnits;
-    else
-        [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName );
-    end
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName);
+
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
+    if isFactorChanged
+        GlobalData.DataSet(iDS).Measures.DisplayUnits = fUnits;
+    end
     % Set display Factor
     PlotHandles.DisplayFactor = fFactor;
     PlotHandles.DisplayUnits  = fUnits;
