@@ -56,7 +56,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Loop on all the channel files
     for i = 1:length(uniqueChan)
         % Refine registration
-        channel_align_auto(uniqueChan{i}, [], 0, 0);
+        [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(uniqueChan{i}, [], 0, 0);
+        if ~isempty(strReport)
+            bst_report('Info', sProcess, sInputs, strReport);
+        end
     end
     % Return all the files in input
     OutputFiles = {sInputs.FileName};

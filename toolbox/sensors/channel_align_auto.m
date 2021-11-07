@@ -1,7 +1,7 @@
-function [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm)
+function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm)
 % CHANNEL_ALIGN_AUTO: Aligns the channels to the scalp using Polhemus points.
 %
-% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1)
+% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1)
 %
 % DESCRIPTION: 
 %     Aligns the channels to the scalp using Polhemus points stored in channel structure.
@@ -19,14 +19,14 @@ function [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFi
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding
 %
 % OUTPUTS:
-%   ChannelMat: The same ChannelMat structure input in, except with the
-%               head points and channels rotated and translated based
-%               on the ICP algorithm to match the head points to the scalp.
-%               Returned value is [] if the registration was cancelled
-%   R         : 3x3 rotation matrix from original ChannelMat to new ChannelMat.
-%   T         : 3x1 translate vector to go with R.
-%   isSkip       : If 1, processing was skipped because there was not enough information in the file
-%   isUserCancel : If 1, user cancelled the alignment
+%     - ChannelMat   : The same ChannelMat structure input in, except with the head points and channels rotated and 
+%                      translated based on the ICP algorithm to match the head points to the scalp.
+%                      Returned value is [] if the registration was cancelled
+%     - R            : 3x3 rotation matrix from original ChannelMat to new ChannelMat.
+%     - T            : 3x1 translate vector to go with R.
+%     - isSkip       : If 1, processing was skipped because there was not enough information in the file
+%     - isUserCancel : If 1, user cancelled the alignment
+%     - strReport    : Text description of the quality of the alignment (distance between headpoint and scalp surface)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -124,14 +124,18 @@ end
 
 %% ===== FIND OPTIMAL FIT =====
 % Find best possible rigid transformation (rotation+translation)
-[R,T] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+[R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
 % Current position cannot be optimized
 if isempty(R)
     bst_progress('stop');
     isSkip = 1;
     return;
 end
-
+% Distance between fitted points and reference surface
+strReport = ['Distance between ' num2str(length(dist)) ' head points and head surface:' 10 10 ...
+    ' Mean : ' sprintf('%1.1f', mean(dist) * 1000) ' mm   |   Distance >  3mm: ' sprintf('%3d', nnz(dist > 0.003)) ' points' 10, ...
+    ' Max  : ' sprintf('%1.1f', max(dist) * 1000)  ' mm   |   Distance >  5mm: ' sprintf('%3d', nnz(dist > 0.005)) ' points' 10, ...
+    ' Std  : ' sprintf('%1.1f', std(dist) * 1000)  ' mm   |   Distance > 10mm: ' sprintf('%3d', nnz(dist > 0.010)) ' points' 10];
 
 %% ===== ROTATE SENSORS AND HEADPOINTS =====
 for i = 1:length(ChannelMat.Channel) 
@@ -209,6 +213,10 @@ if isSave && (isWarning || isConfirm)
     if ~isempty(modality)
         channel_align_manual(ChannelFile, modality, 0);
     end
+end
+% Distance between fitted points and reference surface
+if (isWarning || isConfirm)
+    view_text(strReport, 'Sensors/anatomy registration');
 end
 % Close progress bar
 bst_progress('stop');
