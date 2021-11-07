@@ -2716,6 +2716,8 @@ end % END SWITCH( ACTION )
 
 %% ===== MENU: ALIGN SURFACES MANUALLY =====
     function fcnPopupAlign()
+        import org.brainstorm.icon.*;
+
         jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
         % ADD ANATOMIES
         for iAnat = 1:length(sSubject.Anatomy)
