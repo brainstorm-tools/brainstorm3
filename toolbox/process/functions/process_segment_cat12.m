@@ -206,7 +206,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
     % Check if a MRI is available for the subject
     if isempty(sSubject.Anatomy)
-        errMsg = ['No MRI available for subject "' SubjectName '".'];
+        errMsg = ['No MRI available for subject "' sSubject.Name '".'];
         return
     end
     % Get default MRI if not specified
