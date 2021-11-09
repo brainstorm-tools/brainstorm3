@@ -2864,17 +2864,23 @@ switch contextName
         end
         
     case 'UseSigProcToolbox'
-        if isempty(GlobalData.Program.HasSigProcToolbox)
-            % Check if Signal Processing Toolbox is installed
-            GlobalData.Program.HasSigProcToolbox = exist('fir2', 'file') == 2;
-        end
-        % Return user preferences
-        if ~GlobalData.Program.HasSigProcToolbox
-            argout1 = 0;
-        elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
-            argout1 = GlobalData.Preferences.UseSigProcToolbox;
+        % In a parfor loop: GlobalData is empty => Check only if the toolbox is installed (ignore user preferences) 
+        if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'HasSigProcToolbox')
+            argout1 = exist('fir2', 'file');
         else
-            argout1 = 1;
+            % Save the result of the check for the SigProc tb
+            if isempty(GlobalData.Program.HasSigProcToolbox)
+                % Check if Signal Processing Toolbox is installed
+                GlobalData.Program.HasSigProcToolbox = (exist('fir2', 'file') == 2);
+            end
+            % Return user preferences
+            if ~GlobalData.Program.HasSigProcToolbox
+                argout1 = 0;
+            elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
+                argout1 = GlobalData.Preferences.UseSigProcToolbox;
+            else
+                argout1 = 1;
+            end
         end
 
     case 'CustomColormaps'
