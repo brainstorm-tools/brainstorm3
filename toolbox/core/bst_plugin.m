@@ -69,7 +69,8 @@ function [varargout] = bst_plugin(varargin)
 %     - InstalledFcn   : String to eval or function handle to call after installing the plugin
 %     - UninstalledFcn : String to eval or function handle to call after uninstalling the plugin
 %     - LoadedFcn      : String to eval or function handle to call after loading the plugin
-%     - UnloadedFcn    : String to eval or function handle to call after unloading the plugin 
+%     - UnloadedFcn    : String to eval or function handle to call after unloading the plugin
+%     - DeleteFiles    : List of files to delete after installation
 %
 %     Fields set when installing the plugin
 %     =====================================
@@ -173,7 +174,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).UnloadPlugs    = {'spm12', 'iso2mesh'};
     PlugDesc(end).LoadFolders    = {'lib/spm12', 'lib/iso2mesh', 'lib/cvx', 'lib/ncs2daprox', 'lib/NIFTI_20110921'};
-    
+
     % === FORWARD: OPENMEEG ===
     PlugDesc(end+1)              = GetStruct('openmeeg');
     PlugDesc(end).Version        = '2.4.1';
@@ -338,6 +339,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
+
+    % === ELECTROPHYSIOLOGY: DERIVELFP ===
+    PlugDesc(end+1)              = GetStruct('derivelfp');
+    PlugDesc(end).Version        = '1.0';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'http://packlab.mcgill.ca/despikingtoolbox.zip';
+    PlugDesc(end).URLinfo        = 'https://journals.physiology.org/doi/full/10.1152/jn.00642.2010';
+    PlugDesc(end).TestFile       = 'despikeLFP.m';
+    PlugDesc(end).ReadmeFile     = 'readme.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'toolbox'};
+    PlugDesc(end).DeleteFiles    = {'ExampleDespiking.m', 'appendixpaper.pdf', 'downsample2x.m', 'examplelfpdespiking.mat', 'sta.m'};
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -733,22 +747,35 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     % Compiled: do not look for unreferenced plugins
     if isCompiled
         PlugList = [];
-    % Get folders in Brainstorm user folder
+    % Get a specific unlisted plugin
     elseif ~isempty(SelPlug)
+        % Get plugin name
         if ischar(SelPlug)
-            PlugList = dir(bst_fullfile(UserPluginsDir, SelPlug));
+            PlugName = SelPlug;
         else
-            PlugList = dir(bst_fullfile(UserPluginsDir, SelPlug.Name));
+            PlugName = SelPlug.Name;
         end
+        % If plugin is already referenced: skip
+        if ismember(PlugName, {PlugDesc.Name})
+            PlugList = [];
+        % Else: Try to get target plugin as unreferenced
+        else
+            PlugList = struct('name', SelPlug);
+        end
+    % Get all folders in Brainstorm plugins folder
     else
         PlugList = dir(UserPluginsDir);
     end
     % Process folders containing a plugin.mat file
     for iDir = 1:length(PlugList)
-        % Process only folders containing a 'plugin.mat' file and not already referenced
+        % Process only folders
         PlugDir = bst_fullfile(UserPluginsDir, PlugList(iDir).name);
+        if ~isdir(PlugDir) || (PlugList(iDir).name(1) == '.')
+            continue;
+        end
+        % Process only folders containing a 'plugin.mat' file
         PlugMatFile = bst_fullfile(PlugDir, 'plugin.mat');
-        if ~isdir(PlugDir) || (PlugList(iDir).name(1) == '.') || ~file_exist(PlugMatFile) || ismember(PlugList(iDir).name, {PlugDesc.Name})
+        if ~file_exist(PlugMatFile)
             continue;
         end
         % If selecting only one plugin
@@ -1169,7 +1196,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             end
     end
     file_delete(pkgFile, 1, 3);
-    % Save plugin.mat
+
+    % === SAVE PLUGIN.MAT ===
     PlugDesc.Path = PlugPath;
     PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
     excludedFields = {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
@@ -1200,6 +1228,26 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
+    % === DELETE UNWANTED FILES ===
+    if ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
+        for iDel = 1:length(PlugDesc.DeleteFiles)
+            if ~isempty(PlugDesc.SubFolder)
+                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.DeleteFiles{iDel});
+            else
+                fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.DeleteFiles{iDel});
+            end
+            if file_exist(fileDel)
+                try
+                    file_delete(fileDel, 1, 3);
+                catch
+                    disp(['BST> Plugin ' PlugName ': Could not delete file: ' PlugDesc.DeleteFiles{iDel}]);
+                end
+            else
+                disp(['BST> Plugin ' PlugName ': Missing file: ' PlugDesc.DeleteFiles{iDel}]);
+            end
+        end
+    end
+
     % === CALLBACK: POST-INSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
     if ~isOk

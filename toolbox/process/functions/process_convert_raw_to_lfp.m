@@ -23,6 +23,7 @@ function varargout = process_convert_raw_to_lfp( varargin )
 % =============================================================================@
 %
 % Authors: Konstantinos Nasiotis 2018
+%          Francois Tadel, 2021
 
 eval(macro_method);
 end
@@ -100,25 +101,12 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         end
 
         %% Check for dependencies
-        % If DespikeLFP is selected, check if it is already installed
+        % If DespikeLFP is selected: Install DeriveLFP plugin
         if sProcess.options.despikeLFP.Value
-            % Ensure we are including the DeriveLFP folder in the Matlab path
-            DeriveLFPDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP');
-            if exist(DeriveLFPDir, 'dir')
-                addpath(genpath(DeriveLFPDir));
-            end
-
-            % Install DeriveLFP if missing
-            if ~exist('despikeLFP.m', 'file')
-                rmpath(genpath(DeriveLFPDir));
-                isOk = java_dialog('confirm', ...
-                    ['The DeriveLFP toolbox is not installed on your computer.' 10 10 ...
-                         'Download and install the latest version?'], 'DeriveLFP');
-                if ~isOk
-                    bst_report('Error', sProcess, sInput, 'This process requires the DeriveLFP toolbox.');
-                    return;
-                end
-                downloadAndInstallDeriveLFP();
+            [isInstalled, errMsg] = bst_plugin('Install', 'derivelfp');
+            if ~isInstalled
+                bst_report('Error', sProcess, [], errMsg);
+                return;
             end
         end
 
@@ -269,7 +257,7 @@ function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilt
         data = sMat.data';
     end
     
-    % Aplly final filter
+    % Apply final filter
     data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
     data = downsample(data, round(Fs/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz.
 end
@@ -363,37 +351,4 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     
 end
 
-
-
-%% ===== DOWNLOAD AND INSTALL DeriveLFP =====
-function downloadAndInstallDeriveLFP()
-    DeriveLFPDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP');
-    DeriveLFPTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP_tmp');
-    url = 'http://packlab.mcgill.ca/despikingtoolbox.zip';
-    % If folders exists: delete
-    if isdir(DeriveLFPDir)
-        file_delete(DeriveLFPDir, 1, 3);
-    end
-    if isdir(DeriveLFPTmpDir)
-        file_delete(DeriveLFPTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(DeriveLFPTmpDir);
-    % Download file
-    zipFile = bst_fullfile(DeriveLFPTmpDir, 'despikingtoolbox.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'DeriveLFP download'); % This line downloads the file
-    if ~isempty(errMsg)
-        error(['Impossible to download DeriveLFP:' errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'DeriveLFP', 'Installing DeriveLFP...');
-    unzip(zipFile, DeriveLFPTmpDir);
-    newDeriveLFPDir = bst_fullfile(DeriveLFPTmpDir);
-    % Move directory to proper location
-    file_move(newDeriveLFPDir, DeriveLFPDir);
-    % Delete unnecessary files
-    file_delete(DeriveLFPTmpDir, 1, 3);
-    % Add to Matlab path
-    addpath(genpath(DeriveLFPDir));
-end
 
