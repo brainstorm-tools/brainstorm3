@@ -317,12 +317,12 @@ function PlugDesc = GetSupported(SelPlug)
     
     % === SIMULATION: SIMMEEG ===
     PlugDesc(end+1)              = GetStruct('simmeeg');
-    PlugDesc(end).Version        = '21a';
+    PlugDesc(end).Version        = 'github-master';
     PlugDesc(end).Category       = 'Simulation';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'https://github.com/docath/BRANELab/raw/SimMEEG/SimMEEG_v21a.zip';
+    PlugDesc(end).URLzip         = 'https://github.com/branelab/SimMEEG/archive/master.zip';
     PlugDesc(end).URLinfo        = 'https://audiospeech.ubc.ca/research/brane/brane-lab-software/';
-    PlugDesc(end).TestFile       = 'SimMEEG_GUI_v21a.m';
+    PlugDesc(end).TestFile       = 'SimMEEG_GUI.m';
     PlugDesc(end).ReadmeFile     = 'SIMMEEG_TERMS_OF_USE.txt';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).RequiredPlugs  = {'fieldtrip', '20200911'};
