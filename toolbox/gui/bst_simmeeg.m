@@ -45,7 +45,7 @@ function NewFiles = GUI(iStudy)
     h = [];
     % Call SimMEEG
     try
-        SimMEEG_GUI_v21a(bst);
+        SimMEEG_GUI(bst);
         isStarted = 1;
     catch
         bst_error();
