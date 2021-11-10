@@ -339,8 +339,8 @@ for i = 1:length(sScoutStructSrc)
         % Combined: Subject => Default anatomy
         Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = Watlas2dest * Wsrc2atlas;
 
-    % ===== DEFAULT METHOD: ICP ALIGNMENT =====
-    % Align surfaces using an ICP algorithm, then interpolate with the Shepard's algorithm
+    % ===== DEFAULT METHOD: SURFACE FIT =====
+    % Align surfaces, then interpolate with the Shepard's algorithm
     else
         % === ALIGN SURFACES ===
         if ~isSameSubject
@@ -378,21 +378,15 @@ for i = 1:length(sScoutStructSrc)
             [tmp, facesSrc]  = tess_remove_vert(srcSurfMat.Vertices, srcSurfMat.Faces, setdiff(1:length(srcSurfMat.Vertices), sScoutSrc.Vertices));
             [tmp, facesDest] = tess_remove_vert(destSurfMat.Vertices, destSurfMat.Faces, setdiff(1:length(destSurfMat.Vertices), sScoutDest.Vertices));
             % Mesh fit
-            [R,T,vertSrcIcp] = bst_meshfit(vertDest, facesDest, vertSrc);
+            [R,T,vertSrcFit] = bst_meshfit(vertDest, facesDest, vertSrc);
         else
-            vertSrcIcp = srcSurfMat.Vertices(sScoutSrc.Vertices, :);
+            vertSrcFit = srcSurfMat.Vertices(sScoutSrc.Vertices, :);
             vertDest   = destSurfMat.Vertices(sScoutDest.Vertices, :);
         end
         
-        % === COMPUTE INTERPOLATION ===
-%         % ICP: Options structure
-%         Options.Verbose=true;
-%         Options.Registration='Affine';   % Other methods: Rigid, Size
-%         Options.Optimizer = 'fminlbfgs'; % other optimizers : 'fminsearch','lsqnonmin'
-%         % Run ICP transformation
-%         [vertSrcIcp, transfICP] = ICP_finite(vertDest, vertSrc, Options);
+        % === INTERPOLATION ===
         % Compute Shepard's interpolation
-        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertDest, vertSrcIcp, nbNeighbors, 0);
+        Wmat(sScoutDest.Vertices, sScoutSrc.Vertices) = bst_shepards(vertDest, vertSrcFit, nbNeighbors, 0);
        
         % === DISPLAY ALIGNMENT ===
         if isInteractive && ~isSameSubject
@@ -412,7 +406,7 @@ for i = 1:length(sScoutStructSrc)
             % After
             [hFig2, iDS, iFig, hPatch] = view_surface_matrix(vertDest, facesDest, .4, [1 0 0]);
             set(hPatch, 'EdgeColor', 'r');
-            [hFig2, iDS, iFig, hPatch] = view_surface_matrix(vertSrcIcp, facesSrc, .4, [], hFig2);
+            [hFig2, iDS, iFig, hPatch] = view_surface_matrix(vertSrcFit, facesSrc, .4, [], hFig2);
             set(hPatch, 'EdgeColor', [.6 .6 .6]);
             set(hFig2, 'Name', [sScoutSrc.Label ' (after)']);
             drawnow;

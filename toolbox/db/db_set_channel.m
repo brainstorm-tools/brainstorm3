@@ -167,10 +167,10 @@ if (ChannelAlign >= 1)
         % Display initial registration
         bst_memory('UnloadAll', 'Forced');
         channel_align_manual(OutputFileFull, Modality, 0);
-        % Ask for confirmation before ICP alignment
+        % Ask for confirmation before automatic aligment
         isConfirm = 1;
     else
-        % ChannelAlign=2: DO NOT ask for confirmation before ICP alignment
+        % ChannelAlign=2: DO NOT ask for confirmation before automatic aligment
         isConfirm = 0;
     end
     
