@@ -769,7 +769,13 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     % Process folders containing a plugin.mat file
     for iDir = 1:length(PlugList)
         % Process only folders
-        PlugDir = bst_fullfile(UserPluginsDir, PlugList(iDir).name);
+    
+        if isstruct(PlugList(iDir).name)
+           PlugDir = bst_fullfile(UserPluginsDir, PlugList(iDir).name.Name);
+        else
+            PlugDir = bst_fullfile(UserPluginsDir, PlugList(iDir).name);
+        end    
+            
         if ~isdir(PlugDir) || (PlugList(iDir).name(1) == '.')
             continue;
         end
