@@ -3342,8 +3342,10 @@ function isCancel = UnloadDataSets(iDataSets)
         end
         % Close all the figures
         for iFig = length(GlobalData.DataSet(iDS).Figure):-1:1
-            bst_figures('DeleteFigure', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'NoUnload', 'NoLayout');
-            drawnow
+            if isfield(GlobalData.DataSet(iDS).Figure(iFig), 'hFigure') && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).hFigure)
+                bst_figures('DeleteFigure', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'NoUnload', 'NoLayout');
+                drawnow
+            end
         end
     end
     % Check that dataset still exists
