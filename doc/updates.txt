@@ -1,6 +1,7 @@
 --------------------------------------------------------------
 November 2021
 - Ephys: DeriveLFP now available as a plugin and in the compiled distribution
+- Automatic registration: Add a tolerance parameter for ecluding outliers
 - GUI: 3D MRI display: Moving slice by clicking on it
 - GUI: Automatic registration reports the distance headpoints/scalp
 --------------------------------------------------------------
