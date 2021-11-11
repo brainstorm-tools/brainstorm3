@@ -751,7 +751,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     elseif ~isempty(SelPlug)
         % Get plugin name
         if ischar(SelPlug)
-            PlugName = SelPlug;
+            PlugName = lower(SelPlug);
         else
             PlugName = SelPlug.Name;
         end
@@ -760,7 +760,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             PlugList = [];
         % Else: Try to get target plugin as unreferenced
         else
-            PlugList = struct('name', SelPlug);
+            PlugList = struct('name', PlugName);
         end
     % Get all folders in Brainstorm plugins folder
     else
@@ -768,9 +768,14 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
     end
     % Process folders containing a plugin.mat file
     for iDir = 1:length(PlugList)
+        % Ignore entry if plugin name is already in list of documented plugins
+        PlugName = PlugList(iDir).name;
+        if ismember(PlugName, {PlugDesc.Name})
+            continue;
+        end
         % Process only folders
-        PlugDir = bst_fullfile(UserPluginsDir, PlugList(iDir).name);
-        if ~isdir(PlugDir) || (PlugList(iDir).name(1) == '.')
+        PlugDir = bst_fullfile(UserPluginsDir, PlugName);
+        if ~isdir(PlugDir) || (PlugName(1) == '.')
             continue;
         end
         % Process only folders containing a 'plugin.mat' file
@@ -779,7 +784,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
             continue;
         end
         % If selecting only one plugin
-        if ~isempty(SelPlug) && ~strcmpi(PlugList(iDir).name, SelPlug)
+        if ~isempty(SelPlug) && ischar(SelPlug) && ~strcmpi(PlugName, SelPlug)
             continue;
         end
         % Add plugin to list
