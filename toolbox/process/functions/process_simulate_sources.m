@@ -51,7 +51,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        '&nbsp;- Create an empty source file with zeros at every vertex<BR>' ...
                                        '&nbsp;- Assign each signal #i to all the vertices within scout #i<BR>' ... 
                                        '&nbsp;- Add random noise to the source maps (optional):<BR>' ...
-                                       '&nbsp;&nbsp;&nbsp;<I>Src = Src + SNR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:)));</I><BR><BR></FONT>'];
+                                       '&nbsp;&nbsp;&nbsp;<I>Src = Src + NSR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:)));</I><BR><BR></FONT>'];
     sProcess.options.label2.Type    = 'label';
     % === SCOUTS
     sProcess.options.scouts.Comment = '';
@@ -63,8 +63,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isnoise.Type       = 'checkbox';
     sProcess.options.isnoise.Value      = 0;
     sProcess.options.isnoise.Controller = 'Noise';
-    % === LEVEL OF NOISE (SNR1)
-    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (SNR1):';
+    % === LEVEL OF NOISE (NSR1)
+    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (NSR1):';
     sProcess.options.noise1.Type    = 'value';
     sProcess.options.noise1.Value   = {0, '', 2};
     sProcess.options.noise1.Class   = 'Noise';
