@@ -1979,6 +1979,7 @@ function j = MenuCreate(jMenu, fontSize)
             j(ij).menu.addSeparator();
             % Website
             j(ij).web = gui_component('MenuItem', j(ij).menu, [], 'Website', IconLoader.ICON_EXPLORER, [], @(h,ev)web(Plug.URLinfo, '-browser'), fontSize);
+            j(ij).usage = gui_component('MenuItem', j(ij).menu, [], 'Usage statistics', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_userstat(0,Plug.Name), fontSize);
             % Extra menus
             if ~isempty(Plug.ExtraMenus)
                 j(ij).menu.addSeparator();
