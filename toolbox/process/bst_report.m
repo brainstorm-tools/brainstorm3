@@ -14,6 +14,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
+%         bst_report('ExportMail',  ReportFile, to, subject)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
 %         bst_report('ClearHistory')
@@ -1395,3 +1396,16 @@ function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
     bst_progress('stop');
 end
 
+function ExportMail(ReportFile, to, subject)
+
+    if isequal(ReportFile, 'current')
+        ReportsMat = GlobalData.ProcessReports;
+    else
+        ReportsMat = load(ReportFile, 'Reports');
+    end
+    
+    isFullReport = 1;
+    html = PrintToHtml(ReportsMat.Reports, isFullReport);
+    
+    bst_sendmail(to,subject,html);
+end
