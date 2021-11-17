@@ -120,7 +120,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
             case 'start'
                 sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(1,:);
             case 'middle'
-                sEvents(iEvtList(i)).times = round(mean(sEvents(iEvtList(i)).times,1));
+                sEvents(iEvtList(i)).times = mean(sEvents(iEvtList(i)).times,1);
             case 'end'
                 sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times(2,:);
         end
