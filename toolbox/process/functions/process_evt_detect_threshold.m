@@ -24,6 +24,7 @@ function varargout = process_evt_detect_threshold( varargin )
 % =============================================================================@
 %
 % Authors: Elizabeth Bock, Francois Tadel, 2015-2016
+%          Raymundo Cassani, 2021
 
 eval(macro_method);
 end
@@ -384,7 +385,3 @@ function evt = Compute(F, TimeVector, OPTIONS)
     evt = {[TimeVector(startEve); TimeVector(endEve)]};
   
 end
-
-
-
-
