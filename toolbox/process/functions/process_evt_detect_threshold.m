@@ -24,6 +24,7 @@ function varargout = process_evt_detect_threshold( varargin )
 % =============================================================================@
 %
 % Authors: Elizabeth Bock, Francois Tadel, 2015-2016
+%          Raymundo Cassani, 2021
 
 eval(macro_method);
 end
@@ -66,6 +67,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
+    % Blanking period
+    sProcess.options.blanking.Comment = 'Min duration between two events: ';
+    sProcess.options.blanking.Type    = 'value';
+    sProcess.options.blanking.Value   = {0.02, 'ms', []};
     % Threshold maximum
     sProcess.options.thresholdMAX.Comment = 'Maximum threshold: ';
     sProcess.options.thresholdMAX.Type    = 'value';
@@ -116,7 +121,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Prepare options structure for the detection function
     OPTIONS = Compute();
     OPTIONS.thresholdMAX = sProcess.options.thresholdMAX.Value{1};
-    OPTIONS.isAbsolute = sProcess.options.isAbsolute.Value;
+    OPTIONS.isAbsolute   = sProcess.options.isAbsolute.Value;
     OPTIONS.isDCremove   = sProcess.options.isDCremove.Value;
     OPTIONS.bandpass     = sProcess.options.bandpass.Value{1};
     iUnits = sProcess.options.units.Value;
@@ -136,6 +141,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         TimeWindow = sProcess.options.timewindow.Value{1};
     else
         TimeWindow = [];
+    end
+
+    % Blanking period between two events
+    if isfield(sProcess.options,'blanking')
+        OPTIONS.blanking = sProcess.options.blanking.Value{1};
     end
     
     % Option structure for function in_fread()
@@ -297,7 +307,8 @@ function evt = Compute(F, TimeVector, OPTIONS)
     defOptions = struct('thresholdMAX',  0, ...     % Maximum threshold value 
                         'bandpass', [], ...         % bandpass filter data before detection
                         'isAbsolute', 0, ...        % If 1, the max point defines the event, else, first thresh crossing defines the event 
-                        'isDCremove', 0);           % If 1, remove the DC offset of the signal before detection
+                        'isDCremove', 0, ...        % If 1, remove the DC offset of the signal before detection
+                        'blanking', 0.02);          % Min duration between two events. Default 0.02 s
     % Parse inputs
     if (nargin == 0)
         evt = defOptions;
@@ -348,15 +359,19 @@ function evt = Compute(F, TimeVector, OPTIONS)
     end
     
     % Group time points into extended events
-    % group events that occur withing 10ms of each other
-    minNewEvent = round(sFreq*.02);
-    
+    % group events that occur withing OPTIONS.blanking seconds of each other
+    minNewEvent = round(sFreq * OPTIONS.blanking);
+    % If minNewEvent samples is longer than the signal to process: exit
+    if (minNewEvent >= length(F))
+        bst_report('Warning', 'process_evt_detect_threshold', [], 'The minimun period between two events is longer than the signal. Cannot perform detection.');
+        return;
+    end
     diffThreshMask = diff([0 threshMask 0]);
     startEve = find(diffThreshMask == 1);
     endEve = find(diffThreshMask == -1) -1;
     iEve = 1;
     while iEve < length(startEve)-1
-        if startEve(iEve + 1) - endEve(iEve) <= minNewEvent
+        if startEve(iEve + 1) - endEve(iEve) < minNewEvent
             % combine the two events
             endEve(iEve) = endEve(iEve + 1);
             startEve(iEve+1) = [];
@@ -370,7 +385,3 @@ function evt = Compute(F, TimeVector, OPTIONS)
     evt = {[TimeVector(startEve); TimeVector(endEve)]};
   
 end
-
-
-
-
