@@ -1396,16 +1396,25 @@ function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
     bst_progress('stop');
 end
 
-function ExportMail(ReportFile, to, subject)
-
+% Usage 
+%     ExportMail(ReportFile, 'user@example.com', 'Calculation complete.', isFullReport=1)
+%     ExportMail(ReportFile, {'matt@example.com','peter@example.com'}, 'Calculation complete.', isFullReport=1)
+% note you need to set up your email preference first using : 
+%     setpref('Internet','SMTP_Server','mail.example.com');
+%     setpref('Internet','E_mail','matt@example.com');
+function ExportMail(ReportFile, to, subject,isFullReport)
+    
+    if nargin < 4
+        isFullReport = 1;
+    end
+    
     if isequal(ReportFile, 'current')
         ReportsMat = GlobalData.ProcessReports;
     else
         ReportsMat = load(ReportFile, 'Reports');
     end
     
-    isFullReport = 1;
     html = PrintToHtml(ReportsMat.Reports, isFullReport);
     
-    bst_sendmail(to,subject,html);
+    um_sendmail(to,subject,html);
 end

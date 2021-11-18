@@ -1,5 +1,5 @@
-function bst_sendmail(to,subject,theMessage,attachments)
-%bst_sendmail: Send e-mail with HTML formatting
+function um_sendmail(to,subject,theMessage,attachments)
+%um_sendmail: Send e-mail with HTML formatting
 %
 %   SENDMAIL(TO,SUBJECT,MESSAGE,ATTACHMENTS) sends an e-mail with html
 %   format support. TO is either a string specifying a single address, or a
