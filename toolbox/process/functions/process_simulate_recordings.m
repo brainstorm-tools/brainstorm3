@@ -52,10 +52,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        '&nbsp;- Create an empty source file with zeros at every vertex<BR>' ...
                                        '&nbsp;- Assign each signal #i to all the vertices within scout #i<BR>' ... 
                                        '&nbsp;- Add random noise to the source maps (optional):<BR>' ...
-                                       '&nbsp;&nbsp;&nbsp;<I>Src = Src + SNR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:)));</I><BR>' ...
+                                       '&nbsp;&nbsp;&nbsp;<I>Src = Src + NSR1 .* (rand(size(Src))-0.5) .* max(abs(Src(:)));</I><BR>' ...
                                        '&nbsp;- Multiply simulated sources with forward model to obtain recordings<BR>' ...
                                        '&nbsp;- Add sensor noise, based on noise covariance (optional):<BR>' ...
-                                       '&nbsp;&nbsp;&nbsp;<I>Rec = Rec + SNR2 .* get_noise_signals(NoiseCov);</I><BR></FONT>'];
+                                       '&nbsp;&nbsp;&nbsp;<I>Rec = Rec + NSR2 .* get_noise_signals(NoiseCov);</I><BR></FONT>'];
     sProcess.options.label2.Type    = 'label';
 
     % === SCOUTS
@@ -68,13 +68,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isnoise.Type    = 'checkbox';
     sProcess.options.isnoise.Value   = 0;
     sProcess.options.isnoise.Controller = 'Noise';
-    % === LEVEL OF NOISE (SNR1)
-    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (SNR1):';
+    % === LEVEL OF NOISE (NSR1)
+    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (NSR1):';
     sProcess.options.noise1.Type    = 'value';
     sProcess.options.noise1.Value   = {0, '', 2};
     sProcess.options.noise1.Class   = 'Noise';
-    % === LEVEL OF SENSOR NOISE (SNR2)
-    sProcess.options.noise2.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of sensor noise (SNR2):';
+    % === LEVEL OF SENSOR NOISE (NSR2)
+    sProcess.options.noise2.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of sensor noise (NSR2):';
     sProcess.options.noise2.Type    = 'value';
     sProcess.options.noise2.Value   = {0, '', 2};
     sProcess.options.noise2.Class   = 'Noise';
@@ -119,8 +119,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     SaveSources = sProcess.options.savesources.Value;
     SaveData = sProcess.options.savedata.Value;
     isNoise = sProcess.options.isnoise.Value;
-    SNR1 = sProcess.options.noise1.Value{1};
-    SNR2 = sProcess.options.noise2.Value{1};
+    NSR1 = sProcess.options.noise1.Value{1};
+    NSR2 = sProcess.options.noise2.Value{1};
     
     % === LOAD CHANNEL FILE ===
     % Get condition
@@ -274,10 +274,10 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         ImageGridAmp = sMatrix.Value;
     end
 
-    % Add noise SNR1 (random noise on the sources)
-    if isNoise && (SNR1 > 0)
-        ImageGridAmp = ImageGridAmp + SNR1 .* (rand(size(ImageGridAmp))-0.5) .* max(max(abs(ImageGridAmp)));
-        strNoise = [' SNR1=', num2str(SNR1)];
+    % Add noise NSR1 (random noise on the sources)
+    if isNoise && (NSR1 > 0)
+        ImageGridAmp = ImageGridAmp + NSR1 .* (rand(size(ImageGridAmp))-0.5) .* max(max(abs(ImageGridAmp)));
+        strNoise = [' NSR1=', num2str(NSR1)];
     else
         strNoise = '';
     end
@@ -291,8 +291,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % Generate data matrix
         F = zeros(length(ChannelMat.Channel), nTime);
         F(iChannels,:) = HeadModelMat.Gain(iChannels,:) * ImageGridAmp;
-        % Add noise SNR2 (sensor noise) 
-        if isNoise && (SNR2 > 0)
+        % Add noise NSR2 (sensor noise) 
+        if isNoise && (NSR2 > 0)
             % Check if noise covariance matrix exists
             if isempty(sStudyChannel.NoiseCov) || isempty(sStudyChannel.NoiseCov(1).FileName)
                 bst_report('Error', sProcess, [], 'No noise covariance matrix available, cannot add sensor noise.');
@@ -304,8 +304,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
                 xnn = xn./max(max(xn)); % Noise signal between 0 and 1
                 xns = xnn.*max(max(F(iChannels,:))); % Make the noise of similar amplitude than the signal
                 % Add noise to recordings
-                F(iChannels,:) = F(iChannels,:) + SNR2*xns; % Apply the SNR2
-                strNoise = [strNoise, ' SNR2=', num2str(SNR2)];
+                F(iChannels,:) = F(iChannels,:) + NSR2*xns; % Apply the NSR2
+                strNoise = [strNoise, ' NSR2=', num2str(NSR2)];
             end
         end
     

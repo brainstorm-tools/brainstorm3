@@ -91,13 +91,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isnoise.Type    = 'checkbox';
     sProcess.options.isnoise.Value   = 0;
     sProcess.options.isnoise.Controller = 'Noise';
-    % === LEVEL OF NOISE (SNR1)
-    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (SNR1):';
+    % === LEVEL OF NOISE (NSR1)
+    sProcess.options.noise1.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of source noise (NSR1):';
     sProcess.options.noise1.Type    = 'value';
     sProcess.options.noise1.Value   = {0, '', 2};
     sProcess.options.noise1.Class   = 'Noise';
-    % === LEVEL OF SENSOR NOISE (SNR2)
-    sProcess.options.noise2.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of sensor noise (SNR2):';
+    % === LEVEL OF SENSOR NOISE (NSR2)
+    sProcess.options.noise2.Comment = '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Level of sensor noise (NSR2):';
     sProcess.options.noise2.Type    = 'value';
     sProcess.options.noise2.Value   = {0, '', 2};
     sProcess.options.noise2.Class   = 'Noise';

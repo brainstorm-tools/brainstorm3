@@ -32,7 +32,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Generate hexa mesh (ft_prepare_mesh)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 33;
+    sProcess.Index       = 39;
     sProcess.Description = 'http://www.fieldtriptoolbox.org/tutorial/headmodel_eeg_fem';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};

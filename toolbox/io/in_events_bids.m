@@ -28,24 +28,33 @@ function events = in_events_bids(sFile, EventFile)
 % Authors: Francois Tadel, 2019-2021
 
 % Read tsv file
-Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel'}, 0);
+Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value'}, 0);
 if isempty(Markers) || isempty(Markers{1,1})
     events = [];
     return;
 end
-% If there is no trial_type information: use the filename as the event name
-if all(cellfun(@isempty, Markers(:,3)))
+% If there is no trial_type and no value information: use the filename as the event name
+if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
     [fPath, fbase, fExt] = bst_fileparts(EventFile);
     Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
 end
-% List of events
-uniqueEvt = unique(Markers(:,3)');
+% List of events from trial_type
+iColumn = 3;
+uniqueEvt = unique(Markers(:,iColumn)');
+if length(uniqueEvt) == 1
+    % List of events from value
+    uniqueEvtVal = unique(Markers(:,5)');
+    if length(uniqueEvtVal) > 1
+        iColumn = 5;
+        uniqueEvt = uniqueEvtVal;
+    end
+end
 % Initialize returned structure
 events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
 for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
-    iMrk = find(strcmpi(Markers(:,3)', uniqueEvt{iEvt}));
+    iMrk = find(strcmpi(Markers(:,iColumn)', uniqueEvt{iEvt}));
     % Get event onsets and durations
     onsets = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,1), 'UniformOutput', 0);
     durations = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,2), 'UniformOutput', 0);

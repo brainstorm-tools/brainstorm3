@@ -350,7 +350,7 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                     Orient = 'left';
                 end
                 % Check data type
-                if ~ismember(file_gettype(FileName), {'link','results','presults'})
+                if ~ismember(file_gettype(FileName), {'link','results','presults','timefreq','ptimefreq'})
                     error('File must contain source information.');
                 end
                 % Call surface viewer

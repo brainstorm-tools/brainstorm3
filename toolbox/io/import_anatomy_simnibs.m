@@ -62,6 +62,7 @@ if (nargin < 3) || isempty(nVertices)
 end
 % Initialize returned variable
 errorMsg = [];
+FemFile = [];
 % Ask folder to the user
 if (nargin < 2) || isempty(SimDir)
     % Get default import directory and formats
@@ -337,7 +338,7 @@ end
 
 %% ===== IMPORT 10-10 POSITIONS =====
 PosFile = bst_fullfile(SimDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
-if file_exist(PosFile)
+if file_exist(PosFile) && (iSubject > 0)
     % Create a condition "eeg_positions"
     iStudy = db_add_condition(iSubject, 'eeg_positions');
     % Import channel file

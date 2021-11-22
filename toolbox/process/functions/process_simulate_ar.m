@@ -25,6 +25,7 @@ function varargout = process_simulate_ar( varargin )
 % =============================================================================@
 %
 % Authors: Guiomar Niso, Francois Tadel, 2013-2014
+%          Raymundo Cassani, 2021
 
 eval(macro_method);
 end
@@ -78,12 +79,42 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.C.Comment = 'Noise covariance matrix <B>C</B>: &nbsp;&nbsp;[Nsignals x Nsignals]<BR>';
     sProcess.options.C.Type    = 'textarea';
     sProcess.options.C.Value   = 'C = eye(4,4);';
+    % === DISPLAY SPECTRAL METRICS
+    sProcess.options.display.Comment = {'process_simulate_ar(''DisplayMetrics'',iProcess);', '<BR>', 'View spectral metrics'};
+    sProcess.options.display.Type    = 'button';
+    sProcess.options.display.Value   = [];
 end
 
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
+end
+
+
+%% ===== GET COEFFICIENTS =====
+function [A, b, C] = GetCoefficients(sProcess)
+    A = [];
+    b = [];
+    C = [];
+    % Evaluate Matlab code
+    try
+        eval(sProcess.options.A.Value);
+        eval(sProcess.options.b.Value);
+        eval(sProcess.options.C.Value);
+    catch
+        e = lasterr();
+        bst_report('Error', sProcess, [], e);
+        return;
+    end    
+    % Check variables dimensions
+    if isempty(A) || isempty(b) || isempty(C)
+        bst_report('Error', sProcess, [], 'One of the variables is not defined (A, b or C).');
+        return;
+    elseif (size(A,1) ~= size(b,2)) || (size(b,1) ~= 1) || (size(A,1) ~= size(C,1)) || (size(C,1) ~= size(C,2))
+        bst_report('Error', sProcess, [], 'The dimensions of the input matrices are incompatible.');
+        return;
+    end
 end
 
 
@@ -103,28 +134,8 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     nsamples = sProcess.options.samples.Value{1};
     srate   = sProcess.options.srate.Value{1};
     
-    % ===== GENERATE SIGNALS =====
-    A = [];
-    b = [];
-    C = [];
-    % Evaluate Matlab code
-    try
-        eval(sProcess.options.A.Value);
-        eval(sProcess.options.b.Value);
-        eval(sProcess.options.C.Value);
-    catch
-        e = lasterr();
-        bst_report('Error', sProcess, [], e);
-        return;
-    end
-    % Check variables dimensions
-    if isempty(A) || isempty(b) || isempty(C)
-        bst_report('Error', sProcess, [], 'One of the variables is not defined (A, b or C).');
-        return;
-    elseif (size(A,1) ~= size(b,2)) || (size(b,1) ~= 1) || (size(A,1) ~= size(C,1)) || (size(C,1) ~= size(C,2))
-        bst_report('Error', sProcess, [], 'The dimensions of the input matrices are incompatible.');
-        return;
-    end
+    % Get coefficients
+    [A, b, C] = GetCoefficients(sProcess);
     % Generate the signal
     try
         Data = Compute(b, A, C, nsamples);
@@ -177,7 +188,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Register in database
     db_add_data(iStudy, OutputFiles{1}, FileMat);
 end
-
 
 
 %% ===== GENERATE SIGNALS =====
@@ -297,6 +307,206 @@ function [v]=arsim(w,A,C,n,ndisc)
     v = u(ndisc+p+1:ndisc+n+p,:);
 end
 
+
+%% ===== COMPUTE SPECTRAL METRICS =====
+function [Hf, Af, Sf, Cf, DTF, PC, PDC, w] = ComputeMetrics(At, Fs, n)
+% Transfer function and other spectral metrics for MVAR process
+%
+% Input
+%   At : Coefficients in time domain [To, From, Order]
+%   Fs : Sampling frequency [Hz]
+%   n  : Number of frequency points for transfer function  
+%
+% Output 
+%   Hf  : Transfer function             [To, From, Freqs] REF[1]
+%   Af  : Coefficients Freq domain      [To, From, Freqs] REF[1]
+%   Sf  : Cross-power spectral density  [To, From, Freqs] REF[1] 
+%   C   : Coherency (complex coherence) [To, From, Freqs] REF[1]
+%   PC  : Partial coherence             [To, From, Freqs] REF[1,2] 
+%   DTF : Directed transfer function    [To, From, Freqs] REF[1,3]
+%   PDC : Partial directed coherence    [To, From, Freqs] REF[1,3]
+%
+% References
+% [1] Baccalá, LA (2001), Partial directed coherence: A new concept in neural structure determination. 
+%     https://doi.org/10.1007/PL00007990
+% [2] Schlögl, A (2006), Analyzing event-related EEG data with multivariate autoregressive parameters.
+%     https://doi.org/10.1016/S0079-6123(06)59009-0
+% [3] Barrett, AB (2013), Directed spectral methods. 
+%     https://doi.org/10.1007/978-1-4614-7320-6_414-2
+ 
+    % Number of signals and order
+    [n_signals, ~, n_order] = size(At);
+    V         = eye(n_signals); 
+    % Frequency range
+    deltaF = Fs/2/n;
+    w = linspace(deltaF, Fs/2, n);
+    digw = 2*pi*w./Fs; 
+    z    = exp(-1i*digw);
+    % Allocate variables size [To, From, Freqs]
+    zeros_array = zeros(n_signals, n_signals, length(w));
+    complex_zeros_array = complex(zeros_array);
+    Hf  = complex_zeros_array; % Transfer function             
+    Af  = complex_zeros_array; % Coefficients Freq domain      
+    Sf  = complex_zeros_array; % Cross-power spectral density  
+    Cf   = complex_zeros_array;% Complex coherence             
+    Gf  = complex_zeros_array; % Auxiliar to compute PC        
+    PC  = complex_zeros_array; % Partial coherence             
+    DTF = zeros_array;         % Directed transfer function    
+    PDC = zeros_array;         % Partial directed coherence    
+
+    % Transform coefficients to frequency domain
+    % Af = I - sum_{1}^{order} At * z^k
+    for iTo = 1 : n_signals
+        for iFrom = 1 : n_signals
+            Af_ij = 0;
+            for iSample = 1 : n_order
+                tmp = At(iTo, iFrom, iSample) * z.^iSample;
+                Af_ij = Af_ij + tmp;
+            end
+            if iFrom == iTo
+                Af(iTo,iFrom,:) = 1 - Af_ij;
+            else
+                Af(iTo,iFrom,:) = Af_ij;
+            end
+        end
+    end
+
+    % Compute Hf and Sf
+    for f = 1:length(w)
+        Hf(:,:,f) = pinv(Af(:,:,f));
+        Sf(:,:,f) = Hf(:,:,f) * V * ctranspose(Hf(:,:,f));
+        Sf(:,:,f) = Sf(:,:,f) / Fs;    % Scale cross-spectra to be [u^2/Hz]
+        Gf(:,:,f) = pinv((Sf(:,:,f))); % = inv(Hf*V*ctransp(Hf)) = ctransp(Af)*inv(V)*Af
+    end
+
+    % Compute DTF, C, PC and PDC
+    for f = 1:length(w)
+        for i = 1:n_signals
+            % DFT normalized
+            DTF(i,:,f) = (abs(Hf(i,:,f)).^2)./sum(abs(Hf(i,:,f)).^2);
+            for j = 1:n_signals
+                Cf(i,j,f)  = Sf(i,j,f)/sqrt(Sf(i,i,f)*Sf(j,j,f));  
+                PC(i,j,f)  = Gf(i,j,f)/sqrt(Gf(i,i,f)*Gf(j,j,f));
+                PDC(i,j,f) = abs(Af(i,j,f))/sqrt(ctranspose(Af(:,j,f))*Af(:,j,f)); 
+            end
+        end
+    end
+end
+
+
+%% ===== DISPLAY SPECTRAL METRICS =====
+function DisplayMetrics(iProcess) %#ok<DEFNU>
+    % Get current process options
+    global GlobalData;
+    sProcess = GlobalData.Processes.Current(iProcess);
+    sfreq  = sProcess.options.srate.Value{1}; % Signal sampling frequency [Hz]
+    % Get coefficients
+    [A, ~, ~] = GetCoefficients(sProcess); 
+    A = reshape(A, size(A,1), size(A,1), [] );
+    % Display spectral metrics
+    hFig = HDisplayMetrics(A, sfreq); 
+end
+
+
+function hFig = HDisplayMetrics(A, sfreq)
+    % Progress bar
+    bst_progress('start', 'Spectral metrics', 'Updating graphs...');
+
+    % Compute transfer function and other spectral metrics
+    [Hf, ~, Sf, Cf, DTF, ~, PDC, Freqs] = ComputeMetrics(A, sfreq, 2^8); 
+    n_signals = size(Hf, 1);
+    metrics(1).title   = ' Transfer function ';
+    metrics(1).value   = abs(Hf);
+    metrics(1).dir     = 1;
+    metrics(1).ylimits = [];
+    metrics(1).ylabel  = '|H|';
+    
+    metrics(2).title   = ' Cross-spectral power density ';
+    metrics(2).value   = abs(Sf);
+    metrics(2).dir     = 0;
+    metrics(2).ylimits = [];
+    metrics(2).ylabel  = 'Power (signal units^2/Hz) ';
+    
+    metrics(3).title   = ' Magnitude squared coherence ';
+    metrics(3).value   = abs(Cf).^2;
+    metrics(3).dir     = 0;
+    metrics(3).ylimits = [0, 1];
+    metrics(3).ylabel  = 'MSC';
+    
+    metrics(4).title   = ' Directed transfer function ';
+    metrics(4).value   = DTF;         % Already normalized
+    metrics(4).dir     = 1;
+    metrics(4).ylimits = [0, 1];
+    metrics(4).ylabel  = '|DTF|^2';
+    
+    metrics(5).title   = ' Partial directed coherence';
+    metrics(5).value   = abs(PDC).^2; % Normalized PDC
+    metrics(5).dir     = 1;
+    metrics(5).ylimits = [0, 1];
+    metrics(5).ylabel  = '|PDC|^2';
+       
+    % Get existing specification figure
+    hFig = findobj(0, 'Type', 'Figure', 'Tag', 'SpectralMetrics');
+    % If the figure doesn't exist yet: create it
+    if isempty(hFig)
+        % Create figure
+        hFig = figure(...
+            'MenuBar',     'none', ...
+            'Toolbar',     'figure', ...
+            'NumberTitle', 'off', ...
+            'Name',        'Spectral metrics', ...
+            'Tag',         'SpectralMetrics', ...
+            'Units',       'Pixels');
+        % Resize figure to use all the figure area
+        decorationSize = gui_layout('GetDecorationSize');
+        [~, figArea] = gui_layout('GetScreenBrainstormAreas');
+        gui_layout('PositionFigure', hFig, figArea, decorationSize);
+    % Figure already exists: re-use it
+    else
+        clf(hFig);
+        figure(hFig);
+    end
+
+    % Tab group, one tab per metric
+    tabgp = uitabgroup(hFig);
+    for iMetric = 1 : length(metrics)
+        metric = metrics(iMetric);
+        hTabTmp = uitab(tabgp,'Title', metric.title);           
+        % Plot spectral metric
+        yMaxLimit = 0;
+        for iFrom = 1 : n_signals
+            for iTo = 1 : n_signals
+                tmpAxes = axes('Units', 'normalized', 'Parent', hTabTmp);
+                subplot(n_signals, n_signals, ((iFrom-1)*n_signals) + iTo, tmpAxes);
+                area(Freqs, squeeze(metric.value(iTo, iFrom, :)));
+                tmpYLimits = get(tmpAxes, 'YLim');
+                yMaxLimit = max(yMaxLimit, tmpYLimits(2));
+                % Title showing directionality
+                dirChar = ' , ';
+                if metric.dir == 1
+                    dirChar = ' \rightarrow ';
+                end
+                title(['Signal ', num2str(iFrom), dirChar, 'Signal ', num2str(iTo)])
+                hAxesMetric(iFrom, iTo) = tmpAxes;
+            end
+        end
+    
+        % Frequency axes
+        linkaxes(hAxesMetric,'x');
+        set(hAxesMetric(1), 'XLim', [0, max(Freqs)]);  
+        xlabel(hAxesMetric(end, :), 'Frequency (Hz)');
+        % Metric y axes
+        linkaxes(hAxesMetric,'y');
+        if ~isempty(metric.ylimits)
+            set(hAxesMetric(1), 'YLim', metric.ylimits);
+        else
+            set(hAxesMetric(1), 'YLim', [0, yMaxLimit]);
+        end
+        ylabel(hAxesMetric(:,1), metric.ylabel);       
+    end
+        
+    bst_progress('stop');
+end
 
 
 %% ===== TEST FUNCTION =====

@@ -2196,8 +2196,9 @@ switch contextName
         userDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy');
         userFiles = dir(userDir);
         % Combine the two lists
-        AllFiles = cat(2, cellfun(@(c)bst_fullfile(progDir,c), {progFiles.name}, 'UniformOutput', 0), ...
-                          cellfun(@(c)bst_fullfile(userDir,c), setdiff({userFiles.name}, {progFiles.name}), 'UniformOutput', 0));
+        AllProgNames = cat(2, {progFiles.name}, cellfun(@(c)cat(2,c,'.zip'), {progFiles.name}, 'UniformOutput', 0));
+        AllFiles = cat(2, cellfun(@(c)bst_fullfile(progDir,c), setdiff({progFiles.name}, {'.','..'}), 'UniformOutput', 0), ...
+                          cellfun(@(c)bst_fullfile(userDir,c), setdiff({userFiles.name}, AllProgNames), 'UniformOutput', 0));
         % Initialize list of defaults
         sTemplates = repmat(struct('FilePath',[],'Name',[]), 0);
         % Find all the valid defaults (.zip files or subdirectory with a brainstormsubject.mat in it)
@@ -2864,17 +2865,23 @@ switch contextName
         end
         
     case 'UseSigProcToolbox'
-        if isempty(GlobalData.Program.HasSigProcToolbox)
-            % Check if Signal Processing Toolbox is installed
-            GlobalData.Program.HasSigProcToolbox = exist('fir2', 'file') == 2;
-        end
-        % Return user preferences
-        if ~GlobalData.Program.HasSigProcToolbox
-            argout1 = 0;
-        elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
-            argout1 = GlobalData.Preferences.UseSigProcToolbox;
+        % In a parfor loop: GlobalData is empty => Check only if the toolbox is installed (ignore user preferences) 
+        if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'HasSigProcToolbox')
+            argout1 = exist('fir2', 'file');
         else
-            argout1 = 1;
+            % Save the result of the check for the SigProc tb
+            if isempty(GlobalData.Program.HasSigProcToolbox)
+                % Check if Signal Processing Toolbox is installed
+                GlobalData.Program.HasSigProcToolbox = (exist('fir2', 'file') == 2);
+            end
+            % Return user preferences
+            if ~GlobalData.Program.HasSigProcToolbox
+                argout1 = 0;
+            elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
+                argout1 = GlobalData.Preferences.UseSigProcToolbox;
+            else
+                argout1 = 1;
+            end
         end
 
     case 'CustomColormaps'

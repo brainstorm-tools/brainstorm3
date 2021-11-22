@@ -1,4 +1,18 @@
 --------------------------------------------------------------
+November 2021
+- Anatomy: MRI segmentation with FastSurfer and FreeSurfer
+- Ephys: DeriveLFP now available as a plugin and in the compiled distribution
+- Automatic registration: Add a tolerance parameter for excluding outliers
+- GUI: 3D MRI display: Moving slice by clicking on it
+- GUI: Automatic registration reports the distance headpoints/scalp
+- Plugins: Display usage statistics
+--------------------------------------------------------------
+October 2021
+- Anatomy: Run MRI segmentation with BrainSuite
+- Connectivity: Updated simulation of AR signals
+- OpenMEEG: Updated download URLs
+- Import BIDS: Add support for CAT12, BrainSuite and BrainVISA
+--------------------------------------------------------------
 September 2021
 - SEEG/ECOG contact labelling from volume and surface atlases
 - Distrib: Compilation with Matlab 2021a/2021b

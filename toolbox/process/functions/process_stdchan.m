@@ -319,6 +319,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update F field
         newDataMat.F = zeros(length(ChanList), size(DataMat.F,2));
         newDataMat.F(iChanDest{iFile},:) = DataMat.F(iChanSrc{iFile},:);
+        % Update Std field
+        if isfield(DataMat, 'Std') && ~isempty(DataMat.Std)
+            newDataMat.Std = zeros(length(ChanList), size(DataMat.F,2));
+            newDataMat.Std(iChanDest{iFile},:) = DataMat.Std(iChanSrc{iFile},:);
+        end
         % Update ChannelFlag field
         newDataMat.ChannelFlag = -1 * ones(length(ChanList), 1);
         newDataMat.ChannelFlag(iChanDest{iFile}) = DataMat.ChannelFlag(iChanSrc{iFile});

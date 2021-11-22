@@ -156,6 +156,7 @@ end
 
 %% ===== COMPUTE CAT12 SEGMENTATION =====
 function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, TpmNii, isSphReg, isVolumeAtlases, isExtraMaps, isCerebellum)
+    errMsg = '';
     isOk = 0;
     % Initialize SPM12+CAT12
     [isInstalled, errMsg, PlugCat] = bst_plugin('Install', 'cat12', isInteractive, 1728);
@@ -205,7 +206,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
     % Check if a MRI is available for the subject
     if isempty(sSubject.Anatomy)
-        errMsg = ['No MRI available for subject "' SubjectName '".'];
+        errMsg = ['No MRI available for subject "' sSubject.Name '".'];
         return
     end
     % Get default MRI if not specified
@@ -385,8 +386,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
     isKeepMri = 1;
-    errorMsg = import_anatomy_cat(iSubject, catDir, nVertices, isInteractive, [], isExtraMaps, isKeepMri);
-    if ~isempty(errorMsg)
+    errMsg = import_anatomy_cat(iSubject, catDir, nVertices, isInteractive, [], isExtraMaps, isKeepMri);
+    if ~isempty(errMsg)
         return;
     end
     % Delete temporary folder
