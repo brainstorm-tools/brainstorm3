@@ -137,6 +137,7 @@ switch(OPTIONS.Method)
     case 'morlet',    strMap = 'time-frequency maps';
     case 'fft',       strMap = 'FFT values';
     case 'psd',       strMap = 'PSD values';
+    case 'SPRiNT',    strMap = 'SPRiNT maps';
     case 'hilbert',   strMap = 'Hilbert maps';
     case 'mtmconvol', strMap = 'multitaper maps';
 end
@@ -541,6 +542,11 @@ for iData = 1:length(Data)
             % Measure is already applied (power)
             isMeasureApplied = 1;
             
+        % SPRiNT: Spectral Parameterization Resolved iN Time (Luc Wilson)
+        case 'SPRiNT'
+            % Calculate PSD/FFT
+            [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS);
+         
         % Hilbert
         case 'hilbert'
             % Get bounds of each frequency bands
@@ -815,6 +821,9 @@ end
         elseif ismember(OPTIONS.Method, 'mtmconvol')
             % FileMat.TFmask = permute(~any(isnan(FileMat.TF),1), [3,2,1]);
             FileMat.TF(isnan(FileMat.TF)) = 0;
+        end
+        if strcmp(OPTIONS.Method,'SPRiNT')
+            FileMat.SPRiNT = OPTIONS.SPRiNT;
         end
         % History: Computation
         FileMat = bst_history('add', FileMat, 'compute', 'Time-frequency decomposition');
