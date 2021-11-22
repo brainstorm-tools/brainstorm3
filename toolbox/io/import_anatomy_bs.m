@@ -240,7 +240,7 @@ if ~isempty(FidFile)
     % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
 end
 % Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
+if ~isKeepMri && (~isInteractive || ~isempty(FidFile))
     % Use fiducials from file
     if ~isempty(FidFile)
         % Already loaded
