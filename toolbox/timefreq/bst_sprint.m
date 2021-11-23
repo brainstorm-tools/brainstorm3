@@ -20,6 +20,7 @@ function [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
+% Authors: Luc Wilson (2021)
 
 % Fetch user settings
 opt = struct();
