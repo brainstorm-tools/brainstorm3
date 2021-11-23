@@ -41,7 +41,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Definition of the options
     % === TARGET
     sProcess.options.target.Comment = 'Snapshot: ';

@@ -14,7 +14,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
-%         bst_report('ExportMail',  ReportFile, to, subject)
+%         bst_report('Email',   ReportFile, to, subject, isFullReport=1)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
 %         bst_report('ClearHistory')
@@ -1396,25 +1396,43 @@ function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
     bst_progress('stop');
 end
 
-% Usage 
-%     ExportMail(ReportFile, 'user@example.com', 'Calculation complete.', isFullReport=1)
-%     ExportMail(ReportFile, {'matt@example.com','peter@example.com'}, 'Calculation complete.', isFullReport=1)
-% note you need to set up your email preference first using : 
-%     setpref('Internet','SMTP_Server','mail.example.com');
-%     setpref('Internet','E_mail','matt@example.com');
-function ExportMail(ReportFile, to, subject,isFullReport)
-    
-    if nargin < 4
+%% ===== SEND EMAIL =====
+% USAGE:  bst_report('Email', ReportFile, to, subject, isFullReport=1)
+function isOk = Email(ReportFile, to, subject, isFullReport)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 4) || isempty(isFullReport)
         isFullReport = 1;
     end
-    
+    % Minimum Matlab version: 2014b
+    if ~exist('webread', 'file')
+        error('Sending email requires Matlab >= 2014b.');
+    end
+    % Get report
     if isequal(ReportFile, 'current')
         ReportsMat = GlobalData.ProcessReports;
     else
         ReportsMat = load(ReportFile, 'Reports');
     end
-    
-    html = PrintToHtml(ReportsMat.Reports, isFullReport);
-    
-    um_sendmail(to,subject,html);
+    % Print report
+    if isFullReport
+        html = PrintToHtml(ReportsMat.Reports, isFullReport);
+    else
+        html = '';
+        for iEntry = 1:size(ReportsMat.Reports,1)
+            if ~isempty(ReportsMat.Reports{iEntry,1}) && ~isempty(ReportsMat.Reports{iEntry,5})
+                html = [html, ReportsMat.Reports{iEntry,5}, ' : ', ReportsMat.Reports{iEntry,1}];
+                if ~isempty(ReportsMat.Reports{iEntry,2})
+                    html = [html, ' - ' func2str(ReportsMat.Reports{iEntry,2}.Function)];
+                end
+                html = [html, 10];
+            end
+        end
+    end
+    % Send by email
+    resp = webwrite('http://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 't', to, 's', subject, 'b', html);
+    % Return status
+    isOk = isequal(resp, 'ok');
 end
+
+
