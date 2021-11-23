@@ -37,10 +37,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 983;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Scripting';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
-    sProcess.OutputTypes = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix'};
+    sProcess.InputTypes  = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix', 'import'};
+    sProcess.OutputTypes = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix', 'import'};
     sProcess.nInputs     = 1;
-    sProcess.nMinFiles   = 1;
+    sProcess.nMinFiles   = 0;
     sProcess.isSeparator = 1;
     % Definition of the options
     % === TO
