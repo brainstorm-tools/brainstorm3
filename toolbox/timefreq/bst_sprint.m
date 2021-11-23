@@ -263,6 +263,23 @@ ts(indGood:end) = [];
 end
 
 function SPRiNT = remove_outliers(SPRiNT,peak_function,opt)
+%       Helper function to remove outlier peaks in SPRiNT models.
+%
+%       Parameters
+%       ----------
+%       SPRiNT : struct
+%       	SPRiNT output struct.
+%       peak_function : function
+%       	Peak shape
+%       opt : struct
+%       	SPRiNT options structure
+%
+%       Returns
+%       -------
+%       SPRiNT : struct
+%           SPRiNT output struct, with outlier peaks removed.
+%
+% Author: Luc Wilson
 
     timeRange = opt.maxtime.*opt.winLen.*(1-opt.Ovrlp./100);
     nC = length(SPRiNT.channel);
@@ -353,8 +370,20 @@ function SPRiNT = remove_outliers(SPRiNT,peak_function,opt)
 end
 
 function oS = cluster_peaks_dynamic(oS)
-% Second Helper function to cluster peaks across time
+%       Helper function to cluster peaks within sensors across time.
+%
+%       Parameters
+%       ----------
+%       oS : struct
+%       	SPRiNT output struct.
+%
+%       Returns
+%       -------
+%       oS : struct
+%           SPRiNT output struct, including clustered peaks field for each sensor.
+%
 % Author: Luc Wilson
+
     pthr = oS.options.proximity_threshold;
     for chan = 1:length(oS.channel)
         clustLead = [];
