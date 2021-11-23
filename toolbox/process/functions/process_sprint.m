@@ -1,5 +1,5 @@
 function varargout = process_SPRiNT( varargin )
-% PROCESS_TIMEFREQ: Computes the time frequency decomposition of any signal in the database.
+% PROCESS_SPRINT: Computes the time frequency decomposition of any signal in the database.
 % 
 % USAGE:  sProcess = process_sprint('GetDescription')
 %           sInput = process_sprint('Run',     sProcess, sInput)
