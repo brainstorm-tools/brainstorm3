@@ -1,9 +1,8 @@
 function varargout = process_SPRiNT( varargin )
 % PROCESS_TIMEFREQ: Computes the time frequency decomposition of any signal in the database.
 % 
-% USAGE:  sProcess = process_timefreq('GetDescription')
-%           sInput = process_timefreq('Run',     sProcess, sInput)
-%           TFmask = process_timefreq('GetEdgeEffectMask', Time, Freqs, tfOptions)
+% USAGE:  sProcess = process_sprint('GetDescription')
+%           sInput = process_sprint('Run',     sProcess, sInput)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -23,7 +22,7 @@ function varargout = process_SPRiNT( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Luc Wilson, 2021
 
 eval(macro_method);
 end
