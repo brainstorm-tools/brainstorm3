@@ -60,7 +60,7 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
-    Comment = ['Snapshot: ' sProcess.options.target.Value{2}{sProcess.options.target.Value{1}}];
+    Comment = sProcess.Comment;
 end
 
 
