@@ -75,9 +75,9 @@ ScalpFile  = sSubject.Surface(sSubject.iScalp(1)).FileName;
 % Get default anatomy folder
 sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
 if isempty(sTemplate)
-    bst_error(['The template anatomy ICBM152 is not available.' 10 ...
-               'Please update Brainstorm...'], 'BEM surfaces', 0);
-    return
+    error('The template anatomy ICBM152 is not available.');
+elseif (length(sTemplate) > 1)
+    error('Multiple templates "ICBM152" available.');
 end
 % Get subject file
 TemplateCortexFile = bst_fullfile(sTemplate.FilePath, 'tess_cortex_pial_low.mat');

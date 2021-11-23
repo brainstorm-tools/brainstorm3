@@ -2196,8 +2196,9 @@ switch contextName
         userDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy');
         userFiles = dir(userDir);
         % Combine the two lists
-        AllFiles = cat(2, cellfun(@(c)bst_fullfile(progDir,c), {progFiles.name}, 'UniformOutput', 0), ...
-                          cellfun(@(c)bst_fullfile(userDir,c), setdiff({userFiles.name}, {progFiles.name}), 'UniformOutput', 0));
+        AllProgNames = cat(2, {progFiles.name}, cellfun(@(c)cat(2,c,'.zip'), {progFiles.name}, 'UniformOutput', 0));
+        AllFiles = cat(2, cellfun(@(c)bst_fullfile(progDir,c), setdiff({progFiles.name}, {'.','..'}), 'UniformOutput', 0), ...
+                          cellfun(@(c)bst_fullfile(userDir,c), setdiff({userFiles.name}, AllProgNames), 'UniformOutput', 0));
         % Initialize list of defaults
         sTemplates = repmat(struct('FilePath',[],'Name',[]), 0);
         % Find all the valid defaults (.zip files or subdirectory with a brainstormsubject.mat in it)

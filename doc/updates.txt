@@ -1,11 +1,13 @@
 --------------------------------------------------------------
 November 2021
-- Reports: Send HTML report by email
+- Anatomy: MRI segmentation with FastSurfer (T1 only)
+- Anatomy: MRI segmentation with FreeSurfer (T1+T2)
 - Ephys: DeriveLFP now available as a plugin and in the compiled distribution
 - Automatic registration: Add a tolerance parameter for excluding outliers
 - GUI: 3D MRI display: Moving slice by clicking on it
 - GUI: Automatic registration reports the distance headpoints/scalp
 - Plugins: Display usage statistics
+- Reports: Send HTML report by email
 --------------------------------------------------------------
 October 2021
 - Anatomy: Run MRI segmentation with BrainSuite
