@@ -236,7 +236,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     status = system(strCall)
     % Error handling
     if (status ~= 0)
-        errMsg = ['FreeSurfer recan-all failed.', 10, 'Check the Matlab command window for more information.'];
+        errMsg = ['FreeSurfer recon-all failed.', 10, 'Check the Matlab command window for more information.'];
         return
     end
 
@@ -245,8 +245,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     isExtraMaps = 0;
     isKeepMri = 1;
     isVolumeAtlas = 1;
-    FsDir = bst_fullfile(procDir, subjid);
-    errMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isVolumeAtlas, isKeepMri);
+    errMsg = import_anatomy_fs(iSubject, SubjDir, nVertices, isInteractive, [], isExtraMaps, isVolumeAtlas, isKeepMri);
     if ~isempty(errMsg)
         return;
     end
