@@ -14,7 +14,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
-%         bst_report('Email',   ReportFile, to, subject, isFullReport=1)
+%         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
 %         bst_report('ClearHistory')
@@ -1397,8 +1397,8 @@ function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
 end
 
 %% ===== SEND EMAIL =====
-% USAGE:  bst_report('Email', ReportFile, to, subject, isFullReport=1)
-function isOk = Email(ReportFile, to, subject, isFullReport)
+% USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1)
+function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     global GlobalData;
     % Parse inputs
     if (nargin < 4) || isempty(isFullReport)
@@ -1430,7 +1430,7 @@ function isOk = Email(ReportFile, to, subject, isFullReport)
         end
     end
     % Send by email
-    resp = webwrite('http://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 't', to, 's', subject, 'b', html);
+    resp = webwrite('http://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html);
     % Return status
     isOk = isequal(resp, 'ok');
 end

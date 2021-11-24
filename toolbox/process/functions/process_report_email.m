@@ -43,10 +43,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 0;
     sProcess.isSeparator = 1;
     % Definition of the options
+    % === USERNAME
+    sProcess.options.username.Comment = 'Brainstorm username: ';
+    sProcess.options.username.Type    = 'text';
+    sProcess.options.username.Value   = '';
     % === TO
-    sProcess.options.to.Comment = 'To: ';
-    sProcess.options.to.Type    = 'text';
-    sProcess.options.to.Value   = 'you@server.com';
+    sProcess.options.cc.Comment = 'Send copy to (email address): ';
+    sProcess.options.cc.Type    = 'text';
+    sProcess.options.cc.Value   = '';
     % === SUBJECT 
     sProcess.options.subject.Comment = 'Subject: ';
     sProcess.options.subject.Type    = 'text';
@@ -68,9 +72,15 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Returned files: same as input
     OutputFiles = {sInputs.FileName};
-    % Destination email
-    to = sProcess.options.to.Value;
-    if isempty(to) || ~any(to == '@')
+    % Brainstorm username
+    username = sProcess.options.username.Value;
+    if isempty(username)
+        bst_report('error', sProcess, [], 'Invalid Brainstorm username.');
+        return;
+    end
+    % CC address
+    cc = sProcess.options.cc.Value;
+    if ~isempty(cc) && ~any(cc == '@')
         bst_report('error', sProcess, [], 'Invalid email address.');
         return;
     end
@@ -82,10 +92,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Full report
     isFullReport = sProcess.options.full.Value;
     % Send email
-    isOk = bst_report('Email', 'current', to, subject, isFullReport);
+    [isOk, resp] = bst_report('Email', 'current', username, cc, subject, isFullReport);
     % Error handling
     if ~isOk
-        bst_report('error', sProcess, [], 'Email could not be sent.');
+        bst_report('Error', sProcess, [], ['Email could not be sent: ' 10 resp]);
     end
 end
 
