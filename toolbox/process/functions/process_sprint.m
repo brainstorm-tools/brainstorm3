@@ -78,9 +78,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === specparam options === %
     % Label for FOOOF options
-    sProcess.options.specparam.Comment    = 'specparam options:';
-    sProcess.options.specparam.Type       = 'label';
-    sProcess.options.specparam.Value      = [];
+    sProcess.options.fooof.Comment    = 'specparam options:';
+    sProcess.options.fooof.Type       = 'label';
+    sProcess.options.fooof.Value      = [];
     % Option: Frequency range
     sProcess.options.freqrange.Comment = 'Frequency range for analysis: ';
     sProcess.options.freqrange.Type    = 'freqrange_static';
