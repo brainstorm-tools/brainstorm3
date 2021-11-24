@@ -1,5 +1,5 @@
 function varargout = process_SPRiNT( varargin )
-% PROCESS_SPRINT: Computes the time frequency decomposition of any signal in the database.
+% PROCESS_SPRINT: Computes the Spectral Parameterization Resolved iN Time (SPRiNT) of any signal in the database.
 % 
 % USAGE:  sProcess = process_sprint('GetDescription')
 %           sInput = process_sprint('Run',     sProcess, sInput)
@@ -22,7 +22,7 @@ function varargout = process_SPRiNT( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Luc Wilson, 2021
+% Author: Luc Wilson, 2021
 
 eval(macro_method);
 end
@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 504;
-%     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/TimeFrequency#Morlet_wavelets';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SPRiNT';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
@@ -55,7 +55,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === STFT options === %
     % Label for STFT options
-    sProcess.options.stft.Comment    = 'Short-time Fourier transform:';
+    sProcess.options.stft.Comment    = 'Short-time Fourier transform options:';
     sProcess.options.stft.Type       = 'label';
     sProcess.options.stft.Value      = [];
     % Option: Window (Length)
@@ -76,14 +76,14 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.spacer.Type       = 'label';
     sProcess.options.spacer.Value      = [];
     
-    % === FOOOF options === %
+    % === specparam options === %
     % Label for FOOOF options
-    sProcess.options.fooof.Comment    = 'specparam:';
-    sProcess.options.fooof.Type       = 'label';
-    sProcess.options.fooof.Value      = [];
+    sProcess.options.specparam.Comment    = 'specparam options:';
+    sProcess.options.specparam.Type       = 'label';
+    sProcess.options.specparam.Value      = [];
     % Option: Frequency range
     sProcess.options.freqrange.Comment = 'Frequency range for analysis: ';
-    sProcess.options.freqrange.Type    = 'freqrange_static';   % 'freqrange'
+    sProcess.options.freqrange.Type    = 'freqrange_static';
     sProcess.options.freqrange.Value   = {[1 40], 'Hz', 1};
     % Option: Peak type
     sProcess.options.peaktype.Comment = {'Gaussian', 'Cauchy*', 'Best of both* (* experimental)', 'Peak model:'; 'gaussian', 'cauchy', 'best', ''};
@@ -121,7 +121,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     % === Post-processing options === %
     % Label for FOOOF options
-    sProcess.options.postproc.Comment    = 'Post-processing:';
+    sProcess.options.postproc.Comment    = 'Post-processing options:';
     sProcess.options.postproc.Type       = 'label';
     sProcess.options.postproc.Value      = [];
     % Option: Remove outliers
@@ -145,7 +145,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.minnear.Type    = 'value';
     sProcess.options.minnear.Value   = {4, '', 0};
     sProcess.options.minnear.Class = 'Yes';
-    
 end
 
 
