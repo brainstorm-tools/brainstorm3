@@ -69,12 +69,12 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew.add(jPanelFunction);
     
     % ===== FOOOF: PLOT OPTIONS =====
-    jPanelFOOOF = gui_river([0,1], [2,4,4,0], 'FOOOF');
+    jPanelFOOOF = gui_river([0,1], [2,4,4,0], 'specparam');
     jPanelFOOOF.setVisible(0);
         % Radio: Select function to apply on top of the TF values
         jButtonGroup = ButtonGroup();
         jRadioFSpectrum = gui_component('Radio', jPanelFOOOF, 'br', 'Spectrum',      jButtonGroup, '', @DisplayOptions_Callback);
-        jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'FOOOF Model',  jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'specparam model',  jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFAperiodic   = gui_component('Radio', jPanelFOOOF, 'br', 'Aperiodic only', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks only', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFError = gui_component('Radio', jPanelFOOOF, 'br', 'Frequency-wise error', jButtonGroup, '', @DisplayOptions_Callback);

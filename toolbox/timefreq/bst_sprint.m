@@ -131,7 +131,7 @@ ts(indGood:end) = [];
 
 % ===== GENERATE SPECPARAM MODELS FOR EACH WINDOW =====
 % Find all frequency values within user limits
-    fMask = (bst_round(FreqVector,1) >= opt.freq_range(1)) & (FreqVector <= opt.freq_range(2));
+    fMask = (round(FreqVector.*10)./10 >= round(opt.freq_range(1).*10)./10) & (round(FreqVector.*10)./10 <= round(opt.freq_range(2).*10)./10);
     fs = FreqVector(fMask);
     OPTIONS.Freqs = fs;
     nChan = size(TF,1);
