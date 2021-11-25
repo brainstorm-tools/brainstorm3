@@ -347,7 +347,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
     end
     
-    data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
+    data_derived = downsample(data_derived, round(sMat.sr/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz
     
 end
 
