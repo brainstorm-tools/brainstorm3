@@ -2609,7 +2609,7 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
                 if ~ismember([procFileName, procExt], bstFunc)
                     iOk = [iOk, iProc];
                 else
-                    disp(['BST> Plugin ' PlugAll(iPlug).Name ': ' procFileName procExt ' already defined in Brainstorm']);
+                    % disp(['BST> Plugin ' PlugAll(iPlug).Name ': ' procFileName procExt ' already defined in Brainstorm']);
                 end
             end
             % Concatenate plugin path and process function (relative to plugin path)
