@@ -35,7 +35,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'File';
     sProcess.Index       = 983;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Scripting';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Scripting#Send_report_by_email';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix', 'import'};
     sProcess.OutputTypes = {'raw', 'data', 'results', 'timefreq', 'matrix', 'dipoles', 'pdata', 'presults', 'ptimefreq', 'pmatrix', 'import'};
