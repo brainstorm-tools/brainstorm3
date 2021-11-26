@@ -2484,7 +2484,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         str = [str '% Save and display report' 10];
         str = [str 'ReportFile = bst_report(''Save'', sFiles);' 10];
         str = [str 'bst_report(''Open'', ReportFile);' 10];
-        str = [str '% bst_report(''Export'', ReportFile, ExportDir);' 10 10];
+        str = [str '% bst_report(''Export'', ReportFile, ExportDir);' 10];
+        str = [str '% bst_report(''Email'', ReportFile, username, to, subject, isFullReport);' 10 10];
         
         % Save script
         if isSave
