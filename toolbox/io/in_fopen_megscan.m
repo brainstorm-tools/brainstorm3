@@ -75,7 +75,7 @@ hdr.nTime = size(Data,2);
 % Acquisition Attributes: Mandatory
 try
 hdr.Type = h5readatt(DataFile,pAcq,'acq_type');
-hdr.Seq = h5readatt(DataFile,pAcq,'sequence'); % what is this?
+hdr.Seq = h5readatt(DataFile,pAcq,'sequence'); % Order of when acquisitions were recorded (ie first acquisition has sequence=1, second has sequence=2)
 hdr.SampleRate = h5readatt(DataFile,pAcq,'sample_rate');
 hdr.StartTime = h5readatt(DataFile,pAcq,'start_time');
 catch
@@ -96,10 +96,10 @@ if ismember('upb_applied',attnames)
     hdr.UpbApplied = h5readatt(DataFile,pAcq,'upb_applied');
 end
 if ismember('weights_configured',attnames)
-    hdr.WeightsConfig = h5readatt(DataFile,pAcq,'weights_configured'); %TODO 
+    hdr.WeightsConfig = h5readatt(DataFile,pAcq,'weights_configured');
 end
 if ismember('weights_applied',attnames)
-    hdr.WeightsApplied = h5readatt(DataFile,pAcq,'weights_applied');   %TODO
+    hdr.WeightsApplied = h5readatt(DataFile,pAcq,'weights_applied');
 end
 if ismember('coh_active',attnames)
     hdr.CohActive = h5readatt(DataFile,pAcq,'coh_active');
@@ -160,7 +160,6 @@ sFile.format = 'MEGSCAN-HDF5';
 if contains(model,'WHS')
     sFile.device = '4d';
 elseif contains(model,'MEGSCAN')
-    %sFile.device = 'ANT standard position';
     sFile.device = 'MEGSCAN channels';
 else
     sFile.device = model;
@@ -256,8 +255,6 @@ for iChan = 1:hdr.numberchannels
             %gain = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'gain'); %TODO
             
             try
-                %DataFile2 = 'C:\Users\elizabeth.bock\Documents\YI\fileformat\eeg_test_run\raw\EEG_64_template_20190208_140117_MEG.hdf5';
-                %info = h5info(DataFile,'/geometry/eeg','TextEncoding','UTF-8');
                 points = h5read(DataFile,lower(['/geometry/eeg/' hdr.channelname{iChan} '/location'])) ./1000;
                 ChannelMat.Channel(iChan).Loc = points(:,1)';
                 comment = hdr.channelname{iChan}
@@ -272,9 +269,6 @@ for iChan = 1:hdr.numberchannels
             end
             
         case {'MEG', 'MEGREF'}
-            %upb_applied, weights_configured (MEG only), weights_applied (MEG only); %TODO
-            %gain = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'gain'); %TODO
-
             try
                 ChannelMat.Channel(iChan).Loc = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/position']) ./1000; %m
                 ChannelMat.Channel(iChan).Orient = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/orientation']);
@@ -306,9 +300,9 @@ end
 %columns is the same as the number of strings in ref_chans.
 
 try
-    tgt_chans = h5read(DataFile,'/config/weights/Etable/tgt_chans'); %TODO, what is the Etable?
-    ref_chans = h5read(DataFile,'/config/weights/Etable/ref_chans');
-    weights = h5read(DataFile,'/config/weights/Etable/weights')'; % TODO, what is Etable??
+    tgt_chans = h5read(DataFile,['/config/weights/' hdr.WeightsApplied{1} '/tgt_chans']); 
+    ref_chans = h5read(DataFile,['/config/weights/' hdr.WeightsApplied{1} '/ref_chans']);;
+    weights   = h5read(DataFile,['/config/weights/' hdr.WeightsApplied{1} '/weights']);
 
 
     % Get MEG and MEG REF channels indices in ChannelMat
@@ -375,7 +369,7 @@ try
         [~,label] = fileparts(info.Groups(iPt).Name);
         points = h5read(DataFile,[info.Groups(iPt).Name '/location']);
         % Store coil locations in meters
-        ChannelMat.HeadPoints.Loc(:,npoints) =  mean(points(:,1),2) ./1000; %(m) % TODO: which points?
+        ChannelMat.HeadPoints.Loc(:,npoints) =  mean(points(:,1),2) ./1000; %(m) % Mean position over all digizations for the session
         ChannelMat.HeadPoints.Label{npoints} = label;
         ChannelMat.HeadPoints.Type{npoints} = 'HPI';
     end
