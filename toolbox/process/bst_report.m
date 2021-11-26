@@ -1431,7 +1431,7 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     end
     % Send by email
     options = weboptions('CertificateFilename','');
-    resp = webwrite('http://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html,options);
+    resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html,options);
     % Return status
     isOk = isequal(resp, 'ok');
 end
