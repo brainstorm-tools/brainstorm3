@@ -65,6 +65,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.delete.Comment = 'Delete FreeSurfer subject if it already exists';
     sProcess.options.delete.Type    = 'checkbox';
     sProcess.options.delete.Value   = 0;
+    % Option: Asynchronous
+    sProcess.options.async.Comment = '<HTML><BR>Run asynchronously<FONT color="#707070"><BR>Start recon-all in a separate process<BR>Output must be imported manually when done</FONT>';
+    sProcess.options.async.Type    = 'checkbox';
+    sProcess.options.async.Value   = 0;
 end
 
 
@@ -98,8 +102,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get extra parameters
     param = sProcess.options.param.Value;
     isDelete = sProcess.options.delete.Value;
+    isAsync = sProcess.options.async.Value;
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0, param, isDelete);
+    [isOk, errMsg] = Compute(iSubject, [], nVertices, 0, param, isDelete, isAsync);
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -112,7 +117,7 @@ end
 
 
 %% ===== COMPUTE SEGMENTATION =====
-function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, param, isDelete)
+function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, param, isDelete, isAsync)
     errMsg = '';
     isOk = 0;
 
@@ -231,9 +236,28 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     else
         strCall = ['recon-all -all -subject "' subjid '" -i "' T1Nii '" ' param];
     end
-    bst_progress('text', ['<HTML>Running FreeSurfer recon-all ' strT1T2 '...<BR><FONT COLOR="#707070"><I>(see command window)</I></FONT>']);
-    disp(['BST> System call: ' strCall]);
-    status = system(strCall)
+    % Async call
+    if isAsync
+        LogFile = bst_fullfile(TmpDir, ['recon-all-' subjid '.log']);
+        strCall = [strCall, ' > ' LogFile ' &'];
+        disp(['BST> System call: ' strCall]);
+        disp([10 'BST> For following the execution of FreeSurfer, open a terminal and run: ' 10 ...
+              '     tail -f ' LogFile]);
+        disp([10 'BST> For stopping all the executions of FreeSurfer, run one of the following: ' 10 ...
+              '     pkill -f recon-all' 10 ...
+              '     killall recon-all']);
+        disp([10 'BST> For listing the current FreeSurfer processes, run: ' 10 ...
+              '     ps -aux | grep recon-all' 10]);
+        % Run execution
+        status = system(strCall);
+    % Sync call
+    else
+        bst_progress('text', ['<HTML>Running FreeSurfer recon-all ' strT1T2 '...<BR><FONT COLOR="#707070"><I>(see command window)</I></FONT>']);
+        disp(['BST> System call: ' strCall]);
+        % Run execution
+        status = system(strCall)
+    end
+
     % Error handling
     if (status ~= 0)
         errMsg = ['FreeSurfer recon-all failed.', 10, 'Check the Matlab command window for more information.'];
@@ -241,13 +265,15 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     end
 
     % ===== IMPORT OUTPUT FOLDER =====
-    % Import FreeSurfer anatomy folder
-    isExtraMaps = 0;
-    isKeepMri = 1;
-    isVolumeAtlas = 1;
-    errMsg = import_anatomy_fs(iSubject, SubjDir, nVertices, isInteractive, [], isExtraMaps, isVolumeAtlas, isKeepMri);
-    if ~isempty(errMsg)
-        return;
+    % Import FreeSurfer anatomy folder (sync call only)
+    if ~isAsync
+        isExtraMaps = 0;
+        isKeepMri = 1;
+        isVolumeAtlas = 1;
+        errMsg = import_anatomy_fs(iSubject, SubjDir, nVertices, isInteractive, [], isExtraMaps, isVolumeAtlas, isKeepMri);
+        if ~isempty(errMsg)
+            return;
+        end
     end
     % Return success
     isOk = 1;
@@ -277,7 +303,8 @@ function ComputeInteractive(iSubject, iMris) %#ok<DEFNU>
     % Run FreeSurfer
     isInteractive = 1;
     isDelete = 1;
-    [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, param, isDelete);
+    isAsync = 0;
+    [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, param, isDelete, isAsync);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'FreeSurfer MRI segmentation', 0);
