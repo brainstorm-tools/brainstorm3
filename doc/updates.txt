@@ -7,6 +7,7 @@ November 2021
 - GUI: 3D MRI display: Moving slice by clicking on it
 - GUI: Automatic registration reports the distance headpoints/scalp
 - Plugins: Display usage statistics
+- Reports: Send HTML report by email
 --------------------------------------------------------------
 October 2021
 - Anatomy: Run MRI segmentation with BrainSuite
