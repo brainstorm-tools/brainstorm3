@@ -303,7 +303,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     source_diff_dics = ft_math(cfg, s_data.pst, s_data.bsl);
                     source_diff_dics.pow(isnan(source_diff_dics.pow))=0;
                     source_diff_dics.pow(source_diff_dics.pow>0)=0;
-                    source_diff_dics.pow = abs(source_diff_dics.pow);
                 case 'ers'
                     cfg = [];
                     cfg.parameter = 'pow';
@@ -311,7 +310,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     source_diff_dics = ft_math(cfg, s_data.pst, s_data.bsl);
                     source_diff_dics.pow(isnan(source_diff_dics.pow))=0;
                     source_diff_dics.pow(source_diff_dics.pow<0)=0;
-                    source_diff_dics.pow = abs(source_diff_dics.pow);
                 case 'both'
                     cfg = [];
                     cfg.parameter = 'pow';
@@ -377,7 +375,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 case 'abs'
                     source_diff_dics.pow = abs((source_diff_dics.pow));
                 case 'raw'
-                    source_diff_dics.pow = abs((source_diff_dics.pow));
+                    source_diff_dics.pow = source_diff_dics.pow;
             end
             ResultsMat.ImageGridAmp  = source_diff_dics.pow;
             ResultsMat.cfg           = source_diff_dics.cfg;
