@@ -189,7 +189,7 @@ function PlugDesc = GetSupported(SelPlug)
     end
     PlugDesc(end).TestFile       = 'mcxlabcl.m';
     PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
-    PlugDesc(end).CompiledStatus = 1;
+    PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
     
