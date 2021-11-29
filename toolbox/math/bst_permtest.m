@@ -132,8 +132,8 @@ for i = 0:nPerm
     switch (TestType)
         case {'ttest_equal', 'ttest_unequal', 'absmean', 'absmean_unconstr'}  % INDEPENDENT
             % Compute mean and variance
-            [mA,vA,nAvgA] = bst_meanvar(X(iA,:), isZeroBad);
-            [mB,vB,nAvgB] = bst_meanvar(X(iB,:), isZeroBad);
+            [mA,vA,nAvgA] = bst_meanvar(double(X(iA,:)), isZeroBad);
+            [mB,vB,nAvgB] = bst_meanvar(double(X(iB,:)), isZeroBad);
             % Convert number of good samples to double
             nAvgA = double(nAvgA);
             nAvgB = double(nAvgB);
@@ -167,7 +167,7 @@ for i = 0:nPerm
             % Compute difference of pairs (A-B)
             D = X(iA,:) - X(iB,:);
             % Compute mean and variance
-            [mD,vD,nAvgA] = bst_meanvar(D, isZeroBad);
+            [mD,vD,nAvgA] = bst_meanvar(double(D), isZeroBad);
             % Convert number of good samples to double
             nAvgA = double(nAvgA);
             % Remove null variances
