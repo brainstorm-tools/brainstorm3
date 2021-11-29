@@ -1410,6 +1410,9 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     end
     % Get report
     if isequal(ReportFile, 'current')
+        if isempty(GlobalData)
+            error('Brainstorm is not started.');
+        end
         ReportsMat = GlobalData.ProcessReports;
     else
         ReportsMat = load(ReportFile, 'Reports');
@@ -1430,8 +1433,13 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
         end
     end
     % Send by email
-    options = weboptions('CertificateFilename','');
-    resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html,options);
+    % Matlab <= 2016a
+    if bst_verlessthan(901)
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html);
+    else
+        options = weboptions('CertificateFilename','');
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html, options);
+    end
     % Return status
     isOk = isequal(resp, 'ok');
 end
