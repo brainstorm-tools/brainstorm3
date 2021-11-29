@@ -1254,7 +1254,8 @@ function SetDistanceOptions(sOptions)
                 return;
             end
             % Refresh figure with new threshold
-            figure_connect('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, 150);
+            MaxDistanceThreshold = Inf;
+            figure_connect('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, MaxDistanceThreshold);
             figure_connect('UpdateColormap', hFig);
         end
         
@@ -1271,7 +1272,8 @@ function SetDistanceOptions(sOptions)
                 return;
             end
             % Refresh figure with new threshold
-            figure_connect_viz('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, 150);
+            MaxDistanceThreshold = Inf;
+            figure_connect_viz('SetMeasureDistanceFilter', hFig, sOptions.MinDistanceThreshold, MaxDistanceThreshold);
             figure_connect_viz('UpdateColormap', hFig);
         end
         
