@@ -22,7 +22,7 @@ function [sFile, ChannelMat] = in_fopen_megscan(DataFile)
 % =============================================================================@
 %
 % Authors: Elizabeth Bock, 2019
-
+%          Richard Aveyard, 2021
 
 %% ===== Primary acquisition =====
 % Mandatory: /config, /subject, /acquisitions
@@ -62,39 +62,50 @@ selObj = jCombo.getSelectedObjects();
 selCond = regexp(char(selObj(1)),':','split');
 pAcq = selCond{1};
 
+% Read information of interest
+hdr.format = 'MEGSCAN-HDF5';
+hdr.acquisitionname = pAcq;
 AcqInfo = h5info(DataFile,pAcq,'TextEncoding','UTF-8');
 % Datasets
-sAcq.Chan = h5read(DataFile,[pAcq '/channel_list/']);
-sAcq.Data = h5read(DataFile,[pAcq '/data/']);
+hdr.channelname = h5read(DataFile,[pAcq '/channel_list/']);
+hdr.numberchannels = size(hdr.channelname, 1);
+Data = h5read(DataFile,[pAcq '/data/']);
+hdr.nTime = size(Data,2);
 
 % Acquisition Attributes: Mandatory
 try
-sAcq.Type = h5readatt(DataFile,pAcq,'acq_type');
-sAcq.Seq = h5readatt(DataFile,pAcq,'sequence'); % what is this?
-sAcq.SampleRate = h5readatt(DataFile,pAcq,'sample_rate');
-sAcq.StartTime = h5readatt(DataFile,pAcq,'start_time');
+hdr.Type = h5readatt(DataFile,pAcq,'acq_type');
+hdr.Seq = h5readatt(DataFile,pAcq,'sequence'); % Order of when acquisitions were recorded (ie first acquisition has sequence=1, second has sequence=2)
+hdr.SampleRate = h5readatt(DataFile,pAcq,'sample_rate');
+hdr.StartTime = h5readatt(DataFile,pAcq,'start_time');
 catch
     error('Invalid MEGSCAN HDF5 file: Missing mandatory acquisition attributes');
 end
 % Acquisition Attributes: Optional
+hdr.Desc = '';
+hdr.UpbApplied = 0;
+hdr.WeightsConfig = [];
+hdr.WeightsApplied = [];
+hdr.CohActive = [];
+hdr.SubjPos = '';
 attnames = {AcqInfo.Attributes.Name};
 if ismember('description',attnames)
-    sAcq.Desc = h5readatt(DataFile,pAcq,'description');
+    hdr.Desc = h5readatt(DataFile,pAcq,'description');
 end
 if ismember('upb_applied',attnames)
-    sAcq.UpbApplied = h5readatt(DataFile,pAcq,'upb_applied');
+    hdr.UpbApplied = h5readatt(DataFile,pAcq,'upb_applied');
 end
-if ismember('upb_applied',attnames)
-    sAcq.WeightsConfig = h5readatt(DataFile,pAcq,'weights_configured'); %TODO 
+if ismember('weights_configured',attnames)
+    hdr.WeightsConfig = h5readatt(DataFile,pAcq,'weights_configured');
 end
 if ismember('weights_applied',attnames)
-    sAcq.WeightsApplied = h5readatt(DataFile,pAcq,'weights_applied');   %TODO
+    hdr.WeightsApplied = h5readatt(DataFile,pAcq,'weights_applied');
 end
 if ismember('coh_active',attnames)
-    sAcq.CohActive = h5readatt(DataFile,pAcq,'coh_active');
+    hdr.CohActive = h5readatt(DataFile,pAcq,'coh_active');
 end
 if ismember('subject_position',attnames)
-    sAcq.SubjPos = h5readatt(DataFile,pAcq,'subject_position');
+    hdr.SubjPos = h5readatt(DataFile,pAcq,'subject_position');
 end
 
 % Epochs
@@ -131,19 +142,6 @@ catch
     error('Invalid MEGSCAN HDF5 file: Missing dataset "/subject".');
 end
 
-% Read information of interest
-hdr.format = 'MEGSCAN-HDF5';
-hdr.acquisitionname = pAcq;
-hdr.numberchannels = size(sAcq.Chan, 1);
-hdr.samplingfrequency = sAcq.SampleRate;
-hdr.channelname = sAcq.Chan;
-hdr.nTime = size(sAcq.Data,2);
-if isfield(sAcq,'UpbApplied')
-    hdr.UpbApplied = sAcq.UpbApplied;
-else
-    hdr.UpbApplied = [];
-end
-
 % Information not found (yet)
 hdr.amplifiername = '';
 hdr.nEpochs       = 1;
@@ -158,19 +156,28 @@ sFile = db_template('sfile');
 sFile.filename = DataFile;
 sFile.fid = [];
 sFile.format = 'MEGSCAN-HDF5';
-sFile.device = model;
+% keep track of which device the data was originally scanned
+if contains(model,'WHS')
+    sFile.device = '4d';
+elseif contains(model,'MEGSCAN')
+    sFile.device = 'MEGSCAN channels';
+else
+    sFile.device = model;
+end
 sFile.byteorder = 'b';
-sFile.header = hdr;
+
 % Properties of the recordings
-sFile.prop.sfreq  = double(hdr.samplingfrequency);
-sFile.prop.times  = ([0, hdr.nTime-1] - hdr.pretrigger) ./ sFile.prop.sfreq;
-sFile.prop.nAvg   = 1;
-sFile.channelflag = ones(hdr.numberchannels,1); % GOOD=1; BAD=-1;
+sFile.prop.samples = [0, hdr.nTime-1] - hdr.pretrigger;
+sFile.prop.sfreq   = double(hdr.SampleRate);
+sFile.prop.times   = sFile.prop.samples ./ sFile.prop.sfreq;
+sFile.prop.nAvg    = 1;
+sFile.channelflag  = ones(hdr.numberchannels,1); % GOOD=1; BAD=-1;
 % Epochs, if any
 if (hdr.nEpochs > 1)
     for i = 1:hdr.nEpochs
         sFile.epochs(i).label   = sprintf('Trial #%d', i);
-        sFile.epochs(i).times   = sFile.prop.times;
+        sFile.epochs(i).samples = sFile.prop.samples;
+	sFile.epochs(i).times   = sFile.prop.times;
         sFile.epochs(i).nAvg    = 1;
         sFile.epochs(i).select  = 1;
         sFile.epochs(i).bad         = 0;
@@ -184,24 +191,22 @@ for iEvt = 1:length(hdr.markername)
     iOcc = find(hdr.marker(:,3) == iEvt);
     % Create event structure
     sFile.events(iEvt).label   = hdr.markername{iEvt};
-    samples = hdr.marker(iOcc,1)';
+    sFile.events(iEvt).samples = hdr.marker(iOcc,1)';
     sFile.events(iEvt).epochs  = hdr.marker(iOcc,2)';
     if ~isempty(sFile.epochs)
-        for i = 1:length(samples)
+        for i = 1:length(sFile.events(iEvt).samples)
             iEpoch =  sFile.events(iEvt).epochs(i);
-            samples(i) = samples(i) + round(sFile.epochs(iEpoch).times(1) * sFile.prop.sfreq) - 1;
+            sFile.events(iEvt).samples(i) = sFile.events(iEvt).samples(i) + sFile.epochs(iEpoch).samples(1) - 1;
         end
     end
-    sFile.events(iEvt).times    = samples ./ sFile.prop.sfreq;
-    sFile.events(iEvt).select   = 1;
-    sFile.events(iEvt).channels = cell(1, size(sFile.events(iEvt).times, 2));
-    sFile.events(iEvt).notes    = cell(1, size(sFile.events(iEvt).times, 2));
+    sFile.events(iEvt).times   = sFile.events(iEvt).samples ./ sFile.prop.sfreq;
+    sFile.events(iEvt).select  = 1;
 end
 
 %% ===== CHANNELS STRUCTURE =====
 % Initialize structure
 ChannelMat = db_template('channelmat');
-ChannelMat.Comment = 'MEGSCAN channels';
+ChannelMat.Comment = sFile.device;
 % Compensation
 ChannelMat.MegRefCoef = [];
 % projectors
@@ -216,70 +221,143 @@ for iChan = 1:hdr.numberchannels
     ChannelMat.Channel(iChan).Name    = hdr.channelname{iChan};
     ChannelMat.Channel(iChan).Type    = type;
     ChannelMat.Channel(iChan).Weight  = 1;
-    
+   
+    % If the Units-per-bit has not been applied, then store this value here in the weight field for application later
+    if hdr.UpbApplied == 0
+        upb = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'units_per_bit');
+        hdr.ChannelUnitsPerBit(iChan) = upb;
+    end
+
     switch type
         case {'ANALOG'}
-            comment = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'mode');
-            ChannelMat.Channel(iChan).Comment = comment;
+            try
+                comment = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'mode');
+                if iscell(comment)
+                    comment = char(comment);
+                end
+                ChannelMat.Channel(iChan).Comment = comment;
+            catch
+                disp('');
+            end
         case {'COH'}
             % coh_active is mandatory
         case {'DIGITAL'}
-            comment = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'mode');
-            ChannelMat.Channel(iChan).Comment = comment;
+            try
+                comment = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'mode');
+                if iscell(comment)
+                    comment = char(comment);
+                end
+                ChannelMat.Channel(iChan).Comment = comment;
+            catch
+                disp('');
+            end
         case {'EEG', 'EEGREF'}
             %gain = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'gain'); %TODO
             
             try
-                info = h5info(DataFile,'/geometry/eeg','TextEncoding','UTF-8');
-                aliases = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/aliases']);
-                for iPt = 1:size(info.Groups,1)
-                    [~,label] = fileparts(info.Groups(iPt).Name);
-                    idx = find(~cellfun(@isempty,regexp(aliases,label)));
-                    if ~isempty(idx)
-                        points = h5read(DataFile,[info.Groups(iPt).Name '/location']);
-                        ChannelMat.Channel(iChan).Loc = points(:,1)';
-                        ChannelMat.Channel(iChan).Comment = label;
-                    end
+                points = h5read(DataFile,lower(['/geometry/eeg/' hdr.channelname{iChan} '/location'])) ./1000;
+                ChannelMat.Channel(iChan).Loc = points(:,1)';
+                comment = hdr.channelname{iChan}
+                if iscell(comment)
+                    comment = char(comment);
                 end
-            catch
+
+                ChannelMat.Channel(iChan).Comment = comment;
+
+	    catch
                 disp('No EEG locations')
             end
             
         case {'MEG', 'MEGREF'}
-            %upb_applied, weights_configured (MEG only), weights_applied (MEG only); %TODO
-            %gain = h5readatt(DataFile,['/config/channels/' hdr.channelname{iChan} ],'gain'); %TODO
-
             try
                 ChannelMat.Channel(iChan).Loc = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/position']) ./1000; %m
                 ChannelMat.Channel(iChan).Orient = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/orientation']);
-                ChannelMat.Channel(iChan).Comment = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/loop_shape']);
-            catch
+
+                comment = h5read(DataFile,['/config/channels/' hdr.channelname{iChan} '/loop_shape']);
+                if iscell(comment)
+                    comment = char(comment);
+                end
+
+                ChannelMat.Channel(iChan).Comment = comment;
+	    catch
                 disp(['no orientation or location for ' hdr.channelname{iChan}])
                 ChannelMat.Channel(iChan).Loc = [];
                 ChannelMat.Channel(iChan).Orient  = [];
             end
-            
-            if sAcq.UpbApplied
-                %TODO
-            end
-            
-            %weights
-%             tgt_chans = h5read(DataFile,'/config/weights/Etable/tgt_chans');
-%             chNum = hdr.channelname{iChan};
-%             cellfind = @(chNum)(@(tgt_chans)(strcmp(chNum,tgt_chans)));
-%             idx = find(cellfun(cellfind(chNum),tgt_chans));
-%             if ~isempty(idx)
-%                 weights = h5read(DataFile,'/config/weights/Etable/weights')';
-%                 ChannelMat.Channel(iChan).Weight = weights(idx,:);
-%             end
-%             ref_chans = h5read(DataFile,'/config/weights/Etable/ref_chans');
-%
-            
+
         case {'TEMPERATURE'}
-            
+
         case {'UNKNOWN'}
     end
-    
+
+end
+%% Compensation
+% ===== Weights =====
+%Find and store the reference coefficients (de-noising weights)
+%/config/weights/ are interpreted as weighting factors to apply to a
+%channel's samples to remove background noise from the data. The number of
+%rows is the same as the number of strings in tgt_chans, and the number of
+%columns is the same as the number of strings in ref_chans.
+
+try
+    tgt_chans = h5read(DataFile,['/config/weights/' hdr.WeightsApplied{1} '/tgt_chans']); 
+    ref_chans = h5read(DataFile,['/config/weights/' hdr.WeightsApplied{1} '/ref_chans']);;
+    weights   = h5read(DataFile,['/config/weights/' hdr.WeightsApplied{1} '/weights']);
+
+
+    % Get MEG and MEG REF channels indices in ChannelMat
+    iMeg = good_channel(ChannelMat.Channel, [], 'MEG');
+    iRef = good_channel(ChannelMat.Channel, [], 'MEGREF');
+
+    % Get each MEG channel indice in the weights matrix
+    iMegBst = [];
+    iMegW  = [];
+    for i = 1:length(iMeg)
+        % Find sensor name
+        iTmp = find(strcmpi(ChannelMat.Channel(iMeg(i)).Name, tgt_chans));
+        % If sensor found in compensation matrix
+        if ~isempty(iTmp)
+            iMegBst(end+1) = i;
+            iMegW(end+1)  = iTmp;
+        end
+    end
+
+    % Get each REF channel indice in the weights matrix
+    iRefBst = [];
+    iRefW  = [];
+    for i = 1:length(iRef)
+        % Find sensor name
+        iTmp = find(strcmpi(ChannelMat.Channel(iRef(i)).Name, ref_chans));
+        % If sensor found in compensation matrix
+        if ~isempty(iTmp)
+            iRefBst(end+1) = i;
+            iRefW(end+1)  = iTmp;
+        end
+    end
+
+    % Initialize returned matrix
+    ChannelMat.MegRefCoef = zeros(length(iMeg), length(iRef));
+    % Copy values in final compensation matrix
+    ChannelMat.MegRefCoef(iMegBst, iRefBst) = weights(iMegW, iRefW);
+catch
+    disp('No de-noising weights available');
+    weights = [];
+end
+
+% Code for compensation (already applied): 101 (from MNE) %TODO, how to handle this?
+
+if isempty(hdr.WeightsApplied) && ~isempty(weights)
+    % weights are available and have not been applied
+    sFile.prop.destCtfComp = 101;
+    sFile.prop.currCtfComp = 0;
+elseif ~isempty(hdr.WeightsApplied) && ~isempty(weights)
+    % weights are availabe and have been previously applied    
+    sFile.prop.destCtfComp = 101;
+    sFile.prop.currCtfComp = 101;
+else
+    % No compensation available
+    sFile.prop.destCtfComp = 0;
+    sFile.prop.currCtfComp = 0;
 end
 
 %% HPI (coils) , Fiducials and headshape (MEGSCAN-SCS)
@@ -291,7 +369,7 @@ try
         [~,label] = fileparts(info.Groups(iPt).Name);
         points = h5read(DataFile,[info.Groups(iPt).Name '/location']);
         % Store coil locations in meters
-        ChannelMat.HeadPoints.Loc(:,npoints) =  points(:,1) ./1000; %(m)
+        ChannelMat.HeadPoints.Loc(:,npoints) =  mean(points(:,1),2) ./1000; %(m) % Mean position over all digizations for the session
         ChannelMat.HeadPoints.Label{npoints} = label;
         ChannelMat.HeadPoints.Type{npoints} = 'HPI';
     end
@@ -310,7 +388,9 @@ try
         ChannelMat.HeadPoints.Label{npoints} = label;
         ChannelMat.HeadPoints.Type{npoints} = 'CARDINAL';
     end
+    isFIDs = true;
 catch
+    isFIDs = false;
     disp('No digitized fiducial info')
 end
 try
@@ -325,6 +405,22 @@ try
     end
 catch
     disp('No digitized head-shape points')
+end
+
+try
+    info = h5info(DataFile,'/geometry/eeg','TextEncoding','UTF-8');
+    for iPt = 1:size(info.Groups,1)
+        name = info.Groups(iPt).Name;
+        spl = regexp(name,'/','split');
+        points = h5read(DataFile,[info.Groups(iPt).Name '/location']);
+        npoints = npoints+1;
+        % Store headpoints in meters
+        ChannelMat.HeadPoints.Loc(:,npoints) = points ./1000;
+        ChannelMat.HeadPoints.Label{npoints} = spl{end};
+        ChannelMat.HeadPoints.Type{npoints} = 'EEG';
+    end
+catch
+    disp('No digitized EEG locations')
 end
 
 %% Apply transformation to MEG/EEG channels
@@ -366,9 +462,14 @@ end
 % ==== MEGSCAN_SCS => CTF (MEG and EEG) ====
 % Compute rotation/translation to convert coordinates system : MEGSCAN_SCS => CTF
 % Get fiducials (NASION, LPA, RPA)
-iNas = find(~cellfun(@isempty,regexp(ChannelMat.HeadPoints.Label,'Nasion')));
-iLpa = find(~cellfun(@isempty,regexp(ChannelMat.HeadPoints.Label,'LPA')));
-iRpa = find(~cellfun(@isempty,regexp(ChannelMat.HeadPoints.Label,'RPA')));
+iNas = [];
+iLpa = [];
+iRpa = [];
+if isFIDs
+    iNas = find(~cellfun(@isempty,regexp(ChannelMat.HeadPoints.Label,'nas')));
+    iLpa = find(~cellfun(@isempty,regexp(ChannelMat.HeadPoints.Label,'lpa')));
+    iRpa = find(~cellfun(@isempty,regexp(ChannelMat.HeadPoints.Label,'rpa')));
+end
 if ~isempty(iNas) && ~isempty(iLpa) && ~isempty(iRpa)
     ChannelMat.SCS.NAS = double(ChannelMat.HeadPoints.Loc(:,iNas))'; %(m)
     ChannelMat.SCS.LPA = double(ChannelMat.HeadPoints.Loc(:,iLpa))'; %(m)
@@ -407,6 +508,9 @@ end
 % If a MEGSCAN_SCS => SCS transformation was determined
 if ~isempty(transfSCS)
     tMegscanScs2BstScs = double([transfSCS.R, transfSCS.T; 0 0 0 1]);
+    ChannelMat.SCS.R      = transfSCS.R;
+    ChannelMat.SCS.T      = transfSCS.T;
+    ChannelMat.SCS.Origin = [0,0,0];
 else
     tMegscanScs2BstScs = [];
 end
@@ -437,5 +541,6 @@ if ~isempty(tMegscanScs2BstScs)
         ChannelMat.TransfEeg{end+1} = tMegscanScs2BstScs;
     end
 end
-
+% Store the header info in the file
+sFile.header = hdr;
 end
