@@ -664,7 +664,7 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Brodmann-thresh';
         case {'lh.aparc.dktatlas40', 'rh.aparc.dktatlas40'}
             AtlasName = 'DKT40';
-        case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas'}
+        case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas', 'lh.aparc.mapped', 'rh.aparc.mapped'}  % FreeSurfer, FastSurfer
             AtlasName = 'DKT';
         case {'lh.pals_b12_brodmann', 'rh.pals_b12_brodmann'}
             AtlasName = 'PALS-B12 Brodmann';

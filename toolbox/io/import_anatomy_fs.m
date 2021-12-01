@@ -193,6 +193,15 @@ if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
     if ~isempty(iBAold) && ~isempty(iBAnew)
         AnnotRhFiles(iBAold) = [];
     end
+    % Remove temporary FastSurfer files: ?h.aparc.mapped.prefix.annot
+    iTmpL = find(~cellfun(@(c)isempty(strfind(c, 'mapped.prefix')), AnnotLhFiles));
+    if ~isempty(iTmpL)
+        AnnotLhFiles(iTmpL) = [];
+    end
+    iTmpR = find(~cellfun(@(c)isempty(strfind(c, 'mapped.prefix')), AnnotRhFiles));
+    if ~isempty(iTmpR)
+        AnnotRhFiles(iTmpR) = [];
+    end
     % Re-order the files so that FreeSurfer atlases are first (for automatic region labelling)
     iDKL = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotLhFiles));
     iDKR = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotRhFiles));
