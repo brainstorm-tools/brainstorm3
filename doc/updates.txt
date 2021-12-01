@@ -1,4 +1,7 @@
 --------------------------------------------------------------
+December 2021
+- IO: Added support for Tobii Pro Glasses export .tsv
+--------------------------------------------------------------
 November 2021
 - Anatomy: MRI segmentation with FastSurfer (T1 only)
 - Anatomy: MRI segmentation with FreeSurfer (T1+T2)
@@ -18,7 +21,7 @@ October 2021
 September 2021
 - SEEG/ECOG contact labelling from volume and surface atlases
 - Distrib: Compilation with Matlab 2021a/2021b
-- Distrib: Updated deployment and compilation scripts
+- Ditrib: Updated deployment and compilation scripts
 - Anatomy: Connectivity display with fibers in subject space
 - New plugin: MIA
 - Bugfix: Restoring mean after the PCA (scouts or unconstrained>flat)

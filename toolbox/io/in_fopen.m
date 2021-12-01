@@ -180,7 +180,7 @@ switch (FileFormat)
     case 'EEG-ERPLAB'
         [DataMat, ChannelMat] = in_data_erplab(DataFile);
     case 'EEG-MUSE-CSV'
-        [DataMat, ChannelMat] = in_data_muse_csv(DataFile);
+        [DataMat, ChannelMat] = in_data_muse_csv(DataFile, [], ImportOptions.DisplayMessages);
     case 'EEG-WS-CSV'
         [DataMat, ChannelMat] = in_data_ws_csv(DataFile);
     case 'EEG-MAT'

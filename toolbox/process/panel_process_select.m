@@ -1761,6 +1761,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % Reload options
                 GlobalData.Processes.Current = SetDefaultOptions(GlobalData.Processes.Current, FileTimeVector, 0);
                 UpdateProcessOptions();
+            else
+                jText.setText(strFiles);
             end
         end
         % Close progress bar
