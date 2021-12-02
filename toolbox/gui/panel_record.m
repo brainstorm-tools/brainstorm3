@@ -1509,7 +1509,7 @@ function JumpToEvent(iEvent, iOccur)
         % Get current time
         CurrentTime = GlobalData.UserTimeWindow.CurrentTime;
         % Distance to events times
-        distTime = events(iEvent).times(1,:) - CurrentTime;
+        distTime = mean(events(iEvent).times, 1) - CurrentTime;
         % Action: next/previous events
         switch(action)
             case {'leftarrow', 'pagedown', 'epoch-', 'epoch--'}
