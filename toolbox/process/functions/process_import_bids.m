@@ -650,7 +650,14 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 ChannelsFile = [baseName, '_channels.tsv'];
                 if file_exist(ChannelsFile)
                     % Read tsv file
-                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                    if strcmp(mod,'nirs')
+                         ChanInfo = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
+                         for i = 1:size(ChanInfo,1)
+                            ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo{i,3},ChanInfo{i,4},str2double(ChanInfo{i,5}));
+                         end   
+                    else    
+                        ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                    end    
                     % Try to add info to the existing Brainstorm channel file
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
                         % For all the loaded files
@@ -683,6 +690,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                             chanType = 'MEG';
                                         case {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'}  % CTF/4D references
                                             chanType = 'MEG REF';
+                                        case {'NIRSCWAMPLITUDE'}
+                                            chanType = 'NIRS';
                                     end
                                     ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;
