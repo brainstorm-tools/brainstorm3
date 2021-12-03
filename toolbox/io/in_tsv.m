@@ -41,6 +41,9 @@ end
     
 % Read header
 tsvHeader = str_split(fgetl(fid), Delimiter);
+if tsvHeader{1}(1) == char(65279) % WEIRD
+    tsvHeader{1} = tsvHeader{1}(2:end); 
+end    
 tsvFormat = repmat('%s ', 1, length(tsvHeader));
 tsvFormat(end) = [];
 % Read file
