@@ -145,13 +145,11 @@ end
 
 % Anatomical landmarks
 if isfield(jnirs.nirs.probe, 'landmarkLabels')
-    if size(jnirs.nirs.probe.landmarkPos3D,2) ~= 3
-        jnirs.nirs.probe.landmarkPos3D = jnirs.nirs.probe.landmarkPos3D';
-    end
+    jnirs.nirs.probe.landmarkPos3D
     
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
-        name = strtrim(str_remove_spec_chars(jnirs.nirs.probe.landmarkLabels{iLandmark}));
-        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark,:);
+        name = strtrim(str_remove_spec_chars(reshape(jnirs.nirs.probe.landmarkLabels(:,:,iLandmark),1,[])));
+        coord = scale .* jnirs.nirs.probe.landmarkPos(iLandmark,:);
         % Fiducials NAS/LPA/RPA
         switch name
             case 'Nasion'
@@ -215,7 +213,7 @@ DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 
 for iEvt = 1:length(jnirs.nirs.stim)
     
-    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(jnirs.nirs.stim(iEvt).name{:}));
+    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(jnirs.nirs.stim(iEvt).name(:)'));
     if ~isfield(jnirs.nirs.stim(iEvt), 'data')
             % Events structure
         warning(sprintf('No data found for event: %s',jnirs.nirs.stim(iEvt).name))

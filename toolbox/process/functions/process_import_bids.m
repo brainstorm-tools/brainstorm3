@@ -538,7 +538,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     end
                 end
                 % Loop on the supported modalities
-                for mod = {'meg', 'eeg', 'ieeg'}
+                for mod = {'meg', 'eeg', 'ieeg','nirs'}
                     posUnits = 'mm';
                     electrodesFile = [];
                     electrodesSpace = 'orig';
@@ -611,6 +611,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 case '.eeg',   FileFormat = 'EEG-BRAINAMP';
                 case '.edf',   FileFormat = 'EEG-EDF';
                 case '.set',   FileFormat = 'EEG-EEGLAB';
+                case '.snirf',   FileFormat = 'NIRS-SNIRF';    
                 otherwise,     FileFormat = [];
             end
             % Import file if file was identified
