@@ -57,9 +57,7 @@ end
 disp('BST> Disabling NPMKSettings:ShowuVWarning...');
 NPMKSettings = settingsManager;
 readOptions = {};
-if isfield(NPMKSettings, 'ShowuVWarning')
-    NPMKSettings.ShowuVWarning = 0;
-end
+NPMKSettings.ShowuVWarning = 0;
 if isfield(NPMKSettings, 'ShowZeroPadWarning')
     NPMKSettings.ShowZeroPadWarning = 0;
     readOptions{end+1} = 'nozeropad';

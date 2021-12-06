@@ -255,7 +255,14 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'Versions.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
-
+    PlugDesc(end).DeleteFiles    = {'NPMK/installNPMK.m', 'NPMK/Users Guide.pdf', 'NPMK/Versions.txt', ...
+                                    'NPMK/@KTUEAImpedanceFile', 'NPMK/@KTNSPOnline', 'NPMK/@KTNEVComments', 'NPMK/@KTFigureAxis', 'NPMK/@KTFigure', 'NPMK/@KTUEAMapFile/.svn', ...
+                                    'NPMK/openNSxSync.m', 'NPMK/NTrode Utilities', 'NPMK/NSx Utilities', 'NPMK/NEV Utilities', 'NPMK/LoadingEngines', ...
+                                    'NPMK/Other tools/.svn', 'NPMK/Other tools/edgeDetect.m', 'NPMK/Other tools/kshuffle.m', 'NPMK/Other tools/openCCF.m', 'NPMK/Other tools/parseCCF.m', ...
+                                    'NPMK/Other tools/periEventPlot.asv', 'NPMK/Other tools/periEventPlot.m', 'NPMK/Other tools/playSound.m', ...
+                                    'NPMK/Dependent Functions/.svn', 'NPMK/Dependent Functions/.DS_Store', 'NPMK/Dependent Functions/bnsx.dat', 'NPMK/Dependent Functions/syncPatternDetectNEV.m', ...
+                                    'NPMK/Dependent Functions/syncPatternDetectNSx.m', 'NPMK/Dependent Functions/syncPatternFinderNSx.m'};
+                                
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -368,21 +375,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'nst_get_version';
     PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
-     
-    % === MIA ===
-    PlugDesc(end+1)              = GetStruct('mia');
-    PlugDesc(end).Version        = 'github-master';
-    PlugDesc(end).Category       = 'sEEG';
-    PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).AutoLoad       = 1;
-    PlugDesc(end).CompiledStatus = 2;
-    PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
-    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
-    PlugDesc(end).GetVersionFcn  = 'mia_get_version';
-    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
-    PlugDesc(end).LoadFolders    = {'*'};
-    PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     
     % === MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
@@ -407,6 +399,21 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
+
+    % === MIA ===
+    PlugDesc(end+1)              = GetStruct('mia');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'sEEG';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).AutoLoad       = 1;
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
+    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).GetVersionFcn  = 'mia_get_version';
+    PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
@@ -1259,6 +1266,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     
     % === DELETE UNWANTED FILES ===
     if ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
+        warning('off', 'MATLAB:RMDIR:RemovedFromPath');
         for iDel = 1:length(PlugDesc.DeleteFiles)
             if ~isempty(PlugDesc.SubFolder)
                 fileDel = bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, PlugDesc.DeleteFiles{iDel});
@@ -1275,6 +1283,7 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
                 disp(['BST> Plugin ' PlugName ': Missing file: ' PlugDesc.DeleteFiles{iDel}]);
             end
         end
+        warning('on', 'MATLAB:RMDIR:RemovedFromPath');
     end
 
     % === CALLBACK: POST-INSTALL ===
