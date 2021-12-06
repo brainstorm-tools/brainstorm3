@@ -384,6 +384,30 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
     
+    % === MCXLAB CUDA ===
+    PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
+    PlugDesc(end).Version        = '2021.12.04';
+    PlugDesc(end).Category       = 'fNIRS';
+    PlugDesc(end).AutoUpdate     = 1;
+    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/git20211204/mcxlab-allinone-x86_64-git20211204.zip';
+    PlugDesc(end).TestFile       = 'mcxlab.m';
+    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).UnloadPlugs    = {'mcxlab-cl'};
+
+    % === MCXLAB CL ===
+    PlugDesc(end+1)              = GetStruct('mcxlab-cl');
+    PlugDesc(end).Version        = '2020';
+    PlugDesc(end).Category       = 'fNIRS';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/v2020/lite/mcxlabcl-allinone-x86_64-v2020.zip';
+    PlugDesc(end).TestFile       = 'mcxlabcl.m';
+    PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).UnloadPlugs    = {'mcxlab-cuda'};
+    
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
