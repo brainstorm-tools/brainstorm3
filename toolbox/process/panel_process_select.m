@@ -2664,6 +2664,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         % Switch folder if needed
         isChangeDir = 0;
         if ~isempty(fPath)
+            if ~isdir(fPath)
+                continue;
+            end
             if isempty(matlabPath)
                 matlabPath = str_split(path, pathsep);
             end

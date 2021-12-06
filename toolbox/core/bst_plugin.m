@@ -1255,14 +1255,6 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
     
-    % === SEARCH PROCESSES ===
-    % Look for process_* functions in the process folder
-    PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
-    if ~isempty(PlugProc)
-        % Remove absolute path: use only path relative to the plugin Path
-        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
-    end
-    
     % === LOAD PLUGIN ===
     % Load plugin
     [isOk, errMsg, PlugDesc] = Load(PlugDesc);
@@ -1270,14 +1262,6 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         bst_progress('removeimage');
         return;
     end
-    
-    % === SAVE PLUGIN.MAT ===
-    % Get readme and logo
-    PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
-    PlugDesc.LogoFile = GetLogoFile(PlugDesc);
-    % Update plugin.mat after loading
-    PlugDescSave = rmfield(PlugDesc, excludedFields);
-    bst_save(PlugMatFile, PlugDescSave, 'v6');
     
     % === DELETE UNWANTED FILES ===
     if ~isempty(PlugDesc.DeleteFiles) && iscell(PlugDesc.DeleteFiles)
@@ -1301,6 +1285,22 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         warning('on', 'MATLAB:RMDIR:RemovedFromPath');
     end
 
+    % === SEARCH PROCESSES ===
+    % Look for process_* functions in the process folder
+    PlugProc = file_find(PlugPath, 'process_*.m', Inf, 0);
+    if ~isempty(PlugProc)
+        % Remove absolute path: use only path relative to the plugin Path
+        PlugDesc.Processes = cellfun(@(c)file_win2unix(strrep(c, [PlugPath, filesep], '')), PlugProc, 'UniformOutput', 0);
+    end
+    
+    % === SAVE PLUGIN.MAT ===
+    % Get readme and logo
+    PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
+    PlugDesc.LogoFile = GetLogoFile(PlugDesc);
+    % Update plugin.mat after loading
+    PlugDescSave = rmfield(PlugDesc, excludedFields);
+    bst_save(PlugMatFile, PlugDescSave, 'v6');
+    
     % === CALLBACK: POST-INSTALL ===
     [isOk, errMsg] = ExecuteCallback(PlugDesc, 'InstalledFcn');
     if ~isOk
