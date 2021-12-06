@@ -133,7 +133,8 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).RequiredPlugs  = {'spm12'; 'iso2mesh'};
-
+    PlugDesc(end).DeleteFiles    = {'examples', 'brain1020.m', 'closestnode.m', 'label2tpm.m', 'slicesurf.m', 'slicesurf3.m', 'tpm2label.m', 'polylineinterp.m', 'polylinelen.m', 'polylinesimplify.m'};
+        
     % === ANATOMY: CAT12 ===
     PlugDesc(end+1)              = GetStruct('cat12');
     PlugDesc(end).Version        = 'latest';
@@ -161,6 +162,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadedFcn      = 'assignin(''base'', ''ISO2MESH_TEMP'', bst_get(''BrainstormTmpDir''));';
+    PlugDesc(end).DeleteFiles    = {'doc', 'tools', '.git_filters', 'sample', ...
+                                    'bin/cgalmesh.exe', 'bin/cgalmesh.mexglx', 'bin/cgalmesh.mexmaci', ...
+                                    'bin/cgalpoly.exe', 'bin/cgalpoly.mexglx', 'bin/cgalpoly.mexmaci', ...
+                                    'bin/cgalsimp2.exe', 'bin/cgalsimp2.mexglx', 'bin/cgalsimp2.mexmaci', 'bin/cgalsimp2.mexmac', ...
+                                    'bin/cgalsurf.exe', 'bin/cgalsurf.mexglx', 'bin/cgalsurf.mexmaci', ...
+                                    'bin/cork.exe', ...
+                                    'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', ...
+                                    'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
+                                    'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
+                                    'bin/tetgen.exe', 'bin/tetgen.mexglx', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
+                                    'bin/tetgen1.5.exe', 'bin/tetgen1.5.mexglx'};
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
@@ -223,6 +235,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).AutoLoad       = 1;
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).DeleteFiles    = {'docs', '.github'};
     
     % === I/O: ADI-SDK ===      ADInstrument SDK for reading LabChart files
     PlugDesc(end+1)              = GetStruct('adi-sdk');
@@ -358,7 +371,8 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'readme.txt';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'toolbox'};
-    PlugDesc(end).DeleteFiles    = {'ExampleDespiking.m', 'appendixpaper.pdf', 'downsample2x.m', 'examplelfpdespiking.mat', 'sta.m'};
+    PlugDesc(end).DeleteFiles    = {'ExampleDespiking.m', 'appendixpaper.pdf', 'downsample2x.m', 'examplelfpdespiking.mat', 'sta.m', ...
+                                    'toolbox/delineSignal.m', 'toolbox/despikeLFPbyChunks.asv', 'toolbox/despikeLFPbyChunks.m'};
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -375,6 +389,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'nst_get_version';
     PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
+    PlugDesc(end).DeleteFiles    = {'scripts', 'test', 'run_tests.m', 'test_suite_bak.m', '.gitignore'};
     
     % === MCXLAB CUDA ===
     PlugDesc(end+1)              = GetStruct('mcxlab-cuda');
