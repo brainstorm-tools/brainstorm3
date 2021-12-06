@@ -555,6 +555,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
                             posUnits = sCoordsystem.iEEGCoordinateUnits;
                         end
+                        if isfield(sCoordsystem, 'NIRSCoordinateUnits') && ~isempty(sCoordsystem.NIRSCoordinateUnits) && ismember(sCoordsystem.NIRSCoordinateUnits, {'mm','cm','m'})
+                            posUnits = sCoordsystem.NIRSCoordinateUnits;
+                        end
 %                         if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor) && file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
 %                             DefaultMri = bst_fullfile(BidsDir, sCoordsystem.IntendedFor);
 %                         end
