@@ -432,8 +432,8 @@ for chan = 1:nchan
     end
     % ===== EEG =====
     if ismember(chan, ieegsens)
-        % Remove EEG sensors with no positions
-        if isempty(Channel(chan).Loc)
+        % Remove EEG sensors with no positions, when there are other EEG sensors with locations
+        if isempty(Channel(chan).Loc) && any(~cellfun(@isempty, {Channel(ieegsens).Loc}))
             Channel(chan).Type = 'Misc';
         else
             Channel(chan).Type = 'EEG';
