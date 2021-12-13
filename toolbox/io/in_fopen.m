@@ -197,6 +197,8 @@ switch (FileFormat)
         end
     case 'NIRS-SNIRF'
         [DataMat, ChannelMat] = in_data_snirf(DataFile);
+    case 'EYE-TOBII-TSV'
+        [DataMat, ChannelMat] = in_data_tobii_tsv(DataFile, ImportOptions.DisplayMessages, []);
     otherwise
         error('Unknown file format');
 end
@@ -253,7 +255,7 @@ end
 if (nargout >= 4) && ~isempty(DataMat) && isfield(DataMat(1), 'Events')
     for i = 1:length(DataMat)
         if ~isempty(DataMat(i).Events)
-            DataMat.Events = struct_fix_events(DataMat.Events);
+            DataMat(i).Events = struct_fix_events(DataMat(i).Events);
         end
     end
 end

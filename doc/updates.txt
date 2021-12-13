@@ -1,6 +1,7 @@
 --------------------------------------------------------------
 December 2021
 - IO: Added support for Tobii Pro Glasses export .tsv
+- SimMEEG: Video tutorials
 --------------------------------------------------------------
 November 2021
 - Anatomy: MRI segmentation with FastSurfer (T1 only)

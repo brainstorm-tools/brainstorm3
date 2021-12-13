@@ -3626,7 +3626,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...
                              && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (size(F,1) > 5) ...
-                             && ~isempty(TsInfo.Modality) && ~strcmpi(TsInfo.Modality, 'sources') && ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta') && (TsInfo.Modality(1) ~= '$')
+                             && ~isempty(TsInfo.Modality) && ismember(TsInfo.Modality, {'EEG','MEG','EEG','SEEG'})
         GFP = sqrt(sum((F * fFactor).^2, 1));
         PlotGFP(hAxes, TimeVector, GFP, TsInfo.FlipYAxis, isFastUpdate);
     end
