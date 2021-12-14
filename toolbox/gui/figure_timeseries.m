@@ -3290,9 +3290,11 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     % Detect optimal downsample factor
     elseif ~isFastUpdate || isempty(PlotHandles.DownsampleFactor)
         % Get number of pixels in the axes
-        figPos = get(get(hAxes,'Parent'), 'Position');
-        % Keep 5 values per pixel
-        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / (figPos(3) -50) / DownsampleTimeSeries));
+        % figPos = get(get(hAxes,'Parent'), 'Position');
+        % nPixels = figPos(3) -50;
+        % Keep 5 values per pixel, and consider axes of 4000 pixels
+        nPixels = 4000;
+        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / nPixels / DownsampleTimeSeries));
     end
     % Downsample time series
     if (PlotHandles.DownsampleFactor > 1)
