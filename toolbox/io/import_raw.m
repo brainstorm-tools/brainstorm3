@@ -312,7 +312,7 @@ for iFile = 1:length(RawFiles)
             % Display message in console
             disp(['BST> File converted to binary .bst format: ' ExportFile]);
         else
-            sFileOut = sFileIn;
+            sFileOut = sFile;
         end
         
         % ===== SAVE LINK FILE =====
