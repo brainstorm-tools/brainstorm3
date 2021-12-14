@@ -1066,11 +1066,15 @@ function FigureZoom(hFig, direction, Factor, center)
             % Start by displaying the full resolution if necessary
             [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
             if (GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor > 1)
-                set(hFig, 'Pointer', 'watch');
-                drawnow;
-                GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor = 1;
-                figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
-                set(hFig, 'Pointer', 'arrow');
+                if ~isempty(GlobalData.DataSet(iDS).DataFile)
+                    set(hFig, 'Pointer', 'watch');
+                    drawnow;
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor = 1;
+                    figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
+                    set(hFig, 'Pointer', 'arrow');
+                else
+                    disp('BST> Warning: Cannot reload file with full resolution.');
+                end
             end
             % Get current time frame
             hCursor = findobj(hAxes(1), '-depth', 1, 'Tag', 'Cursor');
@@ -3292,17 +3296,18 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
         % Get number of pixels in the axes
         % figPos = get(get(hAxes,'Parent'), 'Position');
         % nPixels = figPos(3) -50;
-        % Keep 5 values per pixel, and consider axes of 4000 pixels
-        nPixels = 4000;
+        % Keep 5 values per pixel, and consider axes of 2000 pixels
+        nPixels = 2000;
         PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / nPixels / DownsampleTimeSeries));
     end
     % Downsample time series
-    if (PlotHandles.DownsampleFactor > 1)
+    if (PlotHandles.DownsampleFactor > 1) && ~isempty(GlobalData.DataSet(iDS).DataFile)
         TimeVector = TimeVector(1:PlotHandles.DownsampleFactor:end);
         F = F(:,1:PlotHandles.DownsampleFactor:end);
         if ~isempty(Std)
             Std = Std(:,1:PlotHandles.DownsampleFactor:end,:,:);
         end
+        disp(['BST> Warning: Downsampling signals for display (keeping 1 value every ' num2str(PlotHandles.DownsampleFactor) ')']);
     end
 
     % ===== SWITCH DISPLAY MODE =====
