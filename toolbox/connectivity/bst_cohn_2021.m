@@ -162,10 +162,12 @@ freq = (0: nKeep-1) * (Fs / nFFT);
 nSignalsX = size(Xs{1}, 1);
 nSignalsY = size(Ys{1}, 1);
 Sxx = zeros(nSignalsX, length(freq));
-if isempty(ImagingKernel) && ~isNxN  
-    Syy = zeros(nSignalsY, length(freq));    
-else
-    Syy = complex(zeros(nSignalsY, nSignalsY, length(freq)));
+if ~isNxN  
+    if isempty(ImagingKernel)
+        Syy = zeros(nSignalsY, length(freq));
+    else
+        Syy = zeros(size(ImagingKernel,1), length(freq));
+    end
 end
 Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
 nWin = 0;
@@ -180,16 +182,22 @@ for iFile = 1 : nFiles
     epY = fft(epy, nFFT, 2);
     epY = epY(:, 1:nKeep, :);
     clear y epy;
-    if isempty(ImagingKernel) && ~isNxN       
-        % Auto-spectrum (PSD) of y
-        Syy = Syy + sum(epY .* conj(epY), 3);
+    if ~isNxN
+        if isempty(ImagingKernel)
+            % Auto-spectrum (PSD) of y
+            Syy = Syy + sum(epY .* conj(epY), 3);
+        else
+            % Auto-spectrum (PSD) of y (sources)
+            epYSource = pagemtimes(ImagingKernel, epY);
+            Syy = Syy + sum(epYSource .* conj(epYSource), 3);
+        end   
     else
         % Cross-spectrum of y, needed in NxN case, or when Imagingkernel
         for y1 = 1 : nSignalsY
             for y2 = y1 : nSignalsY
                 tmp = sum(epY(y1, :, :) .* conj(epY(y2, :, :)), 3);
-                Syy(y1, y2, :) = squeeze(Syy(y1, y2, :)) + tmp(:);
-                Syy(y2, y1, :) = conj(Syy(y1, y2, :));
+                Sxy(y1, y2, :) = squeeze(Sxy(y1, y2, :)) + tmp(:);
+                Sxy(y2, y1, :) = conj(Sxy(y1, y2, :));
             end
         end        
     end
@@ -228,8 +236,6 @@ end
 
 %% ===== Case NxN =====
 if isNxN
-    % Cross-spectrum of y
-    Sxy = Syy;
     % Auto-spectrum (PSD) of y
     Syy = zeros(nSignalsY, length(freq));
     for iFreq = 1:length(freq) 
@@ -247,16 +253,12 @@ if ~isempty(ImagingKernel)
     if ~isNxN             
         % Initialize Sxy and Syy in source space
         Sxy_sources = complex(zeros(nSignalsX, nSourcesY, length(freq)));
-        Syy_sources = zeros(nSourcesY, length(freq));
         % Projection for each frequency
         for iFreq = 1:length(freq)
             Sxy_sources(:,:,iFreq) = Sxy(:,:,iFreq) * ImagingKernel';
-            Syy_sources(:, iFreq)  = abs(diag(ImagingKernel * Syy(:,:,iFreq) * ImagingKernel'));
         end
-        % Sxy and Syy in source space
+        % Sxy in source space
         Sxy = Sxy_sources;
-        Syy = Syy_sources;
-        % Sxx = Sxx;
     
     %% ===== Case NxN =====
     else 
