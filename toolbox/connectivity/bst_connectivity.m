@@ -107,15 +107,18 @@ if isempty(OPTIONS.isSymmetric)
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
-% Options for LoadInputFile()
-LoadOptions.LoadFull    = ~isempty(OPTIONS.TargetA) || ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});  % Load kernel-based results as kernel+data for coherence ONLY
-LoadOptions.IgnoreBad   = OPTIONS.IgnoreBad;  % From data files: KEEP the bad channels
-LoadOptions.ProcessName = OPTIONS.ProcessName;
+% Options for LoadInputFile(), for FilesA and FilesB separately
+LoadOptionsA.IgnoreBad   = OPTIONS.IgnoreBad;  % From data files: KEEP the bad channels
+LoadOptionsA.ProcessName = OPTIONS.ProcessName;
 if strcmpi(OPTIONS.ScoutTime, 'before')
-    LoadOptions.TargetFunc = OPTIONS.ScoutFunc;
+    LoadOptionsA.TargetFunc = OPTIONS.ScoutFunc;
 else
-    LoadOptions.TargetFunc = 'All';
+    LoadOptionsA.TargetFunc = 'All';
 end
+% Load kernel-based results as kernel+data for coherence ONLY
+LoadOptionsA.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
+LoadOptionsB = LoadOptionsA;
+LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
 % Use the signal processing toolbox?
 if bst_get('UseSigProcToolbox')
     hilbert_fcn = @hilbert;
@@ -140,7 +143,7 @@ if (isConcat >= 1)
     % Number of concatenated trials to process
     nTrials = length(FilesA);
     % Concatenate FileA
-    sInputA = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptions, isConcat, OPTIONS.RemoveEvoked, startValue);
+    sInputA = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, isConcat, OPTIONS.RemoveEvoked, startValue);
     if isempty(sInputA)
         bst_report('Error', OPTIONS.ProcessName, FilesA, 'Could not calculate the average of input files A: the number of signals of all the files must be identical.');
         return;
@@ -148,7 +151,7 @@ if (isConcat >= 1)
     FilesA = FilesA(1);
     % Concatenate FileB
     if ~isConnNN
-        sInputB = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptions, isConcat, OPTIONS.RemoveEvoked, startValue);
+        sInputB = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB, isConcat, OPTIONS.RemoveEvoked, startValue);
         if isempty(sInputB)
             bst_report('Error', OPTIONS.ProcessName, FilesB, 'Could not calculate the average of input files B: the number of signals of all the files must be identical.');
             return;
@@ -165,14 +168,14 @@ if (isConcat >= 1)
 % Calculate evoked responses
 elseif OPTIONS.RemoveEvoked
     % Average: Files A
-    [tmp, sAverageA] = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptions, 0, 1, startValue);
+    [tmp, sAverageA] = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, 0, 1, startValue);
     if isempty(sAverageA)
         bst_report('Error', OPTIONS.ProcessName, FilesA, 'Could not calculate the average of input files A: the dimensions of all the files must be identical.');
         return;
     end
     % Average: Files B
     if ~isConnNN
-        [tmp, sAverageB] = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptions, 0, 1, startValue);
+        [tmp, sAverageB] = LoadAll(FilesB, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB, 0, 1, startValue);
         if isempty(sAverageB)
             bst_report('Error', OPTIONS.ProcessName, FilesB, 'Could not calculate the average of input files B: the dimensions of all the files must be identical.');
             return;
@@ -194,7 +197,7 @@ for iFile = 1:length(FilesA)
     if ismember(OPTIONS.OutputMode, {'avg','input'})
         bst_progress('text', 'Loading input files...');
         % Load reference signal
-        sInputA = bst_process('LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptions);
+        sInputA = bst_process('LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA);
         if (size(sInputA.Data,2) < 2)
             bst_report('Error', OPTIONS.ProcessName, FilesA{iFile}, 'Invalid time selection, check the input time window.');
             return;
@@ -220,7 +223,7 @@ for iFile = 1:length(FilesA)
         % If a target signal was defined
         if ~isConnNN
             % Load target signal
-            sInputB = bst_process('LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptions);
+            sInputB = bst_process('LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
             if isempty(sInputB.Data)
                 bst_report('Error', OPTIONS.ProcessName, FilesB{iFile}, 'Invalid time selection, check the input time window.');
                 return;
