@@ -1,5 +1,6 @@
 function ChanLoc = channel_project_scalp(Vertices, ChanLoc)
-% CHANNEL_ALIGN_MANUAL: Align manually an electrodes net on the scalp surface of the subject.
+% CHANNEL_PROJECT_SCALP: Project EEG electrodes on a scalp surface, 
+% radially from the center of mass of the scalp surface points.
 % 
 % INPUT:
 %     - Vertices : [Mx3] positions of the scalp vertices
