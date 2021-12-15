@@ -1,7 +1,7 @@
-function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile)
+function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, isInteractive)
 % IN_DATA_FIELDTRIP: Read recordings from FieldTrip structures (ft_datatype_timelock, ft_datatype_raw)
 %
-% USAGE:  [DataMat, ChannelMat] = in_data_fieldtrip( DataFile )
+% USAGE:  [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, isInteractive)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,7 +21,12 @@ function [DataMat, ChannelMat] = in_data_fieldtrip(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2019
+% Authors: Francois Tadel, 2015-2021
+
+% Parse inputs
+if (nargin < 2) || isempty(isInteractive)
+    isInteractive = 1;
+end
 
 % Get format
 [fPath, fBase, fExt] = bst_fileparts(DataFile);
@@ -32,6 +37,8 @@ DataMat.Device   = 'FieldTrip';
 DataMat.DataType = 'recordings';
 DataMat.nAvg     = 1;
 
+
+% ===== LOAD FILE =====
 % Load structure
 ftMat = load(DataFile);
 fields = fieldnames(ftMat);
@@ -52,6 +59,8 @@ end
 nChannels = length(ftMat.label);
 DataMat.ChannelFlag = ones(nChannels, 1);
 
+
+% ===== GET SIGNALS =====
 % Data type: timelocked
 if isfield(ftMat, 'avg') && ~isempty(ftMat.avg)
     DataMat.F    = double(ftMat.avg);
@@ -62,20 +71,64 @@ if isfield(ftMat, 'avg') && ~isempty(ftMat.avg)
     if isfield(ftMat, 'dof')
         DataMat.nAvg = max(double(ftMat.dof(:)));
     end
+
 % Data type: raw
 elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
+    % === GET TRIAL INFO ===
+    % Get trial info, if available
+    trialId = ones(length(ftMat.trial), 1);
+    if isfield(ftMat, 'trialinfo') && (size(ftMat.trialinfo,1) == length(ftMat.trial)) && isnumeric(ftMat.trialinfo)
+        % Ask the user for confirmation
+        if isInteractive
+            % Ask which column to use in the trialinfo field
+            nCol = size(ftMat.trialinfo,2);
+            res = java_dialog('question', [...
+                'A field "trialinfo" with ' num2str(nCol) ' column(s) is avaiable in the file.' 10 10 ...
+                'Which column to use to label the imported trials?'], ...
+                'Trial classification', [], cat(2, 'None', cellfun(@num2str, num2cell(1:nCol), 'UniformOutput', 0)));
+            if isempty(res)
+                DataMat = [];
+                ChannelMat = [];
+                return;
+            end
+            if ~isequal(res, 'None')
+                trialId = ftMat.trialinfo(:, str2double(res));
+            end
+        % Automatic: use the first column only
+        else
+            trialId = ftMat.trialinfo(:,1);
+        end
+    end
+    
+    % === CREATE DATA STRUCTURES ===
     % Duplicate structure: return one file for each trial
     DataMat = repmat(DataMat, 1, length(ftMat.trial));
+    % Process by trial id
+    uniqueId = unique(trialId);
     % Copy the data for each trials
-    for i = 1:length(DataMat)
-        DataMat(i).F = double(ftMat.trial{i});
-        if iscell(ftMat.time)
-            DataMat(i).Time = double(ftMat.time{i});
-        else
-            DataMat(i).Time = double(ftMat.time);
+    for iId = 1:length(uniqueId)
+        % Get all the trials for this ID
+        iIdTrials = find(trialId == uniqueId(iId));
+        % Loop on trials
+        for i = 1:length(iIdTrials)
+            iTrial = iIdTrials(i);
+            % Get signals
+            DataMat(iTrial).F = double(ftMat.trial{iTrial});
+            % Get time
+            if iscell(ftMat.time)
+                DataMat(iTrial).Time = double(ftMat.time{iTrial});
+            else
+                DataMat(iTrial).Time = double(ftMat.time);
+            end
+            % Use the trial ID as the file comment
+            if (length(uniqueId) > 1)
+                DataMat(iTrial).Comment = num2str(uniqueId(iId));
+            end
+            % Add trial index to the comment
+            if (length(iIdTrials) > 1) 
+                DataMat(iTrial).Comment = [DataMat(iTrial).Comment, sprintf(' (#%d)', i)];
+            end
         end
-        % Add trial number to the comment
-        DataMat(i).Comment = [DataMat(i).Comment, sprintf(' (#%d)', i)];
     end
 end
 

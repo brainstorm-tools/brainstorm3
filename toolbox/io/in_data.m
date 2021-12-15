@@ -529,6 +529,7 @@ else
     importedBaseName = strrep(importedBaseName, '_data', '');
     % Process all the DataMat structures that were created
     ImportedData = repmat(db_template('Data'), [1, length(DataMat)]);
+    nTime = zeros(1, length(DataMat));
     for iData = 1:length(DataMat)
         % If subject name and condition were specified in the low-level import function
         if isfield(DataMat, 'SubjectName') && ~isempty(DataMat(iData).SubjectName) && isfield(DataMat, 'Condition') && ~isempty(DataMat(iData).Condition)
@@ -537,8 +538,7 @@ else
             newFileName = importedBaseName;
         end
         % Produce a default data filename          
-        BstDataFile = bst_fullfile(tmpDir, ['data_' newFileName '.mat']);
-        BstDataFile = file_unique(BstDataFile);
+        BstDataFile = bst_fullfile(tmpDir, ['data_' newFileName '_' sprintf('%04d', iData) '.mat']);
         
         % Add History: File name
         FileMat = DataMat(iData); 

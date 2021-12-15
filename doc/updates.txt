@@ -1,6 +1,7 @@
 --------------------------------------------------------------
 December 2021
 - IO: Added support for Tobii Pro Glasses export .tsv
+- IO: Add support for FieldTrip trialinfo field
 - SimMEEG: Video tutorials
 --------------------------------------------------------------
 November 2021

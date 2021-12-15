@@ -190,10 +190,10 @@ switch (FileFormat)
     case 'EEG-TVB'
         [DataMat, ChannelMat] = in_data_tvb(DataFile);
     case 'FT-TIMELOCK'
-        [DataMat, ChannelMat] = in_data_fieldtrip(DataFile);
+        [DataMat, ChannelMat] = in_data_fieldtrip(DataFile, ImportOptions.DisplayMessages);
         % Check that time is linear
-        if (length(DataMat(1).Time) > 2) && any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
-            error(['The input file has a non-linear time vector.' 10 'This is currently not supported, interpolate your recordings on continuous time vector first.']);
+        if ~isempty(DataMat) && (length(DataMat(1).Time) > 2) && any(abs((DataMat(1).Time(2) - DataMat(1).Time(1)) - diff(DataMat(1).Time)) > 1e-3)
+            error(['The input file has a non-linear time vector.' 10 'This is currently not supported, please interpolate your recordings on continuous time vector first.']);
         end
     case 'NIRS-SNIRF'
         [DataMat, ChannelMat] = in_data_snirf(DataFile);
