@@ -275,7 +275,7 @@ function PlugDesc = GetSupported(SelPlug)
                                     'NPMK/Other tools/periEventPlot.asv', 'NPMK/Other tools/periEventPlot.m', 'NPMK/Other tools/playSound.m', ...
                                     'NPMK/Dependent Functions/.svn', 'NPMK/Dependent Functions/.DS_Store', 'NPMK/Dependent Functions/bnsx.dat', 'NPMK/Dependent Functions/syncPatternDetectNEV.m', ...
                                     'NPMK/Dependent Functions/syncPatternDetectNSx.m', 'NPMK/Dependent Functions/syncPatternFinderNSx.m'};
-                                
+
     % === I/O: MFF ===
     PlugDesc(end+1)              = GetStruct('mff');
     PlugDesc(end).Version        = 'github-master';
@@ -440,9 +440,14 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).UnloadPlugs    = {'spm12', 'roast'};
-    PlugDesc(end).LoadFolders    = {'specest', 'preproc', 'forward', 'src', 'utilities', 'external/stats'};
+    PlugDesc(end).LoadFolders    = {'specest', 'preproc', 'forward', 'src', 'utilities'};
     PlugDesc(end).GetVersionFcn  = 'ft_version';
-    PlugDesc(end).LoadedFcn      = 'ft_defaults;';
+    PlugDesc(end).LoadedFcn      = ['global ft_default; ' ...
+                                    'ft_default = []; ' ...
+                                    'if exist(''filtfilt'', ''file''), ft_default.toolbox.signal=''matlab''; end; ' ...
+                                    'if exist(''nansum'', ''file''), ft_default.toolbox.stats=''matlab''; end; ' ...
+                                    'if exist(''rgb2hsv'', ''file''), ft_default.toolbox.images=''matlab''; end; ' ...
+                                    'ft_defaults;'];
     
     % === SPM12 ===
     PlugDesc(end+1)              = GetStruct('spm12');
