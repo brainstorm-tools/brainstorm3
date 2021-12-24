@@ -1,5 +1,10 @@
-function pyObj = bst_mat2py(matArray)
+function pyObj = bst_mat2py(matArray, isForced)
 % BST_MAT2PY: Converts Matlab matrices to Python arrays
+% 
+% INPUTS:
+%    - matArray: Matlab array to convert to a Python array
+%    - isForced: Boolean, if 1: force a manual conversion of the array.
+%                Useful for preventing Matlab from transposing the row vectors into column vectors.
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,13 +27,18 @@ function pyObj = bst_mat2py(matArray)
 % Authors: Martin Cousineau, 2019
 %          Francois Tadel, 2020
 
+% Parse inputs
+if (nargin < 2) || isempty(isForced)
+    isForced = 0;
+end
+
 % Get Matlab version
 MatlabVersion = bst_get('MatlabVersion');
 % Empty objects
 if isempty(matArray)
     pyObj = py.None;
 % Matlab >= 2020b: Can convert everything
-elseif (MatlabVersion >= 909) 
+elseif (MatlabVersion >= 909) && ~isForced
     pyObj = matArray;
 % Matlab <= 2020a: Must do some manual conversions
 else
