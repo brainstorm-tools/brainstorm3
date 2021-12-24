@@ -129,7 +129,12 @@ bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
 T1File = file_find(FsDir, 'T1.mgz', 2);
 T2File = file_find(FsDir, 'T2.mgz', 2);
 if isempty(T1File)
-    errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+    T1File = file_find(FsDir, '*.nii.gz', 0);
+    if ~isempty(T1File)
+        T1Comment = 'MRI';
+    else
+        errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+    end
 elseif ~isempty(T1File) && ~isempty(T2File)
     T1Comment = 'MRI T1';
     T2Comment = 'MRI T2';
