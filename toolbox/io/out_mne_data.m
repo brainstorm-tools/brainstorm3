@@ -172,7 +172,7 @@ mneInfo{'description'} = DataMat.Comment;
 % Bad channels
 iBad = find(DataMat.ChannelFlag == -1);
 if ~isempty(iBad)
-    mneInfo{'bads'} = {ChannelMat.Channel(iBad).Name};
+    mneInfo{'bads'} = py.list({ChannelMat.Channel(iBad).Name});
 end
 % Mark projectors as applied (data loaded with UseSSP=1)
 for iProj = 1:length(mneInfo{'projs'})
