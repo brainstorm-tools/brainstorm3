@@ -110,9 +110,12 @@ for iChan = 1:length(iChannels)
 end
 % Create info object
 mneInfo = py.mne.create_info(ch_names, 1000, ch_types);
+% Unlocking Info object
+mneSetStatus = py.getattr(mneInfo, '__setstate__');
+mneSetStatus(py.dict(pyargs('_unlocked', true)));
 % Add Brainstorm version
 bstver = bst_get('Version');
-mneInfo{'creator'} = ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'];
+mneInfo{'hpi_meas'} = py.list(py.dict(pyargs('creator', ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'])));
 
 
 % ===== TRANSFORMATIONS =====
@@ -388,6 +391,8 @@ if ~isempty(ChannelMat.MegRefCoef)
 %             Were the compensation data saved in calibrated form.
 end
 
+% Locking Info object again
+mneSetStatus(py.dict(pyargs('_unlocked', false)));
 
 
 end
