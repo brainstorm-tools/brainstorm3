@@ -4,6 +4,7 @@ December 2021
 - IO: Add support for FieldTrip trialinfo field
 - Anatomy: Add support for InfantFS / infant_recon_all
 - SimMEEG: Video tutorials
+- Distrib: Removed JAVA3D/JOGL support + older connectivity graph display
 --------------------------------------------------------------
 November 2021
 - Anatomy: MRI segmentation with FastSurfer (T1 only)

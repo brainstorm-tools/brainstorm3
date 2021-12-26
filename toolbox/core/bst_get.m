@@ -157,7 +157,6 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
 %    - bst_get('SystemCopy')            : {0,1} - If 1, uses the system calls mv/cp instead of movefile/copyfile (Linux only)
-%    - bst_get('JOGLVersion')           : {0,1,2}, Detect the current version of JOGL available in Matlab
 %    - bst_get('DefaultFormats')        : Default formats for importing/exporting data, channels, ... (last used)
 %    - bst_get('BFSProperties')         : Conductivities and thicknesses for 3-shell spherical forward model
 %    - bst_get('ImportDataOptions')     : Import options for recordings
@@ -2731,18 +2730,6 @@ switch contextName
             else
                 argout1 = 100;
             end
-        end
-        
-    case 'JOGLVersion'
-        % If JOGL1 is available
-        if exist('javax.media.opengl.GLCanvas', 'class')
-            argout1 = 1;
-        % If JOGL2 is available
-        elseif exist('javax.media.opengl.awt.GLCanvas', 'class')
-            argout1 = 2;
-        % No JOGL available
-        else
-            argout1 = 0;
         end
 
     case 'TSDisplayMode'

@@ -5,7 +5,7 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 %
 % INPUT: 
 %     - TimefreqFile : Path to connectivity file to visualize
-%     - DisplayMode  : {'Image', 'GraphFull', 'Fibers'}
+%     - DisplayMode  : {'GraphFull'}
 %     - hFig         : If defined, display file in existing figure
 %
 % OUTPUT : 
@@ -31,8 +31,8 @@ function [hFig, iDS, iFig] = view_connect(TimefreqFile, DisplayMode, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2019
-
+% Authors: Francois Tadel, 2012-2016; Martin Cousineau, 2019-2021;
+% Helen Lin & Yaqi Li, 2020-2021
 
 %% ===== PARSE INPUTS =====
 if (nargin < 2)
@@ -58,19 +58,14 @@ end
 global GlobalData;
 iDS = [];
 iFig = [];
-% Check if OpenGL is activated
-if strcmpi(DisplayMode, 'GraphFull')
-%     if (bst_get('DisableOpenGL') == 1)
-%         bst_error(['Connectivity graphs require the OpenGL rendering to be enabled.' 10 ...
-%                    'Please go to File > Edit preferences...'], 'View connectivity matrix', 0);
-%         return;
-%     else
-    if ~exist('org.brainstorm.connect.GraphicsFramework', 'class')
-        bst_error(['The OpenGL connectivity graph is not available for your version of Matlab.' 10 10 ...
-                   'You can use these tools by running the compiled version: ' 10 ...
-                   'see the Installation page on the Brainstorm website.'], 'View connectivity matrix', 0);
+
+if (strcmpi(DisplayMode, 'GraphFull'))
+    % Visualization tool only available starting from R2014b
+    if bst_get('MatlabVersion') < 804
+        bst_error(['The connectivity graph is not available for your version of Matlab.' 10 ...
+                   'It is only available starting from MATLAB Release 2014b.'], 'View connectivity graph', 0);
         return;
-    end
+    end    
 end
 
 
@@ -92,6 +87,7 @@ switch file_gettype(TimefreqFile)
     otherwise
         error('File type not supported.');
 end
+
 % Progress bar
 bst_progress('start', 'View connectivity map', 'Loading data...');
 % Load file
@@ -99,6 +95,7 @@ bst_progress('start', 'View connectivity map', 'Loading data...');
 if isempty(iDS)
     return;
 end
+
 % Detect modality
 Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
 % Check that the matrix is square: cannot display [NxM] connectivity matrix where N~=M
@@ -149,17 +146,10 @@ if strcmpi(DisplayMode, 'Image')
     % Close progress bar and return
     bst_progress('stop');
     return;
-
-end
-
-% Check numbers of rows
-if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames) <= 2)
-    bst_error('Not enough nodes to display a connectivity graph.', 'View connectivity matrix', 0);
-    return;
 end
 
 
-%% ===== CREATE FIGURE =====
+%% ===== CREATE MATLAB FIGURE =====
 if isempty(hFig)
     % Prepare FigureId structure
     FigureId          = db_template('FigureId');
@@ -219,12 +209,14 @@ setappdata(hFig, 'DataFile',     GlobalData.DataSet(iDS).DataFile);
 setappdata(hFig, 'StudyFile',    GlobalData.DataSet(iDS).StudyFile);
 setappdata(hFig, 'SubjectFile',  GlobalData.DataSet(iDS).SubjectFile);
 setappdata(hFig, 'plotFibers',   plotFibers);
+
 % Static dataset
 isStatic = (GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples <= 1) || ...
            ((GlobalData.DataSet(iDS).Timefreq(iTimefreq).NumberOfSamples == 2) && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,1,:,:,:), GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(:,2,:,:,:)));
 setappdata(hFig, 'isStatic', isStatic);
 isStaticFreq = (size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF,3) <= 1);
 setappdata(hFig, 'isStaticFreq', isStaticFreq);
+
 % Get figure data
 TfInfo = getappdata(hFig, 'Timefreq');
 % Create time-freq information structure
@@ -236,6 +228,7 @@ TfInfo.RowName     = [];
 IsDirectionalData = 0;
 IsBinaryData = 0;
 ThresholdAbsoluteValue = 0;
+
 switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
     case 'corr',     TfInfo.Function = 'other';
                      ThresholdAbsoluteValue = 1;
@@ -257,12 +250,13 @@ switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
         end
     otherwise,       TfInfo.Function = 'other';
 end
+
 % Update figure variable
 setappdata(hFig, 'Method', GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method);
 setappdata(hFig, 'IsDirectionalData', IsDirectionalData);
 setappdata(hFig, 'IsBinaryData', IsBinaryData);
 setappdata(hFig, 'ThresholdAbsoluteValue', ThresholdAbsoluteValue);
-setappdata(hFig, 'is3DDisplay', strcmpi(DisplayMode, '3DGraph'));
+setappdata(hFig, 'is3DDisplay', 0); 
 
 % Frequency selection
 if isStaticFreq
