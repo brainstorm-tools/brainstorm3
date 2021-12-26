@@ -401,8 +401,15 @@ end
 % Find plugins that should be loaded automatically at startup
 if ~isempty(InstPlugs)
     iPlugLoad = find([InstPlugs.AutoLoad] & ~[InstPlugs.isLoaded]);
+    if ~isempty(iPlugLoad)
+        fprintf('BST> Loading plugins... ');
+    end
     for iPlug = iPlugLoad
-        bst_plugin('Load', InstPlugs(iPlug)); 
+        bst_plugin('Load', InstPlugs(iPlug), 0);
+        fprintf([InstPlugs(iPlug).Name, ' ']);
+    end
+    if ~isempty(iPlugLoad)
+        fprintf('\n');
     end
 end
 

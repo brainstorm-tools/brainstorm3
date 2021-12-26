@@ -10,9 +10,9 @@ function [varargout] = bst_plugin(varargin)
 %               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)            % Get full path to plugin readme file
 %                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)            % Get full path to plugin logo file
 %                  Version = bst_plugin('CompareVersions',      v1, v2)              % Compare two version strings
-% [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc)
+% [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
-% [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc)
+% [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('UnloadInteractive',    PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Install',              PlugName, isInteractive=0, minVersion=[])
 % [isOk, errMsg, PlugDesc] = bst_plugin('InstallMultipleChoice',PlugNames, isInteractive=0)  % Install at least one of the input plugins
@@ -1606,8 +1606,12 @@ end
 
 
 %% ===== LOAD =====
-% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc)
-function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
+% USAGE:  [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose=1)
+function [isOk, errMsg, PlugDesc] = Load(PlugDesc, isVerbose)
+    % Parse inputs
+    if (nargin < 2) || isempty(isVerbose)
+        isVerbose = 1;
+    end
     % Initialize returned variables 
     isOk = 0;
     % Get plugin structure from name
@@ -1625,7 +1629,9 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     % === ALREADY LOADED ===
     % If plugin is already full loaded
     if isequal(PlugDesc.isLoaded, 1) && ~isempty(PlugDesc.Path)
-        errMsg = ['Plugin ' PlugDesc.Name ' already loaded: ' PlugDesc.Path];
+        if isVerbose
+            errMsg = ['Plugin ' PlugDesc.Name ' already loaded: ' PlugDesc.Path];
+        end
         return;
     end
     % Managed plugin path
@@ -1673,7 +1679,9 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
         else
             PlugDesc.Path = TestFilePath;
         end
-        disp(['BST> Plugin ' PlugDesc.Name ' already loaded: ' PlugDesc.Path]);
+        if isVerbose
+            disp(['BST> Plugin ' PlugDesc.Name ' already loaded: ' PlugDesc.Path]);
+        end
         isOk = 1;
         return;
     end
@@ -1695,14 +1703,14 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     if ~isempty(PlugDesc.UnloadPlugs)
         for iPlug = 1:length(PlugDesc.UnloadPlugs)
             % disp(['BST> Unloading incompatible plugin: ' PlugDesc.UnloadPlugs{iPlug}]);
-            Unload(PlugDesc.UnloadPlugs{iPlug});
+            Unload(PlugDesc.UnloadPlugs{iPlug}, isVerbose);
         end
     end
     % Load required plugins
     if ~isempty(PlugDesc.RequiredPlugs)
         for iPlug = 1:size(PlugDesc.RequiredPlugs,1)
             % disp(['BST> Loading required plugin: ' PlugDesc.RequiredPlugs{iPlug,1}]);
-            [isOk, errMsg] = Load(PlugDesc.RequiredPlugs{iPlug,1});
+            [isOk, errMsg] = Load(PlugDesc.RequiredPlugs{iPlug,1}, isVerbose);
             if ~isOk
                 errMsg = ['Error processing dependencies: ', PlugDesc.Name, 10, errMsg];
                 bst_progress('removeimage');
@@ -1722,12 +1730,16 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
     isCompiled = bst_iscompiled();
     if ~isCompiled
         addpath(PlugHomeDir);
-        disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
+        if isVerbose
+            disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ' PlugHomeDir]);
+        end
         % Add specific subfolders to path
         if ~isempty(PlugDesc.LoadFolders)
             % Load all all subfolders
             if isequal(PlugDesc.LoadFolders, '*') || isequal(PlugDesc.LoadFolders, {'*'})
-                disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, '*']);
+                if isVerbose
+                    disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, '*']);
+                end
                 addpath(genpath(PlugHomeDir));
             % Load specific subfolders
             else
@@ -1737,7 +1749,9 @@ function [isOk, errMsg, PlugDesc] = Load(PlugDesc)
                         subDir = strrep(subDir, '/', '\');
                     end
                     if isdir([PlugHomeDir, filesep, subDir])
-                        disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, subDir]);
+                        if isVerbose
+                            disp(['BST> Adding plugin ' PlugDesc.Name ' to path: ', PlugHomeDir, filesep, subDir]);
+                        end
                         addpath([PlugHomeDir, filesep, subDir]);
                     end
                 end
@@ -1789,8 +1803,12 @@ end
 
 
 %% ===== UNLOAD =====
-% USAGE:  [isOk, errMsg, PlugDesc] = Unload(PlugName/PlugDesc)
-function [isOk, errMsg, PlugDesc] = Unload(PlugDesc)
+% USAGE:  [isOk, errMsg, PlugDesc] = Unload(PlugName/PlugDesc, isVerbose)
+function [isOk, errMsg, PlugDesc] = Unload(PlugDesc, isVerbose)
+    % Parse inputs
+    if (nargin < 2) || isempty(isVerbose)
+        isVerbose = 1;
+    end
     % Initialize returned variables 
     isOk = 0;
     errMsg = '';
@@ -1838,7 +1856,9 @@ function [isOk, errMsg, PlugDesc] = Unload(PlugDesc)
         for i = 1:length(allSubFolders)
             if ismember(allSubFolders{i}, matlabPath)
                 rmpath(allSubFolders{i});
-                disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
+                if isVerbose
+                    disp(['BST> Removing plugin ' PlugDesc.Name ' from path: ' allSubFolders{i}]);
+                end
             end
         end
     end
