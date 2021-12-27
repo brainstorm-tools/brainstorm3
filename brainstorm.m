@@ -75,7 +75,7 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     BstJar = [BrainstormHomeDir '/java/brainstorm.jar'];
     if ~exist(BstJar, 'file')
         disp('BST> Downloading brainstorm.jar...');
-        jarFile = bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
+        bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
     end
     % Add Brainstorm JARs to classpath
     javaaddpath([BrainstormHomeDir '/java/RiverLayout.jar']);
