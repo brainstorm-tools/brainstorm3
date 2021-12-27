@@ -161,7 +161,8 @@ jDialog.setVisible(0);
 jDialog.dispose();
 % Display the latest updates
 bst_mutex('create', 'ReleaseNotes');
-jFrame = view_text(fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), 'Release notes', 1);
+jFrame = view_text({fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), ...
+                    fullfile(installDir, 'brainstorm3', 'doc', 'updates_2020.txt')}, 'Release notes', 1);
 java_setcb(jFrame, 'WindowClosingCallback', @CloseFigureCallback);
 bst_mutex('waitfor', 'ReleaseNotes');
 
