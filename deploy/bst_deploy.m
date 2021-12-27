@@ -150,7 +150,7 @@ if ~isempty(GitDir)
     system(['xcopy ' fullfile(bstDir, 'deploy')       ' ' fullfile(GitDir, 'deploy')       '/s /e /y /q']);
     system(['xcopy ' fullfile(bstDir, 'doc')          ' ' fullfile(GitDir, 'doc')          '/s /e /y /q']);
     system(['xcopy ' fullfile(bstDir, 'external')     ' ' fullfile(GitDir, 'external')     '/s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'java')         ' ' fullfile(GitDir, 'java')         '/s /e /y /q']);
+    % system(['xcopy ' fullfile(bstDir, 'java')         ' ' fullfile(GitDir, 'java')         '/s /e /y /q']);
     system(['xcopy ' fullfile(bstDir, 'toolbox')      ' ' fullfile(GitDir, 'toolbox')      '/s /e /y /q']);
     % Start GIT GUI in the deployment folder
     system(['start /b cmd /c ""' GitExe '" --working-dir "' GitDir '""']);

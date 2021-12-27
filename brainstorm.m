@@ -68,12 +68,18 @@ else
         addpath(fullfile(BrainstormHomeDir, 'toolbox', 'misc'), '-BEGIN');
     end
 end
-    
+
 % Set dynamic JAVA CLASS PATH
 if ~exist('org.brainstorm.tree.BstNode', 'class')
+    % Download Brainstorm JARs if missing
+    BstJar = [BrainstormHomeDir '/java/brainstorm.jar'];
+    if ~exist(BstJar, 'file')
+        disp('BST> Downloading brainstorm.jar...');
+        jarFile = bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
+    end
     % Add Brainstorm JARs to classpath
     javaaddpath([BrainstormHomeDir '/java/RiverLayout.jar']);
-    javaaddpath([BrainstormHomeDir '/java/brainstorm.jar']);
+    javaaddpath(BstJar);
 end
 
 % Default action : start
