@@ -1154,7 +1154,9 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
             isUpdate = 1;
             strUpdate = ['the installed version is outdated.<BR>Minimum version required: <I>' minVersion '</I>'];
         % If an update is available and auto-updates are requested
-        elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)
+        elseif (PlugDesc.AutoUpdate == 1) && bst_get('AutoUpdates') && ...                                            % If updates are enabled
+                ((isGithubMaster(PlugDesc.URLzip) && ~strcmpi(PlugDesc.Version, OldPlugDesc.Version)) || ...          % GitHub-master: update if different commit SHA strings
+                 (~isGithubMaster(PlugDesc.URLzip) && (CompareVersions(PlugDesc.Version, OldPlugDesc.Version) > 0)))  % Regular stable version: update if online version is newer
             isUpdate = 1;
             strUpdate = 'an update is available online.';
         else
