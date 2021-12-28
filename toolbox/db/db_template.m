@@ -1186,7 +1186,8 @@ switch lower(structureName)
             'LoadedFcn',     [], ...  % String to eval or function handle to call after loading the plugin
             'UnloadedFcn',   [], ...  % String to eval or function handle to call after unloading the plugin
             'DeleteFiles',   [], ...  % Cell-array of files to delete after unzipping the plugin package (path relative to the plugin folder)
-            ... % Set when installing or loading the plugin 
+            ... % Set when installing or loading the plugin
+            'InstallDate',   '', ...  % Installation date
             'SubFolder',     '', ...  % If all the code is in a subfolder: detect this at installation time
             'Path',          [], ...  % Set at runtime: Installation path for this plugin
             'Processes',     [], ...  % List of process functions to be added to the pipeline manager

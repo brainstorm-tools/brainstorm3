@@ -5,6 +5,7 @@ December 2021
 - Anatomy: Add support for InfantFS / infant_recon_all
 - SimMEEG: Video tutorials
 - Distrib: Removed JAVA3D/JOGL support + older connectivity graph display
+- Plugins: Save GitHub commit SHA and installation date
 --------------------------------------------------------------
 November 2021
 - Anatomy: MRI segmentation with FastSurfer (T1 only)

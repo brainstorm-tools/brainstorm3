@@ -1,15 +1,16 @@
 function [varargout] = bst_plugin(varargin)
 % BST_PLUGIN:  Manages Brainstorm plugins
 %
-% USAGE:          PlugDesc = bst_plugin('GetSupported')                              % List all the plugins supported by Brainstorm
-%                 PlugDesc = bst_plugin('GetSupported',         PlugName/PlugDesc)   % Get only one specific supported plugin
-%                 PlugDesc = bst_plugin('GetInstalled')                              % Get all the installed plugins
-%                 PlugDesc = bst_plugin('GetInstalled',         PlugName/PlugDesc)   % Get a specific installed plugin
-%       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)   % Get a full structure representing a plugin
-%        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, isCache)   % Get the latest online version of some plugins
-%               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)            % Get full path to plugin readme file
-%                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)            % Get full path to plugin logo file
-%                  Version = bst_plugin('CompareVersions',      v1, v2)              % Compare two version strings
+% USAGE:          PlugDesc = bst_plugin('GetSupported')                                      % List all the plugins supported by Brainstorm
+%                 PlugDesc = bst_plugin('GetSupported',         PlugName/PlugDesc)           % Get only one specific supported plugin
+%                 PlugDesc = bst_plugin('GetInstalled')                                      % Get all the installed plugins
+%                 PlugDesc = bst_plugin('GetInstalled',         PlugName/PlugDesc)           % Get a specific installed plugin
+%       [PlugDesc, errMsg] = bst_plugin('GetDescription',       PlugName/PlugDesc)           % Get a full structure representing a plugin
+%        [Version, URLzip] = bst_plugin('GetVersionOnline',     PlugName, URLzip, isCache)   % Get the latest online version of some plugins
+%                      sha = bst_plugin('GetGithubCommit',      URLzip)                      % Get SHA of the last commit of a GitHub repository from a master.zip url
+%               ReadmeFile = bst_plugin('GetReadmeFile',        PlugDesc)                    % Get full path to plugin readme file
+%                 LogoFile = bst_plugin('GetLogoFile',          PlugDesc)                    % Get full path to plugin logo file
+%                  Version = bst_plugin('CompareVersions',      v1, v2)                      % Compare two version strings
 % [isOk, errMsg, PlugDesc] = bst_plugin('Load',                 PlugName/PlugDesc, isVerbose=1)
 % [isOk, errMsg, PlugDesc] = bst_plugin('LoadInteractive',      PlugName/PlugDesc)
 % [isOk, errMsg, PlugDesc] = bst_plugin('Unload',               PlugName/PlugDesc, isVerbose=1)
@@ -385,7 +386,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLinfo        = 'https://github.com/Nirstorm/nirstorm';
     PlugDesc(end).LoadFolders    = {'bst_plugin/core','bst_plugin/forward','bst_plugin/GLM', 'bst_plugin/inverse' , 'bst_plugin/io','bst_plugin/math' ,'bst_plugin/mbll' ,'bst_plugin/misc', 'bst_plugin/OM', 'bst_plugin/preprocessing', 'bst_plugin/ppl'};
     PlugDesc(end).TestFile       = 'process_nst_mbll.m';
-    PlugDesc(end).ReadmeFile     = 'README.md'; 
+    PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).GetVersionFcn  = 'nst_get_version';
     PlugDesc(end).RequiredPlugs  = {'brainentropy'};
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
@@ -425,7 +426,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).URLzip         = 'https://github.com/MIA-iEEG/mia/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'http://www.neurotrack.fr/mia/';
     PlugDesc(end).ReadmeFile     = 'README.md'; 
-    PlugDesc(end).GetVersionFcn  = 'mia_get_version';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
@@ -528,12 +528,15 @@ end
 
 %% ===== GET ONLINE VERSION =====
 % Get the latest online version of some plugins
-function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
+function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
     global GlobalData;
     Version = [];
-    URLzip = [];
-    % Ignore cache
-    if (nargin < 2) || isempty(isCache)
+    % Parse inputs
+    if (nargin < 2) || isempty(URLzip)
+        URLzip = [];
+    end
+    % Use cache by default, to avoid fetching online too many times the same info
+    if (nargin < 3) || isempty(isCache)
         isCache = 1;
     end
     % No internet: skip
@@ -594,13 +597,52 @@ function [Version, URLzip] = GetVersionOnline(PlugName, isCache)
                 str = bst_webread('https://raw.githubusercontent.com/Nirstorm/nirstorm/master/bst_plugin/VERSION');
                 Version = strtrim(str(9:end));
             otherwise
-                return;
+                % If downloading from github: Get last GitHub commit SHA
+                if isGithubMaster(URLzip)
+                    Version = GetGithubCommit(URLzip);
+                else
+                    return;
+                end
         end
         % Executed only if the version was fetched successfully: Keep cached version
         GlobalData.Program.PluginCache.(strCache).Version = Version;
         GlobalData.Program.PluginCache.(strCache).URLzip = URLzip;
     catch
         disp(['BST> Error: Could not get online version for plugin: ' PlugName]);
+    end
+end
+
+
+%% ===== IS GITHUB MASTER ======
+% Returns 1 if the URL is a github master/main branch
+function isMaster = isGithubMaster(URLzip)
+    isMaster = ~isempty(strfind(URLzip, 'https://github.com/')) && (~isempty(strfind(URLzip, 'master.zip')) || ~isempty(strfind(URLzip, 'main.zip')));
+end
+
+
+%% ===== GET GITHUB COMMIT =====
+% Get SHA of the GitHub HEAD commit
+function sha = GetGithubCommit(URLzip)
+    % Default result
+    sha = 'github-master';
+    % Only available after Matlab 2016b (because of matlab.net.http.RequestMessage)
+    if (bst_get('MatlabVersion') < 901)
+        return;
+    end
+    % Try getting the SHA from the GitHub API
+    try
+        % Get GitHub repository path
+        zipUri = matlab.net.URI(URLzip);
+        gitUser = char(zipUri.Path(2));
+        gitRepo = char(zipUri.Path(3));
+        % Request last commit SHA with GitHub API
+        apiUri = matlab.net.URI(['https://api.github.com/repos/' gitUser '/' gitRepo '/commits/master']);
+        request = matlab.net.http.RequestMessage;
+        request = request.addFields(matlab.net.http.HeaderField('Accept', 'application/vnd.github.VERSION.sha'));
+        r = send(request, apiUri);
+        sha = char(r.Body.Data);
+    catch
+        disp(['BST> Warning: Could not get GitHub version for URL: ' zipUrl]);
     end
 end
 
@@ -1048,8 +1090,8 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
         errMsg = ['Plugin ', PlugName ' is not supported for versions of Matlab <= ' strMinVer];
         return;
     end
-    % Get online update
-    [newVersion, newURLzip] = GetVersionOnline(PlugName);
+    % Get online update (use existing cache)
+    [newVersion, newURLzip] = GetVersionOnline(PlugName, PlugDesc.URLzip, 1);
     if ~isempty(newVersion)
         PlugDesc.Version = newVersion;
     end
@@ -1299,6 +1341,9 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     end
     
     % === SAVE PLUGIN.MAT ===
+    % Save installation date
+    c = clock();
+    PlugDesc.InstallDate = datestr(datenum(c(1), c(2), c(3), c(4), c(5), c(6)), 'dd-mmm-yyyy HH:MM:SS');
     % Get readme and logo
     PlugDesc.ReadmeFile = GetReadmeFile(PlugDesc);
     PlugDesc.LogoFile = GetLogoFile(PlugDesc);
@@ -1554,8 +1599,8 @@ function [isOk, errMsg] = UpdateInteractive(PlugName)
             errMsg = ['Plugin ' PlugName ' is not installed or not managed by Brainstorm.'];
         end
     end
-    % Get online update
-    [newVersion, newURLzip] = GetVersionOnline(PlugName);
+    % Get online update (use cache when available)
+    [newVersion, newURLzip] = GetVersionOnline(PlugName, PlugRef.URLzip, 1);
     if ~isempty(newVersion)
         PlugRef.Version = newVersion;
     end
@@ -1940,14 +1985,19 @@ function List(Target, isGui)
     if isempty(PlugDesc)
         return;
     end
+    % Sort by plugin names
+    [tmp,I] = sort({PlugDesc.Name});
+    PlugDesc = PlugDesc(I);
     % Max lengths
     headerName = 'Name';
     headerVersion = 'Version';
-    headerPath = 'Installation path';
+    headerPath = 'Install path';
     headerUrl = 'Downloaded from';
+    headerDate = 'Install date';
     maxName = max(cellfun(@length, {PlugDesc.Name, headerName}));
-    maxVer  = max(cellfun(@length, {PlugDesc.Version, headerVersion}));
+    maxVer  = min(13, max(cellfun(@length, {PlugDesc.Version, headerVersion})));
     maxUrl  = max(cellfun(@length, {PlugDesc.URLzip, headerUrl}));
+    maxDate = min(12, max(cellfun(@length, {PlugDesc.InstallDate, headerDate})));
     if isInstalled
         maxPath = max(cellfun(@length, {PlugDesc.Path, headerPath}));
         strPath = [' | ', headerPath, repmat(' ', 1, maxPath-length(headerPath))];
@@ -1960,9 +2010,10 @@ function List(Target, isGui)
     strFinal = [strFinal strIndent, ...
         headerName, repmat(' ', 1, maxName-length(headerName)) ...
         ' | ', headerVersion, repmat(' ', 1, maxVer-length(headerVersion)), ...
+        ' | ', headerDate, repmat(' ', 1, maxDate-length(headerDate)), ...
         strPath, ...
         ' | ' headerUrl 10 ...
-        strIndent, repmat('-',1,maxName), '-|-', repmat('-',1,maxVer), strPathSep, '-|-', repmat('-',1,maxUrl) 10];
+        strIndent, repmat('-',1,maxName), '-|-', repmat('-',1,maxVer), '-|-', repmat('-',1,maxDate), strPathSep, '-|-', repmat('-',1,maxUrl) 10];
     % Print installed plugins to standard output
     for iPlug = 1:length(PlugDesc)
         if isInstalled
@@ -1970,9 +2021,23 @@ function List(Target, isGui)
         else
             strPath = '';
         end
+        % Cut version string (short github SHA)
+        if (length(PlugDesc(iPlug).Version) > 13)
+            plugVer = ['git @', PlugDesc(iPlug).Version(1:7)];
+        else
+            plugVer = PlugDesc(iPlug).Version;
+        end
+        % Cut installation date: Only date, no time
+        if (length(PlugDesc(iPlug).InstallDate) > 11)
+            plugDate = PlugDesc(iPlug).InstallDate(1:11);
+        else
+            plugDate = PlugDesc(iPlug).InstallDate;
+        end
+        % Assemble plugin text row
         strFinal = [strFinal strIndent, ...
             PlugDesc(iPlug).Name, repmat(' ', 1, maxName-length(PlugDesc(iPlug).Name)) ...
-            ' | ', PlugDesc(iPlug).Version, repmat(' ', 1, maxVer-length(PlugDesc(iPlug).Version)), ...
+            ' | ', plugVer, repmat(' ', 1, maxVer-length(plugVer)), ...
+            ' | ', plugDate, repmat(' ', 1, maxDate-length(plugDate)), ...
             strPath, ...
             ' | ' PlugDesc(iPlug).URLzip 10];
     end
@@ -2113,7 +2178,18 @@ function MenuUpdate(jPlugs)
             elseif ~isManaged && ~isempty(Plug.Path)
                 j.version.setText('<HTML><FONT color="#707070"><I>Custom install</I></FONT>')
             elseif ~isempty(Plug.Version) && ischar(Plug.Version)
-                j.version.setText(['<HTML><FONT color="#707070"><I>Installed version: ' Plug.Version '</I></FONT>'])
+                strVer = Plug.Version;
+                % If downloading from github
+                if isGithubMaster(Plug.URLzip)
+                    % Show installation date, if available
+                    if ~isempty(Plug.InstallDate)
+                        strVer = Plug.InstallDate(1:11);
+                    % Show only the short SHA (7 chars)
+                    elseif (length(Plug.Version) >= 30)
+                        strVer = Plug.Version(1:7);
+                    end
+                end
+                j.version.setText(['<HTML><FONT color="#707070"><I>Installed version: ' strVer '</I></FONT>'])
             elseif isInstalled
                 j.version.setText('<HTML><FONT color="#707070"><I>Installed</I></FONT>');
             end
