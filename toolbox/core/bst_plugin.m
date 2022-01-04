@@ -1955,8 +1955,8 @@ end
 
 
 %% ===== LIST =====
-% USAGE:  bst_plugin('List', Target='installed', isGui=0)   % Target={'supported','installed'}
-function List(Target, isGui)
+% USAGE:  strList = bst_plugin('List', Target='installed', isGui=0)    % Target={'supported','installed', 'loaded'}
+function strList = List(Target, isGui)
     % Parse inputs
     if (nargin < 2) || isempty(isGui)
         isGui = 0;
@@ -1966,23 +1966,22 @@ function List(Target, isGui)
     else
         Target = [upper(Target(1)), lower(Target(2:end))];
     end
-    % Print banner
-    strFinal = sprintf('\n%s plugins:\n\n', Target);
-    % Indent
-    if isGui
-        strIndent = '';
-    else
-        strIndent = '    ';
-    end
     % Get plugins to list
+    strTitle = sprintf('%s plugins', Target);
     switch (Target)
-        case 'Installed'
-            PlugDesc = GetInstalled();
-            isInstalled = 1;
         case 'Supported'
             PlugDesc = GetSupported();
             isInstalled = 0;
-        otherwise,          error(['Invalid target: ' Target]);
+        case 'Installed'
+            strTitle = [strTitle '   (*=Loaded)'];
+            PlugDesc = GetInstalled();
+            isInstalled = 1;
+        case 'Loaded'
+            PlugDesc = GetInstalled();
+            PlugDesc = PlugDesc([PlugDesc.isLoaded] == 1);
+            isInstalled = 1;
+        otherwise
+            error(['Invalid target: ' Target]);
     end
     if isempty(PlugDesc)
         return;
@@ -1990,37 +1989,79 @@ function List(Target, isGui)
     % Sort by plugin names
     [tmp,I] = sort({PlugDesc.Name});
     PlugDesc = PlugDesc(I);
+
+    % Get Brainstorm info
+    bstVer = bst_get('Version');
+    bstDir = bst_get('BrainstormHomeDir');
+    % Cut version string (short github SHA)
+    if (length(bstVer.Commit) > 13)
+        bstGit = ['git @', bstVer.Commit(1:7)];
+        bstURL = ['https://github.com/brainstorm-tools/brainstorm3/tree/' bstVer.Commit];
+    else
+        bstGit = '';
+        bstURL = '';
+    end
+
     % Max lengths
-    headerName = 'Name';
+    headerName = '  Name';
     headerVersion = 'Version';
     headerPath = 'Install path';
     headerUrl = 'Downloaded from';
     headerDate = 'Install date';
-    maxName = max(cellfun(@length, {PlugDesc.Name, headerName}));
-    maxVer  = min(13, max(cellfun(@length, {PlugDesc.Version, headerVersion})));
-    maxUrl  = max(cellfun(@length, {PlugDesc.URLzip, headerUrl}));
-    maxDate = min(12, max(cellfun(@length, {PlugDesc.InstallDate, headerDate})));
+    maxName = max(cellfun(@length, {PlugDesc.Name, headerName, 'brainstorm'}));
+    maxVer  = min(13, max(cellfun(@length, {PlugDesc.Version, headerVersion, bstGit})));
+    maxUrl  = max(cellfun(@length, {PlugDesc.URLzip, headerUrl, bstURL}));
+    maxDate = 12;
     if isInstalled
+        strDate = [' | ', headerDate, repmat(' ', 1, maxDate-length(headerDate))];
+        strDateSep = ['-|-', repmat('-',1,maxDate)];
         maxPath = max(cellfun(@length, {PlugDesc.Path, headerPath}));
         strPath = [' | ', headerPath, repmat(' ', 1, maxPath-length(headerPath))];
         strPathSep = ['-|-', repmat('-',1,maxPath)];
+        strBstVer = [' | ', bstVer.Date, repmat(' ', 1, maxDate-length(bstVer.Date))];
+        strBstDir = [' | ', bstDir, repmat(' ', 1, maxPath-length(bstDir))];
     else
+        strDate = '';
+        strDateSep = '';
         strPath = '';
         strPathSep = '';
+        strBstVer = '';
+        strBstDir = '';
     end
     % Print column headers
-    strFinal = [strFinal strIndent, ...
-        headerName, repmat(' ', 1, maxName-length(headerName)) ...
+    strList = [headerName, repmat(' ', 1, maxName-length(headerName) + 2) ...
         ' | ', headerVersion, repmat(' ', 1, maxVer-length(headerVersion)), ...
-        ' | ', headerDate, repmat(' ', 1, maxDate-length(headerDate)), ...
-        strPath, ...
+        strDate, strPath, ...
         ' | ' headerUrl 10 ...
-        strIndent, repmat('-',1,maxName), '-|-', repmat('-',1,maxVer), '-|-', repmat('-',1,maxDate), strPathSep, '-|-', repmat('-',1,maxUrl) 10];
+        repmat('-',1,maxName + 2), '-|-', repmat('-',1,maxVer), strDateSep, strPathSep, '-|-', repmat('-',1,maxUrl) 10];
+
+    % Print Brainstorm information
+    strList = [strList '* ', ...
+        'brainstorm', repmat(' ', 1, maxName-length('brainstorm')) ...
+        ' | ', bstGit, repmat(' ', 1, maxVer-length(bstGit)), ...
+        strBstVer, strBstDir, ...
+        ' | ' bstURL 10];
+
     % Print installed plugins to standard output
     for iPlug = 1:length(PlugDesc)
+        % Loaded plugin
+        if PlugDesc(iPlug).isLoaded
+            strLoaded = '* ';
+        else
+            strLoaded = '  ';
+        end
+        % Cut installation date: Only date, no time
+        if (length(PlugDesc(iPlug).InstallDate) > 11)
+            plugDate = PlugDesc(iPlug).InstallDate(1:11);
+        else
+            plugDate = PlugDesc(iPlug).InstallDate;
+        end
+        % Installed listing
         if isInstalled
+            strDate = [' | ', plugDate, repmat(' ', 1, maxDate-length(plugDate))];
             strPath = [' | ', PlugDesc(iPlug).Path, repmat(' ', 1, maxPath-length(PlugDesc(iPlug).Path))];
         else
+            strDate = '';
             strPath = '';
         end
         % Cut version string (short github SHA)
@@ -2029,25 +2070,19 @@ function List(Target, isGui)
         else
             plugVer = PlugDesc(iPlug).Version;
         end
-        % Cut installation date: Only date, no time
-        if (length(PlugDesc(iPlug).InstallDate) > 11)
-            plugDate = PlugDesc(iPlug).InstallDate(1:11);
-        else
-            plugDate = PlugDesc(iPlug).InstallDate;
-        end
         % Assemble plugin text row
-        strFinal = [strFinal strIndent, ...
+        strList = [strList strLoaded, ...
             PlugDesc(iPlug).Name, repmat(' ', 1, maxName-length(PlugDesc(iPlug).Name)) ...
             ' | ', plugVer, repmat(' ', 1, maxVer-length(plugVer)), ...
-            ' | ', plugDate, repmat(' ', 1, maxDate-length(plugDate)), ...
-            strPath, ...
+            strDate, strPath, ...
             ' | ' PlugDesc(iPlug).URLzip 10];
     end
-    % Display
+    % Display output
     if isGui
-        view_text(strFinal);
-    else
-        disp([strFinal 10]);
+        view_text(strList, strTitle);
+    % No string returned: display it in the command window
+    elseif (nargout == 0)
+        disp([10 strTitle 10 10 strList]);
     end
 end
 

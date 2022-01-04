@@ -95,6 +95,13 @@ try
     Version = cellVer{1}{1};
     Release = cellVer{1}{1}(3:end);
     Date = cellVer{2}{1}(2:end-1);
+    % Try to get GIT commit
+    Commit = fgetl(fid);
+    if ischar(Commit) && (length(Commit) >= 40)
+        Commit = Commit(10:end);
+    else
+        Commit = [];
+    end
     % Close file
     fclose(fid);
 catch
@@ -102,12 +109,28 @@ catch
     Version = '?';
     Release = '??????';
     Date    = '?';
+    Commit  = [];
+end
+% If the commit is not available from the version.txt file, try to get it from the .git folder (if cloned from github)
+if isempty(Commit)
+    gitMaster = bst_fullfile(BrainstormHomeDir, '.git', 'refs', 'heads', 'master');
+    if exist(gitMaster, 'file')
+        fid = fopen(gitMaster, 'rt');
+        if (fid >= 0)
+            strGit = fgetl(fid);
+            if ischar(strGit) && (length(strGit) >= 30)
+                Commit = strGit;
+            end
+            fclose(fid);
+        end
+    end
 end
 % Save version in matlab preferences
 bstVersion = struct('Name',    Name, ...
                     'Version', Version, ...
                     'Release', Release, ...
-                    'Date',    Date);
+                    'Date',    Date, ...
+                    'Commit',  Commit);
 bst_set('Version', bstVersion);
 % Display version number
 disp(['BST> Version: ' Date ]);
