@@ -10,13 +10,12 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
-%    - bst_get('BrainstormDefaultsDir') : Defaults folder folder of the Brainstorm distribution (may vary in compiled versions)
-%    - bst_get('BrainstormPluginDir')   : User home directory for brainstorm (<home>/.brainstorm/)
+%    - bst_get('BrainstormDefaultsDir') : Defaults folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
 %    - bst_get('UserDefaultsDir')       : User defaults directory (<home>/.brainstorm/defaults/)
-%    - bst_get('UserPluginsDir')        : User plugins directory (<home>/.brainstorm/plugins/)
+%    - bst_get('UserPluginsDir')        : User plugins directory (brainstorm3/plugins/ if it exists, otherwise <home>/.brainstorm/plugins/)
 %    - bst_get('BrainstormDbFile')      : User brainstorm.mat file (<home>/.brainstorm/brainstorm.mat)
 %    - bst_get('BrainstormDbDir')       : User database directory (contains all the brainstorm protocols)
 %    - bst_get('DirDefaultSubject')     : Directory name of the default subject
@@ -395,7 +394,7 @@ switch contextName
             end
         end
         argout1 = defaultsDir;
-        
+
     case 'UserReportsDir'
         reportDir = bst_fullfile(bst_get('BrainstormUserDir'), 'reports');
         if ~isdir(reportDir)
@@ -451,11 +450,16 @@ switch contextName
         argout1 = defDir;
         
     case 'UserPluginsDir'
-        pluginsDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plugins');
-        if ~isdir(pluginsDir)
-            res = mkdir(pluginsDir);
-            if ~res
-                error(['Cannot create plugins directory: "' pluginsDir '".']); 
+        % If brainstorm/plugins exists, use it (case of an environment exported and reused)
+        pluginsDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'plugins');
+        % Otherwise (standard case): <home>/.brainstorm/plugins/
+        if ~exist(pluginsDir, 'file')
+            pluginsDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plugins');
+            if ~isdir(pluginsDir)
+                res = mkdir(pluginsDir);
+                if ~res
+                    error(['Cannot create plugins directory: "' pluginsDir '".']); 
+                end
             end
         end
         argout1 = pluginsDir;

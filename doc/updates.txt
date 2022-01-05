@@ -1,4 +1,7 @@
 --------------------------------------------------------------
+January 2022
+- Plugins: Archive software environment (brainstorm + plugins + defaults)
+--------------------------------------------------------------
 December 2021
 - IO: Added support for Tobii Pro Glasses export .tsv
 - IO: Add support for FieldTrip trialinfo field

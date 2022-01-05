@@ -92,8 +92,6 @@ if isempty(iSubject)
             ListZip{end+1} = bst_fullfile(dataFolder, allFiles(i).name);
         end
     end
-%     % Zip
-%     zip(OutputFile, ListZip, bst_fileparts(ProtocolInfo.SUBJECTS, 1));
 else
     % Get default study for this subject
     sSubject = bst_get('Subject', iSubject, 1);
@@ -135,7 +133,7 @@ if ~isempty(iSubject)
 end
 % Restore initial folder
 cd(prevFolder);
-% Error message
+% Close progress bar
 bst_progress('stop');
 
 

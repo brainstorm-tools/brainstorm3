@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 eval(macro_method);
 end
@@ -161,7 +161,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
     if ~isCompiled
         jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
-        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);     
+        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
+        % ARCHIVE
+        jMenuUpdate.addSeparator();
+        gui_component('MenuItem', jMenuUpdate, [], 'Archive environment', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_plugin, 'Archive'), fontSize);
     end
     
     % ==== Menu PLUGINS ====

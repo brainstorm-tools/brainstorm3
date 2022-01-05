@@ -23,6 +23,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('Configure',            PlugDesc)            % Execute some additional tasks after loading or installation
 %                            bst_plugin('SetCustomPath',        PlugName, PlugPath)
 %                            bst_plugin('List',                 Target='installed')  % Target={'supported','installed'}
+%                            bst_plugin('Archive',              OutputFile=[ask])    % Archive software environment
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
 %                            bst_plugin('LinkCatSpm',           isSet)               % Create/delete a symbolic link for CAT12 in SPM12 toolbox folder
@@ -104,7 +105,7 @@ function [varargout] = bst_plugin(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel 2021
+% Authors: Francois Tadel 2021-2022
 
 eval(macro_method);
 end
@@ -1996,10 +1997,12 @@ function strList = List(Target, isGui)
     % Cut version string (short github SHA)
     if (length(bstVer.Commit) > 13)
         bstGit = ['git @', bstVer.Commit(1:7)];
-        bstURL = ['https://github.com/brainstorm-tools/brainstorm3/tree/' bstVer.Commit];
+        bstURL = ['https://github.com/brainstorm-tools/brainstorm3/archive/' bstVer.Commit '.zip'];
+        structVer = bstGit;
     else
         bstGit = '';
         bstURL = '';
+        structVer = bstVer.Version;
     end
 
     % Max lengths
@@ -2361,6 +2364,122 @@ function SetCustomPath(PlugName, PlugPath)
 end
 
 
+%% ===== ARCHIVE SOFTWARE ENVIRONMENT =====
+% USAGE:  Archive(OutputFile=[ask])
+function Archive(OutputFile)
+    % Parse inputs
+    if (nargin < 1) || isempty(OutputFile)
+        OutputFile = [];
+    end
+    % Get date string
+    c = clock();
+    strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
+    % Get output filename
+    if isempty(OutputFile)
+        % Get default directories
+        LastUsedDirs = bst_get('LastUsedDirs');
+	    % Default output filename
+        OutputFile = bst_fullfile(LastUsedDirs.ExportScript, ['bst_env_' strDate '.zip']);
+        % File selection
+        OutputFile = java_getfile('save', 'Export protocol', OutputFile, 'single', 'files', ...
+                                  {{'.zip'}, 'Zip files (*.zip)', 'ZIP'}, 1);
+        if isempty(OutputFile)
+            return
+        end
+        % Save new default export path
+        LastUsedDirs.ExportScript = bst_fileparts(OutputFile);
+        bst_set('LastUsedDirs', LastUsedDirs);
+    end
+
+    % ===== TEMP FOLDER =====
+    bst_progress('start', 'Export environment', 'Creating temporary folder...');
+    % Empty temporary folder
+    gui_brainstorm('EmptyTempFolder');
+    % Create temporary folder for storing all the files to package
+    EnvDir = bst_fullfile(bst_get('BrainstormTmpDir'), ['bst_env_' strDate]);
+    mkdir(EnvDir);
+
+    % ===== COPY BRAINSTORM =====
+    bst_progress('text', 'Copying: brainstorm...');
+    % Get Brainstorm path and version
+    bstVer = bst_get('Version');
+    bstDir = bst_get('BrainstormHomeDir');
+    % Get brainstorm3 destination folder: add version number
+    if ~isempty(bstVer.Version) && ~any(bstVer.Version == '?')
+        envBst = bst_fullfile(EnvDir, ['brainstorm', bstVer.Version]);
+    else
+        [tmp, bstName] = bst_fileparts(bstDir);
+        envBst = bst_fullfile(EnvDir, bstName);
+    end
+    % Add git commit hash
+    if (length(bstVer.Commit) >= 30)
+        envBst = [envBst, '_', bstVer.Commit(1:7)];
+    end
+    % Copy brainstorm3 folder
+    isOk = file_copy(bstDir, envBst);
+    if ~isOk
+        error(['Cannot copy folder: "' bstDir '" to "' envBst '"']);
+    end
+
+    % ===== COPY DEFAULTS =====
+    bst_progress('text', 'Copying: user defaults...');
+    % Get user defaults folder
+    userDef = bst_get('UserDefaultsDir');
+    envDef = bst_fullfile(envBst, 'defaults');
+    isOk = file_copy(userDef, envDef);
+    if ~isOk
+        error(['Cannot merge folder: "' userDef '" into "' envDef '"']);
+    end   
+
+    % ===== COPY USER PROCESSES =====
+    bst_progress('text', 'Copying: user processes...');
+    % Get user process folder
+    userProc = bst_get('UserProcessDir');
+    envProc = bst_fullfile(envBst, 'toolbox', 'process', 'functions');
+    isOk = file_copy(userProc, envProc);
+    if ~isOk
+        error(['Cannot merge folder: "' userProc '" into "' envProc '"']);
+    end
+    
+    % ===== COPY PLUGINS ======
+    % Get list of plugins to package
+    PlugDesc = GetInstalled();
+    % Destination plugin directory
+    envPlugins = bst_fullfile(envBst, 'plugins');
+    % Copy each installed plugin
+    for iPlug = 1:length(PlugDesc)
+        bst_progress('text', ['Copying plugin: ' PlugDesc(iPlug).Name '...']);
+        envPlug = bst_fullfile(envPlugins, PlugDesc(iPlug).Name);
+        isOk = file_copy(PlugDesc(iPlug).Path, envPlug);
+        if ~isOk
+            error(['Cannot copy folder: "' userProc '" into "' envProc '"']);
+        end
+    end
+
+    % ===== SAVE LIST OF VERSIONS =====
+    strList = bst_plugin('List', 'installed', 0);
+    % Open file versions.txt
+    VersionFile = bst_fullfile(EnvDir, 'versions.txt');
+    fid = fopen(VersionFile, 'wt');
+    if (fid < 0)
+        error(['Cannot save file: ' VersionFile]);
+    end
+    % Save contents
+    fwrite(fid, strList);
+    % Close file
+    fclose(fid);
+
+    % ===== ZIP FILES =====
+    bst_progress('text', 'Zipping environment...');
+    % Zip files with bst_env_* being the first level
+    zip(OutputFile, EnvDir, bst_fileparts(EnvDir));
+    % Cleaning up
+    gui_brainstorm('EmptyTempFolder');
+    % Close progress bar
+    bst_progress('stop');
+end
+
+
 %% ============================================================================
 %  ===== PLUGIN-SPECIFIC FUNCTIONS ============================================
 %  ============================================================================
@@ -2420,11 +2539,17 @@ function LinkCatSpm(isSet)
             linkTarget = PlugCat.Path;
         end
         linkFile = spmCatDir;
+        % Make link relative
+        [relPath, commonPath, commonEnd] = str_remove_common({linkTarget, linkFile}, 1, filesep);
+        shortTarget = [relPath{1}, commonEnd];
+        shortLink = [relPath{2}, commonEnd];
+        nLevels = nnz(shortLink == filesep);
+        relativeTarget = [repmat(['..' filesep], 1, nLevels), shortTarget];
         % Create link
         if ispc
-            linkCall = ['mklink /D "' linkFile '" "' linkTarget '"'];
+            linkCall = ['mklink /D "' linkFile '" "' relativeTarget '"'];
         else
-            linkCall = ['ln -s "' linkTarget '" "' linkFile '"'];
+            linkCall = ['ln -s "' linkTarget '" "' relativeTarget '"'];
         end
         disp(['BST> Creating symbolic link: ' linkCall]);
         [status,result] = system(linkCall);
