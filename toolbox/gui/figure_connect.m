@@ -1421,14 +1421,17 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     % radius (see math below)
     if (IsMeasureLink)
         RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
-        MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
+        MeasureDistance = [];
+        if ~isempty(RowLocs)
+            MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
+        end
     end
     
     % Note: DataPair computation already removed diagonal and capped at max 5000 pairs 
     
     %for each link
-    Links = zeros(1, length(DataPair));
-    for i = 1:length(DataPair)
+    Links = zeros(1, size(DataPair,1));
+    for i = 1:size(DataPair,1)
         overlap = false;
         % node positions (rescaled to *unit* circle)
         Node1 = DataPair(i, 1); Node2 = DataPair(i, 2);
@@ -1448,7 +1451,7 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
                 % radius of the arc needs to be adapted for links that
                 % are long. In these cases, the arc radius depends on
                 % distance between the nodes. 
-                if (IsMeasureLink && MeasureDistance(i) >= 80.0)
+                if (~isempty(MeasureDistance) && IsMeasureLink && MeasureDistance(i) >= 80.0)
                     R = 0.75*H;
                 else
                     R = 0.63*H;             
