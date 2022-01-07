@@ -26,7 +26,7 @@ function [varargout] = bst_plugin(varargin)
 %                            bst_plugin('Archive',              OutputFile=[ask])    % Archive software environment
 %                            bst_plugin('MenuCreate',           jMenu)
 %                            bst_plugin('MenuUpdate',           jMenu)
-%                            bst_plugin('LinkCatSpm',           isSet)               % Create/delete a symbolic link for CAT12 in SPM12 toolbox folder
+%                            bst_plugin('LinkCatSpm',           Action)               % 0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
 %
 %
 % PLUGIN DEFINITION
@@ -151,6 +151,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @cat_version)';
     PlugDesc(end).InstalledFcn   = 'LinkCatSpm(1);';
     PlugDesc(end).UninstalledFcn = 'LinkCatSpm(0);';
+    PlugDesc(end).LoadedFcn      = 'LinkCatSpm(2);';
     PlugDesc(end).ExtraMenus     = {'Online tutorial', 'web(''https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12'', ''-browser'')'};
     
     % === ANATOMY: ISO2MESH ===
@@ -2488,7 +2489,9 @@ end
 %  ============================================================================
 
 %% ===== LINK CAT-SPM =====
-function LinkCatSpm(isSet)
+% USAGE: bst_plugin('LinkCatSpm', Action)               
+%        0=Delete/1=Create/2=Check a symbolic link for CAT12 in SPM12 toolbox folder
+function LinkCatSpm(Action)
     % Get SPM12 plugin
     PlugSpm = GetInstalled('spm12');
     if isempty(PlugSpm)
@@ -2510,10 +2513,20 @@ function LinkCatSpm(isSet)
     end
     % CAT12 plugin path
     spmCatDir = bst_fullfile(spmToolboxDir, 'cat12');
+    % Check link
+    if (Action == 2)
+        % Link exists and works: return here
+        if file_exist(bst_fullfile(spmCatDir, 'cat12.m'))
+            return;
+        % Link doesn't exist: Create it
+        else
+            Action = 1;
+        end
+    end
     % If folder already exists
     if file_exist(spmCatDir)
         % If setting install and SPM is not managed by Brainstorm: do not risk deleting user's install of CAT12
-        if isSet && ~PlugSpm.isManaged
+        if (Action == 1) && ~PlugSpm.isManaged
             error(['CAT12 seems already set up: ' spmCatDir]);
         end
         % All the other cases: delete existing CAT12 folder
@@ -2529,7 +2542,7 @@ function LinkCatSpm(isSet)
         end
     end
     % Create new link
-    if isSet
+    if (Action == 1)
         % Get CAT12 plugin
         PlugCat = GetInstalled('cat12');
         if isempty(PlugCat) || ~PlugCat.isLoaded
