@@ -198,8 +198,6 @@ for iFile = 1:length(RawFiles)
             ChannelMat.Channel(i).Weight  = 1;
             ChannelMat.Channel(i).Comment = [];
         end
-        % Add channel file to database
-        db_set_channel(iChannelStudy, ChannelMat, 0, 0);
     % Channel file loaded from input file
     else
         % Add history field to channel structure
