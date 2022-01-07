@@ -162,9 +162,10 @@ function GUI = CreateWindow() %#ok<DEFNU>
         jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
         gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
-        % ARCHIVE
+        % REPRODUCIBILITY
         jMenuUpdate.addSeparator();
-        gui_component('MenuItem', jMenuUpdate, [], 'Archive environment', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_plugin, 'Archive'), fontSize);
+        jMenuRepro = gui_component('Menu', jMenuUpdate, [], ' Reproducibility', IconLoader.ICON_PROCESS, [], [], fontSize);
+        gui_component('MenuItem', jMenuRepro, [], 'Export software environment', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_plugin, 'Archive'), fontSize);
     end
     
     % ==== Menu PLUGINS ====

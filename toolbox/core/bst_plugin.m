@@ -2381,7 +2381,7 @@ function Archive(OutputFile)
 	    % Default output filename
         OutputFile = bst_fullfile(LastUsedDirs.ExportScript, ['bst_env_' strDate '.zip']);
         % File selection
-        OutputFile = java_getfile('save', 'Export protocol', OutputFile, 'single', 'files', ...
+        OutputFile = java_getfile('save', 'Export environment', OutputFile, 'single', 'files', ...
                                   {{'.zip'}, 'Zip files (*.zip)', 'ZIP'}, 1);
         if isempty(OutputFile)
             return
@@ -2464,8 +2464,11 @@ function Archive(OutputFile)
     if (fid < 0)
         error(['Cannot save file: ' VersionFile]);
     end
-    % Save contents
+    % Save Brainstorm plugins list
     fwrite(fid, strList);
+    % Save Matlab ver command
+    strMatlab = evalc('ver');
+    fwrite(fid, [10 10 strMatlab]);
     % Close file
     fclose(fid);
 
