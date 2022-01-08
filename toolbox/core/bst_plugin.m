@@ -2555,17 +2555,11 @@ function LinkCatSpm(Action)
             linkTarget = PlugCat.Path;
         end
         linkFile = spmCatDir;
-        % Make link relative
-        [relPath, commonPath, commonEnd] = str_remove_common({linkTarget, linkFile}, 1, filesep);
-        shortTarget = [relPath{1}, commonEnd];
-        shortLink = [relPath{2}, commonEnd];
-        nLevels = nnz(shortLink == filesep);
-        relativeTarget = [repmat(['..' filesep], 1, nLevels), shortTarget];
         % Create link
         if ispc
-            linkCall = ['mklink /D "' linkFile '" "' relativeTarget '"'];
+            linkCall = ['mklink /D "' linkFile '" "' linkTarget '"'];
         else
-            linkCall = ['ln -s "' linkTarget '" "' relativeTarget '"'];
+            linkCall = ['ln -s "' linkTarget '" "' linkFile '"'];
         end
         disp(['BST> Creating symbolic link: ' linkCall]);
         [status,result] = system(linkCall);
