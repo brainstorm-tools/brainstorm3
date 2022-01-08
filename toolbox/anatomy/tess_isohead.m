@@ -22,7 +22,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables

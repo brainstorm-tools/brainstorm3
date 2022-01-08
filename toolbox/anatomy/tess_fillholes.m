@@ -21,7 +21,7 @@ function [Vertices, Faces] = tess_fillholes(sMri, Vertices, Faces, fillFactor, e
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 % ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(erodeFinal)
