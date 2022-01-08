@@ -134,9 +134,11 @@ bst_progress('text', 'Removing small patches...');
 bst_progress('inc', 10);
 
 % Downsampling isosurface
-bst_progress('text', 'Downsampling surface...');
-[sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
-bst_progress('inc', 10);
+if (length(sHead.Vertices) > nVertices)
+    bst_progress('text', 'Downsampling surface...');
+    [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
+    bst_progress('inc', 10);
+end
 % Convert to millimeters
 sHead.Vertices = sHead.Vertices(:,[2,1,3]);
 sHead.Faces    = sHead.Faces(:,[2,1,3]);

@@ -84,8 +84,10 @@ bst_progress('text', 'Fill: Smoothing surface...');
 VertConn = tess_vertconn(Vertices, Faces);
 Vertices = tess_smooth(Vertices, 1, 10, VertConn, 0);
 % Downsampling isosurface
-bst_progress('text', 'Fill: Downsampling surface...');
-[Faces, Vertices] = reducepatch(Faces, Vertices, nVertices ./ length(Vertices));
+if (length(Vertices) > nVertices)
+    bst_progress('text', 'Fill: Downsampling surface...');
+    [Faces, Vertices] = reducepatch(Faces, Vertices, nVertices ./ length(Vertices));
+end
 % Remove small components
 bst_progress('text', 'Fill: Removing small components...');
 [Vertices, Faces] = tess_remove_small(Vertices, Faces);
