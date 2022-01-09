@@ -185,6 +185,8 @@ switch (FileFormat)
         [DataMat, ChannelMat] = in_data_ws_csv(DataFile);
     case 'EEG-MAT'
         DataMat = in_data_mat(DataFile);
+    case 'EEG-NEUROELECTRICS'
+        [DataMat, ChannelMat] = in_data_neuroelectrics(DataFile);
     case 'EEG-NEUROSCAN-DAT'
         DataMat = in_data_neuroscan_dat(DataFile);
     case 'EEG-TVB'

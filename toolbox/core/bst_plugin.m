@@ -294,6 +294,21 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadedFcn      = @Configure;
     % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
+    % === I/O: NEUROELECTRICS ===
+    PlugDesc(end+1)              = GetStruct('neuroelectrics');
+    PlugDesc(end).Version        = '1.8';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'https://sccn.ucsd.edu/eeglab/plugins/Neuroelectrics1.8.zip';
+    PlugDesc(end).URLinfo        = 'https://www.neuroelectrics.com/wiki/index.php/EEGLAB';
+    PlugDesc(end).TestFile       = 'pop_nedf.m';
+    PlugDesc(end).ReadmeFile     = 'README.txt';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).InstalledFcn   = ['d=pwd; cd(fileparts(which(''pop_nedf''))); mkdir(''private''); ' ...
+                                    'f=fopen(''private' filesep 'eeg_emptyset.m'',''wt''); fprintf(f,''function EEG=eeg_emptyset()\nEEG=struct();''); fclose(f);' ...
+                                    'f=fopen(''private' filesep 'eeg_checkset.m'',''wt''); fprintf(f,''function EEG=eeg_checkset(EEG)''); fclose(f);' ...
+                                    'cd(d);'];
+
     % === I/O: NWB ===
     PlugDesc(end+1)              = GetStruct('nwb');
     PlugDesc(end).Version        = 'github-master';

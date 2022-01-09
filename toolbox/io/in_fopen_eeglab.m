@@ -53,7 +53,7 @@ if ~isfield(hdr, 'EEG')
     end
 end
 % Add some information
-hdr.isRaw = isempty(hdr.EEG.epoch) && ~isempty(hdr.EEG.data);
+hdr.isRaw = (~isfield(hdr.EEG, 'epoch') || isempty(hdr.EEG.epoch)) && (isfield(hdr.EEG, 'data') && ~isempty(hdr.EEG.data));
 nChannels = hdr.EEG.nbchan;
 nTime     = hdr.EEG.pnts;
 nEpochs   = hdr.EEG.trials;

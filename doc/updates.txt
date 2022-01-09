@@ -1,10 +1,12 @@
 --------------------------------------------------------------
 January 2022
 - Plugins: Archive software environment (brainstorm + plugins + defaults)
+- IO: Added support for Neuroelectrics EEG with EEGLAB plugin (.easy, .nedf)
 --------------------------------------------------------------
 December 2021
 - IO: Added support for Tobii Pro Glasses export .tsv
-- IO: Add support for FieldTrip trialinfo field
+- IO: Added support for FieldTrip trialinfo field
+- IO: Updated York Instrument MEGSCAN reader (.meghdf5)
 - Anatomy: Add support for InfantFS / infant_recon_all
 - SimMEEG: Video tutorials
 - Distrib: Removed JAVA3D/JOGL support + older connectivity graph display
