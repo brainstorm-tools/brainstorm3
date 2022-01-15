@@ -421,8 +421,17 @@ end
 %% ===== LOAD PLUGINS =====
 % Get installed plugins
 [InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
-% Find plugins that should be loaded automatically at startup
+% Check installed plugins
 if ~isempty(InstPlugs)
+    % Display the plugins that are using custom installed path
+    iPlugCustom = find([InstPlugs.isLoaded] & ~[InstPlugs.isManaged]);
+    for iPlug = iPlugCustom
+        disp(['BST> Plugin ' InstPlugs(iPlug).Name ': ' InstPlugs(iPlug).Path]);
+        if strcmpi(InstPlugs(iPlug).Name, 'spm12') && isempty(strfind(spm('version'), 'SPM12'))
+            disp(['BST> ** WARNING: Installed version is not SPM12: ' spm('version') ' **']);
+        end
+    end
+    % Load plugins that should be loaded automatically at startup
     iPlugLoad = find([InstPlugs.AutoLoad] & ~[InstPlugs.isLoaded]);
     if ~isempty(iPlugLoad)
         fprintf('BST> Loading plugins... ');
