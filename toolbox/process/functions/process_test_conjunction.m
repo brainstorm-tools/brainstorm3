@@ -19,7 +19,7 @@ function varargout = process_test_conjunction( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2022
+% Authors: Francois Tadel, Dimitrios Pantazis, 2022
 
 eval(macro_method);
 end
@@ -40,9 +40,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 2;
     % Definition of the options
-    sProcess.options.label.Comment = ['For each value in the input file (each signal, time and frequency):<BR>' ...
-                                      'Return the <B>maximum statistic</B> (max tmap) and<BR>' ...
-                                      'the <B>minimum probability</B> (min pmap).<BR><BR>' ...
+    sProcess.options.label.Comment = ['For each value in the input file (each signal, time, and frequency):<BR>' ...
+                                      'Return the statistic that corresponds to the largest p-value (max pmap).<BR><BR>' ...
                                       '<FONT color="#707070">Reference:<BR>' ...
                                       'Nichols T, Brett M, Andersson J, Wager T, Poline J-B<BR>' ...
                                       'Valid conjunction inference with the minimum statistic<BR>', ...
@@ -83,10 +82,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         elseif ~isequal(size(StatMat.pmap), size(ConjMat.pmap)) &&  ~isequal(size(StatMat.tmap), size(ConjMat.tmap))
             bst_report('Error', sProcess, sInputs, 'One file has a different number of values (signals, time samples or frequencies)');
             return;
+        % Following files: Get the maximum p-value, and the corresponding t-value
+        else
+            iUpdate = find(StatMat.pmap > ConjMat.pmap);
+            if ~isempty(iUpdate)
+                ConjMat.pmap(iUpdate) = StatMat.pmap(iUpdate);
+                ConjMat.tmap(iUpdate) = StatMat.tmap(iUpdate);
+            end
         end
-        % Get the minimum t-value / maximum p-value
-        ConjMat.pmap = max(ConjMat.pmap, StatMat.pmap);
-        ConjMat.tmap = max(ConjMat.tmap, StatMat.tmap);
     end
     
     % ===== SAVE THE RESULTS =====
