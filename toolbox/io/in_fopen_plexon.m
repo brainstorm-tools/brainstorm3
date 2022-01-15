@@ -1,14 +1,12 @@
 function [sFile, ChannelMat] = in_fopen_plexon(DataFile)
 % IN_FOPEN_PLEXON Open Plexon recordings.
 % Open data that are saved in a single .plx file
-
+%
 % This function is using the importer developed by Benjamin Kraus (2013)
 % https://www.mathworks.com/matlabcentral/fileexchange/42160-readplxfilec
-
-
+%
 % DESCRIPTION:
 %     Reads all the following files available in the same folder.
-
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -28,8 +26,14 @@ function [sFile, ChannelMat] = in_fopen_plexon(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2021; Martin Cousineau, 2019
+% Authors: Konstantinos Nasiotis, 2018-2022
+%          Martin Cousineau, 2019
 
+%% ===== INSTALL PLEXON SDK =====
+[isInstalled, errMsg] = bst_plugin('Install', 'plexon');
+if ~isInstalled
+    error(errMsg);
+end
 
 %% ===== GET FILES =====
 % Get base dataset folder
@@ -53,12 +57,6 @@ Comment = rawFile;
 hdr.chan_headers = {};
 hdr.chan_files = {};
 hdr.extension = plexonFormat;
-
-%% Read using Plexon SDK
-if exist('PL2GetFileIndex', 'file') ~= 2
-    error(['Please install Plexon''s Matlab offline files SDK.' 10 ...
-        'More information here: https://neuroimage.usc.edu/brainstorm/e-phys/Introduction#Importing_PL2_Plexon_files']);
-end
 
 % Read metadata
 [spikes_tscounts, wfcounts, evcounts, contcounts] = plx_info(DataFile, 0);

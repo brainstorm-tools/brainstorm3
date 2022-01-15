@@ -322,6 +322,19 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).LoadedFcn      = @Configure;
 
+    % === I/O: PLEXON ===
+    PlugDesc(end+1)              = GetStruct('plexon');
+    PlugDesc(end).Version        = '1.8.4';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
+    PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
+    PlugDesc(end).TestFile       = 'plx_info.m';
+    PlugDesc(end).ReadmeFile     = 'Change Log.txt';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).DownloadedFcn  = ['d = fullfile(PlugDesc.Path, ''OmniPlex and MAP Offline SDK Bundle'');' ...
+                                    'unzip(fullfile(d, ''Matlab Offline Files SDK.zip''), PlugDesc.Path);' ...
+                                    'file_delete(d,1,3);'];
+
     % === I/O: PLOTLY ===
     PlugDesc(end+1)              = GetStruct('plotly');
     PlugDesc(end).Version        = 'github-master';
@@ -343,15 +356,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).TestFile       = 'TDT_Matlab_Tools.pdf';
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
-    
-%     % === I/O: PLEXON-SDK ===
-%     PlugDesc(end+1)              = GetStruct('plexon');
-%     PlugDesc(end).Version        = 'latest';
-%     PlugDesc(end).Category       = 'I/O';
-%     PlugDesc(end).URLzip         = 'https://plexon.com/wp-content/uploads/2017/08/OmniPlex-and-MAP-Offline-SDK-Bundle_0.zip';
-%     PlugDesc(end).URLinfo        = 'https://plexon.com/software-downloads/#software-downloads-SDKs';
-%     PlugDesc(end).TestFile       = '';
-%     PlugDesc(end).CompiledStatus = 0;
     
     % === SIMULATION: SIMMEEG ===
     PlugDesc(end+1)              = GetStruct('simmeeg');
@@ -916,7 +920,7 @@ function [PlugDesc, SearchPlugs] = GetInstalled(SelPlug)
                 PlugMat = struct();
             end
             % Copy fields
-            excludedFields = {'Name', 'Path', 'isLoaded', 'isManaged', 'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn'};
+            excludedFields = {'Name', 'Path', 'isLoaded', 'isManaged', 'LoadedFcn', 'UnloadedFcn', 'DownloadedFcn', 'InstalledFcn', 'UninstalledFcn'};
             loadFields = setdiff(fieldnames(db_template('PlugDesc')), excludedFields);
             for iField = 1:length(loadFields)
                 if isfield(PlugMat, loadFields{iField}) && ~isempty(PlugMat.(loadFields{iField}))
@@ -1317,9 +1321,15 @@ function [isOk, errMsg, PlugDesc] = Install(PlugName, isInteractive, minVersion)
     % === SAVE PLUGIN.MAT ===
     PlugDesc.Path = PlugPath;
     PlugMatFile = bst_fullfile(PlugDesc.Path, 'plugin.mat');
-    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
+    excludedFields = {'LoadedFcn', 'UnloadedFcn', 'DownloadedFcn', 'InstalledFcn', 'UninstalledFcn', 'Path', 'isLoaded', 'isManaged'};
     PlugDescSave = rmfield(PlugDesc, excludedFields);
     bst_save(PlugMatFile, PlugDescSave, 'v6');
+
+    % === CALLBACK: POST-DOWNLOADED ===
+    [isOk, errMsg] = ExecuteCallback(PlugDesc, 'DownloadedFcn');
+    if ~isOk
+        return;
+    end
     
     % === LOAD PLUGIN ===
     % Load plugin

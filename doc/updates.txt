@@ -2,6 +2,7 @@
 January 2022
 - Plugins: Archive software environment (brainstorm + plugins + defaults)
 - IO: Added support for Neuroelectrics EEG with EEGLAB plugin (.easy, .nedf)
+- IO: Updated Plexon reader
 - Statistics: Add process "Conjunction inference"
 --------------------------------------------------------------
 December 2021

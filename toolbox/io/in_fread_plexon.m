@@ -24,10 +24,16 @@ function F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2021; Martin Cousineau, 2019
+% Authors: Konstantinos Nasiotis, 2018-2022
+%          Martin Cousineau, 2019
 
+% ===== INSTALL PLEXON SDK =====
+[isInstalled, errMsg] = bst_plugin('Install', 'plexon');
+if ~isInstalled
+    error(errMsg);
+end
 
-% Parse inputs
+% ===== PARSE INPUTS =====
 if (nargin < 4) || isempty(precision)
     precision = 'double';
 elseif ~ismember(precision, {'single', 'double'})
@@ -41,7 +47,7 @@ if (nargin < 2) || isempty(SamplesBounds)
 end
 
    
-%% Read the PLX file and assign it to the Brainstorm format
+% Read the PLX file and assign it to the Brainstorm format
 iSelectedChannels = sFile.header.chan_headers;
 nChannels = length(iSelectedChannels);
 nSamples  = diff(SamplesBounds) + 1;

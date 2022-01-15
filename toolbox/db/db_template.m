@@ -1181,6 +1181,7 @@ switch lower(structureName)
             'UnloadPlugs',   [], ...  % Cell-array of incompatible plugin names, to remove from path before adding
             'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up (use {'*'} to load all subfolders)
             'GetVersionFcn', [], ...  % String to eval to get the version (after installation)
+            'DownloadedFcn', [], ...  % String to eval or function handle to call after downloading the plugin
             'InstalledFcn',  [], ...  % String to eval or function handle to call after installing the plugin
             'UninstalledFcn',[], ...  % String to eval or function handle to call after uninstalling the plugin
             'LoadedFcn',     [], ...  % String to eval or function handle to call after loading the plugin

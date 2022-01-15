@@ -1528,6 +1528,9 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle, imgFile) %#ok<DEFNU>
             if file_exist(destFile)
                 file_delete(destFile, 1);
             end
+            % Tries downloading without progress bar
+            bst_progress('text', 'Downloading...');
+            errMsg = bst_websave(destFile, srcUrl);
         end
     end
 end
