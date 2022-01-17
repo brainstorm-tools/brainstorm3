@@ -427,8 +427,8 @@ if ~isempty(InstPlugs)
     iPlugCustom = find([InstPlugs.isLoaded] & ~[InstPlugs.isManaged]);
     for iPlug = iPlugCustom
         disp(['BST> Plugin ' InstPlugs(iPlug).Name ': ' InstPlugs(iPlug).Path]);
-        if strcmpi(InstPlugs(iPlug).Name, 'spm12') && isempty(strfind(spm('version'), 'SPM12'))
-            disp(['BST> ** WARNING: Installed version is not SPM12: ' spm('version') ' **']);
+        if strcmpi(InstPlugs(iPlug).Name, 'spm12') && isempty(strfind(spm('ver'), 'SPM12'))
+            disp(['BST> ** WARNING: Installed version is not SPM12: ' spm('ver') ' **']);
         end
     end
     % Load plugins that should be loaded automatically at startup
