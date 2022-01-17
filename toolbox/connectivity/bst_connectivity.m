@@ -605,7 +605,6 @@ for iFile = 1:length(FilesA)
                 [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));
                 if OPTIONS.isNormalized
                     R(:,:,iBand) = dPTE;
-                    R(:,:,iBand) = R(:,:,iBand) - 0.5; % Center result around 0
                 else
                     R(:,:,iBand) = PTE;
                 end
