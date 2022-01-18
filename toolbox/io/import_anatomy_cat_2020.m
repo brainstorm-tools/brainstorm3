@@ -593,11 +593,11 @@ if isVolumeAtlas && ~isempty(VolAtlasFiles)
 end
 
 %% ===== IMPORT THICKNESS MAPS =====
-if isExtraMaps && ~isempty(CentralHiFile)
+if isExtraMaps && ~isempty(CentralHiFile) && (iSubject > 0)
     % Create a condition "CAT12"
     iStudy = db_add_condition(iSubject, 'CAT12');
     % Import cortical thickness
-    if ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
+    if ~isempty(ThickLhFile) && ~isempty(ThickRhFile)
         import_sources(iStudy, CentralHiFile, ThickLhFile, ThickRhFile, 'FS', 'thickness');
     end
     % Import gyrification
