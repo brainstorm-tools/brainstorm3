@@ -59,7 +59,8 @@ hdr.chan_files = {};
 hdr.extension = plexonFormat;
 
 % Read metadata
-[spikes_tscounts, wfcounts, evcounts, contcounts] = plx_info(DataFile, 0);
+[spikes_tscounts, wfcounts, evcounts, contcounts] = plx_info(DataFile, 1); % Temporary solution until the Plexon side figures out the inconsistencies
+                                                                           % between sequential just header (fullRead=0) loads of .plx files.
 %     newHeader = readPLXFileC(DataFile,'events','spikes');
 channels_with_timetraces = contcounts>0;
 
