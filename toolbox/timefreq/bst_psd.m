@@ -5,7 +5,7 @@ function [TF, FreqVector, Nwin, Messages] = bst_psd( F, sfreq, WinLength, WinOve
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -83,7 +83,7 @@ for iWin = 1:Nwin
     iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
     % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
     if ~isempty(BadSegments) && (~all((iTimes(end) < BadSegments(1,:)) | (iTimes(1) > BadSegments(2,:))))
-        disp(sprintf('BST> Skipping window #%d because it contains a bad segment.', iWin));
+        fprintf('BST> Skipping window #%d because it contains a bad segment.\n', iWin);
         Nbad = Nbad + 1;
         continue;
     end
@@ -98,7 +98,7 @@ for iWin = 1:Nwin
     % Compute FFT
     Ffft = fft(Fwin, NFFT, 2);
     % One-sided spectrum (keep only first half)
-    % (x2 to recover full power from negative frequencies)
+    % (x2 to recover full power from positive and negative frequencies)
     % Scaling options
     switch PowerUnits
     % Physical units, amplitude independent of window length
@@ -106,21 +106,20 @@ for iWin = 1:Nwin
             % Normalize by the window "noise power gain" and convert "per
             % freq bin (or Hz⋅s)" to "per Hz".
             TFwin = Ffft(:,1:NFFT/2+1) * sqrt(2 ./ (sfreq * WinNoisePowerGain));
-            % x2 doesn't apply to DC and Nyquist.
+            % x2 doesn't apply to first (DC) and last frequency bins.
             TFwin(:, [1,end]) = TFwin(:, [1,end]) ./ sqrt(2);
     % Normalized frequencies
         case 'normalized'
             % Normalize by the window "noise power gain".
             TFwin = Ffft(:,1:NFFT/2+1) * sqrt(2 ./ WinNoisePowerGain);
-            % x2 doesn't apply to DC and Nyquist.
+            % x2 doesn't apply to first (DC) and last frequency bins.
             TFwin(:, [1,end]) = TFwin(:, [1,end]) ./ sqrt(2);
             FreqVector = 0.5 * linspace(0,1,NFFT/2+1);
     % Pre 2020 fix:
         case 'old'
-            % Issues: Factor of 2 applies to power, here it multiplies
-            % amplitude. Rectangular window "noise power gain" is Lwin, but
-            % here we used Hamming.  Further, it would again divide the
-            % power, so would need sqrt here.
+            % Issues: Factor of 2 applies to power, here it multiplies amplitude.
+            % Rectangular window "noise power gain" is Lwin, but here we used Hamming.
+            % Further, it should again divide the power, so would need sqrt here.
             TFwin = 2 * Ffft(:,1:NFFT/2+1) ./ Lwin;
         otherwise
             error('Unknown power spectrum units option.');
@@ -155,9 +154,9 @@ for iWin = 1:Nwin
     end
     % Compute mean and standard deviation
     TFwin = TFwin - TF;
-    R = TFwin ./ iWin;
+    R = TFwin ./ (iWin-Nbad);
     if isVariance
-        Var = Var + TFwin .* R .* (iWin-1);
+        Var = Var + TFwin .* R .* (iWin-Nbad-1);
     end
     TF = TF + R;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -165,7 +164,7 @@ end
 
 % Convert variance to standard deviation
 if isVariance
-    Var = Var ./ (Nwin - 1);
+    Var = Var ./ (Nwin-Nbad - 1);
     TF = sqrt(Var);
 end
 

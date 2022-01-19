@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_blackrock(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -57,9 +57,7 @@ end
 disp('BST> Disabling NPMKSettings:ShowuVWarning...');
 NPMKSettings = settingsManager;
 readOptions = {};
-if isfield(NPMKSettings, 'ShowuVWarning')
-    NPMKSettings.ShowuVWarning = 0;
-end
+NPMKSettings.ShowuVWarning = 0;
 if isfield(NPMKSettings, 'ShowZeroPadWarning')
     NPMKSettings.ShowZeroPadWarning = 0;
     readOptions{end+1} = 'nozeropad';

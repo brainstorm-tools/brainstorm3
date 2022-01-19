@@ -8,7 +8,7 @@ function varargout = panel_timefreq_options(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,8 @@ function varargout = panel_timefreq_options(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2020; Hossein Shahabi, 2020
+% Authors: Francois Tadel, 2010-2021
+%          Hossein Shahabi, 2020-2021
 
 eval(macro_method);
 end
@@ -317,6 +318,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     if strcmpi(Method, 'hilbert')
         jRadioFreqLinear.setEnabled(0);
         jRadioFreqBands.setSelected(1);
+    % PSD with normalized units: frequency bands not available
+    elseif strcmpi(Method, 'psd') && isfield(sProcess.options, 'units') && isfield(sProcess.options.units, 'Value') && isequal(sProcess.options.units.Value, 'normalized')
+        jRadioFreqLinear.setSelected(1);
     elseif TimefreqOptions.isFreqBands
         jRadioFreqBands.setSelected(1);
     elseif TimefreqOptions.isFreqLog
@@ -444,7 +448,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             end
         else
             jRadioFreqLinear.setEnabled(1);
-            if isProcHenv
+            if isProcHenv || (strcmpi(Method, 'psd') && isfield(sProcess.options, 'units') && isfield(sProcess.options.units, 'Value') && isequal(sProcess.options.units.Value, 'normalized'))
                 jRadioFreqBands.setEnabled(0);
             else
                 jRadioFreqBands.setEnabled(1);

@@ -16,7 +16,7 @@ function jPopup = tree_callbacks( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1353,7 +1353,7 @@ switch (lower(action))
                             Device = bst_get('ChannelDevice', ChannelFile);
                             ChannelMat_Comment = in_bst_channel(ChannelFile,'Comment');
                             % If CTF file format
-                            if strcmpi(Device, 'CTF')
+                            if strcmpi(Device, 'CTF') || ~isempty(strfind(ChannelMat_Comment.Comment, 'CTF'))
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_ctf_convert', filenameFull, [], 'rectype', 3, 'interactive', 1));
                             elseif ~isempty(strfind(ChannelMat_Comment.Comment, 'NWB')) % Check for NWB file format
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_nwb_convert', filenameFull, [], 'rectype', 3, 'interactive', 1, 'ChannelFile', ChannelFile));
@@ -1884,11 +1884,10 @@ switch (lower(action))
 
                         % [NxN] only
                         if ~isempty(strfind(filenameRelative, '_connectn'))                           
-                            gui_component('MenuItem', jPopup, [], 'Display as graph (2021) [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphFull'));                               
-                            gui_component('MenuItem', jPopup, [], 'Display as graph (2013) [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));
+                            gui_component('MenuItem', jPopup, [], 'Display as graph [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));                               
                             gui_component('MenuItem', jPopup, [], 'Display as image [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
-                                gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect_viz(filenameRelative, 'Fibers'));
+                                gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
                             end
                             jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [NxN]', IconLoader.ICON_CONNECTN, [], []);
                         else
@@ -3010,6 +3009,11 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
             end
             gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Tissues, MNI normalization', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_mni_normalize, 'ComputeInteractive', MriFile, 'segment'));
             gui_component('MenuItem', jMenu, [], '<HTML><B>FieldTrip</B>: Tissues, BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));
+        elseif (length(iAnatomy) == 2)   % T1 + T2
+            if ~ispc
+                AddSeparator(jMenu);
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FreeSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_freesurfer, 'ComputeInteractive', iSubject, iAnatomy));
+            end
         end
         % === DEFACE MRI ===
         if isempty(iAnatomy)

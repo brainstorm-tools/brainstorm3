@@ -11,7 +11,7 @@ function mneInfo = out_mne_channel(ChannelFile, iChannels)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -110,9 +110,12 @@ for iChan = 1:length(iChannels)
 end
 % Create info object
 mneInfo = py.mne.create_info(ch_names, 1000, ch_types);
+% Unlocking Info object
+mneSetStatus = py.getattr(mneInfo, '__setstate__');
+mneSetStatus(py.dict(pyargs('_unlocked', true)));
 % Add Brainstorm version
 bstver = bst_get('Version');
-mneInfo{'creator'} = ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'];
+mneInfo{'hpi_meas'} = py.list(py.dict(pyargs('creator', ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'])));
 
 
 % ===== TRANSFORMATIONS =====
@@ -388,6 +391,8 @@ if ~isempty(ChannelMat.MegRefCoef)
 %             Were the compensation data saved in calibrated form.
 end
 
+% Locking Info object again
+mneSetStatus(py.dict(pyargs('_unlocked', false)));
 
 
 end

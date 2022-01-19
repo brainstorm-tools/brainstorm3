@@ -17,7 +17,7 @@ function varargout = bst_process( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1893,8 +1893,11 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
     if ~isempty(Target) && (isstruct(Target) || iscell(Target))
         % Add row name only when extracting all the scouts
         AddRowComment = ~isempty(OPTIONS.TargetFunc) && strcmpi(OPTIONS.TargetFunc, 'all');
-        % Flip sign only for results
-        isflip = ismember(sInput.DataType, {'link','results'});
+        % Flip sign only for results    
+        isflip = ismember(sInput.DataType, {'link','results'}) && ...
+                         isempty(strfind(FileName, '_norm')) && ...
+                         isempty(strfind(FileName, 'NIRS'))  && ...
+                         isempty(strfind(FileName, 'Summed_sensitivities'));
         % Call process
         sMat = CallProcess('process_extract_scout', FileName, [], ...
             'timewindow',     TimeWindow, ...

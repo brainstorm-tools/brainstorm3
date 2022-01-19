@@ -7,12 +7,13 @@ function varargout = process_fem_mesh( varargin )
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
+%  [sSubject, T1File, T2File, errMsg] = process_fem_mesh('GetT1T2', iSubject, iMris=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -228,72 +229,13 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     end
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
-            
+
     % ===== GET T1/T2 MRI =====
-    % Get subject
-    sSubject = bst_get('Subject', iSubject);
-    if isempty(sSubject)
-        errMsg = 'Subject does not exist.';
-        return
+    [sSubject, T1File, T2File, errMsg] = GetT1T2(iSubject, iMris);
+    if ~isempty(errMsg)
+        return;
     end
-    % Check if a MRI is available for the subject
-    if isempty(sSubject.Anatomy)
-        errMsg = ['No MRI available for subject "' SubjectName '".'];
-        return
-    end
-    % Get default MRI if not specified
-    if isempty(iMris)
-        iMris = 1:length(sSubject.Anatomy);
-        tryDefaultT2 = 0;
-    else
-        tryDefaultT2 = 1;
-    end
-    % If there are multiple MRIs: order them to put the default one first (probably a T1)
-    if (length(iMris) > 1)
-        % Select the default MRI as the T1
-        if ismember(sSubject.iAnatomy, iMris)
-            iT1 = sSubject.iAnatomy;
-            iMris = iMris(iMris ~= sSubject.iAnatomy);
-        else
-            iT1 = [];
-        end
-        % Find other possible T1
-        if isempty(iT1)
-            iT1 = find(~cellfun(@(c)isempty(strfind(c,'t1')), lower({sSubject.Anatomy(iMris).Comment})));
-            if ~isempty(iT1)
-                iT1 = iMris(iT1(1));
-                iMris = iMris(iMris ~= iT1);
-            end
-        end
-        % Find any possible T2
-        iT2 = find(~cellfun(@(c)isempty(strfind(c,'t2')), lower({sSubject.Anatomy(iMris).Comment})));
-        if ~isempty(iT2)
-            iT2 = iMris(iT2(1));
-            iMris = iMris(iMris ~= iT2);
-        else
-            iT2 = [];
-        end
-        % If not identified yet, use first MRI as T1
-        if isempty(iT1)
-            iT1 = iMris(1);
-            iMris = iMris(2:end);
-        end
-        % If not identified yet, use following MRI as T2
-        if isempty(iT2) && tryDefaultT2
-            iT2 = iMris(1);
-        end
-    else
-        iT1 = iMris(1);
-        iT2 = [];
-    end
-    % Get full file names
-    T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
-    if ~isempty(iT2)
-        T2File = file_fullpath(sSubject.Anatomy(iT2).FileName);
-    else
-        T2File = [];
-    end
-        
+
     % ===== LOAD/CUT T1 =====
     if ismember(lower(OPTIONS.Method), {'brain2mesh', 'simnibs', 'roast'})
         sMriT1 = in_mri_bst(T1File);
@@ -1005,6 +947,83 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     end
     % Return success
     isOk = 1;
+end
+
+
+%% ===== GET T1/T2 MRI =====
+% USAGE:  [sSubject, T1File, T2File, errMsg] = GetT1T2(iSubject, iMris=[])
+function [sSubject, T1File, T2File, errMsg] = GetT1T2(iSubject, iMris)
+    % Initialize returned variables
+    T1File = [];
+    T2File = [];
+    errMsg = [];
+    % Parse inputs
+    if (nargin < 2) || isempty(iMris)
+        iMris = [];
+    end
+    % Get subject
+    sSubject = bst_get('Subject', iSubject);
+    if isempty(sSubject)
+        errMsg = 'Subject does not exist.';
+        return
+    end
+    % Check if a MRI is available for the subject
+    if isempty(sSubject.Anatomy)
+        errMsg = ['No MRI available for subject "' sSubject.Name '".'];
+        return
+    end
+    % Get default MRI if not specified
+    if isempty(iMris)
+        iMris = 1:length(sSubject.Anatomy);
+        tryDefaultT2 = 0;
+    else
+        tryDefaultT2 = 1;
+    end
+    % If there are multiple MRIs: order them to put the default one first (probably a T1)
+    if (length(iMris) > 1)
+        % Select the default MRI as the T1
+        if ismember(sSubject.iAnatomy, iMris)
+            iT1 = sSubject.iAnatomy;
+            iMris = iMris(iMris ~= sSubject.iAnatomy);
+        else
+            iT1 = [];
+        end
+        % Find other possible T1
+        if isempty(iT1)
+            iT1 = find(~cellfun(@(c)isempty(strfind(c,'t1')), lower({sSubject.Anatomy(iMris).Comment})));
+            if ~isempty(iT1)
+                iT1 = iMris(iT1(1));
+                iMris = iMris(iMris ~= iT1);
+            end
+        end
+        % Find any possible T2
+        iT2 = find(~cellfun(@(c)isempty(strfind(c,'t2')), lower({sSubject.Anatomy(iMris).Comment})));
+        if ~isempty(iT2)
+            iT2 = iMris(iT2(1));
+            iMris = iMris(iMris ~= iT2);
+        else
+            iT2 = [];
+        end
+        % If not identified yet, use first MRI as T1
+        if isempty(iT1)
+            iT1 = iMris(1);
+            iMris = iMris(2:end);
+        end
+        % If not identified yet, use following MRI as T2
+        if isempty(iT2) && tryDefaultT2
+            iT2 = iMris(1);
+        end
+    else
+        iT1 = iMris(1);
+        iT2 = [];
+    end
+    % Get full file names
+    T1File = file_fullpath(sSubject.Anatomy(iT1).FileName);
+    if ~isempty(iT2)
+        T2File = file_fullpath(sSubject.Anatomy(iT2).FileName);
+    else
+        T2File = [];
+    end
 end
 
 

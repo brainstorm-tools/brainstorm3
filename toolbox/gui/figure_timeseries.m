@@ -20,7 +20,7 @@ function varargout = figure_timeseries( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1066,11 +1066,15 @@ function FigureZoom(hFig, direction, Factor, center)
             % Start by displaying the full resolution if necessary
             [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
             if (GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor > 1)
-                set(hFig, 'Pointer', 'watch');
-                drawnow;
-                GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor = 1;
-                figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
-                set(hFig, 'Pointer', 'arrow');
+                if ~isempty(GlobalData.DataSet(iDS).DataFile)
+                    set(hFig, 'Pointer', 'watch');
+                    drawnow;
+                    GlobalData.DataSet(iDS).Figure(iFig).Handles(1).DownsampleFactor = 1;
+                    figure_timeseries('PlotFigure', iDS, iFig, [], [], 1);
+                    set(hFig, 'Pointer', 'arrow');
+                else
+                    disp('BST> Warning: Cannot reload file with full resolution.');
+                end
             end
             % Get current time frame
             hCursor = findobj(hAxes(1), '-depth', 1, 'Tag', 'Cursor');
@@ -3290,17 +3294,20 @@ function PlotHandles = PlotAxes(iDS, hAxes, PlotHandles, TimeVector, F, TsInfo, 
     % Detect optimal downsample factor
     elseif ~isFastUpdate || isempty(PlotHandles.DownsampleFactor)
         % Get number of pixels in the axes
-        figPos = get(get(hAxes,'Parent'), 'Position');
-        % Keep 5 values per pixel
-        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / (figPos(3) -50) / DownsampleTimeSeries));
+        % figPos = get(get(hAxes,'Parent'), 'Position');
+        % nPixels = figPos(3) -50;
+        % Keep 5 values per pixel, and consider axes of 2000 pixels
+        nPixels = 2000;
+        PlotHandles.DownsampleFactor = max(1, floor(length(TimeVector) / nPixels / DownsampleTimeSeries));
     end
     % Downsample time series
-    if (PlotHandles.DownsampleFactor > 1)
+    if (PlotHandles.DownsampleFactor > 1) && ~isempty(GlobalData.DataSet(iDS).DataFile)
         TimeVector = TimeVector(1:PlotHandles.DownsampleFactor:end);
         F = F(:,1:PlotHandles.DownsampleFactor:end);
         if ~isempty(Std)
             Std = Std(:,1:PlotHandles.DownsampleFactor:end,:,:);
         end
+        disp(['BST> Warning: Downsampling signals for display (keeping 1 value every ' num2str(PlotHandles.DownsampleFactor) ')']);
     end
 
     % ===== SWITCH DISPLAY MODE =====
@@ -3626,7 +3633,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...
                              && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (size(F,1) > 5) ...
-                             && ~isempty(TsInfo.Modality) && ~strcmpi(TsInfo.Modality, 'sources') && ~strcmpi(TsInfo.Modality, 'results') && ~strcmpi(TsInfo.Modality, 'sloreta') && (TsInfo.Modality(1) ~= '$')
+                             && ~isempty(TsInfo.Modality) && ismember(TsInfo.Modality, {'EEG','MEG','EEG','SEEG'})
         GFP = sqrt(sum((F * fFactor).^2, 1));
         PlotGFP(hAxes, TimeVector, GFP, TsInfo.FlipYAxis, isFastUpdate);
     end

@@ -17,7 +17,7 @@ function [mneObj, DataMat, ChannelMat, iChannels] = out_mne_data(DataFiles, ObjT
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -57,7 +57,9 @@ elseif isstruct(DataFiles)
     DataFiles = [];
 end
 % Only 'Epoched' objects can have multiple data files in input
-if (length(DataFiles) > 1) && ~strcmpi(ObjType, 'Epoched')
+if ~ismember(ObjType, {'Raw', 'Epoched', 'Evoked'})
+    error('ObjType must be one of the following types of data: ''Raw'', ''Epoched'', ''Evoked''');
+elseif (length(DataFiles) > 1) && ~strcmpi(ObjType, 'Epoched')
     error('Only "Epoched" objects accept multiple input files.');
 end
 % Check that data files are available in the database
@@ -170,7 +172,7 @@ mneInfo{'description'} = DataMat.Comment;
 % Bad channels
 iBad = find(DataMat.ChannelFlag == -1);
 if ~isempty(iBad)
-    mneInfo{'bads'} = {ChannelMat.Channel(iBad).Name};
+    mneInfo{'bads'} = py.list({ChannelMat.Channel(iBad).Name});
 end
 % Mark projectors as applied (data loaded with UseSSP=1)
 for iProj = 1:length(mneInfo{'projs'})
@@ -218,18 +220,18 @@ switch ObjType
         
     case 'Epoched'
         % Sort trials by type, based on the comment of the files
-        events = uint32([(1:size(DataMat.F, 1))', repmat([0, 1], size(DataMat.F, 1), 1)]);
+        evts = uint32([(1:size(DataMat.F, 1))', repmat([0, 1], size(DataMat.F, 1), 1)]);
         event_id = py.dict();
         if ~isempty(epochsComment)
             uniqueTypes = unique(epochsComment);
             for iType = 1:length(uniqueTypes)
-                events(strcmpi(epochsComment, uniqueTypes{iType}), 3) = iType;
+                evts(strcmpi(epochsComment, uniqueTypes{iType}), 3) = iType;
                 event_id{uniqueTypes{iType}} = uint32(iType);
             end
         end
         % Create Epoched object from concatenated trials
 %         mneObj = py.mne.EpochsArray(bst_mat2py(DataMat.F), mneInfo, bst_mat2py(events), DataMat.Time(1), event_id);
-        mneObj = py.mne.EpochsArray(DataMat.F, mneInfo, bst_mat2py(events), DataMat.Time(1), event_id);
+        mneObj = py.mne.EpochsArray(DataMat.F, mneInfo, bst_mat2py(evts, 1), DataMat.Time(1), event_id);
         
     case 'Evoked'
         % Create Evoked object

@@ -7,7 +7,7 @@ function [ template ] = db_template(structureName)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1181,12 +1181,14 @@ switch lower(structureName)
             'UnloadPlugs',   [], ...  % Cell-array of incompatible plugin names, to remove from path before adding
             'LoadFolders',   [], ...  % Cell-array of subfolders to add to the path when setting the plugin up (use {'*'} to load all subfolders)
             'GetVersionFcn', [], ...  % String to eval to get the version (after installation)
+            'DownloadedFcn', [], ...  % String to eval or function handle to call after downloading the plugin
             'InstalledFcn',  [], ...  % String to eval or function handle to call after installing the plugin
             'UninstalledFcn',[], ...  % String to eval or function handle to call after uninstalling the plugin
             'LoadedFcn',     [], ...  % String to eval or function handle to call after loading the plugin
             'UnloadedFcn',   [], ...  % String to eval or function handle to call after unloading the plugin
             'DeleteFiles',   [], ...  % Cell-array of files to delete after unzipping the plugin package (path relative to the plugin folder)
-            ... % Set when installing or loading the plugin 
+            ... % Set when installing or loading the plugin
+            'InstallDate',   '', ...  % Installation date
             'SubFolder',     '', ...  % If all the code is in a subfolder: detect this at installation time
             'Path',          [], ...  % Set at runtime: Installation path for this plugin
             'Processes',     [], ...  % List of process functions to be added to the pipeline manager

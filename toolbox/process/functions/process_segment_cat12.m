@@ -9,7 +9,7 @@ function varargout = process_segment_cat12( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -352,8 +352,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     elseif ~isSphReg && isCerebellum
         matlabbatch{1}.spm.tools.cat.estwrite.output.surface = 6;   % 6: lh+rh+cerebellum  (fast, no registration, quick review only)
     end
-    % Extract additional surface parameters: Cortical thickness, Gyrification index, Sulcal depth
-    if isExtraMaps
+    % Extract additional surface parameters: Cortical thickness, Gyrification index, Sulcal depth (can't be imported for default anatomy)
+    if isExtraMaps && (iSubject > 0)
         matlabbatch{1}.spm.tools.cat.estwrite.output.surf_measures = 1;  % Thickness maps
         % Separate SPM process (second element in the batch)
         matlabbatch{2}.spm.tools.cat.stools.surfextract.data_surf(1) = cfg_dep('CAT12: Segmentation (current release): Left Central Surface', substruct('.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}, '.','val', '{}',{1}), substruct('()',{1}, '.','lhcentral', '()',{':'}));
@@ -427,13 +427,17 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     if isCancel
         return
     end
-    % Ask for cortical maps
-    [isExtraMaps, isCancel] = java_dialog('confirm', ['Compute cortical maps?' 10 10 ...
-        ' - Cortical thickness', 10 ...
-        ' - Gyrification index', 10 ...
-        ' - Sulcal depth', 10 10], 'CAT12 MRI segmentation');
-    if isCancel
-        return
+    % Ask for cortical maps (not for default anatomy)
+    if (iSubject > 0)
+        [isExtraMaps, isCancel] = java_dialog('confirm', ['Compute cortical maps?' 10 10 ...
+            ' - Cortical thickness', 10 ...
+            ' - Gyrification index', 10 ...
+            ' - Sulcal depth', 10 10], 'CAT12 MRI segmentation');
+        if isCancel
+            return
+        end
+    else
+        isExtraMaps = 0;
     end
     % Open progress bar
     bst_progress('start', 'CAT12', 'CAT12 MRI segmentation...');

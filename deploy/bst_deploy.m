@@ -16,7 +16,7 @@ function bst_deploy(GitDir, GitExe)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -150,7 +150,7 @@ if ~isempty(GitDir)
     system(['xcopy ' fullfile(bstDir, 'deploy')       ' ' fullfile(GitDir, 'deploy')       '/s /e /y /q']);
     system(['xcopy ' fullfile(bstDir, 'doc')          ' ' fullfile(GitDir, 'doc')          '/s /e /y /q']);
     system(['xcopy ' fullfile(bstDir, 'external')     ' ' fullfile(GitDir, 'external')     '/s /e /y /q']);
-    system(['xcopy ' fullfile(bstDir, 'java')         ' ' fullfile(GitDir, 'java')         '/s /e /y /q']);
+    % system(['xcopy ' fullfile(bstDir, 'java')         ' ' fullfile(GitDir, 'java')         '/s /e /y /q']);
     system(['xcopy ' fullfile(bstDir, 'toolbox')      ' ' fullfile(GitDir, 'toolbox')      '/s /e /y /q']);
     % Start GIT GUI in the deployment folder
     system(['start /b cmd /c ""' GitExe '" --working-dir "' GitDir '""']);

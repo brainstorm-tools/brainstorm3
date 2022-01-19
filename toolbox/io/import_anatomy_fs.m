@@ -23,7 +23,7 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -129,7 +129,12 @@ bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
 T1File = file_find(FsDir, 'T1.mgz', 2);
 T2File = file_find(FsDir, 'T2.mgz', 2);
 if isempty(T1File)
-    errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+    T1File = file_find(FsDir, '*.nii.gz', 0);
+    if ~isempty(T1File)
+        T1Comment = 'MRI';
+    else
+        errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+    end
 elseif ~isempty(T1File) && ~isempty(T2File)
     T1Comment = 'MRI T1';
     T2Comment = 'MRI T2';
@@ -192,6 +197,15 @@ if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
     iBAnew = find(~cellfun(@(c)isempty(strfind(c, 'BA_exvivo.annot')), AnnotRhFiles));
     if ~isempty(iBAold) && ~isempty(iBAnew)
         AnnotRhFiles(iBAold) = [];
+    end
+    % Remove temporary FastSurfer files: ?h.aparc.mapped.prefix.annot
+    iTmpL = find(~cellfun(@(c)isempty(strfind(c, 'mapped.prefix')), AnnotLhFiles));
+    if ~isempty(iTmpL)
+        AnnotLhFiles(iTmpL) = [];
+    end
+    iTmpR = find(~cellfun(@(c)isempty(strfind(c, 'mapped.prefix')), AnnotRhFiles));
+    if ~isempty(iTmpR)
+        AnnotRhFiles(iTmpR) = [];
     end
     % Re-order the files so that FreeSurfer atlases are first (for automatic region labelling)
     iDKL = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotLhFiles));

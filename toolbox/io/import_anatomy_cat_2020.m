@@ -25,7 +25,7 @@ function errorMsg = import_anatomy_cat_2020(iSubject, CatDir, nVertices, isInter
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -593,11 +593,11 @@ if isVolumeAtlas && ~isempty(VolAtlasFiles)
 end
 
 %% ===== IMPORT THICKNESS MAPS =====
-if isExtraMaps && ~isempty(CentralHiFile)
+if isExtraMaps && ~isempty(CentralHiFile) && (iSubject > 0)
     % Create a condition "CAT12"
     iStudy = db_add_condition(iSubject, 'CAT12');
     % Import cortical thickness
-    if ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
+    if ~isempty(ThickLhFile) && ~isempty(ThickRhFile)
         import_sources(iStudy, CentralHiFile, ThickLhFile, ThickRhFile, 'FS', 'thickness');
     end
     % Import gyrification

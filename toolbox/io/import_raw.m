@@ -15,7 +15,7 @@ function OutputFiles = import_raw(RawFiles, FileFormat, iSubject, ImportOptions,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -132,9 +132,13 @@ for iFile = 1:length(RawFiles)
     if ~isfield(sFile, 'prop') || ~isfield(sFile.prop, 'sfreq') || isempty(sFile.prop.sfreq) || (sFile.prop.sfreq == 0)
         error('Could not open file (see errors in command window).');
     end
-    % Review imported files works only for single files (not for multiple trials)
-    if (length(DataMat) > 1)
+    % Review imported files works only for single files (not for multiple trials - except for files already fully read that need to be saved as .BST)
+    if (length(DataMat) > 1) && ~strcmpi(sFile.format, 'BST-DATA')
         error(['Cannot open multiple trials as continuous files.' 10 'Use the menu "Import MEG/EEG" instead.']);
+    elseif (length(DataMat) > 1)
+        nSes = length(DataMat);
+    else
+        nSes = 1;
     end
     % Yokogawa non-registered warning
     if ~isempty(errMsg) && ImportOptions.DisplayMessages
@@ -151,12 +155,6 @@ for iFile = 1:length(RawFiles)
     % Remove "data_" tag when importing Brainstorm files as raw continuous files
     if strcmpi(FileFormat, 'BST-DATA') && (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
         fBase = fBase(6:end);
-    end
-    % Build output condition name
-    if isfield(sFile, 'condition') && ~isempty(sFile.condition)
-        ConditionName = ['@raw' sFile.condition];
-    else
-        ConditionName = ['@raw' fBase];
     end
     % Output subject
     if isempty(iSubject)
@@ -180,54 +178,10 @@ for iFile = 1:length(RawFiles)
         ImportOptions.ChannelAlign = 0;
     end
 
-    % If condition already exists
-    [sExistStudy, iExistStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, file_standardize(ConditionName, 1)));
-    if ~isempty(sExistStudy) && ~isempty(sExistStudy.Data)
-        % Need to check if the raw file is the same or they are two files with the same name in different folders
-        % Get the raw data files
-        iRaw = find(strcmpi({sExistStudy.Data.DataType}, 'raw'));
-        if ~isempty(iRaw)
-            % Load data description
-            DataFile = sExistStudy.Data(iRaw).FileName;
-            DataMat = in_bst_data(DataFile);
-            % If same filenames or file linking imported data files: cannot link it again in the database
-            LinkFile = DataMat.F.filename;
-            minLength = min(length(LinkFile), length(RawFiles{iFile}));
-            if file_compare(LinkFile(1:minLength), RawFiles{iFile}(1:minLength)) || strcmpi(FileFormat, 'BST-DATA')
-                panel_protocols('SelectNode', [], 'rawdata', iExistStudy, iRaw );
-                OutputFiles{end+1} = DataFile;
-                continue;
-            % Else: Create a condition with a different name
-            else
-                % Add a numeric tag at the end of the condition name
-                curPath = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sExistStudy.FileName));
-                curPath = file_unique(curPath);
-                [tmp__, ConditionName] = bst_fileparts(curPath, 1);
-                % Save it in the updated name in the "condition" field
-                sFile.condition = strrep(ConditionName, '@raw', '');
-            end
-        end
-    end
-    % Creation date: use input value, or try to get it from the sFile structure
-    if ~isempty(DateOfStudy)
-        studyDate = DateOfStudy;
-    elseif isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
-        studyDate = sFile.acq_date;
-    else
-        studyDate = [];
-    end
-    % Create output condition
-    iOutputStudy = db_add_condition(sSubject.Name, ConditionName, [], studyDate);
-    if isempty(iOutputStudy)
-        error('Folder could not be created : "%s/%s".', bst_fileparts(sSubject.FileName), ConditionName);
-    end
-    % Get output study
-    sOutputStudy = bst_get('Study', iOutputStudy);
-    % Get the study in which the channel file has to be saved
-    [sChannel, iChannelStudy] = bst_get('ChannelForStudy', iOutputStudy);
-    
-    % ===== CREATE DEFAULT CHANNEL FILE =====
-    if isempty(ChannelMat)
+    % ===== CHANNEL FILE =====
+    % Create default channel file
+    isLoadedChannel = ~isempty(ChannelMat);
+    if ~isLoadedChannel
         ChannelMat = db_template('channelmat');
         ChannelMat.Comment = [sFile.device ' channels'];
         ChannelMat.Channel = repmat(db_template('channeldesc'), [1, length(sFile.channelflag)]);
@@ -244,10 +198,7 @@ for iFile = 1:length(RawFiles)
             ChannelMat.Channel(i).Weight  = 1;
             ChannelMat.Channel(i).Comment = [];
         end
-        % Add channel file to database
-        db_set_channel(iChannelStudy, ChannelMat, 0, 0);
-
-    % ===== SAVE LOADED CHANNEL FILE =====
+    % Channel file loaded from input file
     else
         % Add history field to channel structure
         ChannelMat = bst_history('add', ChannelMat, 'import', ['Link to file: ' RawFiles{iFile} ' (Format: ' FileFormat ')']);
@@ -261,74 +212,146 @@ for iFile = 1:length(RawFiles)
         if ismember(FileFormat, {'BST-BIN', 'BST-DATA'}) 
             ImportOptions.ChannelAlign = 0;
         end
-        % Add channel file to database
-        [ChannelFile, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign, Modality] = db_set_channel(iChannelStudy, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign);
-        % If loading SEEG or ECOG data: change the sensor type
-        if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
-            Mod = strrep(FileFormat, '-ALL', '');
-            process_channel_setseeg('Compute', ChannelFile, Mod);
-        end
-        % Display the registration if this was skipped in db_set_channel
-        if (ImportOptions.ChannelAlign == 0) && (ImportOptions.DisplayMessages) && ~isempty(Modality)
-            bst_memory('UnloadAll', 'Forced');
-            channel_align_manual(ChannelFile, Modality, 0);
-        end
-        % If there are existing SSP in this file: notice the user
-        if isfield(ChannelMat, 'Projector') && ~isempty(ChannelMat.Projector)
-            isSSP = 1;
-        end
     end
-    
-    % ===== EXPORT BST-BIN FILE =====
-    % If the files that are read cannot be read as binary: save them as binary
-    if isfield(sFile.header, 'F') && ~isempty(sFile.header.F) && ~isempty(DataMat)
-        bst_progress('text', 'Converting file to binary .bst format...');
-        % Prepare sFile structure
-        ExportFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), [fBase '.bst']);
-        % Export binary file
-        [ExportFile, sFile] = export_data(DataMat, ChannelMat, ExportFile, 'BST-BIN');
-        % Display message in console
-        disp(['BST> File converted to binary .bst format: ' ExportFile]);
-    end
-    
-    % ===== SAVE LINK FILE =====
-    % Build output filename
-    NewBstFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' fBase '.mat']);
-    % Build output structure
-    DataMat = db_template('DataMat');
-    DataMat.F           = sFile;
-    DataMat.Comment     = 'Link to raw file';
-    DataMat.ChannelFlag = sFile.channelflag;
-    DataMat.Time        = sFile.prop.times;
-    DataMat.DataType    = 'raw';
-    DataMat.Device      = sFile.device;
-    % Compumedics: add start time to the file comment
-    if strcmpi(sFile.format, 'EEG-COMPUMEDICS-PFS') && isfield(sFile.header, 'rda_startstr') && ~isempty(sFile.header.rda_startstr)
-        DataMat.Comment = [DataMat.Comment ' [' sFile.header.rda_startstr ']'];
-    end
-    % Add history field
-    DataMat = bst_history('add', DataMat, 'import', ['Link to raw file: ' RawFiles{iFile}]);
-    % Save file on hard drive
-    bst_save(NewBstFile, DataMat, 'v6');
-    % Add file to database
-    sOutputStudy = db_add_data(iOutputStudy, NewBstFile, DataMat);
-    % Return new file
-    OutputFiles{end+1} = NewBstFile;
 
-    % ===== UPDATE DATABASE =====
-    % Update links
-    db_links('Study', iOutputStudy);
-    % Refresh both data node and channel node
-    iUpdateStudies = unique([iOutputStudy, iChannelStudy]);
-    panel_protocols('UpdateNode', 'Study', iUpdateStudies);
+    % ===== LOOP ON MULTIPLE SESSIONS =====
+    for iSes = 1:nSes
+        % Build output condition name
+        if isfield(sFile, 'condition') && ~isempty(sFile.condition)
+            ConditionName = ['@raw' sFile.condition];
+        else
+            ConditionName = ['@raw' fBase];
+        end
+        if (nSes > 1)
+            ConditionName = [ConditionName, sprintf('-%02d', iSes)];
+            NewComment = DataMat(iSes).Comment;
+        else
+            NewComment = 'Link to raw file';
+        end
+        % If condition already exists
+        [sExistStudy, iExistStudy] = bst_get('StudyWithCondition', bst_fullfile(sSubject.Name, file_standardize(ConditionName, 1)));
+        if ~isempty(sExistStudy) && ~isempty(sExistStudy.Data)
+            % Need to check if the raw file is the same or they are two files with the same name in different folders
+            % Get the raw data files
+            iRaw = find(strcmpi({sExistStudy.Data.DataType}, 'raw'));
+            if ~isempty(iRaw)
+                % Load data description
+                DataFile = sExistStudy.Data(iRaw).FileName;
+                DataMatTmp = in_bst_data(DataFile);
+                % If same filenames or file linking imported data files: cannot link it again in the database
+                LinkFile = DataMatTmp.F.filename;
+                minLength = min(length(LinkFile), length(RawFiles{iFile}));
+                if file_compare(LinkFile(1:minLength), RawFiles{iFile}(1:minLength)) || strcmpi(FileFormat, 'BST-DATA')
+                    panel_protocols('SelectNode', [], 'rawdata', iExistStudy, iRaw );
+                    OutputFiles{end+1} = DataFile;
+                    continue;
+                % Else: Create a condition with a different name
+                else
+                    % Add a numeric tag at the end of the condition name
+                    curPath = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sExistStudy.FileName));
+                    curPath = file_unique(curPath);
+                    [tmp__, ConditionName] = bst_fileparts(curPath, 1);
+                    % Save it in the updated name in the "condition" field
+                    sFile.condition = strrep(ConditionName, '@raw', '');
+                end
+            end
+        end
+        % Creation date: use input value, or try to get it from the sFile structure
+        if ~isempty(DateOfStudy)
+            studyDate = DateOfStudy;
+        elseif isfield(sFile, 'acq_date') && ~isempty(sFile.acq_date)
+            studyDate = sFile.acq_date;
+        else
+            studyDate = [];
+        end
+        % Create output condition
+        iOutputStudy = db_add_condition(sSubject.Name, ConditionName, [], studyDate);
+        if isempty(iOutputStudy)
+            error('Folder could not be created : "%s/%s".', bst_fileparts(sSubject.FileName), ConditionName);
+        end
+        % Get output study
+        sOutputStudy = bst_get('Study', iOutputStudy);
+        % Get the study in which the channel file has to be saved
+        [sChannel, iChannelStudy] = bst_get('ChannelForStudy', iOutputStudy);
     
-    % ===== ADD SYNCHRONIZED VIDEOS =====
-    % Look for video files with the same name, add them to the raw folder if found
-    for fExt = {'.avi','.AVI','.mpg','.MPG','.mpeg','.MPEG','.mp4','.MP4','.mp2','.MP2','.mkv','.MKV','.wmv','.WMV','.divx','.DIVX','.mov','.MOV'}
-        VideoFile = bst_fullfile(fPath, [fBase, fExt{1}]);
-        if file_exist(VideoFile)
-            import_video(iOutputStudy, VideoFile);
-            break;
+        % ===== SAVE CHANNEL FILE =====
+        % Empty channel structure
+        if ~isLoadedChannel
+            % Add channel file to database
+            db_set_channel(iChannelStudy, ChannelMat, 0, 0);
+        % Channel structure loaded from file
+        else
+            % Add channel file to database
+            [ChannelFile, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign, Modality] = db_set_channel(iChannelStudy, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign);
+            % If loading SEEG or ECOG data: change the sensor type
+            if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
+                Mod = strrep(FileFormat, '-ALL', '');
+                process_channel_setseeg('Compute', ChannelFile, Mod);
+            end
+            % Display the registration if this was skipped in db_set_channel
+            if (ImportOptions.ChannelAlign == 0) && (ImportOptions.DisplayMessages) && ~isempty(Modality)
+                bst_memory('UnloadAll', 'Forced');
+                channel_align_manual(ChannelFile, Modality, 0);
+            end
+            % If there are existing SSP in this file: notice the user
+            if isfield(ChannelMat, 'Projector') && ~isempty(ChannelMat.Projector)
+                isSSP = 1;
+            end
+        end
+    
+        % ===== EXPORT BST-BIN FILE =====
+        % If the files that are read cannot be read as binary: save them as binary
+        if isfield(sFile.header, 'F') && ~isempty(sFile.header.F) && ~isempty(DataMat)
+            bst_progress('text', 'Converting file to binary .bst format...');
+            % Prepare sFile structure
+            ExportFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), [fBase '.bst']);
+            % Export binary file
+            [ExportFile, sFileOut] = export_data(DataMat(iSes), ChannelMat, ExportFile, 'BST-BIN');
+            % Display message in console
+            disp(['BST> File converted to binary .bst format: ' ExportFile]);
+        else
+            sFileOut = sFile;
+        end
+        
+        % ===== SAVE LINK FILE =====
+        % Build output filename
+        NewBstFile = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(sOutputStudy.FileName), ['data_0raw_' fBase '.mat']);
+        % Build output structure
+        NewMat = db_template('DataMat');
+        NewMat.F           = sFileOut;
+        NewMat.Comment     = NewComment;
+        NewMat.ChannelFlag = sFileOut.channelflag;
+        NewMat.Time        = sFileOut.prop.times;
+        NewMat.DataType    = 'raw';
+        NewMat.Device      = sFileOut.device;
+        % Compumedics: add start time to the file comment
+        if strcmpi(sFileOut.format, 'EEG-COMPUMEDICS-PFS') && isfield(sFileOut.header, 'rda_startstr') && ~isempty(sFileOut.header.rda_startstr)
+            NewMat.Comment = [NewMat.Comment ' [' sFileOut.header.rda_startstr ']'];
+        end
+        % Add history field
+        NewMat = bst_history('add', NewMat, 'import', ['Link to raw file: ' RawFiles{iFile}]);
+        % Save file on hard drive
+        bst_save(NewBstFile, NewMat, 'v6');
+        % Add file to database
+        sOutputStudy = db_add_data(iOutputStudy, NewBstFile, NewMat);
+        % Return new file
+        OutputFiles{end+1} = NewBstFile;
+    
+        % ===== UPDATE DATABASE =====
+        % Update links
+        db_links('Study', iOutputStudy);
+        % Refresh both data node and channel node
+        iUpdateStudies = unique([iOutputStudy, iChannelStudy]);
+        panel_protocols('UpdateNode', 'Study', iUpdateStudies);
+        
+        % ===== ADD SYNCHRONIZED VIDEOS =====
+        % Look for video files with the same name, add them to the raw folder if found
+        for fExt = {'.avi','.AVI','.mpg','.MPG','.mpeg','.MPEG','.mp4','.MP4','.mp2','.MP2','.mkv','.MKV','.wmv','.WMV','.divx','.DIVX','.mov','.MOV'}
+            VideoFile = bst_fullfile(fPath, [fBase, fExt{1}]);
+            if file_exist(VideoFile)
+                import_video(iOutputStudy, VideoFile);
+                break;
+            end
         end
     end
 end

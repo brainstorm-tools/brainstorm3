@@ -5,7 +5,7 @@ function DataMat = in_data_mat( DataFile )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -103,7 +103,7 @@ DataMat = repmat(DataMat, [nbEpoch, 1]);
 % Process each epoch
 BaseComment = DataMat(1).Comment;
 for i = 1:nbEpoch
-    DataMat(i).F = FileData(:,:,i);
+    DataMat(i).F = double(FileData(:,:,i));
     % Add indice number for multiple epochs
     if (nbEpoch > 1)
         DataMat(i).Comment = sprintf('%s #%d', BaseComment, i);

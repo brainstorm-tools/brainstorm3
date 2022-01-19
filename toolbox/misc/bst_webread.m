@@ -1,11 +1,18 @@
-function str = bst_webread(url)
-% BST_WEBREAD: Read the content of a URL
+function str = bst_webread(url, outfile)
+% BST_WEBREAD: Read the content of a URL, and optionally save it to a file
+%
+% USAGE:  str = bst_webread(url)             % Return URL contents as a string
+%               bst_webread(url, outfile)    % Save URL in a file (text or binary)
+%
+% INPUTS:
+%    - url     : URL using FTP, HTTP or HTTPS
+%    - outfile : Full path to a file in which to save the results 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,6 +27,11 @@ function str = bst_webread(url)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2020-2021
+
+% Parse inputs
+if (nargin < 2) || isempty(outfile)
+    outfile = [];
+end
 
 % FTP listing with Matlab >= 2021b
 if (bst_get('MatlabVersion') >= 911) && ~isempty(strfind(url, 'ftp://'))
@@ -58,4 +70,21 @@ catch
         % disp(['BST> ERROR: webread and urlread failed reading URL: ' url]);
         str = '';
     end
+end
+
+% Save file if requested
+if ~isempty(outfile)
+    % Check if something was read
+    if isempty(str)
+        error(['No data could be read from: ' url]);
+    end
+    % Open file
+    [fid, msg] = fopen(outfile, 'w+');
+    if fid < 0
+        error(['Could not open file: ', outfile, 10, msg]);
+    end
+    % Write URL contents to file
+    fwrite(fid, str);
+    % Close outputfile
+    fclose(fid);
 end

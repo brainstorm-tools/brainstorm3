@@ -26,7 +26,7 @@ function varargout = bst_henv(Data, Time, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -75,6 +75,12 @@ timePoints = NaN(nWindows,1) ;                   % Pre-define the center of wind
 nfBins     = size(OPTIONS.Freqrange,1) ;         % Number of Frequency bins
 A          = zeros(nSig,nSig,nWindows,nfBins) ;  % Pre-define the connectivity matrix
 % Data       = bst_bsxfun(@minus, Data, mean(Data,2)) ;  % Removing mean from the data 
+
+if bst_get('UseSigProcToolbox')
+    corrFcn = @corr;
+else
+    corrFcn = @oc_corr;
+end
 
 %% Block analysis for large files 
 if numBlocks>1
@@ -172,13 +178,13 @@ for f = 1:nfBins
                     Xext    = repmat(tXh,1,nSig) ;
                     Yext    = repelem(tXh,1,nSig) ;    
                     Yext_p  = imag(bsxfun(@times, Yext, conj(Xext)./abs(Xext)));
-                    CorrMat = reshape(diag(corr(abs(Xext),abs(Yext_p))),nSig,nSig) ;
+                    CorrMat = reshape(diag(corrFcn(abs(Xext),abs(Yext_p))),nSig,nSig) ;
                 else % Using parallel processing
                     parfor k = 1:nSig
                         Xext    = tXh(:,k) ;
                         Yext    = tXh ;
                         Yext_p  = imag(bsxfun(@times, Yext, conj(Xext)./abs(Xext)));
-                        CorrMat(k,:) = corr(abs(Xext),abs(Yext_p)) ;
+                        CorrMat(k,:) = corrFcn(abs(Xext),abs(Yext_p)) ;
                     end
                 end
         end
