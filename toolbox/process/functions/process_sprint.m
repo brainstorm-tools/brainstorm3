@@ -141,9 +141,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.maxtime.Value   = {6, 'windows', 0};
     sProcess.options.maxtime.Class = 'Yes';
     % Option: Minimum neighbours
-    sProcess.options.minnear.Comment = 'Minimum number of neighbors (default=4 ): ';
+    sProcess.options.minnear.Comment = 'Minimum number of neighbors (default=3): ';
     sProcess.options.minnear.Type    = 'value';
-    sProcess.options.minnear.Value   = {4, '', 0};
+    sProcess.options.minnear.Value   = {3, '', 0};
     sProcess.options.minnear.Class = 'Yes';
 end
 

@@ -172,7 +172,7 @@ ts(indGood:end) = [];
         spec = log10(squeeze(TF(chan,:,:))); % extract log spectra for a given channel
         % Iterate across time
         i = 1; % For peak extraction
-        ag = 2; % aperiodic guess initialization
+        ag = -(spec(1,end)-spec(1,1))./log10(fs(end)./fs(1)); % aperiodic guess initialization
         for time = 1:nTimes
             bst_progress('set', bst_round(time / nTimes,2).*100);
             % Fit aperiodic 
@@ -291,7 +291,7 @@ function SPRiNT = remove_outliers(SPRiNT,peak_function,opt)
             remove = zeros(length([SPRiNT.channel(c).peaks]),1);
             for p = 1:length([SPRiNT.channel(c).peaks])
                 if sum((abs([SPRiNT.channel(c).peaks.time] - SPRiNT.channel(c).peaks(p).time) <= timeRange) &...
-                        (abs([SPRiNT.channel(c).peaks.center_frequency] - SPRiNT.channel(c).peaks(p).center_frequency) <= opt.maxfreq)) < opt.minnear % includes current peak
+                        (abs([SPRiNT.channel(c).peaks.center_frequency] - SPRiNT.channel(c).peaks(p).center_frequency) <= opt.maxfreq)) < opt.minnear +1 % includes current peak
                     remove(p) = 1;
                 end
             end
