@@ -22,7 +22,7 @@ function varargout = figure_connect( varargin )
 % =============================================================================@
 %
 % Authors: Sebastien Dery, 2013           (initial JOGL rendering)
-%          Francois Tadel, 2013-2021
+%          Francois Tadel, 2013-2022
 %          Martin Cousineau, 2019-2021
 %          Helen Lin & Yaqi Li, 2020-2021 (new Matlab rendering)
 
@@ -1275,12 +1275,12 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'ValidNode', ones(size(Vertices, 1), 1));
     
     %% ===== User Display Preferences =====
-    % get saved preferences
-    DispOptions = bst_get('ConnectGraphOptions');    
+    % Get saved preferences
+    DispOptions = bst_get('ConnectGraphOptions');
     setappdata(hFig, 'LobeFullLabel', DispOptions.LobeFullLabel);
     setappdata(hFig, 'TextDisplayMode', DispOptions.TextDisplayMode);
     setappdata(hFig, 'NodeSize', DispOptions.NodeSize);
-    setappdata(hFig, 'LabelSize', DispOptions.LabelSize); 
+    setappdata(hFig, 'LabelSize', DispOptions.LabelSize);
     setappdata(hFig, 'LinkSize', DispOptions.LinkSize);
     setappdata(hFig, 'BgColor', DispOptions.BgColor);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1); % note: set as 1 to match default, updated to saved user pref later
@@ -2994,6 +2994,11 @@ function SetNodeLabelSize(hFig, NodeSize, LabelSize)
     end     
     setappdata(hFig, 'NodeSize', NodeSize);
     setappdata(hFig, 'LabelSize', LabelSize);
+    % Save options permanently
+    DispOptions = bst_get('ConnectGraphOptions');
+    DispOptions.NodeSize = NodeSize;
+    DispOptions.LabelSize = LabelSize;
+    bst_set('ConnectGraphOptions', DispOptions);
 end
     
 %% ===== LINK SIZE =====
@@ -3016,6 +3021,10 @@ function SetLinkSize(hFig, LinkSize)
     end
     % set new size
     setappdata(hFig, 'LinkSize', LinkSize);
+    % Save options permanently
+    DispOptions = bst_get('ConnectGraphOptions');
+    DispOptions.LinkSize = LinkSize;
+    bst_set('ConnectGraphOptions', DispOptions);
 end
  
 %% ===== LINK TRANSPARENCY ===== 
