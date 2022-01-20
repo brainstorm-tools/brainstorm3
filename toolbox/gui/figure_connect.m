@@ -1419,9 +1419,9 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     
     % if we are building measurelinks, we use their distance to compute the
     % radius (see math below)
+    MeasureDistance = [];
     if (IsMeasureLink)
         RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
-        MeasureDistance = [];
         if ~isempty(RowLocs)
             MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
         end
