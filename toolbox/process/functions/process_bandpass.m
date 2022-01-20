@@ -83,7 +83,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mirror.Value   = 0;
     sProcess.options.mirror.Hidden  = 1;
     % === Display properties
-    sProcess.options.display.Comment = {'process_bandpass(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
+    sProcess.options.display.Comment = {'process_bandpass(''DisplaySpec'',sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
 end
@@ -257,11 +257,9 @@ end
 
 
 %% ===== DISPLAY FILTER SPECS =====
-function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
-    % Get current process options
-    global GlobalData;
-    sProcess = GlobalData.Processes.Current(iProcess);
-
+function DisplaySpec(sfreq)
+    % Get current process structure
+    sProcess = panel_process_select('GetCurrentProcess');
     % Get options
     [HighPass, LowPass, isMirror, isRelax, Method, TranBand] = GetOptions(sProcess);    
     % Compute filter specification

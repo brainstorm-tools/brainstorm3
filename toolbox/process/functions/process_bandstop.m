@@ -64,7 +64,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.freqwidth.Type    = 'value';
     sProcess.options.freqwidth.Value   = {1.5, 'Hz', 2};
     % === Display properties
-    sProcess.options.display.Comment = {'process_bandstop(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
+    sProcess.options.display.Comment = {'process_bandstop(''DisplaySpec'',sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
 end
@@ -225,7 +225,11 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
             FiltSpec.DenT = FiltSpec.a(1,:) ; 
             FiltSpec.order = length(FiltSpec.DenT)-1 ;
             % Compute the cumulative energy of the impulse response
-            [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+            if bst_get('UseSigProcToolbox')
+                [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+            else
+                [h,t] = oc_impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+            end
             E = h(1:end) .^ 2 ;
             E = cumsum(E) ;
             E = E ./ max(E) ;
@@ -238,10 +242,9 @@ end
 
 
 %% ===== DISPLAY FILTER SPECS =====
-function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
-    % Get current process options
-    global GlobalData;
-    sProcess = GlobalData.Processes.Current(iProcess);
+function DisplaySpec(sfreq)
+    % Get current process structure
+    sProcess = panel_process_select('GetCurrentProcess');
     % Get options
     FreqList  = sProcess.options.freqlist.Value{1};
     FreqWidth = sProcess.options.freqwidth.Value{1};

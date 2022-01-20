@@ -253,8 +253,9 @@ function strBands = FormatBands(Bands) %#ok<DEFNU>
 end
 
 %% ===== STRING => BANDS =====
-function Bands = ParseBands(strBands) %#ok<DEFNU>
+function [Bands, errMsg] = ParseBands(strBands) %#ok<DEFNU>
     Bands = {};
+    errMsg = '';
     if isempty(strtrim(strBands))
         return
     end
@@ -265,7 +266,8 @@ function Bands = ParseBands(strBands) %#ok<DEFNU>
         % Split line 
         valBand = str_split(lineBand{iBand}, '/\|');
         if (length(valBand) ~= 3) || any(cellfun(@(c)isempty(strtrim(c)), valBand))
-            disp(['BST> Error: Invalid time or frequency band "' lineBand{iBand} '".']);
+            errMsg = ['Invalid time or frequency band "' lineBand{iBand} '".'];
+            disp(['BST> Error: ' errMsg]);
             Bands = {};
             return;
         end
