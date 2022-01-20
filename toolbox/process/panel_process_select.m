@@ -2410,10 +2410,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     % Writing a line for the option
                     if isfield(opt, 'Value')
                         % For some options types: write only the value, not the selection parameters
-                        if isfield(opt, 'Type') && ismember(opt.Type, {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(opt.Value)
+                        if isfield(opt, 'Type') && ismember(opt.Type, {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox','combobox_label'}) && iscell(opt.Value)
                             optValue = opt.Value{1};
-                        elseif isfield(opt, 'Type') && ismember(opt.Type, {'combobox_label'}) && iscell(opt.Value)
-                            optValue = opt.Value(1);
                         elseif isfield(opt, 'Type') && ismember(opt.Type, {'filename','datafile'}) && iscell(opt.Value)
                             optValue = opt.Value(1:2);
                         elseif isfield(opt, 'Type') && ismember(opt.Type, {'cluster', 'cluster_confirm', 'scout', 'scout_confirm'}) && isstruct(opt.Value) && isfield(opt.Value, 'Handles')

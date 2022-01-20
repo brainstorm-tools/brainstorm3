@@ -2261,7 +2261,7 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
             updateVal{1} = newVal;
         elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox','combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else
