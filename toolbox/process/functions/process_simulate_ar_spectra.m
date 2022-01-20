@@ -26,20 +26,21 @@ function varargout = process_simulate_ar_spectra( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Raymundo Cassani, 2021
+% Authors: Raymundo Cassani, 2021-2022
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Simulate AR signals (ARfit) with spectra';
+    sProcess.Comment     = 'Simulate AR signals';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Simulate'; 
-    sProcess.Index       = 903; 
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
+    sProcess.Index       = 902; 
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity2#Simulated_data';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'matrix'};
@@ -64,23 +65,21 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.srate.Value   = {1200, 'Hz', 2};
     % === PEAKS: FREQUENCY AND AMPLITUDE 
     % === COEFFICIENT MATRIX
-    sProcess.options.interactions.Comment = ['<BR>Using the ARSIM function from ARFIT Toolbox (T.Schneider):<BR>' ...
-                                  '&nbsp;&nbsp;&nbsp;&nbsp;X = <B>b</B> + <B>A1</B>.X1 + ... + <B>Ap</B>.Xp + <B>noise</B><BR><BR>' ... 
+    sProcess.options.interactions.Comment = [
                                   'Interaction specifications: <BR>' ...
-                                  '&nbsp;&nbsp; <B>From, To / PeakFrequencies / PeakMagnitudes</B> e.g:<BR>' ...
-                                  '&nbsp;&nbsp; 1, 2 / 10, 20, 40 / 0.5, 0.2, 1.0 <BR>' ...
-                                  '&nbsp;&nbsp;&nbsp;&nbsp; - p: Order of the AR model = 2 * max_requested_peaks<BR>'];
+                                  '<FONT color="#707070">From, To&nbsp;&nbsp;/&nbsp;&nbsp;PeakFrequencies [Hz]&nbsp;&nbsp;/&nbsp;&nbsp;PeakMagnitudes [0-1]<BR>' ...
+                                  'Example:&nbsp;&nbsp;1, 2&nbsp;&nbsp;/&nbsp;&nbsp;10, 20, 40&nbsp;&nbsp;/&nbsp;&nbsp;0.5, 0.2, 1.0</FONT><BR>'];
     sProcess.options.interactions.Type    = 'textarea';
     sProcess.options.interactions.Value   = ['1, 1 / 10, 25 / 0.0, 1.0', 10 ...
                                              '2, 2 / 10, 25 / 1.0, 0.0', 10 ...
                                              '3, 3 / 10, 25 / 1.0, 0.2', 10 ...
                                              '1, 3 / 10, 25 / 0.0, 0.6'];
     % === DISPLAY SPECTRAL METRICS
-    sProcess.options.display.Comment = {'process_simulate_ar_spectra(''DisplayMetrics'',iProcess);', '<BR>', 'View spectral metrics'};
+    sProcess.options.display.Comment = {'process_simulate_ar_spectra(''DisplayMetrics'');', '<BR>', 'View spectral metrics'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
     % === DISPLAY COEFFICIENT MATRIX
-    sProcess.options.coeff.Comment = {'process_simulate_ar_spectra(''DisplayCoefficients'',iProcess);', '<BR>', 'Get coefficients matrix'};
+    sProcess.options.coeff.Comment = {'process_simulate_ar_spectra(''DisplayCoefficients'');', '<BR>', 'Get coefficients matrix'};
     sProcess.options.coeff.Type    = 'button';
     sProcess.options.coeff.Value   = [];        
 end
@@ -93,16 +92,24 @@ end
 
 
 %% ===== GET COEFFICIENTS =====
-function [A, b, C] = GetCoefficients(sProcess)
-    % Parse sProcess.options.interactions.Value
-    interactions = process_tf_bands('ParseBands', sProcess.options.interactions.Value);
+function [A, b, C, errMsg] = GetCoefficients(sProcess)
+    % Initialize returned values
+    A = [];
+    b = [];
+    C = [];
+    errMsg = '';
+    % Parse interactions
+    [interactions, errMsg] = process_tf_bands('ParseBands', sProcess.options.interactions.Value);
+    if ~isempty(errMsg)
+        return;
+    end
     nInteractions = size(interactions, 1);
     ToFroms = zeros(nInteractions, 2);   
     % Number of signals from interactions
     for i = 1: nInteractions
         FromTo = eval(['[' interactions{i,1} ']']);
         if length(FromTo) ~= 2
-            bst_report('Error', sProcess, [], 'Direction must be a pair of values: From, To');
+            errMsg = 'Direction must be a pair of values: From, To';
             return;
         end
         ToFroms(i, :) = fliplr(FromTo);
@@ -114,7 +121,7 @@ function [A, b, C] = GetCoefficients(sProcess)
         peakFreqs = eval(['[' interactions{i,2} ']']);
         peakMags  = eval(['[' interactions{i,3} ']']);
         if length(peakFreqs) ~= length(peakMags)
-            bst_report('Error', sProcess, [], 'Number of frequencies must match number of magnitudes');
+            errMsg = 'Number of frequencies must match number of magnitudes';
             return;
         end       
         peaks(ToFroms(i,1), ToFroms(i,2)).freqs = peakFreqs;
@@ -160,7 +167,11 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     srate   = sProcess.options.srate.Value{1};
     
     % Get coefficients
-    [A, b, C] = GetCoefficients(sProcess);
+    [A, b, C, errMsg] = GetCoefficients(sProcess);
+    if ~isempty(errMsg)
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     % Generate the signal
     try
         Data = Compute(b, A, C, nsamples);
@@ -186,10 +197,10 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     
     % === OUTPUT CONDITION ===
     % Get subject
-    [sSubject, iSubject] = bst_get('Subject', SubjectName);
+    sSubject = bst_get('Subject', SubjectName);
     % Create subject if it does not exist yet
     if isempty(sSubject)
-        [sSubject, iSubject] = db_add_subject(SubjectName);
+        sSubject = db_add_subject(SubjectName);
     end
     % Default condition name
     if isempty(Condition)
@@ -221,26 +232,32 @@ end
 
 
 %% ===== DISPLAY SPECTRAL METRIC =====
-function DisplayMetrics(iProcess) %#ok<DEFNU>
-    % Get current process options
-    global GlobalData;
-    sProcess = GlobalData.Processes.Current(iProcess);
+function DisplayMetrics()
+    % Get current process structure
+    sProcess = panel_process_select('GetCurrentProcess');
+    % Get options
     sfreq = sProcess.options.srate.Value{1}; % Signal sampling frequency [Hz]
-
     % Get coefficients
-    [A, ~, ~] = GetCoefficients(sProcess); 
-    A = reshape(A, size(A,1), size(A,1), [] );
+    [A,~,~,errMsg] = GetCoefficients(sProcess);
+    if isempty(A)
+        bst_error(['Error: Cannot compute coefficients.' 10 10 errMsg], 'Display metrics', 0);
+        return;
+    end
+    A = reshape(A, size(A,1), size(A,1), []);
     % Display spectral metrics
     hFig = process_simulate_ar('HDisplayMetrics', A, sfreq); 
 end
 
-%% ===== DISPLAY SPECTRAL METRIC =====
-function DisplayCoefficients(iProcess) %#ok<DEFNU>
-    % Get current process options
-    global GlobalData;
-    sProcess = GlobalData.Processes.Current(iProcess);
+%% ===== DISPLAY COEFFICIENTS =====
+function DisplayCoefficients()
+    % Get current process structure
+    sProcess = panel_process_select('GetCurrentProcess');
     % Get coefficients
-    [A, b, C] = GetCoefficients(sProcess);  
+    [A,~,~,errMsg] = GetCoefficients(sProcess);
+    if ~isempty(errMsg)
+        bst_error(['Error: Cannot compute coefficients.' 10 10 errMsg], 'Display coefficients', 0);
+        return;
+    end
     % Get existing specification figure
     hFig = findall(0, 'Type', 'Figure', 'Tag', 'CoeffMatrix');
     % If the figure doesn't exist yet: create it
