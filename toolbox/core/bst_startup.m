@@ -12,7 +12,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -95,6 +95,13 @@ try
     Version = cellVer{1}{1};
     Release = cellVer{1}{1}(3:end);
     Date = cellVer{2}{1}(2:end-1);
+    % Try to get GIT commit
+    Commit = fgetl(fid);
+    if ischar(Commit) && (length(Commit) >= 40)
+        Commit = Commit(10:end);
+    else
+        Commit = [];
+    end
     % Close file
     fclose(fid);
 catch
@@ -102,12 +109,28 @@ catch
     Version = '?';
     Release = '??????';
     Date    = '?';
+    Commit  = [];
+end
+% If the commit is not available from the version.txt file, try to get it from the .git folder (if cloned from github)
+if isempty(Commit)
+    gitMaster = bst_fullfile(BrainstormHomeDir, '.git', 'refs', 'heads', 'master');
+    if exist(gitMaster, 'file')
+        fid = fopen(gitMaster, 'rt');
+        if (fid >= 0)
+            strGit = fgetl(fid);
+            if ischar(strGit) && (length(strGit) >= 30)
+                Commit = strGit;
+            end
+            fclose(fid);
+        end
+    end
 end
 % Save version in matlab preferences
 bstVersion = struct('Name',    Name, ...
                     'Version', Version, ...
                     'Release', Release, ...
-                    'Date',    Date);
+                    'Date',    Date, ...
+                    'Commit',  Commit);
 bst_set('Version', bstVersion);
 % Display version number
 disp(['BST> Version: ' Date ]);
@@ -398,11 +421,27 @@ end
 %% ===== LOAD PLUGINS =====
 % Get installed plugins
 [InstPlugs, AllPlugs] = bst_plugin('GetInstalled');
-% Find plugins that should be loaded automatically at startup
+% Check installed plugins
 if ~isempty(InstPlugs)
+    % Display the plugins that are using custom installed path
+    iPlugCustom = find([InstPlugs.isLoaded] & ~[InstPlugs.isManaged]);
+    for iPlug = iPlugCustom
+        disp(['BST> Plugin ' InstPlugs(iPlug).Name ': ' InstPlugs(iPlug).Path]);
+        if strcmpi(InstPlugs(iPlug).Name, 'spm12') && isempty(strfind(spm('ver'), 'SPM12'))
+            disp(['BST> ** WARNING: Installed version is not SPM12: ' spm('ver') ' **']);
+        end
+    end
+    % Load plugins that should be loaded automatically at startup
     iPlugLoad = find([InstPlugs.AutoLoad] & ~[InstPlugs.isLoaded]);
+    if ~isempty(iPlugLoad)
+        fprintf('BST> Loading plugins... ');
+    end
     for iPlug = iPlugLoad
-        bst_plugin('Load', InstPlugs(iPlug)); 
+        bst_plugin('Load', InstPlugs(iPlug), 0);
+        fprintf([InstPlugs(iPlug).Name, ' ']);
+    end
+    if ~isempty(iPlugLoad)
+        fprintf('\n');
     end
 end
 

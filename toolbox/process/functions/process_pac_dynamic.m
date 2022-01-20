@@ -5,7 +5,7 @@ function varargout = process_pac_dynamic( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -600,6 +600,7 @@ hilMar = 1/5;                              % Percentage of margin for Hilber tra
 bandNestingLen= max(2,1/(winLen+margin));  % Length of band nesting -- considering the resolution in FFT domain with available window length
 isMirror = 0;                              % Mirroring the data in filtering
 isRelax  = 1;                              % Attenuation of the filter in the stopband (1 => 40 dB, 0 => 60 dB)
+Method = 'bst-hfilter-2016'                % Version of the filter 
 minExtracFreq = max(1/winLen, fpBand(1));  % minimum frequency that could be extracted as nestingFreq
 doInterpolation = Options.doInterpolation; % Applying interpolation in frequency and time domain
 logCenters = Options.logCenters;           % Choose the center frequencies for f_A with log space in faBand
@@ -668,7 +669,7 @@ for ifreq=1:nFa
     bandNested = [nestedCenters(ifreq)-Fstep(ifreq),nestedCenters(ifreq)+Fstep(ifreq+1)];
     
     % Filtering in fA band
-    Xnested = bst_bandpass_hfilter(Xinput, sRate,bandNested(1), bandNested(2), isMirror, isRelax, [], fArolloff);    % Filtering
+    Xnested = bst_bandpass_hfilter(Xinput, sRate,bandNested(1), bandNested(2), isMirror, isRelax, [], fArolloff, Method);    % Filtering
     Xnested = Xnested(:,nMargin-nHilMar+1:end-nMargin+nHilMar);            % Removing part of the margin
     
     % Hilbert transform
@@ -767,11 +768,11 @@ for ifreq=1:nFa
         
         % Filtering in fP band
         if length(unique(bandNesting(:,1)))==1 && length(unique(bandNesting(:,2)))==1
-            Xnesting = bst_bandpass_hfilter(X, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, [], fProlloff);    % Filtering
+            Xnesting = bst_bandpass_hfilter(X, sRate,bandNesting(1,1), bandNesting(1,2), isMirror, isRelax, [], fProlloff, Method);    % Filtering
         else
             Xnesting = zeros(size(X));
             for i=1:length(isources)
-                Xnesting(i,:) = bst_bandpass_hfilter(X(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, [], fProlloff);    % Filtering
+                Xnesting(i,:) = bst_bandpass_hfilter(X(i,:), sRate, bandNesting(i,1), bandNesting(i,2),isMirror, isRelax, [], fProlloff, Method);    % Filtering
             end
         end        
         Xnesting = Xnesting(:,nMargin-nHilMar+1:fix((margin+winLen)*sRate)+nHilMar);              % Removing part of the margin        

@@ -26,7 +26,7 @@ function varargout = figure_3d( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,7 +40,7 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2021; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -311,8 +311,9 @@ function FigureMouseMoveCallback(hFig, varargin)
     % Get axes handle
     hAxes = findobj(hFig, '-depth', 1, 'tag', 'Axes3D');
     % Get current mouse action
-    clickAction = getappdata(hFig, 'clickAction');   
-    clickSource = getappdata(hFig, 'clickSource');   
+    clickAction = getappdata(hFig, 'clickAction');
+    clickSource = getappdata(hFig, 'clickSource');
+    clickObject = getappdata(hFig, 'clickObject');
     % If no action is currently performed
     if isempty(clickAction)
         return
@@ -456,20 +457,33 @@ function FigureMouseMoveCallback(hFig, varargin)
                 % === DETECT ACTION ===
                 % Is moving axis and direction are not detected yet : do it
                 if (~isappdata(hFig, 'moveAxis') || ~isappdata(hFig, 'moveDirection'))
-                    % Guess which cut the user is trying to change
-                    % Sometimes some problem occurs, leading to values > 800
-                    % for a 1-pixel movement => ignoring
+                    moveAxis = [];
+                    % If a slice was clicked: move this one                   
+                    if ~isempty(clickObject) && ~isempty(strfind(get(clickObject, 'Tag'), 'MriCut'))
+                        clickTag = get(clickObject, 'Tag');
+                        if (clickTag(end) == '1')
+                            moveAxis = 1;
+                        elseif (clickTag(end) == '2')
+                            moveAxis = 2;
+                        elseif (clickTag(end) == '3')
+                            moveAxis = 3;
+                        end
+                    end
+                    % Guess which cut the user is trying to change by getting the direction of the move
+                    % Sometimes some problem occurs, leading to values > 800 for a 1-pixel movement => ignoring
                     if (max(motionAxes(1,:)) > 20)
                         return;
                     end
                     % Convert MRI-CS -> SCS
                     motionAxes = motionAxes * sMri.SCS.R;
-                    % Get the maximum deplacement as the direction
-                    [value, moveAxis] = max(abs(motionAxes(1,:)));
-                    moveAxis = moveAxis(1);
+                    % If no slice clieck: Get the maximum deplacement as the direction
+                    if isempty(moveAxis)
+                        [value, moveAxis] = max(abs(motionAxes(1,:)));
+                        moveAxis = moveAxis(1);
+                    end
                     % Get the directions of the mouse deplacement that will
                     % increase or decrease the value of the slice
-                    [value, moveDirection] = max(abs(motionFigure));                   
+                    [value, moveDirection] = max(abs(motionFigure));
                     moveDirection = sign(motionFigure(moveDirection(1))) .* ...
                                     sign(motionAxes(1,moveAxis)) .* ...
                                     moveDirection(1);
@@ -478,7 +492,6 @@ function FigureMouseMoveCallback(hFig, varargin)
                         setappdata(hFig, 'moveAxis',      moveAxis);
                         setappdata(hFig, 'moveDirection', moveDirection);
                     end
-                    
                 % === MOVE SLICE ===
                 else                
                     % Get saved information about current motion

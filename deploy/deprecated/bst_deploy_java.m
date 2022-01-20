@@ -24,7 +24,7 @@ function bst_deploy_java(IS_BIN)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,10 +92,11 @@ tic;
 
 % Compiler configuration   
 if IS_BIN
-    % JDK folder
-    jdkDir = 'C:\Program Files\Java\jdk1.8.0_241';
-    % Set JAVA_HOME environment variable
-    setenv('JAVA_HOME', jdkDir);
+    % Environment variable JAVA_HOME must point at the correct installed JDK
+    % - JDK 1.7 for Matlab < 2017b
+    % - JDK 1.8 for Matlab >= 2017b
+    jdkDir = getenv('JAVA_HOME');
+    disp([10 'DEPLOY> JAVA_HOME=' getenv('JAVA_HOME') 10]);
     % Javabuilder output
     compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
     compilerOutputDir = fullfile(compilerDir, 'for_testing');
@@ -149,7 +150,7 @@ jSplitPath = jPath.split(pathsep);
 
 
 %% ===== UPDATE VERSION.TXT =====
-disp([10 'DEPLOY> Updating: ', strrep(versionFile, bstDir, '')]);
+disp(['DEPLOY> Updating: ', strrep(versionFile, bstDir, '')]);
 % Version.txt contents
 strVersion = ['% Brainstorm' 10 ...
               '% v. ' bstVersion ' (' date ')'];

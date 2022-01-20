@@ -1,16 +1,16 @@
-function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq)
+function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq, isInteractive)
 % IN_DATA_MUSE_CSV: Imports a Muse CSV file.
 %
 % Muse file format specification:
 % http://developer.choosemuse.com/tools/windows-tools/available-data-muse-direct
 %    
-% USAGE: [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq=[ask]);
+% USAGE: [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq=[ask], isInteractive=0);
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,6 +28,9 @@ function [DataMat, ChannelMat] = in_data_muse_csv(DataFile, sfreq)
 
 
 % ===== PARSE INPUTS =====
+if (nargin < 3) || isempty(isInteractive)
+    isInteractive = 0;
+end
 if (nargin < 2) || isempty(sfreq)
     sfreq = [];
 end
@@ -155,6 +158,11 @@ if isempty(sfreq)
     if (sfreq_std < 0.01)
        sfreq = sfreq_mean;
        isResample = 0;
+    % If not in interactive mode: error
+    elseif ~isInteractive
+        errMsg = 'This dataset must be imported in interactive mode to select the sampling rate.';
+        disp(['BST> Error: ' errMsg]);
+        error(errMsg);
     % Irregular sampling in CSV
     else
         res = java_dialog('question', sprintf([...

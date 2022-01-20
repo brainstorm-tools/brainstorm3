@@ -16,7 +16,7 @@ function jPopup = tree_callbacks( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1137,22 +1137,7 @@ switch (lower(action))
                             % === ALIGN ALL SURFACES ===
                             gui_component('MenuItem', jMenuAlign, [], 'Edit fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
                             % === MENU: ALIGN SURFACE MANUALLY ===
-                            jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
-                                % ADD ANATOMIES
-                                for iAnat = 1:length(sSubject.Anatomy)
-                                    if isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
-                                        fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
-                                        gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
-                                    end
-                                end
-                                % ADD SURFACES
-                                for iSurf = 1:length(sSubject.Surface)
-                                    % Ignore itself
-                                    fullSurfFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iSurf).FileName);
-                                    if ~file_compare(fullSurfFile, filenameFull)
-                                        gui_component('MenuItem', jMenuAlignManual, [], sSubject.Surface(iSurf).Comment, IconLoader.ICON_SURFACE, [], @(h,ev)tess_align_manual(fullSurfFile, filenameFull));
-                                    end
-                                end
+                            fcnPopupAlign();
                             % === MENU: LOAD FREESURFER SPHERE ===
                             AddSeparator(jMenuAlign);
                             gui_component('MenuItem', jMenuAlign, [], 'Load FreeSurfer sphere...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSphere(filenameRelative));
@@ -1225,6 +1210,13 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
                         gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
                     end
+                    % === MENU: ALIGN SURFACE MANUALLY ===
+                    % Get subject
+                    iSubject = bstNodes(1).getStudyIndex();
+                    sSubject = bst_get('Subject', iSubject);
+                    % Menu: Align manually
+                    AddSeparator(jPopup);
+                    fcnPopupAlign();
                 end
                 
 %% ===== POPUP: NOISECOV =====
@@ -1361,7 +1353,7 @@ switch (lower(action))
                             Device = bst_get('ChannelDevice', ChannelFile);
                             ChannelMat_Comment = in_bst_channel(ChannelFile,'Comment');
                             % If CTF file format
-                            if strcmpi(Device, 'CTF')
+                            if strcmpi(Device, 'CTF') || ~isempty(strfind(ChannelMat_Comment.Comment, 'CTF'))
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_ctf_convert', filenameFull, [], 'rectype', 3, 'interactive', 1));
                             elseif ~isempty(strfind(ChannelMat_Comment.Comment, 'NWB')) % Check for NWB file format
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_nwb_convert', filenameFull, [], 'rectype', 3, 'interactive', 1, 'ChannelFile', ChannelFile));
@@ -1892,11 +1884,10 @@ switch (lower(action))
 
                         % [NxN] only
                         if ~isempty(strfind(filenameRelative, '_connectn'))                           
-                            gui_component('MenuItem', jPopup, [], 'Display as graph (2021) [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect_viz(filenameRelative, 'GraphFull'));                               
-                            gui_component('MenuItem', jPopup, [], 'Display as graph (2013) [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));
+                            gui_component('MenuItem', jPopup, [], 'Display as graph [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));                               
                             gui_component('MenuItem', jPopup, [], 'Display as image [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
-                                gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect_viz(filenameRelative, 'Fibers'));
+                                gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
                             end
                             jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [NxN]', IconLoader.ICON_CONNECTN, [], []);
                         else
@@ -1905,7 +1896,7 @@ switch (lower(action))
                         % Depending on the datatype
                         switch lower(DataType)
                             case 'data'
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
@@ -1937,7 +1928,7 @@ switch (lower(action))
                                     gui_component('MenuItem', jMenuConn1, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
                                 end
                             otherwise
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
                                 if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
@@ -2721,6 +2712,29 @@ end % END SWITCH( ACTION )
             gui_component('MenuItem', jMenu, [], 'Scouts time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)tree_view_scouts(bstNodes));
         %end
     end
+
+%% ===== MENU: ALIGN SURFACES MANUALLY =====
+    function fcnPopupAlign()
+        import org.brainstorm.icon.*;
+
+        jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
+        % ADD ANATOMIES
+        for iAnat = 1:length(sSubject.Anatomy)
+            if isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
+                fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
+                gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
+            end
+        end
+        % ADD SURFACES
+        for iSurf = 1:length(sSubject.Surface)
+            % Ignore itself
+            fullSurfFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iSurf).FileName);
+            if ~file_compare(fullSurfFile, filenameFull)
+                gui_component('MenuItem', jMenuAlignManual, [], sSubject.Surface(iSurf).Comment, IconLoader.ICON_SURFACE, [], @(h,ev)tess_align_manual(fullSurfFile, filenameFull));
+            end
+        end
+    end
+
 end % END FUNCTION
 
 
@@ -2988,8 +3002,18 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
             AddSeparator(jMenu);
             % gui_component('MenuItem', jMenu, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, iAnatomy));
             gui_component('MenuItem', jMenu, [], '<HTML><B>CAT12</B>: Cortex, atlases, tissues', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, iAnatomy));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>BrainSuite</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_brainsuite, 'ComputeInteractive', iSubject, iAnatomy));
+            if ~ispc
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FastSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_fastsurfer, 'ComputeInteractive', iSubject, iAnatomy));
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FreeSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_freesurfer, 'ComputeInteractive', iSubject, iAnatomy));
+            end
             gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Tissues, MNI normalization', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_mni_normalize, 'ComputeInteractive', MriFile, 'segment'));
             gui_component('MenuItem', jMenu, [], '<HTML><B>FieldTrip</B>: Tissues, BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));
+        elseif (length(iAnatomy) == 2)   % T1 + T2
+            if ~ispc
+                AddSeparator(jMenu);
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FreeSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_freesurfer, 'ComputeInteractive', iSubject, iAnatomy));
+            end
         end
         % === DEFACE MRI ===
         if isempty(iAnatomy)

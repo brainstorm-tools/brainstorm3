@@ -14,7 +14,7 @@ function varargout = gui_brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function varargout = gui_brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 eval(macro_method);
 end
@@ -161,7 +161,11 @@ function GUI = CreateWindow() %#ok<DEFNU>
     if ~isCompiled
         jMenuUpdate = gui_component('Menu', jMenuBar, [], ' Update ', [], [], [], fontSize);
         % UPDATE BRAINSTORM
-        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);     
+        gui_component('MenuItem', jMenuUpdate, [], 'Update Brainstorm', IconLoader.ICON_RELOAD, [], @(h,ev)bst_update(1), fontSize);
+        % REPRODUCIBILITY
+        jMenuUpdate.addSeparator();
+        jMenuRepro = gui_component('Menu', jMenuUpdate, [], ' Reproducibility', IconLoader.ICON_PROCESS, [], [], fontSize);
+        gui_component('MenuItem', jMenuRepro, [], 'Export software environment', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_plugin, 'Archive'), fontSize);
     end
     
     % ==== Menu PLUGINS ====
@@ -183,8 +187,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
         % LICENSE
         gui_component('MenuItem', jMenuSupport, [], 'License',       IconLoader.ICON_EDIT, [], @(h,ev)bst_license(), fontSize);
         % RELEASE NOTES
-        updatesfile = bst_fullfile(bst_get('BrainstormDocDir'), 'updates.txt');
-        gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfile, 'Release notes', 1), fontSize);
+        updatesfiles = {bst_fullfile(bst_get('BrainstormDocDir'), 'updates.txt'), ...
+                        bst_fullfile(bst_get('BrainstormDocDir'), 'updates_2020.txt')};
+        gui_component('MenuItem', jMenuSupport, [], 'Release notes', IconLoader.ICON_EDIT, [], @(h,ev)view_text(updatesfiles, 'Release notes', 1), fontSize);
         jMenuSupport.addSeparator();
         % Prepare workshop
         gui_component('MenuItem', jMenuSupport, [], 'Workshop preparation', IconLoader.ICON_SCREEN1, [], @(h,ev)brainstorm('workshop'), fontSize);
@@ -1523,6 +1528,9 @@ function errMsg = DownloadFile(srcUrl, destFile, wndTitle, imgFile) %#ok<DEFNU>
             if file_exist(destFile)
                 file_delete(destFile, 1);
             end
+            % Tries downloading without progress bar
+            bst_progress('text', 'Downloading...');
+            errMsg = bst_websave(destFile, srcUrl);
         end
     end
 end
@@ -1622,7 +1630,7 @@ function status = CloneProble(bstDir)
         try
             % Send connect request
             header = matlab.net.http.field.ContentTypeField('application/x-www-form-urlencoded');
-            options = matlab.net.http.HTTPOptions();
+            options = matlab.net.http.HTTPOptions('CertificateFilename','');
             request = matlab.net.http.RequestMessage(matlab.net.http.RequestMethod.POST, header, ['email=',urlencode(res{1}),'&mdp=',urlencode(res{2})]);
             resp = send(request, 'https://neuroimage.usc.edu/bst/check_user.php', options);
             % Check server response

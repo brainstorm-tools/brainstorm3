@@ -2,13 +2,14 @@ function jFrame = view_text( wndText, wndTitle, isFile, isWait )
 % VIEW_TEXT: Display a text in a Java window.
 %
 % USAGE:  jFrame = view_text( wndText,  wndTitle='', isFile=0, isWait=0 )
-%         jFrame = view_text( filename, wndTitle='', isFile=1, isWait=0 )
+%         jFrame = view_text( filename, wndTitle='', isFile=1, isWait=0 )     % Filename as string
+%         jFrame = view_text( filenames, wndTitle='', isFile=1, isWait=0 )    % Cell-array of filenames
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +23,7 @@ function jFrame = view_text( wndText, wndTitle, isFile, isWait )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008
+% Authors: Francois Tadel, 2008-2021
 
 % Java imports
 import javax.swing.*;
@@ -40,12 +41,21 @@ if (nargin < 2) || isempty(wndTitle)
     wndTitle = 'Text viewer';
 end
 
-% Read input file
+% Read input file(s)
 if isFile
-    filename = wndText;
-    fid = fopen(filename);
-    wndText = fread(fid, [1 Inf], '*char');
-    fclose(fid);
+    if ischar(wndText)
+        filenames = {wndText};
+    elseif iscell(wndText)
+        filenames = wndText;
+    else
+        error('Invalid filename or filenames cell-array.');
+    end
+    wndText = '';
+    for iFile = 1:length(filenames)
+        fid = fopen(filenames{iFile});
+        wndText = [wndText, fread(fid, [1 Inf], '*char')];
+        fclose(fid);
+    end
 end
 
 % Create Java window with a Text field to display this file

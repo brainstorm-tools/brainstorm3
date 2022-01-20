@@ -22,7 +22,7 @@ function [errorMsg, FemFile] = import_anatomy_simnibs(iSubject, SimDir, nVertice
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -62,6 +62,7 @@ if (nargin < 3) || isempty(nVertices)
 end
 % Initialize returned variable
 errorMsg = [];
+FemFile = [];
 % Ask folder to the user
 if (nargin < 2) || isempty(SimDir)
     % Get default import directory and formats
@@ -337,7 +338,7 @@ end
 
 %% ===== IMPORT 10-10 POSITIONS =====
 PosFile = bst_fullfile(SimDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
-if file_exist(PosFile)
+if file_exist(PosFile) && (iSubject > 0)
     % Create a condition "eeg_positions"
     iStudy = db_add_condition(iSubject, 'eeg_positions');
     % Import channel file

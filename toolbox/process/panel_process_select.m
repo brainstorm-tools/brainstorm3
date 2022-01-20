@@ -6,12 +6,14 @@ function varargout = panel_process_select(varargin)
 %         [sOutputs, sProcesses] = panel_process_select('ShowPanel', FileNames, ProcessNames)
 %                                  panel_process_select('ParseProcessFolder')
 %                       sProcess = panel_process_select('LoadExternalProcess', FunctionName)
+%                       sProcess = panel_process_select('GetCurrentProcess')       : Return the process currently being edited in the Pipeline Editor
+
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -214,10 +216,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     % Return a mutex to wait for panel close
     bst_mutex('release', panelName);
     bst_mutex('create', panelName);
+    % GUI elements
+    ctrl = struct(...
+        'UpdatePipeline', @UpdatePipeline, ...
+        'jListProcess',   jListProcess);
     % Create the BstPanel object that is returned by the function
-    bstPanel = BstPanel(panelName, ...
-                        jPanelMain, ...
-                        struct('UpdatePipeline', @UpdatePipeline));
+    bstPanel = BstPanel(panelName, jPanelMain, ctrl);
 
                               
 %% =========================================================================
@@ -1761,6 +1765,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                 % Reload options
                 GlobalData.Processes.Current = SetDefaultOptions(GlobalData.Processes.Current, FileTimeVector, 0);
                 UpdateProcessOptions();
+            else
+                jText.setText(strFiles);
             end
         end
         % Close progress bar
@@ -2484,7 +2490,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         str = [str '% Save and display report' 10];
         str = [str 'ReportFile = bst_report(''Save'', sFiles);' 10];
         str = [str 'bst_report(''Open'', ReportFile);' 10];
-        str = [str '% bst_report(''Export'', ReportFile, ExportDir);' 10 10];
+        str = [str '% bst_report(''Export'', ReportFile, ExportDir);' 10];
+        str = [str '% bst_report(''Email'', ReportFile, username, to, subject, isFullReport);' 10 10];
         
         % Save script
         if isSave
@@ -2602,8 +2609,18 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
     PlugAll = bst_plugin('GetInstalled');
     for iPlug = 1:length(PlugAll)
         if ~isempty(PlugAll(iPlug).Processes)
+            % Keep only the processes with function names that are not already defined in Brainstorm
+            iOk = [];
+            for iProc = 1:length(PlugAll(iPlug).Processes)
+                [tmp, procFileName, procExt] = bst_fileparts(PlugAll(iPlug).Processes{iProc});
+                if ~ismember([procFileName, procExt], bstFunc)
+                    iOk = [iOk, iProc];
+                else
+                    % disp(['BST> Plugin ' PlugAll(iPlug).Name ': ' procFileName procExt ' already defined in Brainstorm']);
+                end
+            end
             % Concatenate plugin path and process function (relative to plugin path)
-            procFullPath = cellfun(@(c)bst_fullfile(PlugAll(iPlug).Path, c), PlugAll(iPlug).Processes, 'UniformOutput', 0);
+            procFullPath = cellfun(@(c)bst_fullfile(PlugAll(iPlug).Path, c), PlugAll(iPlug).Processes(iOk), 'UniformOutput', 0);
             plugFunc = cat(2, plugFunc, procFullPath);
         end
     end
@@ -2651,6 +2668,9 @@ function ParseProcessFolder(isForced) %#ok<DEFNU>
         % Switch folder if needed
         isChangeDir = 0;
         if ~isempty(fPath)
+            if ~isdir(fPath)
+                continue;
+            end
             if isempty(matlabPath)
                 matlabPath = str_split(path, pathsep);
             end
@@ -2865,6 +2885,31 @@ function sProcess = GetProcess(ProcessName)
             sProcess = [];
         end
     end
+end
+
+%% ===== GET CURRENT PROCESS =====
+% Return the structure of the process currently being edited in the Pipeline Editor
+function sProcess = GetCurrentProcess()
+    global GlobalData;
+    % Initialize returned variable
+    sProcess = [];
+    % Get edited processes in global variable
+    sProcesses = GlobalData.Processes.Current;
+    if isempty(sProcesses)
+        return;
+    end
+    % Get panel
+    ctrl = bst_get('PanelControls', 'ProcessOne');
+    if isempty(ctrl)
+        return;
+    end
+    % Get selected process
+    iSel = ctrl.jListProcess.getSelectedIndex();
+    if (iSel == -1)
+        return;
+    end
+    % Return selected process, currently edited in the pipeline editor
+    sProcess = GlobalData.Processes.Current(iSel + 1);
 end
 
 

@@ -14,6 +14,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
+%         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
 %         bst_report('ClearHistory')
@@ -39,7 +40,7 @@ function varargout = bst_report( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -350,7 +351,7 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                     Orient = 'left';
                 end
                 % Check data type
-                if ~ismember(file_gettype(FileName), {'link','results','presults'})
+                if ~ismember(file_gettype(FileName), {'link','results','presults','timefreq','ptimefreq'})
                     error('File must contain source information.');
                 end
                 % Call surface viewer
@@ -1394,4 +1395,53 @@ function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
     % Close progress bar
     bst_progress('stop');
 end
+
+%% ===== SEND EMAIL =====
+% USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1)
+function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
+    global GlobalData;
+    % Parse inputs
+    if (nargin < 4) || isempty(isFullReport)
+        isFullReport = 1;
+    end
+    % Minimum Matlab version: 2014b
+    if ~exist('webread', 'file')
+        error('Sending email requires Matlab >= 2014b.');
+    end
+    % Get report
+    if isequal(ReportFile, 'current')
+        if isempty(GlobalData)
+            error('Brainstorm is not started.');
+        end
+        ReportsMat = GlobalData.ProcessReports;
+    else
+        ReportsMat = load(ReportFile, 'Reports');
+    end
+    % Print report
+    if isFullReport
+        html = PrintToHtml(ReportsMat.Reports, isFullReport);
+    else
+        html = '';
+        for iEntry = 1:size(ReportsMat.Reports,1)
+            if ~isempty(ReportsMat.Reports{iEntry,1}) && ~isempty(ReportsMat.Reports{iEntry,5})
+                html = [html, ReportsMat.Reports{iEntry,5}, ' : ', ReportsMat.Reports{iEntry,1}];
+                if ~isempty(ReportsMat.Reports{iEntry,2})
+                    html = [html, ' - ' func2str(ReportsMat.Reports{iEntry,2}.Function)];
+                end
+                html = [html, 10];
+            end
+        end
+    end
+    % Send by email
+    % Matlab <= 2016a
+    if bst_verlessthan(901)
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html);
+    else
+        options = weboptions('CertificateFilename','');
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html, options);
+    end
+    % Return status
+    isOk = isequal(resp, 'ok');
+end
+
 

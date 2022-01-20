@@ -29,7 +29,7 @@ function varargout = brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -69,52 +69,17 @@ else
     end
 end
 
-% Get JOGL version
-% If JOGL1 is available
-if exist('javax.media.opengl.GLCanvas', 'class') && exist('com.sun.opengl.util.j2d.TextRenderer', 'class')
-    JOGLVersion = 1;
-% If JOGL2 is available
-elseif exist('javax.media.opengl.awt.GLCanvas', 'class')
-    JOGLVersion = 2;
-% If JOGL2.3 is available
-elseif exist('com.jogamp.opengl.awt.GLCanvas', 'class')
-    JOGLVersion = 2.3;
-% No JOGL available
-else
-    JOGLVersion = 0;
-end
-% Define jar file to remove from the Java classpath
-switch (JOGLVersion)
-    case 0,    jarfile = '';  disp('ERROR: JOGL not supported');
-    case 1,    jarfile = 'brainstorm_jogl1.jar'; 
-    case 2,    jarfile = 'brainstorm_jogl2.jar';
-    case 2.3,  jarfile = 'brainstorm_jogl2.3.jar';
-end
-    
 % Set dynamic JAVA CLASS PATH
 if ~exist('org.brainstorm.tree.BstNode', 'class')
+    % Download Brainstorm JARs if missing
+    BstJar = [BrainstormHomeDir '/java/brainstorm.jar'];
+    if ~exist(BstJar, 'file')
+        disp('BST> Downloading brainstorm.jar...');
+        bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
+    end
     % Add Brainstorm JARs to classpath
     javaaddpath([BrainstormHomeDir '/java/RiverLayout.jar']);
-    javaaddpath([BrainstormHomeDir '/java/brainstorm.jar']);
-    javaaddpath([BrainstormHomeDir '/java/vecmath.jar']);
-    % Add JOGL package
-    if ~isempty(jarfile)
-        javaaddpath([BrainstormHomeDir '/java/' jarfile]);
-    end
-end
-% Deployed: Remove one of the two JOGL packages from the Java classpath
-if isCompiled
-    % Find the entry in the classpath
-    if ~isempty(jarfile)
-        jarfileRemove = setdiff({'brainstorm_jogl1.jar', 'brainstorm_jogl2.jar', 'brainstorm_jogl2.3.jar'}, jarfile);
-        for i = 1:length(jarfileRemove)
-            dynamicPath = javaclasspath('-dynamic');
-            iClass = find(~cellfun(@(c)isempty(strfind(c,jarfileRemove{i})), dynamicPath));
-            if ~isempty(iClass)
-                javarmpath(dynamicPath{iClass(1)});
-            end
-        end
-    end
+    javaaddpath(BstJar);
 end
 
 % Default action : start

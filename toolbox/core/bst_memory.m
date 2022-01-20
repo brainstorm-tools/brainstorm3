@@ -53,7 +53,7 @@ function [ varargout ] = bst_memory( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -219,7 +219,7 @@ function [sFib,iFib] = LoadFibers(FibFile)
         % Create default structure
         sFib = db_template('LoadedFibers');
         % Load fibers matrix
-        FibMat = in_fibers(FibFile);
+        FibMat = load(file_fullpath(FibFile));
         % Build fibers structure
         for field = fieldnames(sFib)'
             if isfield(FibMat, field{1})
@@ -3342,8 +3342,10 @@ function isCancel = UnloadDataSets(iDataSets)
         end
         % Close all the figures
         for iFig = length(GlobalData.DataSet(iDS).Figure):-1:1
-            bst_figures('DeleteFigure', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'NoUnload', 'NoLayout');
-            drawnow
+            if isfield(GlobalData.DataSet(iDS).Figure(iFig), 'hFigure') && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).hFigure)
+                bst_figures('DeleteFigure', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'NoUnload', 'NoLayout');
+                drawnow
+            end
         end
     end
     % Check that dataset still exists

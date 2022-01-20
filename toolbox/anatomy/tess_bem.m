@@ -23,7 +23,7 @@ function isOk = tess_bem(iSubject, BemOptions, DEBUG)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -75,9 +75,9 @@ ScalpFile  = sSubject.Surface(sSubject.iScalp(1)).FileName;
 % Get default anatomy folder
 sTemplate = bst_get('AnatomyDefaults', 'ICBM152');
 if isempty(sTemplate)
-    bst_error(['The template anatomy ICBM152 is not available.' 10 ...
-               'Please update Brainstorm...'], 'BEM surfaces', 0);
-    return
+    error('The template anatomy ICBM152 is not available.');
+elseif (length(sTemplate) > 1)
+    error('Multiple templates "ICBM152" available.');
 end
 % Get subject file
 TemplateCortexFile = bst_fullfile(sTemplate.FilePath, 'tess_cortex_pial_low.mat');

@@ -9,7 +9,7 @@ function varargout = process_notch( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -69,7 +69,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.useold.Type    = 'checkbox';
     sProcess.options.useold.Value   = 0;
     % === Display properties
-    sProcess.options.display.Comment = {'process_notch(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
+    sProcess.options.display.Comment = {'process_notch(''DisplaySpec'',sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
 end
@@ -231,11 +231,9 @@ end
 
 
 %% ===== DISPLAY FILTER SPECS =====
-function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
-    % Get current process options
-    global GlobalData;
-    sProcess = GlobalData.Processes.Current(iProcess);
-
+function DisplaySpec(sfreq)
+    % Get current process structure
+    sProcess = panel_process_select('GetCurrentProcess');
     % Get options
     FreqList = sProcess.options.freqlist.Value{1};
     if isempty(FreqList)

@@ -14,7 +14,7 @@ function varargout = gui_layout(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -399,7 +399,6 @@ function Figures = GetFigureGroups(isSkipMriViewer)
                             'fOther',             [], ...
                             'fMriViewer',         [], ...
                             'fConnect',           [], ...
-                            'fConnectViz',       [], ... 
                             'fPac',               [], ...
                             'fImage',             [], ...
                             'fVideo',             [], ...
@@ -472,7 +471,7 @@ function Figures = GetFigureGroups(isSkipMriViewer)
     % => group them so that they can be displayed as a mosaique instead of flat vertical list
     if (length(Figures) > 3) && all([Figures.nFigures] == 1) && ...
             (~isempty(Figures(1).fMriViewer) || ~isempty(Figures(1).fTopography) || ~isempty(Figures(1).f3DViz)    || ~isempty(Figures(1).fResultsTimeSeries) || ...
-             ~isempty(Figures(1).fTimefreq)   || ~isempty(Figures(1).fSpectrum) || ~isempty(Figures(1).fConnect) || ~isempty(Figures(1).fConnectViz) || ~isempty(Figures(1).fPac) || ~isempty(Figures(1).fImage) || ~isempty(Figures(1).fVideo))
+             ~isempty(Figures(1).fTimefreq)   || ~isempty(Figures(1).fSpectrum) || ~isempty(Figures(1).fConnect) || ~isempty(Figures(1).fPac) || ~isempty(Figures(1).fImage) || ~isempty(Figures(1).fVideo))
         uniqueFigures = Figures(1);
         uniqueFigures.fMriViewer         = [Figures.fMriViewer];
         uniqueFigures.fTopography        = [Figures.fTopography];
@@ -483,7 +482,6 @@ function Figures = GetFigureGroups(isSkipMriViewer)
         uniqueFigures.fTimefreq          = [Figures.fTimefreq];
         uniqueFigures.fSpectrum          = [Figures.fSpectrum];
         uniqueFigures.fConnect           = [Figures.fConnect];
-        uniqueFigures.fConnectViz        = [Figures.fConnectViz]; 
         uniqueFigures.fPac               = [Figures.fPac];
         uniqueFigures.fImage             = [Figures.fImage];
         uniqueFigures.fVideo             = [Figures.fVideo];
@@ -547,7 +545,7 @@ function TileWindows(UseWeights)
         % ===== 3DViz, Topography and ResultsTimeSeries figures =====
         OtherFigures = [Figures(iBlock).fDataTimeSeries, Figures(iBlock).fTopography, ...
                         Figures(iBlock).f3DViz, Figures(iBlock).fResultsTimeSeries, ...
-                        Figures(iBlock).fTimefreq, Figures(iBlock).fSpectrum, Figures(iBlock).fConnect, Figures(iBlock).fConnectViz,...
+                        Figures(iBlock).fTimefreq, Figures(iBlock).fSpectrum, Figures(iBlock).fConnect,...
                         Figures(iBlock).fPac, Figures(iBlock).fImage, Figures(iBlock).fVideo, Figures(iBlock).fOther];
         % Add MRI Viewer
         if ~isSkipMriViewer
@@ -662,7 +660,7 @@ function FixedSizeWindows(figArea)
         % Get all the figures
         hAllFig = [Figures(iBlock).fDataTimeSeries, Figures(iBlock).fTopography, ...
                    Figures(iBlock).f3DViz, Figures(iBlock).fResultsTimeSeries, ...
-                   Figures(iBlock).fTimefreq, Figures(iBlock).fSpectrum, Figures(iBlock).fConnect, Figures(iBlock).fConnectViz,Figures(iBlock).fPac, Figures(iBlock).fImage, Figures(iBlock).fVideo, ...
+                   Figures(iBlock).fTimefreq, Figures(iBlock).fSpectrum, Figures(iBlock).fConnect, Figures(iBlock).fPac, Figures(iBlock).fImage, Figures(iBlock).fVideo, ...
                    Figures(iBlock).fOther, Figures(iBlock).fRawViewer, Figures(iBlock).fMriViewer];
         % Set the position
         for iFig = 1:length(hAllFig)
@@ -727,7 +725,7 @@ function ShowAllWindows() %#ok<DEFNU>
     Figures = GetFigureGroups();
     % Set focus to each figure sequentially
     if ~isempty(Figures)
-        fieldNames = {'fDataTimeSeries', 'fRawViewer', 'fTopography', 'f3DViz', 'fResultsTimeSeries', 'fTimefreq', 'fSpectrum', 'fMriViewer', 'fConnect', 'fConnectViz', 'fPac', 'fImage', 'fVideo', 'fOther'};
+        fieldNames = {'fDataTimeSeries', 'fRawViewer', 'fTopography', 'f3DViz', 'fResultsTimeSeries', 'fTimefreq', 'fSpectrum', 'fMriViewer', 'fConnect', 'fPac', 'fImage', 'fVideo', 'fOther'};
         nbBlocks = length(Figures);
         for iBlock = 1:nbBlocks
             for iType = 1:length(fieldNames)

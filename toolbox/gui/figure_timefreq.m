@@ -9,7 +9,7 @@ function varargout = figure_timefreq( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -960,7 +960,16 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
         if ~isempty(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) && ...
                 numel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels) < numel(iRow) && ...
                 strcmpi(DataType, 'data') && isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
-            iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
+            % Grad norm: need to return both gradiometers
+            if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'MEG GRADNORM')
+                selBaseName = cellfun(@(c)cat(2, {[c(1:end-1) '2']}, {[c(1:end-1) '3']}), {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name}, 'UniformOutput', false);
+                selBaseName = [selBaseName{:}];
+                iSelected = ismember(RowNames, selBaseName);
+            % Regular sensor selection
+            else
+                iSelected = ismember(RowNames, {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Figure(iFig).SelectedChannels).Name});
+            end
+            % Return only selected sensors
             TF = TF(iSelected,:,:);
             RowNames = RowNames(iSelected);
         end

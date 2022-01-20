@@ -7,7 +7,7 @@ function F = in_fread_megscan(sFile, SamplesBounds)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,10 +22,11 @@ function F = in_fread_megscan(sFile, SamplesBounds)
 % =============================================================================@
 %
 % Authors: Elizabeth Bock, Francois Tadel, 2019
+%          Richard Aveyard 2021
 
 % Check inputs
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+    SamplesBounds = sFile.prop.samples;
 end
 
 % % Read data
@@ -43,10 +44,15 @@ dset_id = H5D.open(fid, [sFile.header.acquisitionname '/data/']);
 file_space_id = H5D.get_space(dset_id);
 mem_space_id = H5S.create_simple(2, fliplr(readDim), []);
 H5S.select_hyperslab(file_space_id, 'H5S_SELECT_SET', fliplr(readOffset), [], [1 1], fliplr(readDim));
-F = H5D.read(dset_id, 'H5ML_DEFAULT', mem_space_id ,file_space_id, 'H5P_DEFAULT');
+F = double(H5D.read(dset_id, 'H5ML_DEFAULT', mem_space_id ,file_space_id, 'H5P_DEFAULT'));
 H5D.close(dset_id);
 H5F.close(fid);
 
+% calibrate the data
+if isfield(sFile.header, 'ChannelUnitsPerBit') && sFile.header.UpbApplied == 0
+    upb = sFile.header.ChannelUnitsPerBit';
+    F = diag(upb) * F;
+end
 
 
 

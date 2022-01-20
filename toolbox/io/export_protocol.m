@@ -10,7 +10,7 @@ function export_protocol(iProtocol, iSubject, OutputFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,8 +92,6 @@ if isempty(iSubject)
             ListZip{end+1} = bst_fullfile(dataFolder, allFiles(i).name);
         end
     end
-%     % Zip
-%     zip(OutputFile, ListZip, bst_fileparts(ProtocolInfo.SUBJECTS, 1));
 else
     % Get default study for this subject
     sSubject = bst_get('Subject', iSubject, 1);
@@ -135,7 +133,7 @@ if ~isempty(iSubject)
 end
 % Restore initial folder
 cd(prevFolder);
-% Error message
+% Close progress bar
 bst_progress('stop');
 
 

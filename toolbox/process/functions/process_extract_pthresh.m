@@ -1,14 +1,14 @@
 function varargout = process_extract_pthresh( varargin )
 % PROCESS_EXTRACT_PTHRESH Apply a statistical threshold to a stat file.
 %
-% USAGE:  OutputFiles = process_extract_pthresh('Run', sProcess, sInput)
-%           threshmap = process_extract_pthresh('Compute', StatMat, StatThreshOptions)
+% USAGE:                                     OutputFiles = process_extract_pthresh('Run', sProcess, sInput)
+%        [threshmap, tThreshUnder, tThreshOver, pthresh] = process_extract_pthresh('Compute', StatMat, StatThreshOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_extract_pthresh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2019
+% Authors: Francois Tadel, 2013-2021
 %          Thomas Vincent, 2019
 
 eval(macro_method);
@@ -136,7 +136,7 @@ end
 function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
     [StatThreshOptions, strCorrect] = GetOptions(sProcess);
-    % Process separately the three types of files
+    % Process separately the types of files
     switch (sInput.FileType)
         case 'pdata'
             % Load input stat file
@@ -248,7 +248,7 @@ end
 
             
 %% ===== APPLY THRESHOLD =====
-function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOptions)
+ function [threshmap, tThreshUnder, tThreshOver, pthresh] = Compute(StatMat, StatThreshOptions)
     % If options not provided, read them from the interface
     if (nargin < 2) || isempty(StatThreshOptions)
         StatThreshOptions = bst_get('StatThreshOptions');
@@ -260,6 +260,7 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
     end
     tThreshOver = [];
     tThreshUnder = [];
+    pthresh = [];
     testSide = '';
     % Connectivity matrices: remove diagonal
     if isfield(StatMat, 'RefRowNames') && (length(StatMat.RefRowNames) > 1)
@@ -334,8 +335,7 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
             % Use lowest and highest non-zero t_values as thresholds
             tThreshUnder = getMaxNonZeroNegative(allTval);
             tThreshOver = getMinNonZeroPositive(allTval);
-        elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
-
+        elseif isempty(tThreshUnder) && isempty(tThreshOver) 
             df = max(StatMat.df(:));
             [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(allTval)); %#ok<ASGLU>
             t_tmp = allTval(i_t_tmp);

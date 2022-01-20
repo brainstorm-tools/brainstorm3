@@ -11,7 +11,7 @@ function isUpdated = bst_update(AskConfirm)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -161,7 +161,8 @@ jDialog.setVisible(0);
 jDialog.dispose();
 % Display the latest updates
 bst_mutex('create', 'ReleaseNotes');
-jFrame = view_text(fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), 'Release notes', 1);
+jFrame = view_text({fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), ...
+                    fullfile(installDir, 'brainstorm3', 'doc', 'updates_2020.txt')}, 'Release notes', 1);
 java_setcb(jFrame, 'WindowClosingCallback', @CloseFigureCallback);
 bst_mutex('waitfor', 'ReleaseNotes');
 

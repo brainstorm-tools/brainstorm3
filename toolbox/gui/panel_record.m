@@ -11,7 +11,7 @@ function varargout = panel_record(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -1509,7 +1509,7 @@ function JumpToEvent(iEvent, iOccur)
         % Get current time
         CurrentTime = GlobalData.UserTimeWindow.CurrentTime;
         % Distance to events times
-        distTime = events(iEvent).times(1,:) - CurrentTime;
+        distTime = mean(events(iEvent).times, 1) - CurrentTime;
         % Action: next/previous events
         switch(action)
             case {'leftarrow', 'pagedown', 'epoch-', 'epoch--'}

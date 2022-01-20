@@ -8,7 +8,7 @@ function varargout = figure_topo( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -347,7 +347,7 @@ function [F, Time, selChan, overlayLabels, dispNames, StatThreshUnder, StatThres
                             if ~isempty(iRow2) && ~isempty(iRow3)
                                 F{iFile}(i,:) = sqrt(TF(iRow2(1),:).^2 + TF(iRow3(1),:).^2);
                             end
-                        % Reglar map
+                        % Regular map
                         else
                             % Look for a sensor that is required in TF matrix
                             iRow = find(strcmpi(selrow, RowNames));

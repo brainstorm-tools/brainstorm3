@@ -5,7 +5,7 @@ function node_delete(bstNodes, isUserConfirm)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function node_delete(bstNodes, isUserConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 %% ===== INITIALIZATION =====
 % Parse inputs
@@ -62,6 +62,11 @@ switch (lower(nodeType{1}))
 
 %% ===== SUBJECT =====
     case {'subject', 'studysubject'}
+        % Cannot delete subject from exploration by category
+        if strcmpi(bst_get('Layout', 'ExplorationMode'), 'StudiesCond')
+            bst_error('Cannot delete subjects when exploring the database by conditions.', 'Delete subjects', 0);
+            return;
+        end
         % Ask user the confirmation for deleting subject
         if isUserConfirm
             isConfirmed = java_dialog('confirm', 'Remove selected subject(s) from database ?', 'Delete subjects');
@@ -78,9 +83,6 @@ switch (lower(nodeType{1}))
         end
         % Delete
         db_delete_subjects(iSubjects);
-        
-        %iModifiedSubjects = -1;   
-        %iModifiedStudies  = -1;
 
 
 %% ===== CONDITION =====

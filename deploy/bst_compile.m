@@ -14,7 +14,7 @@
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -45,6 +45,7 @@ if isempty(JdkDir) || ~exist(fullfile(JdkDir, 'bin'), 'file')
         'Download: https://adoptopenjdk.net/?variant=openjdk8' 10 ...
         'Set environment from Matlab: setenv(''JAVA_HOME'', ''C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot'')']);
 end
+disp([10 'COMPILE> JAVA_HOME=' JdkDir]);
 % Check if compiler is available
 if ~exist('mcc', 'file')
     error('You must install the toolboxes "Matlab Compiler" and "Matlab Compiler SDK" to run this function.');

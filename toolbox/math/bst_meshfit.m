@@ -1,7 +1,7 @@
-function [R, T, newP] = bst_meshfit(Vertices, Faces, P)
+function [R, T, newP, distFinal] = bst_meshfit(Vertices, Faces, P)
 % BST_MESHFIT: Find the best possible rotation-translation to fit a point cloud on a mesh.
 %
-% USAGE:  [R, T, newP] = bst_meshfit(Vertices, Faces, P)
+% USAGE:  [R, T, newP, distFinal] = bst_meshfit(Vertices, Faces, P)
 %
 % DESCRIPTION: 
 %     A Gauss-Newton method is used for the optimization of the distance points/mesh.
@@ -15,15 +15,16 @@ function [R, T, newP] = bst_meshfit(Vertices, Faces, P)
 %    - P        : [Qx3] double matrix, points to fit on the mesh defined by Vertices/Faces
 %
 % OUTPUTS:
-%   R    : [3x3] rotation matrix from the original P to the fitted positions.
-%   T    : [3x1] translation vector from the original P to the fitted positions.
-%   newP : [Mx3] fitted positions of the points in input matrix P.
+%    - R         : [3x3] rotation matrix from the original P to the fitted positions.
+%    - T         : [3x1] translation vector from the original P to the fitted positions.
+%    - newP      : [Mx3] fitted positions of the points in input matrix P.
+%    - distFinal : [Mx1] final distance between points and mesh
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,7 +39,7 @@ function [R, T, newP] = bst_meshfit(Vertices, Faces, P)
 % =============================================================================@
 %
 % Authors: Qianqian Fang, 2008
-%          Francois Tadel, 2013
+%          Francois Tadel, 2013-2021
 
 % Calculate norms
 VertNorm = tess_normals(Vertices, Faces);

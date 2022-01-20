@@ -1,7 +1,7 @@
-function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isVolumeAtlas)
+function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, sFid, isExtraMaps, isVolumeAtlas, isKeepMri)
 % IMPORT_ANATOMY_FS: Import a full FreeSurfer folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isExtraMaps=0, isVolumeAtlas=1)
+% USAGE:  errorMsg = import_anatomy_fs(iSubject, FsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isExtraMaps=0, isVolumeAtlas=1, isKeepMri=0)
 %
 % INPUT:
 %    - iSubject      : Indice of the subject where to import the MRI
@@ -13,6 +13,9 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 %    - isExtraMaps   : If 1, create an extra folder "FreeSurfer" to save some of the
 %                      FreeSurfer cortical maps (thickness, ...)
 %    - isVolumeAtlas : If 1, imports all the volume atlases available
+%    - isKeepMri     : 0=Delete all existing anatomy files
+%                      1=Keep existing MRI volumes (when running segmentation from Brainstorm)
+%                      2=Keep existing MRI and surfaces
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -20,7 +23,7 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,9 +37,13 @@ function errorMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2021
 
 %% ===== PARSE INPUTS =====
+% Keep MRI
+if (nargin < 8) || isempty(isKeepMri)
+    isKeepMri = 0;
+end
 % Import ASEG atlases
 if (nargin < 7) || isempty(isVolumeAtlas)
     isVolumeAtlas = 1;
@@ -86,7 +93,7 @@ bst_memory('UnloadAll', 'Forced');
 % Get subject definition
 sSubject = bst_get('Subject', iSubject);
 % Check for existing anatomy
-if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
+if (~isempty(sSubject.Anatomy) && (isKeepMri == 0)) || (~isempty(sSubject.Surface) && (isKeepMri < 2))
     % Ask user whether the previous anatomy should be removed
     if isInteractive
         isDel = java_dialog('confirm', ['Warning: There is already an anatomy defined for this subject.' 10 10 ...
@@ -100,7 +107,7 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         return;
     end
     % Delete anatomy
-    sSubject = db_delete_anatomy(iSubject);
+    sSubject = db_delete_anatomy(iSubject, isKeepMri);
 end
 
 
@@ -122,7 +129,12 @@ bst_progress('start', 'Import FreeSurfer folder', 'Parsing folder...');
 T1File = file_find(FsDir, 'T1.mgz', 2);
 T2File = file_find(FsDir, 'T2.mgz', 2);
 if isempty(T1File)
-    errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+    T1File = file_find(FsDir, '*.nii.gz', 0);
+    if ~isempty(T1File)
+        T1Comment = 'MRI';
+    else
+        errorMsg = [errorMsg 'MRI file was not found: T1.mgz' 10];
+    end
 elseif ~isempty(T1File) && ~isempty(T2File)
     T1Comment = 'MRI T1';
     T2Comment = 'MRI T2';
@@ -186,6 +198,15 @@ if ~isempty(AnnotLhFiles) && ~isempty(AnnotRhFiles)
     if ~isempty(iBAold) && ~isempty(iBAnew)
         AnnotRhFiles(iBAold) = [];
     end
+    % Remove temporary FastSurfer files: ?h.aparc.mapped.prefix.annot
+    iTmpL = find(~cellfun(@(c)isempty(strfind(c, 'mapped.prefix')), AnnotLhFiles));
+    if ~isempty(iTmpL)
+        AnnotLhFiles(iTmpL) = [];
+    end
+    iTmpR = find(~cellfun(@(c)isempty(strfind(c, 'mapped.prefix')), AnnotRhFiles));
+    if ~isempty(iTmpR)
+        AnnotRhFiles(iTmpR) = [];
+    end
     % Re-order the files so that FreeSurfer atlases are first (for automatic region labelling)
     iDKL = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotLhFiles));
     iDKR = find(~cellfun(@(c)isempty(strfind(c, 'aparc')), AnnotRhFiles));
@@ -211,17 +232,21 @@ end
 
 
 %% ===== IMPORT T1 =====
-% Read T1 MRI
-[BstT1File, sMri] = import_mri(iSubject, T1File, 'ALL', 0, [], T1Comment);
-if isempty(BstT1File)
-    errorMsg = 'Could not import FreeSurfer folder: MRI was not imported properly';
-    if isInteractive
-        bst_error(errorMsg, 'Import FreeSurfer folder', 0);
+if isKeepMri && ~isempty(sSubject.Anatomy)
+    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+else
+    % Read T1 MRI
+    [BstT1File, sMri] = import_mri(iSubject, T1File, 'ALL', 0, [], T1Comment);
+    if isempty(BstT1File)
+        errorMsg = 'Could not import FreeSurfer folder: MRI was not imported properly';
+        if isInteractive
+            bst_error(errorMsg, 'Import FreeSurfer folder', 0);
+        end
+        return;
     end
-    return;
+    % Enforce it as the permanent default MRI
+    sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 end
-% Enforce it as the permanent default MRI
-sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 
 
 %% ===== DEFINE FIDUCIALS =====
@@ -251,7 +276,7 @@ if ~isempty(FidFile)
     % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
 end
 % Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
+if ~isKeepMri && (~isInteractive || ~isempty(FidFile))
     % Use fiducials from file
     if ~isempty(FidFile)
         % Already loaded
@@ -278,7 +303,7 @@ if ~isInteractive || ~isempty(FidFile)
         figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
     end
 % Define with the MRI Viewer
-else
+elseif ~isKeepMri
     % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
     hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;

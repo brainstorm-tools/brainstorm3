@@ -36,7 +36,7 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -50,7 +50,9 @@ function [OutputFiles, Messages, isError] = bst_timefreq(Data, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2021
+%          Hossein Shahabi, 2020-2021
+%          Raymundo Cassani, 2020-2021
 
 % ===== DEFAULT OPTIONS =====
 Def_OPTIONS.Comment         = '';
@@ -130,6 +132,12 @@ elseif OPTIONS.SaveKernel && ischar(Data{1}) && any(~cellfun(@(c)isempty(strfind
     Messages = 'Cannot use the optimization option "save the inversion kernel" with continuous raw files.';
     isError = 1;
     return;
+end
+% Cannot use the options "normalized units" and "frequency bands" at the same time
+if strcmpi(OPTIONS.Method, 'psd') && strcmpi(OPTIONS.PowerUnits, 'normalized') && ~isempty(FreqBands)
+    Messages = 'Cannot use the options "normalized units" and "frequency bands" together.';
+    isError = 1;
+    return;      
 end
         
 % Progress bar

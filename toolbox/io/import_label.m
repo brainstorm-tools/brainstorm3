@@ -8,7 +8,7 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -664,7 +664,7 @@ function AtlasName = GetAtlasName(fBase)
             AtlasName = 'Brodmann-thresh';
         case {'lh.aparc.dktatlas40', 'rh.aparc.dktatlas40'}
             AtlasName = 'DKT40';
-        case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas'}
+        case {'lh.aparc.dktatlas', 'rh.aparc.dktatlas', 'lh.aparc.mapped', 'rh.aparc.mapped'}  % FreeSurfer, FastSurfer
             AtlasName = 'DKT';
         case {'lh.pals_b12_brodmann', 'rh.pals_b12_brodmann'}
             AtlasName = 'PALS-B12 Brodmann';

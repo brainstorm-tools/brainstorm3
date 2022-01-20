@@ -8,7 +8,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
@@ -134,9 +134,11 @@ bst_progress('text', 'Removing small patches...');
 bst_progress('inc', 10);
 
 % Downsampling isosurface
-bst_progress('text', 'Downsampling surface...');
-[sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
-bst_progress('inc', 10);
+if (length(sHead.Vertices) > nVertices)
+    bst_progress('text', 'Downsampling surface...');
+    [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
+    bst_progress('inc', 10);
+end
 % Convert to millimeters
 sHead.Vertices = sHead.Vertices(:,[2,1,3]);
 sHead.Faces    = sHead.Faces(:,[2,1,3]);

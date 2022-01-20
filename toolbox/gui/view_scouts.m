@@ -9,7 +9,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -346,6 +346,7 @@ for iResFile = 1:length(ResultsFiles)
                          isempty(strfind(ResultsFiles{iResFile}, '_abs')) && ...
                          isempty(strfind(ResultsFiles{iResFile}, '_norm')) && ...
                          isempty(strfind(ResultsFiles{iResFile}, 'NIRS')) && ...
+                         isempty(strfind(ResultsFiles{iResFile}, 'Summed_sensitivities')) && ...
                          (isempty(GlobalData.DataSet(iDS).Channel) || isempty(GlobalData.DataSet(iDS).Results(iResult).GoodChannel) || ...
                           ~ismember('NIRS', {GlobalData.DataSet(iDS).Channel(GlobalData.DataSet(iDS).Results(iResult).GoodChannel).Type}));
             iTrace = k;
