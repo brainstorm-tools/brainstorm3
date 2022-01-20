@@ -6,6 +6,8 @@ function varargout = panel_process_select(varargin)
 %         [sOutputs, sProcesses] = panel_process_select('ShowPanel', FileNames, ProcessNames)
 %                                  panel_process_select('ParseProcessFolder')
 %                       sProcess = panel_process_select('LoadExternalProcess', FunctionName)
+%                       sProcess = panel_process_select('GetCurrentProcess')       : Return the process currently being edited in the Pipeline Editor
+
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -214,10 +216,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     % Return a mutex to wait for panel close
     bst_mutex('release', panelName);
     bst_mutex('create', panelName);
+    % GUI elements
+    ctrl = struct(...
+        'UpdatePipeline', @UpdatePipeline, ...
+        'jListProcess',   jListProcess);
     % Create the BstPanel object that is returned by the function
-    bstPanel = BstPanel(panelName, ...
-                        jPanelMain, ...
-                        struct('UpdatePipeline', @UpdatePipeline));
+    bstPanel = BstPanel(panelName, jPanelMain, ctrl);
 
                               
 %% =========================================================================
@@ -2881,6 +2885,31 @@ function sProcess = GetProcess(ProcessName)
             sProcess = [];
         end
     end
+end
+
+%% ===== GET CURRENT PROCESS =====
+% Return the structure of the process currently being edited in the Pipeline Editor
+function sProcess = GetCurrentProcess()
+    global GlobalData;
+    % Initialize returned variable
+    sProcess = [];
+    % Get edited processes in global variable
+    sProcesses = GlobalData.Processes.Current;
+    if isempty(sProcesses)
+        return;
+    end
+    % Get panel
+    ctrl = bst_get('PanelControls', 'ProcessOne');
+    if isempty(ctrl)
+        return;
+    end
+    % Get selected process
+    iSel = ctrl.jListProcess.getSelectedIndex();
+    if (iSel == -1)
+        return;
+    end
+    % Return selected process, currently edited in the pipeline editor
+    sProcess = GlobalData.Processes.Current(iSel + 1);
 end
 
 
