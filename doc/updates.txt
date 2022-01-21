@@ -1,5 +1,7 @@
 --------------------------------------------------------------
 January 2022
+- Doc: Connectivity tutorial
+- Connectivity: Updated "Simulate AR signals"
 - Plugins: Archive software environment (brainstorm + plugins + defaults)
 - IO: Added support for Neuroelectrics EEG with EEGLAB plugin (.easy, .nedf)
 - IO: Updated Plexon reader
