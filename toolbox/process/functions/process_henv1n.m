@@ -26,7 +26,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % === Description the process
-    sProcess.Comment     = 'Envelope Correlation NxN (2020)';
+    sProcess.Comment     = 'Envelope Correlation NxN [2020]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 686;
