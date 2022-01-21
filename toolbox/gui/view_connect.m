@@ -139,7 +139,7 @@ if strcmpi(DisplayMode, 'Image')
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, ...
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
-    hFig = view_image_reg(C, Labels, [1,2], {'From (A)', 'To (B)'}, TimefreqFile, hFig, [], 0, '$freq');
+    hFig = view_image_reg(C, Labels, [1,2], {'From (A)', 'To (B)'}, TimefreqFile, hFig, [], 1, '$freq');
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
