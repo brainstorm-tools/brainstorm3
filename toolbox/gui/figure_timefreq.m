@@ -915,27 +915,18 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
     if (nargout >= 4)
         % For FOOOF with overlay mode, start with first sensor.
         isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
-        isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT);
-        if isFooof 
-            if isequal(TfInfo.FOOOFDisp, 'overlay') 
+        isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT);
+        if isFooof || isSPRiNT
+            if isequal(TfInfo.FOOOFDisp, 'overlay')
+                if isSPRiNT % Does not use the overlay feature
+                    TfInfo.FOOOFDisp = 'spectrum';
+                end
                 if isempty(TfInfo.RowName)
                     TfInfo.RowName = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames(1);
-                %elseif iscell(TfInfo.RowName) && numel(TfInfo.RowName) > 1 % doesn't seem to happen
-                %    TfInfo.RowName = TfInfo.RowName(1);
                 end
             else
-                TfInfo.RowName = [];
-            end
-            setappdata(hFig, 'Timefreq', TfInfo);
-            % Get data, providing FOOOFDisp.
-            [TF, iTimeBands, iRow] = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, iTime, TfInfo.Function, TfInfo.RefRowName, TfInfo.FOOOFDisp);
-        elseif isSPRiNT
-            if isequal(TfInfo.FOOOFDisp, 'overlay') 
-                TfInfo.FOOOFDisp = 'spectrum';
-                if isempty(TfInfo.RowName)
-                    TfInfo.RowName = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames(1);
-                %elseif iscell(TfInfo.RowName) && numel(TfInfo.RowName) > 1 % doesn't seem to happen
-                %    TfInfo.RowName = TfInfo.RowName(1);
+                if isFooof
+                    TfInfo.RowName = [];
                 end
             end
             setappdata(hFig, 'Timefreq', TfInfo);

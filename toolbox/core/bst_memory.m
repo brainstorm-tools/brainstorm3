@@ -1594,9 +1594,6 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if ~isStat
         % Load .Mat
         TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas');
-        if strcmp(TimefreqMat.Method, 'SPRiNT')
-            TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'TF', 'TFmask', 'Time', 'Freqs', 'DataFile', 'DataType', 'Comment', 'TimeBands', 'RowNames', 'RefRowNames', 'Measure', 'Method', 'Options', 'ColormapType', 'DisplayUnits', 'Atlas', 'HeadModelFile', 'SurfaceFile', 'sPAC', 'GridLoc', 'GridAtlas', 'SPRiNT');
-        end
 %         % Load inverse kernel that goes with it if applicable
 %         if ~isempty(ParentFile) && strcmpi(TimefreqMat.DataType, 'results') % && (size(TimefreqMat.TF,1) < length(TimefreqMat.RowNames))
 %             [iDS, iResults] = LoadResultsFileFull(ParentFile);
@@ -1789,11 +1786,6 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if isempty(iTimefreq)
         iTimefreq = length(GlobalData.DataSet(iDS).Timefreq) + 1;
     end
-    if isfield(TimefreqMat, 'SPRiNT')
-        Timefreq.SPRiNT = TimefreqMat.SPRiNT;
-        GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT = TimefreqMat.SPRiNT;
-    end
-    
     GlobalData.DataSet(iDS).Timefreq(iTimefreq) = Timefreq;  
     
     % ===== LOAD CHANNEL FILE =====
@@ -2267,7 +2259,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         isSPRiNT = false;
     else
         isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
-        isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT);
+        isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT);
     end
     % Default RefRowName: all
     if (nargin < 7) || isempty(RefRowName)
@@ -2425,13 +2417,13 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
          % Get requested FOOOF measure
         switch FooofDisp
             case 'model'
-                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT.SPRiNT_models(iRow, iTime, iFreqs);
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.SPRiNT_models(iRow, iTime, iFreqs);
             case 'aperiodic'
-                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT.aperiodic_models(iRow, iTime, iFreqs);
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.aperiodic_models(iRow, iTime, iFreqs);
             case 'peaks'
-                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT.peak_models(iRow, iTime, iFreqs);
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.peak_models(iRow, iTime, iFreqs);
             case 'error'
-                Values = 10.^(log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs)) - log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT.SPRiNT_models(iRow, iTime, iFreqs)));
+                Values = 10.^(log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs)) - log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.SPRiNT_models(iRow, iTime, iFreqs)));
             otherwise
                 error('Unknown SPRiNT display option.');
         end

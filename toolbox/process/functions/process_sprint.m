@@ -31,10 +31,10 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'SPRiNT: Spectral Parameterization Resolved iN Time';
+    sProcess.Comment     = 'SPRiNT: Spectral Parameterization Resolved in Time';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 504;
+    sProcess.Index       = 502;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SPRiNT';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data', 'results', 'matrix'};
@@ -71,14 +71,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.loc_average.Type       = 'value';
     sProcess.options.loc_average.Value      = {5, '', 0};
     
-    % Spacer between option sets
-    sProcess.options.spacer.Comment    = '';
-    sProcess.options.spacer.Type       = 'label';
-    sProcess.options.spacer.Value      = [];
-    
     % === specparam options === %
     % Label for FOOOF options
-    sProcess.options.fooof.Comment    = 'specparam options:';
+    sProcess.options.fooof.Comment    = '<BR><BR>specparam options:';
     sProcess.options.fooof.Type       = 'label';
     sProcess.options.fooof.Value      = [];
     % Option: Frequency range
@@ -114,14 +109,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.guessweight.Type    = 'radio_linelabel';
     sProcess.options.guessweight.Value   = 'none';
     
-    % Spacer between option sets
-    sProcess.options.spacer2.Comment    = '';
-    sProcess.options.spacer2.Type       = 'label';
-    sProcess.options.spacer2.Value      = [];
-    
     % === Post-processing options === %
     % Label for FOOOF options
-    sProcess.options.postproc.Comment    = 'Post-processing options:';
+    sProcess.options.postproc.Comment    = '<BR><BR>Post-processing options:';
     sProcess.options.postproc.Type       = 'label';
     sProcess.options.postproc.Value      = [];
     % Option: Remove outliers

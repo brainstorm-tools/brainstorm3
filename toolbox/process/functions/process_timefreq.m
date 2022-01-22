@@ -93,7 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         case 'process_hilbert',       strProcess = 'hilbert';
         case 'process_fft',           strProcess = 'fft';
         case 'process_psd',           strProcess = 'psd';
-        case 'process_sprint',        strProcess = 'SPRiNT';
+        case 'process_sprint',        strProcess = 'sprint';
         case 'process_ft_mtmconvol',  strProcess = 'mtmconvol';
         otherwise,                    error('Unsupported process.');
     end
@@ -115,7 +115,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         switch tfOPTIONS.Method
             case 'fft',       tfOPTIONS.Comment = 'FFT';
             case 'psd',       tfOPTIONS.Comment = 'PSD';
-            case 'SPRiNT',    tfOPTIONS.Comment = 'SPRiNT';
+            case 'sprint',    tfOPTIONS.Comment = 'SPRiNT';
             case 'morlet',    tfOPTIONS.Comment = 'Wavelet';
             case 'hilbert',   tfOPTIONS.Comment = 'Hilbert';
             case 'mtmconvol', tfOPTIONS.Comment = 'Multitaper';

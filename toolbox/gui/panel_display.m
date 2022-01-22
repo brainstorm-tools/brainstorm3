@@ -433,7 +433,7 @@ function UpdatePanel(hFig)
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
             ctrl.jPanelFOOOF.setVisible(1);
         end
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT)
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
             % Enable row selection controls
             ctrl.jComboRows.setEnabled(1);
             ctrl.jPanelSelect.setVisible(1);
@@ -467,7 +467,7 @@ function UpdatePanel(hFig)
                         %ctrl.jRadioFunMag.setEnabled(0);
                         %ctrl.jRadioFunLog.setEnabled(1);
                 end
-            elseif isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq), 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).SPRiNT)
+            elseif isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
                 ctrl.jRadioFOverlay.setEnabled(0); 
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
