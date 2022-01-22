@@ -1541,7 +1541,7 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
 
         % create arrows for directional links
         if (IsDirectionalData)
-            Arrows(i) = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
+            Arrows(i) = Arrowhead(hAxes, x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
         end
     end
     
@@ -1663,7 +1663,7 @@ end
 
 % Draws 2 solid arrowheads for each link
 % based on: https://www.mathworks.com/matlabcentral/fileexchange/4538-arrowhead
-function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
+function [handle] = Arrowhead(hAxes, x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
     % determine location of first arrowhead
     ArWidth = 0.75;
     j = floor(length(x)*Where/100); 
@@ -1782,9 +1782,6 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
     % second face = second arrow with vertices 4-5-6
     Vertices = [xd_all.', yd_all.'];
     Faces = [1 2 3; 4 5 6]; 
-    
-    % Get figure axes
-    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
 
     %%%% draw both arrowheads as 2 faces of a single patch object %%%%
     handle = patch('Vertices', Vertices, ...
@@ -1793,7 +1790,7 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
         'FaceColor', 'flat', ...
         'FaceAlpha', 'flat', ...
         'AlphaDataMapping', 'none', ...
-        'FaceVertexCData', repmat(NaN, 6, 1), ... % no defined color at start
+        'FaceVertexCData', NaN(6, 1), ... % no defined color at start
         'FaceVertexAlphaData', [0; 0], ...
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
