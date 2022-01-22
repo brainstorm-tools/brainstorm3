@@ -53,7 +53,16 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowScrollWheelFcn',  @(h, ev)FigureMouseWheelCallback(h, ev), ...
                   bst_get('ResizeFunction'), @(h, ev)ResizeCallback(h, ev));
     
-    % Prepare figure appdata
+    % === CREATE AXES ===
+    hAxes = axes('Parent',        hFig, ...
+                 'Units',         'normalized', ...
+                 'Position',      [.1 .1 .8 .8], ...
+                 'Tag',           'AxesConnect', ...
+                 'Visible',       'off', ...
+                 'BusyAction',    'queue', ...
+                 'Interruptible', 'off');
+
+    % === APPDATA STRUCTURE ===
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
@@ -1380,6 +1389,8 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     % get pre-created nodes
     AllNodes = getappdata(hFig, 'AllNodes');
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+    % Get figure axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
     
     % clear any previous links and get scaling distance from nodes to unit circle
     if (IsMeasureLink)
@@ -1525,7 +1536,8 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
                 'PickableParts', 'visible', ...
                 'Visible', 'off', ...                                             % not visible as default;
                 'UserData', [i IsDirectionalData IsMeasureLink Node1 Node2], ...  % i is the link index
-                'ButtonDownFcn', @LinkButtonDownFcn); 
+                'ButtonDownFcn', @LinkButtonDownFcn, ...
+                'Parent', hAxes); 
 
         % create arrows for directional links
         if (IsDirectionalData)
@@ -1771,8 +1783,10 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
     Vertices = [xd_all.', yd_all.'];
     Faces = [1 2 3; 4 5 6]; 
     
+    % Get figure axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
+
     %%%% draw both arrowheads as 2 faces of a single patch object %%%%
-    
     handle = patch('Vertices', Vertices, ...
         'Faces', Faces, ...
         'EdgeColor', 'flat', ...
@@ -1784,7 +1798,8 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
         'UserData', [Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
-        'ButtonDownFcn', @ArrowButtonDownFcn);
+        'ButtonDownFcn', @ArrowButtonDownFcn, ...
+        'Parent', hAxes);
 end
 
 % When user clicks on an arrow
@@ -3272,6 +3287,9 @@ function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, Nod
     Node.Color = [0.5 0.5 0.5];
     Node.Label = Label;
 
+    % Get figure axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
+    
     % Mark the node as a Matlab Line graphic object
     set(0, 'CurrentFigure', hFig);
     Node.NodeMarker = line(...
@@ -3286,7 +3304,8 @@ function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, Nod
         'Visible', 'on', ...
         'PickableParts', 'all', ...
         'ButtonDownFcn', @NodeButtonDownFcn, ...
-        'UserData', Index); % store node index so that we can ID the nodes when clicked
+        'UserData', Index, ... % store node index so that we can ID the nodes when clicked
+        'Parent', hAxes);
     
     % Create label as Matlab Text obj 
     Node.TextLabel = text(0, 0, Node.Label, 'Interpreter', 'none', 'Color', [1 1 1], 'ButtonDownFcn', @LabelButtonDownFcn, 'UserData', Index); 

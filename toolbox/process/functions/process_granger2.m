@@ -81,10 +81,8 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.pThresh      = 0.05;  % sProcess.options.pthresh.Value{1};
     OPTIONS.Freqs        = 0;
 
-    % Computation depends on the direction
-    OutputFiles = {};
-    OPTIONS.GrangerDir = 'out';
-    OutputFiles = cat(2, OutputFiles, bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS));
+    % Compute metric
+    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
 end
 
 

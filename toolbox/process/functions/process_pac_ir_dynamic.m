@@ -163,7 +163,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.seed_res.Value      = '';
     sProcess.options.seed_res.InputTypes = {'results'};
         % === ROW NAMES
-    sProcess.options.seed_tf.Comment    = 'Row name or index : ';
+    sProcess.options.seed_tf.Comment    = 'Signal name or index : ';
     sProcess.options.seed_tf.Type       = 'text';
     sProcess.options.seed_tf.Value      = '';
     sProcess.options.seed_tf.InputTypes = {'timefreq', 'matrix'};
