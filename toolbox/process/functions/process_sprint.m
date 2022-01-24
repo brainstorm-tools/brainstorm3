@@ -22,7 +22,7 @@ function varargout = process_sprint( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Luc Wilson, 2021
+% Author: Luc Wilson, 2021-2022
 
 eval(macro_method);
 end
@@ -41,6 +41,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    sProcess.isSeparator = 1;
     % Options: Sensor types
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
