@@ -304,7 +304,7 @@ for iFile = 1:length(FilesA)
                 if ~isempty(sInputB.Data) && ~iscell(sInputB.Data)
                     sInputB.Data = {sInputB.Data};
                 end
-                [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
+                [R, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn_2021(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));
             % Estimate the coherence (deprecated)
             elseif ~isempty(OPTIONS.MaxFreqRes)
                 [R, pValues, OPTIONS.Freqs, OPTIONS.Nwin, OPTIONS.Lwin, Messages] = bst_cohn(sInputA.Data, sInputB.Data, sfreq, OPTIONS.MaxFreqRes, OPTIONS.CohOverlap, OPTIONS.CohMeasure, CalculateSym, sInputB.ImagingKernel, round(100/length(FilesA)));

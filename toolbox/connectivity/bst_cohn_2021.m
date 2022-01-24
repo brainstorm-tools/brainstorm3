@@ -1,7 +1,7 @@
-function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax)
+function [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax)
 % BST_COHN_2021: Updated version of bst_cohn.m 
 %
-% USAGE:  [Cxy, freq, pValues, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
+% USAGE:  [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
 %
 % INPUTS:
 %    - Xs      : Cell array of signals {[nSignals1, nSamples1], [nSignals2, nSamples2], ...}
@@ -34,28 +34,10 @@ function [Cxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, 
 %     ========= 'icohere' (before 2019) =========
 %     Imaginary Coherence (IC)          : imag(C)^2 / (1-real(C)^2)
 %
-% Parametric significance estimation:  
-%     When overlap=0%   [Syed Ashrafulla]
-%        Kuramaswamy's CDF using using Goodman's formula from [1], simplified by the null hypothesis as in [2]
-%        => pValues = (1 - MSC) .^ floor(signalLength / windowLength)
-%     
-%     When overlap=50%   [Ester Florin]
-%        dof = 2.8 * nSamples * (1.28/(nFFT+1));   % According to Welch 1976
-%        pValues = (1 - MSC) .^ ((dof-2)/2);       % Schelter [3] and Bloomfield [4]
-%        While Matlab defines the coherence as the square of the cross sepctra divided by the product of the spectra, Bokil (2007)
-%        and Schelter (2006) work with the square root within the correction and significance determination
-%
 % References:
 %   [1] Carter GC (1987), Coherence and time delay estimation
 %       Proc IEEE, 75(2):236-255, doi:10.1109/PROC.1987.13723
-%   [2] Amjad AM, Halliday DM, Rosenberg JR, Conway BA (1997)
-%       An extended difference of coherence test for comparing and combining several independent coherence estimates: 
-%       theory and application to the study of motor units and physiological tremor.
-%       J Neuro Methods, 73(1):69-79
-%   [3] Schelter B, Winterhalder M, Eichler M, Peifer M, Hellwig B, Guschlbauer B, Luecking CH, Dahlhaus R, Timmer J (2006)
-%       Testing for directed influences among neural signals using partial directed coherence
-%       J Neuro Methods, 152(1-2):201-219
-%   [4] Bloomfield P, Fourier Analysis of Time Series: An Introduction
+%   [2] Bloomfield P, Fourier Analysis of Time Series: An Introduction
 %       John Wiley & Sons, New York, 1976.
 
 % @=============================================================================
@@ -103,7 +85,6 @@ if (nargin < 4)
     error('Invalid call.');
 end
 Cxy = [];
-pValues = [];
 freq = [];
 nWin = 0;
 nFFT = [];
@@ -312,12 +293,6 @@ switch CohMeasure
         
     % Imaginary Coherence (before 2019)
     case 'icohere' % (We only had Imaginary coherence)
-        % Parametric estimation of the significance level
-        if (Overlap == 0.5)
-            pValues = max(0, 1 - abs(Cxy).^2) .^ ((dof-2)/2);  % Schelter 2006 and Bloomfield 1976
-        else
-            pValues = max(0, 1 - abs(Cxy).^2) .^ floor(nSamples / nFFT);
-        end
         % Imaginary Coherence = imag(C)^2 / (1-real(C)^2)
         Cxy = imag(Cxy).^2 ./ (1-real(Cxy).^2);
 end
