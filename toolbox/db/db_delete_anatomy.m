@@ -37,8 +37,10 @@ if ~isKeepMri && ~isempty(sSubject.Anatomy)
     sSubject.Anatomy(1:end) = [];
     sSubject.iAnatomy = [];
 elseif isKeepMri && (length(sSubject.Anatomy) >= 2)
-    file_delete(file_fullpath({sSubject.Anatomy(2:end).FileName}), 1);
-    sSubject.Anatomy(2:end) = [];
+    ind =  ones(1,length(length(sSubject.Anatomy)));
+    ind(sSubject.Anatomy) = 0;
+    file_delete(file_fullpath({sSubject.Anatomy(ind).FileName}), 1);
+    sSubject.Anatomy(ind) = [];
     sSubject.iAnatomy = 1;
 end
 
