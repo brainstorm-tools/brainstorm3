@@ -34,20 +34,19 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'FOOOF: Fitting oscillations and 1/f';
+    sProcess.Comment     = 'specparam: Fitting oscillations and 1/f';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 503;
+    sProcess.Index       = 501;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Fooof';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Definition of the options
     % === FOOOF TYPE
-    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (3.7 recommended)', 'FOOOF implementation:'; 'matlab', 'python', ''};
+    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (3.7 recommended)', 'specparam implementation:'; 'matlab', 'python', ''};
     sProcess.options.implementation.Type    = 'radio_linelabel';
     sProcess.options.implementation.Value   = 'matlab';
     sProcess.options.implementation.Controller.matlab = 'Matlab';
@@ -202,17 +201,17 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             'stats',      eStats);
         % Comment: Add FOOOF
         if ~isempty(strfind(PsdMat.Comment, 'PSD:'))
-            PsdMat.Comment = strrep(PsdMat.Comment, 'PSD:', 'FOOOF:');
+            PsdMat.Comment = strrep(PsdMat.Comment, 'PSD:', 'specparam:');
         else
-            PsdMat.Comment = strcat(PsdMat.Comment, ' | FOOOF');
+            PsdMat.Comment = strcat(PsdMat.Comment, ' | specparam');
         end
         % History: Computation
-        PsdMat = bst_history('add', PsdMat, 'compute', 'FOOOF');
+        PsdMat = bst_history('add', PsdMat, 'compute', 'specparam');
         
         % === SAVE FILE ===
         % Filename: add _fooof tag
         [fPath, fName, fExt] = bst_fileparts(file_fullpath(sInputs(iFile).FileName));
-        NewFile = file_unique(bst_fullfile(fPath, [fName, '_fooof', fExt]));
+        NewFile = file_unique(bst_fullfile(fPath, [fName, '_specparam', fExt]));
         % Save file
         bst_save(NewFile, PsdMat, 'v6');
         % Add file to database structure

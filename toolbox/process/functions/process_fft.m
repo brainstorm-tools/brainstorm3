@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Fourier transform (FFT)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 501;
+    sProcess.Index       = 480;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsFilter#Evaluation_of_the_noise_level';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data', 'results', 'matrix'};

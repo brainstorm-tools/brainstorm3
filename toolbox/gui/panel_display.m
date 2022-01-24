@@ -69,16 +69,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jPanelNew.add(jPanelFunction);
     
     % ===== FOOOF: PLOT OPTIONS =====
-    jPanelFOOOF = gui_river([0,1], [2,4,4,0], 'FOOOF');
+    jPanelFOOOF = gui_river([0,1], [2,4,4,0], 'specparam');
     jPanelFOOOF.setVisible(0);
         % Radio: Select function to apply on top of the TF values
         jButtonGroup = ButtonGroup();
-        jRadioFOverlay = gui_component('Radio', jPanelFOOOF, 'br', 'Overlay',      jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFSpectrum = gui_component('Radio', jPanelFOOOF, 'br', 'Spectrum',      jButtonGroup, '', @DisplayOptions_Callback);
-        jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'FOOOF Model',  jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFModel   = gui_component('Radio', jPanelFOOOF, 'br', 'specparam model',  jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFAperiodic   = gui_component('Radio', jPanelFOOOF, 'br', 'Aperiodic only', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks only', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFError = gui_component('Radio', jPanelFOOOF, 'br', 'Frequency-wise error', jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFOverlay = gui_component('Radio', jPanelFOOOF, 'br', 'Overlay',      jButtonGroup, '', @DisplayOptions_Callback);
     jPanelNew.add(jPanelFOOOF);
     
     % ===== PAC: PAC/FLOW/FHIGH =====
@@ -433,6 +433,13 @@ function UpdatePanel(hFig)
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
             ctrl.jPanelFOOOF.setVisible(1);
         end
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
+            % Enable row selection controls
+            ctrl.jComboRows.setEnabled(1);
+            ctrl.jPanelSelect.setVisible(1);
+            ctrl.jPanelFOOOF.setVisible(1);
+            ctrl.jRadioFOverlay.setVisible(0);
+        end
         % Entire panel
         if ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'none', 'power', 'magnitude', 'log', 'phase'}) ...
                 || (isfield(TfInfo, 'DisplayMeasure') && ~TfInfo.DisplayMeasure)
@@ -442,6 +449,26 @@ function UpdatePanel(hFig)
             % If current figure is a FOOOF PSD
             if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
                 ctrl.jRadioFOverlay.setEnabled(1); 
+                ctrl.jRadioFSpectrum.setEnabled(1);
+                ctrl.jRadioFModel.setEnabled(1);
+                ctrl.jRadioFAperiodic.setEnabled(1);
+                ctrl.jRadioFPeaks.setEnabled(1);
+                ctrl.jRadioFError.setEnabled(1);
+                switch TfInfo.FOOOFDisp
+                    case 'overlay', ctrl.jRadioFOverlay.setSelected(1); 
+                    case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
+                    case 'model', ctrl.jRadioFModel.setSelected(1);
+                    case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
+                    case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
+                    case 'error' 
+                        ctrl.jRadioFError.setSelected(1);
+                        % All display options can be useful here as well.
+                        %ctrl.jRadioFunPower.setEnabled(0);
+                        %ctrl.jRadioFunMag.setEnabled(0);
+                        %ctrl.jRadioFunLog.setEnabled(1);
+                end
+            elseif isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
+                ctrl.jRadioFOverlay.setEnabled(0); 
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
