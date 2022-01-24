@@ -231,6 +231,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         % Delete anatomy
         isKeepMri = 1;
         sSubject = db_delete_anatomy(iSubject, isKeepMri);
+        iAnatomy = 1;
     end
     
     % ===== VERIFY FIDUCIALS IN MRI =====
