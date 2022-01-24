@@ -289,13 +289,7 @@ for iFile = 1:length(FilesA)
             bst_progress('text', sprintf('Calculating: Correlation [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'Corr: ';
             % All the correlations with one call
-            [R, pValues] = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean); 
-            % Apply p-value threshold
-            R(pValues > OPTIONS.pThresh) = 0;
-            if (nnz(R) == 0)
-                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), 'No significant connections were found in this file.');
-                continue;
-            end
+            R = bst_corrn(sInputA.Data, sInputB.Data, OPTIONS.RemoveMean); 
             
         % === COHERENCE ===
         case 'cohere'
@@ -321,12 +315,6 @@ for iFile = 1:length(FilesA)
                 return;
             elseif ~isempty(Messages)
                 bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-            end
-            % Apply p-value threshold
-            R(pValues > OPTIONS.pThresh) = 0;
-            if (nnz(R) == 0)
-                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), 'No significant connections were found in this file.');
-                continue;
             end
             % Remove the coherence at 0Hz => Meaningless
             iZero = find(OPTIONS.Freqs == 0);
@@ -371,20 +359,13 @@ for iFile = 1:length(FilesA)
             %inputs.rho         = 50;
             % If computing a 1xN interaction: selection of the Granger orientation
             if (size(sInputA.Data,1) == 1) && strcmpi(OPTIONS.GrangerDir, 'in')
-                [R, pValues] = bst_granger(sInputA.Data, sInputB.Data, OPTIONS.GrangerOrder, inputs);
+                R = bst_granger(sInputA.Data, sInputB.Data, OPTIONS.GrangerOrder, inputs);
             else
                 % [sink x source] = bst_granger(sink, source, ...)
-                [R, pValues] = bst_granger(sInputB.Data, sInputA.Data, OPTIONS.GrangerOrder, inputs);
+                R = bst_granger(sInputB.Data, sInputA.Data, OPTIONS.GrangerOrder, inputs);
             end
             % Granger function returns a connectivity matrix [sink x source] = [to x from] => Needs to be transposed
             R = R';
-            pValues = pValues';
-            % Apply p-value threshold
-            R(pValues > OPTIONS.pThresh) = 0;
-            if (nnz(R) == 0)
-                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), 'No significant connections were found in this file.');
-                continue;
-            end
             % Comment
             if (size(sInputA.Data,1) == 1)
                 Comment = ['Granger(' OPTIONS.GrangerDir '): '];
@@ -411,13 +392,6 @@ for iFile = 1:length(FilesA)
                 [R, pValues, OPTIONS.Freqs] = bst_granger_spectral(sInputB.Data, sInputA.Data, sfreq, OPTIONS.GrangerOrder, inputs);
             end
             R = permute(R, [2 1 3]);
-%             pValues = permute(pValues, [2 1 3]);
-%             % Apply p-value threshold
-%             R(pValues > OPTIONS.pThresh) = 0;
-%             if (nnz(R) == 0)
-%                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), 'No significant connections were found in this file.');
-%                 continue;
-%             end
             % Remove the values at 0Hz => Meaningless
             iZero = find(OPTIONS.Freqs == 0);
             if ~isempty(iZero)
