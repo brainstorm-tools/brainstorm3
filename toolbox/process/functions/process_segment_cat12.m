@@ -212,6 +212,16 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % Get default MRI if not specified
     if isempty(iAnatomy)
         iAnatomy = sSubject.iAnatomy;
+    else
+        sSubject.iAnatomy =iAnatomy;
+        % Keep the MRI that has been selected for segmentation and not the
+        % one beiing as default 
+        
+        bst_set('Subject', iSubject, sSubject);
+        panel_protocols('UpdateNode', 'Subject', iSubject);
+        % Save database
+        db_save();
+
     end
 
     % ===== DELETE EXISTING SURFACES =====
