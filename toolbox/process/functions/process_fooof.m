@@ -44,7 +44,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Definition of the options
     % === FOOOF TYPE
     sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (3.7 recommended)', 'specparam implementation:'; 'matlab', 'python', ''};
