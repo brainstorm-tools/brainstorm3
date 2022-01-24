@@ -1,6 +1,11 @@
 function [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS)
 % BST_SPRiNT: Compute time-resolved specparam models for a set of signals using
 % an STFT approach.
+% REFERENCE: Please cite the preprint for the SPRiNT algorithm:
+%    Wilson, L. E., da Silva Castanheira, J., & Baillet, S. (2022). 
+%    Time-resolved parameterization of aperiodic and periodic brain 
+%    activity. bioRxiv, 2022.2001.2021.477243. 
+% Please consider citing the specparam algorithm as well.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
