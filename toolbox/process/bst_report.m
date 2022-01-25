@@ -1418,7 +1418,7 @@ end
 function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     global GlobalData;
     % Parse inputs
-    if (nargin < 4) || isempty(isFullReport)
+    if (nargin < 5) || isempty(isFullReport)
         isFullReport = 1;
     end
     % Minimum Matlab version: 2014b
