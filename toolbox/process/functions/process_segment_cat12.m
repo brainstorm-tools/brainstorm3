@@ -379,7 +379,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
     isKeepMri = 1;
-    errMsg = import_anatomy_cat(iSubject, catDir, nVertices, isInteractive, [], isExtraMaps, isKeepMri);
+    errMsg = import_anatomy_cat(iSubject, catDir, nVertices, 0, [], isExtraMaps, isKeepMri);
     if ~isempty(errMsg)
         return;
     end
