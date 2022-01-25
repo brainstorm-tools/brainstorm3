@@ -1,4 +1,4 @@
-function [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, isSymmetric, ImagingKernel, waitMax)
+function [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap, CohMeasure, MaxFreq, ImagingKernel, waitMax)
 % BST_COHN_2021: Updated version of bst_cohn.m 
 %
 % USAGE:  [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, Overlap=0.5, CohMeasure='mscohere', isSymmetric=0, ImagingKernel=[], waitMax=100)
@@ -10,7 +10,7 @@ function [Cxy, freq, nWin, nFFT, Messages] = bst_cohn_2021(Xs, Ys, Fs, WinLen, O
 %    - WinLen        : Length of the window used to estimate the coherence
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
 %    - CohMeasure    : {'mscohere', 'icohere' , 'icohere2019', 'lcohere2019'}
-%    - isSymmetric   : If 1, use an optimized method for symmetrical matrices
+%    - MaxFreq       : Highest frequency of interest
 %    - ImagingKernel : If not empty, calculate the coherence at the source level
 %    - waitMax       : Increase of the progress bar during the execution of this function
 %
@@ -72,8 +72,8 @@ end
 if (nargin < 8) || isempty(ImagingKernel)
     ImagingKernel = [];
 end
-if (nargin < 7) || isempty(isSymmetric)
-    isSymmetric = 0;
+if (nargin < 7) || isempty(MaxFreq) || (MaxFreq == 0)
+    MaxFreq = [];
 end
 if (nargin < 6) || isempty(CohMeasure)
     CohMeasure = 'mscohere';
@@ -138,6 +138,14 @@ win  = transpose(bst_window('hamming', nWinLen));
 % Keep only positive frequencies of the spectra
 nKeep = (nFFT / 2) + 1;
 freq = (0: nKeep-1) * (Fs / nFFT);
+% Keep only upto MaxFreq
+if ~isempty(MaxFreq)
+    freqLim = find(freq <= MaxFreq, 1, 'last');
+    if ~isempty(freqLim)
+        nKeep = freqLim;
+        freq = freq(1:nKeep);
+    end
+end
 
 % Accumulators
 nSignalsX = size(Xs{1}, 1);
