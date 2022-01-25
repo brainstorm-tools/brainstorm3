@@ -25,6 +25,7 @@ function varargout = process_cohere1_2021( varargin )
 %
 % Authors: Francois Tadel, 2012-2021
 %          Hossein Shahabi, 2019-2020
+%          Raymundo Cassani, 2021-2022
 
 eval(macro_method);
 end
@@ -54,7 +55,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === COHERENCE METHOD
     sProcess.options.cohmeasure.Comment = {...
         ['<B>Magnitude-squared Coherence</B><BR>' ...
-        '|C|^2 = |Gxy|^2/(Gxx*Gyy)'], ...
+        '|C|^2 = |Cxy|^2/(Cxx*Cyy)'], ...
         ['<B>Imaginary Coherence (2019)</B><BR>' ...
         'IC    = |imag(C)|'], ...
         ['<B>Lagged Coherence (2019)</B><BR>' ...
@@ -106,7 +107,6 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.WinLen        = sProcess.options.win_length.Value{1};
     OPTIONS.MaxFreq       = sProcess.options.maxfreq.Value{1};
     OPTIONS.CohOverlap    = 0.50;  % First pre-define the overlap
-    OPTIONS.pThresh       = 0.05;
     OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
 
     % Change the overlap if it is specified
@@ -161,7 +161,6 @@ function Test(iTest) %#ok<DEFNU>
         'overlap',      50, ...          % 50%
         'maxfreqres',   MaxFreqRes, ...  % VARIES
         'maxfreq',      [], ...          % No maximum frequency
-        'pThresh',      0.05, ...        % p-value thrshold
         'outputmode',   1);              % Save individual results (one file per input file)
     t = toc;
     % Execution time
@@ -182,7 +181,7 @@ function Test(iTest) %#ok<DEFNU>
         'src_rowname',  '1', ...         % Test signal #1 => other signals
         'includebad',   1, ...
         'removeevoked', 0, ...
-        'cohmeasure',   'mscohere', ...  % Magnitude-squared Coherence|C|^2 = |Gxy|^2/(Gxx*Gyy)
+        'cohmeasure',   'mscohere', ...  % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
         'win_length',   WinLen, ...
         'overlap',      50, ...          % 50%
         'maxfreq',      [], ...
