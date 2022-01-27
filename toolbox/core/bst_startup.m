@@ -524,6 +524,7 @@ if isempty(BrainstormDbDir)
 % If database folder was passed in input
 else
     if isequal(BrainstormDbDir, 'local')
+        BrainstormUserDir = bst_get('BrainstormUserDir');
         BrainstormDbDir = bst_fullfile(BrainstormUserDir, 'local_db');
     end
     % Save brainstorm directory
