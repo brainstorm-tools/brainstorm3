@@ -217,6 +217,18 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
         end
     end
     
+    % ===== DELETE EXISTING SURFACES =====
+    % Confirm with user that the existing surfaces will be removed
+    if isInteractive && ~isempty(sSubject.Surface)
+        isDel = java_dialog('confirm', ['Warning: There are already surfaces in this subject.' 10 ...
+            'Running FastSurfer will remove all the existing surfaces.' 10 10 ...
+            'Delete the existing files?' 10 10], 'FastSurfer segmentation');
+        if ~isDel
+            errMsg = 'Process aborted by user.';
+            return;
+        end
+    end
+
     % ===== VERIFY FIDUCIALS IN MRI =====
     bst_progress('text', 'Saving temporary files...');
     % Load MRI file
@@ -271,7 +283,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     isKeepMri = 1;
     isVolumeAtlas = 1;
     FsDir = bst_fullfile(procDir, subjid);
-    errMsg = import_anatomy_fs(iSubject, FsDir, nVertices, isInteractive, [], isExtraMaps, isVolumeAtlas, isKeepMri);
+    errMsg = import_anatomy_fs(iSubject, FsDir, nVertices, 0, [], isExtraMaps, isVolumeAtlas, isKeepMri);
     if ~isempty(errMsg)
         return;
     end

@@ -140,6 +140,18 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
         iAnatomy = sSubject.iAnatomy;
     end
     
+    % ===== DELETE EXISTING SURFACES =====
+    % Confirm with user that the existing surfaces will be removed
+    if isInteractive && ~isempty(sSubject.Surface)
+        isDel = java_dialog('confirm', ['Warning: There are already surfaces in this subject.' 10 ...
+            'Running BrainSuite will remove all the existing surfaces.' 10 10 ...
+            'Delete the existing files?' 10 10], 'BrainSuite segmentation');
+        if ~isDel
+            errMsg = 'Process aborted by user.';
+            return;
+        end
+    end
+
     % ===== VERIFY FIDUCIALS IN MRI =====
     % Load MRI file
     T1FileBst = sSubject.Anatomy(iAnatomy).FileName;
@@ -220,7 +232,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive)
     % Import BrainSuite anatomy folder
     isKeepMri = 1;
     isVolumeAtlas = 1;
-    errMsg = import_anatomy_bs(iSubject, procDir, nVertices, isInteractive, [], isVolumeAtlas, isKeepMri);
+    errMsg = import_anatomy_bs(iSubject, procDir, nVertices, 0, [], isVolumeAtlas, isKeepMri);
     if ~isempty(errMsg)
         return;
     end
