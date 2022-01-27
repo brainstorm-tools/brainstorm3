@@ -71,6 +71,16 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.loc_average.Comment    = 'Averaged FFTs per time point (default=5): ';
     sProcess.options.loc_average.Type       = 'value';
     sProcess.options.loc_average.Value      = {5, '', 0};
+    % Options: CLUSTERS
+    sProcess.options.clusters.Comment = '';
+    sProcess.options.clusters.Type    = 'scout_confirm';
+    sProcess.options.clusters.Value   = {};
+    sProcess.options.clusters.InputTypes = {'results'};
+    % Options: Scout function
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
+    sProcess.options.scoutfunc.Type       = 'radio_line';
+    sProcess.options.scoutfunc.Value      = 1;
+    sProcess.options.scoutfunc.InputTypes = {'results'};
     
     % === specparam options === %
     % Label for FOOOF options

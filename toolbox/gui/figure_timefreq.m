@@ -921,7 +921,10 @@ function [Time, Freqs, TfInfo, TF, RowNames, FullTimeVector, DataType, LowFreq, 
                 if isSPRiNT % Does not use the overlay feature
                     TfInfo.FOOOFDisp = 'spectrum';
                 end
-                if isempty(TfInfo.RowName)
+                if isfield(getappdata(hFig),'TopoInfo')
+                    TfInfo.FOOOFDisp = 'spectrum';
+                    TfInfo.RowName = [];
+                elseif isempty(TfInfo.RowName)
                     TfInfo.RowName = GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames(1);
                 end
             else

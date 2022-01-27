@@ -553,6 +553,10 @@ for iData = 1:length(Data)
         % SPRiNT: Spectral Parameterization Resolved iN Time (Luc Wilson)
         case 'sprint'
             % Calculate PSD/FFT
+            if isequal(DataType,'results') % Source data
+                OPTIONS.SPRiNTopts.imgK = ImagingKernel;
+                ImagingKernel = []; % Do not apply twice
+            end
             [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS);
             OPTIONS.Comment = [OPTIONS.Comment ', ' sprintf('%d-%dHz', round(OPTIONS.SPRiNTopts.freqrange.Value{1}(1)),round(OPTIONS.SPRiNTopts.freqrange.Value{1}(2)))];
 

@@ -2402,15 +2402,22 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
                 YLowLim = min(Values(1,1,:));
                 Values(3,1,Values(3,1,:) < YLowLim) = NaN;
             case 'model'
-                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
+                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
             case 'aperiodic'
-                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
+                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
             case 'peaks'
-                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
+                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
             case 'error'
-                Values(:,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]);
+                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
+            case 'exponent'
+                Values = [GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.aperiodics(iRow).exponent]';
+            case 'offset'
+                Values = [GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.aperiodics(iRow).offset]';
             otherwise
                 error('Unknown FOOOF display option.');
+        end
+        if ~isequal(FooofDisp,'exponent') && ~isequal(FooofDisp,'offset')
+            Values = Values(:,:,iFreqs); % Do not touch aperiodic parameters
         end
         isApplyFunction = ~isempty(Function);
     elseif isSPRiNT && ~isequal(FooofDisp,'spectrum')
@@ -2424,6 +2431,10 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
                 Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.peak_models(iRow, iTime, iFreqs);
             case 'error'
                 Values = 10.^(log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs)) - log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.SPRiNT_models(iRow, iTime, iFreqs)));
+            case 'exponent'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.topography.exponent(iRow, iTime);
+            case 'offset'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.topography.offset(iRow, iTime);
             otherwise
                 error('Unknown SPRiNT display option.');
         end
