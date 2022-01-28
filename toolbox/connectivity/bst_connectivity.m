@@ -483,7 +483,7 @@ for iFile = 1:length(FilesA)
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             
-            % ===== IMPLEMENTATION G.DUMAS =====
+            % ===== IMPLEMENTATION G.DUMAS - Update D.Marinazzo 2021 =====
             % Intitialize returned matrix
             R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
             % Loop on each frequency band
@@ -503,7 +503,10 @@ for iFile = 1:length(FilesA)
                 phaseB = HB ./ abs(HB);
                 % Compute PLV 
                 % Divide by number of time samples
-                R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);    
+                R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);  
+                
+                % this would be the ciPLV
+                % R(:,:,iBand) = (imag((phaseA*phaseB') / size(HA,2)))./sqrt(1-(real((phaseA*phaseB') / size(HA,2))).^2);
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
@@ -545,15 +548,9 @@ for iFile = 1:length(FilesA)
                 iB = reshape(repmat(1:nB, nA, 1), [], 1);
                 % Compute the PLV in time for each pair
                 R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));
-                %R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
-                
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % The implementation below is faster in the time-independent case, 
-                % here not so much for big nA and nB, still putting it for consistency
-                %phaseB = HB(iB) ./ abs(HB(iB));
-                %phaseA = HA(iA) ./ abs(HA(iA));
-                %R(:,:,iBand)=(phaseA.'.*phaseB').';
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                % this would be the ciPLV
+                % R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2);
+
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
