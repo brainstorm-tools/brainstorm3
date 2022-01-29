@@ -165,10 +165,14 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     cmd = [cmd ' -A -f 0.5 -g 0 -o -m -s'];
     
     bst_progress('text', 'Executing Fsl');
-    
-    system(cmd)
-    
+    disp(sprintf('Executing %s', cmd)); 
+    [status,cmdout] = system(cmd,'-echo');
+    if  status ~= 0 || ~existf(fullfile(pathstr,[name '_brain_outskin_mask.nii.gz']))
+        errMsg = 'FSL was not able to create the head mask.';
+        return
+    end
     bst_progress('text', 'Importing MRI ');
+
     [BstMaskFile, sMask] = import_mri(iSubject,fullfile(pathstr,[name '_brain_outskin_mask.nii.gz']));
     
     sMri = in_mri_bst(T1FileBst);
