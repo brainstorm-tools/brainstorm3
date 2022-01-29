@@ -32,11 +32,11 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Segment MRI with CAT12';
+    sProcess.Comment     = 'Extract Head with FSL';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
     sProcess.Index       = 31;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SegCAT12';
+    sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'import'};
@@ -202,7 +202,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     [isOk, errMsg] = Compute(iSubject, iAnatomy);
     % Error handling
     if ~isOk
-        bst_error(errMsg, 'CAT12 MRI segmentation', 0);
+        bst_error(errMsg, 'FSL head extraction', 0);
     elseif ~isempty(errMsg)
         java_dialog('msgbox', ['Warning: ' errMsg]);
     end
