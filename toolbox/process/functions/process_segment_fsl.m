@@ -158,6 +158,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
         bst_save(file_fullpath(T1FileBst), sMri, 'v7');
     end
     
+    
+
     [pathstr,name,ext] =  fileparts(NiiFile);
     cmd= sprintf('%s %s %s', fullfile(fsl_dir,'bin/bet'), fullfile(pathstr,name),fullfile(pathstr,[name '_brain']));
     cmd = [cmd ' -A -f 0.5 -g 0 -o -m -s'];
@@ -167,16 +169,18 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     system(cmd)
     
     bst_progress('text', 'Importing MRI ');
-    [BstT1File, sMask] = import_mri(iSubject,fullfile(pathstr,[name '_brain_outskin_mask.nii.gz']));
+    [BstMaskFile, sMask] = import_mri(iSubject,fullfile(pathstr,[name '_brain_outskin_mask.nii.gz']));
     
-    
+    sMri = in_mri_bst(T1FileBst);
+    sMask = in_mri_bst(BstMaskFile);
+
     % Following is not working
     sNewMRI  = sMri;
-    sNewMRI.Cube(sMask.Cube ==0) = 0;
+    sNewMRI.Cube = sNewMRI.Cube .* sMask.Cube;
     sNewMRI.Comment = [sMri.Comment ' | Masked'];
     sNewMRI = bst_history('add', sMri, 'import','FSl bet');
     
-    export_mri(sNewMRI, fullfile(pathstr,[name '_masked.nii']));
+    out_mri_nii(sNewMRI, fullfile(pathstr,[name '_masked.nii']));
 
     [BstT1File, sMask] = import_mri(iSubject, fullfile(pathstr,[name '_masked.nii']));
     
