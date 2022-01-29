@@ -1047,6 +1047,7 @@ switch (lower(action))
                         AddSeparator(jPopup);
                         gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
                         gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'FSL: extract head', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@process_segment_fsl, 'ComputeInteractive', iSubject, iAnatomy)); 
                         if ~bstNodes(1).isMarked()
                             jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
                             gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 1));
