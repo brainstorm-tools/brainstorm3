@@ -468,6 +468,7 @@ function UpdateMenus(sAtlas, sSurf)
     gui_component('MenuItem', jMenu, [], 'Set color',    IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EditScoutsColor));
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts));
+        gui_component('MenuItem', jMenu, [], 'Difference',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@DifferenceScouts));
         gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts));
         jMenu.addSeparator();
     end
@@ -3588,7 +3589,45 @@ function EditScoutsColor(newColor)
     UpdateScoutsList();
 end
 
-
+%% ===== Difference SCOUTS =====
+% Take the difference of two scouts A,B (keep the vertices in A that are
+% not in B
+function DifferenceScouts(varargin)
+% Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    [sScouts, iScouts] = GetSelectedScouts();
+    % Need TWO scouts
+    if (length(sScouts) ~= 2)
+        java_dialog('warning', 'You need to select two scouts.', 'Join selected scouts');
+        return;
+    end
+    order = java_dialog('question', sprintf('Do you want to compute %s - %s (yes) or %s - %s (no)',sScouts.Label, sScouts([2 1]).Label)); 
+    % === Join scouts ===
+    % Create new scout
+    sNewScout = db_template('Scout');
+    if strcmpi(order, 'yes')
+        sNewScout.Vertices = setdiff(sScouts(1).Vertices,sScouts(2).Vertices );
+        sNewScout.Label = [sScouts(1).Label ' - ' sScouts(2).Label];
+    else
+        sNewScout.Vertices = setdiff(sScouts(2).Vertices,sScouts(1).Vertices );
+        sNewScout.Label = [sScouts(2).Label ' - ' sScouts(1).Label];
+    end    
+    % Copy unmodified fields
+    sNewScout.Seed = sNewScout.Vertices(1);
+    % Save new scout
+    iNewScout = SetScouts([], 'Add', sNewScout);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();   
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
+end
 %% ===== JOIN SCOUTS =====
 % Join the scouts selected in the JList 
 function JoinScouts(varargin)
