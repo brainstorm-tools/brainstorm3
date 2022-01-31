@@ -19,7 +19,7 @@ function sFileOut = out_fopen_spm(OutputFile, sFileIn, ChannelMat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2021
+% Authors: Francois Tadel, 2017-2022
 
 % Initialize SPM12+CAT12
 [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
@@ -48,12 +48,15 @@ D.trials.repl   = 1;
 for iEvt = 1:length(sFileIn.events)
     for iOcc = 1:size(sFileIn.events(iEvt).times,2)
         i = length(D.trials.events) + 1;
-        D.trials.events(i).type  = sFileIn.events(iEvt).label;
-        D.trials.events(i).time  = sFileIn.events(iEvt).times(1,iOcc);
+        D.trials.events(i).type = sFileIn.events(iEvt).label;
+        if ~isempty(sFileIn.events(iEvt).notes) && ~isempty(sFileIn.events(iEvt).notes{iOcc})
+            D.trials.events(i).type = [D.trials.events(i).type '-' sFileIn.events(iEvt).notes{iOcc}];
+        end
+        D.trials.events(i).time = sFileIn.events(iEvt).times(1,iOcc);
         D.trials.events(i).value = iEvt;
         D.trials.events(i).offset = 0;
         if (size(sFileIn.events(iEvt).times,1) == 2)
-            D.trials.events(i).duration = sFileIn.events(iEvt).times(1,iOcc) - sFileIn.events(iEvt).times(2,iOcc);
+            D.trials.events(i).duration = sFileIn.events(iEvt).times(2,iOcc) - sFileIn.events(iEvt).times(1,iOcc);
         else
             D.trials.events(i).duration = [];
         end
