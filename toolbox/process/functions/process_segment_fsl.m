@@ -162,7 +162,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     cmd = sprintf('%s %s %s -A -f 0.5 -g 0 -o -m -s', fullfile(fsl_dir,'bin/bet'), fullfile(TmpDir,subjid), fullfile(TmpDir,[subjid '_brain']));
     disp(['BST> System call: ' cmd]);
     % Run execution
-    status = system(cmd)
+    status = system(cmd);
     % Error handling
     MaskFile = fullfile(TmpDir, [subjid '_brain_outskin_mask.nii.gz']);
     if (status ~= 0) || ~exist(MaskFile, 'file')
@@ -176,6 +176,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     sMask = in_mri(MaskFile);
     % Mask original MRI
     sMriMasked = sMri;
+    % Convert sMask.Cube to the same type as sMRI.Cube
+    sMask.Cube = eval(sprintf('%s(%s)',class(sMri.Cube), 'sMask.Cube')); 
     sMriMasked.Cube = sMri.Cube .* sMask.Cube;
     sMriMasked.Comment = [sMri.Comment ' | fsl'];
     sMriMasked = bst_history('add', sMriMasked, 'import', 'Head extraction with FSL/BET');
