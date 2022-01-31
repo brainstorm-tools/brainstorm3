@@ -94,23 +94,23 @@ for i = 1:length(sSubject.Surface)
     sTessNew = db_template('surfacemat');
     sTessNew.Comment  = sTess.Comment;
     sTessNew.Vertices = double(sTess.Vertices);
-    sTessNew.Faces    = sTess.Faces;
-    % Copy atlases
-    if isfield(sTess, 'Atlas') && ~isempty(sTess.Atlas)
-        sTessNew.Atlas = sTess.Atlas;
+    % Copy other fields
+    for f = {'Faces', 'Atlas', 'Reg', 'Elements', 'Tissue', 'TissueLabels', 'Tensors'}
+        if isfield(sTess, f{1}) && ~isempty(sTess.(f{1}))
+            sTessNew.(f{1}) = sTess.(f{1});
+        end
     end
     % Select "user scouts" (for cortex) or "structures" (for aseg)
-    if ~isempty(strfind(sTessNew.Comment, 'aseg')) || ~isempty(strfind(sTessNew.Comment, 'subcortical'))
-        sTessNew.iAtlas = find(strcmpi({sTessNew.Atlas.Name}, 'Structures'));
-    else
-        sTessNew.iAtlas = 1;
+    if isfield(sTess, 'iAtlas') && ~isempty(sTess.iAtlas)
+        if ~isempty(strfind(sTessNew.Comment, 'aseg')) || ~isempty(strfind(sTessNew.Comment, 'subcortical'))
+            sTessNew.iAtlas = find(strcmpi({sTessNew.Atlas.Name}, 'Structures'));
+        else
+            sTessNew.iAtlas = 1;
+        end
     end
     % Compress Reg
-    if isfield(sTess, 'Reg')
-        sTessNew.Reg = sTess.Reg;
-        if isfield(sTessNew.Reg, 'Sphere') && isfield(sTessNew.Reg.Sphere, 'Vertices') && ~isempty(sTessNew.Reg.Sphere.Vertices)
-            sTessNew.Reg.Sphere.Vertices = single(sTessNew.Reg.Sphere.Vertices);
-        end
+    if isfield(sTessNew, 'Reg') && isfield(sTessNew.Reg, 'Sphere') && isfield(sTessNew.Reg.Sphere, 'Vertices') && ~isempty(sTessNew.Reg.Sphere.Vertices)
+        sTessNew.Reg.Sphere.Vertices = single(sTessNew.Reg.Sphere.Vertices);
     end
     % Save file back
     bst_save(TessFile, sTessNew, 'v7');

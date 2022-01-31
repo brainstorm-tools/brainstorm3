@@ -2,10 +2,12 @@ function db_set_template( iSubject, sTemplate, isInteractive )
 % DB_SET_TEMPLATE: Copy all the files from an anatomy template in any anatomy directory.
 %
 % USAGE:  db_set_template( iSubject, sTemplate, isInteractive=1 );
+%         db_set_template( iSubject, TemplateName, isInteractive=1);
 %
 % INPUT: 
 %    - iSubject      : Subject indice in protocol definition (default anatomy: iSubject=0)
-%    - sTemplate     : Path to the anatomy template (zip file, folder or URL)
+%    - sTemplate     : Struct including the path to the anatomy template (zip file, folder or URL)
+%    - TemplateName  : String identifying the name of an anatomy template, as returned by bst_get('AnatomyDefaults')
 %    - isInteractive : If 1, asks for confirmation and open the MRI Viewer for fiducials verification (default is 1)
 
 % @=============================================================================
@@ -26,7 +28,7 @@ function db_set_template( iSubject, sTemplate, isInteractive )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2022
 
 
 %% ===== TARGET SUBJECT =====
@@ -48,6 +50,14 @@ end
 
 
 %% ===== GET TEMPLATE =====
+% If template selection is a string: get the template structure
+if ischar(sTemplate)
+    TemplateName = sTemplate;
+    sTemplate = bst_get('AnatomyDefaults', TemplateName);
+    if isempty(sTemplate)
+        error(['Invalid template name: ' TemplateName]);
+    end
+end
 % Directory: just copy from it
 if isdir(sTemplate.FilePath)
     templateDir = sTemplate.FilePath;
@@ -67,8 +77,12 @@ else
         errMsg = gui_brainstorm('DownloadFile', sTemplate.FilePath, ZipFile, 'Download template');
         % Error message
         if ~isempty(errMsg)
-            bst_error(['Impossible to download template:' 10 errMsg], 'Download error', 0);
-            return
+            if isInteractive
+                bst_error(['Impossible to download template:' 10 errMsg], 'Download error', 0);
+                return
+            else
+                error(['Impossible to download template: ' errMsg]);
+            end
         end
     elseif ~isempty(strfind(sTemplate.FilePath, '.zip'))
         ZipFile = sTemplate.FilePath;
