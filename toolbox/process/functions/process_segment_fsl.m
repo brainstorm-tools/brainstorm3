@@ -23,7 +23,7 @@ function varargout = process_segment_fsl( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2021
+% Authors: Edouard Delaire, 2022
 
 eval(macro_method);
 end
@@ -32,10 +32,10 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Extract Head with FSL';
+    sProcess.Comment     = 'Extract head with FSL';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = {'Import', 'Import anatomy'};
-    sProcess.Index       = 31;
+    sProcess.Index       = 39;
     sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
@@ -85,13 +85,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
-%% ===== COMPUTE CAT12 SEGMENTATION =====
+%% ===== COMPUTE FSL SEGMENTATION =====
 function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     errMsg = '';
     isOk = 0;
 
-    % fsl dir
-    
+    % Check FSL install
     fsl_dir = getenv('FSL_DIR');
     if isempty(fsl_dir)
         errMsg = 'FSL was not found (set FSL_DIR variable).';
@@ -117,14 +116,14 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     
     % ===== VERIFY FIDUCIALS IN MRI =====
     % Load MRI file
-    T1FileBst = sSubject.Anatomy(iAnatomy).FileName;
-    sMri = in_mri_bst(T1FileBst);
+    T1File = sSubject.Anatomy(iAnatomy).FileName;
+    sMri = in_mri_bst(T1File);
     % If the SCS transformation is not defined: compute MNI transformation to get a default one
     if isempty(sMri) || ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || (length(sMri.SCS.NAS)~=3) || (length(sMri.SCS.LPA)~=3) || (length(sMri.SCS.RPA)~=3) || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'T') || isempty(sMri.SCS.T)
         % Issue warning
         errMsg = 'Missing NAS/LPA/RPA: Computing the MNI normalization to get default positions.'; 
         % Compute MNI normalization
-        [sMri, errNorm] = bst_normalize_mni(T1FileBst);
+        [sMri, errNorm] = bst_normalize_mni(T1File);
         % Handle errors
         if ~isempty(errNorm)
             errMsg = [errMsg 10 'Error trying to compute the MNI normalization: ' 10 errNorm 10 ...
@@ -136,12 +135,11 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     bst_progress('text', 'Saving temporary files...');
     % Empty temporary folder, otherwise it reuses previous files in the folder
     gui_brainstorm('EmptyTempFolder');
-    % Create temporay folder for CAT12 output
-    fslDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'fsl');
-    mkdir(fslDir);
+    % Temporay folder for FSL output
+    TmpDir = bst_get('BrainstormTmpDir');
     % Save MRI in .nii format
     subjid = strrep(sSubject.Name, '@', '');
-    NiiFile = bst_fullfile(fslDir, [subjid, '.nii']);
+    NiiFile = bst_fullfile(TmpDir, [subjid, '.nii']);
     out_mri_nii(sMri, NiiFile);
     % If a "world transformation" was not available in the MRI in the database, it was set to a default when saving to .nii
     % Let's reload this file to get the transformation matrix, it will be used when importing the results
@@ -155,42 +153,47 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
         % Add this transformation in the MRI
         sMri.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
         % Save modification on hard drive
-        bst_save(file_fullpath(T1FileBst), sMri, 'v7');
+        bst_save(file_fullpath(T1File), sMri, 'v7');
     end
-    
-    
 
-    [pathstr,name,ext] =  fileparts(NiiFile);
-    cmd= sprintf('%s %s %s', fullfile(fsl_dir,'bin/bet'), fullfile(pathstr,name),fullfile(pathstr,[name '_brain']));
-    cmd = [cmd ' -A -f 0.5 -g 0 -o -m -s'];
-    
-    bst_progress('text', 'Executing Fsl');
-    disp(sprintf('Executing %s', cmd)); 
-    [status,cmdout] = system(cmd,'-echo');
-    if  status ~= 0 || ~existf(fullfile(pathstr,[name '_brain_outskin_mask.nii.gz']))
-        errMsg = 'FSL was not able to create the head mask.';
+    % ===== RUN FSL/BET =====
+    bst_progress('text', 'Executing FSL/BET...');
+    % FSL command line
+    cmd = sprintf('%s %s %s -A -f 0.5 -g 0 -o -m -s', fullfile(fsl_dir,'bin/bet'), fullfile(TmpDir,subjid), fullfile(TmpDir,[subjid '_brain']));
+    disp(['BST> System call: ' cmd]);
+    % Run execution
+    status = system(cmd)
+    % Error handling
+    MaskFile = fullfile(TmpDir, [subjid '_brain_outskin_mask.nii.gz']);
+    if (status ~= 0) || ~exist(MaskFile, 'file')
+        errMsg = ['FSL was not able to create the head mask.', 10, 'Check the Matlab command window for more information.'];
         return
     end
-    bst_progress('text', 'Importing MRI ');
-
-    [BstMaskFile, sMask] = import_mri(iSubject,fullfile(pathstr,[name '_brain_outskin_mask.nii.gz']));
     
-    sMri = in_mri_bst(T1FileBst);
-    sMask = in_mri_bst(BstMaskFile);
-
-    % Following is not working
-    sNewMRI  = sMri;
-    sNewMRI.Cube = sNewMRI.Cube .* sMask.Cube;
-    sNewMRI.Comment = [sMri.Comment ' | Masked'];
-    sNewMRI = bst_history('add', sMri, 'import','FSl bet');
-    
-    out_mri_nii(sNewMRI, fullfile(pathstr,[name '_masked.nii']));
-
-    [BstT1File, sMask] = import_mri(iSubject, fullfile(pathstr,[name '_masked.nii']));
-    
+    % ===== IMPORT RESULTS =====
+    bst_progress('text', 'Importing MRI...');
+    % Read mask
+    sMask = in_mri(MaskFile);
+    % Mask original MRI
+    sMriMasked = sMri;
+    sMriMasked.Cube = sMri.Cube .* sMask.Cube;
+    sMriMasked.Comment = [sMri.Comment ' | fsl'];
+    sMriMasked = bst_history('add', sMriMasked, 'import', 'Head extraction with FSL/BET');
+    % Output file name
+    [fPath,fName,fExt] = bst_fileparts(file_fullpath(T1File));
+    OutputFile = file_unique(fullfile(fPath, [fName '_masked' fExt]));
+    % Save new MRI in Brainstorm format
+    sMriMasked = out_mri_bst(sMriMasked, OutputFile);
+    % Add file to database
+    [sSubject, iSubject] = bst_get('MriFile', T1File);
+    iAnatomy = length(sSubject.Anatomy) + 1;
+    sSubject.Anatomy(iAnatomy).FileName = OutputFile;
+    sSubject.Anatomy(iAnatomy).Comment = sMriMasked.Comment;
+    bst_set('Subject', iSubject, sSubject);
+    % Refresh database tree
     panel_protocols('UpdateNode', 'Subject', iSubject);
+    panel_protocols('SelectNode', [], 'subject', iSubject, -1);
     db_save();
-    
     % Return success
     isOk = 1;
 end
@@ -203,10 +206,9 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     if (nargin < 2) || isempty(iAnatomy)
         iAnatomy = [];
     end
-
     % Open progress bar
-    bst_progress('start', 'FSL', 'FSl head extraction...');
-
+    bst_progress('start', 'FSL', 'FSL/BET head extraction...');
+    % Run FSL
     [isOk, errMsg] = Compute(iSubject, iAnatomy);
     % Error handling
     if ~isOk
