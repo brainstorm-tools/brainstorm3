@@ -32,6 +32,7 @@ function varargout = panel_scout(varargin)
 %                       panel_scout('RemoveScouts', iScouts) : remove a list of scouts
 %                       panel_scout('RemoveScouts', )        : remove the scouts selected in the JList 
 %                       panel_scout('JoinScouts')
+%                       panel_scout('DifferenceScouts')
 %                       panel_scout('UpdateScoutsVertices', SurfaceFile)
 %                       panel_scout('SaveScouts')
 %                       panel_scout('LoadScouts')
@@ -469,6 +470,7 @@ function UpdateMenus(sAtlas, sSurf)
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Delete',       IconLoader.ICON_DELETE,  [], @(h,ev)bst_call(@RemoveScouts));
         gui_component('MenuItem', jMenu, [], 'Merge',        IconLoader.ICON_FUSION,  [], @(h,ev)bst_call(@JoinScouts));
+        gui_component('MenuItem', jMenu, [], 'Difference',   IconLoader.ICON_MINUS,  [], @(h,ev)bst_call(@DifferenceScouts));
         jMenu.addSeparator();
     end
     gui_component('MenuItem', jMenu, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)bst_call(@ExportScoutsToMatlab));
@@ -3588,6 +3590,70 @@ function EditScoutsColor(newColor)
     UpdateScoutsList();
 end
 
+%% ===== DIFFEERENCE SCOUTS =====
+% Difference of two scouts A,B: keep the vertices in A that are not in B
+function DifferenceScouts(varargin)
+    % Prevent edition of read-only atlas
+    if isAtlasReadOnly()
+        return;
+    end
+    % Stop scout edition
+    SetSelectionState(0);
+    % Get selected scouts
+    [sScouts, iScouts] = GetSelectedScouts();
+    % Need TWO scouts
+    if (length(sScouts) ~= 2)
+        bst_error('You need to select two scouts.', 'Scouts difference', 0);
+        return;
+    % If no overlap: error
+    elseif isempty(intersect(sScouts(1).Vertices, sScouts(2).Vertices))
+        bst_error('The two scouts are not overlapping.', 'Scouts difference', 0);
+        return;
+    % If equal: error
+    elseif isequal(sort(sScouts(1).Vertices), sort(sScouts(2).Vertices))
+        bst_error('The two scouts are identical.', 'Scouts difference', 0);
+        return;
+    end
+    % Check for obvious difference
+    if isempty(setdiff(sScouts(1).Vertices, sScouts(2).Vertices))
+        order = 'B-A';
+    elseif isempty(setdiff(sScouts(2).Vertices, sScouts(1).Vertices))
+        order = 'A-B';
+    else
+        order = [];
+    end
+    % Ask direction of the difference
+    if isempty(order)
+        order = java_dialog('question', ['Scout A: ' sScouts(1).Label 10, 'Scout B: ' sScouts(2).Label 10 'Compute A-B or B-A?'], 'Scouts difference', [], {'A-B', 'B-A'});
+        if isempty(order)
+            return;
+        end
+    end
+    % Create new scout
+    sNewScout = db_template('Scout');
+    switch order
+        case 'A-B'
+            sNewScout.Vertices = setdiff(sScouts(1).Vertices, sScouts(2).Vertices);
+            sNewScout.Label = [sScouts(1).Label ' - ' sScouts(2).Label];
+            sNewScout.Seed = sScouts(1).Seed;
+        case 'B-A'
+            sNewScout.Vertices = setdiff(sScouts(2).Vertices,sScouts(1).Vertices );
+            sNewScout.Label = [sScouts(2).Label ' - ' sScouts(1).Label];
+            sNewScout.Seed = sScouts(2).Seed;
+    end
+    % Redefine seed if it was removed
+    if ~ismember(sNewScout.Seed, sNewScout.Vertices)
+        sNewScout.Seed = sNewScout.Vertices(1);
+    end
+    % Save new scout
+    iNewScout = SetScouts([], 'Add', sNewScout);
+    % Display new scout
+    PlotScouts(iNewScout);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();   
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScout);
+end
 
 %% ===== JOIN SCOUTS =====
 % Join the scouts selected in the JList 
