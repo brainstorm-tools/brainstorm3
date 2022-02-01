@@ -1693,19 +1693,18 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 end
                 
                 % === GET CURRENT VALUES ===
-                % Get figure values
+                % Get figure properties
                 TfInfo = getappdata(hFig, 'Timefreq');
-                % Get results values
-                if isequal(TfInfo.FOOOFDisp,'overlay')
-                    TfInfo.FOOOFDisp = 'spectrum';
+                if isequal(TfInfo.FOOOFDisp,'overlay') || isequal(TfInfo.FOOOFDisp,'spectrum')
+                    FooofDisp = 'spectrum';
+		else 
+		    FooofDisp = [];
                 end
-                if isequal(TfInfo.FOOOFDisp,'spectrum')
-                    TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName);
-                else
-                    TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName,TfInfo.FOOOFDisp);
-                    if size(TessInfo(iTess).Data,2) > 1
-                        TessInfo(iTess).Data = TessInfo(iTess).Data(:,1);
-                    end
+		% Get results values
+                TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName, FooofDisp);
+                % Get only the first time point
+		if size(TessInfo(iTess).Data,2) > 1
+                    TessInfo(iTess).Data = TessInfo(iTess).Data(:,1);
                 end
                 % If min/max values for this file were not computed yet
                 if isempty(TessInfo(iTess).DataMinMax)
