@@ -287,10 +287,14 @@ for iFile = 1:length(LabelFiles)
                 % Atlas name
                 if (length(Values) > 1) && isNewAtlas
                     sAtlas(ia).Name = sprintf('%s #%d', AtlasName, ia);
+                    sAtlas(ia).Scouts = repmat(db_template('scout'), 0);
                 end
                 % Check sizes
                 if (length(Values{ia}) ~= length(Vertices))
-                    Messages = [Messages, sprintf('%s: Numbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, length(Vertices), length(Values{ia}))];
+                    Messages = [Messages, sprintf('%s: Entry #%d: Numbers of vertices in the surface (%d) and the label file (%d) do not match\n', fBase, ia, length(Vertices), length(Values{ia}))];
+                    continue;
+                elseif (all(size(Values{ia}) > 1))
+                    Messages = [Messages, sprintf('%s: Entry #%d: Not a list of labels\n', fBase, ia)];
                     continue;
                 end
                 % Round the label values
