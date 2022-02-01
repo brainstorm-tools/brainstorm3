@@ -1699,13 +1699,13 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 if isequal(TfInfo.FOOOFDisp,'overlay')
                     TfInfo.FOOOFDisp = 'spectrum';
                 end
-                if ~isequal(TfInfo.FOOOFDisp,'spectrum')
+                if isequal(TfInfo.FOOOFDisp,'spectrum')
+		    TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName);
+                else
                     TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName,TfInfo.FOOOFDisp);
                     if size(TessInfo(iTess).Data,2) > 1
                         TessInfo(iTess).Data = TessInfo(iTess).Data(:,1);
                     end
-                else
-                    TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName);
                 end
                 % If min/max values for this file were not computed yet
                 if isempty(TessInfo(iTess).DataMinMax)
