@@ -1700,7 +1700,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                     TfInfo.FOOOFDisp = 'spectrum';
                 end
                 if isequal(TfInfo.FOOOFDisp,'spectrum')
-		    TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName);
+                    TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName);
                 else
                     TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName,TfInfo.FOOOFDisp);
                     if size(TessInfo(iTess).Data,2) > 1
