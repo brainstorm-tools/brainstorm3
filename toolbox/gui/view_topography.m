@@ -355,8 +355,6 @@ if strcmpi(FileType, 'Timefreq')
     setappdata(hFig, 'isStaticFreq', isStaticFreq);
     % Create options structure
     TfInfo = db_template('TfInfo');
-    TfInfo.FOOOFDisp = 'spectrum';
-    panel_display('UpdatePanel',hFig)
     TfInfo.FileName   = DataFile;
     TfInfo.Comment    = sTimefreq.Comment;
     TfInfo.RowName    = [];
