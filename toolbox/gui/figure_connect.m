@@ -2405,7 +2405,7 @@ function UpdateColormap(hFig)
     % ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
     % === COLORMAP LIMITS ===
     % Units type
-    if ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec'})
+    if ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit', 'aec'})
         UnitsType = 'timefreq';
     else
         UnitsType = 'connect';
@@ -2413,7 +2413,7 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte', 'henv'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit', 'aec', 'cohere', 'pte', 'henv'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')

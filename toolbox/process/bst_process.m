@@ -396,7 +396,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
     % Do not allow Time Bands
     if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'}) 
-        % && isfield(sMat, 'Measure') && ~strcmpi(sMat.Measure, 'other') && ~strcmpi(sMat.Measure, 'plv')
         bst_report('Error', sProcess, sInput, 'Cannot process values averaged by time bands.');
         return;
     end
@@ -1141,7 +1140,6 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
     % Do not allow TimeBands
     if ((isfield(sMatA, 'TimeBands') && ~isempty(sMatA.TimeBands)) || (isfield(sMatB, 'TimeBands') && ~isempty(sMatB.TimeBands))) ...
             && ismember(func2str(sProcess.Function), {'process_baseline_ab', 'process_zscore_ab', 'process_baseline_norm2'}) 
-        % && isfield(sMat, 'Measure') && ~strcmpi(sMat.Measure, 'other') && ~strcmpi(sMat.Measure, 'plv')
         bst_report('Error', sProcess, [sInputA, sInputB], 'Cannot process values averaged by time bands.');
         OutputFile = [];
         return;
