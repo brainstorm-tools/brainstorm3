@@ -512,9 +512,10 @@ for iFile = 1:length(FilesA)
                 switch (OPTIONS.Method)
                     case 'plv'
                         R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);
+                        %R(:,:,iBand) = mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2);
                         Comment = 'PLV: ';
                     case 'ciplv'
-                        R(:,:,iBand) = (imag((phaseA*phaseB') / size(HA,2)))./sqrt(1-(real((phaseA*phaseB') / size(HA,2))).^2);  % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = abs(imag(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))./sqrt(1-(real(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))).^2));  % Proposed by Daniele Marinazzo
                         Comment = 'ciPLV: ';
                     case 'wpli'
                         R(:,:,iBand) = abs(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))';  % Proposed by Daniele Marinazzo
