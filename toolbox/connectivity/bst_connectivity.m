@@ -517,7 +517,7 @@ for iFile = 1:length(FilesA)
                         R(:,:,iBand) = (imag((phaseA*phaseB') / size(HA,2)))./sqrt(1-(real((phaseA*phaseB') / size(HA,2))).^2);  % Proposed by Daniele Marinazzo
                         Comment = 'ciPLV: ';
                     case 'wpli'
-                        R(:,:,iBand) = abs(mean(sin(angle(HA(iA))-angle(HB(iB)))))./mean(abs(sin(angle(HA(iA))-angle(HB(iB))))); % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = abs(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))));  % Proposed by Daniele Marinazzo
                         Comment = 'wPLI: ';
                 end
             end
@@ -565,7 +565,7 @@ for iFile = 1:length(FilesA)
                         R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2); % Proposed by Daniele Marinazzo
                         Comment = 'ciPLVt: ';
                     case 'wplit'
-                        R(:,:,iBand) = abs(mean(sin(angle(HA)-angle(HB))))./mean(abs(sin(angle(HA)-angle(HB))));  % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = abs(sin(angle(HA(iA,:))-angle(HB(iB,:))))./(sin(angle(HA(iA,:))-angle(HB(iB,:)))); % Proposed by Daniele Marinazzo
                         Comment = 'wPLIt: ';
                 end
             end
