@@ -95,7 +95,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
 
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject, nVertices, erodeFactor,fillFactor);
+    [isOk, errMsg] = Compute(iSubject,sSubject.iAnatomy, nVertices, erodeFactor,fillFactor);
 
 
     % Handling errors
