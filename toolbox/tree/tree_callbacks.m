@@ -1896,10 +1896,13 @@ switch (lower(action))
                         % Depending on the datatype
                         switch lower(DataType)
                             case 'data'
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger'))  || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_wpli')) || ~isempty(strfind(filenameRelative, '_ciplv')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
-                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
+                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) 
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));
@@ -1913,7 +1916,8 @@ switch (lower(action))
                                 end
                             case 'results'
                                 % One channel
-                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
+                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))...
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) 
                                     gui_component('MenuItem', jMenuConn1, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     AddSeparator(jMenuConn1);
                                 end
@@ -1928,10 +1932,13 @@ switch (lower(action))
                                     gui_component('MenuItem', jMenuConn1, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
                                 end
                             otherwise
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_wpli')) || ~isempty(strfind(filenameRelative, '_ciplv')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
-                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
+                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));

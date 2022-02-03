@@ -482,10 +482,14 @@ for iFile = 1:length(FilesA)
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
-            nA = size(sInputA.Data,1);
-            nB = size(sInputB.Data,1);
-            iA = repmat(1:nA, 1, nB)';
-            iB = reshape(repmat(1:nB, nA, 1), [], 1);
+            % Initialization for ciPLV and wPLI
+            if ismember(OPTIONS.Method, {'wpli', 'ciplv'})
+                % Replicate nB x HA, and nA x HB
+                nA = size(sInputA.Data,1);
+                nB = size(sInputB.Data,1);
+                iA = repmat(1:nA, 1, nB)';
+                iB = reshape(repmat(1:nB, nA, 1), [], 1);
+            end
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
@@ -512,10 +516,20 @@ for iFile = 1:length(FilesA)
                         %R(:,:,iBand) = mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2);
                         Comment = 'PLV: ';
                     case 'ciplv'
-                        R(:,:,iBand) = imag(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))./sqrt(1-(real(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))).^2);  % Proposed by Daniele Marinazzo
+                        % Implementation proposed by Daniele Marinazzo, based on:
+                        %    Bruna R, Maestu F, Pereda E
+                        %    Phase locking value revisited: teaching new tricks to an old dog
+                        %    Journal of Neural Engineering, Jun 2018
+                        %    https://pubmed.ncbi.nlm.nih.gov/29952757
+                        R(:,:,iBand) = imag(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))./sqrt(1-(real(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))).^2);
                         Comment = 'ciPLV: ';
                     case 'wpli'
-                        R(:,:,iBand) = mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))';  % Proposed by Daniele Marinazzo
+                        % Implementation proposed by Daniele Marinazzo, based on:
+                        %    Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
+                        %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
+                        %    Neuroimage, Apr 2011
+                        %    https://pubmed.ncbi.nlm.nih.gov/21276857
+                        R(:,:,iBand) = mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))';
                         Comment = 'wPLI: ';
                 end
             end
@@ -525,7 +539,6 @@ for iFile = 1:length(FilesA)
         % ==== PLV-TIME ====
         case {'plvt', 'wplit', 'ciplvt'}
             bst_progress('text', sprintf('Calculating: Time-resolved %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = [upper(OPTIONS.Method) ': '];
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
@@ -535,7 +548,10 @@ for iFile = 1:length(FilesA)
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
             R = zeros(nA * nB, nTime, nFreqBands);
-            
+            % Replicate nB x HA, and nA x HB
+            iA = repmat(1:nA, 1, nB)';
+            iB = reshape(repmat(1:nB, nA, 1), [], 1);
+
             % ===== VERSION S.BAILLET =====
             % PLV = exp(1i * (angle(HA) - angle(HB)));
             % Loop on each frequency band
@@ -551,19 +567,16 @@ for iFile = 1:length(FilesA)
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
-                % Replicate nB x HA, and nA x HB
-                iA = repmat(1:nA, 1, nB)';
-                iB = reshape(repmat(1:nB, nA, 1), [], 1);
                 % Compute the PLV in time for each pair
                 switch (OPTIONS.Method)
                     case 'plvt'
                         R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));
                         Comment = 'PLVt: ';
                     case 'ciplvt'
-                        R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2); % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2); % Proposed by Daniele Marinazzo (see 'ciplv' above)
                         Comment = 'ciPLVt: ';
                     case 'wplit'
-                        R(:,:,iBand) = abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'; % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'; % Proposed by Daniele Marinazzo (see 'wpli' above)
                         Comment = 'wPLIt: ';
                 end
             end
