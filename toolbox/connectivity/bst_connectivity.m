@@ -515,10 +515,10 @@ for iFile = 1:length(FilesA)
                         %R(:,:,iBand) = mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2);
                         Comment = 'PLV: ';
                     case 'ciplv'
-                        R(:,:,iBand) = abs(imag(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))./sqrt(1-(real(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))).^2));  % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = imag(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))./sqrt(1-(real(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))).^2);  % Proposed by Daniele Marinazzo
                         Comment = 'ciPLV: ';
                     case 'wpli'
-                        R(:,:,iBand) = abs(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))';  % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))';  % Proposed by Daniele Marinazzo
                         Comment = 'wPLI: ';
                 end
             end
