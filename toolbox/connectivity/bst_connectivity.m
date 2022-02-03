@@ -483,7 +483,7 @@ for iFile = 1:length(FilesA)
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Initialization for ciPLV and wPLI
-            if ismember(OPTIONS.Method, {'wpli', 'ciplv'})
+            if ismember(OPTIONS.Method, {'wpli'})
                 % Replicate nB x HA, and nA x HB
                 nA = size(sInputA.Data,1);
                 nB = size(sInputB.Data,1);
@@ -513,7 +513,6 @@ for iFile = 1:length(FilesA)
                 switch (OPTIONS.Method)
                     case 'plv'
                         R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);
-                        %R(:,:,iBand) = mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2);
                         Comment = 'PLV: ';
                     case 'ciplv'
                         % Implementation proposed by Daniele Marinazzo, based on:
@@ -521,7 +520,7 @@ for iFile = 1:length(FilesA)
                         %    Phase locking value revisited: teaching new tricks to an old dog
                         %    Journal of Neural Engineering, Jun 2018
                         %    https://pubmed.ncbi.nlm.nih.gov/29952757
-                        R(:,:,iBand) = imag(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))./sqrt(1-(real(mean(exp(1i * angle(HA(iA,:)./HB(iB,:))),2))).^2);
+                        R(:,:,iBand) = (imag(phaseA*phaseB')/size(HA,2))./sqrt(1-(real(phaseA*phaseB')/size(HA,2)).^2);  % Proposed by Daniele Marinazzo
                         Comment = 'ciPLV: ';
                     case 'wpli'
                         % Implementation proposed by Daniele Marinazzo, based on:
@@ -529,7 +528,7 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        R(:,:,iBand) = mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))';
+                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
                         Comment = 'wPLI: ';
                 end
             end
