@@ -189,13 +189,18 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     % Add file to database
     [sSubject, iSubject] = bst_get('MriFile', T1File);
     iAnatomy = length(sSubject.Anatomy) + 1;
-    sSubject.Anatomy(iAnatomy).FileName = OutputFile;
+    sSubject.Anatomy(iAnatomy).FileName = file_short(OutputFile);
     sSubject.Anatomy(iAnatomy).Comment = sMriMasked.Comment;
+    sSubject.iAnatomy = iAnatomy;
     bst_set('Subject', iSubject, sSubject);
     % Refresh database tree
     panel_protocols('UpdateNode', 'Subject', iSubject);
-    panel_protocols('SelectNode', [], 'subject', iSubject, -1);
+    panel_protocols('SelectNode', [], 'subject', iSubject, iAnatomy);
     db_save();
+    %% Create Head shape
+    tess_isohead(iSubject);
+
+
     % Return success
     isOk = 1;
 end
