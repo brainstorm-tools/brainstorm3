@@ -2,9 +2,9 @@ function varargout = process_segment_fsl( varargin )
 % process_segment_fsl: Run the fsl to estimate skin head
 %
 % USAGE:     OutputFiles = process_segment_fsl('Run',     sProcess, sInputs)
-%         [isOk, errMsg] = process_segment_fsl('Compute', iSubject, iAnatomy=[default], nVertices, isSphReg, isExtraMaps, isInteractive)
 %                          process_segment_fsl('ComputeInteractive', iSubject, iAnatomy)
-
+%         [isOk, errMsg] = process_segment_fsl('Compute', iSubject, iAnatomy, nVertices,erodeFactor,fillFactor)
+%                          
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -46,6 +46,19 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.subjectname.Comment = 'Subject name:';
     sProcess.options.subjectname.Type    = 'subjectname';
     sProcess.options.subjectname.Value   = '';
+
+    sProcess.options.nVertices.Comment = 'Number of vertices [integer]';
+    sProcess.options.nVertices.Type    = 'value';
+    sProcess.options.nVertices.Value   = {10000,'',0};
+
+    sProcess.options.erodeFactor.Comment = 'Erode factor [0,1,2,3]';
+    sProcess.options.erodeFactor.Type    = 'value';
+    sProcess.options.erodeFactor.Value   = {0,'',0};
+
+    sProcess.options.fillFactor.Comment = 'Fill holes factor [0,1,2,3]';
+    sProcess.options.fillFactor.Type    = 'value';
+    sProcess.options.fillFactor.Value   = {2,'',0};
+
 end
 
 
@@ -71,9 +84,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], ['Subject "' SubjectName '" does not exist.']);
         return
     end
+    nVertices       = sProcess.options.nVertices.Value{1}; 
+    erodeFactor     = sProcess.options.erodeFactor.Value{1}; 
+    fillFactor      = sProcess.options.fillFactor.Value{1}; 
     
+     % Check parameters values
+    if isempty(nVertices) || (nVertices < 50) || (nVertices ~= round(nVertices)) || isempty(erodeFactor) || ~ismember(erodeFactor,[0,1,2,3]) || isempty(fillFactor) || ~ismember(fillFactor,[0,1,2,3])
+        bst_report('Error', sProcess, [], 'Invalid parameters.');
+        return;
+    end
+
     % Call processing function
-    [isOk, errMsg] = Compute(iSubject);
+    [isOk, errMsg] = Compute(iSubject, nVertices, erodeFactor,fillFactor);
+
+
     % Handling errors
     if ~isOk
         bst_report('Error', sProcess, [], errMsg);
@@ -86,9 +110,9 @@ end
 
 
 %% ===== COMPUTE FSL SEGMENTATION =====
-function [isOk, errMsg] = Compute(iSubject, iAnatomy)
-    errMsg = '';
-    isOk = 0;
+function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fillFactor)
+    errMsg  = '';
+    isOk    = 0;
 
     % Check FSL install
     fsl_dir = getenv('FSL_DIR');
@@ -174,12 +198,12 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     bst_progress('text', 'Importing MRI...');
     % Read mask
     sMask = in_mri(MaskFile);
-    % Mask original MRI
     sMriMasked = sMri;
-    % Convert sMask.Cube to the same type as sMRI.Cube
-    sMask.Cube = eval(sprintf('%s(%s)',class(sMri.Cube), 'sMask.Cube')); 
-    sMriMasked.Cube = sMri.Cube .* sMask.Cube;
-    sMriMasked.Comment = [sMri.Comment ' | fsl'];
+    % Convert sMask.Cube to the same type as sMRI.Cube and mask the MRI
+    sMask.Cube          = eval(sprintf('%s(%s)',class(sMri.Cube), 'sMask.Cube')); 
+    sMriMasked.Cube     = sMri.Cube .* sMask.Cube;
+    sMriMasked.Comment  = [sMri.Comment ' | fsl'];
+    sMriMasked.Histogram.bgLevel = 0; % Might not be needed 
     sMriMasked = bst_history('add', sMriMasked, 'import', 'Head extraction with FSL/BET');
     % Output file name
     [fPath,fName,fExt] = bst_fileparts(file_fullpath(T1File));
@@ -198,7 +222,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy)
     panel_protocols('SelectNode', [], 'subject', iSubject, iAnatomy);
     db_save();
     %% Create Head shape
-    tess_isohead(iSubject);
+    tess_isohead(iSubject, nVertices,erodeFactor,fillFactor) 
 
 
     % Return success
@@ -213,10 +237,27 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     if (nargin < 2) || isempty(iAnatomy)
         iAnatomy = [];
     end
+
+   res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:'}, 'Generate head surface', [], {'10000', '0', '2'});
+    % If user cancelled: return
+    if isempty(res)
+        return
+    end
+    % Get new values
+    nVertices   = str2num(res{1});
+    erodeFactor = str2num(res{2});
+    fillFactor  = str2num(res{3});
+    
+     % Check parameters values
+    if isempty(nVertices) || (nVertices < 50) || (nVertices ~= round(nVertices)) || isempty(erodeFactor) || ~ismember(erodeFactor,[0,1,2,3]) || isempty(fillFactor) || ~ismember(fillFactor,[0,1,2,3])
+        bst_error('Invalid parameters.', 'FSL head extraction', 0);
+        return
+    end
+
     % Open progress bar
     bst_progress('start', 'FSL', 'FSL/BET head extraction...');
     % Run FSL
-    [isOk, errMsg] = Compute(iSubject, iAnatomy);
+    [isOk, errMsg] = Compute(iSubject, iAnatomy,nVertices,erodeFactor,fillFactor);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'FSL head extraction', 0);
