@@ -482,13 +482,10 @@ for iFile = 1:length(FilesA)
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
-            % Additional initializations for wPLI
-            if strcmpi(OPTIONS.Method, 'wpli')
-                nA = size(sInputA.Data,1);
-                nB = size(sInputB.Data,1);
-                iA = repmat(1:nA, 1, nB)';
-                iB = reshape(repmat(1:nB, nA, 1), [], 1);
-            end
+            nA = size(sInputA.Data,1);
+            nB = size(sInputB.Data,1);
+            iA = repmat(1:nA, 1, nB)';
+            iB = reshape(repmat(1:nB, nA, 1), [], 1);
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
