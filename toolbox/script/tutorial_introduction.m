@@ -69,6 +69,8 @@ gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 bst_report('Start');
 % Reset colormaps
 bst_colormaps('RestoreDefaults', 'meg');
+% Set the current display mode to 'butterfly'
+bst_set('TSDisplayMode', 'butterfly');
 
 
 %% ===== TUTORIAL #2: IMPORT ANATOMY =================================================

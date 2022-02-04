@@ -3,7 +3,7 @@ function varargout = bst_colormaps( varargin )
 % 
 % USAGE:
 %  sColormaps = bst_colormaps('Initialize')
-%               bst_colormaps('RestoreDefaults')
+%               bst_colormaps('RestoreDefaults', ColormapType)
 %   sColormap = bst_colormaps('GetColormap', ColormapType)
 %   sColormap = bst_colormaps('GetColormap', hFig)
 %               bst_colormaps('SetColormap', ColormapType, sColormap)
