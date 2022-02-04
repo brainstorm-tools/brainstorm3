@@ -215,12 +215,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fi
     iAnatomy = length(sSubject.Anatomy) + 1;
     sSubject.Anatomy(iAnatomy).FileName = file_short(OutputFile);
     sSubject.Anatomy(iAnatomy).Comment = sMriMasked.Comment;
-    sSubject.iAnatomy = iAnatomy;
     bst_set('Subject', iSubject, sSubject);
     % Refresh database tree
     panel_protocols('UpdateNode', 'Subject', iSubject);
-    panel_protocols('SelectNode', [], 'subject', iSubject, iAnatomy);
-    db_save();
 
     % Create head surface
     tess_isohead(iSubject, nVertices, erodeFactor, fillFactor);
