@@ -520,7 +520,7 @@ for iFile = 1:length(FilesA)
                         %    Phase locking value revisited: teaching new tricks to an old dog
                         %    Journal of Neural Engineering, Jun 2018
                         %    https://pubmed.ncbi.nlm.nih.gov/29952757
-                        R(:,:,iBand) = (imag((phaseA*phaseB'))/size(HA,2))./sqrt(1-(real((phaseA*phaseB'))/size(HA,2)).^2);
+                        R(:,:,iBand) = (imag((phaseA*phaseB'))/size(HA,2))./sqrt(1+eps-(real((phaseA*phaseB'))/size(HA,2)).^2);
                         Comment = 'ciPLV: ';
                     case 'wpli'
                         % Implementation proposed by Daniele Marinazzo, based on:
@@ -633,6 +633,7 @@ for iFile = 1:length(FilesA)
     end
     % Replace any NaN values with zeros
     R(isnan(R)) = 0;
+    R(isinf(R)) = 0;
     
     
     %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====

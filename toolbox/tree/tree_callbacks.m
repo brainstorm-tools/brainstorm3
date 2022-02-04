@@ -1907,6 +1907,9 @@ switch (lower(action))
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));
                                 end
+                                if isempty(strfind(filenameRelative, '_connectn'))
+                                    gui_component('MenuItem', jMenuConn1, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
+                                end
                                 if (length(jMenuConn1.getSubElements()) > 0)
                                     AddSeparator(jMenuConn1);
                                 end
