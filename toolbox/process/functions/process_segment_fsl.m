@@ -115,9 +115,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fi
     isOk    = 0;
 
     % Check FSL install
-    fsl_dir = getenv('FSL_DIR');
+    fsl_dir = getenv('FSLDIR');
     if isempty(fsl_dir)
-        errMsg = 'FSL was not found (set FSL_DIR variable).';
+        errMsg = 'FSL was not found (set FSLDIR variable).';
         return
     end
     
@@ -221,9 +221,9 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fi
     panel_protocols('UpdateNode', 'Subject', iSubject);
     panel_protocols('SelectNode', [], 'subject', iSubject, iAnatomy);
     db_save();
-    %% Create Head shape
-    tess_isohead(iSubject, nVertices,erodeFactor,fillFactor) 
 
+    % Create head surface
+    tess_isohead(iSubject, nVertices, erodeFactor, fillFactor);
 
     % Return success
     isOk = 1;
@@ -257,7 +257,7 @@ function ComputeInteractive(iSubject, iAnatomy) %#ok<DEFNU>
     % Open progress bar
     bst_progress('start', 'FSL', 'FSL/BET head extraction...');
     % Run FSL
-    [isOk, errMsg] = Compute(iSubject, iAnatomy,nVertices,erodeFactor,fillFactor);
+    [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fillFactor);
     % Error handling
     if ~isOk
         bst_error(errMsg, 'FSL head extraction', 0);
