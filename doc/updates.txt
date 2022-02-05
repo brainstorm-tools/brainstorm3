@@ -1,4 +1,7 @@
 --------------------------------------------------------------
+February 2022
+- Connectivity: Added wPLI and ciPLV
+--------------------------------------------------------------
 January 2022
 - Doc: Connectivity tutorial
 - Connectivity: Updated "Simulate AR signals"
