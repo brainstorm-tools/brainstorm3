@@ -237,7 +237,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== FIELDTRIP: SPECTRAL ANALYSIS =====
     cfg_main = [];
     cfg_main.fmax = MaxFreq;
-    cfg_main.sens = ftData.grad;
+    switch sProcess.options.sensortype.Value{1}
+        case 'EEG'
+            cfg_main.sens = ftData.elec;
+        case {'MEG', 'MEG GRAD', 'MEG MAG'}
+            cfg_main.sens = ftData.grad;
+    end
     cfg_main.outputdir = TmpDir;
     cfg_main.freq_of_interest  = freq_of_interest; % Hz
 
