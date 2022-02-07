@@ -520,8 +520,9 @@ for iFile = 1:length(FilesA)
                         %    Phase locking value revisited: teaching new tricks to an old dog
                         %    Journal of Neural Engineering, Jun 2018
                         %    https://pubmed.ncbi.nlm.nih.gov/29952757
-                        csd=phaseA*phaseB';
-                        R(:,:,iBand) = (imag((csd))/size(HA,2))./sqrt(1+eps-((real((csd))/size(HA,2)).*conj((real((csd))/size(HA,2)))));
+                        csd = phaseA * phaseB';
+                        R(:,:,iBand) = (imag(csd)/size(HA,2)) ./ sqrt(1 + eps - (real(csd)/size(HA,2)) .* conj(real(csd)/size(HA,2)));
+                        % R(:,:,iBand) = (imag((phaseA*phaseB'))/size(HA,2))./sqrt(1+eps-(real((phaseA*phaseB'))/size(HA,2)).^2);    % SLOWER
                         Comment = 'ciPLV: ';
                     case 'wpli'
                         % Implementation proposed by Daniele Marinazzo, based on:
@@ -529,7 +530,7 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
+                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
                         Comment = 'wPLI: ';
                 end
             end
@@ -572,15 +573,18 @@ for iFile = 1:length(FilesA)
                 phaseB = HB(iB,:) ./ abs(HB(iB,:));
                 switch (OPTIONS.Method)
                     case 'plvt'
-                        R(:,:,iBand) = (phaseA .* conj(phaseB));
+                        % R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));  % Sylvain Baillet, slower
+                        R(:,:,iBand) = (phaseA .* conj(phaseB));  % Daniele Marinazzo
                         Comment = 'PLVt: ';
                     case 'ciplvt'
-                        csd=(phaseA .* conj(phaseB));
-                        R(:,:,iBand) = (imag(csd))./(real(csd)/nTime).*conj((real(csd))/nTime);
+                        % R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2);     % SLOWER
+                        csd = phaseA .* conj(phaseB);
+                        R(:,:,iBand) = imag(csd) ./ (real(csd)/nTime) .* conj(real(csd)/nTime);
                         Comment = 'ciPLVt: ';
                     case 'wplit'
-                        cdi=imag(phaseA .* conj(phaseB));
-                        R(:,:,iBand) = (abs(cdi).*sign(cdi))./abs(cdi);
+                        % R(:,:,iBand) = abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))';    % SLOWER
+                        cdi = imag(phaseA .* conj(phaseB));
+                        R(:,:,iBand) = abs(cdi) .* sign(cdi) ./ abs(cdi);
                         Comment = 'wPLIt: ';
                 end
             end
