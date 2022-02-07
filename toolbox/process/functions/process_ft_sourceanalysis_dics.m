@@ -238,7 +238,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     cfg_main = [];
     cfg_main.fmax = MaxFreq;
     switch sProcess.options.sensortype.Value{1}
-        case 'EEG'
+        case {'EEG', 'SEEG', 'ECOG'}
             cfg_main.sens = ftData.elec;
         case {'MEG', 'MEG GRAD', 'MEG MAG'}
             cfg_main.sens = ftData.grad;
