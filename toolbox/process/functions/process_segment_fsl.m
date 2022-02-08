@@ -220,7 +220,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, erodeFactor, fi
     panel_protocols('UpdateNode', 'Subject', iSubject);
 
     % Create head surface
-    tess_isohead(OutputFile, nVertices, erodeFactor, fillFactor);
+    tess_isohead(sSubject.Anatomy(iAnatomy).FileName, nVertices, erodeFactor, fillFactor);
 
     % Return success
     isOk = 1;
