@@ -191,7 +191,7 @@ switch(fileType)
         % Colormap type
         if ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType)
             ColormapType = GlobalData.DataSet(iDS).Timefreq(iTimefreq).ColormapType;
-        elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'corr','cohere','spgranger','granger','plv','plvt','henv'})
+        elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'corr','cohere','spgranger','granger','plv','plvt','ciplv','ciplvt','wpli','wplit','henv'})
             ColormapType = 'connect1';
         elseif ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'pac'})
             ColormapType = 'pac';

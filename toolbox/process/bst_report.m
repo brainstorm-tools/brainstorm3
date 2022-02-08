@@ -219,11 +219,6 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 else
                     Time = [];
                 end
-                % Set the current display mode to 'butterfly'
-                curDispMode = bst_get('TSDisplayMode');
-                if ~strcmpi(curDispMode, 'butterfly')
-                    bst_set('TSDisplayMode', 'butterfly');
-                end
                 % Display recordings
                 switch (file_gettype(FileName))
                     case {'data', 'pdata'}
@@ -234,10 +229,6 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 % Set current time
                 if (length(Time) == 1)
                     panel_time('SetCurrentTime', Time);
-                end
-                % Restore the display mode
-                if ~strcmpi(curDispMode, 'butterfly')
-                    bst_set('TSDisplayMode', curDispMode);
                 end
                 
             case 'topo'

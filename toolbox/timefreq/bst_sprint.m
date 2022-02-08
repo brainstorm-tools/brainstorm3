@@ -48,6 +48,13 @@ opt.maxfreq             = OPTIONS.SPRiNTopts.maxfreq.Value{1};
 opt.maxtime             = OPTIONS.SPRiNTopts.maxtime.Value{1};
 opt.minnear             = OPTIONS.SPRiNTopts.minnear.Value{1};
 
+if isfield(OPTIONS.SPRiNTopts,'imgK') % Source imaging
+    isSource = 1;
+    ImagingKernel = OPTIONS.SPRiNTopts.imgK;
+else
+    isSource = 0;
+end
+
 if license('test','optimization_toolbox') % check for optimization toolbox
     opt.hOT = 1;
     disp('Using constrained optimization, Guess Weight ignored.')
@@ -89,10 +96,16 @@ Win = bst_window('hann', Lwin)';
 WinNoisePowerGain = sum(Win.^2);
 % Initialize STFT,time matrices
 ts = nan(Nwin-(opt.nAverage-1),1);
-TF = nan(size(F,1), Nwin-(opt.nAverage-1), size(FreqVector,2));
-TFtmp = nan(size(F,1), opt.nAverage, size(FreqVector,2));
 % ===== CALCULATE FFT FOR EACH WINDOW =====
-TFfull = zeros(size(F,1),Nwin,size(FreqVector,2));
+if isSource
+    TF = nan(size(ImagingKernel,1), Nwin-(opt.nAverage-1), size(FreqVector,2));
+    TFtmp = nan(size(ImagingKernel,1), opt.nAverage, size(FreqVector,2));
+    TFfull = zeros(size(ImagingKernel,1),Nwin,size(FreqVector,2));
+else
+    TF = nan(size(F,1), Nwin-(opt.nAverage-1), size(FreqVector,2));
+    TFtmp = nan(size(F,1), opt.nAverage, size(FreqVector,2));
+    TFfull = zeros(size(F,1),Nwin,size(FreqVector,2));
+end
 for iWin = 1:Nwin
     % Build indices
     iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
@@ -112,6 +125,9 @@ for iWin = 1:Nwin
     TFwin = Ffft(:,1:NFFT/2+1) * sqrt(2 ./ (sfreq * WinNoisePowerGain));
     % x2 doesn't apply to DC and Nyquist.
     TFwin(:, [1,end]) = TFwin(:, [1,end]) ./ sqrt(2);
+    if isSource 
+        TFwin = ImagingKernel * TFwin;
+    end
     % Permute dimensions: time and frequency
     TFwin = permute(TFwin, [1 3 2]);
     % Convert to power
@@ -144,6 +160,14 @@ ts(indGood:end) = [];
     channel(nChan) = struct('name',[]);
     SPRiNT = struct('options',opt,'freqs',fs,'channel',channel,'SPRiNT_models',nan(size(TF)),'peak_models',nan(size(TF)),'aperiodic_models',nan(size(TF)));
     % Iterate across channels
+    aperiodic_models = nan(nChan,nTimes,length(fs));
+    peak_models = nan(nChan,nTimes,length(fs));
+    SPRiNT_models = nan(nChan,nTimes,length(fs));
+    tp_exponent = nan(nChan,nTimes);
+    tp_offset = nan(nChan,nTimes);
+    if isa(RowNames,'double')
+        RowNames = cellstr(num2str(RowNames'));
+    end
     for chan = 1:nChan
         channel(chan).name = RowNames{chan};
         bst_progress('text',['Standby: SPRiNTing sensor ' num2str(chan) ' of ' num2str(nChan)]);
@@ -257,6 +281,12 @@ ts(indGood:end) = [];
         bst_progress('text','Standby: Removing outlier peaks');
         SPRiNT = remove_outliers(SPRiNT,peak_function,opt);
     end
+    for chan = 1:nChan
+        tp_exponent(chan,:) = [channel(chan).aperiodics(:).exponent];
+        tp_offset(chan,:) = [channel(chan).aperiodics(:).offset];
+    end
+    SPRiNT.topography.exponent = tp_exponent;
+    SPRiNT.topography.offset = tp_offset;
     bst_progress('text','Standby: Clustering modelled peaks');
     SPRiNT = cluster_peaks_dynamic(SPRiNT); % Cluster peaks
     OPTIONS.TimeVector = ts'; % Reassign times by windows used
@@ -649,7 +679,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode,
         case 'fixed'  % no knee
             aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs_ignore, spectrum_ignore);
         case 'knee'
-            aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
+            aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs_ignore, spectrum_ignore);
     end
 end
 

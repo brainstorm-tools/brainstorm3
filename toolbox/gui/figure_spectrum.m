@@ -1218,7 +1218,7 @@ function UpdateFigurePlot(hFig, isForced)
             switch GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Method
                 case {'cohere', 'henv'}
                     TfInfo.OptMeasure = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.CohMeasure;
-                case {'plv', 'plvt'}
+                case {'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit'}
                     TfInfo.OptMeasure = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.Method;
                     if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.PlvMeasure, 'magnitude')
                         TfInfo.OptMeasure = [TfInfo.OptMeasure 'm'];
@@ -1527,11 +1527,14 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         strAmp = 'Imaginary coherence';
                     case 'lcohere2019'
                         strAmp = 'Lagged coherence';
-                        
                     case {'granger', 'spgranger'}
                         strAmp = 'Granger causality';
                     case {'plv', 'plvt'}
                         strAmp = 'Phase locking value';
+                    case {'ciplv', 'ciplvt'}
+                        strAmp = 'Weighted phase lag index';
+                    case {'wpli', 'wplit'}
+                        strAmp = 'Corrected imaginary phase locking value';
                     case {'plvm', 'plvtm'}
                         strAmp = 'Phase locking value magnitude';
                     case 'aec'

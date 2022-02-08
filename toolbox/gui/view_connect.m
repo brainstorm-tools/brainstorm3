@@ -134,12 +134,19 @@ if strcmpi(DisplayMode, 'Image')
     else
         TimeVector = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Time;
     end
+    % In Granger 1xN "in" case: reverse the xlabel/ylabel
+    if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'granger', 'spgranger'}) && isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'GrangerDir') ...
+            && isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.GrangerDir, 'in')
+        DimLabels = {'To (A)', 'From (B)'};
+    else
+        DimLabels = {'From (A)', 'To (B)'};
+    end
     % Plot as a flat image
     Labels = {GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, ...
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
-    hFig = view_image_reg(C, Labels, [1,2], {'From (A)', 'To (B)'}, TimefreqFile, hFig, [], 1, '$freq');
+    hFig = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
@@ -242,7 +249,7 @@ switch (GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method)
     case 'henv',     TfInfo.Function = 'other';
     case 'pte',  TfInfo.Function = 'other';
                  IsDirectionalData = 1;
-    case {'plv','plvt'}
+    case {'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit'}
         if strcmpi(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, 'other')
             TfInfo.Function = 'other';
         else

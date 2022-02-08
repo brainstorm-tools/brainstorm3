@@ -79,6 +79,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jRadioFPeaks   = gui_component('Radio', jPanelFOOOF, 'br', 'Peaks only', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFError = gui_component('Radio', jPanelFOOOF, 'br', 'Frequency-wise error', jButtonGroup, '', @DisplayOptions_Callback);
         jRadioFOverlay = gui_component('Radio', jPanelFOOOF, 'br', 'Overlay',      jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFExponent = gui_component('Radio', jPanelFOOOF, 'br', 'Exponent',      jButtonGroup, '', @DisplayOptions_Callback);
+        jRadioFOffset = gui_component('Radio', jPanelFOOOF, 'br', 'Offset',      jButtonGroup, '', @DisplayOptions_Callback);
     jPanelNew.add(jPanelFOOOF);
     
     % ===== PAC: PAC/FLOW/FHIGH =====
@@ -182,12 +184,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     jCheckHighRes.setEnabled(0);
     
     jRadioFOverlay.setSelected(1);
-    jRadioFOverlay.setEnabled(0);
+    
     jRadioFSpectrum.setEnabled(0);
     jRadioFModel.setEnabled(0);
     jRadioFAperiodic.setEnabled(0);
     jRadioFPeaks.setEnabled(0);
     jRadioFError.setEnabled(0);
+    jRadioFOverlay.setEnabled(0);
+    jRadioFExponent.setEnabled(0);
+    jRadioFOffset.setEnabled(0);
     
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
@@ -213,6 +218,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jRadioFAperiodic',       jRadioFAperiodic, ...
                                   'jRadioFPeaks',           jRadioFPeaks, ...
                                   'jRadioFError',           jRadioFError, ...
+                                  'jRadioFExponent',        jRadioFExponent, ...
+                                  'jRadioFOffset',          jRadioFOffset, ...
                                   'jRadioPacMax',           jRadioPacMax, ...
                                   'jRadioPacFlow',          jRadioPacFlow, ...
                                   'jRadioPacFhigh',         jRadioPacFhigh, ...
@@ -383,6 +390,8 @@ function UpdatePanel(hFig)
         ctrl.jRadioFAperiodic.setEnabled(0);
         ctrl.jRadioFPeaks.setEnabled(0);
         ctrl.jRadioFError.setEnabled(0);
+        ctrl.jRadioFExponent.setEnabled(0);
+        ctrl.jRadioFOffset.setEnabled(0);
         ctrl.jCheckHideEdge.setEnabled(0);
         ctrl.jCheckHighRes.setEnabled(0);
         ctrl.jPanelFunction.setVisible(0);
@@ -409,7 +418,7 @@ function UpdatePanel(hFig)
         % Enable available functions
         switch lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure)
             case 'none'
-                if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'plv', 'plvt'})
+                if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit'})
                     ctrl.jRadioFunPower.setEnabled(0);
                     ctrl.jRadioFunLog.setEnabled(0);
                 else
@@ -432,6 +441,9 @@ function UpdatePanel(hFig)
         % Display FOOOF panel
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
             ctrl.jPanelFOOOF.setVisible(1);
+            ctrl.jComboRows.setEnabled(1);
+            ctrl.jPanelSelect.setVisible(1);
+            SetDisplayOptions();
         end
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
             % Enable row selection controls
@@ -448,24 +460,33 @@ function UpdatePanel(hFig)
             ctrl.jPanelFunction.setVisible(1);
             % If current figure is a FOOOF PSD
             if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
-                ctrl.jRadioFOverlay.setEnabled(1); 
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
+                ctrl.jPanelSelect.setVisible(1);
+                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') % If it is topography or surf
+                    ctrl.jRadioFOverlay.setVisible(0)
+                    ctrl.jRadioFOverlay.setEnabled(0)
+                    ctrl.jRadioFExponent.setVisible(1);
+                    ctrl.jRadioFOffset.setVisible(1);
+                    ctrl.jRadioFExponent.setEnabled(1);
+                    ctrl.jRadioFOffset.setEnabled(1);
+                else
+                    ctrl.jRadioFOverlay.setEnabled(1); 
+                    ctrl.jRadioFExponent.setVisible(0);
+                    ctrl.jRadioFOffset.setVisible(0);
+                end
                 switch TfInfo.FOOOFDisp
-                    case 'overlay', ctrl.jRadioFOverlay.setSelected(1); 
+                    case 'overlay', ctrl.jRadioFOverlay.setSelected(1); SetDisplayOptions();
                     case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
                     case 'model', ctrl.jRadioFModel.setSelected(1);
                     case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
                     case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
-                    case 'error' 
-                        ctrl.jRadioFError.setSelected(1);
-                        % All display options can be useful here as well.
-                        %ctrl.jRadioFunPower.setEnabled(0);
-                        %ctrl.jRadioFunMag.setEnabled(0);
-                        %ctrl.jRadioFunLog.setEnabled(1);
+                    case 'error', ctrl.jRadioFError.setSelected(1);
+                    case 'exponent', ctrl.jRadioFExponent.setSelected(1);
+                    case 'offset', ctrl.jRadioFExponent.setSelected(1);
                 end
             elseif isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
                 ctrl.jRadioFOverlay.setEnabled(0); 
@@ -474,27 +495,37 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
+                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') % If it is topography or surf
+                    ctrl.jRadioFOverlay.setVisible(0)
+                    ctrl.jRadioFOverlay.setEnabled(0)
+                    ctrl.jRadioFExponent.setVisible(1);
+                    ctrl.jRadioFOffset.setVisible(1);
+                    ctrl.jRadioFExponent.setEnabled(1);
+                    ctrl.jRadioFOffset.setEnabled(1);
+                else
+                    ctrl.jRadioFExponent.setVisible(0);
+                    ctrl.jRadioFOffset.setVisible(0);
+                end
                 switch TfInfo.FOOOFDisp
                     case 'overlay', ctrl.jRadioFOverlay.setSelected(1); 
                     case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
                     case 'model', ctrl.jRadioFModel.setSelected(1);
                     case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
                     case 'peaks', ctrl.jRadioFPeaks.setSelected(1);
-                    case 'error' 
-                        ctrl.jRadioFError.setSelected(1);
-                        % All display options can be useful here as well.
-                        %ctrl.jRadioFunPower.setEnabled(0);
-                        %ctrl.jRadioFunMag.setEnabled(0);
-                        %ctrl.jRadioFunLog.setEnabled(1);
+                    case 'error', ctrl.jRadioFError.setSelected(1);
+                    case 'exponent', ctrl.jRadioFExponent.setSelected(1);
+                    case 'offset', ctrl.jRadioFExponent.setSelected(1);
                 end
             else
-                ctrl.jRadioFOverlay.setSelected(1);
+                ctrl.jRadioFSpectrum.setSelected(1);
                 ctrl.jRadioFOverlay.setEnabled(0); 
                 ctrl.jRadioFSpectrum.setEnabled(0);
                 ctrl.jRadioFModel.setEnabled(0);
                 ctrl.jRadioFAperiodic.setEnabled(0);
                 ctrl.jRadioFPeaks.setEnabled(0);
                 ctrl.jRadioFError.setEnabled(0);
+                ctrl.jRadioFExponent.setEnabled(0);
+                ctrl.jRadioFOffset.setEnabled(0);
             end                
         end
 
@@ -543,6 +574,9 @@ function UpdatePanel(hFig)
         end
         % Entire panel
         ctrl.jPanelSelect.setVisible(isEnabledEdge || isEnabledRow);
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+            ctrl.jPanelSelect.setVisible(1);
+        end
 
         % === CONNECTIVITY ===
         % Connectivity display panel options
@@ -687,6 +721,10 @@ function sOptions = GetDisplayOptions()
         sOptions.FOOOFDisp = 'peaks';
     elseif ctrl.jRadioFError.isSelected()
         sOptions.FOOOFDisp = 'error';
+    elseif ctrl.jRadioFExponent.isSelected()
+        sOptions.FOOOFDisp = 'exponent';
+    elseif ctrl.jRadioFOffset.isSelected()
+        sOptions.FOOOFDisp = 'offset';
     end
     
     % Hide edge effects / Resolution

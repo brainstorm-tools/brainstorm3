@@ -22,9 +22,10 @@ function OutputFiles = bst_connectivity(FilesA, FilesB, OPTIONS)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2021
+% Authors: Francois Tadel, 2012-2022
 %          Martin Cousineau, 2017
 %          Hossein Shahabi, 2019-2020
+%          Daniele Marinazzo, 2022
 
 
 %% ===== DEFAULT OPTIONS =====
@@ -103,7 +104,7 @@ if (isempty(OPTIONS.MaxFreqRes) || (OPTIONS.MaxFreqRes <= 0)) && isempty(OPTIONS
 end
 % Symmetric storage?
 if isempty(OPTIONS.isSymmetric)
-    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','aec','henv'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
+    OPTIONS.isSymmetric = any(strcmpi(OPTIONS.Method, {'corr','cohere','plv','plvt','ciplv','ciplvt','wpli','wplit','aec','henv'})) && (isempty(FilesB) || (isequal(FilesA, FilesB) && isequal(OPTIONS.TargetA, OPTIONS.TargetB)));
 end
 % Processing [1xN] or [NxN]
 isConnNN = isempty(FilesB);
@@ -263,7 +264,7 @@ for iFile = 1:length(FilesA)
 %         return;
 %     end
     % PLV: Incompatible with unconstrained sources  (saves complex values)
-    if ismember(OPTIONS.Method, {'plv','plvt'}) && (isUnconstrA || isUnconstrB)
+    if ismember(OPTIONS.Method, {'plv','plvt','ciplv','ciplvt','wpli','wplit'}) && (isUnconstrA || isUnconstrB)
         bst_report('Error', OPTIONS.ProcessName, [], 'The PLV measures are not supported yet on unconstrained sources.');
         return;
     end
@@ -476,13 +477,20 @@ for iFile = 1:length(FilesA)
             FreqBands = [];            
             
         % ==== PLV ====
-        case 'plv'
-            bst_progress('text', sprintf('Calculating: PLV [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = 'PLV: ';
+        case {'plv', 'wpli', 'ciplv'}
+            bst_progress('text', sprintf('Calculating: %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
-            
+            % Initialization for ciPLV and wPLI
+            if ismember(OPTIONS.Method, {'wpli'})
+                % Replicate nB x HA, and nA x HB
+                nA = size(sInputA.Data,1);
+                nB = size(sInputB.Data,1);
+                iA = repmat(1:nA, 1, nB)';
+                iB = reshape(repmat(1:nB, nA, 1), [], 1);
+            end
+
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
             R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
@@ -501,17 +509,37 @@ for iFile = 1:length(FilesA)
                 end
                 phaseA = HA ./ abs(HA);
                 phaseB = HB ./ abs(HB);
-                % Compute PLV 
-                % Divide by number of time samples
-                R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);    
+                % Compute PLV (Divided by number of time samples)
+                switch (OPTIONS.Method)
+                    case 'plv'
+                        R(:,:,iBand) = (phaseA*phaseB') / size(HA,2);
+                        Comment = 'PLV: ';
+                    case 'ciplv'
+                        % Implementation proposed by Daniele Marinazzo, based on:
+                        %    Bruna R, Maestu F, Pereda E
+                        %    Phase locking value revisited: teaching new tricks to an old dog
+                        %    Journal of Neural Engineering, Jun 2018
+                        %    https://pubmed.ncbi.nlm.nih.gov/29952757
+                        csd = phaseA * phaseB';
+                        R(:,:,iBand) = (imag(csd)/size(HA,2)) ./ sqrt(1 + eps - (real(csd)/size(HA,2)) .* conj(real(csd)/size(HA,2)));
+                        % R(:,:,iBand) = (imag((phaseA*phaseB'))/size(HA,2))./sqrt(1+eps-(real((phaseA*phaseB'))/size(HA,2)).^2);    % SLOWER
+                        Comment = 'ciPLV: ';
+                    case 'wpli'
+                        % Implementation proposed by Daniele Marinazzo, based on:
+                        %    Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
+                        %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
+                        %    Neuroimage, Apr 2011
+                        %    https://pubmed.ncbi.nlm.nih.gov/21276857
+                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
+                        Comment = 'wPLI: ';
+                end
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
             
         % ==== PLV-TIME ====
-        case 'plvt'
-            bst_progress('text', sprintf('Calculating: Time-resolved PLV [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = 'PLVT: ';
+        case {'plvt', 'wplit', 'ciplvt'}
+            bst_progress('text', sprintf('Calculating: Time-resolved %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
@@ -521,7 +549,10 @@ for iFile = 1:length(FilesA)
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
             R = zeros(nA * nB, nTime, nFreqBands);
-            
+            % Replicate nB x HA, and nA x HB
+            iA = repmat(1:nA, 1, nB)';
+            iB = reshape(repmat(1:nB, nA, 1), [], 1);
+
             % ===== VERSION S.BAILLET =====
             % PLV = exp(1i * (angle(HA) - angle(HB)));
             % Loop on each frequency band
@@ -537,23 +568,25 @@ for iFile = 1:length(FilesA)
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                %%%% COULD BE OPTIMIZED EXACTLY LIKE 'PLV' CASE (see notes below)
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % Replicate nB x HA, and nA x HB
-                iA = repmat(1:nA, 1, nB)';
-                iB = reshape(repmat(1:nB, nA, 1), [], 1);
                 % Compute the PLV in time for each pair
-                R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));
-                %R(:,:,iBand) = exp(1i * (angle(HA(iA,:)) - angle(HB(iB,:))));
-                
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-                % The implementation below is faster in the time-independent case, 
-                % here not so much for big nA and nB, still putting it for consistency
-                %phaseB = HB(iB) ./ abs(HB(iB));
-                %phaseA = HA(iA) ./ abs(HA(iA));
-                %R(:,:,iBand)=(phaseA.'.*phaseB').';
-                %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+                phaseA = HA(iA,:) ./ abs(HA(iA,:));
+                phaseB = HB(iB,:) ./ abs(HB(iB,:));
+                switch (OPTIONS.Method)
+                    case 'plvt'
+                        % R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));  % Sylvain Baillet, slower
+                        R(:,:,iBand) = (phaseA .* conj(phaseB));  % Daniele Marinazzo
+                        Comment = 'PLVt: ';
+                    case 'ciplvt'
+                        % R(:,:,iBand) = (imag(exp(1i * angle(HA(iA,:)./HB(iB,:)))))./sqrt(1-(real(exp(1i * angle(HA(iA,:)./HB(iB,:))))/nTime).^2);     % SLOWER
+                        csd = phaseA .* conj(phaseB);
+                        R(:,:,iBand) = imag(csd) ./ (real(csd)/nTime) .* conj(real(csd)/nTime);
+                        Comment = 'ciPLVt: ';
+                    case 'wplit'
+                        % R(:,:,iBand) = abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))';    % SLOWER
+                        cdi = imag(phaseA .* conj(phaseB));
+                        R(:,:,iBand) = abs(cdi) .* sign(cdi) ./ abs(cdi);
+                        Comment = 'wPLIt: ';
+                end
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
@@ -609,6 +642,7 @@ for iFile = 1:length(FilesA)
     end
     % Replace any NaN values with zeros
     R(isnan(R)) = 0;
+    R(isinf(R)) = 0;
     
     
     %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====
@@ -720,7 +754,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
         FileMat.HeadModelType = sInputB.HeadModelType;
     end
     % Time vector
-    if ismember(OPTIONS.Method, {'plvt','henv'})
+    if ismember(OPTIONS.Method, {'plvt','ciplvt','wplit','henv'})
         FileMat.Time      = sInputB.Time;
         FileMat.TimeBands = [];
     else
@@ -728,7 +762,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
         FileMat.TimeBands = {OPTIONS.Method, sInputB.Time(1), sInputB.Time(end)};
     end
     % Measure
-    if strcmpi(OPTIONS.Method, 'plv') || strcmpi(OPTIONS.Method, 'plvt')
+    if ismember(OPTIONS.Method, {'plv','plvt','ciplv','ciplvt','wpli','wplit'})
         % Apply measure
         switch (OPTIONS.PlvMeasure)
             case 'magnitude'
