@@ -64,40 +64,94 @@ if nargin >= 3
     % Same code as in out_mri_nii.m to make sure exported coordinates have the
     % same origin as exported MRI
     % Use existing matrices (from the header)
-    if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && ...
-            all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'})) && ...
-            (any([sMri.Header.nifti.srow_x sMri.Header.nifti.srow_y sMri.Header.nifti.srow_z]~=0) || ...
-             any(sMri.Header.nifti.qform(:)~=0))
-         if any([sMri.Header.nifti.srow_x sMri.Header.nifti.srow_y sMri.Header.nifti.srow_z]~=0)
-             sform = [sMri.Header.nifti.srow_x ;  sMri.Header.nifti.srow_y ; sMri.Header.nifti.srow_z];
-         elseif any(sMri.Header.nifti.qform(:) ~= 0)
-             if ~all(sMri.Header.nifti.qform(4, :) == [0 0 0 1])
-                 bst_error('Scaling in qform is not handled.');
-                 return;
-             end
-             sform = sMri.Header.nifti.qform(1:3, :);
-         end 
-    else % Otherwise: Try to define from existing information in the database
-        if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
-            Origin = sMri.NCS.Origin - [1 2 2];
-        elseif isfield(sMri, 'NCS') && ((isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R)) || (isfield(sMri.NCS, 'y') && ~isempty(sMri.NCS.y)))
-            Origin = cs_convert(sMri, 'mni', 'mri', [0 0 0]) .* 1000;
-        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC)
-            Origin = sMri.NCS.AC + [0, -3, 4];
-        else
-            Origin = volDim / 2;
-        end
-        sform = [diag(pixDim) (-Origin.*pixDim)'];
-    end
+if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.Header.nifti, {'qform_code', 'sform_code', 'quatern_b', 'quatern_c', 'quatern_d', 'qoffset_x', 'qoffset_y', 'qoffset_z', 'srow_x', 'srow_y', 'srow_z'})) && isfield(sMri.Header, 'dim') && isfield(sMri.Header.dim, 'pixdim')
+    sform = [sMri.Header.nifti.srow_x ;  sMri.Header.nifti.srow_y ; sMri.Header.nifti.srow_z];
+else
+   % === QFORM ===
+    % XFORM_SCANNER: Scanner-based referential: from the vox2ras matrix
+    if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && any(ismember(sMri.InitTransf(:,1), 'vox2ras'))
+        nifti.qform_code = 1;  % NIFTI_XFORM_SCANNER_ANAT
+        % Use directly the unmodified vox2ras from the original file
+        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
+        nifti.qform = sMri.InitTransf{iTransf(1),2};
+        % Convert from 4x4 transformations to quaternions
+        R = nifti.qform(1:3, 1:3);
+        T = nifti.qform(1:3, 4);
+        a = 0.5  * sqrt(1 + R(1,1) + R(2,2) + R(3,3));
+     	nifti.quatern_b = 0.25 * (R(3,2) - R(2,3)) / a;
+     	nifti.quatern_c = 0.25 * (R(1,3) - R(3,1)) / a;
+        nifti.quatern_d = 0.25 * (R(2,1) - R(1,2)) / a;
+        nifti.qoffset_x = T(1);
+        nifti.qoffset_y = T(2);
+        nifti.qoffset_z = T(3);
+    else
+        nifti.qform_code = 0;
+     	nifti.quatern_b = 0;
+     	nifti.quatern_c = 0;
+        nifti.quatern_d = 0;
+        nifti.qoffset_x = 0;
+        nifti.qoffset_y = 0;
+        nifti.qoffset_z = 0;
+    end  
     
-    src_coords = (sform * [cs_convert(sMri, 'scs', 'mri', src_coords)*1000 ones(size(src_coords,1), 1)]')';
-    det_coords = (sform * [cs_convert(sMri, 'scs', 'mri', det_coords)*1000 ones(size(det_coords,1), 1)]')';
-    if ~isempty(fidu_coords)
-        fidu_coords = (sform * [cs_convert(sMri, 'scs', 'mri', fidu_coords)*1000 ones(size(fidu_coords,1), 1)]')';
+        % === SFORM ===
+    % If there is a QFORM, do not define SFORM to avoid ambiguities
+    if (nifti.qform_code ~= 0)
+        nifti.sform_code = 0;
+        nifti.srow_x = [0 0 0 0];
+        nifti.srow_y = [0 0 0 0];
+        nifti.srow_z = [0 0 0 0];
+    % XFORM_MNI_152: Normalized coordinates (NCS field)
+    elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS, 'T') && ~isempty(sMri.NCS.T)
+        nifti.sform_code = 4;   % NIFTI_XFORM_MNI_152
+        mri2world = cs_convert(sMri, 'mri', 'mni');
+    % XFORM_ALIGNED: If no scanner coordinates (qform) or MNI normalization (sform): Just center the image on AC or the middle of the volume
+    else
+        nifti.sform_code = 2;   % NIFTI_XFORM_ALIGNED_ANAT
+        if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'AC') && ~isempty(sMri.NCS.AC) 
+            Origin = sMri.NCS.AC;
+        elseif isfield(sMri, 'NCS') && isfield(sMri.NCS, 'Origin') && ~isempty(sMri.NCS.Origin)
+            Origin = sMri.NCS.Origin;
+        else
+            Origin = volDim .* sMri.Voxsize / 2;
+        end
+        mri2world = [...
+            1, 0, 0, -Origin(1) ./ 1000; ...
+            0, 1, 0, -Origin(2) ./ 1000; ...
+            0, 0, 1, -Origin(3) ./ 1000; 
+            0, 0, 0, 1];
     end
+    % Convert Brainstorm transformation to nifti vox2ras
+    if (nifti.sform_code ~= 0)
+        % Convert from MRI(meters) to MRI(millimeters)
+        vox2ras = mri2world;
+        vox2ras(1:3,4) = vox2ras(1:3,4) .* 1000;
+        % Convert from MRI(mm) to voxels
+        vox2ras = vox2ras * diag([sMri.Voxsize, 1]);
+        % Change reference from (0,0,0) to (1,1,1)
+        nifti.sform = vox2ras * [1 0 0 1; 0 1 0 1; 0 0 1 1; 0 0 0 1];
+        % Saved in sform format
+        nifti.srow_x = nifti.sform(1,:);
+        nifti.srow_y = nifti.sform(2,:);
+        nifti.srow_z = nifti.sform(3,:);
+    end
+    sform = [nifti.srow_x ;  nifti.srow_y ; nifti.srow_z];
+    qform = nifti.qform;
+end    
+    if(nifti.qform_code ~= 0)
+        src_coords = (qform * [cs_convert(sMri, 'scs', 'mri', src_coords)*1000 ones(size(src_coords,1), 1)]')';
+        det_coords = (qform * [cs_convert(sMri, 'scs', 'mri', det_coords)*1000 ones(size(det_coords,1), 1)]')';
+        if ~isempty(fidu_coords)
+            fidu_coords = (qform * [cs_convert(sMri, 'scs', 'mri', fidu_coords)*1000 ones(size(fidu_coords,1), 1)]')';
+        end
+    else
+        src_coords = (sform * [cs_convert(sMri, 'scs', 'mri', src_coords)*1000 ones(size(src_coords,1), 1)]')';
+        det_coords = (sform * [cs_convert(sMri, 'scs', 'mri', det_coords)*1000 ones(size(det_coords,1), 1)]')';
+        if ~isempty(fidu_coords)
+            fidu_coords = (sform * [cs_convert(sMri, 'scs', 'mri', fidu_coords)*1000 ones(size(fidu_coords,1), 1)]')';
+        end
+    end    
 end
-
-
 
 % Format header
 header = sprintf(['# Version: 5\n# Coordinate system: NIftI-Aligned\n# Created by: Brainstorm (nirstorm plugin)\n' ...
