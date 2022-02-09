@@ -47,7 +47,7 @@ if isempty(VideoFiles)
             'Import dipoles...', ...   % Window title
             LastUsedDirs.ImportData, ...    % Last used directory
             'multiple', 'files', ...        % Selection mode
-            {{'.avi','.mpg','.mpeg','.mp4','.mp2','.mkv','.wmv','.divx','.mov'}, 'Video files (*.avi;*.mpg;*.mpeg;*.mp4;*.mp2;*.mkv;*.wmv;*.divx;*.mov)', 'VIDEO'}, []);
+            {{'.avi','.mpg','.mpeg','.mp4','.mp2','.mkv','.wmv','.divx','.mov','.asf'}, 'Video files (*.avi;*.mpg;*.mpeg;*.mp4;*.mp2;*.mkv;*.wmv;*.divx;*.mov;.asf)', 'VIDEO'}, []);
     % If no file was selected: exit
     if isempty(VideoFiles)
         return
