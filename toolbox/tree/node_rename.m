@@ -157,10 +157,13 @@ switch lower(nodeType)
 
 %% ===== CONDITION =====
     % Modify: Directory name + studies definition
-    case 'condition'
+    case {'condition', 'rawcondition'}
         % Rename condition
         [SubjectName, oldCond] = bst_fileparts(fileName, 1);
         newCond = file_standardize(newComment);
+        if strncmp(oldCond, '@raw', 4)
+            newCond = ['@raw', newCond];
+        end
         if ~strcmpi(oldCond, newCond)
             oldPath = bst_fullfile(SubjectName, oldCond);
             newPath = bst_fullfile(SubjectName, newCond);
