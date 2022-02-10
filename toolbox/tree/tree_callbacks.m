@@ -3001,7 +3001,7 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
         % === GENERATE HEAD/BEM ===
         if (length(iAnatomy) <= 1)
             gui_component('MenuItem', jMenu, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(MriFile));
-            if ~ispc && (length(iAnatomy) == 1)
+            if ~ispc
 	            gui_component('MenuItem', jMenu, [], '<HTML><B>FSL</B>:  Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@process_segment_fsl, 'ComputeInteractive', iSubject, iAnatomy)); 
             end
             gui_component('MenuItem', jMenu, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
