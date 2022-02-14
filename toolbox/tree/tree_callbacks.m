@@ -3019,6 +3019,9 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
             end
             gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Tissues, MNI normalization', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_mni_normalize, 'ComputeInteractive', MriFile, 'segment'));
             gui_component('MenuItem', jMenu, [], '<HTML><B>FieldTrip</B>: Tissues, BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));
+            if ~ispc
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FSL/BET</B>: Extract head', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@process_segment_fsl, 'ComputeInteractive', iSubject, iAnatomy)); 
+            end
         elseif (length(iAnatomy) == 2)   % T1 + T2
             if ~ispc
                 AddSeparator(jMenu);
