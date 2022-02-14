@@ -69,7 +69,7 @@ R = [];
 T = [];
 isSkip = 0;
 isUserCancel = 0;
-
+strReport = '';
 
 %% ===== LOAD CHANNELS =====
 % Progress bar
