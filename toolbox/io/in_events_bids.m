@@ -28,6 +28,10 @@ function events = in_events_bids(sFile, EventFile)
 % Authors: Francois Tadel, 2019-2021
 
 % Read tsv file
+% https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+% trial_type would be a subset of possible events that identify trial category.
+% value can be numbers or strings identifying the event.
+% Only 'onset' and 'duration' are required.
 Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value'}, 0);
 if isempty(Markers) || isempty(Markers{1,1})
     events = [];
@@ -36,19 +40,36 @@ end
 % If there is no trial_type and no value information: use the filename as the event name
 if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
     [fPath, fbase, fExt] = bst_fileparts(EventFile);
-    Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
-end
-% List of events from trial_type
-iColumn = 3;
-uniqueEvt = unique(Markers(:,iColumn)');
-if length(uniqueEvt) == 1
-    % List of events from value
+    iColumn = 3;
+    Markers(:,iColumn) = repmat({fbase}, size(Markers(:,iColumn)));
+elseif all(cellfun(@isempty, Markers(:,3)))
+    iColumn = 5;
+elseif all(cellfun(@isempty, Markers(:,5)))
+    iColumn = 3;
+else 
+    uniqueEvt = unique(Markers(:,3)');
     uniqueEvtVal = unique(Markers(:,5)');
-    if length(uniqueEvtVal) > 1
+    if length(uniqueEvt) == 1 && length(uniqueEvtVal) > 1
         iColumn = 5;
-        uniqueEvt = uniqueEvtVal;
+    elseif length(uniqueEvt) > 1 && length(uniqueEvtVal) == 1
+        iColumn = 3;
+    else
+        % Merge both columns
+        iColumn = 3;
+        Markers(:,iColumn) = regexprep(Markers(:,iColumn), {'n/a', 'N/A'}, '');
+        for iM = 1:size(Markers, 1)
+            Markers{iM,iColumn} = [Markers{iM,iColumn} '-' Markers{iM,5}];
+            if Markers{iM,iColumn}(1) == '-'
+                Markers{iM,iColumn}(1) = '';
+            elseif Markers{iM,iColumn}(end) == '-'
+                Markers{iM,iColumn}(end) = '';
+            end
+        end
     end
 end
+% List of events from trial_type and/or value
+uniqueEvt = unique(Markers(:,iColumn)');
+
 % Initialize returned structure
 events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
@@ -83,7 +104,10 @@ for iEvt = 1:length(uniqueEvt)
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
     end
-    events(iEvt).times      = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    % Make the function independent of sFile
+    if ~isempty(sFile)
+        events(iEvt).times  = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    end
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
     events(iEvt).channels   = channels;
