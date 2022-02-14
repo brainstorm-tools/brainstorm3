@@ -141,8 +141,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
         return;
     end
     % Process comment
+    isFlair = 0;
     if ~isempty(T2File)
-        strT1T2 = '(T1+T2)';
+        if ~isempty(strfind(lower(sMriT2.Comment),'flair'))
+            isFlair = 1;
+            strT1T2 = '(T1+FLAIR)';
+        else
+            strT1T2 = '(T1+T2)';
+        end
     else
         strT1T2 = '(T1 only)';
     end
@@ -212,13 +218,9 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     end
 
     % ===== SAVE T2 MRI AS NII =====
-    isFlair = 0;
     if ~isempty(T2File)
         % Load T2 file
         sMriT2 = in_mri_bst(T2File);
-        if ~isempty(strfind(lower(sMriT2.Comment),'flair'))
-            isFlair = 1;
-        end    
         % Save T2 .nii
         T2Nii = bst_fullfile(TmpDir, [subjid 'T2.nii']);
         out_mri_nii(sMriT2, T2Nii);
@@ -233,10 +235,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     end
 
     % ===== RUN FREESURFER =====
-    % T1+T2 Flair
+    % T1+FLAIR
     if ~isempty(T2File) && isFlair
         strCall = ['recon-all -all -subject "' subjid '" -i "' T1Nii '" -FLAIR "' T2Nii '" -FLAIRpial ' param];
-    %T1+T2 Flair
+    % T1+T2
     elseif ~isempty(T2File) 
         strCall = ['recon-all -all -subject "' subjid '" -i "' T1Nii '" -T2 "' T2Nii '" -T2pial ' param];
     % T1 only
