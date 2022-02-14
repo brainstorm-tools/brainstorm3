@@ -3001,9 +3001,6 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
         % === GENERATE HEAD/BEM ===
         if (length(iAnatomy) <= 1)
             gui_component('MenuItem', jMenu, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(MriFile));
-            if ~ispc
-	            gui_component('MenuItem', jMenu, [], '<HTML><B>FSL</B>:  Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@process_segment_fsl, 'ComputeInteractive', iSubject, iAnatomy)); 
-            end
             gui_component('MenuItem', jMenu, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
         end
         % === GENERATE FEM ===
@@ -3022,7 +3019,9 @@ function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
             end
             gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Tissues, MNI normalization', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_mni_normalize, 'ComputeInteractive', MriFile, 'segment'));
             gui_component('MenuItem', jMenu, [], '<HTML><B>FieldTrip</B>: Tissues, BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));
-
+            if ~ispc
+	        gui_component('MenuItem', jMenu, [], '<HTML><B>FSL/BET</B>: Extract head', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@process_segment_fsl, 'ComputeInteractive', iSubject, iAnatomy)); 
+            end
         elseif (length(iAnatomy) == 2)   % T1 + T2
             if ~ispc
                 AddSeparator(jMenu);
