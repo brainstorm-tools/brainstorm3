@@ -65,20 +65,24 @@ end
 % Load needed plugins
 InstPlugs = bst_plugin('GetInstalled');
 % Reload SPM(12) plugin is an different version is found
-if any(strcmpi({InstPlugs.Name}, 'spm12')) && isempty(strfind(spm('ver'), 'SPM12'))
-    bst_plugin('Unload', 'spm12');
-    bst_plugin('LoadInteractive', 'spm12');
+if any(strcmpi({InstPlugs.Name}, 'spm12')) 
+    if (exist('spm', 'file') == 2) && isempty(strfind(spm('ver'), 'SPM12'))
+        bst_plugin('Unload', 'spm12');
+    end
+    PlugDesc = bst_plugin('GetInstalled', 'spm12'); 
+    if ~PlugDesc.isLoaded
+        bst_plugin('LoadInteractive', 'spm12');
+    end    
 end
 % Load CAT12 
-if ~any(strcmpi({InstPlugs.Name}, 'spm12'))
-    disp('Error: Plugin CAT12 is not installed. See the requirements for this tutorial.');
-else
-    PlugDesc = bst_plugin('GetDescription', 'cat12'); 
+if any(strcmpi({InstPlugs.Name}, 'cat12'))
+    PlugDesc = bst_plugin('GetInstalled', 'cat12'); 
     if ~PlugDesc.isLoaded
         bst_plugin('LoadInteractive', 'cat12');
-    end
+    end    
+else
+    disp('Error: Plugin CAT12 is not installed. See the requirements for this tutorial.');
 end
-
 
 
 %% ===== 1. CREATE PROTOCOL =====
