@@ -437,10 +437,12 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 
     switch (aperiodic_mode)
         case 'fixed'  % no knee
-            guess_vec = [power_spectrum(1), 2];
+            exp_guess = -(power_spectrum(end)-power_spectrum(1))./log10(freqs(end)./freqs(1));
+            guess_vec = [power_spectrum(1), exp_guess];
             aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs, power_spectrum);
         case 'knee'
-            guess_vec = [power_spectrum(1),0, 2];
+            exp_guess = -(power_spectrum(end)-power_spectrum(1))./log10(freqs(end)./freqs(1));
+            guess_vec = [power_spectrum(1),0, exp_guess];
             aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
     end
 
