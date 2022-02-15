@@ -141,8 +141,14 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
         return;
     end
     % Process comment
+    isFlair = 0;
     if ~isempty(T2File)
-        strT1T2 = '(T1+T2)';
+        if ~isempty(strfind(lower(sMriT2.Comment),'flair'))
+            isFlair = 1;
+            strT1T2 = '(T1+FLAIR)';
+        else
+            strT1T2 = '(T1+T2)';
+        end
     else
         strT1T2 = '(T1 only)';
     end
@@ -229,8 +235,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     end
 
     % ===== RUN FREESURFER =====
+    % T1+FLAIR
+    if ~isempty(T2File) && isFlair
+        strCall = ['recon-all -all -subject "' subjid '" -i "' T1Nii '" -FLAIR "' T2Nii '" -FLAIRpial ' param];
     % T1+T2
-    if ~isempty(T2File)
+    elseif ~isempty(T2File) 
         strCall = ['recon-all -all -subject "' subjid '" -i "' T1Nii '" -T2 "' T2Nii '" -T2pial ' param];
     % T1 only
     else

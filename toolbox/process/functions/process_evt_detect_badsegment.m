@@ -204,6 +204,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 badSeg = panel_record('GetBadSegments', sFile);
                 % Adjust with beginning of file
                 badSeg = badSeg - fileSamples(1) + 1;
+                if ~isempty(TimeWindow)
+                    badSeg = badSeg - (bst_closest(TimeWindow(1), DataMat.Time) - 1);
+                end
                 % Create file mask
                 Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
                 if ~isempty(badSeg) 

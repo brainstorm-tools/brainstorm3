@@ -1,4 +1,8 @@
 --------------------------------------------------------------
+February 2022
+- Anatomy: Extract head with FSL/BET
+- Connectivity: Added wPLI and ciPLV
+--------------------------------------------------------------
 January 2022
 - Doc: Connectivity tutorial
 - Connectivity: Updated "Simulate AR signals"

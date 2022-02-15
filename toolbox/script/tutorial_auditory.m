@@ -57,6 +57,8 @@ gui_brainstorm('DeleteProtocol', ProtocolName);
 gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 % Start a new report
 bst_report('Start');
+% Set the current display mode to 'butterfly'
+bst_set('TSDisplayMode', 'butterfly');
 
 
 % ===== ANATOMY =====

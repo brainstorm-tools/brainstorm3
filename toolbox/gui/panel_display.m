@@ -418,7 +418,7 @@ function UpdatePanel(hFig)
         % Enable available functions
         switch lower(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure)
             case 'none'
-                if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'plv', 'plvt'})
+                if ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Method, {'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit'})
                     ctrl.jRadioFunPower.setEnabled(0);
                     ctrl.jRadioFunLog.setEnabled(0);
                 else
