@@ -558,7 +558,7 @@ for iData = 1:length(Data)
                 ImagingKernel = []; % Do not apply twice
             end
             [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS);
-            if iData == 1 % Only add comment to first file
+            if iData == 1 % Only add comment once
                 OPTIONS.Comment = [OPTIONS.Comment ', ' sprintf('%d-%dHz', round(OPTIONS.SPRiNTopts.freqrange.Value{1}(1)),round(OPTIONS.SPRiNTopts.freqrange.Value{1}(2)))];
             end
                 
