@@ -115,6 +115,15 @@ bst_process('CallProcess', 'process_import_mri', [], [], ...
     'ac',          [0, 0, 0], ...
     'pc',          [0, 0, 0], ...
     'ih',          [0, 0, 0]);
+% Get subject definition
+sSubject = bst_get('Subject', SubjectName);
+% Get MRI file
+MriFile    = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+% Display MRI
+hFigMri = view_mri(MriFile);
+pause(0.5);
+% Close figure
+close(hFigMri);
 
 % Process: Segment MRI with CAT12
 bst_process('CallProcess', 'process_segment_cat12', [], [], ...
@@ -125,41 +134,20 @@ bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'vol',         1, ...
     'extramaps',   1, ...
     'cerebellum',  0);
-
-
-%% ===== 3. EXPLORE ANATOMY =====
-%
-% TODO: NOT SURE IF THIS WOULD BE NEEDED IN THE CMC TUTORIAL
-%
-disp([10 'DEMO> 3. Explore anatomy' 10]);
 % Get subject definition
-[sSubject, isSubject] = bst_get('Subject', SubjectName);
+[sSubject, iSubject] = bst_get('Subject', SubjectName);
 % Set default Cortex
 [~, iSurface] = ismember(cortexName, {sSubject.Surface.Comment});
-db_surface_default(isSubject, 'Cortex', iSurface);
+db_surface_default(iSubject, 'Cortex', iSurface);
 panel_protocols('RepaintTree');
-% Get MRI file and surface files
-MriFile    = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+% Get surface files
 CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
 HeadFile   = sSubject.Surface(sSubject.iScalp).FileName;
-% Display MRI
-hFigMri1 = view_mri(MriFile);
-hFigMri3 = view_mri_3d(MriFile, [], [], 'NewFigure');
-hFigMri2 = view_mri_slices(MriFile, 'x', 20); 
-pause(0.5);
-% Close figures
-close([hFigMri1 hFigMri2 hFigMri3]);
 % Display scalp and cortex
 hFigSurf = view_surface(HeadFile);
 hFigSurf = view_surface(CortexFile, [], [], hFigSurf);
-hFigMriSurf = view_mri(MriFile, CortexFile);
-% Figure configuration
-iTess = 2;
-panel_surface('SetShowSulci',     hFigSurf, iTess, 1);
-panel_surface('SetSurfaceColor',  hFigSurf, iTess, [1 0 0]);
-panel_surface('SetSurfaceSmooth', hFigSurf, iTess, 0.5, 0);
-panel_surface('SetSurfaceTransparency', hFigSurf, iTess, 0.8);
 figure_3d('SetStandardView', hFigSurf, 'left');
+hFigMriSurf = view_mri(MriFile, CortexFile);
 pause(0.5);
 % Close figures
 close([hFigSurf hFigMriSurf]);
