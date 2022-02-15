@@ -558,8 +558,10 @@ for iData = 1:length(Data)
                 ImagingKernel = []; % Do not apply twice
             end
             [TF, Messages, OPTIONS] = bst_sprint(F, sfreq, RowNames, OPTIONS);
-            OPTIONS.Comment = [OPTIONS.Comment ', ' sprintf('%d-%dHz', round(OPTIONS.SPRiNTopts.freqrange.Value{1}(1)),round(OPTIONS.SPRiNTopts.freqrange.Value{1}(2)))];
-
+            if iData == 1 % Only add comment to first file
+                OPTIONS.Comment = [OPTIONS.Comment ', ' sprintf('%d-%dHz', round(OPTIONS.SPRiNTopts.freqrange.Value{1}(1)),round(OPTIONS.SPRiNTopts.freqrange.Value{1}(2)))];
+            end
+                
         % Hilbert
         case 'hilbert'
             % Get bounds of each frequency bands

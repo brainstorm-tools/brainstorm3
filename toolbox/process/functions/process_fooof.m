@@ -474,7 +474,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
     flatspec(flatspec(:) < 0) = 0;
 
     % Use percential threshold, in terms of # of points, to extract and re-fit
-    perc_thresh = bst_prctile(flatspec, 2.5);
+    perc_thresh = bst_prctile(flatspec, 0.025);
     perc_mask = flatspec <= perc_thresh;
     freqs_ignore = freqs(perc_mask);
     spectrum_ignore = power_spectrum(perc_mask);
@@ -582,7 +582,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 half_height = 0.5 * max_height;
 
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
 
                 % Keep bandwidth estimation from the shortest side.
                 % We grab shortest to avoid estimating very large std from overalapping peaks.
@@ -693,7 +693,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 end
                 half_height = 0.5 * max_height;
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
                 fwhm = short_side * 2 * (freqs(2)-freqs(1));
                 guess_std = fwhm / (2 * sqrt(2 * log(2)));
@@ -738,7 +738,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 end
                 half_height = 0.5 * max_height;
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
                 fwhm = short_side * 2 * (freqs(2)-freqs(1));
                 guess_gamma = fwhm/2;
