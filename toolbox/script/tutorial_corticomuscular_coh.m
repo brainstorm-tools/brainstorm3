@@ -66,7 +66,7 @@ end
 InstPlugs = bst_plugin('GetInstalled');
 % Reload SPM(12) plugin is an different version is found
 if any(strcmpi({InstPlugs.Name}, 'spm12')) 
-    if (exist('spm', 'file') == 2) && isempty(strfind(spm('ver'), 'SPM12'))
+    if (exist('spm', 'file') == 2) && isempty(strfind(spm('ver'), 'SPM12')) %#ok<STREMP>
         bst_plugin('Unload', 'spm12');
     end
     PlugDesc = bst_plugin('GetInstalled', 'spm12'); 
@@ -209,13 +209,12 @@ sFileRaw = bst_process('CallProcess', 'process_evt_read', sFileRaw, [], ...
 DataMat = in_bst_data(sFileRaw.FileName, 'F');
 eventList = {DataMat.F.events.label};
 % Labels for Event groups to keep
-eventKeep = {};
+eventKeep = cell(25,1);
 for i = 1:25
-    if i == 7
-        continue
-    end
-    eventKeep{end+1} = ['U', num2str(i)];
+    eventKeep{i} = ['U', num2str(i)];
 end
+% Reject trial #7
+eventKeep(7) = [];
 % Find useless Events
 eventDelete = setdiff(eventList, eventKeep);
 % Process: Delete events
@@ -230,7 +229,7 @@ nDuplicates = 7;
 DataMat = in_bst_data(sFileRaw.FileName);
 events = DataMat.F.events;
 colorTable = lines(nDuplicates);
-eventDuplicates = {};
+eventDuplicates = {nDuplicates, 1};
 for i = 1 : nDuplicates
     iCopy = length(events) + 1;
     events(iCopy) = events(1);
