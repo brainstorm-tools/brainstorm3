@@ -168,48 +168,31 @@ bst_process('CallProcess', 'process_snapshot', sFilesMeg, [], ...
     'orient',   1, ...  % left
     'Comment',  'MEG/MRI Registration');
 
-% View sensors
-hFig = view_surface(HeadFile);
-hFig = view_channels(sFilesMeg.ChannelFile, 'MEG', 1, 1, hFig);
-% Hide sensors
-pause(0.5);
-hFig = view_channels(sFilesMeg.ChannelFile, 'MEG', 0, 0, hFig);
-% View coils
-hFig = view_channels(sFilesMeg.ChannelFile, 'CTF', 1, 1, hFig);
-% View helmet
-pause(0.5);
-hFig = view_helmet(sFilesMeg.ChannelFile, hFig);
-pause(0.5);
-close(hFig);
-% Edit good/bad channel for current file
-gui_edit_channel(sFilesMeg.ChannelFile);
+% View CTF helmet
+hFigHel = view_surface(HeadFile);
+hFigHel = view_helmet(sFilesMeg.ChannelFile, hFigHel);
+figure_3d('SetStandardView', hFigHel, 'left');
+% View MEG sensors
+hFigMeg = view_surface(HeadFile);
+hFigMeg = view_channels(sFilesMeg.ChannelFile, 'MEG', 1, 1, hFigMeg);
+figure_3d('SetStandardView', hFigMeg, 'left');
 pause(0.5);
 % Unload everything
 bst_memory('UnloadAll', 'Forced');
 
 
 %% ===== 5. REVIEW MEG AND EMG RECORDINGS =====
-%
-% TODO: Set time parameters for the CMC tutorial images!
-%
 disp([10 'DEMO> 5. Review MEG and EMG recordings' 10]);
 % Process: Convert to continuous (CTF): Continuous
 bst_process('CallProcess', 'process_ctf_convert', sFileRaw, [], ...
     'rectype', 2);  % Continuous
 % View recordings
 hFigMeg = view_timeseries(sFilesMeg.FileName, 'MEG');
-hFigEmg = view_timeseries(sFilesMeg.FileName, 'EMG');
-% Figure configuration
-pause(0.5);
 panel_record('SetTimeLength', 3);
-panel_record('SetStartTime', 100);
-panel_record('SetDisplayMode', hFigMeg, 'column');
-panel_montage('SetCurrentMontage', hFigMeg, 'CTF LT');
-% Set filters: panel_filter('SetFilters', LowPassEnabled, LowPassValue, HighPassEnabled, HighPassValue, SinRemovalEnabled, SinRemovalValue, MirrorEnabled, FullSourcesEnabled)
-panel_filter('SetFilters', 1, 100, 1, 1, 0, [], 0, 0);
-pause(0.5);
 panel_record('SetDisplayMode', hFigMeg, 'butterfly');
-panel_montage('SetCurrentMontage', hFigMeg, '');
+hFigEmg = view_timeseries(sFilesMeg.FileName, 'EMG');
+panel_record('SetDisplayMode', hFigEmg, 'butterfly');
+pause(0.5);
 % Close figures
 close([hFigMeg hFigEmg]);
 
