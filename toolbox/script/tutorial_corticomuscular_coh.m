@@ -399,8 +399,16 @@ bst_process('CallProcess', 'process_snapshot', sFileCoh1N, [], ...
     'time',           0, ...
     'rowname',        '', ...
     'Comment',        '');
-% TODO plot MSC for MRC21
-% TODO plot topography 2D sensor cap
+% View coherence 1xN (sensor level)
+hFigCohSpcA = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
+hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', 'MRC21');
+hFigCohTop = view_topography(sFileCoh1N.FileName);
+% TODO Show sensor locations in topoplot
+% TODO Set frequency slider to 17.58 Hz
+% TODO Selet MRC21
+pause(0.5);
+% Close figures
+close([hFigCohSpcA, hFigCohSpc1, hFigCohTop]);
 
 % Process: Group in time or frequency bands
 sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], ...
@@ -409,8 +417,14 @@ sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], 
     'istimebands', 0, ...
     'timebands',   '', ...
     'overwrite',   0);
-% TODO plot topography 2D sensor cap
 
+hFigCohTop = view_topography(sFileCoh1NBand.FileName);
+% TODO Show sensor locations in topoplot
+% TODO Set frequency slider to 17.58 Hz
+% TODO Selet MRC21
+pause(0.5);
+% Close figure
+close(hFigCohTop);
 
 %% ===== 13. MEG SOURCE MODELLING =====
 disp([10 'DEMO> 13. MEG source modelling' 10]);
