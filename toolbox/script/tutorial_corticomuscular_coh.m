@@ -468,6 +468,8 @@ bst_process('CallProcess', 'process_headmodel', sFilesEpochs(1).FileName, [], ..
 
 %% ===== 14. SOURCE ESTIMATION =====
 disp([10 'DEMO> 14. Source estimation' 10]);
+% iStudy for current imported data epochs
+iStudy = sFilesEpochs(1).iStudy;
 % ===== SURFACE SPACE =====
 % Set (surface) head model as default
 sStudy = bst_get('Study', iStudy);
@@ -544,6 +546,7 @@ sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], .
     'includeintra',  0, ...
     'includecommon', 0);
 % Coherence between EMG signal and sources (for different source types)
+sFileCoh1Ns = [];
 sourceTypes = {'(surface)(Constr)', '(surface)(Unconstr)', '(volume)(Unconstr)'};
 for ix = 1 :  length(sourceTypes)
     sourceType = sourceTypes{ix};
@@ -576,7 +579,27 @@ for ix = 1 :  length(sourceTypes)
     sFileCoh1N = bst_process('CallProcess', 'process_set_comment', sFileCoh1N, [], ...
         'tag',           newComment, ...
         'isindex',       1);
-end 
+    sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];
+end
+
+% View coherence 1xN (source level)
+for ix = 1 : length(sFileCoh1Ns)
+    sFileCoh1N = sFileCoh1Ns(ix);
+    sourceType = sourceTypes{ix};
+    % Surface results
+    if ~isempty(strfind(sourceType, 'surface'))
+        view_surface_data([], sFileCoh1N.FileName)
+        % TODO Set frequency slider to 14.65 Hz
+    % Volume results
+    elseif ~isempty(strfind(sourceType, 'volume'))
+        % Get subject definition
+        sSubject = bst_get('Subject', SubjectName);
+        view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG');
+        % TODO Set frequency slider to 14.65 Hz
+        % TODO Got to SCS [X:38.6, Y:-21.3 and Z:115.5]
+        % TODO Set transparencey 30%
+    end
+end
 
 
 %% ===== 16. COHERENCE 1xN (SCOUT LEVEL) =====
