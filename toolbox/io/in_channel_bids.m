@@ -28,11 +28,9 @@ function ChannelMat = in_channel_bids(ChannelFile, factor)
 % Authors: Francois Tadel, 2018
 
 % Read the TSV file
-% For _electrodes.tsv, the first 4 columns below are required.
-% For _channels.tsv, 'name', 'type' and 'units' are required.
-tsvValues = in_tsv(ChannelFile, {'name', 'x', 'y', 'z', 'group', 'type'}, 0); % don't warn since columns depend on file type.
+tsvValues = in_tsv(ChannelFile, {'name', 'x', 'y', 'z', 'group', 'type'});
 if isempty(tsvValues) || isempty(tsvValues{1,1})
-    disp('BIDS> Error: Invalid tsv file.');
+    disp('BIDS> Error: Invalid _electrodes.tsv file.');
     ChannelMat = [];
     return;
 end
