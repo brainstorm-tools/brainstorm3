@@ -370,12 +370,11 @@ sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFilePreP
     'baseline',    [0, 1]);
 
 % View recordings, trial 1
-hFigSel = view_timeseries(sFilesEpochs(1).FileName, 'MEG', 'MRC21');
-hFigEeg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
+hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', 'MRC21');
+hFigEmg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
 pause(0.5);
 % Close figures
-close(hFigSel);
-close(hFigEeg);
+close([hFigMeg, hFigEmg]);
 
 
 %% ===== 12. COHERENCE 1xN (SENSOR LEVEL) =====
