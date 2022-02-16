@@ -37,8 +37,9 @@ if isempty(Markers) || isempty(Markers{1,1})
     events = [];
     return;
 end
+% Standardize empty/missing values to empty char.
+Markers(cellfun(@(c) (isequal(c,'n/a') || isequal(c,'N/A') || isempty(c)), Markers(:))) = {''};
 % If there is no trial_type and no value information: use the filename as the event name
-Markers(:,[3,5]) = regexprep(Markers(:,[3,5]), {'n/a', 'N/A'}, '');
 if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
     [fPath, fbase, fExt] = bst_fileparts(EventFile);
     Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
