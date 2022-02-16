@@ -38,44 +38,32 @@ if isempty(Markers) || isempty(Markers{1,1})
     return;
 end
 % If there is no trial_type and no value information: use the filename as the event name
+Markers(:,[3,5]) = regexprep(Markers(:,[3,5]), {'n/a', 'N/A'}, '');
 if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
     [fPath, fbase, fExt] = bst_fileparts(EventFile);
-    iColumn = 3;
-    Markers(:,iColumn) = repmat({fbase}, size(Markers(:,iColumn)));
+    Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
 elseif all(cellfun(@isempty, Markers(:,3)))
-    iColumn = 5;
-elseif all(cellfun(@isempty, Markers(:,5)))
-    iColumn = 3;
-else 
-    uniqueEvt = unique(Markers(:,3)');
-    uniqueEvtVal = unique(Markers(:,5)');
-    if length(uniqueEvt) == 1 && length(uniqueEvtVal) > 1
-        iColumn = 5;
-    elseif length(uniqueEvt) > 1 && length(uniqueEvtVal) == 1
-        iColumn = 3;
-    else
-        % Merge both columns
-        iColumn = 3;
-        Markers(:,iColumn) = regexprep(Markers(:,iColumn), {'n/a', 'N/A'}, '');
-        for iM = 1:size(Markers, 1)
-            Markers{iM,iColumn} = [Markers{iM,iColumn} '-' Markers{iM,5}];
-            if Markers{iM,iColumn}(1) == '-'
-                Markers{iM,iColumn}(1) = '';
-            elseif Markers{iM,iColumn}(end) == '-'
-                Markers{iM,iColumn}(end) = '';
-            end
+    Markers(:,3) = Markers(:,5);
+elseif ~all(cellfun(@isempty, Markers(:,5)))
+    % Both columns contain data
+    for iM = 1:size(Markers, 1)
+        if isempty(Markers{iM,3})
+            Markers{iM,3} = Markers{iM,5};
+        elseif ~isempty(Markers{iM,5})
+            % Merge
+            Markers{iM,3} = [Markers{iM,3} '-' Markers{iM,5}];
         end
     end
 end
 % List of events from trial_type and/or value
-uniqueEvt = unique(Markers(:,iColumn)');
+uniqueEvt = unique(Markers(:,3)');
 
 % Initialize returned structure
 events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
 for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
-    iMrk = find(strcmpi(Markers(:,iColumn)', uniqueEvt{iEvt}));
+    iMrk = find(strcmpi(Markers(:,3)', uniqueEvt{iEvt}));
     % Get event onsets and durations
     onsets = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,1), 'UniformOutput', 0);
     durations = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,2), 'UniformOutput', 0);
