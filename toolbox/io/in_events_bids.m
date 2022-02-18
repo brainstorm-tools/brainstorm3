@@ -28,33 +28,43 @@ function events = in_events_bids(sFile, EventFile)
 % Authors: Francois Tadel, 2019-2021
 
 % Read tsv file
+% https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+% trial_type would be a subset of possible events that identify trial category.
+% value can be numbers or strings identifying the event.
+% Only 'onset' and 'duration' are required.
 Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value'}, 0);
 if isempty(Markers) || isempty(Markers{1,1})
     events = [];
     return;
 end
+% Standardize empty/missing values to empty char.
+Markers(cellfun(@(c) (isequal(c,'n/a') || isequal(c,'N/A') || isempty(c)), Markers(:))) = {''};
 % If there is no trial_type and no value information: use the filename as the event name
 if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
     [fPath, fbase, fExt] = bst_fileparts(EventFile);
     Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
-end
-% List of events from trial_type
-iColumn = 3;
-uniqueEvt = unique(Markers(:,iColumn)');
-if length(uniqueEvt) == 1
-    % List of events from value
-    uniqueEvtVal = unique(Markers(:,5)');
-    if length(uniqueEvtVal) > 1
-        iColumn = 5;
-        uniqueEvt = uniqueEvtVal;
+elseif all(cellfun(@isempty, Markers(:,3)))
+    Markers(:,3) = Markers(:,5);
+elseif ~all(cellfun(@isempty, Markers(:,5)))
+    % Both columns contain data
+    for iM = 1:size(Markers, 1)
+        if isempty(Markers{iM,3})
+            Markers{iM,3} = Markers{iM,5};
+        elseif ~isempty(Markers{iM,5})
+            % Merge
+            Markers{iM,3} = [Markers{iM,3} '-' Markers{iM,5}];
+        end
     end
 end
+% List of events from trial_type and/or value
+uniqueEvt = unique(Markers(:,3)');
+
 % Initialize returned structure
 events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
 for iEvt = 1:length(uniqueEvt)
     % Find all the occurrences of event #iEvt
-    iMrk = find(strcmpi(Markers(:,iColumn)', uniqueEvt{iEvt}));
+    iMrk = find(strcmpi(Markers(:,3)', uniqueEvt{iEvt}));
     % Get event onsets and durations
     onsets = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,1), 'UniformOutput', 0);
     durations = cellfun(@(c)sscanf(c,'%f',1), Markers(iMrk,2), 'UniformOutput', 0);
@@ -83,7 +93,10 @@ for iEvt = 1:length(uniqueEvt)
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
     end
-    events(iEvt).times      = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    % Make the function independent of sFile
+    if ~isempty(sFile)
+        events(iEvt).times  = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    end
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
     events(iEvt).channels   = channels;

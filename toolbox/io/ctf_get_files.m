@@ -182,9 +182,10 @@ end
 badseg_file = bst_fullfile(ds_directory, 'bad.segments');
 % Check that file is accessible
 if ~file_exist(badseg_file)
-    if verbose
-        disp(['CTF> Warning: ' badseg_file ' missing.']);
-    end
+    % Not always present, and that's ok.
+    %     if verbose
+    %         disp(['CTF> Warning: ' badseg_file ' missing.']);
+    %     end
     badseg_file = [];
 end
 
