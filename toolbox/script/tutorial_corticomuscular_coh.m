@@ -708,7 +708,7 @@ for ix = 1 : length(scoutFuntcTimes)
         'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)    
     % Process: Add tag
     sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
-        'tag',           [sourceType, '(', scoutFuntcTime, 'Sct)'], ...
+        'tag',           sourceType, ...
         'output',        1);  % Add to file name     
     sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];       
 end
@@ -717,9 +717,10 @@ end
 hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
     sFileCoh1N = sFileCoh1Ns(ix);
-    
+    hFigs = [hFigs; view_connect(sFileCoh1N.FileName, 'GraphFull')];
     hFigs = [hFigs; view_connect(sFileCoh1N.FileName, 'Image')];
     % TODO Set frequency slider to 14.65 Hz
+    % TODO Define and set intensity threhold for Graph figure
 end
 pause(0.5);
 % Close figures
