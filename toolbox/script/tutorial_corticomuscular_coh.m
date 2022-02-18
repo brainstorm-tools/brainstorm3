@@ -579,23 +579,27 @@ for ix = 1 :  length(sourceTypes)
 end
 
 % View coherence 1xN (source level)
+hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
     sFileCoh1N = sFileCoh1Ns(ix);
     sourceType = sourceTypes{ix};
     % Surface results
     if ~isempty(strfind(sourceType, 'surface'))
-        view_surface_data([], sFileCoh1N.FileName)
+        hFigs = [hFigs; view_surface_data([], sFileCoh1N.FileName)];
         % TODO Set frequency slider to 14.65 Hz
     % Volume results
     elseif ~isempty(strfind(sourceType, 'volume'))
         % Get subject definition
         sSubject = bst_get('Subject', SubjectName);
-        view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG');
+        hFigs = [hFigs; view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG')];
         % TODO Set frequency slider to 14.65 Hz
         % TODO Got to SCS [X:38.6, Y:-21.3 and Z:115.5]
         % TODO Set transparencey 30%
     end
 end
+pause(0.5);
+% Close figures
+close(hFigs);
 
 
 %% ===== 16. COHERENCE 1xN (SCOUT LEVEL) =====
@@ -652,13 +656,18 @@ for ix = 1 : length(scoutFuntcTimes)
 end
 
 % View coherence 1xN (scout level)
+hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
     sFileCoh1N = sFileCoh1Ns(ix);
-    view_spectrum(sFileCoh1N.FileName, 'Spectrum');
-    view_connect(sFileCoh1N.FileName, 'Image');
+    hFigs = [hFigs; view_spectrum(sFileCoh1N.FileName, 'Spectrum')];
+    hFigs = [hFigs; view_connect(sFileCoh1N.FileName, 'Image')];
     % TODO Select SomMotA_2 R scout
     % TODO Set frequency slider to 14.65 Hz
 end
+pause(0.5);
+% Close figures
+close(hFigs);
+
 
 %% ===== 17. COHERENCE NxN, CONNECTOME (SCOUT LEVEL) =====
 disp([10 'DEMO> 17. Coherence NxN, connectome (scout level)' 10]);
@@ -705,13 +714,16 @@ for ix = 1 : length(scoutFuntcTimes)
 end
 
 % View coherence NxN (scout level)
+hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
     sFileCoh1N = sFileCoh1Ns(ix);
     
-    view_connect(sFileCoh1N.FileName, 'Image');
+    hFigs = [hFigs; view_connect(sFileCoh1N.FileName, 'Image')];
     % TODO Set frequency slider to 14.65 Hz
 end
-
+pause(0.5);
+% Close figures
+close(hFigs);
 
 %% ===== SAVE REPORT =====
 disp([10 'DEMO> Save report' 10]);
