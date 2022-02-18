@@ -46,8 +46,10 @@ cohmeasure  = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
 win_length  =  0.5;       % 500ms
 overlap     = 50;         % 50%
 maxfreq     = 80;         % 80Hz
-% TODO check for free RAM 
-isBigRam = 1;
+% TODO Ask for isBigRam as argument?
+isBigRam = 0;
+% TODO Ask for username as argument?
+username = 'Raymundo.Cassani';
 
 % Build the path of the files to import
 MriFile   = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
@@ -740,7 +742,7 @@ disp([10 'DEMO> Corticomuscular coherence tutorial completed' 10]);
 
 % Process: Send report by email
 bst_process('CallProcess', 'process_report_email', [], [], ...
-    'username',   'Raymundo.Cassani', ...
+    'username',   username, ...
     'cc',         '', ...
     'subject',    'Corticomuscular coherence tutorial completed', ...
     'reportfile', ReportFile, ...
