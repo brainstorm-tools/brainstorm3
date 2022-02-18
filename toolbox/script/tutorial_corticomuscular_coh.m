@@ -662,7 +662,7 @@ end
 
 %% ===== 17. COHERENCE NxN, CONNECTOME (SCOUT LEVEL) =====
 disp([10 'DEMO> 17. Coherence NxN, connectome (scout level)' 10]);
-% Only performed for (surface)(Constr)
+% Only performed for (surface)(Constrained)
 sourceType = '(surface)(Constr)';
 sFilesResSrfUnc = bst_process('CallProcess', 'process_select_files_results', [], [], ...
     'subjectname',   SubjectName, ...
@@ -671,53 +671,45 @@ sFilesResSrfUnc = bst_process('CallProcess', 'process_select_files_results', [],
     'includebad',    0, ...
     'includeintra',  0, ...
     'includecommon', 0);
-
-% ===== SCOUT FUNCTION TIME: BEFORE =====
-% Process: Coherence NxN [2021]
-sFileCoh1N = bst_process('CallProcess', 'process_cohere1n_2021', sFilesResSrfUnc, [], ...
-    'timewindow',   [], ...
-    'scouts',       {'Schaefer_100_17net', {'Background+FreeSurfer_Defined_Medial_Wall L', 'Background+FreeSurfer_Defined_Medial_Wall R', 'ContA_IPS_1 L', 'ContA_IPS_1 R', 'ContA_PFCl_1 L', 'ContA_PFCl_1 R', 'ContA_PFCl_2 L', 'ContA_PFCl_2 R', 'ContB_IPL_1 R', 'ContB_PFCld_1 R', 'ContB_PFClv_1 L', 'ContB_PFClv_1 R', 'ContB_Temp_1 R', 'ContC_Cingp_1 L', 'ContC_Cingp_1 R', 'ContC_pCun_1 L', 'ContC_pCun_1 R', 'ContC_pCun_2 L', 'DefaultA_IPL_1 R', 'DefaultA_PFCd_1 L', 'DefaultA_PFCd_1 R', 'DefaultA_PFCm_1 L', 'DefaultA_PFCm_1 R', 'DefaultA_pCunPCC_1 L', 'DefaultA_pCunPCC_1 R', 'DefaultB_IPL_1 L', 'DefaultB_PFCd_1 L', 'DefaultB_PFCd_1 R', 'DefaultB_PFCl_1 L', 'DefaultB_PFCv_1 L', 'DefaultB_PFCv_1 R', 'DefaultB_PFCv_2 L', 'DefaultB_PFCv_2 R', 'DefaultB_Temp_1 L', 'DefaultB_Temp_2 L', 'DefaultC_PHC_1 L', 'DefaultC_PHC_1 R', 'DefaultC_Rsp_1 L', 'DefaultC_Rsp_1 R', 'DorsAttnA_ParOcc_1 L', 'DorsAttnA_ParOcc_1 R', 'DorsAttnA_SPL_1 L', 'DorsAttnA_SPL_1 R', 'DorsAttnA_TempOcc_1 L', 'DorsAttnA_TempOcc_1 R', 'DorsAttnB_FEF_1 L', 'DorsAttnB_FEF_1 R', 'DorsAttnB_PostC_1 L', 'DorsAttnB_PostC_1 R', 'DorsAttnB_PostC_2 L', 'DorsAttnB_PostC_2 R', 'DorsAttnB_PostC_3 L', 'LimbicA_TempPole_1 L', 'LimbicA_TempPole_1 R', 'LimbicA_TempPole_2 L', 'LimbicB_OFC_1 L', 'LimbicB_OFC_1 R', 'SalVentAttnA_FrMed_1 L', 'SalVentAttnA_FrMed_1 R', 'SalVentAttnA_Ins_1 L', 'SalVentAttnA_Ins_1 R', 'SalVentAttnA_Ins_2 L', 'SalVentAttnA_ParMed_1 L', 'SalVentAttnA_ParMed_1 R', 'SalVentAttnA_ParOper_1 L', 'SalVentAttnA_ParOper_1 R', 'SalVentAttnB_IPL_1 R', 'SalVentAttnB_PFCl_1 L', 'SalVentAttnB_PFCl_1 R', 'SalVentAttnB_PFCmp_1 L', 'SalVentAttnB_PFCmp_1 R', 'SomMotA_1 L', 'SomMotA_1 R', 'SomMotA_2 L', 'SomMotA_2 R', 'SomMotA_3 R', 'SomMotA_4 R', 'SomMotB_Aud_1 L', 'SomMotB_Aud_1 R', 'SomMotB_Cent_1 L', 'SomMotB_Cent_1 R', 'SomMotB_S2_1 L', 'SomMotB_S2_1 R', 'SomMotB_S2_2 L', 'SomMotB_S2_2 R', 'TempPar_1 L', 'TempPar_1 R', 'TempPar_2 R', 'TempPar_3 R', 'VisCent_ExStr_1 L', 'VisCent_ExStr_1 R', 'VisCent_ExStr_2 L', 'VisCent_ExStr_2 R', 'VisCent_ExStr_3 L', 'VisCent_ExStr_3 R', 'VisCent_Striate_1 L', 'VisPeri_ExStrInf_1 L', 'VisPeri_ExStrInf_1 R', 'VisPeri_ExStrSup_1 L', 'VisPeri_ExStrSup_1 R', 'VisPeri_StriCal_1 L', 'VisPeri_StriCal_1 R'}}, ...
-    'scoutfunc',    1, ...  % Mean
-    'scouttime',    1, ...  % Before
-    'removeevoked', 0, ...
-    'cohmeasure',   cohmeasure, ...
-    'win_length',   win_length, ...
-    'overlap',      overlap, ...
-    'maxfreq',      maxfreq, ...
-    'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
-% Rename 1xN node 
-tmp = strsplit(sFileCoh1N.Comment, ':');
-baseComment = tmp{1};
-newComment = [baseComment, ': ', src_channel, ' ', sourceType, '(Sct-Before)'];
-% Process: Set name
-sFileCoh1N = bst_process('CallProcess', 'process_set_comment', sFileCoh1N, [], ...
-    'tag',           newComment, ...
-    'isindex',       1);
-
-% ===== SCOUT FUNCTION TIME: AFTER =====
-if isBigRam && 0  % This may required too much RAM
+% Coherence between EMG signal and scouts (for different "when to apply the scout function")
+sFileCoh1Ns = [];
+scoutFuntcTimes = {'Bef', 'Aft'}; % Before and After     
+for ix = 1 : length(scoutFuntcTimes)
+    scoutFuntcTime = scoutFuntcTimes{ix};
+    switch scoutFuntcTime
+        case 'Bef'
+            scouttime = 1;
+        case 'Aft'
+            scouttime = 2;
+            if ~isBigRam
+                continue
+            end
+    end
     % Process: Coherence NxN [2021]
     sFileCoh1N = bst_process('CallProcess', 'process_cohere1n_2021', sFilesResSrfUnc, [], ...
         'timewindow',   [], ...
         'scouts',       {'Schaefer_100_17net', {'Background+FreeSurfer_Defined_Medial_Wall L', 'Background+FreeSurfer_Defined_Medial_Wall R', 'ContA_IPS_1 L', 'ContA_IPS_1 R', 'ContA_PFCl_1 L', 'ContA_PFCl_1 R', 'ContA_PFCl_2 L', 'ContA_PFCl_2 R', 'ContB_IPL_1 R', 'ContB_PFCld_1 R', 'ContB_PFClv_1 L', 'ContB_PFClv_1 R', 'ContB_Temp_1 R', 'ContC_Cingp_1 L', 'ContC_Cingp_1 R', 'ContC_pCun_1 L', 'ContC_pCun_1 R', 'ContC_pCun_2 L', 'DefaultA_IPL_1 R', 'DefaultA_PFCd_1 L', 'DefaultA_PFCd_1 R', 'DefaultA_PFCm_1 L', 'DefaultA_PFCm_1 R', 'DefaultA_pCunPCC_1 L', 'DefaultA_pCunPCC_1 R', 'DefaultB_IPL_1 L', 'DefaultB_PFCd_1 L', 'DefaultB_PFCd_1 R', 'DefaultB_PFCl_1 L', 'DefaultB_PFCv_1 L', 'DefaultB_PFCv_1 R', 'DefaultB_PFCv_2 L', 'DefaultB_PFCv_2 R', 'DefaultB_Temp_1 L', 'DefaultB_Temp_2 L', 'DefaultC_PHC_1 L', 'DefaultC_PHC_1 R', 'DefaultC_Rsp_1 L', 'DefaultC_Rsp_1 R', 'DorsAttnA_ParOcc_1 L', 'DorsAttnA_ParOcc_1 R', 'DorsAttnA_SPL_1 L', 'DorsAttnA_SPL_1 R', 'DorsAttnA_TempOcc_1 L', 'DorsAttnA_TempOcc_1 R', 'DorsAttnB_FEF_1 L', 'DorsAttnB_FEF_1 R', 'DorsAttnB_PostC_1 L', 'DorsAttnB_PostC_1 R', 'DorsAttnB_PostC_2 L', 'DorsAttnB_PostC_2 R', 'DorsAttnB_PostC_3 L', 'LimbicA_TempPole_1 L', 'LimbicA_TempPole_1 R', 'LimbicA_TempPole_2 L', 'LimbicB_OFC_1 L', 'LimbicB_OFC_1 R', 'SalVentAttnA_FrMed_1 L', 'SalVentAttnA_FrMed_1 R', 'SalVentAttnA_Ins_1 L', 'SalVentAttnA_Ins_1 R', 'SalVentAttnA_Ins_2 L', 'SalVentAttnA_ParMed_1 L', 'SalVentAttnA_ParMed_1 R', 'SalVentAttnA_ParOper_1 L', 'SalVentAttnA_ParOper_1 R', 'SalVentAttnB_IPL_1 R', 'SalVentAttnB_PFCl_1 L', 'SalVentAttnB_PFCl_1 R', 'SalVentAttnB_PFCmp_1 L', 'SalVentAttnB_PFCmp_1 R', 'SomMotA_1 L', 'SomMotA_1 R', 'SomMotA_2 L', 'SomMotA_2 R', 'SomMotA_3 R', 'SomMotA_4 R', 'SomMotB_Aud_1 L', 'SomMotB_Aud_1 R', 'SomMotB_Cent_1 L', 'SomMotB_Cent_1 R', 'SomMotB_S2_1 L', 'SomMotB_S2_1 R', 'SomMotB_S2_2 L', 'SomMotB_S2_2 R', 'TempPar_1 L', 'TempPar_1 R', 'TempPar_2 R', 'TempPar_3 R', 'VisCent_ExStr_1 L', 'VisCent_ExStr_1 R', 'VisCent_ExStr_2 L', 'VisCent_ExStr_2 R', 'VisCent_ExStr_3 L', 'VisCent_ExStr_3 R', 'VisCent_Striate_1 L', 'VisPeri_ExStrInf_1 L', 'VisPeri_ExStrInf_1 R', 'VisPeri_ExStrSup_1 L', 'VisPeri_ExStrSup_1 R', 'VisPeri_StriCal_1 L', 'VisPeri_StriCal_1 R'}}, ...
         'scoutfunc',    1, ...  % Mean
-        'scouttime',    2, ...  % After
+        'scouttime',    scouttime, ... 
         'removeevoked', 0, ...
         'cohmeasure',   cohmeasure, ...
         'win_length',   win_length, ...
         'overlap',      overlap, ...
         'maxfreq',      maxfreq, ...
-        'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
-    % Rename 1xN node 
-    tmp = strsplit(sFileCoh1N.Comment, ':');
-    baseComment = tmp{1};
-    newComment = [baseComment, ': ', src_channel, ' ', sourceType, '(Sct-After)'];
-    % Process: Set name
-    sFileCoh1N = bst_process('CallProcess', 'process_set_comment', sFileCoh1N, [], ...
-        'tag',           newComment, ...
-        'isindex',       1);
-else
-    disp('Not enough RAM');
+        'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)    
+    % Process: Add tag
+    sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
+        'tag',           [sourceType, '(', scoutFuntcTime, 'Sct)'], ...
+        'output',        1);  % Add to file name     
+    sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];       
+end
+
+% View coherence NxN (scout level)
+for ix = 1 : length(sFileCoh1Ns)
+    sFileCoh1N = sFileCoh1Ns(ix);
+    
+    view_connect(sFileCoh1N.FileName, 'Image');
+    % TODO Set frequency slider to 14.65 Hz
 end
 
 
