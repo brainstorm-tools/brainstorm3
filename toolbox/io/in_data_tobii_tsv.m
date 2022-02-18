@@ -265,8 +265,8 @@ for iSes = 1:length(uniqueSesId)
                 % Set event
                 iFirstOcc = iRows(find(val == uniqueVal(iEvt), 1));
                 DataMat(iFile).Events(iEvt).label    = strtrim(sesTsv{iFirstOcc, iColEvt});
-                DataMat(iFile).Events(iEvt).times    = round(tNew(iOcc) .* sfreq) ./ sfreq;
-                % DataMat(iFile).Events(iEvt).times  = round([tNew(iOcc) ; tNew(iOcc+1)-T] .* sfreq) ./ sfreq;   % Extended events
+                % DataMat(iFile).Events(iEvt).times    = round(tNew(iOcc) .* sfreq) ./ sfreq;
+                DataMat(iFile).Events(iEvt).times    = round([tNew(iOcc) ; tNew(iOcc+1)-T] .* sfreq) ./ sfreq;   % Extended events
                 DataMat(iFile).Events(iEvt).epochs   = ones(1, length(iOcc));
                 DataMat(iFile).Events(iEvt).select   = 1;
                 DataMat(iFile).Events(iEvt).channels = cell(1, length(iOcc));
