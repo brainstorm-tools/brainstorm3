@@ -207,7 +207,7 @@ if isAdjustScs
         % Check if already adjusted, in which case the transformation above is correct (identity if same head points).
         sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
         % History string is set in figure_mri SaveMri.
-        if isfield(sMriOld, 'History') && ~isempty(sMriOld.History) && any(strcmpi(sMriOld.History(:,2), 'Applied digitized anatomical fiducials'))
+        if isfield(sMriOld, 'History') && ~isempty(sMriOld.History) && any(strcmpi(sMriOld.History(:,3), 'Applied digitized anatomical fiducials'))
             if isWarning
                 bst_warning('Nasion and ear points already adjusted.', 'Automatic EEG-MEG/MRI registration', 0);
             end

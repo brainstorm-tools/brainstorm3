@@ -3,7 +3,9 @@ function varargout = process_adjust_coordinates(varargin)
 % 
 % Native coordinates are based on system fiducials (e.g. MEG head coils),
 % whereas Brainstorm's SCS coordinates are based on the anatomical fiducial
-% points set on the MRI.
+% points. After alignment between MRI and headpoints, the anatomical fiducials
+% on the MRI side define the SCS and the ones in the channel files
+% (ChannelMat.SCS) are ignored.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -65,6 +67,10 @@ function sProcess = GetDescription()
     sProcess.options.points.Comment = 'Refine MRI coregistration using digitized head points.';
     sProcess.options.points.Value   = 0;
     sProcess.options.points.Controller = 'Refine';
+    sProcess.options.tolerance.Comment = 'Tolerance (outlier points to ignore):';
+    sProcess.options.tolerance.Type    = 'value';
+    sProcess.options.tolerance.Value   = {0, '%', 0};
+    sProcess.options.tolerance.Class = 'Refine';
     sProcess.options.scs.Type    = 'checkbox';
     sProcess.options.scs.Comment = 'Also ajust MRI nasion and ear points.';
     sProcess.options.scs.Value   = 0;
@@ -121,8 +127,8 @@ function OutputFiles = Run(sProcess, sInputs)
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
     % If resetting, in case the original data moved, and because the same
-    % channel file may appear in many places for processed data, keep track
-    % of user file selections.
+    % channel file may appear in many places for processed data, keep track of
+    % user file selections.
     NewChannelFiles = cell(0, 2);
     for iFile = iUniqFiles(:)' % no need to repeat on same channel file.
         
@@ -151,11 +157,11 @@ function OutputFiles = Run(sProcess, sInputs)
         if sProcess.options.reset.Value
             % The main goal of this option is to fix a bug in a previous
             % version: when importing a channel file, when going to SCS
-            % coordinates based on digitized coils and anatomical
-            % fiducials, the channel orientation was wrong.  We wish to fix
-            % this but keep as much pre-processing that was previously
-            % done.  Thus we will re-import the channel file, and copy the
-            % projectors (and history) from the old one.
+            % coordinates based on digitized coils and anatomical fiducials, the
+            % channel orientation was wrong.  We wish to fix this but keep as
+            % much pre-processing that was previously done.  Thus we will
+            % re-import the channel file, and copy the projectors (and history)
+            % from the old one.
             
             [ChannelMat, NewChannelFiles, Failed] = ...
                 ResetChannelFile(ChannelMat, NewChannelFiles, sInputs(iFile), sProcess);
@@ -166,13 +172,12 @@ function OutputFiles = Run(sProcess, sInputs)
             % ----------------------------------------------------------------
         elseif sProcess.options.remove.Value
             % Because channel_align_manual does not consistently apply the
-            % manual transformation to all sensors or save it in both
-            % TransfMeg and TransfEeg, it could lead to confusion and
-            % errors when playing with transforms.  Therefore, if we detect
-            % a difference between the MEG and EEG transforms when trying
-            % to remove one that applies to both (currently only refine
-            % with head points), we don't proceed and recommend resetting
-            % with the original channel file instead.
+            % manual transformation to all sensors or save it in both TransfMeg
+            % and TransfEeg, it could lead to confusion and errors when playing
+            % with transforms.  Therefore, if we detect a difference between the
+            % MEG and EEG transforms when trying to remove one that applies to
+            % both (currently only refine with head points), we don't proceed
+            % and recommend resetting with the original channel file instead.
             
             Which = {};
             if sProcess.options.head.Value
@@ -186,6 +191,26 @@ function OutputFiles = Run(sProcess, sInputs)
                 TransfLabel = TransfLabel{1}; %#ok<FXSET> 
                 ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInputs(iFile), sProcess);
             end % TransfLabel loop
+
+            % We cannot change back the MRI fiducials, but in order to be able
+            % to update it again from digitized fids, we must edit the MRI
+            % history.
+            if sProcess.options.points.Value && sProcess.options.scs.Value
+                % Get subject in database, with subject directory
+                sSubject = bst_get('Subject', sInputs(iFile).FileName);
+                sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+                % Slightly change the string we use to verify if it was done: append " (hidden)".
+                for iH = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'))
+                    sMri.History{iH,3} = [sMri.History{iH,3}, ' (hidden)'];
+                end
+                try
+                    bst_save(file_fullpath(sMri.FileName), sMri, 'v7');
+                catch
+                    bst_report('Error', sProcess, sInputs(iFile), ...
+                        sprintf('Unable to save MRI file %s.', sMri.FileName));
+                    continue;
+                end
+            end
             
         end % reset channel file or remove transformations
         
@@ -204,13 +229,8 @@ function OutputFiles = Run(sProcess, sInputs)
             % Redundant, but makes sense to have it here also.
             
             bst_progress('text', 'Fitting head surface to points...');
-            if sProcess.options.scs.Value
-                [ChannelMat, R, T, isSkip] = ...
-                    channel_align_auto(sInputs(iFile).ChannelFile, ChannelMat, 0, 0, [], 1); % No warning or confirmation, adjust scs
-            else
-                [ChannelMat, R, T, isSkip] = ...
-                    channel_align_auto(sInputs(iFile).ChannelFile, ChannelMat, 0, 0); % No warning or confirmation
-            end
+            [ChannelMat, R, T, isSkip] = channel_align_auto(sInputs(iFile).ChannelFile, ...
+                ChannelMat, 0, 0, sProcess.options.tolerance.Value, sProcess.options.scs.Value); % No warning or confirmation
             % ChannelFile needed to find subject and scalp surface, but not
             % used otherwise when ChannelMat is provided.
             if isSkip
@@ -234,14 +254,14 @@ function OutputFiles = Run(sProcess, sInputs)
     end % file loop
     bst_progress('stop');
     
-    % Return the input files that were processed properly.  Include those
-    % that were removed due to sharing a channel file, where appropriate.
-    % The complicated indexing picks the first input of those with the same
-    % channel file, i.e. the one that was marked ok.
+    % Return the input files that were processed properly.  Include those that
+    % were removed due to sharing a channel file, where appropriate. The
+    % complicated indexing picks the first input of those with the same channel
+    % file, i.e. the one that was marked ok.
     OutputFiles = {sInputs(isFileOk(iUniqInputs(iUniqFiles))).FileName};
 end
 
-%     if ~sProcess.options.remove.Value && sProcess.options.scs.Value
+%     if ~sProcess.options.remove.Value && sProcess.options.newpoints.Value
 %             % This not yet implemented option could apply the Native to SCS
 %             % transformation for head points loaded after the raw data was
 %             % imported.
@@ -402,9 +422,8 @@ function ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInput, sPro
         % Need to check for empty, otherwise applies to all channels!
     else
         iChan = []; % All channels.
-        % Note: NIRS doesn't have a separate set of
-        % transformations, but "refine" and "SCS" are applied
-        % to NIRS as well.
+        % Note: NIRS doesn't have a separate set of transformations, but
+        % "refine" and "SCS" are applied to NIRS as well.
     end
     while ~isempty(iUndoMeg)
         if isMegOnly && isempty(iChan)
@@ -479,9 +498,9 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
         return;
     end
     
-    % The data could be changed such that the head position could be
-    % readjusted (e.g. by deleting segments).  This is allowed and the
-    % previous adjustment will be replaced.
+    % The data could be changed such that the head position could be readjusted
+    % (e.g. by deleting segments).  This is allowed and the previous adjustment
+    % will be replaced.
     if isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ...
             ismember('AdjustedNative', ChannelMat.TransfMegLabels)
         bst_report('Info', sProcess, sInputs, ...
@@ -554,9 +573,9 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
         return;
     end
     
-    % Extract transformations that are applied before and after the
-    % head position adjustment.  Any previous adjustment will be
-    % ignored here and replaced later.
+    % Extract transformations that are applied before and after the head
+    % position adjustment.  Any previous adjustment will be ignored here and
+    % replaced later.
     [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
         GetTransforms(ChannelMat, sInputs);
     if isempty(TransfBefore)
@@ -567,28 +586,24 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
     % Compute transformation corresponding to coil position.
     [TransfMat, TransfAdjust] = LocationTransform(MedianLoc, ...
         TransfBefore, TransfAdjust, TransfAfter);
-    % This TransfMat would automatically give an identity
-    % transformation if the process is run multiple times, and
-    % TransfAdjust would not change.
+    % This TransfMat would automatically give an identity transformation if the
+    % process is run multiple times, and TransfAdjust would not change.
     
-    % Apply this transformation to the current head position.
-    % This is a correction to the 'Dewar=>Native'
-    % transformation so it applies to MEG channels only and not
-    % to EEG or head points, which start in Native.
+    % Apply this transformation to the current head position. This is a
+    % correction to the 'Dewar=>Native' transformation so it applies to MEG
+    % channels only and not to EEG or head points, which start in Native.
     iMeg  = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
         good_channel(ChannelMat.Channel, [], 'MEG REF')]);
     ChannelMat = channel_apply_transf(ChannelMat, TransfMat, iMeg, false); % Don't apply to head points.
     ChannelMat = ChannelMat{1};
     
-    % After much thought, it was decided to save this
-    % adjustment transformation separately and at its logical
-    % place: between 'Dewar=>Native' and
-    % 'Native=>Brainstorm/CTF'.  In particular, this allows us
-    % to use it directly when displaying head motion distance.
-    % This however means we must correctly move the
-    % transformation from the end where it was just applied to
-    % its logical place. This "moved" transformation is also
-    % computed in LocationTransform above.
+    % After much thought, it was decided to save this adjustment transformation
+    % separately and at its logical place: between 'Dewar=>Native' and
+    % 'Native=>Brainstorm/CTF'.  In particular, this allows us to use it
+    % directly when displaying head motion distance. This however means we must
+    % correctly move the transformation from the end where it was just applied
+    % to its logical place. This "moved" transformation is also computed in
+    % LocationTransform above.
     if isempty(iAdjust)
         iAdjust = iDewToNat + 1;
         % Shift transformations to make room for the new
@@ -627,10 +642,9 @@ end % AdjustHeadPosition
 function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
     % Compute initial head location in Dewar coordinates.
     
-    % Here we want to recreate the correct triangle shape from the relative
-    % head coil locations and in the position saved as the reference
-    % (initial) head position according to Brainstorm coordinate
-    % transformation matrices.
+    % Here we want to recreate the correct triangle shape from the relative head
+    % coil locations and in the position saved as the reference (initial) head
+    % position according to Brainstorm coordinate transformation matrices.
     
     if nargin < 2
         sInput = [];
