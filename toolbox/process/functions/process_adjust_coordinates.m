@@ -232,13 +232,15 @@ function OutputFiles = Run(sProcess, sInputs)
             
             Tolerance = sProcess.options.tolerance.Value{1} / 100;
             bst_progress('text', 'Fitting head surface to points...');
-            [ChannelMat, R, T, isSkip] = channel_align_auto(sInputs(iFile).ChannelFile, ...
+            [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(sInputs(iFile).ChannelFile, ...
                 ChannelMat, 0, 0, Tolerance, sProcess.options.scs.Value); % No warning or confirmation
             % ChannelFile needed to find subject and scalp surface, but not
             % used otherwise when ChannelMat is provided.
-            if isSkip
-                bst_report('Error', sProcess, sInputs(iFile), ...
-                    'Error trying to refine registration using head points.');
+            if ~isempty(strReport)
+                bst_report('Info', sProcess, sInputs(iFile), strReport);
+            elseif isSkip
+                bst_report('Warning', sProcess, sInputs(iFile), ...
+                    'Refine registration using head points, failed finding a better fit.');
                 continue;
             end
             

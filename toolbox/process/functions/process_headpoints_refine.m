@@ -64,13 +64,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     tolerance = sProcess.options.tolerance.Value{1} / 100;
     % Get all the channel files 
-    uniqueChan = unique({sInputs.ChannelFile});
+    [uniqueChan, iUniqFiles] = unique({sInputs.ChannelFile});
     % Loop on all the channel files
     for i = 1:length(uniqueChan)
         % Refine registration
         [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(uniqueChan{i}, [], 0, 0, tolerance, sProcess.options.scs.Value);
         if ~isempty(strReport)
-            bst_report('Info', sProcess, sInputs, strReport);
+            bst_report('Info', sProcess, sInputs(iUniqFiles(i)), strReport);
         end
     end
     % Return all the files in input
