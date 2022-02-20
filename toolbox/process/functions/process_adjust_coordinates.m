@@ -31,7 +31,6 @@ eval(macro_method);
 end
 
 
-
 function sProcess = GetDescription() 
     % Description of the process
     sProcess.Comment     = 'Adjust coordinate system';
@@ -197,18 +196,21 @@ function OutputFiles = Run(sProcess, sInputs)
             % history.
             if sProcess.options.points.Value && sProcess.options.scs.Value
                 % Get subject in database, with subject directory
-                sSubject = bst_get('Subject', sInputs(iFile).FileName);
+                sSubject = bst_get('Subject', sInputs(iFile).SubjectFile);
                 sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
                 % Slightly change the string we use to verify if it was done: append " (hidden)".
-                for iH = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'))
-                    sMri.History{iH,3} = [sMri.History{iH,3}, ' (hidden)'];
-                end
-                try
-                    bst_save(file_fullpath(sMri.FileName), sMri, 'v7');
-                catch
-                    bst_report('Error', sProcess, sInputs(iFile), ...
-                        sprintf('Unable to save MRI file %s.', sMri.FileName));
-                    continue;
+                iHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'));
+                if ~isempty(iHist)
+                    for iH = 1:numel(iHist)
+                        sMri.History{iHist(iH),3} = [sMri.History{iHist(iH),3}, ' (hidden)'];
+                    end
+                    try
+                        bst_save(file_fullpath(sMri.FileName), sMri, 'v7');
+                    catch
+                        bst_report('Error', sProcess, sInputs(iFile), ...
+                            sprintf('Unable to save MRI file %s.', sMri.FileName));
+                        continue;
+                    end
                 end
             end
             
@@ -228,9 +230,10 @@ function OutputFiles = Run(sProcess, sInputs)
         if ~sProcess.options.remove.Value && sProcess.options.points.Value
             % Redundant, but makes sense to have it here also.
             
+            Tolerance = sProcess.options.tolerance.Value{1} / 100;
             bst_progress('text', 'Fitting head surface to points...');
             [ChannelMat, R, T, isSkip] = channel_align_auto(sInputs(iFile).ChannelFile, ...
-                ChannelMat, 0, 0, sProcess.options.tolerance.Value, sProcess.options.scs.Value); % No warning or confirmation
+                ChannelMat, 0, 0, Tolerance, sProcess.options.scs.Value); % No warning or confirmation
             % ChannelFile needed to find subject and scalp surface, but not
             % used otherwise when ChannelMat is provided.
             if isSkip

@@ -101,7 +101,7 @@ sStudy = bst_get('ChannelFile', ChannelFile);
 % Get subject
 [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
 % Check if default anatomy. (Usually also checked before calling this function.)
-if iSubject == 0
+if sSubject.UseDefaultAnat
     if isWarning
         bst_error('Digitized nasion and ear points cannot be applied to default anatomy.', 'Automatic EEG-MEG/MRI registration', 0);
     end
@@ -204,31 +204,38 @@ DigToMriTransf(1:3,4)   = T;
 
 %% ===== ADJUST MRI FIDUCIALS AND SCS =====
 if isAdjustScs
-        % Check if already adjusted, in which case the transformation above is correct (identity if same head points).
-        sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-        % History string is set in figure_mri SaveMri.
-        if isfield(sMriOld, 'History') && ~isempty(sMriOld.History) && any(strcmpi(sMriOld.History(:,3), 'Applied digitized anatomical fiducials'))
-            if isWarning
-                bst_warning('Nasion and ear points already adjusted.', 'Automatic EEG-MEG/MRI registration', 0);
-            end
+    % Check if already adjusted, in which case the transformation above is correct (identity if same head points).
+    sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    % History string is set in figure_mri SaveMri.
+    if isfield(sMriOld, 'History') && ~isempty(sMriOld.History) && any(strcmpi(sMriOld.History(:,3), 'Applied digitized anatomical fiducials'))
+        if isWarning
+            bst_warning('Nasion and ear points already adjusted.', 'Automatic EEG-MEG/MRI registration', 0);
+        end
         % Check if digitized anat points present, saved in ChannelMat.SCS.
         % Note that these coordinates are NOT currently updated when doing refine with head points (below).
-        elseif all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
-            % Convert to MRI SCS coordinates.
-            % To do this we need to apply the transformation computed above.
-            sMri = sMriOld;
-            sMri.SCS.NAS = DigToMriTransf(1:3,:) * [ChannelMat.SCS.NAS; 1];
-            sMri.SCS.LPA = DigToMriTransf(1:3,:) * [ChannelMat.SCS.LPA; 1];
-            sMri.SCS.RPA = DigToMriTransf(1:3,:) * [ChannelMat.SCS.RPA; 1];
-            
-            % Compare with existing MRI fids, replace if changed, and update surfaces.
-            figure_mri('SaveMri', sMri);
+    elseif all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
+        % Convert to MRI SCS coordinates.
+        % To do this we need to apply the transformation computed above.
+        sMri = sMriOld;
+        sMri.SCS.NAS = (DigToMriTransf(1:3,:) * [ChannelMat.SCS.NAS'; 1])';
+        sMri.SCS.LPA = (DigToMriTransf(1:3,:) * [ChannelMat.SCS.LPA'; 1])';
+        sMri.SCS.RPA = (DigToMriTransf(1:3,:) * [ChannelMat.SCS.RPA'; 1])';
+        % Then convert to MRI coordinates (mm), this is how sMri.SCS is saved.
+        sMri.SCS.NAS = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.NAS) .* 1000;
+        sMri.SCS.LPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.LPA) .* 1000;
+        sMri.SCS.RPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.RPA) .* 1000;
+        % Re-compute transformation
+        [unused, sMri] = cs_compute(sMri, 'scs');
 
-            % Adjust transformation from fit above. MRI SCS now matches Digitized SCS.
-            DigToMriTransf = eye(4);
-            R = eye(3);
-            T = zeros(3,1);
-        end
+        % Compare with existing MRI fids, replace if changed, and update surfaces.
+        sMri.FileName = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        figure_mri('SaveMri', sMri);
+
+        % Adjust transformation from headpoints fit above. MRI SCS now matches digitized SCS (defined from same points).
+        DigToMriTransf = eye(4);
+        R = eye(3);
+        T = zeros(3,1);
+    end
 end
 
 
