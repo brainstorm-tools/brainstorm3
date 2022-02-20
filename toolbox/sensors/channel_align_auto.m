@@ -74,7 +74,6 @@ isSkip = 0;
 isUserCancel = 0;
 strReport = '';
 
-
 %% ===== LOAD CHANNELS =====
 % Progress bar
 bst_progress('start', 'Automatic EEG-MEG/MRI registration', 'Initialization...');

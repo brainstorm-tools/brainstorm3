@@ -655,7 +655,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 ChannelsFile = [baseName, '_channels.tsv'];
                 if file_exist(ChannelsFile)
                     % Read tsv file
-                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                    % For _channels.tsv, 'name', 'type' and 'units' are required.
+                    % 'group' and 'status' are fields added by Brainstorm export to BIDS.
+                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     % Try to add info to the existing Brainstorm channel file
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
                         % For all the loaded files

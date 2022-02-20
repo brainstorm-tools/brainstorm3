@@ -61,8 +61,15 @@ if (fid < 0)
     disp(['Error: Cannot open file: ' TsvFile]);
     return;
 end
-% Skip 3 first characters (and maybe add later if they are expected to be part of the first column's name)
+
+% === SPECIAL FOR TOBII TSV ===
+% In some Tobii .tsv recordings, the first three bytes are not printable (EF BB BF)
+% Read the 3 first bytes
 magic = fread(fid, [1 3], 'uint8=>uint8');
+% If the first 3 characters where printable: restart the reading from the beginning of the file
+if all((magic >= 32) & (magic <= 122))
+    fseek(fid, 0, 'bof');
+end
 
 % Read header
 tsvHeader = str_split(fgetl(fid), Delimiter);
@@ -100,11 +107,6 @@ end
 if isempty(tsvValues) || isempty(tsvValues{1})
     disp(['Error: No values read from file: ' TsvFile]);
     return;
-end
-% If the first 3 characters where printable: add them to the first column name
-indueSkip = magic((magic >= 32) & (magic <= 122));
-if ~isempty(indueSkip)
-    tsvHeader{1} = [indueSkip, tsvHeader{1}];
 end
 
 % Read all columns
