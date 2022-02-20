@@ -68,6 +68,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.channelalign.Comment = 'Align sensors using headpoints';
     sProcess.options.channelalign.Type    = 'checkbox';
     sProcess.options.channelalign.Value   = 1;
+    sProcess.options.channelalign.Controller = 'Align';
+    sProcess.options.scs.Type    = 'checkbox';
+    sProcess.options.scs.Comment = 'Also ajust MRI nasion and ear points from digitized points.';
+    sProcess.options.scs.Value   = 1;
+    sProcess.options.scs.Class = 'Align';
     % Group sessions
     sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
     sProcess.options.groupsessions.Type    = 'checkbox';
@@ -109,7 +114,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Other options
     OPTIONS.isInteractive    = 0;
-    OPTIONS.ChannelAlign     = 2 * double(sProcess.options.channelalign.Value);
+    % 2=align without confirmation, 3=also adjust MRI SCS from digitized points
+    OPTIONS.ChannelAlign     = (2 + double(sProcess.options.scs.Value)) * double(sProcess.options.channelalign.Value); 
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
     OPTIONS.isGroupSessions  = sProcess.options.groupsessions.Value;
     OPTIONS.isGenerateBem    = sProcess.options.bem.Value;
@@ -488,7 +494,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         % Import options
         ImportOptions = db_template('ImportOptions');
         ImportOptions.ChannelReplace  = 1;
-        ImportOptions.ChannelAlign    = 2 * (OPTIONS.ChannelAlign >= 1) * ~sSubject.UseDefaultAnat;
+        ImportOptions.ChannelAlign    = OPTIONS.ChannelAlign * ~sSubject.UseDefaultAnat;
         ImportOptions.DisplayMessages = OPTIONS.isInteractive;
         ImportOptions.EventsMode      = 'ignore';
         ImportOptions.EventsTrackMode = 'value';

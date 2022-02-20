@@ -3,7 +3,7 @@ function varargout = process_adjust_coordinates(varargin)
 % 
 % Native coordinates are based on system fiducials (e.g. MEG head coils),
 % whereas Brainstorm's SCS coordinates are based on the anatomical fiducial
-% points from the .pos file.
+% points set on the MRI.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -23,14 +23,14 @@ function varargout = process_adjust_coordinates(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Marc Lalancette, 2018-2020
+% Authors: Marc Lalancette, 2018-2022
 
 eval(macro_method);
 end
 
 
 
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % Description of the process
     sProcess.Comment     = 'Adjust coordinate system';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Adjust_the_reference_head_position';
@@ -64,6 +64,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.points.Type    = 'checkbox';
     sProcess.options.points.Comment = 'Refine MRI coregistration using digitized head points.';
     sProcess.options.points.Value   = 0;
+    sProcess.options.points.Controller = 'Refine';
+    sProcess.options.scs.Type    = 'checkbox';
+    sProcess.options.scs.Comment = 'Also ajust MRI nasion and ear points.';
+    sProcess.options.scs.Value   = 0;
+    sProcess.options.scs.Class = 'Refine';
     sProcess.options.remove.Type    = 'checkbox';
     sProcess.options.remove.Comment = 'Remove selected adjustments (if present) instead of adding them.';
     sProcess.options.remove.Value   = 0;
@@ -101,6 +106,18 @@ function OutputFiles = Run(sProcess, sInputs)
         bst_report('Info', sProcess, sInputs, ...
             'Multiple inputs were found for a single channel file. They will be concatenated for adjusting the head position.');
     end
+
+    if ~sProcess.options.remove.Value && sProcess.options.points.Value && sProcess.options.scs.Value
+        % Warning and confirmation dialog.
+        isConfirmed = java_dialog('confirm', 'Ajusting MRI nasion and ear points will break previous alignment with head points for files not included here. Proceed?', ...
+            'Adjust MRI nasion and ear points?');
+        if ~isConfirmed
+            bst_report('User cancelled.');
+            OutputFiles = {};
+            return;
+        end
+    end
+
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
     % If resetting, in case the original data moved, and because the same
@@ -159,14 +176,14 @@ function OutputFiles = Run(sProcess, sInputs)
             
             Which = {};
             if sProcess.options.head.Value
-                Which{end+1} = 'AdjustedNative';
+                Which{end+1} = 'AdjustedNative'; %#ok<*AGROW> 
             end
             if sProcess.options.points.Value
                 Which{end+1} = 'refine registration: head points';
             end
             
             for TransfLabel = Which
-                TransfLabel = TransfLabel{1};
+                TransfLabel = TransfLabel{1}; %#ok<FXSET> 
                 ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInputs(iFile), sProcess);
             end % TransfLabel loop
             
@@ -187,8 +204,13 @@ function OutputFiles = Run(sProcess, sInputs)
             % Redundant, but makes sense to have it here also.
             
             bst_progress('text', 'Fitting head surface to points...');
-            [ChannelMat, R, T, isSkip] = ...
-                channel_align_auto(sInputs(iFile).ChannelFile, ChannelMat, 0, 0); % No warning or confirmation
+            if sProcess.options.scs.Value
+                [ChannelMat, R, T, isSkip] = ...
+                    channel_align_auto(sInputs(iFile).ChannelFile, ChannelMat, 0, 0, [], 1); % No warning or confirmation, adjust scs
+            else
+                [ChannelMat, R, T, isSkip] = ...
+                    channel_align_auto(sInputs(iFile).ChannelFile, ChannelMat, 0, 0); % No warning or confirmation
+            end
             % ChannelFile needed to find subject and scalp surface, but not
             % used otherwise when ChannelMat is provided.
             if isSkip
@@ -266,8 +288,8 @@ end
 %                 end
 
 
-function [ChannelMat, NewChannelFiles, Failed] = ...
-        ResetChannelFile(ChannelMat, NewChannelFiles, sInput, sProcess)
+function [ChannelMat, NewChannelFiles, Failed] = ResetChannelFile(...
+        ChannelMat, NewChannelFiles, sInput, sProcess)
     if nargin < 4
         sProcess = [];
     end
@@ -506,7 +528,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
                 iHeadSamples = 1 + ((1:(nHeadSamples*nEpochs)) - 1) * HeadSamplePeriod; % first is 1
                 iBad = [];
                 for iSeg = 1:size(BadSegments, 2)
-                    iBad = [iBad, nSamplesPerEpoch * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; %#ok<AGROW>
+                    iBad = [iBad, nSamplesPerEpoch * (BadEpoch(1,iSeg) - 1) + (BadSegments(1,iSeg):BadSegments(2,iSeg))]; 
                     % iBad = [iBad, find((DataMat.Time >= badTimes(1,iSeg)) & (DataMat.Time <= badTimes(2,iSeg)))];
                 end
                 % Exclude bad samples.

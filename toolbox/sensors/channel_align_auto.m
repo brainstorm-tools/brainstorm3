@@ -1,7 +1,7 @@
-function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance)
+function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance, isAdjustScs)
 % CHANNEL_ALIGN_AUTO: Aligns the channels to the scalp using Polhemus points.
 %
-% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1, tolerance=0)
+% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1, tolerance=0, isAdjustScs=0)
 %
 % DESCRIPTION: 
 %     Aligns the channels to the scalp using Polhemus points stored in channel structure.
@@ -14,10 +14,11 @@ function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_aut
 %
 % INPUTS:
 %     - ChannelFile : Channel file to align on its anatomy
-%     - ChannelMat  : If specified, do not read or write any information from/to ChannelFile
+%     - ChannelMat  : If specified, do not read or write any information from/to ChannelFile (except to get scalp surface). 
 %     - isWarning   : If 1, display warning in case of errors (default = 1)
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding
 %     - tolerance   : Percentage of outliers head points, ignored in the final fit
+%     - isAdjustScs : If 1 and not already done for this subject, update MRI to use digitized nasion and ear points.
 %
 % OUTPUTS:
 %     - ChannelMat   : The same ChannelMat structure input in, with the head points and sensors rotated and translated to match the head points to the scalp.
@@ -46,10 +47,12 @@ function [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_aut
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Syed Ashrafulla, 2009
-%          Francois Tadel, 2009-2021
+% Authors: Syed Ashrafulla, 2009, Francois Tadel, 2009-2021, Marc Lalancette 2022
 
 %% ===== PARSE INPUTS =====
+if (nargin < 6) || isempty(isAdjustScs)
+    isAdjustScs = 0;
+end
 if (nargin < 5) || isempty(tolerance)
     tolerance = 0;
 end
@@ -69,6 +72,7 @@ R = [];
 T = [];
 isSkip = 0;
 isUserCancel = 0;
+strReport = '';
 
 
 %% ===== LOAD CHANNELS =====
@@ -96,10 +100,18 @@ HP = double(HeadPoints.Loc');
 % Get study
 sStudy = bst_get('ChannelFile', ChannelFile);
 % Get subject
-sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+[sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+% Check if default anatomy. (Usually also checked before calling this function.)
+if iSubject == 0
+    if isWarning
+        bst_error('Digitized nasion and ear points cannot be applied to default anatomy.', 'Automatic EEG-MEG/MRI registration', 0);
+    end
+    bst_progress('stop');
+    return
+end
 if isempty(sSubject) || isempty(sSubject.iScalp)
     if isWarning
-        bst_error('No scalp surface available for this subject', 'Align EEG sensors', 0);
+        bst_error('No scalp surface available for this subject', 'Automatic EEG-MEG/MRI registration', 0);
     else
         disp('BST> No scalp surface available for this subject.');
     end
@@ -185,24 +197,63 @@ strReport = ['Distance between ' num2str(length(dist)) ' head points and head su
     ' |  Number of outlier points removed: ' sprintf('%d (%d%%)', nRemove, round(tolerance*100)), 10 ...
     ' |  Initial number of head points: ' num2str(size(HeadPoints.Loc,2))];
 
-%% ===== ROTATE SENSORS AND HEADPOINTS =====
-for i = 1:length(ChannelMat.Channel) 
-    % Rotate and translate location of channel
-    if ~isempty(ChannelMat.Channel(i).Loc) && ~all(ChannelMat.Channel(i).Loc(:) == 0)
-        ChannelMat.Channel(i).Loc = R * ChannelMat.Channel(i).Loc + T * ones(1,size(ChannelMat.Channel(i).Loc, 2));
-    end
-    % Only rotate normal vector to channel
-    if ~isempty(ChannelMat.Channel(i).Orient) && ~all(ChannelMat.Channel(i).Orient(:) == 0)
-        ChannelMat.Channel(i).Orient = R * ChannelMat.Channel(i).Orient;
-    end
+% Create [4,4] transform matrix from digitized SCS to MRI SCS according to this fit.
+DigToMriTransf = eye(4);
+DigToMriTransf(1:3,1:3) = R;
+DigToMriTransf(1:3,4)   = T;
+
+
+%% ===== ADJUST MRI FIDUCIALS AND SCS =====
+if isAdjustScs
+        % Check if already adjusted, in which case the transformation above is correct (identity if same head points).
+        sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+        % History string is set in figure_mri SaveMri.
+        if isfield(sMriOld, 'History') && ~isempty(sMriOld.History) && any(strcmpi(sMriOld.History(:,2), 'Applied digitized anatomical fiducials'))
+            if isWarning
+                bst_warning('Nasion and ear points already adjusted.', 'Automatic EEG-MEG/MRI registration', 0);
+            end
+        % Check if digitized anat points present, saved in ChannelMat.SCS.
+        % Note that these coordinates are NOT currently updated when doing refine with head points (below).
+        elseif all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
+            % Convert to MRI SCS coordinates.
+            % To do this we need to apply the transformation computed above.
+            sMri = sMriOld;
+            sMri.SCS.NAS = DigToMriTransf(1:3,:) * [ChannelMat.SCS.NAS; 1];
+            sMri.SCS.LPA = DigToMriTransf(1:3,:) * [ChannelMat.SCS.LPA; 1];
+            sMri.SCS.RPA = DigToMriTransf(1:3,:) * [ChannelMat.SCS.RPA; 1];
+            
+            % Compare with existing MRI fids, replace if changed, and update surfaces.
+            figure_mri('SaveMri', sMri);
+
+            % Adjust transformation from fit above. MRI SCS now matches Digitized SCS.
+            DigToMriTransf = eye(4);
+            R = eye(3);
+            T = zeros(3,1);
+        end
 end
-% Rotate and translate head points
-if isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Loc)
-    ChannelMat.HeadPoints.Loc = R * ChannelMat.HeadPoints.Loc + ...
-                                T * ones(1, size(ChannelMat.HeadPoints.Loc, 2));
+
+
+%% ===== ROTATE SENSORS AND HEADPOINTS =====
+if ~isequal(DigToMriTransf, eye(4))
+    for i = 1:length(ChannelMat.Channel)
+        % Rotate and translate location of channel
+        if ~isempty(ChannelMat.Channel(i).Loc) && ~all(ChannelMat.Channel(i).Loc(:) == 0)
+            ChannelMat.Channel(i).Loc = R * ChannelMat.Channel(i).Loc + T * ones(1,size(ChannelMat.Channel(i).Loc, 2));
+        end
+        % Only rotate normal vector to channel
+        if ~isempty(ChannelMat.Channel(i).Orient) && ~all(ChannelMat.Channel(i).Orient(:) == 0)
+            ChannelMat.Channel(i).Orient = R * ChannelMat.Channel(i).Orient;
+        end
+    end
+    % Rotate and translate head points
+    if isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints) && ~isempty(ChannelMat.HeadPoints.Loc)
+        ChannelMat.HeadPoints.Loc = R * ChannelMat.HeadPoints.Loc + ...
+            T * ones(1, size(ChannelMat.HeadPoints.Loc, 2));
+    end
 end
 
 %% ===== SAVE TRANSFORMATION =====
+% We could decide to skip this if the transformation is identity.
 % Initialize fields
 if ~isfield(ChannelMat, 'TransfEeg') || ~iscell(ChannelMat.TransfEeg)
     ChannelMat.TransfEeg = {};
@@ -216,13 +267,9 @@ end
 if ~isfield(ChannelMat, 'TransfEegLabels') || ~iscell(ChannelMat.TransfEegLabels) || (length(ChannelMat.TransfEeg) ~= length(ChannelMat.TransfEegLabels))
     ChannelMat.TransfEegLabels = cell(size(ChannelMat.TransfEeg));
 end
-% Create [4,4] transform matrix
-newtransf = eye(4);
-newtransf(1:3,1:3) = R;
-newtransf(1:3,4)   = T;
 % Add a rotation/translation to the lists
-ChannelMat.TransfMeg{end+1} = newtransf;
-ChannelMat.TransfEeg{end+1} = newtransf;
+ChannelMat.TransfMeg{end+1} = DigToMriTransf;
+ChannelMat.TransfEeg{end+1} = DigToMriTransf;
 % Add the comments
 ChannelMat.TransfMegLabels{end+1} = 'refine registration: head points';
 ChannelMat.TransfEegLabels{end+1} = 'refine registration: head points';

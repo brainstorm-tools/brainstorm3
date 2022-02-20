@@ -2413,10 +2413,22 @@ end
 
 
 %% ===== SAVE MRI =====
+% Update MRI fiducials and adjust surfaces.
+% Input can be figure handle or sMri.
 function [isCloseAccepted, MriFile] = SaveMri(hFig)
     ProtocolInfo = bst_get('ProtocolInfo');
     % Get MRI
-    sMri = panel_surface('GetSurfaceMri', hFig);
+    if ishandle(hFig)
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        isUser = true;
+    elseif isstruct(hFig)
+        sMri = hFig;
+        isUser = false;
+    else
+        bst_error('SaveMri: Unexpected input: %s.', class(hFig));
+        isCloseAccepted = 0;
+        return;
+    end
     MriFile = sMri.FileName;
     MriFileFull = bst_fullfile(ProtocolInfo.SUBJECTS, MriFile);
     % Do not accept "Save" if user did not select all the fiducials
@@ -2448,7 +2460,11 @@ function [isCloseAccepted, MriFile] = SaveMri(hFig)
     % === HISTORY ===
     % History: Edited the fiducials
     if ~isfield(sMriOld, 'SCS') || ~isequal(sMriOld.SCS, sMri.SCS) || ~isfield(sMriOld, 'NCS') || ~isequal(sMriOld.NCS, sMri.NCS)
-        sMri = bst_history('add', sMri, 'edit', 'User edited the fiducials');
+        if isUser
+            sMri = bst_history('add', sMri, 'edit', 'User edited the fiducials');
+        else
+            sMri = bst_history('add', sMri, 'edit', 'Applied digitized anatomical fiducials'); % string used to verify elsewhere
+        end
     end
     
     % ==== SAVE MRI ====

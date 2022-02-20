@@ -16,6 +16,7 @@ function [OutputFile, ChannelMat, ChannelReplace, ChannelAlign, Modality] = db_s
 %    - ChannelAlign   : 0, do not perform automatic headpoints-based alignment
 %                       1, perform automatic alignment after user confirmation
 %                       2, perform automatic alignment without user confirmation
+%                       3, as 2, but also updating MRI SCS from digitized points
 % OUTPUT:
 %    - OutputFile: Newly created channel file (empty is no file created)
 
@@ -175,15 +176,18 @@ if (ChannelAlign >= 1)
     end
     
     % Call automatic registration for MEG
-    [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(OutputFile, [], 0, isConfirm);
+    if ChannelAlign >= 3
+        % Also adjust MRI SCS from digitized points.
+        [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(OutputFile, [], 0, isConfirm, [], 1);
+    else
+        [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(OutputFile, [], 0, isConfirm);
+    end
     % User validated: keep this answer for the next round (force alignment for next call)
     if ~isSkip
-        if isUserCancel
+        if isUserCancel || isempty(ChannelMat)
             ChannelAlign = 0;
-        elseif ~isempty(ChannelMat)
+        elseif ChannelAlign < 2
             ChannelAlign = 2;
-        else
-            ChannelAlign = 0;
         end
     end
 end
