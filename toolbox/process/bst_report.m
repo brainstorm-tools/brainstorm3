@@ -1407,7 +1407,6 @@ end
 %% ===== SEND EMAIL =====
 % USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1)
 function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
-    global GlobalData;
     % Parse inputs
     if (nargin < 5) || isempty(isFullReport)
         isFullReport = 1;
@@ -1416,18 +1415,20 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
     if ~exist('webread', 'file')
         error('Sending email requires Matlab >= 2014b.');
     end
-    % Get report
-    if isequal(ReportFile, 'current')
-        if isempty(GlobalData)
-            error('Brainstorm is not started.');
-        end
-        ReportsMat = GlobalData.ProcessReports;
-    else
-        ReportsMat = load(ReportFile, 'Reports');
+    % Check ReportFile 
+    if ~(exist(ReportFile, 'file') == 2)
+        ReportFile = 'current';
     end
+    % Get report
+    if any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
+        Reports = GetReport(ReportFile);
+    else
+        ReportMat = load(ReportFile);
+        Reports = ReportMat.Reports;
+    end    
     % Print report
     if isFullReport
-        html = PrintToHtml(ReportsMat.Reports, isFullReport);
+        html = PrintToHtml(Reports, isFullReport);
     else
         html = '';
         for iEntry = 1:size(ReportsMat.Reports,1)
