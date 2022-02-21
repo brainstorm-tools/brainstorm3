@@ -52,11 +52,11 @@ isBigRam = 0;
 username = 'Raymundo.Cassani';
 
 % Build the path of the files to import
-MriFile   = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
-MegFile   = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.ds');
+MriFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
+MegFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.ds');
 % Check if the folder contains the required files
-if ~file_exist(MegFile)
-    error(['The folder ' tutorial_dir ' does not contain the folder from the file sample_introduction.zip.']);
+if ~file_exist(MegFilePath) || ~file_exist(MegFilePath)
+    error(['The folder ' tutorial_dir ' does not contain the folder from the file SubjectCMC.zip.']);
 end
 % Re-initialize random number generator
 if (bst_get('MatlabVersion') >= 712)
@@ -110,7 +110,7 @@ disp([10 'DEMO> 2. Import and process anatomy' 10]);
 % Process: Import MRI
 bst_process('CallProcess', 'process_import_mri', [], [], ...
     'subjectname', SubjectName, ...
-    'mrifile',     {MriFile, 'ALL'}, ...
+    'mrifile',     {MriFilePath, 'ALL'}, ...
     'nas',         [0, 0, 0], ...
     'lpa',         [0, 0, 0], ...
     'rpa',         [0, 0, 0], ...
@@ -120,7 +120,7 @@ bst_process('CallProcess', 'process_import_mri', [], [], ...
 % Get subject definition
 sSubject = bst_get('Subject', SubjectName);
 % Get MRI file
-MriFile    = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
 % Display MRI
 hFigMri = view_mri(MriFile);
 pause(0.5);
@@ -162,7 +162,7 @@ panel_protocols('SetExplorationMode', 'StudiesSubj');
 % Process: Create link to raw files
 sFilesMeg = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',  SubjectName, ...
-    'datafile',     {MegFile, 'CTF'}, ...
+    'datafile',     {MegFilePath, 'CTF'}, ...
     'channelalign', 1);
 sFileRaw = sFilesMeg;
 % Process: Snapshot: Sensors/MRI registration
