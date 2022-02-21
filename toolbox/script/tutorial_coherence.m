@@ -39,7 +39,7 @@ end
 % Subject name
 SubjectName = 'Subject01';
 % Name of the Cortex surface to use for source localization
-cortexName = 'pial_15002V';
+cortexName = 'central_15002V';
 % Coherence process options
 src_channel = 'EMGlft';   % Name of EMG channel
 cohmeasure  = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
