@@ -395,6 +395,51 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'toolbox'};
     PlugDesc(end).DeleteFiles    = {'ExampleDespiking.m', 'appendixpaper.pdf', 'downsample2x.m', 'examplelfpdespiking.mat', 'sta.m', ...
                                     'toolbox/delineSignal.m', 'toolbox/despikeLFPbyChunks.asv', 'toolbox/despikeLFPbyChunks.m'};
+                                
+    % === ELECTROPHYSIOLOGY: Kilosort ===
+    PlugDesc(end+1)              = GetStruct('kilosort');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/cortex-lab/KiloSort/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://papers.nips.cc/paper/2016/hash/1145a30ff80745b56fb0cecf65305017-Abstract.html';
+    PlugDesc(end).TestFile       = 'fitTemplates.m';
+    PlugDesc(end).ReadmeFile     = 'readme.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).RequiredPlugs  = {'kilosort-wrapper'; 'phy'; 'npy-matlab'};
+    
+    % === ELECTROPHYSIOLOGY: Kilosort Wrapper ===
+    PlugDesc(end+1)              = GetStruct('kilosort-wrapper');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/brendonw1/KilosortWrapper/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://zenodo.org/record/3604165';
+    PlugDesc(end).TestFile       = 'Kilosort2Neurosuite.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    
+    % === ELECTROPHYSIOLOGY: phy ===
+    PlugDesc(end+1)              = GetStruct('phy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/cortex-lab/phy/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://phy.readthedocs.io/en/latest/';
+    PlugDesc(end).TestFile       = 'feature_view_custom_grid.py';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).RequiredPlugs  = {'npy-matlab'};
+    
+    % === ELECTROPHYSIOLOGY: npy-matlab ===
+    PlugDesc(end+1)              = GetStruct('npy-matlab');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/kwikteam/npy-matlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/kwikteam/npy-matlab';
+    PlugDesc(end).TestFile       = 'constructNPYheader.m';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -2215,6 +2260,7 @@ function MenuUpdate(jPlugs)
         % Is installed?
         PlugRef = GetSupported(PlugName);
         Plug = GetInstalled(PlugName);
+
         if ~isempty(Plug)
             isInstalled = 1;
         elseif ~isempty(PlugRef)
