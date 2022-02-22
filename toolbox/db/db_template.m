@@ -534,7 +534,8 @@ switch lower(structureName)
             'EventsTrackMode',  'ask', ...    % {'value','bit','ttl','rttl','ignore','ask'} 
             'EventsTypes',      '', ...       % String with a list of eventtypes to use to group the epochs (EEGLAB only)
             'DisplayMessages',  1, ...        % If 0, do not show any of the message boxes that the user would normally see
-            'Precision',        []);          % Precision when reading the file {'double' (default), 'single'} (only for supported file formats)
+            'Precision',        [], ...       % Precision when reading the file {'double' (default), 'single'} (only for supported file formats)
+            'BaselineSensorType', '');        % Sensor types (or names) to for baseline correction if RemoveBaseline is {all, time}
         
     % ==== COLORMAPS ====
     case 'colormap'

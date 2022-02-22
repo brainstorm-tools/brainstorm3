@@ -33,6 +33,7 @@ function varargout = bst_process( varargin )
 %
 % Authors: Francois Tadel, 2010-2022
 %          Martin Cousineau, 2017
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -2450,25 +2451,20 @@ function sProcesses = OptimizePipeline(sProcesses)
     % Loop on the processes that can be glued to this one
     iRemove = [];
     for iProcess = (iImport+1):length(sProcesses)
+        strWarning = '';
         % List of accepted processes: copy options
         switch (func2str(sProcesses(iProcess).Function))
             case 'process_baseline'
                 sProcesses(iImport).options.baseline = sProcesses(iProcess).options.baseline;
-                % Ignoring sensors selection
-                if isfield(sProcesses(iProcess).options, 'sensortypes') && ~isempty(sProcesses(iProcess).options.sensortypes.Value)
-                    strWarning = [10 ' - Sensor selection is ignored, baseline is removed from all the data channels.'];
-                else
-                    strWarning = '';
-                end
+                sProcesses(iImport).options.blsensortypes = sProcesses(iProcess).options.sensortypes;
             case 'process_resample'
                 sProcesses(iImport).options.freq = sProcesses(iProcess).options.freq;
-                strWarning = '';
             otherwise
                 break;
         end
         % Force overwrite
         if isfield(sProcesses(iProcess).options, 'overwrite') && ~sProcesses(iProcess).options.overwrite.Value
-            strWarning = [strWarning 10 ' - Forcing overwrite option: Intermediate files are not saved in the database.'];
+            strWarning = [10 ' - Forcing overwrite option: Intermediate files are not saved in the database.'];
         end
         % Merge processes
         iRemove(end+1) = iProcess;
@@ -2504,10 +2500,11 @@ function sProcesses = OptimizePipelineRevert(sProcesses) %#ok<DEFNU>
         sProcAdd(end+1).Function = @process_baseline;
         sProcAdd(end) = struct_copy_fields(sProcAdd(end), process_baseline('GetDescription'), 1);
         % Set options
-        sProcAdd(end).options.sensortypes.Value = '';
         sProcAdd(end).options.baseline.Value = sProcesses(iImport).options.baseline.Value;
+        sProcAdd(end).options.sensortypes.Value = sProcesses(iImport).options.blsensortypes.Value;
         % Remove option from initial process
         sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'baseline');
+        sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'blsensortypes');
     end
     if isfield(sProcesses(iImport).options, 'freq') && isfield(sProcesses(iImport).options.freq, 'Value') && ~isempty(sProcesses(iImport).options.freq.Value)
         % Get process
