@@ -61,29 +61,6 @@ if (bst_get('MatlabVersion') >= 712)
     rng('default');
 end
 
-% User should have CAT12 and SPM12 installed as per the Tutorial webpage
-% Load needed plugins
-InstPlugs = bst_plugin('GetInstalled');
-% Reload SPM(12) plugin is an different version is found
-if any(strcmpi({InstPlugs.Name}, 'spm12')) 
-    if (exist('spm', 'file') == 2) && isempty(strfind(spm('ver'), 'SPM12')) %#ok<STREMP>
-        bst_plugin('Unload', 'spm12');
-    end
-    PlugDesc = bst_plugin('GetInstalled', 'spm12'); 
-    if ~PlugDesc.isLoaded
-        bst_plugin('LoadInteractive', 'spm12');
-    end    
-end
-% Load CAT12 
-if any(strcmpi({InstPlugs.Name}, 'cat12'))
-    PlugDesc = bst_plugin('GetInstalled', 'cat12'); 
-    if ~PlugDesc.isLoaded
-        bst_plugin('LoadInteractive', 'cat12');
-    end    
-else
-    disp('Error: Plugin CAT12 is not installed. See the requirements for this tutorial.');
-end
-
 
 %% ===== 1. CREATE PROTOCOL =====
 disp([10 'DEMO> 1. Create protocol' 10]);
