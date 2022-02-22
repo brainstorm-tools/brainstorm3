@@ -19,7 +19,7 @@ function varargout = process_import_data_event( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2022
 
 eval(macro_method);
 end
@@ -77,6 +77,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.epochtime.Comment = 'Epoch time: ';
     sProcess.options.epochtime.Type    = 'range';
     sProcess.options.epochtime.Value   = {[-0.100, 0.300], 'ms', []};
+    % Split in time blocks
+    sProcess.options.split.Comment = 'Split recordings in time blocks (0=disable): ';
+    sProcess.options.split.Type    = 'value';
+    sProcess.options.split.Value   = {0, 's', []};
     % Separator
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
@@ -207,7 +211,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     ImportOptions.UseEvents         = 1;
     ImportOptions.EventsTimeRange   = EventsTimeRange;
     ImportOptions.iEpochs           = 1;
-    ImportOptions.SplitRaw          = 0;
+    ImportOptions.SplitRaw          = (sProcess.options.split.Value{1} > 0);
+    ImportOptions.SplitLength       = sProcess.options.split.Value{1};
     ImportOptions.UseCtfComp        = sProcess.options.usectfcomp.Value;
     ImportOptions.UseSsp            = sProcess.options.usessp.Value;
     ImportOptions.CreateConditions  = CreateConditions;
