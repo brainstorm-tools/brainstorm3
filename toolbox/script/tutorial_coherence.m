@@ -1,4 +1,4 @@
-function tutorial_corticomuscular_coh(tutorial_dir, reports_dir)
+function tutorial_coherence(tutorial_dir, reports_dir)
 % TUTORIAL_CORTICOMUSCULAR_COH: Script that runs the Brainstorm corticomuscular coherence tutorial
 % https://neuroimage.usc.edu/brainstorm/Tutorials/CorticomuscularCoherence
 %
