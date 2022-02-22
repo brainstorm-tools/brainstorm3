@@ -1,9 +1,9 @@
 function tutorial_coherence(tutorial_dir, reports_dir)
-% TUTORIAL_CORTICOMUSCULAR_COH: Script that runs the Brainstorm corticomuscular coherence tutorial
+% TUTORIAL_COHERENCE: Script that runs the Brainstorm corticomuscular coherence tutorial
 % https://neuroimage.usc.edu/brainstorm/Tutorials/CorticomuscularCoherence
 %
 % INPUTS: 
-%    - tutorial_dir : Directory where the SubjectCMC.zip. file has been unzipped
+%    - tutorial_dir : Directory where the SubjectCMC.zip file has been unzipped
 %    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
@@ -48,42 +48,17 @@ overlap     = 50;         % 50%
 maxfreq     = 80;         % 80Hz
 % TODO Ask for isBigRam as argument?
 isBigRam = 0;
-% TODO Ask for username as argument?
-username = 'Raymundo.Cassani';
 
 % Build the path of the files to import
 MriFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
 MegFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.ds');
 % Check if the folder contains the required files
-if ~file_exist(MegFilePath) || ~file_exist(MegFilePath)
+if ~file_exist(MriFilePath) || ~file_exist(MegFilePath)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file SubjectCMC.zip.']);
 end
 % Re-initialize random number generator
 if (bst_get('MatlabVersion') >= 712)
     rng('default');
-end
-
-% User should have CAT12 and SPM12 installed as per the Tutorial webpage
-% Load needed plugins
-InstPlugs = bst_plugin('GetInstalled');
-% Reload SPM(12) plugin is an different version is found
-if any(strcmpi({InstPlugs.Name}, 'spm12')) 
-    if (exist('spm', 'file') == 2) && isempty(strfind(spm('ver'), 'SPM12')) %#ok<STREMP>
-        bst_plugin('Unload', 'spm12');
-    end
-    PlugDesc = bst_plugin('GetInstalled', 'spm12'); 
-    if ~PlugDesc.isLoaded
-        bst_plugin('LoadInteractive', 'spm12');
-    end    
-end
-% Load CAT12 
-if any(strcmpi({InstPlugs.Name}, 'cat12'))
-    PlugDesc = bst_plugin('GetInstalled', 'cat12'); 
-    if ~PlugDesc.isLoaded
-        bst_plugin('LoadInteractive', 'cat12');
-    end    
-else
-    disp('Error: Plugin CAT12 is not installed. See the requirements for this tutorial.');
 end
 
 
@@ -704,10 +679,3 @@ end
 
 disp([10 'DEMO> Corticomuscular coherence tutorial completed' 10]);
 
-% Process: Send report by email
-bst_process('CallProcess', 'process_report_email', [], [], ...
-    'username',   username, ...
-    'cc',         '', ...
-    'subject',    'Corticomuscular coherence tutorial completed', ...
-    'reportfile', ReportFile, ...
-    'full',       1);
