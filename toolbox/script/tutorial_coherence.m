@@ -1,9 +1,9 @@
 function tutorial_coherence(tutorial_dir, reports_dir)
-% TUTORIAL_CORTICOMUSCULAR_COH: Script that runs the Brainstorm corticomuscular coherence tutorial
+% TUTORIAL_COHERENCE: Script that runs the Brainstorm corticomuscular coherence tutorial
 % https://neuroimage.usc.edu/brainstorm/Tutorials/CorticomuscularCoherence
 %
 % INPUTS: 
-%    - tutorial_dir : Directory where the SubjectCMC.zip. file has been unzipped
+%    - tutorial_dir : Directory where the SubjectCMC.zip file has been unzipped
 %    - reports_dir  : Directory where to save the execution report (instead of displaying it)
 
 % @=============================================================================
@@ -48,14 +48,12 @@ overlap     = 50;         % 50%
 maxfreq     = 80;         % 80Hz
 % TODO Ask for isBigRam as argument?
 isBigRam = 0;
-% TODO Ask for username as argument?
-username = 'Raymundo.Cassani';
 
 % Build the path of the files to import
 MriFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
 MegFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.ds');
 % Check if the folder contains the required files
-if ~file_exist(MegFilePath) || ~file_exist(MegFilePath)
+if ~file_exist(MriFilePath) || ~file_exist(MegFilePath)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file SubjectCMC.zip.']);
 end
 % Re-initialize random number generator
@@ -740,10 +738,3 @@ end
 
 disp([10 'DEMO> Corticomuscular coherence tutorial completed' 10]);
 
-% Process: Send report by email
-bst_process('CallProcess', 'process_report_email', [], [], ...
-    'username',   username, ...
-    'cc',         '', ...
-    'subject',    'Corticomuscular coherence tutorial completed', ...
-    'reportfile', ReportFile, ...
-    'full',       1);
