@@ -31,7 +31,7 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2021
+% Authors: Francois Tadel, 2010-2022
 %          Martin Cousineau, 2017
 
 eval(macro_method);
@@ -476,8 +476,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             return;
         end
         % ERROR: Cannot process channel/channel uncompensated CTF files
-        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (sFileIn.prop.currCtfComp ~= sFileIn.prop.destCtfComp) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && (sFileIn.prop.currCtfComp ~= sFileIn.prop.destCtfComp)
+                % && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+                % Sensor check removed on 21-Feb-2021 following the bug discovered in the corticomuscular coherence tutorial: 
+                % Processing only the EMG channels reads+writes the MEG channels but does not apply the correction
             bst_report('Error', sProcess, sInput, [...
                 'This CTF file was not saved with the desired compensation order (', num2str(sFileIn.prop.destCtfComp), ').' 10 ...
                 'To process this file, you have the following options: ' 10 ...
@@ -487,7 +489,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         end
         % ERROR: SSP cannot be applied for channel/channel processing
         if ismember(1,sProcess.processDim) && ~isReadAll && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
-            % Verify if any channels that need to be projected are selected.
+            % Verify that all channels that need to be projected are selected.
             % Build projector matrix
             Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
             % Apply projector
@@ -505,7 +507,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     % Channels that are modified by projector.
                     isProjected = sum(Projector ~= 0, 2) > 1;
                     if any(isProjected(iSelRows))
-                        
                         bst_report('Error', sProcess, sInput, [...
                             'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
                             'To process this file, you have the following options: ' 10 ...
@@ -531,7 +532,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         ImportOptions.ImportMode      = 'Time';
         ImportOptions.DisplayMessages = 0;
         if ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+                (isReadAll || isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
             ImportOptions.UseCtfComp  = 1;
         else
             ImportOptions.UseCtfComp  = 0; % otherwise reading raw CTF file without selecting any MEG channels would fail.
