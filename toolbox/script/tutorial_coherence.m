@@ -221,37 +221,6 @@ sFileRaw = bst_process('CallProcess', 'process_evt_delete', sFileRaw, [], ...
 % Process: Merge events
 sFileRaw = bst_process('CallProcess', 'process_evt_merge', sFileRaw, [], ...
     'evtnames', strjoin(eventKeep, ', '), ...
-    'newname',  'Left_01');
-% Duplicate group 7 times 
-nDuplicates = 7;
-DataMat = in_bst_data(sFileRaw.FileName);
-events = DataMat.F.events;
-colorTable = lines(nDuplicates);
-eventDuplicates = {nDuplicates, 1};
-for i = 1 : nDuplicates
-    iCopy = length(events) + 1;
-    events(iCopy) = events(1);
-    % Add "copy" tag
-    events(iCopy).label = file_unique(events(iCopy).label, {events.label});
-    eventDuplicates{i} = events(iCopy).label;
-    % Set new color (based on Matlab current 
-    events(iCopy).color = colorTable(i, :);
-end
-DataMat.F.events = events;
-bst_save(file_fullpath(sFileRaw.FileName), DataMat, 'v6', 1);
-%  Add time offset 
-for i = 1 : nDuplicates
-    % Process: Add time offset
-    sFileRaw = bst_process('CallProcess', 'process_evt_timeoffset', sFileRaw, [], ...
-    'info',      [], ...
-    'eventname', eventDuplicates{i}, ...
-    'offset',    1 * i);
-end
-% Merge all Left_XX as Left
-eventLeft = [{'Left_01'}, eventDuplicates];
-% Process: Merge events
-sFileRaw = bst_process('CallProcess', 'process_evt_merge', sFileRaw, [], ...
-    'evtnames', strjoin(eventLeft, ', '), ...
     'newname',  'Left');
 % View recordings
 hFigMeg = view_timeseries(sFilesMeg.FileName, 'MEG');
