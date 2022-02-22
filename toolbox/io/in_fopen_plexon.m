@@ -54,6 +54,11 @@ Comment = rawFile;
 
 
 %% ===== READ DATA HEADERS =====
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Plexon importer', 'Reading header');
+end
+
 hdr.chan_headers = {};
 hdr.chan_files = {};
 hdr.extension = plexonFormat;
@@ -70,6 +75,7 @@ all_Channel_names = cellstr(all_Channel_names); % Convert to cell so it can be u
 channelsWithTimeseriesNames = all_Channel_names(channels_with_timetraces);
 
 %% ===== CREATE CHANNEL FILE =====
+bst_progress('text', 'Creating channel file');
 
 all_signalTypesWithoutNumbers = regexprep(all_Channel_names,'[\d"]','')';
 signalTypesWithoutNumbers = regexprep(channelsWithTimeseriesNames,'[\d"]','')';
@@ -143,7 +149,7 @@ sFile.header    = hdr;
 sFile.comment   = Comment;
 sFile.prop.nAvg  = 1;
 sFile.prop.sfreq = Fs;
-sFile.prop.times = [ts, (fn - 1)/Fs + ts];
+sFile.prop.times = [ts, (fn - 1)/Fs+ts];
 
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
@@ -154,6 +160,11 @@ sFile.channelflag = ones(hdr.ChannelCount, 1);
 [n,names] = plx_event_names(DataFile);
 names = cellstr(names); % Convert to cell so it can be used in regexprep
 iPresentEvents = find(logical(evcounts));
+
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Plexon importer', 'Gathering acquisition events', 0, length(iPresentEvents));
+end
 
 % Read the events
 if ~isempty(iPresentEvents)
@@ -181,6 +192,8 @@ if ~isempty(iPresentEvents)
         events(iEvt).select     = 1;
         events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
         events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
+        
+        bst_progress('inc', 1);
     end
     % Import this list
     sFile = import_events(sFile, [], events);
@@ -188,44 +201,59 @@ end
 
 
 %% Read the Spikes events
-if sum(spikes_tscounts(1,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes exist and not analog input selected
+if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes exist and not analog input selected
         
-    unique_events = sum(sum(spikes_tscounts(:,2:end)>0)); % First row of spikes_tscounts is ignored
-
+    nUnique_events = sum(sum(spikes_tscounts(2:end,2:end)>0)); % First row of spike_tscounts is unsorted spikes. First column of spikes_tscounts is ignored
+    
+    isProgress = bst_progress('isVisible');
+    if ~isProgress
+        bst_progress('start', 'Plexon importer', 'Gathering spiking events', 0, nUnique_events);
+    end
+    
     % Initialize list of events
-    events = repmat(db_template('event'), 1, unique_events);
+    events = repmat(db_template('event'), 1, nUnique_events);
     iEnteredEvent = 1;
 
     spike_event_prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
 
     for iChannel = 1:size(spikes_tscounts,2)-1
 
-        nNeurons = sum(spikes_tscounts(:,iChannel+1)>0); % spikes_tscounts: rows = different units on the same channel, columns = channels
+        nNeurons = sum(spikes_tscounts(2:end,iChannel+1)>0); % spikes_tscounts: rows = different units on the same channel, columns = channels
 
-        for iNeuron = 1:length(nNeurons)
+        for iNeuron = 1:nNeurons
+            if spikes_tscounts(iNeuron+1, iChannel+1)>0
+                if nNeurons>1
+                    event_label_postfix = [' |' num2str(iNeuron) '|'];
+                else
+                    event_label_postfix = '';
+                end
 
-            if length(nNeurons)>1
-                event_label_postfix = [' |' num2str(iNeuron) '|'];
-            else
-                event_label_postfix = '';
+                [n, spikeTimes] = plx_ts(DataFile, iChannel, iNeuron);
+
+                % Fill the event fields
+                events(iEnteredEvent).label      = [spike_event_prefix ' ' all_Channel_names{iChannels_selected(iChannel)} event_label_postfix];
+                events(iEnteredEvent).color      = rand(1,3);
+                events(iEnteredEvent).times      = spikeTimes';
+                events(iEnteredEvent).epochs     = ones(1, size(events(iEnteredEvent).times, 2));
+                events(iEnteredEvent).reactTimes = [];
+                events(iEnteredEvent).select     = 1;
+                events(iEnteredEvent).channels   = cell(1, size(events(iEnteredEvent).times, 2));
+                events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
+                iEnteredEvent = iEnteredEvent + 1;
+                
+                bst_progress('inc', 1);
+
             end
-
-            [n, spikeTimes] = plx_ts(DataFile, iChannel, iNeuron-1);
-
-            % Fill the event fields
-            events(iEnteredEvent).label      = [spike_event_prefix ' ' all_Channel_names{iChannels_selected(iChannel)}];
-            events(iEnteredEvent).color      = rand(1,3);
-            events(iEnteredEvent).times      = spikeTimes';
-            events(iEnteredEvent).epochs     = ones(1, size(events(iEnteredEvent).times, 2));
-            events(iEnteredEvent).reactTimes = [];
-            events(iEnteredEvent).select     = 1;
-            events(iEnteredEvent).channels   = cell(1, size(events(iEnteredEvent).times, 2));
-            events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
-            iEnteredEvent = iEnteredEvent + 1;
         end
     end
 
     % Import this list
     sFile = import_events(sFile, [], events);
 end
+
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('stop');
+end
+
 end
