@@ -190,7 +190,7 @@ if isRaw
             % Get block size in samples
             blockSmpLength = round(ImportOptions.SplitLength * sFile.prop.sfreq);
             totalSmpLength = round((ImportOptions.TimeRange(2) - ImportOptions.TimeRange(1)) * sFile.prop.sfreq) + 1;
-            startSmp = round(ImportOptions.TimeRange(1) * sFile.prop.sfreq);                   
+            startSmp = round(ImportOptions.TimeRange(1) * sFile.prop.sfreq);
             % Get number of blocks
             nbBlocks = ceil(totalSmpLength / blockSmpLength);
             % For each block
@@ -245,19 +245,42 @@ if isRaw
                     end
                     % Make sure all indices are valids
                     samplesEpoch = bst_saturate(samplesEpoch, round(sFile.prop.times * sFile.prop.sfreq));
-                    % Import structure
-                    BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
-                    BlocksToRead(end).iTimes     = samplesEpoch;
-                    BlocksToRead(end).Comment    = sprintf('%s (#%d)', ImportOptions.events(iEvent).label, iOccur);
-                    BlocksToRead(end).FileTag    = sprintf('%s_trial%03d', ImportOptions.events(iEvent).label, iOccur);
-                    BlocksToRead(end).TimeOffset = TimeOffset;
-                    BlocksToRead(end).nAvg       = 1;
-                    BlocksToRead(end).ImportTime = samplesEpoch / sFile.prop.sfreq;
-                    % Add condition TAG, if required in input options structure
-                    if ImportOptions.CreateConditions 
-                        CondName = strrep(ImportOptions.events(iEvent).label, '#', '');
-                        CondName = str_remove_parenth(CondName);
-                        BlocksToRead(end).FileTag = [BlocksToRead(end).FileTag, '___COND' CondName '___'];
+                    % If splitting each epoch
+                    if ImportOptions.SplitRaw && ~isempty(ImportOptions.SplitLength) && (ImportOptions.SplitLength < diff(ImportOptions.EventsTimeRange))
+                        % Get block size in samples
+                        blockSmpLength = round(ImportOptions.SplitLength * sFile.prop.sfreq);
+                        totalSmpLength = samplesEpoch(2) - samplesEpoch(1) + 1;
+                        % Get number of blocks
+                        nbBlocks = ceil(totalSmpLength / blockSmpLength);
+                        % For each block
+                        for iBlock = 1:nbBlocks
+                            % Get samples indices for this block (start ind = 0)
+                            smpBlock = samplesEpoch(1) + [(iBlock - 1) * blockSmpLength, min(iBlock * blockSmpLength - 1, totalSmpLength - 1)];
+                            % Import structure
+                            BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
+                            BlocksToRead(end).iTimes     = smpBlock;
+                            BlocksToRead(end).Comment    = sprintf('%s (#%d.%d)', ImportOptions.events(iEvent).label, iOccur, iBlock);
+                            BlocksToRead(end).FileTag    = sprintf('%s_trial%03d_block%03d', ImportOptions.events(iEvent).label, iOccur, iBlock);
+                            BlocksToRead(end).TimeOffset = TimeOffset + (iBlock - 1) .* ImportOptions.SplitLength;
+                            BlocksToRead(end).nAvg       = 1;
+                            BlocksToRead(end).ImportTime = smpBlock / sFile.prop.sfreq;
+                        end
+                    % No splitting
+                    else
+                        % Import structure
+                        BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
+                        BlocksToRead(end).iTimes     = samplesEpoch;
+                        BlocksToRead(end).Comment    = sprintf('%s (#%d)', ImportOptions.events(iEvent).label, iOccur);
+                        BlocksToRead(end).FileTag    = sprintf('%s_trial%03d', ImportOptions.events(iEvent).label, iOccur);
+                        BlocksToRead(end).TimeOffset = TimeOffset;
+                        BlocksToRead(end).nAvg       = 1;
+                        BlocksToRead(end).ImportTime = samplesEpoch / sFile.prop.sfreq;
+                        % Add condition TAG, if required in input options structure
+                        if ImportOptions.CreateConditions 
+                            CondName = strrep(ImportOptions.events(iEvent).label, '#', '');
+                            CondName = str_remove_parenth(CondName);
+                            BlocksToRead(end).FileTag = [BlocksToRead(end).FileTag, '___COND' CondName '___'];
+                        end
                     end
                 end
             end
