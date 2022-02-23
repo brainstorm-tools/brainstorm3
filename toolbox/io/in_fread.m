@@ -342,10 +342,13 @@ if ~isempty(ImportOptions) && ~isempty(ImportOptions.RemoveBaseline)
         else
             iChanBl = 1:size(F,1);
         end
-        % Select channels based on sensor types (or names) for baseline correction
-        iChanBlSensorType = channel_find(ChannelMat.Channel, ImportOptions.BaselineSensorType);
-        % Selected channels minus excluded
-        iChanBl = intersect(iChanBlSensorType, iChanBl); 
+        % Sensor selection for the baseline correction
+        if ~isempty(ImportOptions) && isfield(ImportOptions, 'BaselineSensorType') && ~isempty(ImportOptions.BaselineSensorType)
+            % Select channels based on sensor types (or names) for baseline correction
+            iChanBlSensorType = channel_find(ChannelMat.Channel, ImportOptions.BaselineSensorType);
+            % Selected channels minus excluded
+            iChanBl = intersect(iChanBlSensorType, iChanBl);
+        end
         % Compute baseline
         blValue = mean(F(iChanBl,iTimesBl), 2);
         % Remove from recordings
