@@ -2464,7 +2464,7 @@ function sProcesses = OptimizePipeline(sProcesses)
         end
         % Force overwrite
         if isfield(sProcesses(iProcess).options, 'overwrite') && ~sProcesses(iProcess).options.overwrite.Value
-            strWarning = [10 ' - Forcing overwrite option: Intermediate files are not saved in the database.'];
+            strWarning = [strWarning 10 ' - Forcing overwrite option: Intermediate files are not saved in the database.'];
         end
         % Merge processes
         iRemove(end+1) = iProcess;
