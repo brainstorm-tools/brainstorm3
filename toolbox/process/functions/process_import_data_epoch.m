@@ -20,6 +20,7 @@ function varargout = process_import_data_epoch( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2017
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -105,6 +106,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.baseline.Type    = 'baseline';
     sProcess.options.baseline.Value   = [];
     sProcess.options.baseline.Hidden  = 1;
+    % Sensor types to remove DC offset (not displayed)
+    sProcess.options.blsensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.blsensortypes.Type    = 'text';
+    sProcess.options.blsensortypes.Value   = 'MEG, EEG';
+    sProcess.options.blsensortypes.Hidden  = 1;
 end
 
 
@@ -190,12 +196,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ImportOptions.DisplayMessages  = 0;
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
+        % BaselineRange
         if ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
         else
             ImportOptions.RemoveBaseline = 'all';
         end
+        % BaselineSensorType
+        if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           
+            ImportOptions.BaselineSensorType  = sProcess.options.blsensortypes.Value;
+        else
+            ImportOptions.BaselineSensorType = '';
+        end       
     else
         ImportOptions.RemoveBaseline = 'no';
     end
