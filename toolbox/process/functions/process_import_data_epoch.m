@@ -197,11 +197,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
         % BaselineRange
-        if ~isempty(sProcess.options.baseline.Value{1})
+        if strcmp(sProcess.options.baseline.Value{1}, 'all')
+            ImportOptions.RemoveBaseline = 'all';
+            ImportOptions.BaselineRange  = [];
+        else
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
-        else
-            ImportOptions.RemoveBaseline = 'all';
         end
         % BaselineSensorType
         if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           
