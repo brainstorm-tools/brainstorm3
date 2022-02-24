@@ -36,6 +36,8 @@ function [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, Samp
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2009-2021
+%          Raymundo Cassani, 2022
+
 
 %% ===== PARSE INPUTS =====
 if (nargin < 6)
@@ -339,6 +341,13 @@ if ~isempty(ImportOptions) && ~isempty(ImportOptions.RemoveBaseline)
             iChanBl = find(~ismember(lower({ChannelMat.Channel.Type}), {'stim','video','sysclock'}));
         else
             iChanBl = 1:size(F,1);
+        end
+        % Sensor selection for the baseline correction
+        if ~isempty(ImportOptions) && isfield(ImportOptions, 'BaselineSensorType') && ~isempty(ImportOptions.BaselineSensorType)
+            % Select channels based on sensor types (or names) for baseline correction
+            iChanBlSensorType = channel_find(ChannelMat.Channel, ImportOptions.BaselineSensorType);
+            % Selected channels minus excluded
+            iChanBl = intersect(iChanBlSensorType, iChanBl);
         end
         % Compute baseline
         blValue = mean(F(iChanBl,iTimesBl), 2);

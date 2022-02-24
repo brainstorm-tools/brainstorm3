@@ -19,7 +19,8 @@ function varargout = process_import_data_event( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2022
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -77,6 +78,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.epochtime.Comment = 'Epoch time: ';
     sProcess.options.epochtime.Type    = 'range';
     sProcess.options.epochtime.Value   = {[-0.100, 0.300], 'ms', []};
+    % Split in time blocks
+    sProcess.options.split.Comment = 'Split recordings in time blocks (0=disable): ';
+    sProcess.options.split.Type    = 'value';
+    sProcess.options.split.Value   = {0, 's', []};
     % Separator
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
@@ -114,6 +119,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.baseline.Type    = 'baseline';
     sProcess.options.baseline.Value   = [];
     sProcess.options.baseline.Hidden  = 1;
+    % Sensor types to remove DC offset (not displayed)
+    sProcess.options.blsensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.blsensortypes.Type    = 'text';
+    sProcess.options.blsensortypes.Value   = 'MEG, EEG';
+    sProcess.options.blsensortypes.Hidden  = 1;
 end
 
 
@@ -207,7 +217,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     ImportOptions.UseEvents         = 1;
     ImportOptions.EventsTimeRange   = EventsTimeRange;
     ImportOptions.iEpochs           = 1;
-    ImportOptions.SplitRaw          = 0;
+    ImportOptions.SplitRaw          = (sProcess.options.split.Value{1} > 0);
+    ImportOptions.SplitLength       = sProcess.options.split.Value{1};
     ImportOptions.UseCtfComp        = sProcess.options.usectfcomp.Value;
     ImportOptions.UseSsp            = sProcess.options.usessp.Value;
     ImportOptions.CreateConditions  = CreateConditions;
@@ -219,12 +230,19 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     ImportOptions.DisplayMessages   = 0;
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
+        % BaselineRange
         if ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
         else
             ImportOptions.RemoveBaseline = 'all';
         end
+        % BaselineSensorType
+        if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           
+            ImportOptions.BaselineSensorType  = sProcess.options.blsensortypes.Value;
+        else
+            ImportOptions.BaselineSensorType = '';
+        end       
     else
         ImportOptions.RemoveBaseline = 'no';
     end

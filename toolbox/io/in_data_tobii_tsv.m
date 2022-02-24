@@ -151,7 +151,8 @@ uniqueSesId = unique(sesId);
 
 %% ===== LOOP BY SESSION =====
 % Create empty structures
-DataMat = repmat(db_template('DataMat'), 1, length(uniqueSesId));
+DataMat = repmat(db_template('DataMat'), 0);
+iFile = 0;
 % Create one data structure per session ID
 for iSes = 1:length(uniqueSesId)
     bst_progress('text', sprintf('Processing session: %d / %d...', iSes, length(uniqueSesId)));
@@ -159,15 +160,17 @@ for iSes = 1:length(uniqueSesId)
     sesTsv = Tsv(cellfun(@(c)isequal(c,uniqueSesId{iSes}), sesId), :);
     % Loop on channels: extract raw signals
     ColData = cell(1, length(iDataCol));
-    ColFreq = zeros(1, length(iDataCol));
-    ColDur  = zeros(1, length(iDataCol));
+    ColDiff = zeros(1, length(iDataCol));
+    ColBlockStart = cell(1, length(iDataCol));
+    ColBlockStop = cell(1, length(iDataCol));
     for i = 1:length(iDataCol)
         % Find valid time points
         iRows = find(~cellfun(@(c)or(isnan(c), isempty(c)), sesTsv(:,iDataCol(i))));
         % Get valid timestamps and data for selected column
         ColData{i} = cat(2, cat(1, sesTsv{iRows,iColTime}), cat(1, sesTsv{iRows,iDataCol(i)}));
         % Get time increment
-        timeDiff = diff(ColData{i}(:,1));
+        timestmp = ColData{i}(:,1);
+        timeDiff = diff(timestmp);
         % Delete duplicated time points
         iDup = find(timeDiff == 0);
         if ~isempty(iDup)
@@ -176,75 +179,103 @@ for iSes = 1:length(uniqueSesId)
             timeDiff = diff(ColData{i}(:,1));
         end
         % Guess sampling frequency: Most frequent time increment
-        ColFreq(i) = mode(timeDiff);
-        ColDur(i) = max(ColData{i}(:,1));
+        ColDiff(i) = mode(timeDiff);
+        % Detect jumps in the time vector (100 skipped samples): possible pauses in the data
+        ColBlockStart{i} = [min(timestmp), timestmp(find(timeDiff > 100 * ColDiff(i)) + 1)];
+        ColBlockStop{i} = [timestmp(timeDiff > 100 * ColDiff(i)), max(timestmp)];
     end
-    % Get final time vector for all columns
-    T = double(min(ColFreq)) / 1000;
-    Time = 0:T:(double(max(ColDur)) / 1000);
-    F = zeros(length(iDataCol), length(Time));
-
-    % ===== INTERPOLATE DATA =====
-    for i = 1:length(iDataCol)
-        F(i,:) = interp1(double(ColData{i}(:,1)) / 1000, double(ColData{i}(:,2)), Time, 'previous', 0);
-    end
-
-    % ===== BRAINSTORM DATA STRUCTURE =====
-    % Get file name
-    [fPath, fBase, fExt] = bst_fileparts(DataFile);
-    % File comment (depends if there are multiple sessions)
-    if (length(uniqueSesId) > 1)
-        if ~isempty(sesTsv{iRows(1),iColSub}) && ~isempty(sesTsv{iRows(1),iColRec})
-            Comment = [sesTsv{iRows(1),iColSub}, '-', sesTsv{iRows(1),iColRec}];
-        else
-            Comment = [fBase, sprintf('-ses%02d', iSes)];
-        end
+    % Align all the channels to the minimum period between two samples
+    T = double(min(ColDiff));
+    % Detect milliseconds or microseconds
+    if (T > 1000)
+        tFactor = 1e-6;  % Timestamps in microsec
     else
-        Comment = fBase;
+        tFactor = 1e-3;  % Timestamps in millisec
     end
-    % Fill structure
-    DataMat(iSes).F           = F;
-    DataMat(iSes).Time        = Time;
-    DataMat(iSes).Comment     = Comment;
-    DataMat(iSes).ChannelFlag = ones(size(F, 1), 1);
-    DataMat(iSes).nAvg        = 1;
-    DataMat(iSes).Device      = 'Tobii';
+    T = T .* tFactor;
 
-    % ===== PROCESS EVENTS =====
-    % Find columns
-    iColEvt = find(strcmpi(ColDesc(:,1), 'Eye movement type'));
-    iColFixX = find(strcmpi(ColDesc(:,1), 'Fixation point X'));
-    iColFixY = find(strcmpi(ColDesc(:,1), 'Fixation point Y'));
-    % Find time points with event info
-    iRows = find(~cellfun(@isempty, sesTsv(:,iColEvt)));
-    % Get changes of event
-    t = double([sesTsv{iRows,iColTime}]) / 1000;
-    val = cellfun(@sum, sesTsv(iRows,iColEvt))';
-    iNew = find([1, diff(val)]);
-    tNew = [t(iNew), t(end)+T];
-    % If there are different types of events: process events
-    if (length(iNew) > 2)
-        % Initialize events list
-        uniqueVal = unique(val(iNew));
-        DataMat(iSes).Events = repmat(db_template('event'), 1, length(uniqueVal));
-        % Process each event type
-        sfreq = 1 ./ T;
-        for iEvt = 1:length(uniqueVal)
-            % Find all the occurrences of this event
-            iOcc = find(uniqueVal(iEvt) == val(iNew));
-            % Set event
-            iFirstOcc = iRows(find(val == uniqueVal(iEvt), 1));
-            DataMat(iSes).Events(iEvt).label    = strtrim(sesTsv{iFirstOcc, iColEvt});
-            DataMat(iSes).Events(iEvt).times    = round(tNew(iOcc) .* sfreq) ./ sfreq;
-            % DataMat(iSes).Events(iEvt).times  = round([tNew(iOcc) ; tNew(iOcc+1)-T] .* sfreq) ./ sfreq;   % Extended events
-            DataMat(iSes).Events(iEvt).epochs   = ones(1, length(iOcc));
-            DataMat(iSes).Events(iEvt).select   = 1;
-            DataMat(iSes).Events(iEvt).channels = cell(1, length(iOcc));
-            % Fixation event: Save fixation point
-            if (uniqueVal(iEvt) == sum('Fixation'))
-                DataMat(iSes).Events(iEvt).notes = cellfun(@(c1,c2)sprintf('%dx%d', c1, c2), sesTsv(iRows(iNew(iOcc)), iColFixX), sesTsv(iRows(iNew(iOcc)), iColFixY), 'UniformOutput', 0)';
+    % Get the minimum number of time blocks observed on all the columns
+    nBlocks = min(cellfun(@length, ColBlockStart));
+    % Loop on each block
+    for iBlock = 1:nBlocks
+        % Get time stamps corresponding to this block
+        blockBounds = [min(cellfun(@(c)c(iBlock), ColBlockStart)), max(cellfun(@(c)c(iBlock), ColBlockStop))];
+        timeBounds = double(blockBounds) .* tFactor;
+        % Get final time vector for all columns
+        Time = timeBounds(1):T:timeBounds(2);
+        F = zeros(length(iDataCol), length(Time));
+    
+        % ===== INTERPOLATE DATA =====
+        for i = 1:length(iDataCol)
+            timestmp = ColData{i}(:,1);
+            iTime = find((timestmp >= blockBounds(1)) & (timestmp <= blockBounds(2)));
+            F(i,:) = interp1(double(ColData{i}(iTime,1)) .* tFactor, double(ColData{i}(iTime,2)), Time, 'previous', 0);
+        end
+    
+        % ===== BRAINSTORM DATA STRUCTURE =====
+        % Get file name
+        [fPath, fBase, fExt] = bst_fileparts(DataFile);
+        % File comment (depends if there are multiple sessions)
+        if (length(uniqueSesId) > 1)
+            if ~isempty(sesTsv{iRows(1),iColSub}) && ~isempty(sesTsv{iRows(1),iColRec})
+                Comment = [sesTsv{iRows(1),iColSub}, '-', sesTsv{iRows(1),iColRec}];
             else
-                DataMat(iSes).Events(iEvt).notes = cell(1, size(DataMat(iSes).Events(iEvt).times, 2));
+                Comment = [fBase, sprintf('-ses%02d', iSes)];
+            end
+        else
+            Comment = fBase;
+        end
+        % If there are multiple blocks: add the block number
+        if (nBlocks > 1)
+            Comment = [Comment, sprintf('-block%02d', iBlock)];
+        end
+        % Initialize data structure
+        iFile = iFile + 1;
+        DataMat(iFile) = db_template('DataMat');
+        % Fill structure
+        DataMat(iFile).F           = F;
+        DataMat(iFile).Time        = Time;
+        DataMat(iFile).Comment     = Comment;
+        DataMat(iFile).ChannelFlag = ones(size(F, 1), 1);
+        DataMat(iFile).nAvg        = 1;
+        DataMat(iFile).Device      = 'Tobii';
+    
+        % ===== PROCESS EVENTS =====
+        % Find columns
+        iColEvt = find(strcmpi(ColDesc(:,1), 'Eye movement type'));
+        iColFixX = find(strcmpi(ColDesc(:,1), 'Fixation point X'));
+        iColFixY = find(strcmpi(ColDesc(:,1), 'Fixation point Y'));
+        % Find time points with event info
+        iRows = find(~cellfun(@isempty, sesTsv(:,iColEvt)));
+        % Get changes of event
+        t = double([sesTsv{iRows,iColTime}]) .* tFactor;
+        val = cellfun(@sum, sesTsv(iRows,iColEvt))';
+        iNew = find([1, diff(val)]);
+        tNew = [t(iNew), t(end)+T];
+        % If there are different types of events: process events
+        if (length(iNew) > 2)
+            % Initialize events list
+            uniqueVal = unique(val(iNew));
+            DataMat(iFile).Events = repmat(db_template('event'), 1, length(uniqueVal));
+            % Process each event type
+            sfreq = 1 ./ T;
+            for iEvt = 1:length(uniqueVal)
+                % Find all the occurrences of this event
+                iOcc = find(uniqueVal(iEvt) == val(iNew));
+                % Set event
+                iFirstOcc = iRows(find(val == uniqueVal(iEvt), 1));
+                DataMat(iFile).Events(iEvt).label    = strtrim(sesTsv{iFirstOcc, iColEvt});
+                % DataMat(iFile).Events(iEvt).times    = round(tNew(iOcc) .* sfreq) ./ sfreq;
+                DataMat(iFile).Events(iEvt).times    = round([tNew(iOcc) ; tNew(iOcc+1)-T] .* sfreq) ./ sfreq;   % Extended events
+                DataMat(iFile).Events(iEvt).epochs   = ones(1, length(iOcc));
+                DataMat(iFile).Events(iEvt).select   = 1;
+                DataMat(iFile).Events(iEvt).channels = cell(1, length(iOcc));
+                % Fixation event: Save fixation point
+                if (uniqueVal(iEvt) == sum('Fixation'))
+                    DataMat(iFile).Events(iEvt).notes = cellfun(@(c1,c2)sprintf('%dx%d', c1, c2), sesTsv(iRows(iNew(iOcc)), iColFixX), sesTsv(iRows(iNew(iOcc)), iColFixY), 'UniformOutput', 0)';
+                else
+                    DataMat(iFile).Events(iEvt).notes = cell(1, size(DataMat(iFile).Events(iEvt).times, 2));
+                end
             end
         end
     end
