@@ -242,6 +242,9 @@ function cmapA = ApplyColormap( A, CMap, intensityBounds, isIndexed )
         A = floor( (A - intensityBounds(1)) ./ (intensityBounds(2)-intensityBounds(1)) .* (size(CMap,1)-1) ) + 1;
     end
     % Create RGB array
+    if sum(isnan(A(:))) == length(A(:))
+        A = ones(size(A)); % if matrtix is full of NaNs (FOOOF @ 0Hz)
+    end
     cmapA = cat(3, reshape(CMap(A,1), size(A)), ...
                    reshape(CMap(A,2), size(A)), ...
                    reshape(CMap(A,3), size(A)));

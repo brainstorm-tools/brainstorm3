@@ -466,7 +466,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
                 ctrl.jPanelSelect.setVisible(1);
-                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') % If it is topography or surf
+                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
                     ctrl.jRadioFOverlay.setVisible(0)
                     ctrl.jRadioFOverlay.setEnabled(0)
                     ctrl.jRadioFExponent.setVisible(1);
@@ -495,7 +495,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
-                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') % If it is topography or surf
+                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
                     ctrl.jRadioFOverlay.setVisible(0)
                     ctrl.jRadioFOverlay.setEnabled(0)
                     ctrl.jRadioFExponent.setVisible(1);
