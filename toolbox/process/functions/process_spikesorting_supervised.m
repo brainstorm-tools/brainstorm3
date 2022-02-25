@@ -406,11 +406,11 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
                 tmpEvents = struct();
                 if numNeurons == 1
                     tmpEvents(1).epochs = ones(1, sum(ElecData.cluster_class(:,1) ~= 0));
-                    tmpEvents(1).times  = ElecData.cluster_class(ElecData.cluster_class(:,1) ~= 0, 2)' ./ 1000;
+                    tmpEvents(1).times  = ElecData.cluster_class(ElecData.cluster_class(:,1) ~= 0, 2)' ./ 1000 + DataMat.F.prop.times(1);
                 else
                     for iNeuron = 1:numNeurons
                         tmpEvents(iNeuron).epochs = ones(1, length(ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 1)));
-                        tmpEvents(iNeuron).times = ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 2)' ./ 1000;
+                        tmpEvents(iNeuron).times = ElecData.cluster_class(ElecData.cluster_class(:,1) == iNeuron, 2)' ./ 1000 + DataMat.F.prop.times(1);
                     end
                 end
             else
@@ -424,11 +424,11 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             tmpEvents = struct();
             if numNeurons == 1
                 tmpEvents(1).epochs = ones(1,length(ElecData.spikes.assigns));
-                tmpEvents(1).times = ElecData.spikes.spiketimes;
+                tmpEvents(1).times = ElecData.spikes.spiketimes + DataMat.F.prop.times(1);
             elseif numNeurons > 1
                 for iNeuron = 1:numNeurons
                     tmpEvents(iNeuron).epochs = ones(1,length(ElecData.spikes.assigns(ElecData.spikes.assigns == ElecData.spikes.labels(iNeuron,1))));
-                    tmpEvents(iNeuron).times = ElecData.spikes.spiketimes(ElecData.spikes.assigns == ElecData.spikes.labels(iNeuron,1));
+                    tmpEvents(iNeuron).times = ElecData.spikes.spiketimes(ElecData.spikes.assigns == ElecData.spikes.labels(iNeuron,1)) + DataMat.F.prop.times(1);
                 end
             end
             
@@ -459,8 +459,10 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             newEvents(1).times      = tmpEvents(1).times;
             newEvents(1).reactTimes = [];
             newEvents(1).select     = 1;
-            newEvents(1).channels = cell(1, size(newEvents(1).times, 2));
-            newEvents(1).notes    = cell(1, size(newEvents(1).times, 2));
+            newEvents(1).notes      = cell(1, size(newEvents(1).times, 2));
+            newEvents(1).channels   = repmat({{electrodeName}}, 1, size(newEvents(1).times, 2));
+
+            
         elseif numNeurons > 1
             for iNeuron = 1:numNeurons
                 newEvents(iNeuron).label      = [eventName ' |' num2str(iNeuron) '|'];
@@ -469,8 +471,9 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
                 newEvents(iNeuron).times      = tmpEvents(iNeuron).times;
                 newEvents(iNeuron).reactTimes = [];
                 newEvents(iNeuron).select     = 1;
-                newEvents(iNeuron).channels   = cell(1, size(newEvents(iNeuron).times, 2));
                 newEvents(iNeuron).notes      = cell(1, size(newEvents(iNeuron).times, 2));
+                newEvents(iNeuron).channels   = repmat({{electrodeName}}, 1, size(newEvents(iNeuron).times, 2));
+
             end
         else
             % This electrode just picked up noise, no event to add.
