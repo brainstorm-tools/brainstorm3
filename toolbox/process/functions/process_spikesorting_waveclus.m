@@ -28,7 +28,7 @@ function varargout = process_spikesorting_waveclus( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019, 2022; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -95,23 +95,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     
-    % Ensure we are including the WaveClus folder in the Matlab path
-    waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
-    if exist(waveclusDir, 'file')
-        addpath(genpath(waveclusDir));
-    end
-
-    % Install WaveClus if missing
-    if ~exist('wave_clus_font', 'file')
-        rmpath(genpath(waveclusDir));
-        isOk = java_dialog('confirm', ...
-            ['The WaveClus spike-sorter is not installed on your computer.' 10 10 ...
-                 'Download and install the latest version?'], 'WaveClus');
-        if ~isOk
-            bst_report('Error', sProcess, sInputs, 'This process requires the WaveClus spike-sorter.');
-            return;
-        end
-        downloadAndInstallWaveClus();
+    
+    %% Load plugin
+    [isInstalled, errMsg] = bst_plugin('Install', 'waveclus');
+    if ~isInstalled
+        error(errMsg);
     end
     
     % Prepare parallel pool, if requested
@@ -119,6 +107,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         try
             poolobj = gcp('nocreate');
             if isempty(poolobj)
+                bst_progress('text', 'Starting parallel pool');
                 parpool;
             end
         catch
@@ -155,9 +144,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         mkdir(outputPath);
         
         %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
-        if sProcess.options.paral.Value
+        isProgress = bst_progress('isVisible');
+        if sProcess.options.paral.Value && isProgress
             bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
-        else
+        elseif isProgress
             bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
         end
         
@@ -181,7 +171,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
 
         %%%%%%%%%%%%%%%%%%%%%% Do the clustering %%%%%%%%%%%%%%%%%%%%%%%%%%
-        bst_progress('start', 'Spike-sorting', 'Clustering detected spikes...');
+        bst_progress('text', 'Clustering detected spikes...');
         
         % The optional inputs in Do_clustering have to be true or false, not 1 or 0
         if sProcess.options.paral.Value
@@ -266,57 +256,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-end
-
-
-%% ===== DOWNLOAD AND INSTALL WAVECLUS =====
-function downloadAndInstallWaveClus()
-    waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
-    waveclusTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus_tmp');
-    url = 'https://github.com/csn-le/wave_clus/archive/master.zip';
-    
-    % If folders exists: delete
-    if isdir(waveclusDir)
-        file_delete(waveclusDir, 1, 3);
+    isProgress = bst_progress('isVisible');
+    if ~isProgress
+        bst_progress('stop');
     end
-    if isdir(waveclusTmpDir)
-        file_delete(waveclusTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(waveclusTmpDir);
-    % Download file
-    zipFile = bst_fullfile(waveclusTmpDir, 'waveclus.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'WaveClus download');
-    
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
-        % Try to download until the timeout is reached
-        pause(0.1);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'WaveClus download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
-        error(['Impossible to download WaveClus.' 10 errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'WaveClus', 'Installing WaveClus...');
-    unzip(zipFile, waveclusTmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(waveclusTmpDir, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newWaveclusDir = bst_fullfile(waveclusTmpDir, diropen(idir).name, 'wave_clus-master');
-    % Move WaveClus directory to proper location
-    file_move(newWaveclusDir, waveclusDir);
-    % Delete unnecessary files
-    file_delete(waveclusTmpDir, 1, 3);
-    % Add WaveClus to Matlab path
-    addpath(genpath(waveclusDir));
 end
 
 function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
@@ -349,8 +292,8 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
             sFile.Device, ...
             bst_fullfile(sFile.Parent, sFile.Spikes(iElectrode).File), ...
             sFile.Spikes(iElectrode).Name, ...
-            0, eventNamePrefix);
-        
+            0, eventNamePrefix); % Design choice: 0 means the unsupervised spiking events will not be automatically loaded to the link to raw file. They will start appearing only after the users manually spike-sort
+                                 %                1 would link them automatically. The problem with that, is that if the users don't finish manual spike-sorting, there is a mix of both.
         if iNewEvent == 0
             events = newEvents;
             iNewEvent = length(newEvents);

@@ -111,6 +111,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     try
         poolobj = gcp('nocreate');
         if isempty(poolobj)
+            bst_progress('text', 'Startin parallel pool');   
             parpool;
         end
     catch
@@ -118,7 +119,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     
-    %% Initialize KiloSort Parameters (This is a copy of StandardConfig_MOVEME)
+    %% Initialize KiloSort Parameters (This initially is a copy of StandardConfig_MOVEME)
     KilosortStandardConfig();
     ops.GPU = sProcess.options.GPU.Value;
     

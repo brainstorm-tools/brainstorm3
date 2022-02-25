@@ -28,7 +28,7 @@ function varargout = process_spikesorting_ultramegasort2000( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019, 2022; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -101,23 +101,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return
     end
     
-    % Ensure we are including the UltraMegaSort2000 folder in the Matlab path
-    UltraMegaSort2000Dir = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000');
-    if exist(UltraMegaSort2000Dir, 'file')
-        addpath(genpath(UltraMegaSort2000Dir));
-    end
-
-    % Install UltraMegaSort2000 if missing
-    if ~exist('UltraMegaSort2000 Manual.pdf', 'file')
-        rmpath(genpath(UltraMegaSort2000Dir));
-        isOk = java_dialog('confirm', ...
-            ['The UltraMegaSort2000 spike-sorter is not installed on your computer.' 10 10 ...
-                 'Download and install the latest version?'], 'UltraMegaSort2000');
-        if ~isOk
-            bst_report('Error', sProcess, sInputs, 'This process requires the UltraMegaSort2000 spike-sorter.');
-            return;
-        end
-        downloadAndInstallUltraMegaSort2000();
+    
+    %% Load plugin
+    [isInstalled, errMsg] = bst_plugin('Install', 'ultramegasort2000');
+    if ~isInstalled
+        error(errMsg);
     end
     
     % Compute on each raw input independently
@@ -162,11 +150,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         mkdir(outputPath);
         
-        %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
+        %% %%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
+        isProgress = bst_progress('isVisible');
         if sProcess.options.paral.Value
-            bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
+            if isProgress
+                bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
+            end
         else
-            bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
+            if isProgress
+                bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
+            end
         end
         
         %% UltraMegaSort2000 needs manual filtering of the raw files
@@ -253,56 +246,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     
-end
-
-
-%% ===== DOWNLOAD AND INSTALL UltraMegaSort2000 =====
-function downloadAndInstallUltraMegaSort2000()
-    UltraMegaSort2000Dir = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000');
-    UltraMegaSort2000TmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'UltraMegaSort2000_tmp');
-    url = 'https://github.com/danamics/UMS2K/archive/master.zip';
-    % If folders exists: delete
-    if isdir(UltraMegaSort2000Dir)
-        file_delete(UltraMegaSort2000Dir, 1, 3);
+    if isProgress
+        bst_progress('stop');
     end
-    if isdir(UltraMegaSort2000TmpDir)
-        file_delete(UltraMegaSort2000TmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(UltraMegaSort2000TmpDir);
-    % Download file
-    zipFile = bst_fullfile(UltraMegaSort2000TmpDir, 'master.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'UltraMegaSort2000 download');
     
-    % Check if the download was succesful and try again if it wasn't
-    time_before_entering = clock;
-    updated_time = clock;
-    time_out = 60;% timeout within 60 seconds of trying to download the file
-    
-    % Keep trying to download until a timeout is reached
-    while etime(updated_time, time_before_entering) <time_out && ~isempty(errMsg)
-        % Try to download until the timeout is reached
-        pause(0.1);
-        errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'UltraMegaSort2000 download');
-        updated_time = clock;
-    end
-    % If the timeout is reached and there is still an error, abort
-    if etime(updated_time, time_before_entering) >time_out && ~isempty(errMsg)
-        error(['Impossible to download UltraMegaSort2000.' 10 errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'UltraMegaSort2000', 'Installing UltraMegaSort2000...');
-    unzip(zipFile, UltraMegaSort2000TmpDir);
-    % Get parent folder of the unzipped file
-    diropen = dir(fullfile(UltraMegaSort2000TmpDir, 'MATLAB*'));
-    idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newUltraMegaSort2000Dir = bst_fullfile(UltraMegaSort2000TmpDir, diropen(idir).name, 'UMS2K-master');
-    % Move UltraMegaSort2000 directory to proper location
-    file_move(newUltraMegaSort2000Dir, UltraMegaSort2000Dir);
-    % Delete unnecessary files
-    file_delete(UltraMegaSort2000TmpDir, 1, 3);
-    % Add UltraMegaSort2000 to Matlab path
-    addpath(genpath(UltraMegaSort2000Dir));
 end
 
 
