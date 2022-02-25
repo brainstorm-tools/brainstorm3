@@ -111,7 +111,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     try
         poolobj = gcp('nocreate');
         if isempty(poolobj)
-            bst_progress('text', 'Startin parallel pool');   
+            bst_progress('text', 'Starting parallel pool');   
             parpool;
         end
     catch
@@ -254,6 +254,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         converted_raw_File = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
         
         %% %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
+        
         bst_progress('text', 'Kilosort spike sorting');   
         
         % Some residual parameters that need the outputPath and the converted Raw signal
@@ -330,21 +331,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Build output filename
         NewBstFile = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_' fBase '.mat']);
         % Build output structure
-        DataMat = struct();
-        %DataMat.F          = sFile;
-        DataMat.Comment     = 'KiloSort Spike Sorting';
-        DataMat.DataType    = 'raw';%'ephys';
-        DataMat.Device      = 'KiloSort';
-        DataMat.Parent      = outputPath;
-        DataMat.Spikes      = spikes;
-        DataMat.RawFile     = sInputs(i).FileName;
-        DataMat.Name        = NewBstFile;
+        DataMat_spikesorter = struct();
+        DataMat_spikesorter.Comment  = 'KiloSort Spike Sorting';
+        DataMat_spikesorter.DataType = 'raw';%'ephys';
+        DataMat_spikesorter.Device   = 'KiloSort';
+        DataMat_spikesorter.Parent   = outputPath;
+        DataMat_spikesorter.Spikes   = spikes;
+        DataMat_spikesorter.RawFile  = sInputs(i).FileName;
+        DataMat_spikesorter.Name     = NewBstFile;
         % Add history field
-        DataMat = bst_history('add', DataMat, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
+        DataMat_spikesorter = bst_history('add', DataMat_spikesorter, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
         % Save file on hard drive
-        bst_save(NewBstFile, DataMat, 'v6');
+        bst_save(NewBstFile, DataMat_spikesorter, 'v6');
         % Add file to database
-        sOutputStudy = db_add_data(sInputs(i).iStudy, NewBstFile, DataMat);
+        sOutputStudy = db_add_data(sInputs(i).iStudy, NewBstFile, DataMat_spikesorter);
         % Return new file
         OutputFiles{end+1} = NewBstFile;
 
@@ -373,8 +373,7 @@ end
 
 function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
 
-    events = struct();
-    index = 0;
+    events_spikes = struct();
     
 %     st: first column is the spike time in samples, 
 %         second column is the spike template, 
@@ -399,6 +398,7 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     
     spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     
+    index = 0;
     % Fill the events fields
     for iCluster = 1:length(unique(spikeTemplates))
         selectedSpikes = find(spikeTemplates==uniqueClusters(iCluster));
@@ -406,22 +406,23 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
         index = index+1;
         
         % Write the packet to events
-        events(index).color      = rand(1,3);
-        events(index).epochs     = ones(1,length(spikeTimes(selectedSpikes)));
-        events(index).times      = spikeTimes(selectedSpikes)'./sFile.prop.sfreq + sFile.prop.times(1);
-        events(index).reactTimes = [];
-        events(index).select     = 1;
-        events(index).notes      = cell(1, size(events(index).times, 2));
+        events_spikes(index).color      = rand(1,3);
+        events_spikes(index).epochs     = ones(1,length(spikeTimes(selectedSpikes)));
+        events_spikes(index).times      = spikeTimes(selectedSpikes)'./sFile.prop.sfreq + sFile.prop.times(1);
+        events_spikes(index).reactTimes = [];
+        events_spikes(index).select     = 1;
+        events_spikes(index).notes      = cell(1, size(events_spikes(index).times, 2));
         
         if uniqueClusters(iCluster)==1 || uniqueClusters(iCluster)==0
-            events(index).label    = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
-            events(index).channels = cell(1, size(events(index).times, 2));
+            events_spikes(index).label    = ['Spikes Noise |' num2str(uniqueClusters(iCluster)) '|'];
+            events_spikes(index).channels = cell(1, size(events_spikes(index).times, 2));
         else
-            events(index).label    = [spikeEventPrefix ' ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
-            events(index).channels = repmat({{ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name}}, 1, size(events(index).times, 2));
+            events_spikes(index).label    = [spikeEventPrefix ' ' ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name ' |' num2str(uniqueClusters(iCluster)) '|'];
+            events_spikes(index).channels = repmat({{ChannelMat.Channel(amplitude_max_channel(uniqueClusters(iCluster))).Name}}, 1, size(events_spikes(index).times, 2));
         end
     end
     
+    index = 0;
     % Add existing non-spike events for backup
     DataMat = in_bst_data(sFile.RawFile);
     existingEvents = DataMat.F.events;
@@ -435,15 +436,14 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
             index = index + 1;
         end
     end
+    events = [events events_spikes];
     
     save(fullfile(parentPath,'events_UNSUPERVISED.mat'),'events')
     
     %% Assign the unsupervised spike sorted events to the link to raw file
-    % Design choice: DO NOT ADD IT.
-    % Maybe revisit. A way for this to be added, is if the spiking events
-    % get deleted if the users finally decide to do manual spike-sorting.
-    
-%     sFile = import_events(sFile, [], events);
+    DataMat.F.events = events;    
+    [folder, filename_link2Raw, extension] = bst_fileparts(sFile.RawFile);
+    bst_save(bst_fullfile(parentPath, [filename_link2Raw extension]), DataMat, 'v6');
     
 end
 
