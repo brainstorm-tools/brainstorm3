@@ -525,6 +525,7 @@ switch lower(structureName)
             'UseSsp',           1, ...                 % Get and apply SSP (Signal Space Projection) vectors if available
             'RemoveBaseline',   'no', ...              % Method used to remove baseline of each channel: {no, all, time, sample}
             'BaselineRange',    [], ...                % [tStart,tStop] If RemoveBaseline is 'time'; Else ignored
+            'BaselineSensorType', '', ...              % Sensor types (or names) to for baseline correction if RemoveBaseline is {all, time}
             'events',           [], ...                % Events structure: (label, epochs, samples, times, reactTimes, select)
             'CreateConditions', 0, ...                 % {0,1} If 1, create new conditions in Brainstorm database if it is more convenient
             'ChannelReplace',   1, ...        % If 1, prompts for automatic replacement of an existing channel file. If 2, replace it automatically. If 0, do not do it.
@@ -535,6 +536,7 @@ switch lower(structureName)
             'EventsTypes',      '', ...       % String with a list of eventtypes to use to group the epochs (EEGLAB only)
             'DisplayMessages',  1, ...        % If 0, do not show any of the message boxes that the user would normally see
             'Precision',        []);          % Precision when reading the file {'double' (default), 'single'} (only for supported file formats)
+                    
         
     % ==== COLORMAPS ====
     case 'colormap'
