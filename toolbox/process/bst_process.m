@@ -2456,6 +2456,9 @@ function sProcesses = OptimizePipeline(sProcesses)
         switch (func2str(sProcesses(iProcess).Function))
             case 'process_baseline'
                 sProcesses(iImport).options.baseline = sProcesses(iProcess).options.baseline;
+                if isempty(sProcesses(iImport).options.baseline.Value{1})
+                    sProcesses(iImport).options.baseline.Value{1} = 'all';
+                end
                 sProcesses(iImport).options.blsensortypes = sProcesses(iProcess).options.sensortypes;
             case 'process_resample'
                 sProcesses(iImport).options.freq = sProcesses(iProcess).options.freq;
@@ -2501,6 +2504,9 @@ function sProcesses = OptimizePipelineRevert(sProcesses) %#ok<DEFNU>
         sProcAdd(end) = struct_copy_fields(sProcAdd(end), process_baseline('GetDescription'), 1);
         % Set options
         sProcAdd(end).options.baseline.Value = sProcesses(iImport).options.baseline.Value;
+        if isequal(sProcAdd(end).options.baseline.Value{1}, 'all')
+            sProcAdd(end).options.baseline.Value{1} = [];
+        end
         sProcAdd(end).options.sensortypes.Value = sProcesses(iImport).options.blsensortypes.Value;
         % Remove option from initial process
         sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'baseline');
