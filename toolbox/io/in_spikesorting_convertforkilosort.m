@@ -22,7 +22,7 @@ function converted_raw_File = in_spikesorting_convertforkilosort( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2019; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2019, 2022; Martin Cousineau, 2018
 
 sInput = varargin{1};
 if nargin < 2 || isempty(varargin{2})
@@ -49,14 +49,21 @@ fileSamples = round(sFile.prop.times .* sFile.prop.sfreq);
 
 % Separate the file to max length based on RAM
 numChannels = length(ChannelMat.Channel);
-max_samples = ram / 8 / numChannels;
+max_samples = ram / 8 / numChannels;  % Double precision
+
+total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq);
+num_segments = ceil(total_samples / max_samples);
+num_samples_per_segment = ceil(total_samples / num_segments);
 
 converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
 
-bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil(fileSamples(2)/max_samples));
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Spike-sorting', 'Converting to KiloSort Input...', 0, ceil((fileSamples(2)-fileSamples(1))/max_samples));
+end
 
 if exist(converted_raw_File, 'file') == 2
-    disp('File already converted')
+    disp('File already converted to kilosort input')
     return
 end
 
@@ -77,22 +84,45 @@ end
 %% Convert the acquisition system file to an int16 without a header.
 fid = fopen(converted_raw_File, 'a');
 
-isegment = 1;
-nsegment_max = 0;
+num_segments = ceil(total_samples / max_samples);
+num_samples_per_segment = ceil(total_samples / num_segments);
 
-while (nsegment_max < fileSamples(2))
-    nsegment_min = (isegment-1) * max_samples;
-    nsegment_max = isegment * max_samples - 1;
-    if (nsegment_max > fileSamples(2))
-        nsegment_max = fileSamples(2);
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('show');
+end
+bst_progress('start', 'Kilosort spike sorting', 'Converting to int16 .dat file', 0, num_segments);
+
+
+sampleBounds_all = cell(num_segments,1);
+sampleBounds = [0,0];
+for iSegment = 1:num_segments
+    sampleBounds(1) = (iSegment - 1) * num_samples_per_segment + round(sFile.prop.times(1)* sFile.prop.sfreq);
+    if iSegment < num_segments
+        sampleBounds(2) = sampleBounds(1) + num_samples_per_segment - 1;
+    else
+        sampleBounds(2) = total_samples;
     end
     
-    F = in_fread(sFile, ChannelMat, [], [nsegment_min,nsegment_max], [], ImportOptions);
-
-    F = F*10^6 ;  % This assumes that F signals are in V. I convert it to uV there are big numbers and int16 precision doesn't zero it out.
-    fwrite(fid, F,'int16');
+    F = in_fread(sFile, ChannelMat, [], sampleBounds, [], ImportOptions);
     
-    isegment = isegment + 1;
+    % Adaptive conversion to int16 to avoid saturation
+    max_abs_value = max([abs(max(max(F))) abs(min(min(F)))]);
+    
+    F = int16(F./max_abs_value * 15000); % The choice of 15000 for maximum is in part abstract - for 32567 the clusters look weird
+            
+    fwrite(fid, F, 'int16');
+    
+    bst_progress('inc', 1);
+    sampleBounds_all{iSegment} = sampleBounds;  % This is here for an easy check that there is no overlap between segments
+
+    clear F
 end
 fclose(fid);
+
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('stop');
+end
+
 

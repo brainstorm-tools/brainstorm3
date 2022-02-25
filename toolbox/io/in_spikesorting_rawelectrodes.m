@@ -22,7 +22,7 @@ function sFiles = in_spikesorting_rawelectrodes( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018, 2022; Martin Cousineau, 2018
 
 sInput = varargin{1};
 if nargin < 2 || isempty(varargin{2})
@@ -74,34 +74,42 @@ else
     end
 end
 
+
 % Otherwise, generate all of them again.
 DataMat = in_bst_data(sInput.FileName, 'F');
 sFile = DataMat.F;
 sr = sFile.prop.sfreq;
-samples = [0,0];
-max_samples = ram / 8 / numChannels;
-total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq); % (Blackrock/Ripple complained). Removed +1
-num_segments = ceil(total_samples / max_samples);
-num_samples_per_segment = ceil(total_samples / num_segments);
-bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);
 
-
-sFiles = {};
-for iChannel = 1:numChannels
-    sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel}]);
-end
 
 % Special case for supported acquisition systems: Save temporary files
 % using single precision instead of double to save disk space
 ImportOptions = db_template('ImportOptions');
 if ismember(sFile.format, {'EEG-AXION', 'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
     precision = 'single';
+    nBytes = 4;
 else
     precision = 'double';
+    nBytes = 8;
 end
 ImportOptions.Precision = precision;
 
-% Check if a projector has been computed and ask if the selected components
+max_samples = ram / nBytes / numChannels;
+total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq); % (Blackrock/Ripple complained). Removed +1
+num_segments = ceil(total_samples / max_samples);
+num_samples_per_segment = ceil(total_samples / num_segments);
+
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);
+end
+
+sFiles = {};
+for iChannel = 1:numChannels
+    sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel}]);
+end
+
+
+%% Check if a projector has been computed and ask if the selected components
 % should be removed
 if ~isempty(ChannelMat.Projector)
     isOk = java_dialog('confirm', ...
@@ -112,16 +120,19 @@ if ~isempty(ChannelMat.Projector)
     end
 end 
 
-% Read data in segments
+
+%% Read data in segments
+sampleBounds_all = cell(num_segments,1);
+sampleBounds = [0,0];
 for iSegment = 1:num_segments
-    samples(1) = (iSegment - 1) * num_samples_per_segment;
+    sampleBounds(1) = (iSegment - 1) * num_samples_per_segment + round(sFile.prop.times(1)* sFile.prop.sfreq);
     if iSegment < num_segments
-        samples(2) = iSegment * num_samples_per_segment - 1;
+        sampleBounds(2) = sampleBounds(1) + num_samples_per_segment - 1;
     else
-        samples(2) = total_samples;
+        sampleBounds(2) = total_samples;
     end
 
-    F = in_fread(sFile, ChannelMat, [], samples, [], ImportOptions);
+    F = in_fread(sFile, ChannelMat, [], sampleBounds, [], ImportOptions);
 
     % Append segment to individual channel file
     if parallel
@@ -140,10 +151,16 @@ for iSegment = 1:num_segments
             bst_progress('inc', 1);
         end
     end
+    clear F
+    sampleBounds_all{iSegment} = sampleBounds;  % This is here for an easy check that there is no overlap between segments
 end
 
-% Convert channel files to Matlab
-bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
+
+%% Convert binary files per channel to Matlab files
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
+end
 if parallel
     parfor iChannel = 1:numChannels
         convert2mat(sFiles{iChannel}, sr, precision);
@@ -158,6 +175,7 @@ end
 sFiles = cellfun(@(x) [x '.mat'], sFiles, 'UniformOutput', 0);
 
 end
+
 
 function convert2mat(chanFile, sr, precision)
     fid = fopen([chanFile '.bin'], 'rb');
