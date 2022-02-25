@@ -442,6 +442,28 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
+    
+    % === ELECTROPHYSIOLOGY: ultramegasort2000 ===
+    PlugDesc(end+1)              = GetStruct('ultramegasort2000');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/danamics/UMS2K/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/danamics/UMS2K/blob/master/UltraMegaSort2000%20Manual.pdf';
+    PlugDesc(end).TestFile       = 'UltraMegaSort2000 Manual.pdf';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    
+    % === ELECTROPHYSIOLOGY: waveclus ===
+    PlugDesc(end+1)              = GetStruct('waveclus');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/csn-le/wave_clus/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://journals.physiology.org/doi/full/10.1152/jn.00339.2018';
+    PlugDesc(end).TestFile       = 'wave_clus.m';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
