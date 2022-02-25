@@ -2504,7 +2504,7 @@ function sProcesses = OptimizePipelineRevert(sProcesses) %#ok<DEFNU>
         sProcAdd(end) = struct_copy_fields(sProcAdd(end), process_baseline('GetDescription'), 1);
         % Set options
         sProcAdd(end).options.baseline.Value = sProcesses(iImport).options.baseline.Value;
-        if strcmp(sProcAdd(end).options.baseline.Value{1}, 'all')
+        if isequal(sProcAdd(end).options.baseline.Value{1}, 'all')
             sProcAdd(end).options.baseline.Value{1} = [];
         end
         sProcAdd(end).options.sensortypes.Value = sProcesses(iImport).options.blsensortypes.Value;
