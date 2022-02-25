@@ -42,18 +42,15 @@ end
 
 hdr.BaseFolder = DataFolder;
 
-
-
-
  %% ===== FILE COMMENT =====
 % Comment: BaseFolder
 Comment = DataFolder;
 
-
 %% ===== READ DATA HEADERS =====
-
-bst_progress('start', 'TDT', 'Reading headers...');
-
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('start', 'TDT', 'Reading headers...');
+end
 
 % Load one second segment to see what type of signals exist in this dataset
 % Use as general sampling rate the rate of the HIGHEST sampled signal
@@ -78,7 +75,6 @@ all_streams = all_streams(~ismember(all_streams,{'pNe1','pNe2','pNe3','pNe4','Sy
 stream_info = struct;   
 
 LFP_label_exists = 0;
-
 
 ii = 1;
 for iStream = 1:length(all_streams)
@@ -171,7 +167,7 @@ end
 
 %% Check for acquisition events
 
-bst_progress('start', 'TDT', 'Collecting acquisition events...');
+bst_progress('text', 'Collecting acquisition events...');
 
 disp('Getting Acquisition System events')
 NO_data = TDTbin2mat(DataFolder, 'TYPE', 2); % Just load epocs / events
@@ -222,18 +218,10 @@ end
     
 %% Check for spike events
 
-
 check_for_spikes = 1;
 
-
-
-
-
-
-
 if check_for_spikes
-    bst_progress('start', 'TDT', 'Collecting spiking events...');
-    disp('Getting spiking events')
+    bst_progress('text', 'Collecting spiking events...');
     NO_data = TDTbin2mat(DataFolder, 'TYPE', 3); % Just load spikes
     are_there_spikes = ~isempty(NO_data.snips);
 else
@@ -241,15 +229,11 @@ else
 end
 
 
-
-
 %%%%%%%%
 disp('***************************************************')
 disp('CHECK THE SPIKES. THEY ARE ONLY ASSIGNED ON RIG TWO')
 disp('***************************************************')
 %%%%%%%%
-
-
 
 
 if are_there_spikes
@@ -302,7 +286,7 @@ if are_there_spikes
                     events(last_event_index).times      = NO_data.snips.(all_spike_event_Labels{iSpikeDetectedField}).ts(SpikesOfThatNeuronOnChannel_Indices)';
                     events(last_event_index).reactTimes = [];
                     events(last_event_index).select     = 1;
-                    events(last_event_index).channels   = cell(1, size(events(last_event_index).times, 2));
+                    events(last_event_index).channels   = repmat({{ChannelMat.Channel(channels_are_EEG_on_selected_RIG(iChannel)).Name}}, 1, size(events(last_event_index).times, 2));
                     events(last_event_index).notes      = cell(1, size(events(last_event_index).times, 2));
                 end
             end
@@ -312,6 +296,10 @@ end
 
 % Import this list
 sFile = import_events(sFile, [], events);
+
+isProgress = bst_progress('isVisible');
+if ~isProgress
+    bst_progress('stop');
 end
 
-
+end

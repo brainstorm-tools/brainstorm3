@@ -55,7 +55,7 @@ Comment = rawFile;
 
 %% ===== READ DATA HEADERS =====
 isProgress = bst_progress('isVisible');
-if ~isProgress
+if isProgress
     bst_progress('start', 'Plexon importer', 'Reading header');
 end
 
@@ -162,7 +162,7 @@ names = cellstr(names); % Convert to cell so it can be used in regexprep
 iPresentEvents = find(logical(evcounts));
 
 isProgress = bst_progress('isVisible');
-if ~isProgress
+if isProgress
     bst_progress('start', 'Plexon importer', 'Gathering acquisition events', 0, length(iPresentEvents));
 end
 
@@ -206,7 +206,7 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
     nUnique_events = sum(sum(spikes_tscounts(2:end,2:end)>0)); % First row of spike_tscounts is unsorted spikes. First column of spikes_tscounts is ignored
     
     isProgress = bst_progress('isVisible');
-    if ~isProgress
+    if isProgress
         bst_progress('start', 'Plexon importer', 'Gathering spiking events', 0, nUnique_events);
     end
     
@@ -237,8 +237,9 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
                 events(iEnteredEvent).epochs     = ones(1, size(events(iEnteredEvent).times, 2));
                 events(iEnteredEvent).reactTimes = [];
                 events(iEnteredEvent).select     = 1;
-                events(iEnteredEvent).channels   = cell(1, size(events(iEnteredEvent).times, 2));
                 events(iEnteredEvent).notes      = cell(1, size(events(iEnteredEvent).times, 2));
+                events(iEnteredEvent).channels   = repmat({{all_Channel_names{iChannels_selected(iChannel)}}}, 1, size(events(iEnteredEvent).times, 2));
+
                 iEnteredEvent = iEnteredEvent + 1;
                 
                 bst_progress('inc', 1);
@@ -252,7 +253,7 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
 end
 
 isProgress = bst_progress('isVisible');
-if ~isProgress
+if isProgress
     bst_progress('stop');
 end
 

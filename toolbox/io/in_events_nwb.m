@@ -122,7 +122,7 @@ if SpikesExist
         events_spikes(iNeuron).times      = times;
         events_spikes(iNeuron).reactTimes = [];
         events_spikes(iNeuron).select     = 1;
-        events_spikes(iNeuron).channels   = cell(1, size(events_spikes(iNeuron).times, 2));
+        events_spikes(iNeuron).channels   = repmat({{ChannelMat.Channel(theChannel).Name}}, 1, size(events_spikes(iNeuron).times, 2));
         events_spikes(iNeuron).notes      = cell(1, size(events_spikes(iNeuron).times, 2));
         
         % Check on which epoch each event belongs to
