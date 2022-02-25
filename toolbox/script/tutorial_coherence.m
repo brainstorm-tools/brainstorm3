@@ -132,8 +132,6 @@ close([hFigSurf hFigMriSurf]);
 
 %% ===== 4. LINK TO RAW FILE AND DISPLAY REGISTRATION =====
 disp([10 'DEMO> 4. Link to raw file and display channel file ' 10]);
-% Set Functional data view for Database explorer
-panel_protocols('SetExplorationMode', 'StudiesSubj');
 % Process: Create link to raw files
 sFileRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',  SubjectName, ...
