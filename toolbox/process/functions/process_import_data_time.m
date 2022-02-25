@@ -192,7 +192,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if isequal(sProcess.options.baseline.Value{1}, 'all')
             ImportOptions.RemoveBaseline = 'all';
             ImportOptions.BaselineRange  = [];
-        else
+        elseif ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
         end
