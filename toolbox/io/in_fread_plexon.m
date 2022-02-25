@@ -56,8 +56,9 @@ nSamples  = diff(SamplesBounds) + 1;
 % Initialize Brainstorm output
 F = zeros(nChannels, nSamples, precision);
 
-for iChannel = 1:nChannels   
-    [adfreq, n, data] = plx_ad_span_v(sFile.filename, iSelectedChannels(iChannel)-1, SamplesBounds(1), SamplesBounds(2));
-    F(iChannel,:) = data;
+for iChannel = 1:nChannels 
+    % plx_ad_span_v returns values in mV
+    [adfreq, n, data] = plx_ad_span_v(sFile.filename, iSelectedChannels(iChannel)-1, SamplesBounds(1), SamplesBounds(2));    
+    F(iChannel,:) = data./1000; % Convert to V
 end
 end
