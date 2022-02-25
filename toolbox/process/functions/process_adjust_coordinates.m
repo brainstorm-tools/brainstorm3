@@ -197,6 +197,7 @@ function OutputFiles = Run(sProcess, sInputs)
             if sProcess.options.points.Value && sProcess.options.scs.Value
                 % Get subject in database, with subject directory
                 sSubject = bst_get('Subject', sInputs(iFile).SubjectFile);
+                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
                 sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
                 % Slightly change the string we use to verify if it was done: append " (hidden)".
                 iHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'));
@@ -205,10 +206,10 @@ function OutputFiles = Run(sProcess, sInputs)
                         sMri.History{iHist(iH),3} = [sMri.History{iHist(iH),3}, ' (hidden)'];
                     end
                     try
-                        bst_save(file_fullpath(sMri.FileName), sMri, 'v7');
+                        bst_save(file_fullpath(MriFile), sMri, 'v7');
                     catch
                         bst_report('Error', sProcess, sInputs(iFile), ...
-                            sprintf('Unable to save MRI file %s.', sMri.FileName));
+                            sprintf('Unable to save MRI file %s.', MriFile));
                         continue;
                     end
                 end

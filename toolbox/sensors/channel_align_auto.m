@@ -169,19 +169,19 @@ end
 
 %% ===== FIND OPTIMAL FIT =====
 % Find best possible rigid transformation (rotation+translation)
-[R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+[R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP, tolerance);
 % Remove outliers and fit again
-if ~isempty(dist) && ~isempty(tolerance) && (tolerance > 0)
-    % Sort points by distance to scalp
-    [tmp__, iSort] = sort(dist, 1, 'descend');
-    iRemove = iSort(1:nRemove);
-    % Remove from list of destination points
-    HP(iRemove,:) = [];
-    % Fit again
-    [R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
-else
-    nRemove = 0;
-end
+% if ~isempty(dist) && ~isempty(tolerance) && (tolerance > 0)
+%     % Sort points by distance to scalp
+%     [tmp__, iSort] = sort(dist, 1, 'descend');
+%     iRemove = iSort(1:nRemove);
+%     % Remove from list of destination points
+%     HP(iRemove,:) = [];
+%     % Fit again
+%     [R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+% else
+%     nRemove = 0;
+% end
 % Current position cannot be optimized
 if isempty(R)
     bst_progress('stop');
