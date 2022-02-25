@@ -224,12 +224,12 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', [sFileRaw, sFileRawNotch],
          'Measure',    'power', ...
          'Output',     'all', ...
          'SaveKernel', 0));
-% Process: Snapshot: Frequency spectrum
-bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
-    'target',   10, ...  % Frequency spectrum
-    'modality', 1, ...   % MEG (All)
-    'Comment',  'Power spectrum density');
-
+% View recordings
+hFigPsdBef = view_spectrum(sFilesPsd(1).FileName);
+hFigPsdAft = view_spectrum(sFilesPsd(2).FileName);
+pause(0.5);
+% Close figures
+close([hFigPsdBef, hFigPsdAft]);
 
 %% ===== 9. EMG PRE-PROCESSING =====
 disp([10 'DEMO> 9. EMG pre-processing' 10]);
@@ -264,10 +264,6 @@ bst_process('CallProcess', 'process_ssp_eog', sFileRawNotchHighAbs, [], ...
     'sensortypes', 'MEG', ...
     'usessp',      1, ...
     'select',      [1]);
-% Process: Snapshot: SSP projectors
-bst_process('CallProcess', 'process_snapshot', sFileRawNotchHighAbs, [], ...
-    'target',  2, ...  % SSP projectors
-    'Comment', 'SSP projectors');
 
 % Process: Detect other artifacts
 bst_process('CallProcess', 'process_evt_detect_badsegment', sFileRawNotchHighAbs, [], ...
@@ -303,6 +299,7 @@ sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFileRawN
     'freq',          [], ...
     'baseline',      'all', ...
     'blsensortypes', 'MEG');
+% TODO snapshots for the two figures below
 % View recordings, trial 1
 hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', 'MRC21');
 hFigEmg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
@@ -325,18 +322,11 @@ sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.Fi
     'overlap',      overlap, ...
     'maxfreq',      maxfreq, ...
     'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
-% Process: Snapshot: Frequency spectrum
-bst_process('CallProcess', 'process_snapshot', sFileCoh1N, [], ...
-    'target',         10, ...  % Frequency spectrum
-    'modality',       1, ...  % MEG (All)
-    'orient',         1, ...  % left
-    'time',           0, ...
-    'rowname',        '', ...
-    'Comment',        '');
+% TODO snapshots for the three figures below
 % View coherence 1xN (sensor level)
 hFigCohSpcA = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
 hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', 'MRC21');
-hFigCohTop = view_topography(sFileCoh1N.FileName);
+hFigCohTop  = view_topography(sFileCoh1N.FileName);
 % TODO Show sensor locations in topoplot
 % TODO Set frequency slider to 17.58 Hz
 % TODO Selet MRC21
@@ -351,7 +341,8 @@ sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], 
     'istimebands', 0, ...
     'timebands',   '', ...
     'overwrite',   0);
-
+% TODO snapshots for the three figures below
+% View coherence 1xN (sensor level) for 15 - 20 Hz
 hFigCohTop = view_topography(sFileCoh1NBand.FileName);
 % TODO Show sensor locations in topoplot
 % TODO Set frequency slider to 17.58 Hz
@@ -359,6 +350,7 @@ hFigCohTop = view_topography(sFileCoh1NBand.FileName);
 pause(0.5);
 % Close figure
 close(hFigCohTop);
+
 
 %% ===== 13. MEG SOURCE MODELLING =====
 disp([10 'DEMO> 13. MEG source modelling' 10]);
@@ -404,6 +396,7 @@ bst_process('CallProcess', 'process_headmodel', sFilesEpochs(1).FileName, [], ..
 disp([10 'DEMO> 14. Source estimation' 10]);
 % iStudy for current imported data epochs
 iStudy = sFilesEpochs(1).iStudy;
+
 % ===== SURFACE SPACE =====
 % Set (surface) head model as default
 sStudy = bst_get('Study', iStudy);
@@ -512,6 +505,7 @@ for ix = 1 :  length(sourceTypes)
     sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];
 end
 
+% TODO snapshots for the three figures below
 % View coherence 1xN (source level)
 hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
@@ -589,6 +583,7 @@ for ix = 1 : length(scoutFuntcTimes)
     sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];   
 end
 
+% TODO snapshots for the figures below
 % View coherence 1xN (scout level)
 hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
@@ -647,6 +642,7 @@ for ix = 1 : length(scoutFuntcTimes)
     sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];       
 end
 
+% TODO snapshots for the figures below
 % View coherence NxN (scout level)
 hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
