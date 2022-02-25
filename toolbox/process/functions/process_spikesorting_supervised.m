@@ -433,9 +433,19 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
             end
             
         case 'kilosort'
-            newEvents = process_spikesorting_kilosort('LoadKlustersEvents', ...
+            [newEvents, Channels_new_montages] = process_spikesorting_kilosort('LoadKlustersEvents', ...
                 GlobalData.SpikeSorting.Data, GlobalData.SpikeSorting.Selected);
             gotEvents = 1;
+                        
+            % In the case of Kilosort, the entire Shank is considered the
+            % 'electrode'. Therefore there are multiple events assigned
+            % simultaneously on every manual inspection.
+            channelsInMontage = Channels_new_montages(ismember({Channels_new_montages.Group}, electrodeName));
+            
+            eventName = cell(length(channelsInMontage), 1);
+            for iChannel = 1:length(channelsInMontage)
+                eventName{iChannel} = ['Spikes Channel ' channelsInMontage(iChannel).Name];
+            end
             
         otherwise
             bst_error('This spike sorting structure is currently unsupported by Brainstorm.');
@@ -481,25 +491,45 @@ function newEvents = CreateSpikeEvents(rawFile, deviceType, electrodeFile, elect
         numEvents = length(DataMat.F.events);
         % Delete existing event(s)
         if numEvents > 0
-            iDelEvents = cellfun(@(x) ~isempty(x), strfind({DataMat.F.events.label}, strtrim(eventName)));
+            if ~iscell(eventName)  % Waveclus / UltraMegaSort2000
+                iDelEvents = cellfun(@(x) ~isempty(x), strfind({DataMat.F.events.label}, strtrim(eventName)));
+            else % Kilosort - Delete all spiking events that are derived from any channels from the shank that is being currently manually spike-sorted
+                iDelEvents = false(length(eventName), length({DataMat.F.events.label}));
+                for iEventName = 1:length(eventName)
+                    iDelEvents(iEventName,:) = cellfun(@(x) ~isempty(x), strfind({DataMat.F.events.label}, strtrim(eventName{iEventName})));
+                end
+            end
+            iDelEvents = any(iDelEvents,1);
+                
             DataMat.F.events = DataMat.F.events(~iDelEvents);
             numEvents = length(DataMat.F.events);
         end
         % Add as new event(s);
-        for iEvent = 1:length(newEvents)
-            DataMat.F.events(numEvents + iEvent) = newEvents(iEvent);
+        if ~isempty(fieldnames(newEvents))
+            for iEvent = 1:length(newEvents)
+                DataMat.F.events(numEvents + iEvent) = newEvents(iEvent);
+            end
         end
         bst_save(bst_fullfile(ProtocolInfo.STUDIES, rawFile), DataMat, 'v6');
     end
 end
 
-function prefix = GetSpikesEventPrefix()
-    prefix = 'Spikes Channel';
+function prefix = GetSpikesEventPrefix(varargin)
+    if length(varargin) < 1
+        prefix = 'Spikes Channel';
+    else
+        prefix = {'Spikes Channel', 'Spikes Noise'};
+    end
 end
 
 function isSpikeEvent = IsSpikeEvent(eventLabel)
-    prefix = GetSpikesEventPrefix();
-    isSpikeEvent = strncmp(eventLabel, prefix, length(prefix));
+    prefixes = GetSpikesEventPrefix('all');
+    
+    isSpikeEvent = false(length(prefixes), 1);
+    for iPrefix = 1:length(prefixes)
+        isSpikeEvent(iPrefix) = strncmp(eventLabel, prefixes{iPrefix}, length(prefixes{iPrefix}));
+    end
+    isSpikeEvent = any(isSpikeEvent,1);
 end
 
 function neuron = GetNeuronOfSpikeEvent(eventLabel)
