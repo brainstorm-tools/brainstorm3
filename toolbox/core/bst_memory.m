@@ -2418,6 +2418,9 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         end
         if ~isequal(FooofDisp,'exponent') && ~isequal(FooofDisp,'offset')
             Values = Values(:,:,iFreqs); % Do not touch aperiodic parameters
+            if (nnz(isnan(Values)) > 0) && length(iFreqs) == 1 % If freqslice full of NaNs (e.g., 0Hz)
+                Values(isnan(Values)) = 1;
+            end
         end
         isApplyFunction = ~isempty(Function);
     elseif isSPRiNT && ~isequal(FooofDisp,'spectrum')
