@@ -46,6 +46,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.newname.Comment = 'New event name: ';
     sProcess.options.newname.Type    = 'text';
     sProcess.options.newname.Value   = '';
+    % Delete original events
+    sProcess.options.delete.Comment = 'Delete the original events';
+    sProcess.options.delete.Type    = 'checkbox';
+    sProcess.options.delete.Value   = 1; 
 end
 
 
@@ -63,6 +67,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     EvtNames = strtrim(sProcess.options.evtnames.Value);
     NewName  = strtrim(sProcess.options.newname.Value);
+    isDelete = sProcess.options.delete.Value;
     if isempty(EvtNames) || isempty(NewName)
         bst_report('Error', sProcess, [], 'You must enter a list of events to merge and a destination name.');
         return;
@@ -91,7 +96,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         % Call the renaming function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, EvtNames, NewName);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, EvtNames, NewName, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -112,7 +117,7 @@ end
 
 
 %% ===== RENAME EVENTS =====
-function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
+function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDelete)
     % No modification
     isModified = 0;
 
@@ -163,7 +168,9 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
     end
     
     % Remove merged events
-    events(iEvents) = [];
+    if isDelete
+        events(iEvents) = [];
+    end
     % Add new event
     events(end + 1) = newEvent;
 

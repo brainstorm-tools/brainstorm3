@@ -97,10 +97,18 @@ sFile.device     = 'NIRS Brainsight system';
 sFile.byteorder  = 'l';
 
 % Properties of the recordings
-% Round to microsec to avoid floating imprecision
-sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
-sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+% Truncate significant digits to avoid numerical errors in the conversion time<->samples
+sFile.prop.sfreq = 1 ./ ( round(mean(diff(nirs.t)) .* 1e6) ./ 1e6); %sec
+sFile.prop.times = (round(nirs.t(1) .* sFile.prop.sfreq) + [0, length(nirs.t)-1]) ./ sFile.prop.sfreq;
 sFile.prop.nAvg  = 1;
+
+% Warning: Unstable sampling frequency
+if (abs(sFile.prop.times(2) - nirs.t(end)) > 1e-3)
+    disp([10, 'BST> WARNING: Unstable sampling frequency in NIRS file.']);
+    disp(sprintf('BST>   | MEAN: mean(1./diff(t))=%1.12f Hz   |   STD: std(1./diff(t))=%1.12f Hz', mean(1./diff(nirs.t)), std(1./diff(nirs.t))));
+    disp(sprintf('BST>   | Time of last sample reported in the NIRS file: %1.12f s', nirs.t(end)));
+    disp(sprintf('BST>   | Time of last sample as imported in Brainstorm: %1.12f s\n', sFile.prop.times(2)));
+end
 
 % Reading events 
 if isfield(nirs,'CondNames')
