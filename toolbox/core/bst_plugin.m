@@ -2176,6 +2176,8 @@ function j = MenuCreate(jMenu, fontSize)
             j(ij).customset = gui_component('MenuItem', j(ij).custom, [], 'Select installation folder', [], [], @(h,ev)SetCustomPath(Plug.Name), fontSize);
             j(ij).custompath = gui_component('MenuItem', j(ij).custom, [], 'Path not set', [], [], [], fontSize);
             j(ij).custompath.setEnabled(0);
+            j(ij).custom.addSeparator();
+            j(ij).customdel = gui_component('MenuItem', j(ij).custom, [], 'Ignore local installation', [], [], @(h,ev)SetCustomPath(Plug.Name, 0), fontSize);
             j(ij).menu.addSeparator();
             % Load
             j(ij).load = gui_component('MenuItem', j(ij).menu, [], 'Load', IconLoader.ICON_GOOD, [], @(h,ev)LoadInteractive(Plug.Name), fontSize);
@@ -2331,11 +2333,16 @@ function SetCustomPath(PlugName, PlugPath)
         return;
     end
     % Ask install path to user
+    isWarning = 1;
     if isempty(PlugPath)
         PlugPath = uigetdir(PlugInst.Path, ['Select ' PlugName ' directory.']);
         if isequal(PlugPath, 0)
             PlugPath = [];
         end
+    % If removal is requested
+    elseif isequal(PlugPath, 0)
+        PlugPath = [];
+        isWarning = 0;
     end
     % If the directory did not change: nothing to do
     if (isInstalled && isequal(PlugInst.Path, PlugPath)) || (~isInstalled && isempty(PlugPath))
@@ -2370,6 +2377,10 @@ function SetCustomPath(PlugName, PlugPath)
     % Load plugin
     if ~isempty(PlugPath)
         [isOk, errMsg, PlugDesc] = Load(PlugName);
+    % Ignored warnings
+    elseif ~isWarning
+        isOk = 1;
+        errMsg = [];
     % Invalid path
     else
         isOk = 0;
@@ -2384,7 +2395,7 @@ function SetCustomPath(PlugName, PlugPath)
         bst_error(['An error occurred while configuring plugin ' PlugName ':' 10 10 errMsg 10], 'Plugin manager', 0);
     elseif ~isempty(errMsg)
         java_dialog('msgbox', ['Configuration message:' 10 10 errMsg 10], 'Plugin manager');
-    else
+    elseif isWarning
         java_dialog('msgbox', ['Plugin ' PlugName ' successfully loaded.']);
     end
 end
