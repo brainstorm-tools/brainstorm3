@@ -7,12 +7,12 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-% 
+%
 % Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-% 
+%
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -43,7 +43,7 @@ else
 end
 
 %% ===== LOAD MRI =====
-% Load MRI 
+% Load MRI
 bst_progress('start', 'Generate head surface', 'Loading MRI...');
 sMri = bst_memory('LoadMri', MriFile);
 bst_progress('stop');
@@ -94,24 +94,62 @@ end
 % Progress bar
 bst_progress('start', 'Generate head surface', 'Creating head mask...', 0, 100);
 % Threshold mri to the level estimated in the histogram
-headmask = (sMri.Cube(:,:,:,1) > bgLevel);
+headmask = sMri.Cube(:,:,:,1) > bgLevel;
 % Closing all the faces of the cube
-headmask(1,:,:)   = 0*headmask(1,:,:);
-headmask(end,:,:) = 0*headmask(1,:,:);
-headmask(:,1,:)   = 0*headmask(:,1,:);
-headmask(:,end,:) = 0*headmask(:,1,:);
-headmask(:,:,1)   = 0*headmask(:,:,1);
-headmask(:,:,end) = 0*headmask(:,:,1);
+headmask(1,:,:)   = 0; %*headmask(1,:,:);
+headmask(end,:,:) = 0; %*headmask(1,:,:);
+headmask(:,1,:)   = 0; %*headmask(:,1,:);
+headmask(:,end,:) = 0; %*headmask(:,1,:);
+headmask(:,:,1)   = 0; %*headmask(:,:,1);
+headmask(:,:,end) = 0; %*headmask(:,:,1);
 % Erode + dilate, to remove small components
-if (erodeFactor > 0)
-    headmask = headmask & ~mri_dilate(~headmask, erodeFactor);
-    headmask = mri_dilate(headmask, erodeFactor);
+% if (erodeFactor > 0)
+%     headmask = headmask & ~mri_dilate(~headmask, erodeFactor);
+%     headmask = mri_dilate(headmask, erodeFactor);
+% end
+% bst_progress('inc', 10);
+
+% Remove isolated voxels (dots or holes) from 5 out of 6 sides
+% isFill = false(size(headmask));
+% isFill(2:end-1,2:end-1,2:end-1) = (headmask(1:end-2,2:end-1,2:end-1) + headmask(3:end,2:end-1,2:end-1) + ...
+%     headmask(2:end-1,1:end-2,2:end-1) + headmask(2:end-1,3:end,2:end-1) + ...
+%     headmask(2:end-1,2:end-1,1:end-2) + headmask(2:end-1,2:end-1,3:end)) >= 5 & ...
+%     ~headmask(2:end-1,2:end-1,2:end-1);
+% headmask(isFill) = 1;
+% isFill = false(size(headmask));
+% isFill(2:end-1,2:end-1,2:end-1) = (headmask(1:end-2,2:end-1,2:end-1) + headmask(3:end,2:end-1,2:end-1) + ...
+%     headmask(2:end-1,1:end-2,2:end-1) + headmask(2:end-1,3:end,2:end-1) + ...
+%     headmask(2:end-1,2:end-1,1:end-2) + headmask(2:end-1,2:end-1,3:end)) <= 1 & ...
+%     headmask(2:end-1,2:end-1,2:end-1);
+% headmask(isFill) = 0;
+
+% Fill neck holes (bones, etc.) where it is cut at edge of volume.
+bst_progress('text', 'Filling holes and removing disconnected parts...');
+for iDim = 1:3
+    % Swap slice dimension into first position.
+    switch iDim 
+        case 1
+            Perm = 1:3;
+        case 2
+            Perm = [2, 1, 3];
+        case 3
+            Perm = [3, 2, 1];
+    end
+    TempMask = permute(headmask, Perm);
+    % Edit second and second-to-last slices
+    Slice = TempMask(2, :, :);
+    TempMask(2, :, :) = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
+    Slice = TempMask(end-1, :, :);
+    TempMask(end-1, :, :) = Slice | (Fill(Slice, 2) & Fill(Slice, 3));
+    % Permute back
+    headmask = permute(TempMask, Perm);
 end
-bst_progress('inc', 10);
 % Fill holes
-bst_progress('text', 'Filling holes...');
-headmask = (mri_fillholes(headmask, 1) & mri_fillholes(headmask, 2) & mri_fillholes(headmask, 3));
-bst_progress('inc', 10);
+InsideMask = (Fill(headmask, 1) & Fill(headmask, 2) & Fill(headmask, 3));
+headmask = InsideMask | (Dilate(InsideMask) & headmask);
+% Keep only central connected volume (trim "beard" or bubbles)
+headmask = CenterSpread(headmask);
+bst_progress('inc', 20);
 
 % view_mri_slices(headmask, 'x', 20)
 
@@ -119,45 +157,66 @@ bst_progress('inc', 10);
 %% ===== CREATE SURFACE =====
 % Compute isosurface
 bst_progress('text', 'Creating isosurface...');
+% Could have avoided x-y flip by specifying XYZ in isosurface...
 [sHead.Faces, sHead.Vertices] = mri_isosurface(headmask, 0.5);
-bst_progress('inc', 10);
+% Flip x-y back to our voxel coordinates.
+sHead.Vertices = sHead.Vertices(:, [2, 1, 3]);
+bst_progress('inc', 20);
 % Downsample to a maximum number of vertices
-maxIsoVert = 60000;
-if (length(sHead.Vertices) > maxIsoVert)
-    bst_progress('text', 'Downsampling isosurface...');
-    [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, maxIsoVert./length(sHead.Vertices));
-    bst_progress('inc', 10);
-end
+% maxIsoVert = 60000;
+% if (length(sHead.Vertices) > maxIsoVert)
+%     bst_progress('text', 'Downsampling isosurface...');
+%     [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, maxIsoVert./length(sHead.Vertices));
+%     bst_progress('inc', 10);
+% end
 % Remove small objects
 bst_progress('text', 'Removing small patches...');
 [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
-bst_progress('inc', 10);
+bst_progress('inc', 20);
+
+% Clean final surface
+% This is very strange, it doesn't look at face locations, only the normals.
+% After isosurface, many many faces are parallel.
+% bst_progress('text', 'Fill: Cleaning surface...');
+% [sHead.Vertices, sHead.Faces] = tess_clean(sHead.Vertices, sHead.Faces);
+
+% Smooth voxel artefacts, but preserve shape and volume.
+bst_progress('text', 'Smoothing voxel artefacts...');
+% Should normally use 1 as voxel size, but using a larger value smooths.
+sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 50, [], false); % voxel/smoothing size, iterations, verbose
 
 % Downsampling isosurface
 if (length(sHead.Vertices) > nVertices)
     bst_progress('text', 'Downsampling surface...');
     [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
-    bst_progress('inc', 10);
+    bst_progress('inc', 20);
 end
-% Convert to millimeters
-sHead.Vertices = sHead.Vertices(:,[2,1,3]);
-sHead.Faces    = sHead.Faces(:,[2,1,3]);
-sHead.Vertices = bst_bsxfun(@times, sHead.Vertices, sMri.Voxsize);
 % Convert to SCS
-sHead.Vertices = cs_convert(sMri, 'mri', 'scs', sHead.Vertices ./ 1000);
+sHead.Vertices = cs_convert(sMri, 'voxel', 'scs', sHead.Vertices);
+% Flip face order to Brainstorm convention
+sHead.Faces = sHead.Faces(:,[2,1,3]);
 
-% Reduce the final size of the meshed volume
-erodeFinal = 3;
-% Fill holes in surface
-%if (fillFactor > 0)
-    bst_progress('text', 'Filling holes...');
-    [sHead.Vertices, sHead.Faces] = tess_fillholes(sMri, sHead.Vertices, sHead.Faces, fillFactor, erodeFinal);
-    bst_progress('inc', 30);
+% % Smooth isosurface
+% bst_progress('text', 'Fill: Smoothing surface...');
+% VertConn = tess_vertconn(Vertices, Faces);
+% Vertices = tess_smooth(Vertices, 1, 10, VertConn, 0);
+% % One final round of smoothing
+% VertConn = tess_vertconn(Vertices, Faces);
+% Vertices = tess_smooth(Vertices, 0.2, 3, VertConn, 0);
+%
+% % Reduce the final size of the meshed volume
+% erodeFinal = 3;
+% % Fill holes in surface
+% if (fillFactor > 0)
+%     bst_progress('text', 'Filling holes...');
+%     [sHead.Vertices, sHead.Faces] = tess_fillholes(sMri, sHead.Vertices, sHead.Faces, fillFactor, erodeFinal);
+%     bst_progress('inc', 30);
 % end
 
 
 %% ===== SAVE FILES =====
 bst_progress('text', 'Saving new file...');
+bst_progress('inc', 15);
 % Create output filenames
 ProtocolInfo = bst_get('ProtocolInfo');
 SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
@@ -174,7 +233,83 @@ iSurface = db_add_surface( iSubject, HeadFile, sHead.Comment);
 
 % Close, success
 bst_progress('stop');
+end
 
 
+%% ===== Subfunctions =====
+function mask = Fill(mask, dim)
+% Modified to exclude boundaries, so we can get rid of external junk as well as
+% internal holes easily.
 
+% Initialize two accumulators, for the two directions
+acc1 = false(size(mask));
+acc2 = false(size(mask));
+n = size(mask,dim);
+% Process in required direction
+switch dim
+    case 1
+        for i = 2:n
+            acc1(i,:,:) = acc1(i-1,:,:) | mask(i-1,:,:);
+        end
+        for i = n-1:-1:1
+            acc2(i,:,:) = acc2(i+1,:,:) | mask(i+1,:,:);
+        end
+    case 2
+        for i = 2:n
+            acc1(:,i,:) = acc1(:,i-1,:) | mask(:,i-1,:);
+        end
+        for i = n-1:-1:1
+            acc2(:,i,:) = acc2(:,i+1,:) | mask(:,i+1,:);
+        end
+    case 3
+        for i = 2:n
+            acc1(:,:,i) = acc1(:,:,i-1) | mask(:,:,i-1);
+        end
+        for i = n-1:-1:1
+            acc2(:,:,i) = acc2(:,:,i+1) | mask(:,:,i+1);
+        end
+end
+% Combine two accumulators
+mask = acc1 & acc2;
+end
 
+function mask = Dilate(mask)
+% Dilate by 1 voxel in 6 directions, except at volume edges
+mask(2:end-1,2:end-1,2:end-1) = mask(1:end-2,2:end-1,2:end-1) | mask(3:end,2:end-1,2:end-1) | ...
+    mask(2:end-1,1:end-2,2:end-1) | mask(2:end-1,3:end,2:end-1) | ...
+    mask(2:end-1,2:end-1,1:end-2) | mask(2:end-1,2:end-1,3:end);
+end
+
+function OutMask = CenterSpread(InMask)
+% Similar to Fill, but from a central starting point and intersecting with the input "reference" mask.
+OutMask = false(size(InMask));
+iStart = round(size(OutMask)/2);
+nVox = size(OutMask);
+OutMask(iStart(1), iStart(2), iStart(3)) = true;
+nPrev = 0;
+nOut = 1;
+while nOut > nPrev
+    % Dilation loop was very slow.
+    %     OutMask = OutMask | (Dilate(OutMask) & InMask);
+    for x = 2:nVox(1)
+        OutMask(x,:,:) = OutMask(x,:,:) | (OutMask(x-1,:,:) & InMask(x,:,:));
+    end
+    for x = nVox(1)-1:-1:1
+        OutMask(x,:,:) = OutMask(x,:,:) | (OutMask(x+1,:,:) & InMask(x,:,:));
+    end
+    for y = 2:nVox(2)
+        OutMask(:,y,:) = OutMask(:,y,:) | (OutMask(:,y-1,:) & InMask(:,y,:));
+    end
+    for y = nVox(2)-1:-1:1
+        OutMask(:,y,:) = OutMask(:,y,:) | (OutMask(:,y+1,:) & InMask(:,y,:));
+    end
+    for z = 2:nVox(3)
+        OutMask(:,:,z) = OutMask(:,:,z) | (OutMask(:,:,z-1) & InMask(:,:,z));
+    end
+    for z = nVox(3)-1:-1:1
+        OutMask(:,:,z) = OutMask(:,:,z) | (OutMask(:,:,z+1) & InMask(:,:,z));
+    end
+    nPrev = nOut;
+    nOut = sum(OutMask(:));
+end
+end

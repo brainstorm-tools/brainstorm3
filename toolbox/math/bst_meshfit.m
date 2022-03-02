@@ -44,7 +44,7 @@ function [R, T, newP, distFinal] = bst_meshfit(Vertices, Faces, P, Outliers)
 %          Marc Lalancette, 2022
 
 % Coordinates are in m.
-
+PenalizeInside = true;
 if nargin < 4 || isempty(Outliers)
     Outliers = 0;
 end
@@ -84,10 +84,10 @@ errInit = CostFunction(InitParams);
 % Fit points
 % [R,T,newP] = fit_points(Vertices, VertNorm, P, dt);
 % Do optimization
-% Stop at 0.1 mm total distance, or 0.1 mm displacement.
+% Stop at 0.1 mm total distance, or 0.02 mm displacement.
 OptimOptions = optimoptions(@fminunc, 'MaxFunctionEvaluations', 1000, 'MaxIterations', 200, ...
     'FiniteDifferenceStepSize', 1e-3, ...
-    'FunctionTolerance', 1e-4, 'StepTolerance', 5e-2, 'Display', 'none'); % 'OptimalityTolerance', 1e-15,  'final-detailed'
+    'FunctionTolerance', 1e-4, 'StepTolerance', 2e-2, 'Display', 'none'); % 'OptimalityTolerance', 1e-15,  'final-detailed'
 
 BestParams = fminunc(@CostFunction, InitParams, OptimOptions);
 [R,T,newP] = Transform(BestParams, P);
@@ -110,16 +110,25 @@ end
     function [Cost, Dist] = CostFunction(Params)
         [~,~,Points] = Transform(Params, P);
         Dist = PointSurfDistance(Points);
-        isInside = inpolyhedron(Faces, Vertices, Points, 'FaceNormals', FaceNormals, 'FlipNormals', true);
-        %patch('Faces',Faces,'Vertices',Vertices); hold on; light; axis equal;
-        %quiver3(FaceVertices(:,1,1), FaceVertices(:,2,1), FaceVertices(:,3,1), FaceNormals(:,1,1), FaceNormals(:,2,1), FaceNormals(:,3,1));
-        %scatter3(Points(1,1),Points(1,2),Points(1,3)); 
-        iSquare = isInside & Dist > 0.001;
-        Dist(iSquare) = Dist(iSquare).^2 *1e3; % factor for "squaring mm"
+        if PenalizeInside
+            isInside = inpolyhedron(Faces, Vertices, Points, 'FaceNormals', FaceNormals, 'FlipNormals', true);
+            %patch('Faces',Faces,'Vertices',Vertices); hold on; light; axis equal;
+            %quiver3(FaceVertices(:,1,1), FaceVertices(:,2,1), FaceVertices(:,3,1), FaceNormals(:,1,1), FaceNormals(:,2,1), FaceNormals(:,3,1));
+            %scatter3(Points(1,1),Points(1,2),Points(1,3));
+            iSquare = isInside & Dist > 0.001;
+            Dist(iSquare) = Dist(iSquare).^2 *1e3; % factor for "squaring mm"
+            iOutside = find(~isInside);
+        end
         Cost = sum(Dist);
         for iP = 1:Outliers
-            [MaxD, iMaxD] = max(Dist);
-            Dist(iMaxD) = 0;
+            if PenalizeInside 
+                % Only remove outside points.
+                [MaxD, iMaxD] = max(Dist(~isInside));
+                Dist(iOutside(iMaxD)) = 0;
+            else
+                [MaxD, iMaxD] = max(Dist);
+                Dist(iMaxD) = 0;
+            end
             Cost = Cost - MaxD;
         end
     end

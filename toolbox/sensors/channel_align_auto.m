@@ -94,6 +94,13 @@ if isempty(HeadPoints) || (length(HeadPoints.Label) < MIN_NPOINTS)
 end
 % M x 3 matrix of head points
 HP = double(HeadPoints.Loc');
+% % Add anatomical points.
+% if isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && ...
+%         (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
+%     HP(end+1,:) = ChannelMat.SCS.NAS;
+%     HP(end+1,:) = ChannelMat.SCS.LPA;
+%     HP(end+1,:) = ChannelMat.SCS.RPA;
+% end
 
 %% ===== LOAD SCALP SURFACE =====
 % Get study
@@ -213,6 +220,7 @@ if isAdjustScs
         end
         % Check if digitized anat points present, saved in ChannelMat.SCS.
         % Note that these coordinates are NOT currently updated when doing refine with head points (below).
+        % They are in "initial SCS" coordinates, updated in channel_detect_type.
     elseif all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
         % Convert to MRI SCS coordinates.
         % To do this we need to apply the transformation computed above.
