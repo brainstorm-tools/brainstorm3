@@ -22,7 +22,7 @@ function varargout = process_snapshot( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2022
 
 eval(macro_method);
 end
@@ -43,9 +43,25 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
     % Definition of the options
     % === TARGET
-    sProcess.options.target.Comment = 'Snapshot: ';
-    sProcess.options.target.Type    = 'combobox';
-    sProcess.options.target.Value   = {1, {'Sensors/MRI registration', 'SSP projectors', 'Noise covariance', 'Headmodel spheres', 'Recordings time series', 'Recordings topography (one time)', 'Recordings topography (contact sheet)', 'Sources (one time)', 'Sources (contact sheet)', 'Frequency spectrum', 'Connectivity matrix', 'Data covariance', 'Dipoles', 'Time-frequency maps'}};
+    sProcess.options.type.Comment = 'Snapshot: ';
+    sProcess.options.type.Type    = 'combobox_label';
+    sProcess.options.type.Value   = {1, {...
+        'Sensors/MRI registration',              'registration'; ...    % 1
+        'SSP projectors',                        'ssp'; ...             % 2
+        'Noise covariance',                      'noiscov'; ...         % 3
+        'Data covariance',                       'ndatacov'; ...        % 12
+        'Headmodel spheres',                     'headmodel'; ...       % 4
+        'Recordings time series',                'data'; ...            % 5
+        'Recordings topography (one time)',      'topo'; ...            % 6
+        'Recordings topography (contact sheet)', 'topo_contact'; ...    % 7
+        'Sources (one time)',                    'sources'; ...         % 8
+        'Sources (contact sheet)',               'sources_contact'; ... % 9
+        'Frequency spectrum',                    'spectrum'; ...        % 10  
+        'Time-frequency maps',                   'timefreq'; ...        % 14
+        'Connectivity matrix',                   'connectimage'; ...    % 11 
+        'Connectivity graph',                    'connectgraph'; ...
+        'Dipoles',                               'dipoles'; ...         % 13
+        }'};
     % === SENSORS 
     sProcess.options.modality.Comment = 'Sensor type: ';
     sProcess.options.modality.Type    = 'combobox';
@@ -66,7 +82,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.contact_nimage.Type    = 'value';
     sProcess.options.contact_nimage.Value   = {12, '', 0};
     % === THRESOLD
-    sProcess.options.threshold.Comment = 'Source amplitude threshold:';
+    sProcess.options.threshold.Comment = 'Amplitude threshold:';
     sProcess.options.threshold.Type    = 'value';
     sProcess.options.threshold.Value   = {30, '%', 0};
     % === ROW NAMES
@@ -83,7 +99,8 @@ end
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
-    Comment = ['Snapshot: ' sProcess.options.target.Value{2}{sProcess.options.target.Value{1}}];
+    iType = find(strcmpi(sProcess.options.type.Value{1}, sProcess.options.type.Value{2}(2,:)));
+    Comment = ['Snapshot: ' sProcess.options.type.Value{2}{1,iType}];
 end
 
 
@@ -92,7 +109,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Returned files: same as input
     OutputFiles = {sInputs.FileName};
     % Get options
-    SnapTarget = sProcess.options.target.Value{1};
+    if isfield(sProcess.options, 'target') && isfield(sProcess.options.target, 'Value') && ~isempty(sProcess.options.target.Value)
+        switch (sProcess.options.target.Value)
+            case 1,  SnapType = 'registration';
+            case 2,  SnapType = 'ssp';
+            case 3,  SnapType = 'noiscov';
+            case 4,  SnapType = 'spheres';
+            case 5,  SnapType = 'data';
+            case 6,  SnapType = 'topo';
+            case 7,  SnapType = 'topo_contact';
+            case 8,  SnapType = 'sources';
+            case 9,  SnapType = 'sources_contact';
+            case 10, SnapType = 'spectrum';
+            case 11, SnapType = 'connectimage';
+            case 12, SnapType = 'ndatacov';
+            case 13, SnapType = 'dipoles';
+            case 14, SnapType = 'timefreq';
+        end
+    else
+        SnapType = sProcess.options.type.Value{1};
+    end
     switch (sProcess.options.modality.Value{1})
         case 1,  Modality = 'MEG';
         case 2,  Modality = 'MEG GRAD';
@@ -130,51 +166,52 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Contact sheet
     Contact = [contact_time, contact_nimage];
     % Select only one input file per channel file
-    if any(SnapTarget == [1 2 3 4])
+    if ismember(SnapType, {'registration', 'ssp', 'noiscov', 'ndatacov', 'headmodel'})
         [AllChannelFile, iAllChan] = unique({sInputs.ChannelFile});
         sInputs = sInputs(iAllChan);
     end
-    
     % For each file, capture view for each file
     for iFile = 1:length(sInputs)
-        FileName = sInputs(iFile).FileName;
-        switch (SnapTarget)
-            case 1
+        FileName = sInputs(iFile).FileName;        
+        switch (SnapType)
+            case 'registration'
                 bst_report('Snapshot', 'registration', FileName, Comment, Modality, Orient);
-            case 2
+            case 'ssp'
                 bst_report('Snapshot', 'ssp', FileName, Comment);
-            case 3
+            case 'noiscov'
                 bst_report('Snapshot', 'noisecov', FileName, Comment);
-            case 4
+            case 'ndatacov'
+                bst_report('Snapshot', 'ndatacov', FileName, Comment);
+            case 'headmodel'
                 bst_report('Snapshot', 'headmodel', FileName, Comment);
-            case 5
+            case 'data'
                 bst_report('Snapshot', 'data', FileName, Comment, Modality, Time);
-            case 6
+            case 'topo'
                 bst_report('Snapshot', 'topo', FileName, Comment, Modality, Time);
-            case 7
+            case 'topo_contact'
                 if (length(Contact) ~= 3)
                     bst_report('Error', sProcess, [], 'Invalid contact sheet time values');
                     return;
                 end
                 bst_report('Snapshot', 'topo', FileName, Comment, Modality, Contact);
-            case 8
+            case 'sources'
                 bst_report('Snapshot', 'sources', FileName, Comment, Time, Threshold, Orient);
-            case 9
+            case 'sources_contact'
                 if (length(Contact) ~= 3)
                     bst_report('Error', sProcess, [], 'Invalid contact sheet time values');
                     return;
                 end
                 bst_report('Snapshot', 'sources', FileName, Comment, Contact, Threshold, Orient);
-            case 10
+            case 'spectrum'
                 bst_report('Snapshot', 'spectrum', FileName, Comment);
-            case 11
-                bst_report('Snapshot', 'connectimage', FileName, Comment);
-            case 12
-                bst_report('Snapshot', 'ndatacov', FileName, Comment);
-            case 13
-                bst_report('Snapshot', 'dipoles', FileName, Comment, Threshold, Orient);
-            case 14
+            case 'timefreq'
                 bst_report('Snapshot', 'timefreq', FileName, Comment, RowName);
+            case 'connectimage'
+                bst_report('Snapshot', 'connectimage', FileName, Comment);
+            case 'connectgraph'
+                bst_report('Snapshot', 'connectgraph', FileName, Comment, Threshold);
+            case 'dipoles'
+                bst_report('Snapshot', 'dipoles', FileName, Comment, Threshold, Orient);
         end
     end
 end

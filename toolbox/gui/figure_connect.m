@@ -22,7 +22,7 @@ function varargout = figure_connect( varargin )
 % =============================================================================@
 %
 % Authors: Sebastien Dery, 2013           (initial JOGL rendering)
-%          Francois Tadel, 2013-2021
+%          Francois Tadel, 2013-2022
 %          Martin Cousineau, 2019-2021
 %          Helen Lin & Yaqi Li, 2020-2021 (new Matlab rendering)
 
@@ -53,7 +53,16 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'WindowScrollWheelFcn',  @(h, ev)FigureMouseWheelCallback(h, ev), ...
                   bst_get('ResizeFunction'), @(h, ev)ResizeCallback(h, ev));
     
-    % Prepare figure appdata
+    % === CREATE AXES ===
+    hAxes = axes('Parent',        hFig, ...
+                 'Units',         'normalized', ...
+                 'Position',      [.1 .1 .8 .8], ...
+                 'Tag',           'AxesConnect', ...
+                 'Visible',       'off', ...
+                 'BusyAction',    'queue', ...
+                 'Interruptible', 'off');
+
+    % === APPDATA STRUCTURE ===
     setappdata(hFig, 'FigureId', FigureId);
     setappdata(hFig, 'hasMoved', 0);
     setappdata(hFig, 'isPlotEditToolbar', 0);
@@ -1275,12 +1284,12 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     bst_figures('SetFigureHandleField', hFig, 'ValidNode', ones(size(Vertices, 1), 1));
     
     %% ===== User Display Preferences =====
-    % get saved preferences
-    DispOptions = bst_get('ConnectGraphOptions');    
+    % Get saved preferences
+    DispOptions = bst_get('ConnectGraphOptions');
     setappdata(hFig, 'LobeFullLabel', DispOptions.LobeFullLabel);
     setappdata(hFig, 'TextDisplayMode', DispOptions.TextDisplayMode);
     setappdata(hFig, 'NodeSize', DispOptions.NodeSize);
-    setappdata(hFig, 'LabelSize', DispOptions.LabelSize); 
+    setappdata(hFig, 'LabelSize', DispOptions.LabelSize);
     setappdata(hFig, 'LinkSize', DispOptions.LinkSize);
     setappdata(hFig, 'BgColor', DispOptions.BgColor);
     setappdata(hFig, 'HierarchyNodeIsVisible', 1); % note: set as 1 to match default, updated to saved user pref later
@@ -1380,6 +1389,8 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     % get pre-created nodes
     AllNodes = getappdata(hFig, 'AllNodes');
     IsDirectionalData = getappdata(hFig, 'IsDirectionalData');
+    % Get figure axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
     
     % clear any previous links and get scaling distance from nodes to unit circle
     if (IsMeasureLink)
@@ -1419,9 +1430,9 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     
     % if we are building measurelinks, we use their distance to compute the
     % radius (see math below)
+    MeasureDistance = [];
     if (IsMeasureLink)
         RowLocs = bst_figures('GetFigureHandleField', hFig, 'RowLocs');
-        MeasureDistance = [];
         if ~isempty(RowLocs)
             MeasureDistance = ComputeEuclideanMeasureDistance(hFig, DataPair, RowLocs);
         end
@@ -1525,11 +1536,12 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
                 'PickableParts', 'visible', ...
                 'Visible', 'off', ...                                             % not visible as default;
                 'UserData', [i IsDirectionalData IsMeasureLink Node1 Node2], ...  % i is the link index
-                'ButtonDownFcn', @LinkButtonDownFcn); 
+                'ButtonDownFcn', @LinkButtonDownFcn, ...
+                'Parent', hAxes); 
 
         % create arrows for directional links
         if (IsDirectionalData)
-            Arrows(i) = Arrowhead(x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
+            Arrows(i) = Arrowhead(hAxes, x, y, AllNodes(Node1).Color, 100, 50, i, IsMeasureLink, Node1, Node2, Xextend, Yextend);
         end
     end
     
@@ -1651,7 +1663,7 @@ end
 
 % Draws 2 solid arrowheads for each link
 % based on: https://www.mathworks.com/matlabcentral/fileexchange/4538-arrowhead
-function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
+function [handle] = Arrowhead(hAxes, x, y, clr, ArSize, Where, Index, IsMeasureLink, Node1, Node2, xExtend, yExtend)
     % determine location of first arrowhead
     ArWidth = 0.75;
     j = floor(length(x)*Where/100); 
@@ -1770,21 +1782,21 @@ function [handle] = Arrowhead(x, y, clr, ArSize, Where, Index, IsMeasureLink, No
     % second face = second arrow with vertices 4-5-6
     Vertices = [xd_all.', yd_all.'];
     Faces = [1 2 3; 4 5 6]; 
-    
+
     %%%% draw both arrowheads as 2 faces of a single patch object %%%%
-    
     handle = patch('Vertices', Vertices, ...
         'Faces', Faces, ...
         'EdgeColor', 'flat', ...
         'FaceColor', 'flat', ...
         'FaceAlpha', 'flat', ...
         'AlphaDataMapping', 'none', ...
-        'FaceVertexCData', repmat(NaN, 6, 1), ... % no defined color at start
+        'FaceVertexCData', NaN(6, 1), ... % no defined color at start
         'FaceVertexAlphaData', [0; 0], ...
         'Visible', 'off', ...
         'PickableParts', 'visible', ...
         'UserData', [Index IsMeasureLink Node1, Node2], ... % flag == 1 for first arrow
-        'ButtonDownFcn', @ArrowButtonDownFcn);
+        'ButtonDownFcn', @ArrowButtonDownFcn, ...
+        'Parent', hAxes);
 end
 
 % When user clicks on an arrow
@@ -2393,7 +2405,7 @@ function UpdateColormap(hFig)
     % ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
     % === COLORMAP LIMITS ===
     % Units type
-    if ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec'})
+    if ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit', 'aec'})
         UnitsType = 'timefreq';
     else
         UnitsType = 'connect';
@@ -2401,7 +2413,7 @@ function UpdateColormap(hFig)
     % Get colormap bounds
     if strcmpi(sColormap.MaxMode, 'custom')
         CLim = [sColormap.MinValue, sColormap.MaxValue];
-    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'aec', 'cohere', 'pte', 'henv'})
+    elseif ismember(Method, {'granger', 'spgranger', 'plv', 'plvt', 'ciplv', 'ciplvt', 'wpli', 'wplit', 'aec', 'cohere', 'pte', 'henv'})
         CLim = [DataMinMax(1) DataMinMax(2)];
     elseif ismember(Method, {'corr'})
         if strcmpi(sColormap.MaxMode, 'local')
@@ -2994,6 +3006,11 @@ function SetNodeLabelSize(hFig, NodeSize, LabelSize)
     end     
     setappdata(hFig, 'NodeSize', NodeSize);
     setappdata(hFig, 'LabelSize', LabelSize);
+    % Save options permanently
+    DispOptions = bst_get('ConnectGraphOptions');
+    DispOptions.NodeSize = NodeSize;
+    DispOptions.LabelSize = LabelSize;
+    bst_set('ConnectGraphOptions', DispOptions);
 end
     
 %% ===== LINK SIZE =====
@@ -3016,6 +3033,10 @@ function SetLinkSize(hFig, LinkSize)
     end
     % set new size
     setappdata(hFig, 'LinkSize', LinkSize);
+    % Save options permanently
+    DispOptions = bst_get('ConnectGraphOptions');
+    DispOptions.LinkSize = LinkSize;
+    bst_set('ConnectGraphOptions', DispOptions);
 end
  
 %% ===== LINK TRANSPARENCY ===== 
@@ -3263,6 +3284,9 @@ function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, Nod
     Node.Color = [0.5 0.5 0.5];
     Node.Label = Label;
 
+    % Get figure axes
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesConnect');
+    
     % Mark the node as a Matlab Line graphic object
     set(0, 'CurrentFigure', hFig);
     Node.NodeMarker = line(...
@@ -3277,7 +3301,8 @@ function Node = CreateNode(hFig, xPos, yPos, Index, Label, IsAgregatingNode, Nod
         'Visible', 'on', ...
         'PickableParts', 'all', ...
         'ButtonDownFcn', @NodeButtonDownFcn, ...
-        'UserData', Index); % store node index so that we can ID the nodes when clicked
+        'UserData', Index, ... % store node index so that we can ID the nodes when clicked
+        'Parent', hAxes);
     
     % Create label as Matlab Text obj 
     Node.TextLabel = text(0, 0, Node.Label, 'Interpreter', 'none', 'Color', [1 1 1], 'ButtonDownFcn', @LabelButtonDownFcn, 'UserData', Index); 

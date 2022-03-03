@@ -159,6 +159,10 @@ function [DefFunction, ColormapType] = GetDefaultFunction(sTimefreq) %#ok<DEFNU>
         case 'henv',     DefFunction = 'other';       ColormapType = 'connect1';
         case 'plv',      DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'plvt',     DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'ciplv',    DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'ciplvt',   DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'wpli',     DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'wplit',    DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'pac',      DefFunction = 'maxpac';      ColormapType = 'pac';
         case 'dpac',     DefFunction = 'maxpac';      ColormapType = 'pac';
         case 'tpac',     DefFunction = 'maxpac';      ColormapType = 'pac';

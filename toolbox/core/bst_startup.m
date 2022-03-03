@@ -518,6 +518,8 @@ end
 
 %% ===== SET DATABASE DIRECTORY =====
 isImportDb = 0;
+% Get user dir
+BrainstormUserDir = bst_get('BrainstormUserDir');
 % Get database folder
 if isempty(BrainstormDbDir)
     BrainstormDbDir = bst_get('BrainstormDbDir');
@@ -607,8 +609,6 @@ set(hMutex, 'Visible', 'off');
 
 
 %% ===== DELETE OLD PLUGINS =====
-% Get user dir
-BrainstormUserDir = bst_get('BrainstormUserDir');
 % Start with GUI
 if (GuiLevel == 1)
     % Add bst_duneuro (now called 'duneuro')

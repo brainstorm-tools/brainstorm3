@@ -143,8 +143,8 @@ function ResizeCallback(hFig, ev)
     XTickLabel = get(hAxes, 'XTickLabel');
     if isempty(XTickLabel)
         marginBottom = 25 .* Scaling;
-    elseif iscell(XTickLabel) && ~isempty(XTickLabel{1}) && isempty(num2str(XTickLabel{1}))
-        % Get the largest frequency band string
+    elseif iscell(XTickLabel) && ~isempty(XTickLabel{1})
+        % Get the longest string
         strMax = max(cellfun(@length, XTickLabel));
         marginBottom = (35 + 5 * min(15, strMax)) .* Scaling;
     else
@@ -156,7 +156,7 @@ function ResizeCallback(hFig, ev)
     if isempty(YTickLabel) || ~iscell(YTickLabel) || isempty(YTickLabel{1}) || ~ischar(YTickLabel{1})
         marginLeft = 25 .* Scaling;
     else
-        % Get the largest frequency band string
+        % Get the longest string
         strMax = max(cellfun(@length, YTickLabel));
         marginLeft = (40 + 5 * min(15, strMax)) .* Scaling;
     end
@@ -666,10 +666,15 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
     % ==== MENU: FIGURE ====
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
-        % Legend
+        % Show labels
         ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels));
+        ShortLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels, ShortLabels));
         jItem.setSelected(ShowLabels);
+        % Use short labels
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
+        jItem.setEnabled(ShowLabels);
+        jItem.setSelected(ShortLabels);
         jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
@@ -694,7 +699,7 @@ end
 %  ===== DISPLAY FUNCTIONS ===================================================
 %  ===========================================================================
 %% ===== GET FIGURE DATA =====
-function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName] = GetFigureData(hFig, isResetMax)
+function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels] = GetFigureData(hFig, isResetMax)
     global GlobalData;
     % Parse inputs
     if (nargin < 2) || isempty(isResetMax)
@@ -708,12 +713,15 @@ function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName] = GetFigure
         DimLabels = [];
         DataMinMax = [];
         ShowLabels = [];
+        PageName = [];
+        ShortLabels = [];
         return;
     end
     AllLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.Labels;
     iDims      = GlobalData.DataSet(iDS).Figure(iFig).Handles.iDims;
     DimLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels;
     ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
+    ShortLabels= GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
     PageName   = GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName;
     % Get indices for 1st dimension
     if ismember(1, iDims)
@@ -789,7 +797,7 @@ function UpdateFigurePlot(hFig, isResetMax)
     % ===== GET DATA AND COLORMAP =====
     % If forced refresh: reset previous min/max
     % Get figure data
-    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName] = GetFigureData(hFig, isResetMax);
+    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels] = GetFigureData(hFig, isResetMax);
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
@@ -869,12 +877,18 @@ function UpdateFigurePlot(hFig, isResetMax)
                    'XTickLabel',     XTickLabel);
     elseif ShowLabels && iscell(Labels{2}) && ~isempty(Labels{2}) && ischar(Labels{2}{1})
         % Remove all the common parts of the labels
-        tmpLabels = str_remove_common(Labels{2});
-        if ~isempty(tmpLabels)
-            Labels{2} = tmpLabels;
+        if ShortLabels
+            tmpLabels = str_remove_common(Labels{2});
+            if ~isempty(tmpLabels)
+                Labels{2} = tmpLabels;
+            end
+            % Limit the size of the comments to 10 characters
+            for iLabel = 1:length(Labels{2})
+                if (length(Labels{2}{iLabel}) > 10)
+                    Labels{2}{iLabel} = [Labels{2}{iLabel}(1:5), '..', Labels{2}{iLabel}(end-4:end)];
+                end
+            end
         end
-        % Limit the size of the comments to 15 characters
-        Labels{2} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{2}, 'UniformOutput', 0);
         % Show the names of each row
         set(hAxes, 'XTickMode',      'manual', ...
                    'XTickLabelMode', 'manual', ...
@@ -901,14 +915,18 @@ function UpdateFigurePlot(hFig, isResetMax)
                    'YTick',          YTick, ...
                    'YTickLabel',     cellstr(YTickLabel));
     elseif ShowLabels && ~isempty(Labels)
-        if iscellstr(Labels{1})
+        if ShortLabels && iscellstr(Labels{1})
             % Remove all the common parts of the labels
             tmpLabels = str_remove_common(Labels{1});
             if ~isempty(tmpLabels)
                 Labels{1} = tmpLabels;
             end
-            % Limit the size of the comments to 15 characters
-            Labels{1} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{1}, 'UniformOutput', 0);
+            % Limit the size of the comments to 10 characters
+            for iLabel = 1:length(Labels{1})
+                if (length(Labels{1}{iLabel}) > 10)
+                    Labels{1}{iLabel} = [Labels{1}{iLabel}(1:5), '..', Labels{1}{iLabel}(end-4:end)];
+                end
+            end
         end
         % Show the names of each row
         set(hAxes, 'YTickMode',      'manual', ...
@@ -1002,10 +1020,11 @@ end
 
 
 %% ===== SHOW/HIDE LABELS =====
-function SetShowLabels(iDS, iFig, ShowLabels)
+function SetShowLabels(iDS, iFig, ShowLabels, ShortLabels)
     global GlobalData;
     % Save new value
     GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels = ShowLabels;
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels = ShortLabels;
     % Update figure
     UpdateFigurePlot(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
     % Resize to update the size of the margins

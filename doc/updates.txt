@@ -1,9 +1,17 @@
 --------------------------------------------------------------
+February 2022
+- Anatomy: Extract head with FSL/BET
+- Connectivity: Added wPLI and ciPLV
+--------------------------------------------------------------
 January 2022
+- Doc: Connectivity tutorial
+- Connectivity: Updated "Simulate AR signals"
+- Connectivity: Removed the p-values thresholding from all connectivity metrics
 - Plugins: Archive software environment (brainstorm + plugins + defaults)
 - IO: Added support for Neuroelectrics EEG with EEGLAB plugin (.easy, .nedf)
 - IO: Updated Plexon reader
 - Statistics: Add process "Conjunction inference"
+- SPRiNT: Spectral Parameterization Resolved in Time
 --------------------------------------------------------------
 December 2021
 - IO: Added support for Tobii Pro Glasses export .tsv

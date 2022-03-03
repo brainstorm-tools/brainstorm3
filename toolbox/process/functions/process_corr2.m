@@ -100,7 +100,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.src_channel.InputTypes = {'data'};
     sProcess.options.src_channel.Group      = 'input';
     % === FROM: ROW NAME ===
-    sProcess.options.src_rowname.Comment     = 'Row name or index (A): ';
+    sProcess.options.src_rowname.Comment     = 'Signal names or indices (A): ';
     sProcess.options.src_rowname.Type        = 'text';
     sProcess.options.src_rowname.Value       = '';
     sProcess.options.src_rowname.InputTypes  = {'timefreq', 'matrix'};
@@ -144,7 +144,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.includebad.InputTypesB = {'data'};
     sProcess.options.includebad.Group       = 'input';
     % === TO: ROW NAME ===
-    sProcess.options.dest_rowname.Comment     = 'Row names or indices (B): ';
+    sProcess.options.dest_rowname.Comment     = 'Signal names or indices (B): ';
     sProcess.options.dest_rowname.Type        = 'text';
     sProcess.options.dest_rowname.Value       = '';
     sProcess.options.dest_rowname.InputTypesB = {'timefreq', 'matrix'};

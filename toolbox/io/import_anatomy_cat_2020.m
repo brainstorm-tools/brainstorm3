@@ -147,27 +147,15 @@ if isempty(GiiRcFile)
     errorMsg = [errorMsg 'Surface file was not found: rh.central' 10];
 end
 % Find pial and white surfaces: only if extra maps are requested
-if isExtraMaps
-    GiiLpFile = file_find(CatDir, 'lh.pial.*.gii', 2);
-    GiiRpFile = file_find(CatDir, 'rh.pial.*.gii', 2);
-    GiiCpFile = file_find(CatDir, 'cb.pial.*.gii', 2);
-    GiiLwFile = file_find(CatDir, 'lh.white.*.gii', 2);
-    GiiRwFile = file_find(CatDir, 'rh.white.*.gii', 2);
-    GiiCwFile = file_find(CatDir, 'cb.white.*.gii', 2);
-    GiiLsphFile = file_find(CatDir, 'lh.sphere.reg.*.gii', 2);
-    GiiRsphFile = file_find(CatDir, 'rh.sphere.reg.*.gii', 2);
-    GiiCsphFile = file_find(CatDir, 'cb.sphere.reg.*.gii', 2);
-else
-    GiiLpFile = [];
-    GiiRpFile = [];
-    GiiCpFile = [];
-    GiiLwFile = [];
-    GiiRwFile = [];
-    GiiCwFile = [];
-    GiiLsphFile = [];
-    GiiRsphFile = [];
-    GiiCsphFile = [];
-end
+GiiLpFile = file_find(CatDir, 'lh.pial.*.gii', 2);
+GiiRpFile = file_find(CatDir, 'rh.pial.*.gii', 2);
+GiiCpFile = file_find(CatDir, 'cb.pial.*.gii', 2);
+GiiLwFile = file_find(CatDir, 'lh.white.*.gii', 2);
+GiiRwFile = file_find(CatDir, 'rh.white.*.gii', 2);
+GiiCwFile = file_find(CatDir, 'cb.white.*.gii', 2);
+GiiLsphFile = file_find(CatDir, 'lh.sphere.reg.*.gii', 2);
+GiiRsphFile = file_find(CatDir, 'rh.sphere.reg.*.gii', 2);
+GiiCsphFile = file_find(CatDir, 'cb.sphere.reg.*.gii', 2);
 % Find atlases
 AnnotLhFiles = file_find(CatDir, 'lh.*.annot', 2, 0);
 AnnotRhFiles = file_find(CatDir, 'rh.*.annot', 2, 0);
@@ -422,21 +410,15 @@ CentralCbLowFile = [];
 rmFiles = {};
 % Merge hemispheres
 if ~isempty(GiiLcFile) && ~isempty(GiiRcFile)
-    % Tag: "cortex" if it is the only surface, "mid" if pial and white are present
-    if ~isempty(GiiLpFile) && ~isempty(GiiRpFile) && ~isempty(GiiLwFile) && ~isempty(GiiRwFile)
-        tagCentral = 'mid';
-    else
-        tagCentral = 'cortex';
-    end
     % Merge left+right+cerebellum
     if ~isempty(GiiCcFile)
-        CentralCbHiFile  = tess_concatenate({TessLcFile,    TessRcFile,    TessCcFile},    sprintf([tagCentral '_cereb_%dV'], nVertOrigLc + nVertOrigRc + nVertOrigCc), 'Cortex');
-        CentralCbLowFile = tess_concatenate({TessLcLowFile, TessRcLowFile, TessCcLowFile}, sprintf([tagCentral '_cereb_%dV'], length(xLcLow) + length(xRcLow) + length(xCcLow)), 'Cortex');
+        CentralCbHiFile  = tess_concatenate({TessLcFile,    TessRcFile,    TessCcFile},    sprintf('central_cereb_%dV', nVertOrigLc + nVertOrigRc + nVertOrigCc), 'Cortex');
+        CentralCbLowFile = tess_concatenate({TessLcLowFile, TessRcLowFile, TessCcLowFile}, sprintf('central_cereb_%dV', length(xLcLow) + length(xRcLow) + length(xCcLow)), 'Cortex');
         rmFiles = cat(2, rmFiles, {TessCcFile, TessCcLowFile});
     end
     % Merge left+right
-    CentralHiFile  = tess_concatenate({TessLcFile,    TessRcFile},    sprintf([tagCentral '_%dV'], nVertOrigLc + nVertOrigRc), 'Cortex');
-    CentralLowFile = tess_concatenate({TessLcLowFile, TessRcLowFile}, sprintf([tagCentral '_%dV'], length(xLcLow) + length(xRcLow)), 'Cortex');
+    CentralHiFile  = tess_concatenate({TessLcFile,    TessRcFile},    sprintf('central_%dV', nVertOrigLc + nVertOrigRc), 'Cortex');
+    CentralLowFile = tess_concatenate({TessLcLowFile, TessRcLowFile}, sprintf('central_%dV', length(xLcLow) + length(xRcLow)), 'Cortex');
     % Delete separate hemispheres
     rmFiles = cat(2, rmFiles, {TessLcFile, TessRcFile, TessLcLowFile, TessRcLowFile});
 end

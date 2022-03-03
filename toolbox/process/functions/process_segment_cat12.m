@@ -215,22 +215,15 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     end
 
     % ===== DELETE EXISTING SURFACES =====
-    if ~isempty(sSubject.Surface) || (length(sSubject.Anatomy) >= 2)
-        % Ask user whether the previous anatomy should be removed
-        if isInteractive
-            isDel = java_dialog('confirm', ['Warning: There are already surfaces or atlases in this subject.' 10 10 ...
-                'Delete the existing files?' 10 10], 'CAT12 segmentation');
-        else
-            isDel = 1;
-        end
-        % If user canceled process
+    % Confirm with user that the existing surfaces will be removed
+    if isInteractive && ~isempty(sSubject.Surface)
+        isDel = java_dialog('confirm', ['Warning: There are already surfaces in this subject.' 10 ...
+            'Running CAT12 will remove all the existing surfaces.' 10 10 ...
+            'Delete the existing files?' 10 10], 'CAT12 segmentation');
         if ~isDel
             errMsg = 'Process aborted by user.';
             return;
         end
-        % Delete anatomy
-        isKeepMri = 1;
-        sSubject = db_delete_anatomy(iSubject, isKeepMri);
     end
     
     % ===== VERIFY FIDUCIALS IN MRI =====
@@ -386,7 +379,7 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
     % ===== IMPORT OUTPUT FOLDER =====
     % Import CAT12 anatomy folder
     isKeepMri = 1;
-    errMsg = import_anatomy_cat(iSubject, catDir, nVertices, isInteractive, [], isExtraMaps, isKeepMri);
+    errMsg = import_anatomy_cat(iSubject, catDir, nVertices, 0, [], isExtraMaps, isKeepMri);
     if ~isempty(errMsg)
         return;
     end

@@ -31,8 +31,9 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2021
+% Authors: Francois Tadel, 2010-2022
 %          Martin Cousineau, 2017
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -396,7 +397,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
     % Do not allow Time Bands
     if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'}) 
-        % && isfield(sMat, 'Measure') && ~strcmpi(sMat.Measure, 'other') && ~strcmpi(sMat.Measure, 'plv')
         bst_report('Error', sProcess, sInput, 'Cannot process values averaged by time bands.');
         return;
     end
@@ -477,8 +477,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             return;
         end
         % ERROR: Cannot process channel/channel uncompensated CTF files
-        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (sFileIn.prop.currCtfComp ~= sFileIn.prop.destCtfComp) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && (sFileIn.prop.currCtfComp ~= sFileIn.prop.destCtfComp)
+                % && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+                % Sensor check removed on 21-Feb-2021 following the bug discovered in the corticomuscular coherence tutorial: 
+                % Processing only the EMG channels reads+writes the MEG channels but does not apply the correction
             bst_report('Error', sProcess, sInput, [...
                 'This CTF file was not saved with the desired compensation order (', num2str(sFileIn.prop.destCtfComp), ').' 10 ...
                 'To process this file, you have the following options: ' 10 ...
@@ -488,7 +490,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         end
         % ERROR: SSP cannot be applied for channel/channel processing
         if ismember(1,sProcess.processDim) && ~isReadAll && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
-            % Verify if any channels that need to be projected are selected.
+            % Verify that all channels that need to be projected are selected.
             % Build projector matrix
             Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
             % Apply projector
@@ -506,7 +508,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     % Channels that are modified by projector.
                     isProjected = sum(Projector ~= 0, 2) > 1;
                     if any(isProjected(iSelRows))
-                        
                         bst_report('Error', sProcess, sInput, [...
                             'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
                             'To process this file, you have the following options: ' 10 ...
@@ -532,7 +533,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         ImportOptions.ImportMode      = 'Time';
         ImportOptions.DisplayMessages = 0;
         if ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+                (isReadAll || isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
             ImportOptions.UseCtfComp  = 1;
         else
             ImportOptions.UseCtfComp  = 0; % otherwise reading raw CTF file without selecting any MEG channels would fail.
@@ -1141,7 +1142,6 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
     % Do not allow TimeBands
     if ((isfield(sMatA, 'TimeBands') && ~isempty(sMatA.TimeBands)) || (isfield(sMatB, 'TimeBands') && ~isempty(sMatB.TimeBands))) ...
             && ismember(func2str(sProcess.Function), {'process_baseline_ab', 'process_zscore_ab', 'process_baseline_norm2'}) 
-        % && isfield(sMat, 'Measure') && ~strcmpi(sMat.Measure, 'other') && ~strcmpi(sMat.Measure, 'plv')
         bst_report('Error', sProcess, [sInputA, sInputB], 'Cannot process values averaged by time bands.');
         OutputFile = [];
         return;
@@ -1820,8 +1820,8 @@ function FileTag = GetFileTag(FileName)
         case {'timefreq', 'ptimefreq'}
             FileTag = FileType;
             listTags = {'_fft', '_psd', '_hilbert', ...
-                        '_connect1_corr', '_connect1_cohere', '_connect1_granger', '_connect1_spgranger', '_connect1_plvt', '_connect1_plv', '_connect1_henv', '_connect1', ...
-                        '_connectn_corr', '_connectn_cohere', '_connectn_granger', '_connectn_spgranger', '_connectn_plvt', '_connectn_plv', '_connectn_henv', '_connectn', ...
+                        '_connect1_corr', '_connect1_cohere', '_connect1_granger', '_connect1_spgranger', '_connect1_plvt', '_connect1_plv', '_connect1_wplit', '_connect1_wpli', '_connect1_ciplvt', '_connect1_ciplv', '_connect1_henv', '_connect1', ...
+                        '_connectn_corr', '_connectn_cohere', '_connectn_granger', '_connectn_spgranger', '_connectn_plvt', '_connectn_plv', '_connectn_wplit', '_connectn_wpli', '_connectn_ciplvt', '_connectn_ciplv', '_connectn_henv', '_connectn', ...
                         '_pac_fullmaps', '_pac', '_dpac_fullmaps', '_dpac'};
             for i = 1:length(listTags)
                 if ~isempty(strfind(FileName, listTags{i}))
@@ -2261,7 +2261,7 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
             updateVal{1} = newVal;
         elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox','combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else
@@ -2451,19 +2451,17 @@ function sProcesses = OptimizePipeline(sProcesses)
     % Loop on the processes that can be glued to this one
     iRemove = [];
     for iProcess = (iImport+1):length(sProcesses)
+        strWarning = '';
         % List of accepted processes: copy options
         switch (func2str(sProcesses(iProcess).Function))
             case 'process_baseline'
                 sProcesses(iImport).options.baseline = sProcesses(iProcess).options.baseline;
-                % Ignoring sensors selection
-                if isfield(sProcesses(iProcess).options, 'sensortypes') && ~isempty(sProcesses(iProcess).options.sensortypes.Value)
-                    strWarning = [10 ' - Sensor selection is ignored, baseline is removed from all the data channels.'];
-                else
-                    strWarning = '';
+                if isempty(sProcesses(iImport).options.baseline.Value{1})
+                    sProcesses(iImport).options.baseline.Value{1} = 'all';
                 end
+                sProcesses(iImport).options.blsensortypes = sProcesses(iProcess).options.sensortypes;
             case 'process_resample'
                 sProcesses(iImport).options.freq = sProcesses(iProcess).options.freq;
-                strWarning = '';
             otherwise
                 break;
         end
@@ -2505,10 +2503,14 @@ function sProcesses = OptimizePipelineRevert(sProcesses) %#ok<DEFNU>
         sProcAdd(end+1).Function = @process_baseline;
         sProcAdd(end) = struct_copy_fields(sProcAdd(end), process_baseline('GetDescription'), 1);
         % Set options
-        sProcAdd(end).options.sensortypes.Value = '';
         sProcAdd(end).options.baseline.Value = sProcesses(iImport).options.baseline.Value;
+        if isequal(sProcAdd(end).options.baseline.Value{1}, 'all')
+            sProcAdd(end).options.baseline.Value{1} = [];
+        end
+        sProcAdd(end).options.sensortypes.Value = sProcesses(iImport).options.blsensortypes.Value;
         % Remove option from initial process
         sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'baseline');
+        sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'blsensortypes');
     end
     if isfield(sProcesses(iImport).options, 'freq') && isfield(sProcesses(iImport).options.freq, 'Value') && ~isempty(sProcesses(iImport).options.freq.Value)
         % Get process

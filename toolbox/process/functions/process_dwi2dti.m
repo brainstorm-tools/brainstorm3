@@ -155,6 +155,9 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== INPUTS =====
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
+    if isequal(fExt, '.gz')
+        [fPath, fBase, fExt] = bst_fileparts(bst_fullfile(fPath, fBase));
+    end
     if isempty(BvalFile) || ~file_exist(BvalFile)
         BvalFile = bst_fullfile(fPath, [fBase, '.bval']);
         if ~file_exist(BvalFile)

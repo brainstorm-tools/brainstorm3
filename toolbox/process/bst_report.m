@@ -22,6 +22,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Snapshot', 'registration', AnyFile,     Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
 %         bst_report('Snapshot', 'ssp',          RawFile,     Comment)
 %         bst_report('Snapshot', 'noiscov',      AnyFile,     Comment)
+%         bst_report('Snapshot', 'ndatacov',     AnyFile,     Comment)
 %         bst_report('Snapshot', 'headmodel',    AnyFile,     Comment)
 %         bst_report('Snapshot', 'data',         DataFile,    Comment, Modality)
 %         bst_report('Snapshot', 'topo',         DataFile,    Comment, Modality, Time=start)
@@ -29,8 +30,10 @@ function varargout = bst_report( varargin )
 %         bst_report('Snapshot', 'sources',      ResultsFile, Comment, Time=start, DataThreshold=.3, Orientation='left')
 %         bst_report('Snapshot', 'sources',      ResultsFile, Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left')   : Produces a contact sheet view
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile,Comment)
-%         bst_report('Snapshot', 'dipoles',      DipolesFile, Comment, Goodness=0, Orientation='left')
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile,Comment, RowName=[])
+%         bst_report('Snapshot', 'connectimage', ConnectNFile, Comment);
+%         bst_report('Snapshot', 'connectgraph', ConnectNFile, Comment, Threshold);
+%         bst_report('Snapshot', 'dipoles',      DipolesFile, Comment, Goodness=0, Orientation='left')
 %
 % NOTES: 
 %    - sProcess can be replaced by the name of the process function
@@ -54,7 +57,7 @@ function varargout = bst_report( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2022
 
 eval(macro_method);
 end
@@ -216,11 +219,6 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 else
                     Time = [];
                 end
-                % Set the current display mode to 'butterfly'
-                curDispMode = bst_get('TSDisplayMode');
-                if ~strcmpi(curDispMode, 'butterfly')
-                    bst_set('TSDisplayMode', 'butterfly');
-                end
                 % Display recordings
                 switch (file_gettype(FileName))
                     case {'data', 'pdata'}
@@ -231,10 +229,6 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 % Set current time
                 if (length(Time) == 1)
                     panel_time('SetCurrentTime', Time);
-                end
-                % Restore the display mode
-                if ~strcmpi(curDispMode, 'butterfly')
-                    bst_set('TSDisplayMode', curDispMode);
                 end
                 
             case 'topo'
@@ -470,6 +464,20 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 % Display connectivity matrix as an image
                 hFig = view_connect(FileName, 'Image');
                 
+            case 'connectgraph'
+                % Threshold
+                if (length(varargin) >= 1) && ~isempty(varargin{1})
+                    Threshold = varargin{1};
+                else
+                    Threshold = [];
+                end
+                % Display connectivity matrix as an image
+                hFig = view_connect(FileName, 'GraphFull');
+                % Update amplitude threshold
+                sOptions = panel_display('GetDisplayOptions');
+                sOptions.DataThreshold = Threshold / 100;
+                panel_display('SetThresholdOptions', sOptions);
+
             case 'dipoles'
                 % Goodness
                 if (length(varargin) >= 1) && ~isempty(varargin{1})
@@ -1399,27 +1407,28 @@ end
 %% ===== SEND EMAIL =====
 % USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1)
 function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
-    global GlobalData;
     % Parse inputs
-    if (nargin < 4) || isempty(isFullReport)
+    if (nargin < 5) || isempty(isFullReport)
         isFullReport = 1;
     end
     % Minimum Matlab version: 2014b
     if ~exist('webread', 'file')
         error('Sending email requires Matlab >= 2014b.');
     end
-    % Get report
-    if isequal(ReportFile, 'current')
-        if isempty(GlobalData)
-            error('Brainstorm is not started.');
-        end
-        ReportsMat = GlobalData.ProcessReports;
-    else
-        ReportsMat = load(ReportFile, 'Reports');
+    % Check ReportFile 
+    if ~(exist(ReportFile, 'file') == 2)
+        ReportFile = 'current';
     end
+    % Get report
+    if any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
+        Reports = GetReport(ReportFile);
+    else
+        ReportMat = load(ReportFile);
+        Reports = ReportMat.Reports;
+    end    
     % Print report
     if isFullReport
-        html = PrintToHtml(ReportsMat.Reports, isFullReport);
+        html = PrintToHtml(Reports, isFullReport);
     else
         html = '';
         for iEntry = 1:size(ReportsMat.Reports,1)

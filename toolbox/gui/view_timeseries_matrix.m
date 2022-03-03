@@ -197,6 +197,11 @@ elseif ~isempty(Modality) && ismember(Modality, {'$EEG','$MEG','$MEG GRAD','$MEG
     TsInfo.FlipYAxis     = bst_get('FlipYAxis');
     TsInfo.AutoScaleY    = bst_get('AutoScaleY');
     TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
+elseif ~isempty(BaseFile) && isequal(file_gettype(BaseFile), 'matrix')
+    TsInfo.DisplayMode   = bst_get('TSDisplayMode');
+    TsInfo.FlipYAxis     = 0;
+    TsInfo.AutoScaleY    = 1;
+    TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
 else
     TsInfo.DisplayMode   = 'butterfly';
     TsInfo.FlipYAxis     = 0;

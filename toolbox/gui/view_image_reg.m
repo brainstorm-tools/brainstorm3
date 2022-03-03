@@ -151,6 +151,11 @@ else
         PageName = Labels{4}{1};
     end
 end
+% Connectivity matrix: use equal axes
+if ~isempty(FileName) && strcmpi(file_gettype(FileName), 'timefreq') && ~isempty(strfind(FileName, '_connectn'))
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesImage');
+    set(hAxes, 'DataAspectRatio', [1 1 1]);
+end
 
 
 %% ===== INITIALIZE FIGURE =====

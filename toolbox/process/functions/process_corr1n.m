@@ -99,7 +99,7 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
         sProcess.options.src_channel.InputTypes = {'data'};
         sProcess.options.src_channel.Group      = 'input';
         % === FROM: ROW NAME ===
-        sProcess.options.src_rowname.Comment    = 'Source rows (names or indices): ';
+        sProcess.options.src_rowname.Comment    = 'Signal names or indices: ';
         sProcess.options.src_rowname.Type       = 'text';
         sProcess.options.src_rowname.Value      = '';
         sProcess.options.src_rowname.InputTypes = {'timefreq', 'matrix'};

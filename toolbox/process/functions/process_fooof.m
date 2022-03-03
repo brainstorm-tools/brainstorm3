@@ -34,20 +34,19 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'FOOOF: Fitting oscillations and 1/f';
+    sProcess.Comment     = 'specparam: Fitting oscillations and 1/f';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 503;
+    sProcess.Index       = 501;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Fooof';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     % Definition of the options
     % === FOOOF TYPE
-    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (3.7 recommended)', 'FOOOF implementation:'; 'matlab', 'python', ''};
+    sProcess.options.implementation.Comment = {'Matlab', 'Python 3 (3.7 recommended)', 'specparam implementation:'; 'matlab', 'python', ''};
     sProcess.options.implementation.Type    = 'radio_linelabel';
     sProcess.options.implementation.Value   = 'matlab';
     sProcess.options.implementation.Controller.matlab = 'Matlab';
@@ -202,17 +201,17 @@ function OutputFile = Run(sProcess, sInputs) %#ok<DEFNU>
             'stats',      eStats);
         % Comment: Add FOOOF
         if ~isempty(strfind(PsdMat.Comment, 'PSD:'))
-            PsdMat.Comment = strrep(PsdMat.Comment, 'PSD:', 'FOOOF:');
+            PsdMat.Comment = strrep(PsdMat.Comment, 'PSD:', 'specparam:');
         else
-            PsdMat.Comment = strcat(PsdMat.Comment, ' | FOOOF');
+            PsdMat.Comment = strcat(PsdMat.Comment, ' | specparam');
         end
         % History: Computation
-        PsdMat = bst_history('add', PsdMat, 'compute', 'FOOOF');
+        PsdMat = bst_history('add', PsdMat, 'compute', 'specparam');
         
         % === SAVE FILE ===
         % Filename: add _fooof tag
         [fPath, fName, fExt] = bst_fileparts(file_fullpath(sInputs(iFile).FileName));
-        NewFile = file_unique(bst_fullfile(fPath, [fName, '_fooof', fExt]));
+        NewFile = file_unique(bst_fullfile(fPath, [fName, '_specparam', fExt]));
         % Save file
         bst_save(NewFile, PsdMat, 'v6');
         % Add file to database structure
@@ -438,10 +437,12 @@ function aperiodic_params = simple_ap_fit(freqs, power_spectrum, aperiodic_mode)
 
     switch (aperiodic_mode)
         case 'fixed'  % no knee
-            guess_vec = [power_spectrum(1), 2];
+            exp_guess = -(power_spectrum(end)-power_spectrum(1))./log10(freqs(end)./freqs(1));
+            guess_vec = [power_spectrum(1), exp_guess];
             aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs, power_spectrum);
         case 'knee'
-            guess_vec = [power_spectrum(1),0, 2];
+            exp_guess = -(power_spectrum(end)-power_spectrum(1))./log10(freqs(end)./freqs(1));
+            guess_vec = [power_spectrum(1),0, exp_guess];
             aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
     end
 
@@ -475,7 +476,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
     flatspec(flatspec(:) < 0) = 0;
 
     % Use percential threshold, in terms of # of points, to extract and re-fit
-    perc_thresh = bst_prctile(flatspec, 2.5);
+    perc_thresh = bst_prctile(flatspec, 0.025);
     perc_mask = flatspec <= perc_thresh;
     freqs_ignore = freqs(perc_mask);
     spectrum_ignore = power_spectrum(perc_mask);
@@ -490,7 +491,7 @@ function aperiodic_params = robust_ap_fit(freqs, power_spectrum, aperiodic_mode)
         case 'fixed'  % no knee
             aperiodic_params = fminsearch(@error_expo_nk_function, guess_vec, options, freqs_ignore, spectrum_ignore);
         case 'knee'
-            aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs, power_spectrum);
+            aperiodic_params = fminsearch(@error_expo_function, guess_vec, options, freqs_ignore, spectrum_ignore);
     end
 end
 
@@ -583,7 +584,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 half_height = 0.5 * max_height;
 
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
 
                 % Keep bandwidth estimation from the shortest side.
                 % We grab shortest to avoid estimating very large std from overalapping peaks.
@@ -694,7 +695,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 end
                 half_height = 0.5 * max_height;
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
                 fwhm = short_side * 2 * (freqs(2)-freqs(1));
                 guess_std = fwhm / (2 * sqrt(2 * log(2)));
@@ -739,7 +740,7 @@ function [model_params,peak_function] = fit_peaks(freqs, flat_iter, max_n_peaks,
                 end
                 half_height = 0.5 * max_height;
                 le_ind = sum(flat_iter(1:max_ind) <= half_height);
-                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height);
+                ri_ind = length(flat_iter) - sum(flat_iter(max_ind:end) <= half_height)+1;
                 short_side = min(abs([le_ind,ri_ind]-max_ind));
                 fwhm = short_side * 2 * (freqs(2)-freqs(1));
                 guess_gamma = fwhm/2;
