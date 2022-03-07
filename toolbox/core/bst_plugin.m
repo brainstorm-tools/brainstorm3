@@ -450,6 +450,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
+    PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
     
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
@@ -2190,7 +2191,7 @@ function j = MenuCreate(jMenu, fontSize)
             if ~isempty(Plug.ExtraMenus)
                 j(ij).menu.addSeparator();
                 for iMenu = 1:size(Plug.ExtraMenus,1)
-                    j(ij).web = gui_component('MenuItem', j(ij).menu, [], Plug.ExtraMenus{iMenu,1}, IconLoader.ICON_EXPLORER, [], @(h,ev)bst_call(@eval, Plug.ExtraMenus{iMenu,2}), fontSize);
+                    j(ij).extra(iMenu) = gui_component('MenuItem', j(ij).menu, [], Plug.ExtraMenus{iMenu,1}, IconLoader.ICON_EXPLORER, [], @(h,ev)bst_call(@eval, Plug.ExtraMenus{iMenu,2}), fontSize);
                 end
             end
         end
@@ -2304,6 +2305,20 @@ function MenuUpdate(jPlugs)
             j.unload.setEnabled(isLoaded && ~isCompiled);
             % Web
             j.web.setEnabled(~isempty(Plug.URLinfo));
+            % Extra menus: Update availability
+            if ~isempty(Plug.ExtraMenus)
+                for iMenu = 1:size(Plug.ExtraMenus,1)
+                    if (size(Plug.ExtraMenus,2) == 3) && ~isempty(Plug.ExtraMenus{3})
+                        if (strcmpi(Plug.ExtraMenus{3}, 'loaded') && isLoaded) ...
+                        || (strcmpi(Plug.ExtraMenus{3}, 'installed') && isInstalled) ...
+                        || (strcmpi(Plug.ExtraMenus{3}, 'always'))
+                            j.extra(iMenu).setEnabled(1);
+                        else
+                            j.extra(iMenu).setEnabled(0);
+                        end
+                    end
+                end
+            end
         end
     end
     j.menu.repaint()
