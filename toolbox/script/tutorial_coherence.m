@@ -46,8 +46,6 @@ cohmeasure  = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
 win_length  =  0.5;       % 500ms
 overlap     = 50;         % 50%
 maxfreq     = 80;         % 80Hz
-% TODO Ask for isBigRam as argument?
-isBigRam = 0;
 
 % Build the path of the files to import
 MriFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
@@ -552,17 +550,14 @@ sFilesResSrfUnc = bst_process('CallProcess', 'process_select_files_results', [],
     'includecommon', 0);
 % Coherence between EMG signal and scouts (for different "when to apply the scout function")
 sFileCoh1Ns = [];
-scoutFuntcTimes = {'Bef', 'Aft'}; % Before and After     
+scoutFuntcTimes = {'Before'}; % Valid options: 'Before' and 'After'     
 for ix = 1 : length(scoutFuntcTimes)
     scoutFuntcTime = scoutFuntcTimes{ix};
     switch scoutFuntcTime
-        case 'Bef'
+        case 'Before'
             scouttime = 1;
-        case 'Aft'
+        case 'After'
             scouttime = 2;
-            if ~isBigRam
-                continue
-            end
     end
     % Process: Coherence AxB [2021]
     sFileCoh1N = bst_process('CallProcess', 'process_cohere2_2021', sFilesRecEmg, sFilesResSrfUnc, ...
