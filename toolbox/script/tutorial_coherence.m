@@ -26,7 +26,6 @@ function tutorial_coherence(tutorial_dir, reports_dir)
 %
 % Author: Raymundo Cassani, 2022
 
-% ===== FILES TO IMPORT =====
 % Output folder for reports
 if (nargin < 2) || isempty(reports_dir) || ~isfolder(reports_dir)
     reports_dir = [];
@@ -36,6 +35,8 @@ if (nargin == 0) || isempty(tutorial_dir) || ~file_exist(tutorial_dir)
     error('The first argument must be the full path to the dataset folder.');
 end
 
+% Protocol name
+ProtocolName = 'TutorialCMC';
 % Subject name
 SubjectName = 'Subject01';
 % Name of the Cortex surface to use for source localization
@@ -46,6 +47,7 @@ cohmeasure  = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
 win_length  =  0.5;       % 500ms
 overlap     = 50;         % 50%
 maxfreq     = 80;         % 80Hz
+meg_sensor  = 'MRC21';    % MEG sensor over the left motor-cortex (MRC21)
 
 % Build the path of the files to import
 MriFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
@@ -62,8 +64,6 @@ end
 
 %% ===== 1. CREATE PROTOCOL =====
 disp([10 'DEMO> 1. Create protocol' 10]);
-% The protocol name has to be a valid folder name (no spaces, no weird characters...)
-ProtocolName = 'TutorialCMC';
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -298,10 +298,12 @@ sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFileRawN
     'freq',          [], ...
     'baseline',      'all', ...
     'blsensortypes', 'MEG');
-% TODO snapshots for the two figures below
 % View recordings, trial 1
-hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', 'MRC21');
+hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', meg_sensor);
 hFigEmg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
+% Snapshots to report
+bst_report('Snapshot', hFigMeg, sFilesEpochs(1).FileName, meg_sensor, [100 100 640 360]);
+bst_report('Snapshot', hFigEmg, sFilesEpochs(1).FileName, 'EMG', [100 100 640 360]);
 pause(0.5);
 % Close figures
 close([hFigMeg, hFigEmg]);
@@ -321,17 +323,20 @@ sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.Fi
     'overlap',      overlap, ...
     'maxfreq',      maxfreq, ...
     'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
-% TODO snapshots for the three figures below
 % View coherence 1xN (sensor level)
 hFigCohSpcA = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
-hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', 'MRC21');
-hFigCohTop  = view_topography(sFileCoh1N.FileName);
-% TODO Show sensor locations in topoplot
-% TODO Set frequency slider to 17.58 Hz
-% TODO Selet MRC21
+hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', meg_sensor, 1);
+hFigCoh2Dcap  = view_topography(sFileCoh1N.FileName);
+panel_freq('SetCurrentFreq',  17.58, 0);       % Set frequency
+figure_3d('ViewSensors', hFigCoh2Dcap, 1, 0);  % Show sensors
+bst_figures('SetSelectedRows', {meg_sensor});  % Highlight MEG sensor
+% Snapshots to report
+bst_report('Snapshot', hFigCohSpcA, sFileCoh1N(1).FileName, 'MSC EMGlft x MEG', [100 100 640 360]);
+bst_report('Snapshot', hFigCohSpc1, sFileCoh1N(1).FileName, ['MSC EMGlft x ', meg_sensor], [100 100 640 360]);
+bst_report('Snapshot', hFigCoh2Dcap, sFileCoh1N(1).FileName, '2D sensor cap MSC EMGlft x MEG', [100 100 640 540]);
 pause(0.5);
 % Close figures
-close([hFigCohSpcA, hFigCohSpc1, hFigCohTop]);
+close([hFigCohSpcA, hFigCohSpc1, hFigCoh2Dcap]);
 
 % Process: Group in time or frequency bands
 sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], ...
@@ -340,15 +345,16 @@ sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], 
     'istimebands', 0, ...
     'timebands',   '', ...
     'overwrite',   0);
-% TODO snapshots for the three figures below
 % View coherence 1xN (sensor level) for 15 - 20 Hz
-hFigCohTop = view_topography(sFileCoh1NBand.FileName);
-% TODO Show sensor locations in topoplot
-% TODO Set frequency slider to 17.58 Hz
-% TODO Selet MRC21
+hFigCoh2DTop = view_topography(sFileCoh1NBand.FileName, '', '2DDisc');
+panel_freq('SetCurrentFreq',  17.58, 0);       % Set frequency
+figure_3d('ViewSensors', hFigCoh2DTop, 1, 0);  % Show sensors
+bst_figures('SetSelectedRows', {meg_sensor});  % Highlight MEG sensor
+% Snapshots to report
+bst_report('Snapshot', hFigCoh2DTop, sFileCoh1NBand(1).FileName, '2D topography MSC 15-20Hz EMGlft x MEG', [100 100 640 540]);
 pause(0.5);
-% Close figure
-close(hFigCohTop);
+% Close figures
+close(hFigCoh2DTop);
 
 
 %% ===== 13. MEG SOURCE MODELLING =====
@@ -504,7 +510,6 @@ for ix = 1 :  length(sourceTypes)
     sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];
 end
 
-% TODO snapshots for the three figures below
 % View coherence 1xN (source level)
 hFigs = [];
 for ix = 1 : length(sFileCoh1Ns)
@@ -513,17 +518,33 @@ for ix = 1 : length(sFileCoh1Ns)
     % Surface results
     if ~isempty(strfind(sourceType, 'surface'))
         hFigs = [hFigs; view_surface_data([], sFileCoh1N.FileName)];
-        % TODO Set frequency slider to 14.65 Hz
     % Volume results
     elseif ~isempty(strfind(sourceType, 'volume'))
         % Get subject definition
         sSubject = bst_get('Subject', SubjectName);
         hFigs = [hFigs; view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG')];
-        % TODO Set frequency slider to 14.65 Hz
-        % TODO Got to SCS [X:38.6, Y:-21.3 and Z:115.5]
-        % TODO Set transparencey 30%
     end
 end
+% Set parameters for figures
+scs_xyz = [38.6, -21.3, 115.5];
+panel_freq('SetCurrentFreq',  14.65, 0);                      % Set frequency
+% Surface results 
+panel_scout('SetScoutShowSelection', 'none');                 % Hide scouts
+iSurf = getappdata(hFigs(1), 'iSurface');                    
+panel_surface('SetSurfaceSmooth', hFigs(1), iSurf, 30/100);   % Set smoothing
+iSurf = getappdata(hFigs(2), 'iSurface');
+panel_surface('SetSurfaceSmooth', hFigs(2), iSurf, 30/100);   % Set smoothing
+% Volume results 
+figure_mri('SetLocation', 'scs', hFigs(3), [], scs_xyz/1000); % Go to XYZ in SCS
+iSurface = getappdata(hFigs(3), 'iSurface');
+TessInfo = getappdata(hFigs(3), 'Surface');
+TessInfo(iSurface).DataAlpha = 0.2;                           % Set transparency 
+setappdata(hFigs(3), 'Surface', TessInfo);
+figure_mri('UpdateMriDisplay', hFigs(3)); 
+% Snapshots to report
+bst_report('Snapshot', hFigs(1), sFileCoh1N(1).FileName, 'MSC 14.65Hz (surface)(Constr)', [100 100 640 540]);
+bst_report('Snapshot', hFigs(2), sFileCoh1N(1).FileName, 'MSC 14.65Hz (surface)(Unconstr)', [100 100 640 540]);
+bst_report('Snapshot', hFigs(3), sFileCoh1N(1).FileName, 'MSC 14.65Hz (volume)(Unconstr)', [100 100 960 720]);
 pause(0.5);
 % Close figures
 close(hFigs);
@@ -549,7 +570,6 @@ sFilesResSrfUnc = bst_process('CallProcess', 'process_select_files_results', [],
     'includeintra',  0, ...
     'includecommon', 0);
 % Coherence between EMG signal and scouts (for different "when to apply the scout function")
-sFileCoh1Ns = [];
 scoutFuntcTimes = {'Before'}; % Valid options: 'Before' and 'After'     
 for ix = 1 : length(scoutFuntcTimes)
     scoutFuntcTime = scoutFuntcTimes{ix};
@@ -576,22 +596,21 @@ for ix = 1 : length(scoutFuntcTimes)
     sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
         'tag',           [sourceType, '(', scoutFuntcTime, 'Sct)'], ...
         'output',        1);  % Add to file name     
-    sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];   
+    % Coherence spectra
+    hFigSpect = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
+    panel_freq('SetCurrentFreq',  14.65, 0);        % Set frequency
+    % Snapshot
+    bst_report('Snapshot', hFigSpect, sFileCoh1N.FileName, ['MSC ,' sourceType, ' ', scoutFuntcTime], [100 100 640 360]);
+    % Image
+    hFigImg = view_connect(sFileCoh1N.FileName, 'Image');
+    bst_figures('SetSelectedRows', 'SomMotA_4 R');  % Highlight scout of interest
+    % Snapshot
+    bst_report('Snapshot', hFigImg, sFileCoh1N.FileName, ['MSC 14.65Hz,' sourceType, ' ', scoutFuntcTime], [100 100 640 360]);     
+    pause(0.5);
+    % Close figures
+    close([hFigSpect, hFigImg]);
 end
 
-% TODO snapshots for the figures below
-% View coherence 1xN (scout level)
-hFigs = [];
-for ix = 1 : length(sFileCoh1Ns)
-    sFileCoh1N = sFileCoh1Ns(ix);
-    hFigs = [hFigs; view_spectrum(sFileCoh1N.FileName, 'Spectrum')];
-    hFigs = [hFigs; view_connect(sFileCoh1N.FileName, 'Image')];
-    % TODO Select SomMotA_2 R scout
-    % TODO Set frequency slider to 14.65 Hz
-end
-pause(0.5);
-% Close figures
-close(hFigs);
 
 %% ===== SAVE REPORT =====
 disp([10 'DEMO> Save report' 10]);
