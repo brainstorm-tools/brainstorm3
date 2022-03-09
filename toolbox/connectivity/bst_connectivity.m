@@ -690,11 +690,10 @@ for iFile = 1:length(FilesA)
         if OPTIONS.isScoutB
             Comment = [Comment, ' x ' num2str(length(OPTIONS.sScoutsB)), ' scouts'];
         end
-        % Add scout function and time
-        if ~strcmpi(OPTIONS.ScoutFunc, 'All')
+        % Add scout function and time if they are relevant
+        if ~strcmpi(OPTIONS.ScoutFunc, 'All') && (OPTIONS.isScoutA || OPTIONS.isScoutB)
              Comment = [Comment, ', ',  OPTIONS.ScoutFunc, ' ', OPTIONS.ScoutTime];
         end
-
     %NxN
     else
         Comment = [Comment, sInputA.Comment];
