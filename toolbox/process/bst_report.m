@@ -1416,7 +1416,7 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
         error('Sending email requires Matlab >= 2014b.');
     end
     % Check ReportFile 
-    if ~(exist(ReportFile, 'file') == 2)
+    if ~(exist(ReportFile, 'file') == 2) && isempty(ReportFile)
         ReportFile = 'current';
     end
     % Get report
