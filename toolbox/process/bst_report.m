@@ -1431,11 +1431,11 @@ function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
         html = PrintToHtml(Reports, isFullReport);
     else
         html = '';
-        for iEntry = 1:size(ReportsMat.Reports,1)
-            if ~isempty(ReportsMat.Reports{iEntry,1}) && ~isempty(ReportsMat.Reports{iEntry,5})
-                html = [html, ReportsMat.Reports{iEntry,5}, ' : ', ReportsMat.Reports{iEntry,1}];
-                if ~isempty(ReportsMat.Reports{iEntry,2})
-                    html = [html, ' - ' func2str(ReportsMat.Reports{iEntry,2}.Function)];
+        for iEntry = 1:size(Reports,1)
+            if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
+                html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
+                if ~isempty(Reports{iEntry,2})
+                    html = [html, ' - ' func2str(Reports{iEntry,2}.Function)];
                 end
                 html = [html, 10];
             end
