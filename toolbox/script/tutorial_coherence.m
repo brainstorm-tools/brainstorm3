@@ -482,7 +482,6 @@ sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], .
     'includeintra',  0, ...
     'includecommon', 0);
 % Coherence between EMG signal and sources (for different source types)
-sFileCoh1Ns = [];
 sourceTypes = {'(surface)(Constr)', '(surface)(Unconstr)', '(volume)(Unconstr)'};
 for ix = 1 :  length(sourceTypes)
     sourceType = sourceTypes{ix};
@@ -510,48 +509,35 @@ for ix = 1 :  length(sourceTypes)
     % Process: Add tag
     sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
         'tag',           sourceType, ...
-        'output',        1);  % Add to file name    
-    sFileCoh1Ns = [sFileCoh1Ns; sFileCoh1N];
-end
-
-% View coherence 1xN (source level)
-hFigs = [];
-for ix = 1 : length(sFileCoh1Ns)
-    sFileCoh1N = sFileCoh1Ns(ix);
-    sourceType = sourceTypes{ix};
-    % Surface results
+        'output',        1);  % Add to file name       
+    % View coherence 1xN (source level)
+    % Surface    
     if ~isempty(strfind(sourceType, 'surface'))
-        hFigs = [hFigs; view_surface_data([], sFileCoh1N.FileName)];
-    % Volume results
+        hFig = view_surface_data([], sFileCoh1N.FileName);
+        panel_scout('SetScoutShowSelection', 'none');              % Hide scouts
+        iSurface = getappdata(hFig, 'iSurface');                    
+        panel_surface('SetSurfaceSmooth', hFig, iSurface, 30/100); % Set smoothing
+    % Volume
     elseif ~isempty(strfind(sourceType, 'volume'))
-        % Get subject definition
         sSubject = bst_get('Subject', SubjectName);
-        hFigs = [hFigs; view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG')];
+        hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG');   
+        scs_xyz = [38.6, -21.3, 115.5];                           % XYZ coordinates in SCS
+        figure_mri('SetLocation', 'scs', hFig, [], scs_xyz/1000); % Go to XYZ in SCS
+        iSurface = getappdata(hFig, 'iSurface');
+        TessInfo = getappdata(hFig, 'Surface');
+        TessInfo(iSurface).DataAlpha = 0.2;                       % Set transparency 
+        setappdata(hFig, 'Surface', TessInfo);
+        figure_mri('UpdateMriDisplay', hFig); 
     end
+    % Set common parameters for figures  
+    bst_colormaps('SetMaxCustom', 'connect1', [], 0, 0.07) % Set colormap range 
+    panel_freq('SetCurrentFreq',  14.65, 0);              % Set frequency
+    % Snapshot to report
+    bst_report('Snapshot', hFig, sFileCoh1N.FileName, ['MSC 14.65Hz ',  sourceType], [100 100 640 540]);
+    pause(0.5);
+    % Close figures
+    close(hFig);
 end
-% Set parameters for figures
-scs_xyz = [38.6, -21.3, 115.5];
-panel_freq('SetCurrentFreq',  14.65, 0);                      % Set frequency
-% Surface results 
-panel_scout('SetScoutShowSelection', 'none');                 % Hide scouts
-iSurf = getappdata(hFigs(1), 'iSurface');                    
-panel_surface('SetSurfaceSmooth', hFigs(1), iSurf, 30/100);   % Set smoothing
-iSurf = getappdata(hFigs(2), 'iSurface');
-panel_surface('SetSurfaceSmooth', hFigs(2), iSurf, 30/100);   % Set smoothing
-% Volume results 
-figure_mri('SetLocation', 'scs', hFigs(3), [], scs_xyz/1000); % Go to XYZ in SCS
-iSurface = getappdata(hFigs(3), 'iSurface');
-TessInfo = getappdata(hFigs(3), 'Surface');
-TessInfo(iSurface).DataAlpha = 0.2;                           % Set transparency 
-setappdata(hFigs(3), 'Surface', TessInfo);
-figure_mri('UpdateMriDisplay', hFigs(3)); 
-% Snapshots to report
-bst_report('Snapshot', hFigs(1), sFileCoh1N(1).FileName, 'MSC 14.65Hz (surface)(Constr)', [100 100 640 540]);
-bst_report('Snapshot', hFigs(2), sFileCoh1N(1).FileName, 'MSC 14.65Hz (surface)(Unconstr)', [100 100 640 540]);
-bst_report('Snapshot', hFigs(3), sFileCoh1N(1).FileName, 'MSC 14.65Hz (volume)(Unconstr)', [100 100 960 720]);
-pause(0.5);
-% Close figures
-close(hFigs);
 
 
 %% ===== 16. COHERENCE 1xN (SCOUT LEVEL) =====
@@ -600,6 +586,7 @@ for ix = 1 : length(scoutFuntcTimes)
     sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
         'tag',           sourceType, ...
         'output',        1);  % Add to file name     
+    % View coherence 1xN (scout level)
     % Coherence spectra
     hFigSpect = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
     panel_freq('SetCurrentFreq',  14.65, 0);        % Set frequency
