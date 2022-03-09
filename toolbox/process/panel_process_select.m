@@ -220,8 +220,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     ctrl = struct(...
         'UpdatePipeline', @UpdatePipeline, ...
         'jListProcess',   jListProcess);
+    % Make all the panel scrollable (otherwise, it can't be validated if if it is taller than the screen
+    jPanelScroll = java_create('javax.swing.JScrollPane');
+    jPanelScroll.getLayout.getViewport.setView(jPanelMain);
+    jPanelScroll.setBorder([]);
+    jPanelScroll.setHorizontalScrollBarPolicy(jPanelScroll.HORIZONTAL_SCROLLBAR_NEVER);
     % Create the BstPanel object that is returned by the function
-    bstPanel = BstPanel(panelName, jPanelMain, ctrl);
+    bstPanel = BstPanel(panelName, jPanelScroll, ctrl);
 
                               
 %% =========================================================================
