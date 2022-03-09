@@ -763,10 +763,11 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
             end
         end
         if (length(unique(listComments)) == 1)
-            FileMat.Comment = listComments{1};
+            Comment = listComments{1};
         else
-            FileMat.Comment = listComments{end};
+            Comment = listComments{end};
         end
+        FileMat.Comment = sprintf('Avg: %s (%d)', Comment, FileMat.nAvg);
     end
     % Head model
     if isfield(sInputA, 'HeadModelFile') && ~isempty(sInputA.HeadModelFile)
