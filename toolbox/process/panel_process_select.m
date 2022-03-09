@@ -1191,7 +1191,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             jList.setEnabled(1);
                         else
                             jCheckCluster = [];
-                            gui_component('label', jPanelOpt, [], ' Select cluster:', [],[],[],[]);
+                            gui_component('label', jPanelOpt, [], ' Select cluster:');
                         end
                         % Set callbacks
                         java_setcb(jList, 'ValueChangedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, sClusters, jList, jCheckCluster, ev));
@@ -1230,7 +1230,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             end
                         else
                             jCheck = [];
-                            gui_component('label', jPanelOpt, [], ' Select scouts:', [],[],[],[]);
+                            gui_component('label', jPanelOpt, [], 'Select scouts:');
                             isListEnable = 1;
                         end
                         % Horizontal glue
