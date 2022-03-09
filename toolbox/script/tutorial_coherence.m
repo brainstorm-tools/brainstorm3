@@ -323,6 +323,10 @@ sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.Fi
     'overlap',      overlap, ...
     'maxfreq',      maxfreq, ...
     'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
+% Process: Add tag
+sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
+    'tag',           'MEG sensors', ...
+    'output',        1);  % Add to file name    
 % View coherence 1xN (sensor level)
 hFigCohSpcA = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
 hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', meg_sensor, 1);
@@ -331,9 +335,9 @@ panel_freq('SetCurrentFreq',  17.58, 0);       % Set frequency
 figure_3d('ViewSensors', hFigCoh2Dcap, 1, 0);  % Show sensors
 bst_figures('SetSelectedRows', {meg_sensor});  % Highlight MEG sensor
 % Snapshots to report
-bst_report('Snapshot', hFigCohSpcA, sFileCoh1N(1).FileName, 'MSC EMGlft x MEG', [100 100 640 360]);
-bst_report('Snapshot', hFigCohSpc1, sFileCoh1N(1).FileName, ['MSC EMGlft x ', meg_sensor], [100 100 640 360]);
-bst_report('Snapshot', hFigCoh2Dcap, sFileCoh1N(1).FileName, '2D sensor cap MSC EMGlft x MEG', [100 100 640 540]);
+bst_report('Snapshot', hFigCohSpcA, sFileCoh1N.FileName, 'MSC EMGlft x MEG', [100 100 640 360]);
+bst_report('Snapshot', hFigCohSpc1, sFileCoh1N.FileName, ['MSC EMGlft x ', meg_sensor], [100 100 640 360]);
+bst_report('Snapshot', hFigCoh2Dcap, sFileCoh1N.FileName, '2D sensor cap MSC EMGlft x MEG', [100 100 640 540]);
 pause(0.5);
 % Close figures
 close([hFigCohSpcA, hFigCohSpc1, hFigCoh2Dcap]);
@@ -351,7 +355,7 @@ panel_freq('SetCurrentFreq',  17.58, 0);       % Set frequency
 figure_3d('ViewSensors', hFigCoh2DTop, 1, 0);  % Show sensors
 bst_figures('SetSelectedRows', {meg_sensor});  % Highlight MEG sensor
 % Snapshots to report
-bst_report('Snapshot', hFigCoh2DTop, sFileCoh1NBand(1).FileName, '2D topography MSC 15-20Hz EMGlft x MEG', [100 100 640 540]);
+bst_report('Snapshot', hFigCoh2DTop, sFileCoh1NBand.FileName, '2D topography MSC 15-20Hz EMGlft x MEG', [100 100 640 540]);
 pause(0.5);
 % Close figures
 close(hFigCoh2DTop);
