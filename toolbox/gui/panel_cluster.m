@@ -616,8 +616,17 @@ end
 
 %% ===== EDIT CLUSTER LABEL =====
 % Rename one and only one selected cluster
-function EditClusterLabel()
+function EditClusterLabel(varargin)
+% Usage : EditClusterLabel()                   : interactive edition of cluster name
+%         EditClusterLabel(newLabel, iCluster) : update label of iCluster to newLabel, if newLabel is unique
     global GlobalData;
+    isInteractive = 1;
+    % If newLabel and iCluster are provided
+    if (nargin == 2) && ~isempty(varargin{1}) && ~isempty(varargin{1}) 
+        isInteractive = 0;
+        newLabel = varargin{1};
+        SetSelectedClusters(varargin{2});
+    end   
     % Get selected clusters
     [sCluster, iCluster] = GetSelectedClusters();
     % Warning message if no cluster selected
@@ -630,13 +639,15 @@ function EditClusterLabel()
         sCluster = sCluster(1);
         SetSelectedClusters(iCluster);
     end
-    % Ask user for a new Cluster Label
-    newLabel = java_dialog('input', sprintf('Please enter a new label for cluster "%s":', sCluster.Label), ...
-                             'Rename selected cluster', [], sCluster.Label);
+    if isInteractive
+        % Ask user for a new Cluster Label
+        newLabel = java_dialog('input', sprintf('Please enter a new label for cluster "%s":', sCluster.Label), ...
+                                 'Rename selected cluster', [], sCluster.Label);
+    end
     if isempty(newLabel) || strcmpi(newLabel, sCluster.Label)
         return
     end
-    % Check if if already exists
+    % Check if newLabel already exists
     if any(strcmpi({GlobalData.Clusters.Label}, newLabel))
         java_dialog('warning', 'Cluster name already exists.', 'Rename selected cluster');
         return;
