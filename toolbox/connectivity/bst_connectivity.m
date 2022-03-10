@@ -76,6 +76,7 @@ OutputFiles = {};
 Ravg = [];
 nAvg = 0;
 nTime = 1;
+nFreq = 1;
 % Initialize progress bar
 if bst_progress('isVisible')
     startValue = bst_progress('get');
@@ -335,6 +336,7 @@ for iFile = 1:length(FilesA)
                 R = R(:,:,iFreq);
                 OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
             end
+            nFreq = size(R,3);
             % Add the number of windows to the report
             bst_report('Info', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), sprintf('Using %d windows of %d samples each', OPTIONS.Nwin, OPTIONS.Lwin));
             % Check precision for high frequencies
@@ -411,6 +413,7 @@ for iFile = 1:length(FilesA)
                 R = R(:,:,iFreq);
                 OPTIONS.Freqs = OPTIONS.Freqs(iFreq);
             end
+            nFreq = size(R,3);
             % Comment
             if (size(sInputA.Data,1) == 1)
                 Comment = sprintf('SpGranger(%s,%1.1fHz): ', OPTIONS.GrangerDir, OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
@@ -423,13 +426,13 @@ for iFile = 1:length(FilesA)
             bst_progress('text', sprintf('Calculating: AEC [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'AEC: ';
             % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
+            nFreq = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
 
             % Initialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreq);
             % Loop on each frequency band
-            for iBand = 1:nFreqBands
+            for iBand = 1:nFreq
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
                 HA = hilbert_fcn(DataAband')';                
@@ -480,7 +483,7 @@ for iFile = 1:length(FilesA)
         case {'plv', 'wpli', 'ciplv'}
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
             % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
+            nFreq = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Initialization for ciPLV and wPLI
             if ismember(OPTIONS.Method, {'wpli'})
@@ -493,9 +496,9 @@ for iFile = 1:length(FilesA)
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreq);
             % Loop on each frequency band
-            for iBand = 1:nFreqBands
+            for iBand = 1:nFreq
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
                     DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
@@ -541,14 +544,14 @@ for iFile = 1:length(FilesA)
         case {'plvt', 'wplit', 'ciplvt'}
             bst_progress('text', sprintf('Calculating: Time-resolved %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
             % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
+            nFreq = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Time: vector of file B
             nTime = length(sInputB.Time);
             % Intitialize returned matrix
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
-            R = zeros(nA * nB, nTime, nFreqBands);
+            R = zeros(nA * nB, nTime, nFreq);
             % Replicate nB x HA, and nA x HB
             iA = repmat(1:nA, 1, nB)';
             iB = reshape(repmat(1:nB, nA, 1), [], 1);
@@ -556,7 +559,7 @@ for iFile = 1:length(FilesA)
             % ===== VERSION S.BAILLET =====
             % PLV = exp(1i * (angle(HA) - angle(HB)));
             % Loop on each frequency band
-            for iBand = 1:nFreqBands
+            for iBand = 1:nFreq
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
                     DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
@@ -600,12 +603,12 @@ for iFile = 1:length(FilesA)
             end
             Comment = [Comment, ': '];
             % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
+            nFreq = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Intitialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreq);
             % Loop on each frequency band
-            for iBand = 1:nFreqBands
+            for iBand = 1:nFreq
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
                 % Compute PTE
@@ -621,20 +624,18 @@ for iFile = 1:length(FilesA)
             
         % ==== henv ====
         case 'henv'
-            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
-                size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%1.2fs',OPTIONS.WinLength) ' | ' ...
-                sprintf('%1.2fs',OPTIONS.WinLength * OPTIONS.WinOverlap) ' | '] ;
-            
+            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, size(sInputA.Data,1), size(sInputB.Data,1)));
+            % Process options
             OPTIONS.SampleRate = sfreq;
             OPTIONS.Freqs      = OPTIONS.Freqrange;
-
-            [R4d,timeSamples]       = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
-            sInputB.Time            = timeSamples + sInputB.Time(1) ;
-            [tmp1,tmp1,nTime,nBand] = size(R4d) ;
-            
-            % Rehaping a 4D matrix to 3 dim
-            R = reshape(R4d,[],nTime,nBand) ;
+            % Compute envelope correlation
+            [R, timeSamples, Nwin] = bst_henv(sInputA.Data, sInputB.Data, sInputA.Time, OPTIONS);
+            % Output file time
+            sInputB.Time = timeSamples + sInputB.Time(1);
+            % File comment
+            Comment = sprintf('%s (%s, %1.2fs, %dwin): ', OPTIONS.CohMeasure, OPTIONS.tfMeasure, OPTIONS.WinLength, Nwin);
+            % Prepare reshaping from 4D matrix to 3D
+            [tmp1,tmp1,nTime,nFreq] = size(R);
                     
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
@@ -668,7 +669,7 @@ for iFile = 1:length(FilesA)
 
     %% ===== SAVE FILE =====
     % Reshape: [A*B x nTime x nFreq]
-    R = reshape(R, [], nTime, size(R,3));
+    R = reshape(R, [], nTime, nFreq);
     % Comment
     if isequal(FilesA, FilesB)
         % Row name

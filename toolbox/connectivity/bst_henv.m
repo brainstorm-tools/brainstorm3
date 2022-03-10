@@ -1,4 +1,4 @@
-function varargout = bst_henv(X, Y, Time, OPTIONS)
+function [A, timePoints, nWindows] = bst_henv(X, Y, Time, OPTIONS)
 % BST_HENV Compute the time-varying Coherence and Envelope measures
 %
 % INPUTS:
@@ -21,17 +21,18 @@ function varargout = bst_henv(X, Y, Time, OPTIONS)
 %
 % OUTPUTS:
 %   - A            : Four-dimensional connectivity matrix (nSignals x nSignals x nWindows x nfBins)
-%   - timePoints   : Time vector Corresponding to the connectivity matrix
+%   - timePoints   : Time vector corresponding to the connectivity matrix
+%   - nWindows     : Number of estimator windows
 %
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
-%
+% 
 % Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
-%
+% 
 % FOR RESEARCH PURPOSES ONLY. THE SOFTWARE IS PROVIDED "AS IS," AND THE
 % UNIVERSITY OF SOUTHERN CALIFORNIA AND ITS COLLABORATORS DO NOT MAKE ANY
 % WARRANTY, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO WARRANTIES OF
@@ -200,11 +201,10 @@ fprintf(1, '\n');
 %% Outputs
 switch (OPTIONS.HStatDyn)
     case 'dynamic'  % Time-varying networks
-        varargout{1} = A ;
-        varargout{2} = timePoints/Fs ;
+        timePoints = timePoints/Fs ;
     case 'static'   % Average among all networks
-        varargout{1} = nanmean(A,3) ;
-        varargout{2} = median(timePoints/Fs) ;
+        A = nanmean(A,3);
+        timePoints = median(timePoints/Fs) ;
 end
 end
 
