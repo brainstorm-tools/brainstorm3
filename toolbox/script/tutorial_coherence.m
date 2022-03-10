@@ -24,7 +24,7 @@ function tutorial_coherence(tutorial_dir, reports_dir)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Raymundo Cassani, 2022
+% Author: Raymundo Cassani & Francois Tadel, 2022
 
 % Output folder for reports
 if (nargin < 2) || isempty(reports_dir) || ~isfolder(reports_dir)
@@ -39,8 +39,6 @@ end
 ProtocolName = 'TutorialCMC';
 % Subject name
 SubjectName = 'Subject01';
-% Name of the Cortex surface to use for source localization
-cortexName = 'central_15002V';
 % Coherence process options
 src_channel = 'EMGlft';   % Name of EMG channel
 cohmeasure  = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
@@ -56,14 +54,9 @@ MegFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.ds');
 if ~file_exist(MriFilePath) || ~file_exist(MegFilePath)
     error(['The folder ' tutorial_dir ' does not contain the folder from the file SubjectCMC.zip.']);
 end
-% Re-initialize random number generator
-if (bst_get('MatlabVersion') >= 712)
-    rng('default');
-end
 
 
 %% ===== 1. CREATE PROTOCOL =====
-disp([10 'DEMO> 1. Create protocol' 10]);
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -79,7 +72,6 @@ bst_colormaps('RestoreDefaults', 'meg');
 
 
 %% ===== 2. IMPORT AND PROCESS ANATOMY =====
-disp([10 'DEMO> 2. Import and process anatomy' 10]);
 % Process: Import MRI
 bst_process('CallProcess', 'process_import_mri', [], [], ...
     'subjectname', SubjectName, ...
@@ -90,16 +82,6 @@ bst_process('CallProcess', 'process_import_mri', [], [], ...
     'ac',          [0, 0, 0], ...
     'pc',          [0, 0, 0], ...
     'ih',          [0, 0, 0]);
-% Get subject definition
-sSubject = bst_get('Subject', SubjectName);
-% Get MRI file
-MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-% Display MRI
-hFigMri = view_mri(MriFile);
-pause(0.5);
-% Close figure
-close(hFigMri);
-
 % Process: Segment MRI with CAT12
 bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'subjectname', SubjectName, ...
@@ -109,27 +91,9 @@ bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'vol',         1, ...
     'extramaps',   0, ...
     'cerebellum',  0);
-% Get subject definition
-[sSubject, iSubject] = bst_get('Subject', SubjectName);
-% Set default Cortex
-[~, iSurface] = ismember(cortexName, {sSubject.Surface.Comment});
-db_surface_default(iSubject, 'Cortex', iSurface);
-panel_protocols('RepaintTree');
-% Get surface files
-CortexFile = sSubject.Surface(sSubject.iCortex).FileName;
-HeadFile   = sSubject.Surface(sSubject.iScalp).FileName;
-% Display scalp and cortex
-hFigSurf = view_surface(HeadFile);
-hFigSurf = view_surface(CortexFile, [], [], hFigSurf);
-figure_3d('SetStandardView', hFigSurf, 'left');
-hFigMriSurf = view_mri(MriFile, CortexFile);
-pause(0.5);
-% Close figures
-close([hFigSurf hFigMriSurf]);
 
 
 %% ===== 4. LINK TO RAW FILE AND DISPLAY REGISTRATION =====
-disp([10 'DEMO> 4. Link to raw file and display channel file ' 10]);
 % Process: Create link to raw files
 sFileRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',  SubjectName, ...
@@ -142,28 +106,11 @@ bst_process('CallProcess', 'process_snapshot', sFileRaw, [], ...
     'orient',   1, ...  % left
     'Comment',  'MEG/MRI Registration');
 
-% View MEG/MRI registration
-hFigReg = channel_align_manual(sFileRaw.ChannelFile, 'MEG', 0);
-view(hFigReg.CurrentAxes, 150, 20);
-pause(0.5);
-% Unload everything
-bst_memory('UnloadAll', 'Forced');
-
 
 %% ===== 5. REVIEW MEG AND EMG RECORDINGS =====
-disp([10 'DEMO> 5. Review MEG and EMG recordings' 10]);
 % Process: Convert to continuous (CTF): Continuous
 bst_process('CallProcess', 'process_ctf_convert', sFileRaw, [], ...
     'rectype', 2);  % Continuous
-% View recordings
-hFigMeg = view_timeseries(sFileRaw.FileName, 'MEG');
-panel_record('SetTimeLength', 3);
-panel_record('SetDisplayMode', hFigMeg, 'butterfly');
-hFigEmg = view_timeseries(sFileRaw.FileName, 'EMG');
-panel_record('SetDisplayMode', hFigEmg, 'butterfly');
-pause(0.5);
-% Close figures
-close([hFigMeg hFigEmg]);
 
 
 %% ===== 6. EVENT MARKERS =====
@@ -193,11 +140,6 @@ sFileRaw = bst_process('CallProcess', 'process_evt_delete', sFileRaw, [], ...
 sFileRaw = bst_process('CallProcess', 'process_evt_merge', sFileRaw, [], ...
     'evtnames', strjoin(eventKeep, ', '), ...
     'newname',  'Left');
-% View recordings
-hFigMeg = view_timeseries(sFileRaw.FileName, 'MEG');
-pause(0.5);
-% Close figure
-close(hFigMeg);
 
 
 %% ===== 8. REMOVAL OF POWER LINE ARTIFACTS =====
@@ -222,12 +164,10 @@ sFilesPsd = bst_process('CallProcess', 'process_psd', [sFileRaw, sFileRawNotch],
          'Measure',    'power', ...
          'Output',     'all', ...
          'SaveKernel', 0));
-% View recordings
-hFigPsdBef = view_spectrum(sFilesPsd(1).FileName);
-hFigPsdAft = view_spectrum(sFilesPsd(2).FileName);
-pause(0.5);
-% Close figures
-close([hFigPsdBef, hFigPsdAft]);
+% Process: Snapshot: Frequency spectrum
+bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
+    'target',   10, ...  % Frequency spectrum
+    'Comment',  'Power spectrum density');
 
 
 %% ===== 9. EMG PRE-PROCESSING =====
@@ -298,15 +238,7 @@ sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFileRawN
     'freq',          [], ...
     'baseline',      'all', ...
     'blsensortypes', 'MEG');
-% View recordings, trial 1
-hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', meg_sensor);
-hFigEmg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
-% Snapshots to report
-bst_report('Snapshot', hFigMeg, sFilesEpochs(1).FileName, meg_sensor, [100 100 640 360]);
-bst_report('Snapshot', hFigEmg, sFilesEpochs(1).FileName, 'EMG', [100 100 640 360]);
-pause(0.5);
-% Close figures
-close([hFigMeg, hFigEmg]);
+
 
 
 %% ===== 12. COHERENCE 1xN (SENSOR LEVEL) =====
@@ -402,7 +334,6 @@ bst_process('CallProcess', 'process_headmodel', sFilesEpochs(1).FileName, [], ..
 
 
 %% ===== 14. SOURCE ESTIMATION =====
-disp([10 'DEMO> 14. Source estimation' 10]);
 % iStudy for current imported data epochs
 iStudy = sFilesEpochs(1).iStudy;
 
@@ -472,7 +403,6 @@ bst_process('CallProcess', 'process_inverse_2018', sFilesEpochs(1).FileName, [],
 
      
 %% ===== 15. COHERENCE 1xN (SOURCE LEVEL) =====
-disp([10 'DEMO> 15. Coherence 1xN (source level)' 10]);
 % Process: Select data files
 sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname',   SubjectName, ...
@@ -541,7 +471,6 @@ end
 
 
 %% ===== 16. COHERENCE 1xN (SCOUT LEVEL) =====
-disp([10 'DEMO> 16. Coherence 1xN (scout level)' 10]);
 % Process: Select data files
 sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname',   SubjectName, ...
@@ -604,7 +533,6 @@ end
 
 
 %% ===== SAVE REPORT =====
-disp([10 'DEMO> Save report' 10]);
 % Save and display report
 ReportFile = bst_report('Save', []);
 if ~isempty(reports_dir) && ~isempty(ReportFile)
@@ -614,4 +542,3 @@ else
 end
 
 disp([10 'DEMO> Corticomuscular coherence tutorial completed' 10]);
-
