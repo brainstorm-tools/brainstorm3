@@ -27,7 +27,7 @@ function varargout = panel_process_select(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2021
+% Authors: Francois Tadel, 2010-2022
 
 eval(macro_method);
 end
@@ -220,8 +220,13 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     ctrl = struct(...
         'UpdatePipeline', @UpdatePipeline, ...
         'jListProcess',   jListProcess);
+    % Make all the panel scrollable (otherwise, it can't be validated if it is taller than the screen
+    jPanelScroll = java_create('javax.swing.JScrollPane');
+    jPanelScroll.getLayout.getViewport.setView(jPanelMain);
+    jPanelScroll.setBorder([]);
+    jPanelScroll.setHorizontalScrollBarPolicy(jPanelScroll.HORIZONTAL_SCROLLBAR_NEVER);
     % Create the BstPanel object that is returned by the function
-    bstPanel = BstPanel(panelName, jPanelMain, ctrl);
+    bstPanel = BstPanel(panelName, jPanelScroll, ctrl);
 
                               
 %% =========================================================================
@@ -1186,7 +1191,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             jList.setEnabled(1);
                         else
                             jCheckCluster = [];
-                            gui_component('label', jPanelOpt, [], ' Select cluster:', [],[],[],[]);
+                            gui_component('label', jPanelOpt, [], ' Select cluster:');
                         end
                         % Set callbacks
                         java_setcb(jList, 'ValueChangedCallback', @(h,ev)Cluster_ValueChangedCallback(iProcess, optNames{iOpt}, sClusters, jList, jCheckCluster, ev));
@@ -1209,6 +1214,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jList = java_create('javax.swing.JList');
                         jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
                         jList.setVisibleRowCount(-1);
+                        jList.setCellRenderer(BstStringListRenderer(fontSize));
                         % Confirm selection
                         if strcmpi(option.Type, 'scout_confirm')
                             if ~isempty(option.Comment)
@@ -1225,7 +1231,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             end
                         else
                             jCheck = [];
-                            gui_component('label', jPanelOpt, [], ' Select scouts:', [],[],[],[]);
+                            gui_component('label', jPanelOpt, [], 'Select scouts:');
                             isListEnable = 1;
                         end
                         % Horizontal glue
@@ -1420,9 +1426,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
 
                     % Create list
-                    jList = javax.swing.JList();
+                    jList = java_create('javax.swing.JList');
                     jList.setModel(listModel);
                     jList.setVisibleRowCount(-1);
+                    jList.setCellRenderer(BstStringListRenderer(fontSize));
                     
                     % Create scroll panel
                     jScroll = javax.swing.JScrollPane(jList);
@@ -1435,9 +1442,10 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     selectedListModel = javax.swing.DefaultListModel();
 
                     % Create list
-                    jSelectedList = javax.swing.JList();
+                    jSelectedList = java_create('javax.swing.JList');
                     jSelectedList.setModel(selectedListModel);
                     jSelectedList.setVisibleRowCount(-1);
+                    jSelectedList.setCellRenderer(BstStringListRenderer(fontSize));
                     
                     % Create scroll panel
                     jSelectedScroll = javax.swing.JScrollPane(jSelectedList);
@@ -1482,10 +1490,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     end
 
                     % Create list
-                    jList = javax.swing.JList();
+                    jList = java_create('javax.swing.JList');
                     jList.setLayoutOrientation(jList.VERTICAL_WRAP);
                     jList.setModel(listModel);
                     jList.setVisibleRowCount(-1);
+                    jList.setCellRenderer(BstStringListRenderer(fontSize));
                     java_setcb(jList, 'ValueChangedCallback', @(h,ev)EventSelection_Callback(iProcess, optNames{iOpt}, jList));
                     
                     % Create scroll panel
@@ -1827,10 +1836,11 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         end
 
         % Create list
-        jList = javax.swing.JList();
+        jList = java_create('javax.swing.JList');
         jList.setModel(listModel);
         jList.setLayoutOrientation(jList.HORIZONTAL_WRAP);
         jList.setVisibleRowCount(-1);
+        jList.setCellRenderer(BstStringListRenderer(fontSize));
 
         % Get selected clusters
         [tmp__, iSelClusters] = panel_cluster('GetSelectedClusters');
