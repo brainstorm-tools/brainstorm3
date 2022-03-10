@@ -443,6 +443,8 @@ function UpdatePanel(hFig)
             ctrl.jPanelFOOOF.setVisible(1);
             ctrl.jComboRows.setEnabled(1);
             ctrl.jPanelSelect.setVisible(1);
+            ctrl.jCheckHideEdge.setVisible(0);
+            ctrl.jCheckHighRes.setVisible(0);
             SetDisplayOptions();
         end
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
@@ -465,15 +467,17 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
-                ctrl.jPanelSelect.setVisible(1);
                 if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
+                    ctrl.jPanelSelect.setVisible(0);
                     ctrl.jRadioFOverlay.setVisible(0)
                     ctrl.jRadioFOverlay.setEnabled(0)
                     ctrl.jRadioFExponent.setVisible(1);
-                    ctrl.jRadioFOffset.setVisible(1);
                     ctrl.jRadioFExponent.setEnabled(1);
+                    ctrl.jRadioFOffset.setVisible(1);
                     ctrl.jRadioFOffset.setEnabled(1);
                 else
+                    ctrl.jPanelSelect.setVisible(1);
+                    ctrl.jRadioFOverlay.setVisible(1)
                     ctrl.jRadioFOverlay.setEnabled(1); 
                     ctrl.jRadioFExponent.setVisible(0);
                     ctrl.jRadioFOffset.setVisible(0);
@@ -575,7 +579,7 @@ function UpdatePanel(hFig)
         % Entire panel
         ctrl.jPanelSelect.setVisible(isEnabledEdge || isEnabledRow);
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
-            ctrl.jPanelSelect.setVisible(1);
+            ctrl.jPanelSelect.setVisible(ctrl.jRadioFOverlay.isVisible);
         end
 
         % === CONNECTIVITY ===
@@ -816,6 +820,12 @@ function SetDisplayOptions(sOptions)
         TfInfo.FOOOFDisp  = sOptions.FOOOFDisp;
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
+        % Highlight current row for all FOOOFDisp except overlay
+        if strcmpi(TfInfo.FOOOFDisp, 'overlay')
+            bst_figures('SetSelectedRows', []);
+        else
+            bst_figures('SetSelectedRows', sOptions.RowName);
+        end
         % Update figure handles
         setappdata(hFig, 'Timefreq', TfInfo);
     end
