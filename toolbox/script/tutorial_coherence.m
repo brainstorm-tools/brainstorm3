@@ -39,13 +39,14 @@ end
 ProtocolName = 'TutorialCMC';
 % Subject name
 SubjectName = 'Subject01';
-% Coherence process options
-src_channel = 'EMGlft';   % Name of EMG channel
-cohmeasure  = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
-win_length  =  0.5;       % 500ms
-overlap     = 50;         % 50%
-maxfreq     = 80;         % 80Hz
+% Channel selection
+emg_channel = 'EMGlft';   % Name of EMG channel
 meg_sensor  = 'MRC21';    % MEG sensor over the left motor-cortex (MRC21)
+% Coherence parameters
+cohmeasure = 'mscohere'; % Magnitude-squared Coherence|C|^2 = |Cxy|^2/(Cxx*Cyy)
+win_length = 0.5;        % 500ms
+overlap    = 50;         % 50%
+maxfreq    = 80;         % 80Hz
 
 % Build the path of the files to import
 MriFilePath = fullfile(tutorial_dir, 'SubjectCMC', 'SubjectCMC.mri');
@@ -56,7 +57,7 @@ if ~file_exist(MriFilePath) || ~file_exist(MegFilePath)
 end
 
 
-%% ===== 1. CREATE PROTOCOL =====
+%% ===== CREATE PROTOCOL =====
 % Start brainstorm without the GUI
 if ~brainstorm('status')
     brainstorm nogui
@@ -71,7 +72,7 @@ bst_report('Start');
 bst_colormaps('RestoreDefaults', 'meg');
 
 
-%% ===== 2. IMPORT ANATOMY =====
+%% ===== IMPORT ANATOMY =====
 % Process: Import MRI
 bst_process('CallProcess', 'process_import_mri', [], [], ...
     'subjectname', SubjectName, ...
@@ -90,7 +91,7 @@ bst_process('CallProcess', 'process_generate_head', [], [], ...
     'fillfactor',  2);
 
 
-%% ===== 4. LINK TO RAW FILE AND DISPLAY REGISTRATION =====
+%% ===== LINK TO RAW FILE AND DISPLAY REGISTRATION =====
 % Process: Create link to raw files
 sFileRaw = bst_process('CallProcess', 'process_import_data_raw', [], [], ...
     'subjectname',  SubjectName, ...
@@ -102,17 +103,13 @@ bst_process('CallProcess', 'process_snapshot', sFileRaw, [], ...
     'modality', 1, ...  % MEG (All)
     'orient',   1, ...  % left
     'Comment',  'MEG/MRI Registration');
-
-
-%% ===== 5. REVIEW MEG AND EMG RECORDINGS =====
 % Process: Convert to continuous (CTF): Continuous
 bst_process('CallProcess', 'process_ctf_convert', sFileRaw, [], ...
     'rectype', 2);  % Continuous
 
 
-%% ===== 6. EVENT MARKERS =====
+%% ===== EVENT MARKERS =====
 % Process: Read from channel
-disp([10 'DEMO> 6. Event markers' 10]);
 sFileRaw = bst_process('CallProcess', 'process_evt_read', sFileRaw, [], ...
     'stimchan',     'Stim', ...
     'trackmode',    1, ...  % Value: detect the changes of channel value
@@ -122,12 +119,7 @@ sFileRaw = bst_process('CallProcess', 'process_evt_read', sFileRaw, [], ...
 DataMat = in_bst_data(sFileRaw.FileName, 'F');
 eventList = {DataMat.F.events.label};
 % Labels for Event groups to keep
-eventKeep = cell(25,1);
-for i = 1:25
-    eventKeep{i} = ['U', num2str(i)];
-end
-% Reject trial #7
-eventKeep(7) = [];
+eventKeep = cellfun(@(c)sprintf('U%d',c), num2cell([1:6, 8:25]), 'UniformOutput', 0);
 % Find useless Events
 eventDelete = setdiff(eventList, eventKeep);
 % Process: Delete events
@@ -139,8 +131,7 @@ sFileRaw = bst_process('CallProcess', 'process_evt_merge', sFileRaw, [], ...
     'newname',  'Left');
 
 
-%% ===== 8. REMOVAL OF POWER LINE ARTIFACTS =====
-disp([10 'DEMO> 8. Removal of power line artifacts' 10]);
+%% ===== REMOVAL OF POWER LINE ARTIFACTS =====
 % Process: Notch filter: 50Hz 100Hz 150Hz
 sFileRawNotch = bst_process('CallProcess', 'process_notch', sFileRaw, [], ...
     'freqlist',    [50, 100, 150], ...
@@ -167,8 +158,7 @@ bst_process('CallProcess', 'process_snapshot', sFilesPsd, [], ...
     'Comment',  'Power spectrum density');
 
 
-%% ===== 9. EMG PRE-PROCESSING =====
-disp([10 'DEMO> 9. EMG pre-processing' 10]);
+%% ===== EMG PRE-PROCESSING =====
 % Process: High-pass:10Hz
 sFileRawNotchHigh = bst_process('CallProcess', 'process_bandpass', sFileRawNotch, [], ...
     'sensortypes', 'EMG', ...
@@ -187,8 +177,7 @@ bst_process('CallProcess', 'process_delete', [sFileRawNotch, sFileRawNotchHigh],
     'target', 2);  % Delete folders
 
 
-%% ===== 10. MEG PRE-PROCESSING =====
-disp([10 'DEMO> 10. MEG pre-processing' 10]);
+%% ===== MEG PRE-PROCESSING =====
 % Process: Detect eye blinks
 bst_process('CallProcess', 'process_evt_detect_eog',  sFileRawNotchHighAbs, [], ...
     'channelname', 'EOG', ...
@@ -199,7 +188,11 @@ bst_process('CallProcess', 'process_ssp_eog', sFileRawNotchHighAbs, [], ...
     'eventname',   'blink', ...
     'sensortypes', 'MEG', ...
     'usessp',      1, ...
-    'select',      [1]);
+    'select',      1);
+% Process: Snapshot: SSP projectors
+bst_process('CallProcess', 'process_snapshot', sFileRawNotchHighAbs, [], ...
+    'target',  2, ...  % SSP projectors
+    'Comment', 'SSP projectors');
 
 % Process: Detect other artifacts
 bst_process('CallProcess', 'process_evt_detect_badsegment', sFileRawNotchHighAbs, [], ...
@@ -218,15 +211,14 @@ bst_process('CallProcess', 'process_evt_rename', sFileRawNotchHighAbs, [], ...
     'dest', 'bad_40-240Hz');
 
 
-%% ===== 11. IMPORTING DATA EPOCHS =====
-disp([10 'DEMO> 11. Import data epochs' 10]);
+%% ===== IMPORTING DATA EPOCHS =====
 % Process: Import MEG/EEG: Events
 sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFileRawNotchHighAbs, [], ...
     'subjectname',   SubjectName, ...
     'condition',     '', ...
     'eventname',     'Left', ...
     'timewindow',    [0, 330], ...
-    'epochtime',     [0, 8], ...
+    'epochtime',     [0, 7.9992], ...
     'split',         1, ...
     'createcond',    0, ...
     'ignoreshort',   1, ...
@@ -235,19 +227,25 @@ sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFileRawN
     'freq',          [], ...
     'baseline',      'all', ...
     'blsensortypes', 'MEG');
+% View recordings, trial 1
+hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', meg_sensor);
+hFigEmg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
+% Snapshots to report
+bst_report('Snapshot', hFigMeg, sFilesEpochs(1).FileName, meg_sensor, [200,200,400,250]);
+bst_report('Snapshot', hFigEmg, sFilesEpochs(1).FileName, 'EMG', [200,200,400,250]);
+% Close figures
+close([hFigMeg, hFigEmg]);
 
 
-
-%% ===== 12. COHERENCE 1xN (SENSOR LEVEL) =====
-disp([10 'DEMO> 12. Coherence 1xN (sensor level)' 10]);
+%% ===== COHERENCE 1xN (SENSOR LEVEL) =====
 % Process: Coherence 1xN [2021]
 sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.FileName}, [], ...
     'timewindow',   [], ...
-    'src_channel',  src_channel, ...
+    'src_channel',  emg_channel, ...
     'dest_sensors', 'MEG', ...
     'includebad',   0, ...
     'removeevoked', 0, ...
-    'cohmeasure',   cohmeasure, ...
+    'cohmeasure',   'mscohere', ...
     'win_length',   win_length, ...
     'overlap',      overlap, ...
     'maxfreq',      maxfreq, ...
@@ -255,7 +253,8 @@ sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.Fi
 % Process: Add tag
 sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
     'tag',           'MEG sensors', ...
-    'output',        1);  % Add to file name    
+    'output',        1);  % Add to file name
+
 % View coherence 1xN (sensor level)
 hFigCohSpcA = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
 hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', meg_sensor, 1);
@@ -264,13 +263,13 @@ panel_freq('SetCurrentFreq',  17.58, 0);       % Set frequency
 figure_3d('ViewSensors', hFigCoh2Dcap, 1, 0);  % Show sensors
 bst_figures('SetSelectedRows', {meg_sensor});  % Highlight MEG sensor
 % Snapshots to report
-bst_report('Snapshot', hFigCohSpcA, sFileCoh1N.FileName, 'MSC EMGlft x MEG', [100 100 640 360]);
-bst_report('Snapshot', hFigCohSpc1, sFileCoh1N.FileName, ['MSC EMGlft x ', meg_sensor], [100 100 640 360]);
-bst_report('Snapshot', hFigCoh2Dcap, sFileCoh1N.FileName, '2D sensor cap MSC EMGlft x MEG', [100 100 640 540]);
-pause(0.5);
+bst_report('Snapshot', hFigCohSpcA, sFileCoh1N.FileName, ['MSC ' emg_channel '  x MEG'], [200,200,400,250]);
+bst_report('Snapshot', hFigCohSpc1, sFileCoh1N.FileName, ['MSC ' emg_channel ' x ', meg_sensor], [200,200,400,250]);
+bst_report('Snapshot', hFigCoh2Dcap, sFileCoh1N.FileName, ['2D sensor cap MSC ' emg_channel ' x MEG'], [100 100 640 540]);
 % Close figures
 close([hFigCohSpcA, hFigCohSpc1, hFigCoh2Dcap]);
 
+%% ===== COHERENCE 1xN (MEG, FREQUENCY BAND) =====
 % Process: Group in time or frequency bands
 sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], ...
     'isfreqbands', 1, ...
@@ -278,19 +277,15 @@ sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], 
     'istimebands', 0, ...
     'timebands',   '', ...
     'overwrite',   0);
-% View coherence 1xN (sensor level) for 15 - 20 Hz
-hFigCoh2DTop = view_topography(sFileCoh1NBand.FileName, '', '2DDisc');
-panel_freq('SetCurrentFreq',  17.58, 0);       % Set frequency
-figure_3d('ViewSensors', hFigCoh2DTop, 1, 0);  % Show sensors
-bst_figures('SetSelectedRows', {meg_sensor});  % Highlight MEG sensor
-% Snapshots to report
-bst_report('Snapshot', hFigCoh2DTop, sFileCoh1NBand.FileName, '2D topography MSC 15-20Hz EMGlft x MEG', [100 100 640 540]);
-pause(0.5);
-% Close figures
-close(hFigCoh2DTop);
+% Process: Snapshot: Recordings topography (one time)
+bst_process('CallProcess', 'process_snapshot', sFileCoh1NBand, [], ...
+    'type',     'topo', ...  % Recordings topography (one time)
+    'modality', 1, ...  % MEG (All)
+    'orient',   2, ...  % right
+    'Comment',  ['2D topography MSC 15-20Hz ' emg_channel ' x MEG']);
 
 
-%% ===== 13. MEG SOURCE MODELLING =====
+%% ===== MEG SOURCE MODELLING =====
 % Process: Segment MRI with CAT12
 bst_process('CallProcess', 'process_segment_cat12', [], [], ...
     'subjectname', SubjectName, ...
@@ -303,7 +298,7 @@ bst_process('CallProcess', 'process_segment_cat12', [], [], ...
 % Process: Compute covariance (noise or data)
 bst_process('CallProcess', 'process_noisecov', sFileRawNotchHighAbs, [], ...
     'baseline',       [18, 29], ...
-    'datatimewindow', [18, 29], ...
+    'datatimewindow', [], ...
     'sensortypes',    'MEG', ...
     'target',         1, ...  % Noise covariance     (covariance over baseline time window)
     'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
@@ -312,13 +307,6 @@ bst_process('CallProcess', 'process_noisecov', sFileRawNotchHighAbs, [], ...
     'copysubj',       0, ...
     'copymatch',      0, ...
     'replacefile',    1);  % Replace
-% Set default Cortex surface
-[sSubject, isSubject] = bst_get('Subject', SubjectName);
-[~, iSurface] = ismember(cortexName, {sSubject.Surface.Comment});
-if sSubject.iCortex ~= iSurface
-    db_surface_default(isSubject, 'Cortex', iSurface);
-    panel_protocols('RepaintTree');
-end
 % Process: Compute head model (surface)
 bst_process('CallProcess', 'process_headmodel', sFilesEpochs(1).FileName, [], ...
     'Comment',      'Overlapping spheres (surface)', ...
@@ -338,7 +326,7 @@ bst_process('CallProcess', 'process_headmodel', sFilesEpochs(1).FileName, [], ..
     'meg',         3 );  % Overlapping spheres
 
 
-%% ===== 14. SOURCE ESTIMATION =====
+%% ===== SOURCE ESTIMATION =====
 % iStudy for current imported data epochs
 iStudy = sFilesEpochs(1).iStudy;
 
@@ -407,7 +395,7 @@ bst_process('CallProcess', 'process_inverse_2018', sFilesEpochs(1).FileName, [],
          'DataTypes',      {{'MEG'}}));
 
      
-%% ===== 15. COHERENCE 1xN (SOURCE LEVEL) =====
+%% ===== COHERENCE 1xN (SOURCE LEVEL) =====
 % Process: Select data files
 sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname',   SubjectName, ...
@@ -431,7 +419,7 @@ for ix = 1 :  length(sourceTypes)
     % Process: Coherence AxB [2021]
     sFileCoh1N = bst_process('CallProcess', 'process_cohere2_2021', sFilesRecEmg, sFilesResMeg, ...
         'timewindow',   [], ...
-        'src_channel',  src_channel, ...
+        'src_channel',  emg_channel, ...
         'dest_scouts',  {}, ...
         'scoutfunc',    1, ...  % Mean
         'scouttime',    2, ...  % After
@@ -469,13 +457,12 @@ for ix = 1 :  length(sourceTypes)
     panel_freq('SetCurrentFreq',  14.65, 0);              % Set frequency
     % Snapshot to report
     bst_report('Snapshot', hFig, sFileCoh1N.FileName, ['MSC 14.65Hz ',  sourceType], [100 100 640 540]);
-    pause(0.5);
     % Close figures
     close(hFig);
 end
 
 
-%% ===== 16. COHERENCE 1xN (SCOUT LEVEL) =====
+%% ===== COHERENCE 1xN (SCOUT LEVEL) =====
 % Process: Select data files
 sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname',   SubjectName, ...
@@ -506,7 +493,7 @@ for ix = 1 : length(scoutFuntcTimes)
     % Process: Coherence AxB [2021]
     sFileCoh1N = bst_process('CallProcess', 'process_cohere2_2021', sFilesRecEmg, sFilesResSrfUnc, ...
         'timewindow',   [], ...
-        'src_channel',  'EMGlft', ...
+        'src_channel',  emg_channel, ...
         'dest_scouts',  {'Schaefer_100_17net', {'Background+FreeSurfer_Defined_Medial_Wall L', 'Background+FreeSurfer_Defined_Medial_Wall R', 'ContA_IPS_1 L', 'ContA_IPS_1 R', 'ContA_PFCl_1 L', 'ContA_PFCl_1 R', 'ContA_PFCl_2 L', 'ContA_PFCl_2 R', 'ContB_IPL_1 R', 'ContB_PFCld_1 R', 'ContB_PFClv_1 L', 'ContB_PFClv_1 R', 'ContB_Temp_1 R', 'ContC_Cingp_1 L', 'ContC_Cingp_1 R', 'ContC_pCun_1 L', 'ContC_pCun_1 R', 'ContC_pCun_2 L', 'DefaultA_IPL_1 R', 'DefaultA_PFCd_1 L', 'DefaultA_PFCd_1 R', 'DefaultA_PFCm_1 L', 'DefaultA_PFCm_1 R', 'DefaultA_pCunPCC_1 L', 'DefaultA_pCunPCC_1 R', 'DefaultB_IPL_1 L', 'DefaultB_PFCd_1 L', 'DefaultB_PFCd_1 R', 'DefaultB_PFCl_1 L', 'DefaultB_PFCv_1 L', 'DefaultB_PFCv_1 R', 'DefaultB_PFCv_2 L', 'DefaultB_PFCv_2 R', 'DefaultB_Temp_1 L', 'DefaultB_Temp_2 L', 'DefaultC_PHC_1 L', 'DefaultC_PHC_1 R', 'DefaultC_Rsp_1 L', 'DefaultC_Rsp_1 R', 'DorsAttnA_ParOcc_1 L', 'DorsAttnA_ParOcc_1 R', 'DorsAttnA_SPL_1 L', 'DorsAttnA_SPL_1 R', 'DorsAttnA_TempOcc_1 L', 'DorsAttnA_TempOcc_1 R', 'DorsAttnB_FEF_1 L', 'DorsAttnB_FEF_1 R', 'DorsAttnB_PostC_1 L', 'DorsAttnB_PostC_1 R', 'DorsAttnB_PostC_2 L', 'DorsAttnB_PostC_2 R', 'DorsAttnB_PostC_3 L', 'LimbicA_TempPole_1 L', 'LimbicA_TempPole_1 R', 'LimbicA_TempPole_2 L', 'LimbicB_OFC_1 L', 'LimbicB_OFC_1 R', 'SalVentAttnA_FrMed_1 L', 'SalVentAttnA_FrMed_1 R', 'SalVentAttnA_Ins_1 L', 'SalVentAttnA_Ins_1 R', 'SalVentAttnA_Ins_2 L', 'SalVentAttnA_ParMed_1 L', 'SalVentAttnA_ParMed_1 R', 'SalVentAttnA_ParOper_1 L', 'SalVentAttnA_ParOper_1 R', 'SalVentAttnB_IPL_1 R', 'SalVentAttnB_PFCl_1 L', 'SalVentAttnB_PFCl_1 R', 'SalVentAttnB_PFCmp_1 L', 'SalVentAttnB_PFCmp_1 R', 'SomMotA_1 L', 'SomMotA_1 R', 'SomMotA_2 L', 'SomMotA_2 R', 'SomMotA_3 R', 'SomMotA_4 R', 'SomMotB_Aud_1 L', 'SomMotB_Aud_1 R', 'SomMotB_Cent_1 L', 'SomMotB_Cent_1 R', 'SomMotB_S2_1 L', 'SomMotB_S2_1 R', 'SomMotB_S2_2 L', 'SomMotB_S2_2 R', 'TempPar_1 L', 'TempPar_1 R', 'TempPar_2 R', 'TempPar_3 R', 'VisCent_ExStr_1 L', 'VisCent_ExStr_1 R', 'VisCent_ExStr_2 L', 'VisCent_ExStr_2 R', 'VisCent_ExStr_3 L', 'VisCent_ExStr_3 R', 'VisCent_Striate_1 L', 'VisPeri_ExStrInf_1 L', 'VisPeri_ExStrInf_1 R', 'VisPeri_ExStrSup_1 L', 'VisPeri_ExStrSup_1 R', 'VisPeri_StriCal_1 L', 'VisPeri_StriCal_1 R'}}, ...
         'scoutfunc',    1, ...  % Mean
         'scouttime',    scouttime, ... 
@@ -531,7 +518,6 @@ for ix = 1 : length(scoutFuntcTimes)
     bst_figures('SetSelectedRows', 'SomMotA_4 R');  % Highlight scout of interest
     % Snapshot
     bst_report('Snapshot', hFigImg, sFileCoh1N.FileName, ['MSC 14.65Hz,' sourceType, ' ', scoutFuntcTime], [100 100 640 360]);     
-    pause(0.5);
     % Close figures
     close([hFigSpect, hFigImg]);
 end
