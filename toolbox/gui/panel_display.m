@@ -474,29 +474,14 @@ function UpdatePanel(hFig)
                     ctrl.jRadioFExponent.setEnabled(1);
                     ctrl.jRadioFOffset.setVisible(1);
                     ctrl.jRadioFOffset.setEnabled(1);
-                    sOptions = GetDisplayOptions();
-                    sOptions.FOOOFDisp = TfInfo.FOOOFDisp;
-                    if isempty(TfInfo.RowName)
-                        TfInfo.RowName = sOptions.RowName;
-                    end
                 else
                     ctrl.jPanelSelect.setVisible(1);
                     ctrl.jRadioFOverlay.setVisible(1)
                     ctrl.jRadioFOverlay.setEnabled(1);
                     ctrl.jRadioFExponent.setVisible(0);
                     ctrl.jRadioFOffset.setVisible(0);
-                    sOptions = GetDisplayOptions();
-                    if ~strcmp(sOptions.FOOOFDisp, 'overlay')
-                        sOptions.FOOOFDisp = TfInfo.FOOOFDisp;
-                        if isempty(TfInfo.RowName)
-                            TfInfo.RowName = sOptions.RowName;
-                        else 
-                            sOptions.RowName = TfInfo.RowName;
-                        end
-                    end
-                end
-                SetDisplayOptions(sOptions);
-                switch sOptions.FOOOFDisp
+                end               
+                switch TfInfo.FOOOFDisp
                     case 'overlay', ctrl.jRadioFOverlay.setSelected(1);
                     case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
                     case 'model', ctrl.jRadioFModel.setSelected(1);
@@ -506,6 +491,13 @@ function UpdatePanel(hFig)
                     case 'exponent', ctrl.jRadioFExponent.setSelected(1);
                     case 'offset', ctrl.jRadioFExponent.setSelected(1);
                 end
+                sOptions = GetDisplayOptions();
+                if isempty(TfInfo.RowName)
+                    TfInfo.RowName = sOptions.RowName;
+                else 
+                    sOptions.RowName = TfInfo.RowName;
+                end
+                SetDisplayOptions(sOptions);
             elseif isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
                 ctrl.jRadioFOverlay.setEnabled(0); 
                 ctrl.jRadioFSpectrum.setEnabled(1);
