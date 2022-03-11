@@ -45,6 +45,8 @@ if (nargin ~= 4) || isempty(iVertices) || isempty(nComponents) || ((nComponents 
 end
 iRegionScouts = [];
 
+% Make sure iVertices is a row vector
+iVertices = iVertices(:)';
 % Get row numbers corresponding to the selected vertices
 switch (nComponents)
     case 0

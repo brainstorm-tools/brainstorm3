@@ -145,7 +145,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     if ~isempty(sScouts)
         scoutVerts = [];
         for iScout = 1:length(sScouts)
-            scoutVerts = [scoutVerts sScouts(iScout).Vertices];
+            scoutVerts = [scoutVerts, sScouts(iScout).Vertices(:)'];
         end
         [mag,ind] = max(Pscan(scoutVerts,:));
         maxInd = scoutVerts(ind);

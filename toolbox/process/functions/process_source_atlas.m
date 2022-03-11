@@ -151,6 +151,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % === GET VERTEX INDICES ===
         % Get all the row indices involved in this scout
         iVertices = sort(unique(sScouts(iScout).Vertices));
+        % Make sure this is a row vector
+        iVertices = iVertices(:)';
         % Get scout orientation
         ScoutOrient = SurfaceMat.VertNormals(iVertices,:);
         % List of rows to read depends on the number of componentns per vertex
