@@ -49,7 +49,8 @@ DataMat.F = in_fread_plexon(sFile, [], [], []);
 DataMat.Events = sFile.events;
 
 % Build time vector
-DataMat.Time = linspace(sFile.prop.times(1),sFile.prop.times(2), size(DataMat.F,2));
+DataMat.Time = sFile.prop.times(1):1/sFile.prop.sfreq:sFile.prop.times(2);
+
 % ChannelFlag
 DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
