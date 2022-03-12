@@ -152,7 +152,15 @@ switch (FileFormat)
     case 'EEG-INTAN'
         [sFile, ChannelMat] = in_fopen_intan(DataFile);
     case 'EEG-PLEXON'
-        [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+%         [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+        [fPath, fBase, fExt] = bst_fileparts(DataFile);
+        switch lower(fExt)
+            case '.plx'
+                [DataMat, ChannelMat] = in_data_plx(DataFile);
+            case '.pl2'
+                [sFile, ChannelMat] = in_fopen_plexon(DataFile);
+        end
+        
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
     case {'NWB', 'NWB-CONTINUOUS'}

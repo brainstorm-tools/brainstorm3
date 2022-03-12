@@ -1,7 +1,7 @@
 function F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision)
 % IN_FREAD_PLEXON Read a block of recordings from a Plexon file
 %
-% USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
+% USAGE:  F = in_fread_plexon(sFile, SamplesBounds=[], iChannels=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
