@@ -101,9 +101,9 @@ for iSegment = 1:num_segments
     if iSegment < num_segments
         sampleBounds(2) = sampleBounds(1) + num_samples_per_segment - 1;
     else
-        sampleBounds(2) = total_samples;
+        sampleBounds(2) = total_samples + round(sFile.prop.times(1)* sFile.prop.sfreq);
     end
-    
+        
     F = in_fread(sFile, ChannelMat, [], sampleBounds, [], ImportOptions);
     
     % Adaptive conversion to int16 to avoid saturation

@@ -49,6 +49,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.despikeLFP.Type    = 'checkbox';
     sProcess.options.despikeLFP.Value   = 1;
     
+    sProcess.options.LFP_fs.Comment = 'Sampling rate of the LFP signals';
+    sProcess.options.LFP_fs.Type    = 'value';
+    sProcess.options.LFP_fs.Value   = {1000, 'Hz', 0};
+    
     sProcess.options.filterbounds.Comment = 'LFP filtering limits';
     sProcess.options.filterbounds.Type    = 'range';
     sProcess.options.filterbounds.Value   = {[0.5, 150],'Hz',1};
@@ -92,8 +96,7 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         filterBounds = sProcess.options.filterbounds.Value{1}; % Filtering bounds for the LFP
         notchFilterFreqs = sProcess.options.freqlist.Value{1}; % Notch Filter frequencies for the LFP
         % Output frequency
-        NewFreq = 1000;
-
+        LFP_fs = sProcess.options.LFP_fs.Value{1};
 
         % Get method name
         if (nargin < 3)
@@ -138,19 +141,25 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
         % Load full input file
         sMat = in_bst(sInput.FileName, [], 0);
-        Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
+        Fs = sMat.F.prop.sfreq; % This is the original sampling rate
         % Inialize LFP matrix
-        LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time,round(Fs/NewFreq)))); % This shouldn't create a memory problem
+        LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time, round(Fs/LFP_fs)))); % This shouldn't create a memory problem
 
+        %% Make a check if the requested sampling rate is higher than the original sampling rate
+        
+        if Fs < LFP_fs
+            bst_report('Error', sProcess, sInputs(iInput), 'The requested LFP sampling rate is higher than the RAW signal sampling rate. No need to use this function');
+        end
+        
         %% Initialize
         % Prepare output file
         ProtocolInfo = bst_get('ProtocolInfo');
         newCondition = [sInput.Condition, '_LFP'];
 
-        if mod(Fs,NewFreq) ~= 0
+        if mod(Fs,LFP_fs) ~= 0
             % This should never be an issue. Never heard of an acquisition
             % system that doesn't record in multiples of 1kHz.
-            warning(['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(NewFreq) ' Hz'])
+            warning(['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(LFP_fs) ' Hz'])
         end
         
         % Get new condition name
@@ -182,46 +191,47 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
 
         %% Update fields before initializing the header on the binary file
-        sFileTemplate.prop.sfreq = NewFreq;
-        sFileTemplate.prop.times = round(sFileTemplate.prop.times(1) * NewFreq) / NewFreq + [0, size(LFP,2)-1] ./ NewFreq;
-        sFileTemplate.header.sfreq = NewFreq;
+        sFileTemplate.prop.sfreq = LFP_fs;
+%         sFileTemplate.prop.times = round(sFileTemplate.prop.times(1) * NewFreq) / NewFreq + [0, size(LFP,2)-1] ./ NewFreq;
+        sFileTemplate.prop.times   = [sFileTemplate.prop.times(1)  (size(LFP,2)-1) ./ LFP_fs];
+        sFileTemplate.header.sfreq = LFP_fs;
         sFileTemplate.header.nsamples = size(LFP,2);
 
         % Update file
-        sFileTemplate.CommentTag     = sprintf('resample(%dHz)', round(NewFreq));
-        sFileTemplate.HistoryComment = sprintf('Filter [%0.1f-%0.1f]Hz - Resample from %0.2f Hz to %0.2f Hz (%s)', filterBounds(1), filterBounds(2), Fs, NewFreq, method);
+        sFileTemplate.CommentTag     = sprintf('resample(%dHz)', round(LFP_fs));
+        sFileTemplate.HistoryComment = sprintf('Filter [%0.1f-%0.1f]Hz - Resample from %0.2f Hz to %0.2f Hz (%s)', filterBounds(1), filterBounds(2), Fs, LFP_fs, method);
         sFileTemplate.despikeLFP     = sProcess.options.despikeLFP.Value;
 
         % Convert events to new sampling rate
-        newTimeVector = panel_time('GetRawTimeVector', sFileTemplate);
+%         newTimeVector = panel_time('GetRawTimeVector', sFileTemplate);
+        newTimeVector = downsample(sMat.Time, round(Fs/1000));
         sFileTemplate.events = panel_record('ChangeTimeVector', sFileTemplate.events, Fs, newTimeVector);
 
         %% Create an empty Brainstorm-binary file and assign the correct samples-times
         % The sFileOut is what will be the final 
         [sFileOut, errMsg] = out_fopen(RawFileOut, RawFileFormat, sFileTemplate, ChannelMat);
-
-
+        
         %% Filter and derive LFP
         bst_progress('start', 'Spike-sorting', 'Converting RAW signals to LFP...', 0, (sProcess.options.paral.Value == 0) * nChannels);
         if sProcess.options.despikeLFP.Value
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
-                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs);
+                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs, LFP_fs);
                 end
             else
                 for iChannel = 1:nChannels
-                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs);
+                    LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs, LFP_fs);
                     bst_progress('inc', 1);
                 end
             end
         else
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
-                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs);
+                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs, LFP_fs);
                 end
             else
                 for iChannel = 1:nChannels
-                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs);
+                    LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs, LFP_fs);
                     bst_progress('inc', 1);
                 end
             end
@@ -247,7 +257,7 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 end
 
 
-function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilterFreqs)
+function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilterFreqs, LFP_fs)
     sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
     
     if ~isempty(notchFilterFreqs)
@@ -259,12 +269,12 @@ function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilt
     
     % Apply final filter
     data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
-    data = downsample(data, round(Fs/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz.
+    [data, time_out] = process_resample('Compute', data, linspace(0, length(data)/sMat.sr, length(data)), LFP_fs);
 end
 
 
 %% BAYESIAN DESPIKING
-function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile, ChannelMat, cleanChannelNames, notchFilterFreqs)
+function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile, ChannelMat, cleanChannelNames, notchFilterFreqs, LFP_fs)
 
     sMat = load(inputFilename); % Make sure that a variable named data is loaded here. This file is saved as an output from the separator 
     
@@ -280,7 +290,7 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
     
     Fs = sMat.sr;
     % Assume that a spike lasts 3ms
-    nSegment = sMat.sr * 0.003;
+    nSegment = round(sMat.sr * 0.003);
     Bs = eye(nSegment); % 60x60
     opts.displaylevel = 0; % 0 gets rid of all the outputs
                            % 2 shows the optimization steps
@@ -347,8 +357,9 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
     end
     
-    data_derived = downsample(data_derived, round(sMat.sr/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz
-    
+%     data_derived = downsample(data_derived, round(sMat.sr/LFP_fs));  % The file now has a different sampling rate (fs/30) = 1000Hz
+    [data_derived, time_out] = process_resample('Compute', data_derived, linspace(0, length(data_derived)/Fs, length(data_derived)), LFP_fs);
+
 end
 
 
