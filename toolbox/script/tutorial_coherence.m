@@ -70,6 +70,8 @@ gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 bst_report('Start');
 % Reset colormaps
 bst_colormaps('RestoreDefaults', 'meg');
+% Hide scouts
+panel_scout('SetScoutShowSelection', 'none');
 
 
 %% ===== IMPORT ANATOMY =====
@@ -227,17 +229,21 @@ sFilesEpochs = bst_process('CallProcess', 'process_import_data_event', sFileRawN
     'freq',          [], ...
     'baseline',      'all', ...
     'blsensortypes', 'MEG');
-% View recordings, trial 1
-hFigMeg = view_timeseries(sFilesEpochs(1).FileName, 'MEG', meg_sensor);
-hFigEmg = view_timeseries(sFilesEpochs(1).FileName, 'EMG');
-% Snapshots to report
-bst_report('Snapshot', hFigMeg, sFilesEpochs(1).FileName, meg_sensor, [200,200,400,250]);
-bst_report('Snapshot', hFigEmg, sFilesEpochs(1).FileName, 'EMG', [200,200,400,250]);
-% Close figures
-close([hFigMeg, hFigEmg]);
+% Process: Snapshot: Recordings time series
+bst_process('CallProcess', 'process_snapshot', sFilesEpochs(1), [], ...
+    'type',           'data', ...  % Recordings time series
+    'modality',       1, ... % MEG (All)
+    'rowname',        meg_sensor, ...
+    'Comment',        ['Epoch #1: ' meg_sensor]);
+% Process: Snapshot: Recordings time series
+bst_process('CallProcess', 'process_snapshot', sFilesEpochs(1), [], ...
+    'type',           'data', ...  % Recordings time series
+    'modality',       10, ... % EMG
+    'rowname',        '', ...
+    'Comment',        'Epoch #1: EMG');
 
 
-%% ===== COHERENCE 1xN (SENSOR LEVEL) =====
+%% ===== COHERENCE: EMG x MEG =====
 % Process: Coherence 1xN [2021]
 sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.FileName}, [], ...
     'timewindow',   [], ...
@@ -250,11 +256,6 @@ sFileCoh1N = bst_process('CallProcess', 'process_cohere1_2021', {sFilesEpochs.Fi
     'overlap',      overlap, ...
     'maxfreq',      maxfreq, ...
     'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
-% Process: Add tag
-sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
-    'tag',           'MEG sensors', ...
-    'output',        1);  % Add to file name
-
 % View coherence 1xN (sensor level)
 hFigCohSpcA = view_spectrum(sFileCoh1N.FileName, 'Spectrum');
 hFigCohSpc1 = view_spectrum(sFileCoh1N.FileName, 'Spectrum', meg_sensor, 1);
@@ -269,7 +270,8 @@ bst_report('Snapshot', hFigCoh2Dcap, sFileCoh1N.FileName, ['2D sensor cap MSC ' 
 % Close figures
 close([hFigCohSpcA, hFigCohSpc1, hFigCoh2Dcap]);
 
-%% ===== COHERENCE 1xN (MEG, FREQUENCY BAND) =====
+
+%% ===== COHERENCE: EMG x MEG (FREQUENCY BAND) =====
 % Process: Group in time or frequency bands
 sFileCoh1NBand = bst_process('CallProcess', 'process_tf_bands', sFileCoh1N, [], ...
     'isfreqbands', 1, ...
@@ -385,7 +387,7 @@ bst_process('CallProcess', 'process_inverse_2018', sFilesEpochs(1).FileName, [],
          'DataTypes',      {{'MEG'}}));
 
 
-%% ===== COHERENCE 1xN (SOURCE LEVEL) =====
+%% ===== COHERENCE: EMG x SOURCES =====
 % Process: Select data files
 sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname',   SubjectName, ...
@@ -397,12 +399,11 @@ sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], .
 % Coherence between EMG signal and sources (for different source types)
 sourceTypes = {'(surface)(Constr)', '(surface)(Unconstr)', '(volume)(Unconstr)'};
 for ix = 1 :  length(sourceTypes)
-    sourceType = sourceTypes{ix};
     % Process: Select results files
     sFilesResMeg = bst_process('CallProcess', 'process_select_files_results', [], [], ...
         'subjectname',   SubjectName, ...
         'condition',     '', ...
-        'tag',           sourceType, ...
+        'tag',           sourceTypes{ix}, ...
         'includebad',    0, ...
         'includeintra',  0, ...
         'includecommon', 0);
@@ -421,38 +422,32 @@ for ix = 1 :  length(sourceTypes)
         'outputmode',   'avgcoh');  % Average cross-spectra of input files (one output file)
     % Process: Add tag
     sFileCoh1N = bst_process('CallProcess', 'process_add_tag', sFileCoh1N, [], ...
-        'tag',           sourceType, ...
-        'output',        1);  % Add to file name       
-    % View coherence 1xN (source level)
-    % Surface    
+        'tag',           sourceTypes{ix}, ...
+        'output',        1);  % Add to file name
+    % View surface
     if ~isempty(strfind(sourceType, 'surface'))
-        hFig = view_surface_data([], sFileCoh1N.FileName);
-        panel_scout('SetScoutShowSelection', 'none');              % Hide scouts
-        iSurface = getappdata(hFig, 'iSurface');                    
-        panel_surface('SetSurfaceSmooth', hFig, iSurface, 30/100); % Set smoothing
-    % Volume
+        % Process: Snapshot: Sources (one time)
+        bst_process('CallProcess', 'process_snapshot', sFileCoh1N, [], ...
+            'type',        'sources', ...  % Sources (one time)
+            'orient',      3, ...  % top
+            'threshold',   0, ...
+            'surfsmooth',  30, ...
+            'freq',        14.65, ...
+            'Comment',     ['MSC 14.65Hz ',  sourceTypes{ix}]);
+    % View volume
     elseif ~isempty(strfind(sourceType, 'volume'))
-        sSubject = bst_get('Subject', SubjectName);
-        hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, sFileCoh1N.FileName, 'MEG');   
-        scs_xyz = [38.6, -21.3, 115.5];                           % XYZ coordinates in SCS
-        figure_mri('SetLocation', 'scs', hFig, [], scs_xyz/1000); % Go to XYZ in SCS
-        iSurface = getappdata(hFig, 'iSurface');
-        TessInfo = getappdata(hFig, 'Surface');
-        TessInfo(iSurface).DataAlpha = 0.2;                       % Set transparency 
-        setappdata(hFig, 'Surface', TessInfo);
-        figure_mri('UpdateMriDisplay', hFig); 
+        % Process: Snapshot: Sources (MRI Viewer)
+        bst_process('CallProcess', 'process_snapshot', sFileCoh1N, [], ...
+            'type',        'mriviewer', ...  % MRI viewer
+            'threshold',   0, ...
+            'freq',        14.65, ...
+            'mni',         [26, -11, 73], ...
+            'Comment',     ['MSC 14.65Hz ',  sourceTypes{ix}]);
     end
-    % Set common parameters for figures  
-    bst_colormaps('SetMaxCustom', 'connect1', [], 0, 0.07) % Set colormap range 
-    panel_freq('SetCurrentFreq',  14.65, 0);              % Set frequency
-    % Snapshot to report
-    bst_report('Snapshot', hFig, sFileCoh1N.FileName, ['MSC 14.65Hz ',  sourceType], [100 100 640 540]);
-    % Close figures
-    close(hFig);
 end
 
 
-%% ===== COHERENCE 1xN (SCOUT LEVEL) =====
+%% ===== COHERENCE: EMG x SCOUTS =====
 % Process: Select data files
 sFilesRecEmg = bst_process('CallProcess', 'process_select_files_data', [], [], ...
     'subjectname',   SubjectName, ...
