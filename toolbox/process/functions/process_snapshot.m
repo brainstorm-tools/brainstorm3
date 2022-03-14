@@ -63,13 +63,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'Dipoles',                               'dipoles'; ...         % 13
         }'};
     % === SENSORS 
-    sProcess.options.modality.Comment = 'Sensor type: ';
-    sProcess.options.modality.Type    = 'combobox';
-    sProcess.options.modality.Value   = {1, {'MEG (All)', 'MEG (Gradiometers)', 'MEG (Magnetometers)', 'EEG', 'ECOG', 'SEEG', 'NIRS'}};
+    sProcess.options.modality.Comment    = 'Sensor type: ';
+    sProcess.options.modality.Type       = 'combobox';
+    sProcess.options.modality.Value      = {1, {'MEG (All)', 'MEG (Gradiometers)', 'MEG (Magnetometers)', 'EEG', 'ECOG', 'SEEG', 'NIRS'}};
+    sProcess.options.modality.InputTypes = {'raw', 'data', 'pdata'};
     % === Orientation 
-    sProcess.options.orient.Comment = 'Orientation: ';
-    sProcess.options.orient.Type    = 'combobox';
-    sProcess.options.orient.Value   = {1, {'left', 'right', 'top', 'bottom', 'front', 'back', 'left_intern', 'right_intern'}};
+    sProcess.options.orient.Comment    = 'Orientation: ';
+    sProcess.options.orient.Type       = 'combobox';
+    sProcess.options.orient.Value      = {1, {'left', 'right', 'top', 'bottom', 'front', 'back', 'left_intern', 'right_intern'}};
+    sProcess.options.orient.InputTypes = {'raw', 'data', 'results', 'timefreq', 'dipoles', 'pdata', 'presults', 'ptimefreq'};
     % === TIME: Single view
     sProcess.options.time.Comment = 'Time (in seconds):';
     sProcess.options.time.Type    = 'value';
@@ -81,15 +83,26 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.contact_nimage.Comment = 'Contact sheet (number of images):';
     sProcess.options.contact_nimage.Type    = 'value';
     sProcess.options.contact_nimage.Value   = {12, '', 0};
-    % === THRESOLD
+    % === THRESHOLD
     sProcess.options.threshold.Comment = 'Amplitude threshold:';
     sProcess.options.threshold.Type    = 'value';
     sProcess.options.threshold.Value   = {30, '%', 0};
+    sProcess.options.threshold.InputTypes = { 'results', 'timefreq', 'presults', 'ptimefreq'};
+    % === SMOOTHING
+    sProcess.options.surfsmooth.Comment = 'Surface smoothing:';
+    sProcess.options.surfsmooth.Type    = 'value';
+    sProcess.options.surfsmooth.Value   = {30, '%', 0};
+    sProcess.options.surfsmooth.InputTypes = {'results', 'timefreq', 'presults', 'ptimefreq'};
+    % === FREQUENCY 
+    sProcess.options.freq.Comment = 'Frequency:';
+    sProcess.options.freq.Type    = 'value';
+    sProcess.options.freq.Value   = {0, 'Hz', 2};
+    sProcess.options.freq.InputTypes = {'timefreq', 'ptimefreq'};
     % === ROW NAMES
-    sProcess.options.rowname.Comment    = 'Time-frequency signal name (empty=all): ';
+    sProcess.options.rowname.Comment    = 'Signal name (empty=all): ';
     sProcess.options.rowname.Type       = 'text';
     sProcess.options.rowname.Value      = '';
-    sProcess.options.rowname.InputTypes = {'timefreq', 'matrix'};
+    sProcess.options.rowname.InputTypes = {'raw', 'data', 'timefreq', 'matrix', 'pdata', 'ptimefreq', 'pmatrix'};
     % === COMMENT
     sProcess.options.Comment.Comment = 'Comment: ';
     sProcess.options.Comment.Type    = 'text';
@@ -129,20 +142,33 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         SnapType = sProcess.options.type.Value{1};
     end
-    switch (sProcess.options.modality.Value{1})
-        case 1,  Modality = 'MEG';
-        case 2,  Modality = 'MEG GRAD';
-        case 3,  Modality = 'MEG MAG';
-        case 4,  Modality = 'EEG';
-        case 5,  Modality = 'ECOG';
-        case 6,  Modality = 'SEEG';
+    if isfield(sProcess.options, 'modality') && isfield(sProcess.options.modality, 'Value') && ~isempty(sProcess.options.modality.Value)
+        switch (sProcess.options.modality.Value{1})
+            case 1,  Modality = 'MEG';
+            case 2,  Modality = 'MEG GRAD';
+            case 3,  Modality = 'MEG MAG';
+            case 4,  Modality = 'EEG';
+            case 5,  Modality = 'ECOG';
+            case 6,  Modality = 'SEEG';
+        end
+    else
+        Modality = [];
     end
-    Orient         = sProcess.options.orient.Value{2}{sProcess.options.orient.Value{1}};
     Time           = sProcess.options.time.Value{1};
     contact_time   = sProcess.options.contact_time.Value{1};
     contact_nimage = sProcess.options.contact_nimage.Value{1};
-    Comment        = sProcess.options.Comment.Value;
+    if isfield(sProcess.options, 'orient') && isfield(sProcess.options.orient, 'Value') && ~isempty(sProcess.options.orient.Value)
+        Orient = sProcess.options.orient.Value{2}{sProcess.options.orient.Value{1}};
+    else
+        Orient = [];
+    end
+    if isfield(sProcess.options, 'freq') && isfield(sProcess.options.freq, 'Value') && ~isempty(sProcess.options.freq.Value) && ~isequal(sProcess.options.freq.Value, 0)
+        Freq = sProcess.options.freq.Value{1};
+    else
+        Freq = [];
+    end
     % If using "comment" instead of "Comment" (common scripting error)
+    Comment = sProcess.options.Comment.Value;
     if isempty(Comment) && isfield(sProcess.options, 'comment') && isfield(sProcess.options.comment, 'Value') && ~isempty(sProcess.options.comment.Value)
         Comment = sProcess.options.comment.Value;
     end
@@ -151,6 +177,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         Threshold = sProcess.options.threshold.Value{1} / 100;
     else
         Threshold = 0.3;
+    end
+    % Surface smoothing
+    if isfield(sProcess.options, 'surfsmooth') && isfield(sProcess.options.surfsmooth, 'Value') && ~isempty(sProcess.options.surfsmooth.Value)
+        SurfSmooth = sProcess.options.surfsmooth.Value{1} / 100;
+    else
+        SurfSmooth = 0.3;
     end
     % Row names
     if isfield(sProcess.options, 'rowname') && isfield(sProcess.options.rowname, 'Value') && ~isempty(sProcess.options.rowname.Value)
@@ -185,31 +217,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case 'headmodel'
                 bst_report('Snapshot', 'headmodel', FileName, Comment);
             case 'data'
-                bst_report('Snapshot', 'data', FileName, Comment, Modality, Time);
+                bst_report('Snapshot', 'data', FileName, Comment, Modality, Time, RowName);
             case 'topo'
-                bst_report('Snapshot', 'topo', FileName, Comment, Modality, Time);
+                bst_report('Snapshot', 'topo', FileName, Comment, Modality, Time, Freq);
             case 'topo_contact'
                 if (length(Contact) ~= 3)
                     bst_report('Error', sProcess, [], 'Invalid contact sheet time values');
                     return;
                 end
-                bst_report('Snapshot', 'topo', FileName, Comment, Modality, Contact);
+                bst_report('Snapshot', 'topo', FileName, Comment, Modality, Contact, Freq);
             case 'sources'
-                bst_report('Snapshot', 'sources', FileName, Comment, Time, Threshold, Orient);
+                bst_report('Snapshot', 'sources', FileName, Comment, Time, Threshold, Orient, SurfSmooth, Freq);
             case 'sources_contact'
                 if (length(Contact) ~= 3)
                     bst_report('Error', sProcess, [], 'Invalid contact sheet time values');
                     return;
                 end
-                bst_report('Snapshot', 'sources', FileName, Comment, Contact, Threshold, Orient);
+                bst_report('Snapshot', 'sources', FileName, Comment, Contact, Threshold, Orient, SurfSmooth, Freq);
             case 'spectrum'
-                bst_report('Snapshot', 'spectrum', FileName, Comment);
+                bst_report('Snapshot', 'spectrum', FileName, Comment, RowName, Freq);
             case 'timefreq'
-                bst_report('Snapshot', 'timefreq', FileName, Comment, RowName);
+                bst_report('Snapshot', 'timefreq', FileName, Comment, RowName, Time, Freq);
             case 'connectimage'
-                bst_report('Snapshot', 'connectimage', FileName, Comment);
+                bst_report('Snapshot', 'connectimage', FileName, Comment, Time, Freq);
             case 'connectgraph'
-                bst_report('Snapshot', 'connectgraph', FileName, Comment, Threshold);
+                bst_report('Snapshot', 'connectgraph', FileName, Comment, Threshold, Time, Freq);
             case 'dipoles'
                 bst_report('Snapshot', 'dipoles', FileName, Comment, Threshold, Orient);
         end
