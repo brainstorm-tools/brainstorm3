@@ -56,6 +56,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'Recordings topography (contact sheet)', 'topo_contact'; ...    % 7
         'Sources (one time)',                    'sources'; ...         % 8
         'Sources (contact sheet)',               'sources_contact'; ... % 9
+        'Sources (MRI viewer)',                  'mriviewer'; ...    
         'Frequency spectrum',                    'spectrum'; ...        % 10  
         'Time-frequency maps',                   'timefreq'; ...        % 14
         'Connectivity matrix',                   'connectimage'; ...    % 11 
@@ -65,7 +66,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % === SENSORS 
     sProcess.options.modality.Comment    = 'Sensor type: ';
     sProcess.options.modality.Type       = 'combobox';
-    sProcess.options.modality.Value      = {1, {'MEG (All)', 'MEG (Gradiometers)', 'MEG (Magnetometers)', 'EEG', 'ECOG', 'SEEG', 'NIRS'}};
+    sProcess.options.modality.Value      = {1, {'MEG (All)', 'MEG (Gradiometers)', 'MEG (Magnetometers)', 'EEG', 'ECOG', 'SEEG', 'NIRS', 'EOG', 'ECG', 'EMG'}};
     sProcess.options.modality.InputTypes = {'raw', 'data', 'pdata'};
     % === Orientation 
     sProcess.options.orient.Comment    = 'Orientation: ';
@@ -103,6 +104,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.rowname.Type       = 'text';
     sProcess.options.rowname.Value      = '';
     sProcess.options.rowname.InputTypes = {'raw', 'data', 'timefreq', 'matrix', 'pdata', 'ptimefreq', 'pmatrix'};
+    % === MNI coordinates
+    sProcess.options.mni.Comment = 'MNI coordinates:';
+    sProcess.options.mni.Type    = 'value';
+    sProcess.options.mni.Value   = {[0,0,0], 'list', 3};
+    sProcess.options.mni.InputTypes = {'results', 'timefreq', 'presults', 'ptimefreq'};
     % === COMMENT
     sProcess.options.Comment.Comment = 'Comment: ';
     sProcess.options.Comment.Type    = 'text';
@@ -150,6 +156,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case 4,  Modality = 'EEG';
             case 5,  Modality = 'ECOG';
             case 6,  Modality = 'SEEG';
+            case 7,  Modality = 'NIRS';
+            case 8,  Modality = 'EOG';
+            case 9,  Modality = 'ECG';
+            case 10, Modality = 'EMG';
+            otherwise, Modality = [];
         end
     else
         Modality = [];
@@ -166,6 +177,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         Freq = sProcess.options.freq.Value{1};
     else
         Freq = [];
+    end
+    if isfield(sProcess.options, 'mni') && isfield(sProcess.options.mni, 'Value') && (length(sProcess.options.mni.Value) == 3)
+        XYZmni = sProcess.options.mni.Value{1};
+    else
+        XYZmni = [];
     end
     % If using "comment" instead of "Comment" (common scripting error)
     Comment = sProcess.options.Comment.Value;
@@ -234,6 +250,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     return;
                 end
                 bst_report('Snapshot', 'sources', FileName, Comment, Contact, Threshold, Orient, SurfSmooth, Freq);
+            case 'mriviewer'
+                bst_report('Snapshot', 'mriviewer', FileName, Comment, Time, Threshold, Freq, XYZmni);
             case 'spectrum'
                 bst_report('Snapshot', 'spectrum', FileName, Comment, RowName, Freq);
             case 'timefreq'

@@ -28,6 +28,7 @@ function varargout = bst_report( varargin )
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages], Freq=0)
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)
+%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)   : Produces a contact sheet view
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
@@ -149,6 +150,7 @@ end
 %         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages], Freq=0)
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)
 %         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)   : Produces a contact sheet view
+%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
 %         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
 %         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
 %         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
@@ -418,6 +420,52 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                     panel_time('SetCurrentTime', Time);
                 end
                 
+            case 'mriviewer'
+                % Get arguments
+                if (length(varargin) >= 1) && ~isempty(varargin{1})
+                    Time = varargin{1};
+                else
+                    Time = [];
+                end
+                if (length(varargin) >= 2) && ~isempty(varargin{2})
+                    DataThreshold = varargin{2};
+                else
+                    DataThreshold = 0.3;
+                end
+                if (length(varargin) >= 3) && ~isempty(varargin{3}) && ~isequal(varargin{3}, 0)
+                    Freq = varargin{3};
+                else
+                    Freq = [];
+                end
+                if (length(varargin) >= 4) && ~isempty(varargin{4}) && ~isequal(varargin{4}, 0)
+                    XYZmni = varargin{4};
+                else
+                    XYZmni = [];
+                end
+                % Check data type
+                if ~ismember(file_gettype(FileName), {'link','results','presults','timefreq','ptimefreq'})
+                    error('File must contain source information.');
+                end
+                % Call surface viewer
+                hFig = view_mri([], FileName, [], 1);
+                % Set surface threshold
+                iSurf = 1;
+                panel_surface('SetDataThreshold', hFig, iSurf, DataThreshold);
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
+                % Set current time
+                if (length(Time) == 1)
+                    panel_time('SetCurrentTime', Time);
+                end
+                % Set coordinates
+                if ~isempty(XYZmni)
+                    figure_mri('SetLocation', 'mni', hFig, [], XYZmni ./ 1000);
+                end
+                % Larger default figure size
+                winPos = [100 100 450 500];
+
             case 'ssp'
                 % Load the channel file
                 [sStudy, iStudy] = bst_get('AnyFile', FileName);
