@@ -67,7 +67,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.modality.Comment    = 'Sensor type: ';
     sProcess.options.modality.Type       = 'combobox';
     sProcess.options.modality.Value      = {1, {'MEG (All)', 'MEG (Gradiometers)', 'MEG (Magnetometers)', 'EEG', 'ECOG', 'SEEG', 'NIRS', 'EOG', 'ECG', 'EMG'}};
-    sProcess.options.modality.InputTypes = {'raw', 'data', 'pdata'};
+    sProcess.options.modality.InputTypes = {'raw', 'data', 'timefreq', 'pdata', 'ptimefreq'};
     % === Orientation 
     sProcess.options.orient.Comment    = 'Orientation: ';
     sProcess.options.orient.Type       = 'combobox';
@@ -148,7 +148,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         SnapType = sProcess.options.type.Value{1};
     end
-    if isfield(sProcess.options, 'modality') && isfield(sProcess.options.modality, 'Value') && ~isempty(sProcess.options.modality.Value)
+    if isfield(sProcess.options, 'modality') && isfield(sProcess.options.modality, 'Value') && ~isempty(sProcess.options.modality.Value) && iscell(sProcess.options.modality.Value)
         switch (sProcess.options.modality.Value{1})
             case 1,  Modality = 'MEG';
             case 2,  Modality = 'MEG GRAD';
@@ -168,17 +168,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     Time           = sProcess.options.time.Value{1};
     contact_time   = sProcess.options.contact_time.Value{1};
     contact_nimage = sProcess.options.contact_nimage.Value{1};
-    if isfield(sProcess.options, 'orient') && isfield(sProcess.options.orient, 'Value') && ~isempty(sProcess.options.orient.Value)
+    if isfield(sProcess.options, 'orient') && isfield(sProcess.options.orient, 'Value') && ~isempty(sProcess.options.orient.Value) && iscell(sProcess.options.orient.Value)
         Orient = sProcess.options.orient.Value{2}{sProcess.options.orient.Value{1}};
     else
         Orient = [];
     end
-    if isfield(sProcess.options, 'freq') && isfield(sProcess.options.freq, 'Value') && ~isempty(sProcess.options.freq.Value) && ~isequal(sProcess.options.freq.Value, 0)
+    if isfield(sProcess.options, 'freq') && isfield(sProcess.options.freq, 'Value') && ~isempty(sProcess.options.freq.Value) && iscell(sProcess.options.freq.Value) && ~isequal(sProcess.options.freq.Value{1}, 0)
         Freq = sProcess.options.freq.Value{1};
     else
         Freq = [];
     end
-    if isfield(sProcess.options, 'mni') && isfield(sProcess.options.mni, 'Value') && (length(sProcess.options.mni.Value) == 3)
+    if isfield(sProcess.options, 'mni') && isfield(sProcess.options.mni, 'Value') && iscell(sProcess.options.mni.Value) && (length(sProcess.options.mni.Value{1}) == 3)
         XYZmni = sProcess.options.mni.Value{1};
     else
         XYZmni = [];
@@ -189,13 +189,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         Comment = sProcess.options.comment.Value;
     end
     % Amplitude threshold
-    if isfield(sProcess.options, 'threshold') && isfield(sProcess.options.threshold, 'Value') && ~isempty(sProcess.options.threshold.Value)
+    if isfield(sProcess.options, 'threshold') && isfield(sProcess.options.threshold, 'Value') && ~isempty(sProcess.options.threshold.Value) && iscell(sProcess.options.threshold.Value)
         Threshold = sProcess.options.threshold.Value{1} / 100;
     else
         Threshold = 0.3;
     end
     % Surface smoothing
-    if isfield(sProcess.options, 'surfsmooth') && isfield(sProcess.options.surfsmooth, 'Value') && ~isempty(sProcess.options.surfsmooth.Value)
+    if isfield(sProcess.options, 'surfsmooth') && isfield(sProcess.options.surfsmooth, 'Value') && ~isempty(sProcess.options.surfsmooth.Value) && iscell(sProcess.options.surfsmooth.Value)
         SurfSmooth = sProcess.options.surfsmooth.Value{1} / 100;
     else
         SurfSmooth = 0.3;
