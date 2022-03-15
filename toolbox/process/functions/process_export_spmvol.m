@@ -84,6 +84,20 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.labelfreq.Comment    = '<BR><B>Frequency options</B>:';
     sProcess.options.labelfreq.Type       = 'label';
     sProcess.options.labelfreq.InputTypes = {'timefreq'};
+    % TF type
+    sProcess.options.tf_type.Comment = {'PSD', 'specparam(FOOOF)', 'Type for TF file:'; 'spectrum', 'fooof', ''};
+    sProcess.options.tf_type.Type    = 'radio_linelabel';
+    sProcess.options.tf_type.Value   = 'spectrum';
+    sProcess.options.tf_type.Controller.spectrum = 'Spectrum';
+    sProcess.options.tf_type.Controller.fooof = 'Fooof';    
+    % FOOOF options
+    sProcess.options.label1.Comment = '<BR>Correction for multiple comparisons:';
+    sProcess.options.label1.Type    = 'label';
+    sProcess.options.fooof.Comment = {'Spectrum', 'specparam model', 'Aperiodic only', 'Peaks only', 'Frequency-wise error', 'Exponent', 'Offset'};
+    sProcess.options.fooof.Type    = 'radio';
+    sProcess.options.fooof.Value   = 1;
+    sProcess.options.fooof.Class   = 'Fooof';
+    % Frequency band
     sProcess.options.freq_export.Comment    = 'Frequency band to export:';
     sProcess.options.freq_export.Type       = 'freqsel';
     sProcess.options.freq_export.Value      = [];
@@ -210,6 +224,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 ResultsMat = in_bst_results(sInputs(iFile).FileName, 0, 'HeadModelType', 'SurfaceFile', 'Atlas', 'GridLoc', 'GridAtlas', 'DisplayUnits');
                 isVolumeGrid = ismember(ResultsMat.HeadModelType, {'volume', 'mixed'});
             case 'timefreq'
+                TimeFreqMat = in_bst_timefreq(sInputs(iFile).FileName);
+                % Repeat time time dimension for TF
+                TimeFreqMat.TF = repmat(TimeFreqMat.TF, [1,2,1]);
+                % Set FOOOF measure as TF
+                if strcmp(sProcess.options.tf_type.Value, 'fooof')
+                    switch sProcess.options.fooof.Value                         
+                        case 2 % specparam model
+                            FooofDisp = 'model';
+                        case 3 % Aperiodic only
+                            FooofDisp = 'aperiodic';
+                        case 4 % Peaks only
+                            FooofDisp = 'peaks';
+                        case 5 % Frequency-wise error
+                            FooofDisp = 'error';
+                        case 6 % Exponent ;
+                            FooofDisp = 'exponent';
+                        case 7 % Offset
+                            FooofDisp = 'offset';
+                    end
+                    Values = bst_memory('GetFooofValues', TimeFreqMat, FooofDisp);
+                    % FOOOF measures are not time defined
+                    sInput.Data = Values(:,1,:);
+                end
                 % Check that a measure was applied to the data
                 if ~all(isreal(sInput.Data))
                     bst_report('Error', sProcess, sInputs, 'You need to apply a measure to the time-frequency maps before exporting the values.');
@@ -225,13 +262,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     ResultsMat.HeadModelType = 'surface';
                 end
                 sInput.nComponents = 1;
-                % Select one frequency band only
-                sInput.Data = sInput.Data(:,:,iFreqExport);
-                % Add a tag to the output filename
-                if iscell(ResultsMat.Freqs)
-                    strFreq = ['_' ResultsMat.Freqs{iFreqExport,1}];
-                else
-                    strFreq = ['_' num2str(ResultsMat.Freqs(iFreqExport)) 'hz'];
+                % Ignore frequency band for FooofDisp = {exponent, offset}                
+                if ~(strcmp(sProcess.options.tf_type.Value, 'fooof') && ismember(sProcess.options.fooof.Value, [6, 7]))
+                    % Select one frequency band only
+                    sInput.Data = sInput.Data(:,:,iFreqExport);
+                    % Add a tag to the output filename
+                    if iscell(ResultsMat.Freqs)
+                        strFreq = ['_' ResultsMat.Freqs{iFreqExport,1}];
+                    else
+                        strFreq = ['_' num2str(ResultsMat.Freqs(iFreqExport)) 'hz'];
+                    end
                 end
         end
         % Take the absolute value of the sources
