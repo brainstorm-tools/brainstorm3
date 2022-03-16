@@ -72,20 +72,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.labelfreq.Comment    = '<BR><B>Frequency options</B>:';
     sProcess.options.labelfreq.Type       = 'label';
     sProcess.options.labelfreq.InputTypes = {'timefreq'};
-    % TF type
-    sProcess.options.tf_type.Comment = {'PSD', 'specparam(FOOOF)', 'Type for TF file:'; 'spectrum', 'fooof', ''};
-    sProcess.options.tf_type.Type    = 'radio_linelabel';
-    sProcess.options.tf_type.Value   = 'spectrum';
-    sProcess.options.tf_type.Controller.spectrum = 'Spectrum';
-    sProcess.options.tf_type.Controller.fooof = 'Fooof';    
-    % FOOOF options
-    sProcess.options.label1.Comment = '<BR>Correction for multiple comparisons:';
-    sProcess.options.label1.Type    = 'label';
-    sProcess.options.fooof.Comment = {'Spectrum', 'specparam model', 'Aperiodic only', 'Peaks only', 'Frequency-wise error', 'Exponent', 'Offset'};
-    sProcess.options.fooof.Type    = 'radio';
-    sProcess.options.fooof.Value   = 1;
-    sProcess.options.fooof.Class   = 'Fooof';
-    % Frequency band
     sProcess.options.freq_export.Comment    = 'Frequency band to export:';
     sProcess.options.freq_export.Type       = 'freqsel';
     sProcess.options.freq_export.Value      = [];
