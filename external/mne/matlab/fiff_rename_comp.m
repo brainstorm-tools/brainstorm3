@@ -1,4 +1,4 @@
-function comp = fiff_rename_comp(one, ch_rename)
+function comp = fiff_rename_comp(comp, ch_rename)
 
 me='MNE:fiff_rename_comp';
 
