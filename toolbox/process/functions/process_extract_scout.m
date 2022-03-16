@@ -494,6 +494,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % === GET ROWS INDICES ===
                 % Sort vertices indices
                 iVertices = sort(unique(sScout.Vertices));
+                % Make sure this is a row vector
+                iVertices = iVertices(:)';
                 % Get the number of components per vertex
                 if strcmpi(sInputs(iInput).FileType, 'results')
                     nComponents = sResults.nComponents;

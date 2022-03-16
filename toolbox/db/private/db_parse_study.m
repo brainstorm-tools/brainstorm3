@@ -208,31 +208,31 @@ for iFile = 1:length(dirFiles)
                 end
                 
             case 'data'
-                % Get data filename without the trial block
-                [groupName, iTrial] = str_remove_trial(filenameRelative);
-                dataInfo = [];
-                % If it is a trial in a group of trials
-                if ~isempty(groupName)
-                    iTrialGroup = find(strcmpi(groupName, trialFiles));
-                    % Not existing in the trial group
-                    if isempty(iTrialGroup)
-                        trialFiles{end+1} = groupName;
-                        trialData(end+1) = length(sStudy(1).Data) + 1;
-                        trialInd{end+1} = iTrial;
-                    % Existing in the trial group
-                    elseif ~isempty(iTrial)
-                        dataInfo = sStudy(1).Data(trialData(iTrialGroup));
-                        dataInfo.Comment = strrep(dataInfo.Comment, ['(#' num2str(trialInd{iTrialGroup}) ')'], ['(#' num2str(iTrial) ')']);
-                        dataInfo.FileName = filenameRelative;
-                    end
-                end
+%                 % Get data filename without the trial block
+%                 [groupName, iTrial] = str_remove_trial(filenameRelative);
+%                 dataInfo = [];
+%                 % If it is a trial in a group of trials
+%                 if ~isempty(groupName)
+%                     iTrialGroup = find(strcmpi(groupName, trialFiles));
+%                     % Not existing in the trial group
+%                     if isempty(iTrialGroup)
+%                         trialFiles{end+1} = groupName;
+%                         trialData(end+1) = length(sStudy(1).Data) + 1;
+%                         trialInd{end+1} = iTrial;
+%                     % Existing in the trial group
+%                     elseif ~isempty(iTrial)
+%                         dataInfo = sStudy(1).Data(trialData(iTrialGroup));
+%                         dataInfo.Comment = strrep(dataInfo.Comment, ['(#' num2str(trialInd{iTrialGroup}) ')'], ['(#' num2str(iTrial) ')']);
+%                         dataInfo.FileName = filenameRelative;
+%                     end
+%                 end
                 % Try to load channel info
-                if isempty(dataInfo)
+%                 if isempty(dataInfo)
                     dataInfo = io_getDataInfo(filenameRelative);
                     if ~isempty(dataInfo) && isempty(dataInfo.Comment)
                         dataInfo.Comment = '';
                     end
-                end
+%                 end
                 % If a data file was found : copy data information
                 if ~isempty(dataInfo)
                     % Bad trial ?

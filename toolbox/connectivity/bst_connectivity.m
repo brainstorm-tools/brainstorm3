@@ -73,6 +73,7 @@ end
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Initialize output variables
 OutputFiles = {};
+AllComments = {};
 Ravg = [];
 nAvg = 0;
 nTime = 1;
@@ -670,27 +671,30 @@ for iFile = 1:length(FilesA)
     % Reshape: [A*B x nTime x nFreq]
     R = reshape(R, [], nTime, size(R,3));
     % Comment
-    if isequal(FilesA, FilesB)
-        % Row name
-        if (length(sInputA.RowNames) == 1)
+    % 1xN and AxB
+    if ~isConnNN
+        % Seed (scout)
+        if OPTIONS.isScoutA
+            if (length(OPTIONS.sScoutsA) == 1)
+                Comment = [Comment, OPTIONS.sScoutsA.Label];
+            end
+        % Seed (sensor or row)
+        elseif (length(sInputA.RowNames) == 1)
             if iscell(sInputA.RowNames)
                 Comment = [Comment, sInputA.RowNames{1}];
             else
                 Comment = [Comment, '#', num2str(sInputA.RowNames(1))];
             end
-        % Scouts
-        elseif OPTIONS.isScoutA
-            if (length(OPTIONS.sScoutsA) == 1)
-                Comment = [Comment, OPTIONS.sScoutsA.Label, ', ' OPTIONS.ScoutFunc];
-            else
-                Comment = [Comment, num2str(length(OPTIONS.sScoutsA)), ' scouts, ' OPTIONS.ScoutFunc];
-            end
-            if ~strcmpi(OPTIONS.ScoutFunc, 'All')
-                 Comment = [Comment, ' ' OPTIONS.ScoutTime];
-            end
-        else
-            Comment = [Comment, 'Full'];
         end
+        % Number of target (scouts)
+        if OPTIONS.isScoutB
+            Comment = [Comment, ' x ' num2str(length(OPTIONS.sScoutsB)), ' scouts'];
+        end
+        % Add scout function and time if they are relevant
+        if ~strcmpi(OPTIONS.ScoutFunc, 'All') && (OPTIONS.isScoutA || OPTIONS.isScoutB)
+             Comment = [Comment, ', ',  OPTIONS.ScoutFunc, ' ', OPTIONS.ScoutTime];
+        end
+    %NxN
     else
         Comment = [Comment, sInputA.Comment];
     end
@@ -703,6 +707,8 @@ for iFile = 1:length(FilesA)
             nAvg = 1;
             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case 'avg'
+            % Concatenate files comments
+            AllComments{end+1} = Comment;
             % Compute online average of the connectivity matrices
             if isempty(Ravg)
                 Ravg = R ./ length(FilesA);
@@ -718,7 +724,7 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
-    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
 end
 
 
@@ -745,6 +751,24 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     FileMat.Method    = OPTIONS.Method;
     FileMat.DataFile  = file_win2unix(DataFile);
     FileMat.nAvg      = nAvg;
+    % Comment if average comes from trials
+    if FileMat.nAvg > 1
+        listComments = Comment;
+        % If Comments are the same
+        if length(unique(listComments)) > 1
+            % Search for trial tags and remove them
+            for iComment = 1 : length(listComments)
+                [~, tmpStrs] = regexp(listComments{iComment},'\(#.+\)','match','split');
+                listComments{iComment} = deblank([tmpStrs{:}]);
+            end
+        end
+        if (length(unique(listComments)) == 1)
+            Comment = listComments{1};
+        else
+            Comment = listComments{end};
+        end
+        FileMat.Comment = sprintf('Avg: %s (%d)', Comment, FileMat.nAvg);
+    end
     % Head model
     if isfield(sInputA, 'HeadModelFile') && ~isempty(sInputA.HeadModelFile)
         FileMat.HeadModelFile = sInputA.HeadModelFile;
