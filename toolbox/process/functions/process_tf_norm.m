@@ -22,7 +22,7 @@ function varargout = process_tf_norm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2022
 %          Marc Lalancette, 2020
 
 eval(macro_method);
@@ -48,6 +48,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                           'multiply2020', 'multiply', 'relative2020'};
     sProcess.options.normalize.Type    = 'radio_label';
     sProcess.options.normalize.Value   = 'multiply2020';
+    % Extra label
+    sProcess.options.warning.Comment = ['<BR><I><FONT color="#a0a0a0">Warning: The total power is computed as the sum of all the values.<BR>' ...
+                                        'With overlapping frequency bands, e.g. 8-12Hz 8-10Hz 10-12Hz,<BR>' ...
+                                        'parts of the spectrum would be added twice to the total power.</FONT></I>'];
+    sProcess.options.warning.Type    = 'label';
 end
 
 
@@ -91,8 +96,12 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     [sInput.A, errorMsg] = Compute(sInput.A, TfMat.Measure, TfMat.Freqs, Method);
     % Error management
     if ~isempty(errorMsg)
-        bst_report('Error', sProcess, sInput, errorMsg);
-        sInput = [];
+        if isempty(sInput.A)
+            bst_report('Error', sProcess, sInput, errorMsg);
+            sInput = [];
+        else
+            bst_report('Warning', sProcess, sInput, errorMsg);
+        end
     end
     % Do not keep the Std field in the output
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
@@ -164,6 +173,18 @@ function [TF, errorMsg] = Compute(TF, Measure, Freqs, Method)
             % Reshape to have the scaling values in the third dimension
             Factor = reshape(Factor, 1, 1, []);
         case 'relative2020'
+            % Check if overlap between bands
+            if iscell(Freqs)
+                BandBounds = process_tf_bands('GetBounds', Freqs);
+                for iBand = 1:size(BandBounds,1)
+                    if any((BandBounds(iBand,1) > BandBounds(:,1)) & (BandBounds(iBand,1) < BandBounds(:,2))) || ...
+                       any((BandBounds(iBand,2) > BandBounds(:,1)) & (BandBounds(iBand,2) < BandBounds(:,2)))
+                        errorMsg = ['Some frequency bands in the input file are overlapping. Some parts of the spectrum are added multiple times to the total power, ' ...
+                            'leading to a wrong estimation of the relative power. Consider computing the PSD/TF files with the sub-frequency bands only, and group them after normalization.'];
+                        break;
+                    end
+                end
+            end
             % Always sum total power (then sqrt for relative magnitude)
             switch Measure
                 case 'power'
