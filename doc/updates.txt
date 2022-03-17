@@ -1,7 +1,12 @@
 --------------------------------------------------------------
+March 2022
+- Connectivity: Corticomuscular coherence tutorial
+- Web server: New SMTP server on neuroimage.usc.edu
+--------------------------------------------------------------
 February 2022
 - Anatomy: Extract head with FSL/BET
 - Connectivity: Added wPLI and ciPLV
+- FOOOF/SPRiNT: New display options for 3D figures and MRI viewer
 --------------------------------------------------------------
 January 2022
 - Doc: Connectivity tutorial
