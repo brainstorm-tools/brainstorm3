@@ -439,7 +439,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
         % Display FOOOF panel
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(strcmp(fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF), {'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}.'))
             ctrl.jPanelFOOOF.setVisible(1);
             ctrl.jComboRows.setEnabled(1);
             ctrl.jPanelSelect.setVisible(1);
