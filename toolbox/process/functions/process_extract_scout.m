@@ -323,6 +323,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Replicate if no time
         if (length(sMat.Time) == 1)
             sMat.Time = [0,1];
+        elseif isempty(sMat.Time)
+            bst_report('Error', sProcess, sInputs(iInput), 'Invalid time selection.');
+            continue;
         end
         if ~isempty(matValues) && (size(matValues,2) == 1)
             matValues = [matValues, matValues];

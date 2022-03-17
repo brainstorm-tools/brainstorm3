@@ -128,6 +128,7 @@ else
     hilbert_fcn = @oc_hilbert;
 end
 
+
 %% ===== CONCATENATE INPUTS / REMOVE AVERAGE =====
 sAverageA = [];
 sAverageB = [];
@@ -138,10 +139,46 @@ switch (OPTIONS.OutputMode)
     case 'avgcoh',  isConcat = 2;
     otherwise,      isConcat = 0;
 end
-% Load all the data and concatenate it
-if (isConcat >= 1)
-    bst_progress('text', 'Loading input files...');
 
+% === LOAD CALLS ONLY ===
+% Prepare load calls, data will be loaded in bst_cohn_2021
+if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
+    % Number of concatenated trials to process
+    nTrials = length(FilesA);
+    % Load first FileA, for getting all the file metadata
+    sInputA = bst_process('LoadInputFile', FilesA{1}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA);
+    if (size(sInputA.Data,2) < 2)
+        bst_report('Error', OPTIONS.ProcessName, FilesA{1}, 'Invalid time selection, check the input time window.');
+        return;
+    end
+    % FilesA load calls
+    sInputA.Data = cell(1, nTrials);
+    for iFile = 1:nTrials
+        sInputA.Data{iFile} = {@bst_process, 'LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA};
+    end
+    FilesA = FilesA(1);
+    % FilesB load calls
+    if ~isConnNN
+        % Load first FileA, for getting all the file metadata
+        sInputB = bst_process('LoadInputFile', FilesB{1}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
+        if (size(sInputB.Data,2) < 2)
+            bst_report('Error', OPTIONS.ProcessName, FilesB{1}, 'Invalid time selection, check the input time window.');
+            return;
+        end
+        % FilesB load calls
+        sInputB.Data = cell(1, nTrials);
+        for iFile = 1:nTrials
+            sInputB.Data{iFile} = {@bst_process, 'LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB};
+        end
+        FilesB = FilesB(1);
+    else
+        sInputB = sInputA;
+    end
+
+% === LOAD AND CONCATENATE ===
+% Load all the data and concatenate it
+elseif (isConcat >= 1)
+    bst_progress('text', 'Loading input files...');
     % Number of concatenated trials to process
     nTrials = length(FilesA);
     % Concatenate FileA
@@ -167,7 +204,8 @@ if (isConcat >= 1)
     else
         sInputB = sInputA;
     end
-% Calculate evoked responses
+
+% === LOAD AND REMOVE AVERAGE ===
 elseif OPTIONS.RemoveEvoked
     % Average: Files A
     [tmp, sAverageA] = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, 0, 1, startValue);
@@ -295,7 +333,11 @@ for iFile = 1:length(FilesA)
             
         % === COHERENCE ===
         case 'cohere'
-            bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            if (size(sInputA.Data,1) > 1) && (size(sInputB.Data,1) > 1)
+                bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            else
+                bst_progress('text', 'Calculating: Coherence...');
+            end
             % Compute in symmetrical way only for constrained sources
             CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
             % Estimate the coherence (2021)
@@ -866,7 +908,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
 end
 
 
-%% ===== LOAD CONCATENATED =====
+%% ===== LOAD ALL INPUTS =====
 function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOptions, isConcat, isAverage, startValue)
     sConcat = [];
     sAverage = [];
@@ -926,6 +968,7 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
         end
     end
 end
+
 
 function R = correlate_dims(A, B, dim)
     A = bsxfun( @minus, A, mean( A, dim) );
