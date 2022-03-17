@@ -88,6 +88,10 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     strFooofDisp = GetOptions(sProcess);
     % Load input stat file
     TimeFreqMat = in_bst_timefreq(sInput.FileName, 0, 'TF', 'Type', 'Comment', 'Options', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'DataType', 'TimeBands', 'Freqs', 'RefRowNames', 'RowNames', 'DataFile', 'Measure', 'Method');
+    % Check for FOOOF file
+    if ~(isfield(TimeFreqMat.Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(TimeFreqMat.Options.FOOOF))))
+        error('TimeFreq file does not contain specparam information.');
+    end
     % Extract FOOOF measure and frequencies
     Values  = Compute(TimeFreqMat, strFooofDisp);
     ixFooofFreq = ismember(TimeFreqMat.Freqs, TimeFreqMat.Options.FOOOF.freqs); 
