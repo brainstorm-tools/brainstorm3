@@ -2369,7 +2369,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     % Extract values
     % FOOOF: Swap TF data for relevant FOOOF data
     if isFooof && ~isequal(FooofDisp, 'spectrum')
-        Values = GetFooofValues(GlobalData.DataSet(iDS).Timefreq(iTimefreq), FooofDisp, iRow);
+        Values = process_extract_fooof('Compute', GlobalData.DataSet(iDS).Timefreq(iTimefreq), FooofDisp, iRow);
         if ~isequal(FooofDisp,'exponent') && ~isequal(FooofDisp,'offset')
             Values = Values(:,:,iFreqs); % Do not touch aperiodic parameters
             if (nnz(isnan(Values)) > 0) && length(iFreqs) == 1 % If freqslice full of NaNs (e.g., 0Hz)
@@ -2470,62 +2470,6 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         end
     end
 end
-
-%% ===== GET REQUESTED FOOOF MEASURE =====
-% Extract FOOOF measure values
-function Values = GetFooofValues(TimeFreqMat, FooofDisp, iRow)
-    % Verify iRow
-    if (nargin < 3) || isempty(iRow)
-        iRow = 1 : size(TimeFreqMat.TF, 1);
-    end        
-    isFooofFreq = ismember(TimeFreqMat.Freqs, TimeFreqMat.Options.FOOOF.freqs);
-    if isequal(FooofDisp, 'overlay')
-        nFooofRow = 4;
-    else
-        nFooofRow = numel(iRow);
-    end
-    [s1 s2 s3] = size(TimeFreqMat.TF);
-    Values = NaN([nFooofRow, s2, s3 ]);
-    nFooofFreq = sum(isFooofFreq);
-    % Check for old structure format with extra .FOOOF. level.
-    if isfield(TimeFreqMat.Options.FOOOF.data, 'FOOOF')
-        for iiRow = 1:numel(iRow)
-            TimeFreqMat.Options.FOOOF.data(iRow(iiRow)).fooofed_spectrum = ...
-                TimeFreqMat.Options.FOOOF.data(iRow(iiRow)).FOOOF.fooofed_spectrum;
-            TimeFreqMat.Options.FOOOF.data(iRow(iiRow)).ap_fit = ...
-                TimeFreqMat.Options.FOOOF.data(iRow(iiRow)).FOOOF.ap_fit;
-            TimeFreqMat.Options.FOOOF.data(iRow(iiRow)).peak_fit = ...
-                TimeFreqMat.Options.FOOOF.data(iRow(iiRow)).FOOOF.peak_fit;
-        end
-    end
-    switch FooofDisp
-        case 'overlay'
-            Values(1,1,:) = TimeFreqMat.TF(iRow, 1, :);
-            Values(4,1,isFooofFreq) = permute(reshape([TimeFreqMat.Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
-            Values(2,1,isFooofFreq) = permute(reshape([TimeFreqMat.Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
-            % Peaks are fit in log space, so they are multiplicative in linear space and not in the same scale, show difference instead. 
-            Values(3,1,isFooofFreq) = Values(4,1,isFooofFreq) - Values(2,1,isFooofFreq); 
-            %Values(3,1,isFooofFreq) = permute(reshape([TimeFreqMat.Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
-            % Use TF min as cut-off level for peak display.
-            YLowLim = min(Values(1,1,:));
-            Values(3,1,Values(3,1,:) < YLowLim) = NaN;
-        case 'model'
-            Values(:,:,isFooofFreq) = repmat(permute(reshape([TimeFreqMat.Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]),[1 s2 1]);
-        case 'aperiodic'
-            Values(:,:,isFooofFreq) = repmat(permute(reshape([TimeFreqMat.Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]),[1 s2 1]);
-        case 'peaks'
-            Values(:,:,isFooofFreq) = repmat(permute(reshape([TimeFreqMat.Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]),[1 s2 1]);
-        case 'error'
-            Values(:,:,isFooofFreq) = repmat(permute(reshape([TimeFreqMat.Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]),[1 s2 1]);
-        case 'exponent'
-            Values = [TimeFreqMat.Options.FOOOF.aperiodics(iRow).exponent]';
-        case 'offset'
-            Values = [TimeFreqMat.Options.FOOOF.aperiodics(iRow).offset]';
-        otherwise
-            error('Unknown FOOOF display option.');
-    end
-end
-
 
 %% ===== GET PAC VALUES =====
 % Calculate an average on the fly if there are several rows
