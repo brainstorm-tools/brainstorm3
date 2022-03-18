@@ -148,7 +148,7 @@ elseif strcmpi(DisplayMode, 'TimeSeries')
     TfInfo.iFreqs = GlobalData.UserFrequencies.iCurrentFreq;
 end
 % Set 'overlay' is the default display mode. Only for FOOOF TF files 
-if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
     TfInfo.FOOOFDisp = 'overlay';
 end
 

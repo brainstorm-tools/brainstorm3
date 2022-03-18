@@ -439,7 +439,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
         % Display FOOOF panel
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
             ctrl.jPanelFOOOF.setVisible(1);
             ctrl.jComboRows.setEnabled(1);
             ctrl.jPanelSelect.setVisible(1);
@@ -460,7 +460,7 @@ function UpdatePanel(hFig)
         else
             ctrl.jPanelFunction.setVisible(1);
             % If current figure is a FOOOF PSD
-            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
@@ -584,7 +584,7 @@ function UpdatePanel(hFig)
         end
         % Entire panel
         ctrl.jPanelSelect.setVisible(isEnabledEdge || isEnabledRow);
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
             ctrl.jPanelSelect.setVisible(ctrl.jRadioFOverlay.isVisible);
         end
 
