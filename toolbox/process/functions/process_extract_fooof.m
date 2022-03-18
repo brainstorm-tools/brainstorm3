@@ -32,10 +32,10 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % Description the process
-    sProcess.Comment     = 'Extract spectparam measure';
+    sProcess.Comment     = 'specparam: Extract measure';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 521;
+    sProcess.Index       = 492;
     sProcess.Description = '';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
@@ -49,9 +49,12 @@ end
 
 %% ===== DEFINE OPTIONS =====
 function sProcess = DefineOptions(sProcess)
-    % === FOOOF measures
-    sProcess.options.label1.Comment = '<BR>specparam measure:';
+    % === LABEL
+    sProcess.options.label1.Comment = ['<FONT color="#707070">Extract a measure computed with the specparam process,<BR>' ... 
+                                       'and save it as a regular PSD file for further processing.</FONT><BR><BR>' ...
+                                       'specparam measure:'];
     sProcess.options.label1.Type    = 'label';
+    % === FOOOF measures
     sProcess.options.fooof.Comment = {'Spectrum', 'specparam model', 'Aperiodic only', 'Peaks only', 'Frequency-wise error', 'Exponent', 'Offset'};
     sProcess.options.fooof.Type    = 'radio';
     sProcess.options.fooof.Value   = 1;
