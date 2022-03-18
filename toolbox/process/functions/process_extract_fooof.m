@@ -36,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Frequency';
     sProcess.Index       = 492;
-    sProcess.Description = '';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Fooof#Convert_FOOOF_model_parameters_to_regular_PSD_files';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};
     sProcess.OutputTypes = {'timefreq'};
