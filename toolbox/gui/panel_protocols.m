@@ -39,7 +39,8 @@ function varargout = panel_protocols(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2022
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -523,6 +524,8 @@ function UpdateNode(category, indices, isExpandTrials)
     if isempty(ctrl) || isempty(ctrl.jTreeProtocols)
         return;
     end
+    % Reset searches (otherwise the new nodes are added to one search tab only)
+    panel_protocols('ResetSearchNodes');
     % Get root of the exploration tree 
     treeModel   = ctrl.jTreeProtocols.getModel();
     nodeRootTmp = treeModel.getRoot();

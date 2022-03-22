@@ -450,12 +450,13 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).TestFile       = 'process_mia_export_db.m';
+    PlugDesc(end).ExtraMenus     = {'Start MIA', 'mia', 'loaded'};
     
     % === FIELDTRIP ===
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20210212.zip';
+    PlugDesc(end).URLzip         = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20220228.zip';
     PlugDesc(end).URLinfo        = 'http://www.fieldtriptoolbox.org';
     PlugDesc(end).TestFile       = 'ft_defaults.m';
     PlugDesc(end).ReadmeFile     = 'README';
@@ -2176,6 +2177,8 @@ function j = MenuCreate(jMenu, fontSize)
             j(ij).customset = gui_component('MenuItem', j(ij).custom, [], 'Select installation folder', [], [], @(h,ev)SetCustomPath(Plug.Name), fontSize);
             j(ij).custompath = gui_component('MenuItem', j(ij).custom, [], 'Path not set', [], [], [], fontSize);
             j(ij).custompath.setEnabled(0);
+            j(ij).custom.addSeparator();
+            j(ij).customdel = gui_component('MenuItem', j(ij).custom, [], 'Ignore local installation', [], [], @(h,ev)SetCustomPath(Plug.Name, 0), fontSize);
             j(ij).menu.addSeparator();
             % Load
             j(ij).load = gui_component('MenuItem', j(ij).menu, [], 'Load', IconLoader.ICON_GOOD, [], @(h,ev)LoadInteractive(Plug.Name), fontSize);
@@ -2188,7 +2191,7 @@ function j = MenuCreate(jMenu, fontSize)
             if ~isempty(Plug.ExtraMenus)
                 j(ij).menu.addSeparator();
                 for iMenu = 1:size(Plug.ExtraMenus,1)
-                    j(ij).web = gui_component('MenuItem', j(ij).menu, [], Plug.ExtraMenus{iMenu,1}, IconLoader.ICON_EXPLORER, [], @(h,ev)bst_call(@eval, Plug.ExtraMenus{iMenu,2}), fontSize);
+                    j(ij).extra(iMenu) = gui_component('MenuItem', j(ij).menu, [], Plug.ExtraMenus{iMenu,1}, IconLoader.ICON_EXPLORER, [], @(h,ev)bst_call(@eval, Plug.ExtraMenus{iMenu,2}), fontSize);
                 end
             end
         end
@@ -2302,6 +2305,20 @@ function MenuUpdate(jPlugs)
             j.unload.setEnabled(isLoaded && ~isCompiled);
             % Web
             j.web.setEnabled(~isempty(Plug.URLinfo));
+            % Extra menus: Update availability
+            if ~isempty(Plug.ExtraMenus)
+                for iMenu = 1:size(Plug.ExtraMenus,1)
+                    if (size(Plug.ExtraMenus,2) == 3) && ~isempty(Plug.ExtraMenus{3})
+                        if (strcmpi(Plug.ExtraMenus{3}, 'loaded') && isLoaded) ...
+                        || (strcmpi(Plug.ExtraMenus{3}, 'installed') && isInstalled) ...
+                        || (strcmpi(Plug.ExtraMenus{3}, 'always'))
+                            j.extra(iMenu).setEnabled(1);
+                        else
+                            j.extra(iMenu).setEnabled(0);
+                        end
+                    end
+                end
+            end
         end
     end
     j.menu.repaint()
@@ -2331,11 +2348,16 @@ function SetCustomPath(PlugName, PlugPath)
         return;
     end
     % Ask install path to user
+    isWarning = 1;
     if isempty(PlugPath)
         PlugPath = uigetdir(PlugInst.Path, ['Select ' PlugName ' directory.']);
         if isequal(PlugPath, 0)
             PlugPath = [];
         end
+    % If removal is requested
+    elseif isequal(PlugPath, 0)
+        PlugPath = [];
+        isWarning = 0;
     end
     % If the directory did not change: nothing to do
     if (isInstalled && isequal(PlugInst.Path, PlugPath)) || (~isInstalled && isempty(PlugPath))
@@ -2370,6 +2392,10 @@ function SetCustomPath(PlugName, PlugPath)
     % Load plugin
     if ~isempty(PlugPath)
         [isOk, errMsg, PlugDesc] = Load(PlugName);
+    % Ignored warnings
+    elseif ~isWarning
+        isOk = 1;
+        errMsg = [];
     % Invalid path
     else
         isOk = 0;
@@ -2384,7 +2410,7 @@ function SetCustomPath(PlugName, PlugPath)
         bst_error(['An error occurred while configuring plugin ' PlugName ':' 10 10 errMsg 10], 'Plugin manager', 0);
     elseif ~isempty(errMsg)
         java_dialog('msgbox', ['Configuration message:' 10 10 errMsg 10], 'Plugin manager');
-    else
+    elseif isWarning
         java_dialog('msgbox', ['Plugin ' PlugName ' successfully loaded.']);
     end
 end

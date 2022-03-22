@@ -518,6 +518,22 @@ function SetFigureStatus(hFig, isEditFiducials, isEditVolume, isOverlay, isEeg, 
     if ~isChanged
         return;
     end
+    % Warning if surfaces or recordings
+    SubjectFile = getappdata(hFig, 'SubjectFile');
+    sSubject = bst_get('Subject', SubjectFile);
+    sStudies = bst_get('StudyWithSubject', SubjectFile);
+    if ((~isempty(isEditFiducials) && isEditFiducials) || (~isempty(isEditVolume) && isEditVolume)) && ((~isempty(sSubject) && ~isempty(sSubject.Surface)) || (~isempty(sStudies) && any(~cellfun(@isempty, {sStudies.Channel}))))
+        isConfirm = java_dialog('confirm', [...
+            'Surfaces or MEG/EEG recordings have already been imported for subject "' sSubject.Name '".' 10 10 ...
+            'Editing the MRI orientation or the position of the NAS/LPA/RPA anatomical fiducials' 10 ...
+            'might break the coregistration between the different files, you might have to ' 10 ...
+            'import everything again. THERE IS NO UNDO BUTTON - MAKE A BACKUP FIRST.' 10 10 ...
+            'Are you sure you want to edit the MRI volume now?'], 'Edit MRI');
+        if ~isConfirm
+            Handles.isEditVolume = 0;
+            Handles.isEditFiducials = 0;
+        end
+    end
     % Update figure handles
     bst_figures('SetFigureHandles', hFig, Handles);
     

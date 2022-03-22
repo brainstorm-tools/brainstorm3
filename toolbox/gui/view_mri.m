@@ -1,7 +1,8 @@
 function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 % VIEW_MRI: Display a MRI in a MriViewer figure.
 %
-% USAGE:  view_mri(MriFile, OverlayFile, Modality, isNewFig=0)
+% USAGE:  view_mri(MriFile, OverlayFile=[], Modality=[], isNewFig=0)
+%         view_mri([],      OverlayFile,    Modality=[], isNewFig=0)
 %         view_mri(MriFile, 'EditMri')
 %         view_mri(MriFile, 'EditFiducials')
 %
@@ -38,7 +39,7 @@ function [hFig, iDS, iFig] = view_mri(MriFile, OverlayFile, Modality, isNewFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2021
+% Authors: Francois Tadel, 2009-2022
 
 
 %% ===== PARSE INPUTS =====
@@ -113,7 +114,19 @@ switch lower(FileType)
         SubjectFile = '';
 end
 % Get Subject that holds this MRI
-[sSubject, iSubject, iAnatomy] = bst_get('MriFile', MriFile);
+if ~isempty(MriFile)
+    sSubject = bst_get('MriFile', MriFile);
+% If MRI is not provided: get default one
+elseif isempty(OverlayFile) || isempty(SubjectFile)
+    error('Missing input file.');
+else
+    sSubject = bst_get('Subject', SubjectFile);
+    if isempty(sSubject) || isempty(sSubject.Anatomy)
+        error('No MRI available.');
+    end
+    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+end
+
 % If subject not available yet
 if isempty(SubjectFile)
     % If this surface does not belong to any subject

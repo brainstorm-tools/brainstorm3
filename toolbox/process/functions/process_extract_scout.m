@@ -182,6 +182,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if (length(sInputs) > 1)
             bst_progress('text', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)));
         end
+        % Get data filename
+        [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
         
         % === READ FILES ===
         switch (sInputs(iInput).FileType)
@@ -240,9 +242,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     GridOrient = sResults.GridOrient;
                 end
                 % Input filename
-                if isequal(sInputs(iInput).FileName(1:4), 'link')
-                    % Get data filename
-                    [KernelFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
+                if ~isempty(DataFile)
                     condComment = [file_short(DataFile) '/' sInputs(iInput).Comment];
                 else
                     condComment = sInputs(iInput).FileName;
@@ -323,6 +323,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Replicate if no time
         if (length(sMat.Time) == 1)
             sMat.Time = [0,1];
+        elseif isempty(sMat.Time)
+            bst_report('Error', sProcess, sInputs(iInput), 'Invalid time selection.');
+            continue;
         end
         if ~isempty(matValues) && (size(matValues,2) == 1)
             matValues = [matValues, matValues];
@@ -494,6 +497,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % === GET ROWS INDICES ===
                 % Sort vertices indices
                 iVertices = sort(unique(sScout.Vertices));
+                % Make sure this is a row vector
+                iVertices = iVertices(:)';
                 % Get the number of components per vertex
                 if strcmpi(sInputs(iInput).FileType, 'results')
                     nComponents = sResults.nComponents;
@@ -605,6 +610,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % === COMPUTE CLUSTER VALUES ===
                 % Process differently the unconstrained sources
                 isUnconstrained = (nComponents ~= 1) && ~strcmpi(XyzFunction, 'norm');
+                % Get meaningful tags in the results file name (without folders)
+                [tmp, TestTags] = bst_fileparts(TestResFile);
                 % If the flip was requested but not a good thing to do on this file
                 wrnMsg = [];
                 if isFlip && isUnconstrained
@@ -613,7 +620,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif isFlip && strcmpi(sInputs(iInput).FileType, 'timefreq') 
                     wrnMsg = 'Sign flip was not performed: not applicable for time-frequency files.';
                     isFlipScout = 0;
-                elseif isFlip && ~isempty(strfind(sInputs(iInput).FileName, '_abs'))
+                elseif isFlip && ~isempty(strfind(TestTags, '_abs'))
                     wrnMsg = 'Sign flip was not performed: an absolute value was already applied to the source maps.';
                     isFlipScout = 0;
                 else

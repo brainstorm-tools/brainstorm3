@@ -439,11 +439,12 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFunPhase.setEnabled(1);            
         end
         % Display FOOOF panel
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
             ctrl.jPanelFOOOF.setVisible(1);
             ctrl.jComboRows.setEnabled(1);
             ctrl.jPanelSelect.setVisible(1);
-            SetDisplayOptions();
+            ctrl.jCheckHideEdge.setVisible(0);
+            ctrl.jCheckHighRes.setVisible(0);
         end
         if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
             % Enable row selection controls
@@ -459,27 +460,29 @@ function UpdatePanel(hFig)
         else
             ctrl.jPanelFunction.setVisible(1);
             % If current figure is a FOOOF PSD
-            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
+            if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
                 ctrl.jRadioFSpectrum.setEnabled(1);
                 ctrl.jRadioFModel.setEnabled(1);
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
-                ctrl.jPanelSelect.setVisible(1);
-                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') % If it is topography or surf
+                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
+                    ctrl.jPanelSelect.setVisible(0);
                     ctrl.jRadioFOverlay.setVisible(0)
                     ctrl.jRadioFOverlay.setEnabled(0)
                     ctrl.jRadioFExponent.setVisible(1);
-                    ctrl.jRadioFOffset.setVisible(1);
                     ctrl.jRadioFExponent.setEnabled(1);
+                    ctrl.jRadioFOffset.setVisible(1);
                     ctrl.jRadioFOffset.setEnabled(1);
                 else
-                    ctrl.jRadioFOverlay.setEnabled(1); 
+                    ctrl.jPanelSelect.setVisible(1);
+                    ctrl.jRadioFOverlay.setVisible(1)
+                    ctrl.jRadioFOverlay.setEnabled(1);
                     ctrl.jRadioFExponent.setVisible(0);
                     ctrl.jRadioFOffset.setVisible(0);
-                end
+                end               
                 switch TfInfo.FOOOFDisp
-                    case 'overlay', ctrl.jRadioFOverlay.setSelected(1); SetDisplayOptions();
+                    case 'overlay', ctrl.jRadioFOverlay.setSelected(1);
                     case 'spectrum', ctrl.jRadioFSpectrum.setSelected(1);
                     case 'model', ctrl.jRadioFModel.setSelected(1);
                     case 'aperiodic', ctrl.jRadioFAperiodic.setSelected(1);
@@ -488,6 +491,13 @@ function UpdatePanel(hFig)
                     case 'exponent', ctrl.jRadioFExponent.setSelected(1);
                     case 'offset', ctrl.jRadioFExponent.setSelected(1);
                 end
+                sOptions = GetDisplayOptions();
+                if isempty(TfInfo.RowName)
+                    TfInfo.RowName = sOptions.RowName;
+                else 
+                    sOptions.RowName = TfInfo.RowName;
+                end
+                SetDisplayOptions(sOptions);
             elseif isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT)
                 ctrl.jRadioFOverlay.setEnabled(0); 
                 ctrl.jRadioFSpectrum.setEnabled(1);
@@ -495,7 +505,7 @@ function UpdatePanel(hFig)
                 ctrl.jRadioFAperiodic.setEnabled(1);
                 ctrl.jRadioFPeaks.setEnabled(1);
                 ctrl.jRadioFError.setEnabled(1);
-                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') % If it is topography or surf
+                if isequal(FigureId.Type,'Topography') || isequal(FigureId.Type,'3DViz') || isequal(FigureId.Type,'MriViewer') % If it is topo or surf or MRI
                     ctrl.jRadioFOverlay.setVisible(0)
                     ctrl.jRadioFOverlay.setEnabled(0)
                     ctrl.jRadioFExponent.setVisible(1);
@@ -574,8 +584,8 @@ function UpdatePanel(hFig)
         end
         % Entire panel
         ctrl.jPanelSelect.setVisible(isEnabledEdge || isEnabledRow);
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)
-            ctrl.jPanelSelect.setVisible(1);
+        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)))
+            ctrl.jPanelSelect.setVisible(ctrl.jRadioFOverlay.isVisible);
         end
 
         % === CONNECTIVITY ===
@@ -816,6 +826,12 @@ function SetDisplayOptions(sOptions)
         TfInfo.FOOOFDisp  = sOptions.FOOOFDisp;
         TfInfo.HideEdgeEffects = sOptions.HideEdgeEffects;
         TfInfo.HighResolution  = sOptions.HighResolution;
+        % Highlight current row for all FOOOFDisp except overlay
+        if strcmpi(TfInfo.FOOOFDisp, 'overlay')
+            bst_figures('SetSelectedRows', []);
+        else
+            bst_figures('SetSelectedRows', sOptions.RowName);
+        end
         % Update figure handles
         setappdata(hFig, 'Timefreq', TfInfo);
     end

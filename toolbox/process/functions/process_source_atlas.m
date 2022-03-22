@@ -151,6 +151,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % === GET VERTEX INDICES ===
         % Get all the row indices involved in this scout
         iVertices = sort(unique(sScouts(iScout).Vertices));
+        % Make sure this is a row vector
+        iVertices = iVertices(:)';
         % Get scout orientation
         ScoutOrient = SurfaceMat.VertNormals(iVertices,:);
         % List of rows to read depends on the number of componentns per vertex
@@ -182,13 +184,15 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         
         % === COMPUTE SCOUT VALUES ===
         if (ResultsMat.nComponents == 1)
+            % Get meaningful tags in the results file name (without folders)
+            TestResFile = file_resolve_link(sInput.FileName);
+            [tmp, TestTags] = bst_fileparts(TestResFile);
+            % Do not flip sign for statistics, norms or NIRS source maps
             isFlipSign = strcmpi(sInput.FileType, 'results') && ...
-                         isempty(strfind(sInput.FileName, '_abs')) && ...
-                         isempty(strfind(sInput.FileName, '_norm')) && ...
-                         isempty(strfind(sInput.FileName, 'NIRS'))  && ...
-                         isempty(strfind(sInput.FileName, 'Summed_sensitivities'));
-
-                     
+                         isempty(strfind(TestTags, '_abs')) && ...
+                         isempty(strfind(TestTags, '_norm')) && ...
+                         isempty(strfind(TestTags, 'NIRS'))  && ...
+                         isempty(strfind(TestTags, 'Summed_sensitivities'));
             ImageGridAmp(iScout,:) = bst_scout_value(Fscout, sScouts(iScout).Function, ScoutOrient, ResultsMat.nComponents, [], isFlipSign);
         elseif isNorm
             ImageGridAmp(iScout,:) = bst_scout_value(Fscout, sScouts(iScout).Function, ScoutOrient, ResultsMat.nComponents, 'norm');

@@ -1698,7 +1698,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 if isequal(TfInfo.FOOOFDisp,'overlay') || isequal(TfInfo.FOOOFDisp,'spectrum')
                     FooofDisp = 'spectrum';
                 else 
-                    FooofDisp = [];
+                    FooofDisp = TfInfo.FOOOFDisp;
                 end
                 % Get results values
                 TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName, FooofDisp);

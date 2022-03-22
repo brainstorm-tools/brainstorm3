@@ -256,7 +256,7 @@ for iFile = 1:length(LabelFiles)
                     Color = [1 c 0];
                 end
                 % Create structure
-                sAtlas.Scouts(iScout).Vertices = ScoutVert;
+                sAtlas.Scouts(iScout).Vertices = ScoutVert(:)';
                 sAtlas.Scouts(iScout).Seed     = [];
                 sAtlas.Scouts(iScout).Label    = Label;
                 sAtlas.Scouts(iScout).Color    = Color;
@@ -314,7 +314,7 @@ for iFile = 1:length(LabelFiles)
                     % New scout index
                     iScout = length(sAtlas(ia).Scouts) + 1;
                     % Get the vertices for this annotation
-                    sAtlas(ia).Scouts(iScout).Vertices = find(Values{ia} == lablist(i));
+                    sAtlas(ia).Scouts(iScout).Vertices = reshape(find(Values{ia} == lablist(i)), 1, []);
                     sAtlas(ia).Scouts(iScout).Seed     = [];
                     sAtlas(ia).Scouts(iScout).Label    = file_unique(scoutLabel, {sAtlas(ia).Scouts.Label});
                     sAtlas(ia).Scouts(iScout).Color    = scoutColor;
@@ -479,20 +479,20 @@ for iFile = 1:length(LabelFiles)
                         % Duplicate scout
                         sAtlas.Scouts(iScout+1) = sAtlas.Scouts(iScout);
                         % Left scout
-                        sAtlas.Scouts(iScout).Vertices = iScoutVert(iL);
+                        sAtlas.Scouts(iScout).Vertices = reshape(iScoutVert(iL), 1, []);
                         sAtlas.Scouts(iScout).Label    = [sAtlas.Scouts(iScout).Label, ' L'];
                         sAtlas.Scouts(iScout).Region   = 'LU';
                         % Right scout
-                        sAtlas.Scouts(iScout+1).Vertices = iScoutVert(iR);
+                        sAtlas.Scouts(iScout+1).Vertices = reshape(iScoutVert(iR), 1, []);
                         sAtlas.Scouts(iScout+1).Label    = [sAtlas.Scouts(iScout+1).Label, ' R'];
                         sAtlas.Scouts(iScout+1).Region   = 'RU';
                     % Do not split
                     else
-                        sAtlas.Scouts(iScout).Vertices = iScoutVert;
+                        sAtlas.Scouts(iScout).Vertices = iScoutVert(:)';
                     end
                 % Importing regular subject volume: Select all the vertices
                 else
-                    sAtlas.Scouts(iScout).Vertices = iScoutVert;
+                    sAtlas.Scouts(iScout).Vertices = iScoutVert(:)';
                 end
             end
             bst_progress('text', 'Saving atlas...');
@@ -527,7 +527,7 @@ for iFile = 1:length(LabelFiles)
             % Copy the new scouts
             for i = 1:length(ScoutMat.Scouts)
                 iScout = length(sAtlas.Scouts) + 1;
-                sAtlas.Scouts(iScout).Vertices = ScoutMat.Scouts(i).Vertices;
+                sAtlas.Scouts(iScout).Vertices = ScoutMat.Scouts(i).Vertices(:)';
                 sAtlas.Scouts(iScout).Seed     = ScoutMat.Scouts(i).Seed;
                 sAtlas.Scouts(iScout).Color    = ScoutMat.Scouts(i).Color;
                 sAtlas.Scouts(iScout).Label    = file_unique(ScoutMat.Scouts(i).Label, {sAtlas.Scouts.Label});
@@ -586,7 +586,7 @@ for iFile = 1:length(LabelFiles)
                 end
                 % New scout index
                 iScout = length(sAtlas.Scouts) + 1;
-                sAtlas.Scouts(iScout).Vertices = find(VertexLabelIds == id);
+                sAtlas.Scouts(iScout).Vertices = reshape(find(VertexLabelIds == id), 1, []);
                 sAtlas.Scouts(iScout).Label    = file_unique(labelInfo.Name, {sAtlas.Scouts.Label});
                 sAtlas.Scouts(iScout).Color    = labelInfo.Color;
                 sAtlas.Scouts(iScout).Function = 'Mean';
