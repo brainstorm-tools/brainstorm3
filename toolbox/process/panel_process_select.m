@@ -761,6 +761,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     function UpdateProcessOptions()
         import java.awt.Dimension;
         import javax.swing.BoxLayout;
+        import org.brainstorm.list.*;
         % Starting the update
         isUpdatingPipeline = 1;
         % Font size for the options
