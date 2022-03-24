@@ -231,6 +231,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if mod(ops.nt0,2)
             ops.nt0 =ops.nt0+1;
         end
+        ops.nt0 = round(ops.nt0); % Rounding error if not force integer here
         
         %% Case of less neighbors (default config file value) than actual channels
         % For enabling PHY, make sure the value is less than the maximum
