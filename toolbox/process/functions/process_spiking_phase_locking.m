@@ -162,7 +162,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 
         %% Accumulate the phases that each neuron fired upon
         nBins = round(360/sProcess.options.phaseBin.Value{1}) + 1;
-        all_phases = zeros(length(labelsForDropDownMenu), nBins-1); 
+        all_phases = zeros(length(labelsForDropDownMenu), nBins-1);
+        total_spikes = zeros(length(labelsForDropDownMenu), 1);
 
         EDGES = linspace(-pi,pi,nBins);
         
@@ -197,7 +198,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         events(iEvent_Neuron).times = events(iEvent_Neuron).times(events(iEvent_Neuron).times>DataMat.Time(1) & ...
                                                                                   events(iEvent_Neuron).times<DataMat.Time(end));
                         
-                        
+                        total_spikes(iNeuron) = total_spikes(iNeuron) + length(events(iEvent_Neuron).times);
+
                         % Get the index of the closest timeBin
                         [temp, iClosest] = histc(events(iEvent_Neuron).times,DataMat.Time);
                         
@@ -229,8 +231,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                 all_phases_single_neuron = all_phases_single_neuron';
                             end
                             all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) = all_phases((iNeuron-1)*nChannels+1:iNeuron*nChannels,:) + all_phases_single_neuron;
-                        end
-                      
+                        end                      
                     end
                 end
             end
@@ -289,11 +290,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileMat.Options = tfOPTIONS;
         FileMat.History = [];
         
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-        % This is added here for future statistics - Let's hear it from Francois
         FileMat.neurons.phase.pValues = pValues;
         FileMat.neurons.phase.preferredPhase = preferredPhase;
-        %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+        FileMat.neurons.phase.total_spikes = total_spikes;
 
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ...

@@ -126,7 +126,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 
                 % Compute the 95% confidence intervals
                 RESAMPLING = 1000; % Number of permutations
-                CI(:,iCondition) = bootci(RESAMPLING, {@mean, y}, 'type','cper','alpha',0.05);
+                
+                if length(y)>1
+                    CI(:,iCondition) = bootci(RESAMPLING, {@mean, y}, 'type','cper','alpha',0.05);
+                else
+                    CI(:,iCondition) = [0;0];
+                end
             end
 
             

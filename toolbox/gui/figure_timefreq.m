@@ -1098,8 +1098,10 @@ function UpdateFigurePlot(hFig, isForced)
                 PlotTimefreqSurfHigh(hAxes, Time, Freqs, TF, TFmask);
             elseif TfInfo.DisplayAsDots
                 PlotTimefreqAsDots(hAxes, Time, TF);
-            elseif TfInfo.DisplayAsPhase
-                PlotTimefreqAsPhase(hAxes, Time, Freqs, TF);
+            elseif TfInfo.DisplayAsPhase                
+                phase_info = in_bst_timefreq(TfInfo.FileName, 0, 'neurons', 'RowNames');
+                iNeuron = find(ismember(phase_info.RowNames, RowNames));
+                PlotTimefreqAsPhase(hAxes, Time, Freqs, TF, phase_info.neurons.phase, iNeuron);
             else
                 PlotTimefreqSurf(hAxes, Time, FullTimeVector, Freqs, TF, TFmask);
             end
@@ -1241,7 +1243,7 @@ end
 
 
 %% ===== PLOT TIME-FREQ AS PHASE =====
-function hSurf = PlotTimefreqAsPhase(hAxes, Time, Freqs, TF)
+function hSurf = PlotTimefreqAsPhase(hAxes, Time, Freqs, TF, phase_info, iNeuron)
     % Delete previous objects
     surfTag = 'TimefreqSurf';
     hOld = findobj(hAxes, '-depth', 1, 'tag', surfTag);
@@ -1262,7 +1264,7 @@ function hSurf = PlotTimefreqAsPhase(hAxes, Time, Freqs, TF)
 
     hSurf = circ_plot(single_neuron_and_channel_phase,'hist',[], nBins,true,true,'linewidth',2,'color','r','Parent', hAxes);
     set(hSurf, 'Tag', surfTag);
-    title(hAxes, {['Rayleigh test p=' num2str(pval_rayleigh)], ['Omnibus test p=' num2str(pval_omnibus)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
+    title(hAxes, {['Total neurons: ' num2str(phase_info.total_spikes(iNeuron))],['Rayleigh test p=' num2str(pval_rayleigh)], ['Preferred phase: ' num2str(mean_value_degrees) '^o']})
 end
 
 
@@ -1382,7 +1384,7 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
         xlabel(hAxes, 'Time (s)');
         ylabel(hAxes, 'Trials');
-    elseif ~isempty(strfind(lower(TfInfo.FileName), 'spiking_phase_locking'))
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'spiking_phase_locking`'))
         xlabel(hAxes, ' ');
         ylabel(hAxes, ' ');
     else
