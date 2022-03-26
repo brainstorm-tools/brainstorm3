@@ -150,7 +150,14 @@ switch (FileFormat)
     case 'SPM-DAT'
         [sFile, ChannelMat] = in_fopen_spm(DataFile);
     case 'EEG-INTAN'
-        [sFile, ChannelMat] = in_fopen_intan(DataFile);
+%         [sFile, ChannelMat] = in_fopen_intan(DataFile);
+        [fPath, fBase, fExt] = bst_fileparts(DataFile);
+        switch lower(fExt)
+            case '.rhd'
+                [DataMat, ChannelMat] = in_data_rhd(DataFile);
+            case '.pl2'
+                [sFile, ChannelMat] = in_fopen_intan(DataFile);
+        end
     case 'EEG-PLEXON'
         [sFile, ChannelMat] = in_fopen_plexon(DataFile);
     case 'EEG-TDT'
