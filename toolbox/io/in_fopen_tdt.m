@@ -95,22 +95,25 @@ for iStream = 1:length(all_streams)
         general_sampling_rate = data_new.streams.(all_streams{iStream}).fs;
         LFP_label_exists = 1;
     end
+    popup_labels{iStream} = [all_streams{iStream} ' - ' num2str(stream_info(iStream).fs) ' Hz'];
 end
 
 if ~LFP_label_exists    
     [indx,tf] = listdlg('PromptString',{'Select the label of the electrophysiological signal that is present in this dataset',...
     'If more streams are present, they will be resampled to match the Fs of this stream.',''},...
-    'SelectionMode','single','ListString',all_streams);
+    'SelectionMode','single','ListString', popup_labels);
     
     data_new = TDTbin2mat(DataFolder, 'STORE', all_streams{indx},'T1', 0, 'T2', 1); % 1 second segment       
         
     general_sampling_rate = data_new.streams.(all_streams{indx}).fs;
     LFP_label_exists = 1;
     
+    if isempty(data_new.streams)
+        bst_error('The selected stream is empty')
+    end
     
     if isempty(indx)
         bst_error('No stream was selected')
-           stop
     end
 end
     
@@ -202,7 +205,12 @@ if are_there_events
                 
                 iindex = iindex+1;
                 
-                events(iindex).label      = [NO_data.epocs.(all_event_Labels{iEvent}).name num2str(conditions_in_event(iCondition))];
+                
+                if strcmp(all_event_Labels{iEvent}, 'Note')
+                    events(iindex).label  = NO_data.epocs.Note.notes{iCondition};
+                else
+                    events(iindex).label  = [NO_data.epocs.(all_event_Labels{iEvent}).name num2str(conditions_in_event(iCondition))];
+                end
                 events(iindex).color      = rand(1,3);
                 events(iindex).epochs     = ones(1,length(selected_Events_for_condition))  ;
                 events(iindex).times      = NO_data.epocs.(all_event_Labels{iEvent}).onset(selected_Events_for_condition)';
