@@ -323,6 +323,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Replicate if no time
         if (length(sMat.Time) == 1)
             sMat.Time = [0,1];
+        elseif isempty(sMat.Time)
+            bst_report('Error', sProcess, sInputs(iInput), 'Invalid time selection.');
+            continue;
         end
         if ~isempty(matValues) && (size(matValues,2) == 1)
             matValues = [matValues, matValues];
@@ -494,6 +497,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % === GET ROWS INDICES ===
                 % Sort vertices indices
                 iVertices = sort(unique(sScout.Vertices));
+                % Make sure this is a row vector
+                iVertices = iVertices(:)';
                 % Get the number of components per vertex
                 if strcmpi(sInputs(iInput).FileType, 'results')
                     nComponents = sResults.nComponents;

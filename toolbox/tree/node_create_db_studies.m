@@ -34,6 +34,8 @@ function [bstDefaultNode, nodeStudiesDB, numTotalElems] = node_create_db_studies
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2020
+%          Martin Cousineau, 2019
+
 import org.brainstorm.tree.*;
 
 %% ===== PARSE INPUTS =====

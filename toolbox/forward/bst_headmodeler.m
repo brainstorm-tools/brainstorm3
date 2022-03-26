@@ -325,7 +325,7 @@ switch (OPTIONS.HeadModelType)
             % Progress bar
             bst_progress('text', ['Computing mixed models...   [' sAtlas.Scouts(is).Label ']']);
             % Get the indices for the current scout
-            iVert = sAtlas.Scouts(is).Vertices;
+            iVert = sAtlas.Scouts(is).Vertices(:)';
             % Switch
             switch (sAtlas.Scouts(is).Region(2))
                 % Surface
@@ -347,8 +347,8 @@ switch (OPTIONS.HeadModelType)
                     [SrcLoc, SrcOri, sAtlas.Scouts(is), iVertModif] = dba_get_model( sAtlas.Scouts(is), sCortex );
                     % If modifications where done on the cortex atlases: we have to update them
                     if ~isempty(iVertModif)
-                        sAtlas.Scouts(is).Vertices = iVertModif;
-                        sCortex.Atlas(iAtlas).Scouts(is).Vertices = iVertModif;
+                        sAtlas.Scouts(is).Vertices = iVertModif(:)';
+                        sCortex.Atlas(iAtlas).Scouts(is).Vertices = iVertModif(:)';
                         isCortexModif = 1;
                     end
                 % Exclude

@@ -25,7 +25,7 @@ function varargout = process_fooof(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Luc Wilson, Francois Tadel, 2020
+% Authors: Luc Wilson, Francois Tadel, 2020-2022
 
 eval(macro_method);
 end
@@ -37,7 +37,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'specparam: Fitting oscillations and 1/f';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 501;
+    sProcess.Index       = 490;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Fooof';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'timefreq'};

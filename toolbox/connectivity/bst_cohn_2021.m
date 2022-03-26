@@ -93,44 +93,19 @@ Messages = [];
 % Get current progress bar position
 waitStart = bst_progress('get');
 
-%% ===== Total number of windows =====
 % Number of Files
 nFiles = length(Xs);
 % Window length and Overlap in samples
 nWinLen  = round(WinLen * Fs);
 nOverlap = round(nWinLen * Overlap);
-% Pair files in Xs and Ys must have same nSamples  
-nSamplesXs = cellfun('size', Xs, 2);
-nSamplesYs = cellfun('size', Ys, 2);
-if ~isequal(nSamplesXs, nSamplesYs)
-    Messages = 'Pairs of Files A and Files B must have the same number of samples.';
-    return;
-end
-% Minimum number of windows for signals in X and signals in Y
-minWin = nFiles * floor( (min(nSamplesXs) - nOverlap) / (nWinLen - nOverlap));
-
 % Error and Warning
 minWinError = 2;
 minWinWarning = 5;
-% ERROR: Not enough time points
-if minWin < minWinError
-    nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinError - 1);
-    Messages = sprintf(['Input signals are too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
-                        'Provide 2 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-                        nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
-    return;
-% WARNING: Maybe not enough time points
-elseif minWin < minWinWarning
-    nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinWarning - 1);
-    Messages = sprintf(['Input signals may be too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
-                        'Recommendation: Provide 5 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-                        nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
-end
+
 
 %% ===== COMPUTE Sxx, Syy, Sxy ======
-% [NxN] or [1xN]
+% [NxN] or [1xN]/[AxB]
 isNxN = isequal(Xs, Ys);
-
 % Elements for FFT
 nFFT = 2 ^ nextpow2(nWinLen * 2);
 % Window
@@ -146,41 +121,61 @@ if ~isempty(MaxFreq)
         freq = freq(1:nKeep);
     end
 end
-
-% Accumulators
-nSignalsX = size(Xs{1}, 1);
-nSignalsY = size(Ys{1}, 1);
-Sxx = zeros(nSignalsX, length(freq));
-if ~isNxN  
-    if isempty(ImagingKernel)
-        Syy = zeros(nSignalsY, length(freq));
-    else
-        Syy = zeros(size(ImagingKernel,1), length(freq));
-    end
-end
-Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
 nWin = 0;
+% Initialize accumulators
+Sxy = [];
+Sxx = [];
+Syy = [];
 
+% Loop over input files
 for iFile = 1 : nFiles
     bst_progress('set', round(waitStart + iFile/nFiles * 0.80 * waitMax));
+
+    %% ===== Load Y =====
+    % If data is not preloaded: Call loading function
+    if iscell(Ys{iFile})
+        y = feval(Ys{iFile}{1}, Ys{iFile}{:});
+        if isempty(y) || isempty(y.Data)
+            Messages = 'Cannot load input files.';
+            return;
+        end
+        y = y.Data;
+    else
+        y = Ys{iFile};
+    end
+    [nSignalsY, nTimeY] = size(y);
+    % Check minimum number of windows in input signals
+    minWin = nFiles * floor( (min(nTimeY) - nOverlap) / (nWinLen - nOverlap));
+    % ERROR: Not enough time points
+    if minWin < minWinError
+        nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinError - 1);
+        Messages = sprintf(['Input signals are too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
+                            'Provide 2 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
+                            nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
+        return;
+    % WARNING: Maybe not enough time points
+    elseif minWin < minWinWarning
+        nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinWarning - 1);
+        Messages = sprintf(['Input signals may be too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
+                            'Recommendation: Provide 5 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
+                            nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
+    end
+
+
     %% ===== Compute Syy =====
-    y = Ys{iFile};    
     epy = epoching(y, nWinLen, nOverlap);
     epy = bst_bsxfun(@times, epy, win);
     % Zero padding, FFT, keep only positive frequencies
     epY = fft(epy, nFFT, 2);
     epY = epY(:, 1:nKeep, :);
     clear y epy;
-    if ~isNxN
-        if isempty(ImagingKernel)
-            % Auto-spectrum (PSD) of y
-            Syy = Syy + sum(epY .* conj(epY), 3);
-        else
-            % Auto-spectrum (PSD) of y (sources)
-            epYSource = pagemtimes(ImagingKernel, epY);
-            Syy = Syy + sum(epYSource .* conj(epYSource), 3);
-        end   
-    else
+
+    % === NxN===
+    if isNxN
+        % Initialize accumulator
+        if isempty(Sxy)
+            Sxy = complex(zeros(nSignalsY, nSignalsY, length(freq)));
+        end
         % Cross-spectrum of y, needed in NxN case, or when Imagingkernel
         for y1 = 1 : nSignalsY
             for y2 = y1 : nSignalsY
@@ -188,24 +183,65 @@ for iFile = 1 : nFiles
                 Sxy(y1, y2, :) = squeeze(Sxy(y1, y2, :)) + tmp(:);
                 Sxy(y2, y1, :) = conj(Sxy(y1, y2, :));
             end
-        end        
-    end
-    nWin = nWin + size(epY, 3);
+        end
+        
+    % === 1xN ===
+    else
+        if isempty(ImagingKernel)
+            % Initialize accumulator
+            if isempty(Syy)
+                Syy = zeros(nSignalsY, length(freq));
+            end
+            % Auto-spectrum (PSD) of y
+            Syy = Syy + sum(epY .* conj(epY), 3);
+        else
+            % Initialize accumulator
+            if isempty(Syy)
+                Syy = zeros(size(ImagingKernel,1), length(freq));
+            end
+            % Auto-spectrum (PSD) of y (sources)
+            epYSource = pagemtimes(ImagingKernel, epY);
+            Syy = Syy + sum(epYSource .* conj(epYSource), 3);
+        end   
 
-    %% ===== Case 1xN =====
-    if ~isNxN
-        %% ===== Compute Sxx =====
-        x = Xs{iFile};
+        % ===== Load X =====
+        % If data is not preloaded: Call loading function
+        if iscell(Xs{iFile})
+            x = feval(Xs{iFile}{1}, Xs{iFile}{:});
+            if isempty(x) || isempty(x.Data)
+                Messages = 'Cannot load input files.';
+                return;
+            end
+            x = x.Data;
+        else
+            x = Xs{iFile};
+        end
+        [nSignalsX, nTimeX] = size(x);
+        % X and Y must have the same size
+        if ~isequal(nTimeX, nTimeY)
+            Messages = 'Pairs of Files A and Files B must have the same number of samples.';
+            return;
+        end
+
+        % ===== Compute Sxx =====
         epx = epoching(x, nWinLen, nOverlap);
         epx = bst_bsxfun(@times, epx, win);
         % Zero padding, FFT, keep only positive frequencies
         epX = fft(epx, nFFT, 2);
         epX = epX(:, 1:nKeep, :);
         clear x epx
+        % Set up accumulator
+        if isempty(Sxx)
+            Sxx = zeros(nSignalsX, length(freq));
+        end
         % Sum across epochs
         Sxx = Sxx + sum(epX .* conj(epX), 3);
         
-        %% ===== Compute Sxy ===== (with loop)
+        % ===== Compute Sxy ===== (with loop)
+        % Initialize accumulator
+        if isempty(Sxy)
+            Sxy = complex(zeros(nSignalsX, nSignalsY, length(freq)));
+        end
         for ix = 1 : nSignalsX
             for iy = 1 : nSignalsY
                 tmp = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
@@ -221,6 +257,7 @@ for iFile = 1 : nFiles
 %         Sxy_tmp = bst_bsxfun(@times, Sxy_tmp, conj(epY_tmp));
 %         Sxy2 = Sxy2 + sum(Sxy_tmp, 4); 
     end
+    nWin = nWin + size(epY, 3);
 end
 
 %% ===== Case NxN =====

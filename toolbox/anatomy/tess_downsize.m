@@ -30,7 +30,7 @@ function [NewTessFile, iSurface, I, J] = tess_downsize( TessFile, newNbVertices,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2022
 
 
 %% ===== PARSE INPUTS =====
@@ -471,7 +471,7 @@ if isfield(TessMat, 'Atlas') && ~isempty(TessMat.Atlas) && ~isempty(I)
         for iScout = 1:length(NewTessMat.Atlas(iAtlas).Scouts)
             % Replace the old vertices index with the new ones
             [a,b,c] = intersect(NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices, I);
-            NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices = sort(J(c));
+            NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices = reshape(sort(J(c)), 1, []);
             % If scout has no vertex left: tag for deletion
             if isempty(NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices)
                 iRmScout(end+1) = iScout;

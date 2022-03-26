@@ -19,7 +19,7 @@ function node_delete(bstNodes, isUserConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== INITIALIZATION =====
 % Parse inputs
@@ -295,10 +295,10 @@ switch (lower(nodeType{1}))
     case {'data', 'datalist', 'rawdata'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         % Get data files do delete
-        [ iStudies_data,     iDatas    ] = tree_dependencies( bstNodes, 'data' );
-        [ iStudies_results,  iResults  ] = tree_dependencies( bstNodes, 'results' );
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
-        [ iStudies_dipoles,  iDipoles  ] = tree_dependencies( bstNodes, 'dipoles' );
+        [ iStudies_data,     iDatas    ] = tree_dependencies( bstNodes, 'data', -1 );
+        [ iStudies_results,  iResults  ] = tree_dependencies( bstNodes, 'results', -1 );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
+        [ iStudies_dipoles,  iDipoles  ] = tree_dependencies( bstNodes, 'dipoles', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_data, -10) || isequal(iStudies_results, -10) || isequal(iStudies_timefreq, -10) || isequal(iStudies_dipoles, -10)
             disp('BST> Error in tree_dependencies.');
@@ -385,8 +385,8 @@ switch (lower(nodeType{1}))
         % Get results files
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.STUDIES,f), FileName', 'UniformOutput',0);
         % Get dependent time-freq files
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
-        [ iStudies_dipoles,  iDipoles ]  = tree_dependencies( bstNodes, 'dipoles' );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
+        [ iStudies_dipoles,  iDipoles ]  = tree_dependencies( bstNodes, 'dipoles', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_timefreq, -10) || isequal(iStudies_dipoles, -10)
             disp('BST> Error in tree_dependencies.');
@@ -478,8 +478,8 @@ switch (lower(nodeType{1}))
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         FullFilesList = {};
         % Get dependent time-freq files
-        [ iStudies_matrix,   iMatrix   ] = tree_dependencies( bstNodes, 'matrix' );
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
+        [ iStudies_matrix,   iMatrix   ] = tree_dependencies( bstNodes, 'matrix', -1 );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_timefreq, -10)
             disp('BST> Error in tree_dependencies.');

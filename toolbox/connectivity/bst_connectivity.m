@@ -73,6 +73,7 @@ end
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Initialize output variables
 OutputFiles = {};
+AllComments = {};
 Ravg = [];
 nAvg = 0;
 nTime = 1;
@@ -127,6 +128,7 @@ else
     hilbert_fcn = @oc_hilbert;
 end
 
+
 %% ===== CONCATENATE INPUTS / REMOVE AVERAGE =====
 sAverageA = [];
 sAverageB = [];
@@ -137,10 +139,46 @@ switch (OPTIONS.OutputMode)
     case 'avgcoh',  isConcat = 2;
     otherwise,      isConcat = 0;
 end
-% Load all the data and concatenate it
-if (isConcat >= 1)
-    bst_progress('text', 'Loading input files...');
 
+% === LOAD CALLS ONLY ===
+% Prepare load calls, data will be loaded in bst_cohn_2021
+if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
+    % Number of concatenated trials to process
+    nTrials = length(FilesA);
+    % Load first FileA, for getting all the file metadata
+    sInputA = bst_process('LoadInputFile', FilesA{1}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA);
+    if (size(sInputA.Data,2) < 2)
+        bst_report('Error', OPTIONS.ProcessName, FilesA{1}, 'Invalid time selection, check the input time window.');
+        return;
+    end
+    % FilesA load calls
+    sInputA.Data = cell(1, nTrials);
+    for iFile = 1:nTrials
+        sInputA.Data{iFile} = {@bst_process, 'LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA};
+    end
+    FilesA = FilesA(1);
+    % FilesB load calls
+    if ~isConnNN
+        % Load first FileA, for getting all the file metadata
+        sInputB = bst_process('LoadInputFile', FilesB{1}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
+        if (size(sInputB.Data,2) < 2)
+            bst_report('Error', OPTIONS.ProcessName, FilesB{1}, 'Invalid time selection, check the input time window.');
+            return;
+        end
+        % FilesB load calls
+        sInputB.Data = cell(1, nTrials);
+        for iFile = 1:nTrials
+            sInputB.Data{iFile} = {@bst_process, 'LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB};
+        end
+        FilesB = FilesB(1);
+    else
+        sInputB = sInputA;
+    end
+
+% === LOAD AND CONCATENATE ===
+% Load all the data and concatenate it
+elseif (isConcat >= 1)
+    bst_progress('text', 'Loading input files...');
     % Number of concatenated trials to process
     nTrials = length(FilesA);
     % Concatenate FileA
@@ -166,7 +204,8 @@ if (isConcat >= 1)
     else
         sInputB = sInputA;
     end
-% Calculate evoked responses
+
+% === LOAD AND REMOVE AVERAGE ===
 elseif OPTIONS.RemoveEvoked
     % Average: Files A
     [tmp, sAverageA] = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, 0, 1, startValue);
@@ -294,7 +333,11 @@ for iFile = 1:length(FilesA)
             
         % === COHERENCE ===
         case 'cohere'
-            bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            if (size(sInputA.Data,1) > 1) && (size(sInputB.Data,1) > 1)
+                bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            else
+                bst_progress('text', 'Calculating: Coherence...');
+            end
             % Compute in symmetrical way only for constrained sources
             CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
             % Estimate the coherence (2021)
@@ -670,27 +713,30 @@ for iFile = 1:length(FilesA)
     % Reshape: [A*B x nTime x nFreq]
     R = reshape(R, [], nTime, size(R,3));
     % Comment
-    if isequal(FilesA, FilesB)
-        % Row name
-        if (length(sInputA.RowNames) == 1)
+    % 1xN and AxB
+    if ~isConnNN
+        % Seed (scout)
+        if OPTIONS.isScoutA
+            if (length(OPTIONS.sScoutsA) == 1)
+                Comment = [Comment, OPTIONS.sScoutsA.Label];
+            end
+        % Seed (sensor or row)
+        elseif (length(sInputA.RowNames) == 1)
             if iscell(sInputA.RowNames)
                 Comment = [Comment, sInputA.RowNames{1}];
             else
                 Comment = [Comment, '#', num2str(sInputA.RowNames(1))];
             end
-        % Scouts
-        elseif OPTIONS.isScoutA
-            if (length(OPTIONS.sScoutsA) == 1)
-                Comment = [Comment, OPTIONS.sScoutsA.Label, ', ' OPTIONS.ScoutFunc];
-            else
-                Comment = [Comment, num2str(length(OPTIONS.sScoutsA)), ' scouts, ' OPTIONS.ScoutFunc];
-            end
-            if ~strcmpi(OPTIONS.ScoutFunc, 'All')
-                 Comment = [Comment, ' ' OPTIONS.ScoutTime];
-            end
-        else
-            Comment = [Comment, 'Full'];
         end
+        % Number of target (scouts)
+        if OPTIONS.isScoutB
+            Comment = [Comment, ' x ' num2str(length(OPTIONS.sScoutsB)), ' scouts'];
+        end
+        % Add scout function and time if they are relevant
+        if ~strcmpi(OPTIONS.ScoutFunc, 'All') && (OPTIONS.isScoutA || OPTIONS.isScoutB)
+             Comment = [Comment, ', ',  OPTIONS.ScoutFunc, ' ', OPTIONS.ScoutTime];
+        end
+    %NxN
     else
         Comment = [Comment, sInputA.Comment];
     end
@@ -703,6 +749,8 @@ for iFile = 1:length(FilesA)
             nAvg = 1;
             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case 'avg'
+            % Concatenate files comments
+            AllComments{end+1} = Comment;
             % Compute online average of the connectivity matrices
             if isempty(Ravg)
                 Ravg = R ./ length(FilesA);
@@ -718,7 +766,7 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
-    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
 end
 
 
@@ -745,6 +793,24 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     FileMat.Method    = OPTIONS.Method;
     FileMat.DataFile  = file_win2unix(DataFile);
     FileMat.nAvg      = nAvg;
+    % Comment if average comes from trials
+    if FileMat.nAvg > 1
+        listComments = Comment;
+        % If Comments are the same
+        if length(unique(listComments)) > 1
+            % Search for trial tags and remove them
+            for iComment = 1 : length(listComments)
+                [~, tmpStrs] = regexp(listComments{iComment},'\(#.+\)','match','split');
+                listComments{iComment} = deblank([tmpStrs{:}]);
+            end
+        end
+        if (length(unique(listComments)) == 1)
+            Comment = listComments{1};
+        else
+            Comment = listComments{end};
+        end
+        FileMat.Comment = sprintf('Avg: %s (%d)', Comment, FileMat.nAvg);
+    end
     % Head model
     if isfield(sInputA, 'HeadModelFile') && ~isempty(sInputA.HeadModelFile)
         FileMat.HeadModelFile = sInputA.HeadModelFile;
@@ -842,7 +908,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
 end
 
 
-%% ===== LOAD CONCATENATED =====
+%% ===== LOAD ALL INPUTS =====
 function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOptions, isConcat, isAverage, startValue)
     sConcat = [];
     sAverage = [];
@@ -902,6 +968,7 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
         end
     end
 end
+
 
 function R = correlate_dims(A, B, dim)
     A = bsxfun( @minus, A, mean( A, dim) );
