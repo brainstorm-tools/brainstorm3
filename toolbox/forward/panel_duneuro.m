@@ -281,7 +281,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     
     % ===== HELP BUTTON =====
     jPanelHelp = gui_river([1,1], [12,6,6,6]);
-    jButtonHelp = gui_component('Button', jPanelHelp, 'right', 'Help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Duneuro', '-browser'), []);
+    jButtonHelp = gui_component('Button', jPanelHelp, 'right', 'Help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro', '-browser'), []);
     jButtonHelp.setForeground(Color(.7, 0, 0));
     c.gridy = 6;
     c.weighty = 0;
