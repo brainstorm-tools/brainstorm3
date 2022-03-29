@@ -152,5 +152,3 @@ if ~isempty(uniqueLabels)
     end
 end
 
-
-

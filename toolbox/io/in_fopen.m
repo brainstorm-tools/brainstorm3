@@ -150,24 +150,15 @@ switch (FileFormat)
     case 'SPM-DAT'
         [sFile, ChannelMat] = in_fopen_spm(DataFile);
     case 'EEG-INTAN'
-%         [sFile, ChannelMat] = in_fopen_intan(DataFile);
         [fPath, fBase, fExt] = bst_fileparts(DataFile);
         switch lower(fExt)
-            case '.rhd'
+            case '.rhd'  % New Intan reader, with conversion to .bst format for faster access
                 [DataMat, ChannelMat] = in_data_rhd(DataFile);
-            case '.pl2'
+            case '.rhs'  % Old Intan reader
                 [sFile, ChannelMat] = in_fopen_intan(DataFile);
         end
     case 'EEG-PLEXON'
-%         [sFile, ChannelMat] = in_fopen_plexon(DataFile);
-        [fPath, fBase, fExt] = bst_fileparts(DataFile);
-        switch lower(fExt)
-            case '.plx'
-                [DataMat, ChannelMat] = in_data_plx(DataFile);
-            case '.pl2'
-                [sFile, ChannelMat] = in_fopen_plexon(DataFile);
-        end
-        
+        [sFile, ChannelMat] = in_fopen_plexon(DataFile);
     case 'EEG-TDT'
         [sFile, ChannelMat] = in_fopen_tdt(DataFile);
     case {'NWB', 'NWB-CONTINUOUS'}
