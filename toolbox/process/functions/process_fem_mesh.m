@@ -1255,3 +1255,38 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
 end
+
+
+
+%% ===== COMPUTE FEM MESH VOLUME =====
+function volume = ComputeFemVolume(FemFile)
+    % Get data in database
+    bst_progress('start', 'Load FEM mesh file', 'Loading file...');
+    FemFullFile = file_fullpath(FemFile);
+    femmat = load(FemFullFile);
+
+    % Compute the volume
+    bst_progress('progress', 'Load FEM mesh file', 'Compute Mesh Volume...');
+    allVol = elemvolume(1000*femmat.Vertices,femmat.Elements);
+    vol = zeros(1, length(unique(femmat.Tissue)));
+    factor = 1.e-6; % for display purpose  1.e-6
+    for iTissue = 1 : length(unique(femmat.Tissue))
+        vol(iTissue) = sum(allVol(femmat.Tissue ==iTissue));    
+        volume.(femmat.TissueLabels{iTissue}) = vol(iTissue)*factor;
+    end
+    volume.allTissue = sum(allVol)*factor;
+    % Display the volume info:
+    ProtocolInfo = bst_get('ProtocolInfo');
+    filePath = ProtocolInfo.SUBJECTS;
+    fileBase = file_win2unix(strrep(FemFullFile, filePath, ''));    
+    nbSeparators = 6 + max(length(filePath), length(fileBase));
+    MatString = sprintf('\nPath: %s\nName: %s\n%s\n  | %s', filePath, fileBase, repmat('-', [1,nbSeparators]), 'Volume of the FEM mesh tisssues');
+    MatString = [MatString '(x10^6 mm^3)']; % @francois : is it possible to display on latex format?
+    % Window title
+    wndTitle = fileBase;
+    MatString = [MatString str_format(volume)];
+
+   % Open text viewer
+   view_text( MatString, wndTitle );
+   bst_progress('stop');
+end
