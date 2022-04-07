@@ -93,7 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, sInputs, 'This process requires the Statistics and Machine Learning Toolbox.');
         return;
     end
-    % Check for the Parallel Computing toolbox (external dependencies)
+    % Check for the Parallel Computing toolbox (external dependencies - Kilosort2NeuroSuite in kilosort-wrapper)
     if (exist('matlabpool', 'file') ~= 2) && (exist('parpool', 'file') ~= 2)
         bst_report('Error', sProcess, sInputs, 'This process requires the Parallel Computing Toolbox.');
         return;
@@ -104,25 +104,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     [isInstalled, errMsg] = bst_plugin('Install', 'kilosort');
     if ~isInstalled
         error(errMsg);
-    end
-    
-    
-    %% Prepare parallel pool
-    try
-        poolobj = gcp('nocreate');
-        if isempty(poolobj)
-            bst_progress('text', 'Starting parallel pool');   
-            parpool;
-        end
-    catch
-        poolobj = [];
-    end
-    
+    end    
     
     %% Initialize KiloSort Parameters (This initially is a copy of StandardConfig_MOVEME)
     KilosortStandardConfig();
     ops.GPU = sProcess.options.GPU.Value;
-    
     
     %% Compute on each raw input independently
     for i = 1:length(sInputs)
@@ -157,7 +143,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             try
                 rmdir(outputPath, 's');
             catch
-                error('Couldnt remove spikes folder. Make sure the current directory is not that folder or that Klusters is not open.')
+                cd ..
+                try
+                	rmdir(outputPath, 's');
+                catch
+                	error('Couldnt remove spikes folder. Make sure the current directory is not that folder or that Klusters is not open.')
+                end
             end
         end
         
@@ -255,8 +246,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         converted_raw_File = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
         
         %% %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
-        
-        bst_progress('text', 'Kilosort spike sorting');   
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            bst_progress('start', 'Kilosort', 'Spike-sorting');
+        end
         
         % Some residual parameters that need the outputPath and the converted Raw signal
         ops.fbinary  =  converted_raw_File; % will be created for 'openEphys'
@@ -274,9 +267,22 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
-        rez                = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
-        rez                = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)        
-        
+        try
+            rez = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
+        catch
+            if sProcess.options.GPU.Value
+                % ~\.brainstorm\plugins\kilosort\KiloSort-master\CUD?\mexGPUall.m
+                % needs to be called and compile the .cu files.
+                % Suggested environment: Matlab 2018a, CUDA 9.0, VS 13.
+                bst_report('Error', sProcess, sInputs, 'Error trying to spike-sort on the GPU. Have you set up CUDA correctly? Check https://github.com/cortex-lab/KiloSort for installation instructions');
+                return;
+            else
+                bst_report('Error', sProcess, sInputs, 'Error with Kilosort while training on the CPU');
+                return;
+            end
+        end
+            
+        rez = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)        
         
         %% save matlab results file
         save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
@@ -356,13 +362,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     %%%%%%%%%%%%%%%%%%%%%%   Prepare to exit    %%%%%%%%%%%%%%%%%%%%%%%
-    % Turn off parallel processing and return to the initial directory
-    if ~isempty(poolobj)
-        delete(poolobj);
-    end
-    
     isProgress = bst_progress('isVisible');
-    if ~isProgress
+    if isProgress
         bst_progress('stop');
     end
     
