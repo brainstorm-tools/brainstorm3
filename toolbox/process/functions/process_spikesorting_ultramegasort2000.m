@@ -108,6 +108,25 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         error(errMsg);
     end
     
+    % Prepare parallel pool, if requested
+    if sProcess.options.paral.Value
+        try
+            poolobj = gcp('nocreate');
+            if isempty(poolobj)
+                isProgress = bst_progress('isVisible');
+                if isProgress
+                    bst_progress('start', 'UltraMegaSort2000', 'Starting parallel pool');
+                end
+                parpool;
+            end
+        catch
+            sProcess.options.paral.Value = 0;
+            poolobj = [];
+        end
+    else
+        poolobj = [];
+    end    
+    
     % Compute on each raw input independently
     for i = 1:length(sInputs)
         [fPath, fBase] = bst_fileparts(sInputs(i).FileName);
@@ -126,27 +145,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sProcess.options.binsize.Value{1} * 1e9, ...
             sProcess.options.paral.Value);
         
-        % Prepare parallel pool, if requested
-        if sProcess.options.paral.Value
-            try
-                poolobj = gcp('nocreate');
-                if isempty(poolobj)
-                    parpool;
-                end
-            catch
-                sProcess.options.paral.Value = 0;
-                poolobj = [];
-            end
-        else
-            poolobj = [];
-        end
-        
         %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_ums2k_spikes']);
         
         % Clear if directory already exists
         if exist(outputPath, 'dir') == 7
-            rmdir(outputPath, 's');
+            try
+                rmdir(outputPath, 's');
+            catch
+                error('Couldnt remove spikes folder. Make sure the current directory is not that folder.')
+            end
         end
         mkdir(outputPath);
         
@@ -177,12 +185,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             for ielectrode = 1:numChannels
                 do_UltraMegaSorting(sFiles{ielectrode}, sFile, sProcess.options.lowpass, sProcess.options.highpass, Fs);
-                bst_progress('inc', 1);
+                if isProgress
+                    bst_progress('inc', 1);
+                end
             end
         end
         
         %%%%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
-        bst_progress('text', 'Saving events file...');
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            bst_progress('start', 'UltraMegaSort2000', 'Gathering spiking events...');
+        end
+
         cd(previous_directory);
         
         % Delete existing spike events
@@ -219,6 +233,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
             DataMat.Spikes(iSpike).Name = ChannelMat.Channel(iSpike).Name;
             DataMat.Spikes(iSpike).Mod  = 0;
+        end
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            bst_progress('start', 'UltraMegaSort2000', 'Saving events file...');
         end
         % Save events file for backup
         SaveBrainstormEvents(DataMat, 'events_UNSUPERVISED.mat');

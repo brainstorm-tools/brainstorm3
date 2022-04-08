@@ -137,23 +137,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %% %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_kilosort_spikes']);
-        
+       
         % Clear if directory already exists
         if exist(outputPath, 'dir') == 7
             try
                 rmdir(outputPath, 's');
             catch
-                cd ..
-                try
-                	rmdir(outputPath, 's');
-                catch
-                	error('Couldnt remove spikes folder. Make sure the current directory is not that folder or that Klusters is not open.')
-                end
+            	error('Couldnt remove spikes folder. Make sure the current directory is not that folder or that Klusters is not open.')
             end
         end
-        
         mkdir(outputPath);
-        
+                
         %% Prepare the ChannelMat File
         % This is a file that just contains information for the location of
         % the electrodes.

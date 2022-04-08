@@ -121,11 +121,17 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
                 'Make sure you remove the DC offset before resampling; EEGLAB function does not work well when the signals are not centered.']);
         end
 
-        % Prepare parallel pool, if requested
+       
+        
+        %% Prepare parallel pool, if requested
         if sProcess.options.paral.Value
             try
                 poolobj = gcp('nocreate');
                 if isempty(poolobj)
+                    isProgress = bst_progress('isVisible');
+                    if isProgress
+                        bst_progress('start', 'Convert RAW file to LFP', 'Starting parallel pool');
+                    end
                     parpool;
                 end
             catch
@@ -135,9 +141,16 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         else
             poolobj = [];
         end
+        
 
         %% Check if the files are separated per channel. If not do it now.
         % These files will be converted to LFP right after
+        
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            bst_progress('start', 'Convert RAW file to LFP', 'Demultiplexing raw file');
+        end
+        
         sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
         % Load full input file
         sMat = in_bst(sInput.FileName, [], 0);
@@ -211,8 +224,17 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         % The sFileOut is what will be the final 
         [sFileOut, errMsg] = out_fopen(RawFileOut, RawFileFormat, sFileTemplate, ChannelMat);
         
+        %% Initialize progress bar
+        isProgress = bst_progress('isVisible');
+        if isProgress
+            if sProcess.options.paral.Value
+                bst_progress('start', 'Raw2LFP', 'Converting raw signals to LFP...');
+            else
+                bst_progress('start', 'Raw2LFP', 'Converting raw signals to LFP...', 0, (sProcess.options.paral.Value == 0) * nChannels);
+            end
+        end
+            
         %% Filter and derive LFP
-        bst_progress('start', 'Spike-sorting', 'Converting RAW signals to LFP...', 0, (sProcess.options.paral.Value == 0) * nChannels);
         if sProcess.options.despikeLFP.Value
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
@@ -221,7 +243,9 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
             else
                 for iChannel = 1:nChannels
                     LFP(iChannel,:) = BayesianSpikeRemoval(sFiles_temp_mat{iChannel}, filterBounds, sMat.F, ChannelMat, cleanChannelNames, notchFilterFreqs, LFP_fs);
-                    bst_progress('inc', 1);
+                    if isProgress
+                        bst_progress('inc', 1);
+                    end
                 end
             end
         else
@@ -232,12 +256,14 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
             else
                 for iChannel = 1:nChannels
                     LFP(iChannel,:) = filter_and_downsample(sFiles_temp_mat{iChannel}, Fs, filterBounds, notchFilterFreqs, LFP_fs);
-                    bst_progress('inc', 1);
+                    if isProgress
+                        bst_progress('inc', 1);
+                    end
                 end
             end
         end
         
-        % WRITE OUT
+        %% WRITE OUT
         sFileOut = out_fwrite(sFileOut, ChannelMatOut, [], [], [], LFP);
 
         % Import the RAW file in the database viewer and open it immediately
@@ -253,6 +279,11 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         OutputFiles{end + 1} = RawNewFile;
         delete(RawFile);
         db_reload_studies(iStudy);
+    end
+    
+    isProgress = bst_progress('isVisible');
+    if isProgress
+        bst_progress('stop');
     end
 end
 

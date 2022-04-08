@@ -107,7 +107,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         try
             poolobj = gcp('nocreate');
             if isempty(poolobj)
-                bst_progress('text', 'Starting parallel pool');
+                isProgress = bst_progress('isVisible');
+                if isProgress
+                    bst_progress('start', 'WaveClus', 'Starting parallel pool');
+                end
                 parpool;
             end
         catch
@@ -139,7 +142,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Clear if directory already exists
         if exist(outputPath, 'dir') == 7
-            rmdir(outputPath, 's');
+            try
+                rmdir(outputPath, 's');
+            catch
+                error('Couldnt remove spikes folder. Make sure the current directory is not that folder.')
+            end
         end
         mkdir(outputPath);
         
@@ -166,7 +173,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'})
                     Get_spikes(sFiles{ielectrode});
                 end
-                bst_progress('inc', 1);
+                if isProgress
+                    bst_progress('inc', 1);
+                end
             end
         end
 
@@ -257,7 +266,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     isProgress = bst_progress('isVisible');
-    if ~isProgress
+    if isProgress
         bst_progress('stop');
     end
 end

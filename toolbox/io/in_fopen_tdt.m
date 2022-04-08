@@ -48,7 +48,7 @@ Comment = DataFolder;
 
 %% ===== READ DATA HEADERS =====
 isProgress = bst_progress('isVisible');
-if ~isProgress
+if isProgress
     bst_progress('start', 'TDT', 'Reading headers...');
 end
 
@@ -306,7 +306,7 @@ end
 sFile = import_events(sFile, [], events);
 
 isProgress = bst_progress('isVisible');
-if ~isProgress
+if isProgress
     bst_progress('stop');
 end
 
