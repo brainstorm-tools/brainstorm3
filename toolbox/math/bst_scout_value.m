@@ -272,19 +272,13 @@ function [F, explained] = PcaFirstMode(F)
     [U,S,V] = svd(F, 'econ');
     S = diag(S);
     explained = S(1).^2 / sum(S.^2);
-    % Find where the first component projects the most over original dimensions
-    [tmp__, nmax] = max(abs(U(:,1))); 
-    % What's the sign of absolute max amplitude along this dimension?
-    [tmp__, i_omaxx] = max(abs(F(nmax,:)));
-    sign_omaxx = sign(F(nmax,i_omaxx));
-    % Sign of maximum in first component time series
-    [Vmaxx, i_Vmaxx] = max(abs(V(:,1)));
-    sign_Vmaxx = sign(V(i_Vmaxx,1));
-    % Reconcile signs
-    F = sign_Vmaxx * sign_omaxx * S(1) * V(:,1)';
+    % Correct sign of the first PC
+    sign_Vcorr = sign(mean(F,1) * V(:,1));
+    F = sign_Vcorr * S(1) * V(:,1)';
     % Add the weighted average back to the signal
     % The mean is tderived from the original signal averages weighted by their respective contributions to the first singular vector
-    F = F + sign_Vmaxx * sign_omaxx * U(:,1)' * Fmean;
+    F = F + sign_Vcorr * U(:,1)' * Fmean;
+
 end
 
 
