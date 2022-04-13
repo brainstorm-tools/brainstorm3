@@ -2306,6 +2306,8 @@ switch (lower(action))
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
                     end
+                else
+                    gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes), 'erpimage', 'none'));
                 end
                 % Export to file
                 if strcmpi(nodeType, 'matrix')
@@ -2314,7 +2316,7 @@ switch (lower(action))
                 
 %% ===== POPUP: MATRIX LIST =====
             case 'matrixlist'
-                % Nothing for now
+                gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'matrix'), 'erpimage', 'none'));
         end
         
 %% ===== POPUP: COMMON MENUS =====
