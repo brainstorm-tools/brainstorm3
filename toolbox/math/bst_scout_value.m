@@ -274,6 +274,8 @@ function [F, explained] = PcaFirstMode(F)
     explained = S(1).^2 / sum(S.^2);
     % Correct sign of the first PC
     sign_Vcorr = sign(mean(F,1) * V(:,1));
+    % Scale power of the first PC to match average power in F 
+    S = sqrt(sum(S.^2) / size(F,1));
     F = sign_Vcorr * S(1) * V(:,1)';
     % Add the weighted average back to the signal
     % The mean is tderived from the original signal averages weighted by their respective contributions to the first singular vector
