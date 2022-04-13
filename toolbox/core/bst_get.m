@@ -222,7 +222,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
@@ -3033,6 +3033,7 @@ switch contextName
             'WhiteBackground', 0, ...
             'ShowRefLines',    1, ...
             'ShowLegend',      1, ...
+            'FlipYAxis',       0, ...
             'ContourLines',    10);
         argout1 = FillMissingFields(contextName, defPref);
         

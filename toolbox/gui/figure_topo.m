@@ -22,7 +22,7 @@ function varargout = figure_topo( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 eval(macro_method);
 end
@@ -777,6 +777,10 @@ function CreateTopo2dLayout(iDS, iFig, hAxes, Channel, Vertices, modChan)
     end
     % Get 2DLayout display options
     TopoLayoutOptions = bst_get('TopoLayoutOptions');
+    % Flip Y axis if needed
+    if TopoLayoutOptions.FlipYAxis
+        F = cellfun(@(c)times(c,-1), F, 'UniformOutput', 0);
+    end
     % Default time window: all the window
     if isempty(TopoLayoutOptions.TimeWindow)
         TopoLayoutOptions.TimeWindow = GlobalData.UserTimeWindow.Time;
@@ -1471,6 +1475,9 @@ function SetTopoLayoutOptions(option, value)
             isLayout = 1;
         case 'ShowLegend'
             TopoLayoutOptions.ShowLegend = value;
+            isLayout = 1;
+        case 'FlipYAxis'
+            TopoLayoutOptions.FlipYAxis = value;
             isLayout = 1;
         case 'ContourLines'
             TopoLayoutOptions.ContourLines = value;
