@@ -106,11 +106,11 @@ if ~LFP_label_exists
     LFP_label_exists = 1;
     
     if isempty(data_new.streams)
-        bst_error('The selected stream is empty')
+        error('The selected stream is empty');
     end
     
     if isempty(indx)
-        bst_error('No stream was selected')
+        error('No stream was selected');
     end
 end
     
