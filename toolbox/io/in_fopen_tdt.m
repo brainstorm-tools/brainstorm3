@@ -47,10 +47,7 @@ hdr.BaseFolder = DataFolder;
 Comment = DataFolder;
 
 %% ===== READ DATA HEADERS =====
-isProgress = bst_progress('isVisible');
-if isProgress
-    bst_progress('start', 'TDT', 'Reading headers...');
-end
+bst_progress('text', 'TDT: Reading headers...');
 
 % Load one second segment to see what type of signals exist in this dataset
 % Use as general sampling rate the rate of the HIGHEST sampled signal
@@ -170,7 +167,7 @@ end
 
 %% Check for acquisition events
 
-bst_progress('text', 'Collecting acquisition events...');
+bst_progress('text', 'TDT: Collecting acquisition events...');
 
 disp('Getting Acquisition System events')
 NO_data = TDTbin2mat(DataFolder, 'TYPE', 2); % Just load epocs / events
@@ -229,7 +226,7 @@ end
 check_for_spikes = 1;
 
 if check_for_spikes
-    bst_progress('text', 'Collecting spiking events...');
+    bst_progress('text', 'TDT: Collecting spiking events...');
     NO_data = TDTbin2mat(DataFolder, 'TYPE', 3); % Just load spikes
     are_there_spikes = ~isempty(NO_data.snips);
 else
@@ -304,10 +301,5 @@ end
 
 % Import this list
 sFile = import_events(sFile, [], events);
-
-isProgress = bst_progress('isVisible');
-if isProgress
-    bst_progress('stop');
-end
 
 end
