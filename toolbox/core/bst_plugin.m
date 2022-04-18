@@ -2287,7 +2287,6 @@ function MenuUpdate(jPlugs)
         % Is installed?
         PlugRef = GetSupported(PlugName);
         Plug = GetInstalled(PlugName);
-
         if ~isempty(Plug)
             isInstalled = 1;
         elseif ~isempty(PlugRef)
