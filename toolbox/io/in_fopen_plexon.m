@@ -54,11 +54,6 @@ Comment = rawFile;
 
 
 %% ===== READ DATA HEADERS =====
-isProgress = bst_progress('isVisible');
-if isProgress
-    bst_progress('start', 'Plexon importer', 'Reading header');
-end
-
 hdr.chan_headers = {};
 hdr.chan_files = {};
 hdr.extension = plexonFormat;
@@ -75,7 +70,7 @@ all_Channel_names = cellstr(all_Channel_names); % Convert to cell so it can be u
 channelsWithTimeseriesNames = all_Channel_names(channels_with_timetraces);
 
 %% ===== CREATE CHANNEL FILE =====
-bst_progress('text', 'Creating channel file');
+bst_progress('text', 'Plexon: Creating channel file');
 
 all_signalTypesWithoutNumbers = regexprep(all_Channel_names,'[\d"]','')';
 signalTypesWithoutNumbers = regexprep(channelsWithTimeseriesNames,'[\d"]','')';
@@ -161,11 +156,6 @@ sFile.channelflag = ones(hdr.ChannelCount, 1);
 names = cellstr(names); % Convert to cell so it can be used in regexprep
 iPresentEvents = find(logical(evcounts));
 
-isProgress = bst_progress('isVisible');
-if isProgress
-    bst_progress('start', 'Plexon importer', 'Gathering acquisition events', 0, length(iPresentEvents));
-end
-
 % Read the events
 if ~isempty(iPresentEvents)
        
@@ -179,7 +169,8 @@ if ~isempty(iPresentEvents)
 
     % Store in Brainstorm event structure
     for iEvt = 1:length(iPresentEvents)
-
+        bst_progress('text', sprintf('Plexon: Acquisition events [%d/%d]', iEvt, length(iPresentEvents)));
+        
         % Get event times
         [n, ts, sv] = plx_event_ts(DataFile, evchans(iPresentEvents(iEvt)));
         times = ts; % In seconds
@@ -192,8 +183,6 @@ if ~isempty(iPresentEvents)
         events(iEvt).select     = 1;
         events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
         events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
-        
-        bst_progress('inc', 1);
     end
     % Import this list
     sFile = import_events(sFile, [], events);
@@ -202,14 +191,9 @@ end
 
 %% Read the Spikes events
 if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes exist and not analog input selected
-        
+    iEvt = 0;
     nUnique_events = sum(sum(spikes_tscounts(2:end,2:end)>0)); % First row of spike_tscounts is unsorted spikes. First column of spikes_tscounts is ignored
-    
-    isProgress = bst_progress('isVisible');
-    if isProgress
-        bst_progress('start', 'Plexon importer', 'Gathering spiking events', 0, nUnique_events);
-    end
-    
+        
     % Initialize list of events
     events = repmat(db_template('event'), 1, nUnique_events);
     iEnteredEvent = 1;
@@ -222,6 +206,9 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
 
         for iNeuron = 1:nNeurons
             if spikes_tscounts(iNeuron+1, iChannel+1)>0
+                iEvt = iEvt + 1;
+                bst_progress('text', sprintf('Plexon: Spiking events [%d/%d]', iEvt, nUnique_events));
+                
                 if nNeurons>1
                     event_label_postfix = [' |' num2str(iNeuron) '|'];
                 else
@@ -241,20 +228,12 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
                 events(iEnteredEvent).channels   = repmat({{all_Channel_names{iChannels_selected(iChannel)}}}, 1, size(events(iEnteredEvent).times, 2));
 
                 iEnteredEvent = iEnteredEvent + 1;
-                
-                bst_progress('inc', 1);
-
             end
         end
     end
 
     % Import this list
     sFile = import_events(sFile, [], events);
-end
-
-isProgress = bst_progress('isVisible');
-if isProgress
-    bst_progress('stop');
 end
 
 end
