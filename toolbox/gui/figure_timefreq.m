@@ -1384,7 +1384,7 @@ function ConfigureAxes(hAxes, Time, FullTimeVector, Freqs, TfInfo, MinMaxVal, Lo
     elseif ~isempty(strfind(lower(TfInfo.FileName), 'rasterplot'))
         xlabel(hAxes, 'Time (s)');
         ylabel(hAxes, 'Trials');
-    elseif ~isempty(strfind(lower(TfInfo.FileName), 'spiking_phase_locking`'))
+    elseif ~isempty(strfind(lower(TfInfo.FileName), 'spiking_phase_locking'))
         xlabel(hAxes, ' ');
         ylabel(hAxes, ' ');
     else
