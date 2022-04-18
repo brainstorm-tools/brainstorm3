@@ -268,6 +268,8 @@ strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
 zipFile = fullfile(deployDir, ['bst_bin_' ReleaseName '_' strDate '.zip']);
 % Zip folder
 zip(zipFile, baseDir, fileparts(baseDir));
+% Display output file
+disp(['COMPILE> Package: ' zipFile]);
 % Delete newly created dir
 try
     rmdir(baseDir, 's');

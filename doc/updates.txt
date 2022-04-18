@@ -1,3 +1,6 @@
+April 2022
+- 2D Layout: Added option "Flip Y axis"
+- Distrib: Compilation with Matlab 2022a
 --------------------------------------------------------------
 March 2022
 - Connectivity: Corticomuscular coherence tutorial
