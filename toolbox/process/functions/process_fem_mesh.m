@@ -231,7 +231,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     gui_brainstorm('EmptyTempFolder');
 
     % ===== GET T1/T2 MRI =====
-    [sSubject, T1File, T2File, errMsg] = GetT1T2(iSubject, iMris);
+    [sSubject, T1File, T2File, errMsg, iT1] = GetT1T2(iSubject, iMris);
     if ~isempty(errMsg)
         return;
     end
@@ -951,11 +951,13 @@ end
 
 
 %% ===== GET T1/T2 MRI =====
-% USAGE:  [sSubject, T1File, T2File, errMsg] = GetT1T2(iSubject, iMris=[])
-function [sSubject, T1File, T2File, errMsg] = GetT1T2(iSubject, iMris)
+% USAGE:  [sSubject, T1File, T2File, errMsg, iT1, iT2] = GetT1T2(iSubject, iMris=[])
+function [sSubject, T1File, T2File, errMsg, iT1, iT2] = GetT1T2(iSubject, iMris)
     % Initialize returned variables
     T1File = [];
     T2File = [];
+    iT1 = [];
+    iT2 = [];
     errMsg = [];
     % Parse inputs
     if (nargin < 2) || isempty(iMris)
