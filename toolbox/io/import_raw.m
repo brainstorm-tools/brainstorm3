@@ -118,6 +118,7 @@ end
 %% ===== IMPORT =====
 iOutputStudy = [];
 isSSP = 0;
+Tolerance = [];
 % Loop on the files to import
 for iFile = 1:length(RawFiles)
     % ===== OPENING FILE =====
@@ -282,7 +283,7 @@ for iFile = 1:length(RawFiles)
         % Channel structure loaded from file
         else
             % Add channel file to database
-            [ChannelFile, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign, Modality] = db_set_channel(iChannelStudy, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign);
+            [ChannelFile, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign, Modality, Tolerance] = db_set_channel(iChannelStudy, ChannelMat, ImportOptions.ChannelReplace, ImportOptions.ChannelAlign, Tolerance);
             % If loading SEEG or ECOG data: change the sensor type
             if ismember(FileFormat, {'SEEG-ALL', 'ECOG-ALL'})
                 Mod = strrep(FileFormat, '-ALL', '');
