@@ -98,10 +98,7 @@ total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
 
-isProgress = bst_progress('isVisible');
-if ~isProgress
-    bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);
-end
+bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);
 
 sFiles = {};
 for iChannel = 1:numChannels
@@ -157,15 +154,13 @@ end
 
 
 %% Convert binary files per channel to Matlab files
-isProgress = bst_progress('isVisible');
-if ~isProgress
-    bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
-end
 if parallel
+    bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...');
     parfor iChannel = 1:numChannels
         convert2mat(sFiles{iChannel}, sr, precision);
     end
 else
+    bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
     for iChannel = 1:numChannels
         convert2mat(sFiles{iChannel}, sr, precision);
         bst_progress('inc', 1);

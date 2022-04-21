@@ -28,7 +28,9 @@ function varargout = process_spikesorting_waveclus( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018-2019, 2022; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2022
+%          Martin Cousineau, 2018
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
@@ -51,24 +53,28 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.spikesorter.Type   = 'text';
     sProcess.options.spikesorter.Value  = 'waveclus';
     sProcess.options.spikesorter.Hidden = 1;
+    % Procesing options
     sProcess.options.binsize.Comment = 'Maximum RAM to use: ';
     sProcess.options.binsize.Type    = 'value';
     sProcess.options.binsize.Value   = {2, 'GB', 1};
-    sProcess.options.paral.Comment = 'Parallel processing';
-    sProcess.options.paral.Type    = 'checkbox';
-    sProcess.options.paral.Value   = 0;
-    sProcess.options.make_plots.Comment = 'Create images';
+    sProcess.options.parallel.Comment = 'Parallel processing';
+    sProcess.options.parallel.Type    = 'checkbox';
+    sProcess.options.parallel.Value   = 0;
+    sProcess.options.make_plots.Comment = 'Save images of the clustered spikes';
     sProcess.options.make_plots.Type    = 'checkbox';
     sProcess.options.make_plots.Value   = 0;
-    % Channel name comment
-    sProcess.options.make_plotshelp.Comment = '<I><FONT color="#777777">This saves images of the clustered spikes</FONT></I>';
-    sProcess.options.make_plotshelp.Type    = 'label';
+    % Separator
+    sProcess.options.sep1.Type = 'label';
+    sProcess.options.sep1.Comment = '<BR>';
     % Options: Options
-    sProcess.options.edit.Comment = {'panel_spikesorting_options', '<U><B>Parameters</B></U>: '};
+    sProcess.options.edit.Comment = {'panel_spikesorting_options', 'Waveclus parameters: '};
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
-    % Show warning that pre-spikesorted events will be overwritten
-    sProcess.options.warning.Comment = '<B><FONT color="#FF0000">Spike Events created from the acquisition system will be overwritten</FONT></B>';
+    % Label: Reset options
+    sProcess.options.edit_help.Comment = '<I><FONT color="#777777">To restore default options: re-install the waveclus plugin.</FONT></I>';
+    sProcess.options.edit_help.Type    = 'label';
+    % Label: Warning that pre-spikesorted events will be overwritten
+    sProcess.options.warning.Comment = '<BR><B><FONT color="#FF0000">Warning: Existing spike events will be overwritten</FONT></B>';
     sProcess.options.warning.Type    = 'label';
 end
 
@@ -82,63 +88,44 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    ProtocolInfo = bst_get('ProtocolInfo');
     
     % Not available in the compiled version
     if bst_iscompiled()
         bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
         return
     end
-    
-    if sProcess.options.binsize.Value{1} <= 0
-        bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
-        return
-    end
-    
-    
-    %% Load plugin
+    % Load plugin
     [isInstalled, errMsg] = bst_plugin('Install', 'waveclus');
     if ~isInstalled
         error(errMsg);
     end
-    
-    % Prepare parallel pool, if requested
-    if sProcess.options.paral.Value
-        try
-            poolobj = gcp('nocreate');
-            if isempty(poolobj)
-                isProgress = bst_progress('isVisible');
-                if isProgress
-                    bst_progress('start', 'WaveClus', 'Starting parallel pool');
-                end
-                parpool;
-            end
-        catch
-            sProcess.options.paral.Value = 0;
-            poolobj = [];
-        end
-    else
-        poolobj = [];
+
+    % Get option: bin size
+    BinSize = sProcess.options.binsize.Value{1};
+    if (BinSize <= 0)
+        bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
+        return
     end
+    % Get other options
+    isParallel = sProcess.options.parallel.Value;
     
     % Compute on each raw input independently
     for i = 1:length(sInputs)
-        [fPath, fBase] = bst_fileparts(sInputs(i).FileName);
+        [fPath, fBase] = bst_fileparts(file_fullpath(sInputs(i).FileName));
         % Remove "data_0raw" or "data_" tag
         if (length(fBase) > 10 && strcmp(fBase(1:10), 'data_0raw_'))
             fBase = fBase(11:end);
         elseif (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
             fBase = fBase(6:end);
         end
-        
+
+        % Load input files
         ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
         numChannels = length(ChannelMat.Channel);
-        sFiles = in_spikesorting_rawelectrodes(sInputs(i), ...
-            sProcess.options.binsize.Value{1} * 1e9, ...
-            sProcess.options.paral.Value);
+        sFiles = in_spikesorting_rawelectrodes(sInputs(i), BinSize * 1e9, isParallel);
         
         %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
-        outputPath = bst_fullfile(ProtocolInfo.STUDIES, fPath, [fBase '_waveclus_spikes']);
+        outputPath = bst_fullfile(fPath, [fBase '_waveclus_spikes']);
         
         % Clear if directory already exists
         if exist(outputPath, 'dir') == 7
@@ -150,40 +137,32 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         mkdir(outputPath);
         
-        %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
-        isProgress = bst_progress('isVisible');
-        if sProcess.options.paral.Value && isProgress
-            bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
-        elseif isProgress
-            bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
-        end
-        
-        % The Get_spikes saves the _spikes files at the current directory.
+        %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%        
+        % The function Get_spikes saves the _spikes files at the current directory
         previous_directory = pwd;
         cd(outputPath);
-
-        if sProcess.options.paral.Value  
+        if isParallel
+            bst_progress('start', 'Spike-sorting', 'Extracting spikes...');
             parfor ielectrode = 1:numChannels
                 if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'}) % Perform spike sorting only on the channels that are (S)EEG
                     Get_spikes(sFiles{ielectrode});
                 end
             end
         else
+            bst_progress('start', 'Spike-sorting', 'Extracting spikes...', 0, numChannels);
             for ielectrode = 1:numChannels
                 if ismember(upper(ChannelMat.Channel(ielectrode).Type), {'EEG', 'SEEG'})
                     Get_spikes(sFiles{ielectrode});
                 end
-                if isProgress
-                    bst_progress('inc', 1);
-                end
+                bst_progress('inc', 1);
             end
         end
 
         %%%%%%%%%%%%%%%%%%%%%% Do the clustering %%%%%%%%%%%%%%%%%%%%%%%%%%
-        bst_progress('text', 'Clustering detected spikes...');
+        bst_progress('start', 'Spike-sorting', 'Clustering detected spikes...');
         
         % The optional inputs in Do_clustering have to be true or false, not 1 or 0
-        if sProcess.options.paral.Value
+        if isParallel
             parallel = true;
         else
             parallel = false;
@@ -193,7 +172,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         else
             make_plots = false;
         end
-        
         % Do the clustering
         Do_clustering(1:numChannels, 'parallel', parallel, 'make_plots', make_plots);
         
@@ -206,7 +184,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % ===== SAVE LINK FILE =====
         % Build output filename
-        NewBstFilePrefix = bst_fullfile(ProtocolInfo.STUDIES, fPath, ['data_0ephys_wclus_' fBase]);
+        NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_wclus_' fBase]);
         NewBstFile = [NewBstFilePrefix '.mat'];
         iFile = 1;
         commentSuffix = '';
@@ -218,15 +196,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Build output structure
         DataMat = struct();
         DataMat.Comment     = ['WaveClus Spike Sorting' commentSuffix];
-        DataMat.DataType    = 'raw';%'ephys';
+        DataMat.DataType    = 'raw';
         DataMat.Device      = 'waveclus';
         DataMat.Name        = NewBstFile;
         DataMat.Parent      = outputPath;
         DataMat.RawFile     = sInputs(i).FileName;
         DataMat.Spikes      = struct();
-        % Build spikes structure
-        spikes = dir(bst_fullfile(outputPath, 'raw_elec*_spikes.mat'));
-        spikes = sort_nat({spikes.name});
         % New channelNames - Without any special characters.
         cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
         for iChannel = 1:length(cleanChannelNames)
@@ -246,7 +221,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Save file on hard drive
         bst_save(NewBstFile, DataMat, 'v6');
         % Add file to database
-        sOutputStudy = db_add_data(sInputs(i).iStudy, NewBstFile, DataMat);
+        db_add_data(sInputs(i).iStudy, file_short(NewBstFile), DataMat);
         % Return new file
         OutputFiles{end+1} = NewBstFile;
 
@@ -254,23 +229,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Update links
         db_links('Study', sInputs(i).iStudy);
         panel_protocols('UpdateNode', 'Study', sInputs(i).iStudy);
-    end
-    
-    %%%%%%%%%%%%%%%%%%%%%%   Prepare to exit    %%%%%%%%%%%%%%%%%%%%%%%
-    % Turn off parallel processing and return to the initial directory
-
-    if sProcess.options.paral.Value
-        if ~isempty(poolobj)
-            delete(poolobj);
-        end
-    end
-    
-    isProgress = bst_progress('isVisible');
-    if isProgress
-        bst_progress('stop');
-    end
+    end    
 end
 
+
+%% ===== SAVE BRAINSTORM EVENTS =====
 function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     if nargin < 3
         eventNamePrefix = '';
