@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -69,7 +69,7 @@ filenameRelative = char(bstNodes(1).getFileName());
 switch lower(nodeType)
     case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy', 'volatlas'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
-    case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
+    case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix', 'spike'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
     case 'link'
         filenameFull = filenameRelative;
@@ -257,11 +257,7 @@ switch (lower(action))
             % ===== DATA =====
             % View data file (MEG and EEG)
             case {'data', 'pdata', 'rawdata'}
-                if ~isempty(strfind(filenameRelative, '_0ephys_'))
-                    bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []);
-                else
-                    view_timeseries(filenameRelative);
-                end
+                view_timeseries(filenameRelative);
 
             % ===== DATA/MATRIX LIST =====
             % Expand node
@@ -307,6 +303,10 @@ switch (lower(action))
                 % Display on existing figures
                 view_dipoles(filenameFull);
                 
+            % ===== SPIKES =====
+            case 'spike'
+                bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []);
+
             % ===== TIME-FREQUENCY =====
             case {'timefreq', 'ptimefreq'}
                 % Get study
@@ -1829,7 +1829,11 @@ switch (lower(action))
                 else
                     gui_component('MenuItem', jPopup, [], 'Merge dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)dipoles_merge(GetAllFilenames(bstNodes)));
                 end
-                
+
+%% ===== POPUP: SPIKE =====
+            case 'spike'
+                gui_component('MenuItem', jPopup, [], 'Supervised spike sorting', IconLoader.ICON_SPIKE_SORTING, [], @(h,ev)bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []));
+
 %% ===== POPUP: TIME-FREQ =====
             case {'timefreq', 'ptimefreq'}
                 % Get study description
@@ -2334,7 +2338,7 @@ switch (lower(action))
                 gui_component('MenuItem', jMenuFile, [], 'View file history', IconLoader.ICON_MATLAB, [], @(h,ev)bst_history('view', filenameFull));
             end
             % ===== VIEW HISTOGRAM =====
-            if isfile && ~ismember(nodeType, {'subject', 'study', 'studysubject', 'condition', 'rawcondition', 'datalist', 'matrixlist', 'image', 'channel', 'rawdata', 'dipoles', 'mri', 'surface', 'cortex', 'anatomy', 'head', 'innerskull', 'outerskull', 'other'})
+            if isfile && ~ismember(nodeType, {'subject', 'study', 'studysubject', 'condition', 'rawcondition', 'datalist', 'matrixlist', 'image', 'channel', 'rawdata', 'dipoles', 'mri', 'surface', 'cortex', 'anatomy', 'head', 'innerskull', 'outerskull', 'spike', 'other'})
                 gui_component('MenuItem', jMenuFile, [], 'View histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_histogram(GetAllFilenames(bstNodes)));
             end
             if (jMenuFile.getMenuComponentCount() > 0)
@@ -2802,8 +2806,6 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                     jMenuType = jMenuBs;
                 elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
                     jMenuType = jMenuBp;
-                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
-                    jMenuType = jMenuBs;
                 elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
                     jMenuType = jMenuEgi;
                 elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))

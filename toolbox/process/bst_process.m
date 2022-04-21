@@ -1523,7 +1523,7 @@ function sInputs = GetInputStruct(FileNames)
         end
         % Look for items in database
         switch (FileType)
-            case 'data'
+            case {'data', 'spike'}
                 [tmp, iDb, iList] = intersect({sStudy.Data.FileName}, GroupFileNames);
                 sItems = sStudy.Data(iDb);
                 if ~isempty(sItems) && strcmpi(sItems(1).DataType, 'raw')

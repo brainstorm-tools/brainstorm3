@@ -46,7 +46,7 @@ function [ sStudy ] = db_parse_study( studiesDir, studySubDir, sizeProgress )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2012
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== PARSE INPUTS =====
 if ~file_exist(bst_fullfile(studiesDir, studySubDir))
@@ -207,7 +207,7 @@ for iFile = 1:length(dirFiles)
                     sStudy(1).NoiseCov(2) = noisecovInfo;
                 end
                 
-            case 'data'
+            case {'data', 'spike'}
 %                 % Get data filename without the trial block
 %                 [groupName, iTrial] = str_remove_trial(filenameRelative);
 %                 dataInfo = [];
