@@ -7,8 +7,6 @@ function varargout = process_spikesorting_kilosort( varargin )
 % for each electrode that can be used later for supervised spike-sorting.
 % When all spikes on all electrodes have been clustered, all the spikes for
 % each neuron is assigned to an events file in brainstorm format.
-%
-% USAGE: OutputFiles = process_spikesorting_kilosort('Run', sProcess, sInputs)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -37,10 +35,10 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
     sProcess.Comment     = 'KiloSort';
-    sProcess.Category    = 'Custom';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = {'Electrophysiology','Unsupervised Spike Sorting'};
     sProcess.Index       = 1203;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/SpikeSorting';
@@ -83,41 +81,42 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInput)
     OutputFiles = {};
 
+    % ===== DEPENDENCIES =====
     % Not available in the compiled version
     if bst_iscompiled()
         error('This function is not available in the compiled version of Brainstorm.');
     end
     % Check for the Signal Processing toolbox
     if ~bst_get('UseSigProcToolbox')
-        bst_report('Error', sProcess, sInputs, 'This process requires the Signal Processing Toolbox.');
+        bst_report('Error', sProcess, sInput, 'This process requires the Signal Processing Toolbox.');
         return;
     end
     % Check for the Statistics toolbox
     if exist('cvpartition', 'file') ~= 2
-        bst_report('Error', sProcess, sInputs, 'This process requires the Statistics and Machine Learning Toolbox.');
+        bst_report('Error', sProcess, sInput, 'This process requires the Statistics and Machine Learning Toolbox.');
         return;
     end
     % Check for the Parallel Computing toolbox (external dependencies - Kilosort2NeuroSuite in kilosort-wrapper)
     if (exist('matlabpool', 'file') ~= 2) && (exist('parpool', 'file') ~= 2)
-        bst_report('Error', sProcess, sInputs, 'This process requires the Parallel Computing Toolbox.');
+        bst_report('Error', sProcess, sInput, 'This process requires the Parallel Computing Toolbox.');
         return;
     end
-    
     % Load plugin
     [isInstalled, errMsg] = bst_plugin('Install', 'kilosort');
     if ~isInstalled
         error(errMsg);
     end
     
+    % ===== OPTIONS =====
     % Get options
     BinSize = sProcess.options.binsize.Value{1};
     UseSsp = sProcess.options.usessp.Value;
@@ -125,253 +124,253 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     KilosortStandardConfig();
     ops.GPU = sProcess.options.GPU.Value;
     
-    % Compute on each raw input independently
-    for i = 1:length(sInputs)
-        bst_progress('text', 'Kilosort: Reading input files...');
-        [fPath, fBase] = bst_fileparts(file_fullpath(sInputs(i).FileName));
-        % Remove "data_0raw" or "data_" tag
-        if (length(fBase) > 10 && strcmp(fBase(1:10), 'data_0raw_'))
-            fBase = fBase(11:end);
-        elseif (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
-            fBase = fBase(6:end);
-        end
-        
-        % Load input files
-        DataMat = in_bst_data(sInputs(i).FileName, 'F');
-        sFile = DataMat.F;
-        ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
+    % File path
+    bst_progress('text', 'Kilosort: Reading input files...');
+    [fPath, fBase] = bst_fileparts(file_fullpath(sInput.FileName));
+    % Remove "data_0raw" or "data_" tag
+    if (length(fBase) > 10 && strcmp(fBase(1:10), 'data_0raw_'))
+        fBase = fBase(11:end);
+    elseif (length(fBase) > 5) && strcmp(fBase(1:5), 'data_')
+        fBase = fBase(6:end);
+    end
+    
+    % ===== LOAD INPUTS =====
+    % Load input files
+    DataMat = in_bst_data(sInput.FileName, 'F');
+    sFile = DataMat.F;
+    ChannelMat = in_bst_channel(sInput.ChannelFile);
 
-        % Make sure we perform the spike sorting on the channels that have spikes. IS THIS REALLY NECESSARY? it would just take longer
-        numChannels = 0;
-        for iChannel = 1:length(ChannelMat.Channel)
-           if strcmp(ChannelMat.Channel(iChannel).Type,'EEG') || strcmp(ChannelMat.Channel(iChannel).Type,'SEEG')
-              numChannels = numChannels + 1;               
-           end
+    % Make sure we perform the spike sorting on the channels that have spikes. IS THIS REALLY NECESSARY? it would just take longer
+    numChannels = 0;
+    for iChannel = 1:length(ChannelMat.Channel)
+       if strcmp(ChannelMat.Channel(iChannel).Type,'EEG') || strcmp(ChannelMat.Channel(iChannel).Type,'SEEG')
+          numChannels = numChannels + 1;               
+       end
+    end
+    
+    % ===== OUTPUT FOLDER =====    
+    outputPath = bst_fullfile(fPath, [fBase '_kilosort_spikes']);
+    previous_directory = pwd;
+    % If output folder already exists: delete it
+    if exist(outputPath, 'dir') == 7
+        % Move Matlab out of the folder to be deleted
+        if ~isempty(strfind(previous_directory, outputPath))
+            cd(bst_fileparts(outputPath));
         end
-        
-        %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
-        outputPath = bst_fullfile(fPath, [fBase '_kilosort_spikes']);
-        previous_directory = pwd;
-        % If output folder already exists: delete it
-        if exist(outputPath, 'dir') == 7
-            % Move Matlab out of the folder to be deleted
-            if ~isempty(strfind(previous_directory, outputPath))
-                cd(bst_fileparts(outputPath));
-            end
-            % Delete existing output folder
-            try
-                rmdir(outputPath, 's');
-            catch
-            	error(['Could not remove spikes folder: ' 10 outputPath 10 ' Make sure this folder is not open in another program (e.g. Klusters).'])
-            end
+        % Delete existing output folder
+        try
+            rmdir(outputPath, 's');
+        catch
+        	error(['Could not remove spikes folder: ' 10 outputPath 10 ' Make sure this folder is not open in another program (e.g. Klusters).'])
         end
-        % Create output folder
-        mkdir(outputPath);
-                
-        % Prepare the ChannelMat File
-        % This is a file that just contains information for the location of the electrodes.
-        Nchannels = numChannels;
-        connected = true(Nchannels, 1);
-        chanMap   = 1:Nchannels;
-        chanMap0ind = chanMap - 1;
-        
-        % Get the channels in the montage
-        % First check if any montages have been assigned
-        [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);
-        
-        % Adjust the possible clusters based on the number of channels   
-        doubleChannels = 2*max(montageOccurences); % Each Montage will be treated as its own entity.
-        ops.Nfilt = ceil(doubleChannels/32)*32;    % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)
-        
-        
-        % If the coordinates are assigned, convert 3d to 2d
-        if sum(sum([ChannelMat.Channel.Loc]))~=0 % If values are already assigned
-            alreadyAssignedLocations = 1;
-        else
-            alreadyAssignedLocations = 0;
-        end
-        
-        channelsCoords  = zeros(length(Channels),3); % THE 3D COORDINATES
-        
-        if alreadyAssignedLocations
-            for iChannel = 1:length(Channels)
-                for iMontage = 1:length(Montages)
-                    if strcmp(Channels(iChannel).Group, Montages{iMontage})
-                        channelsCoords(iChannel,1:3) = Channels(iChannel).Loc;
-                    end
+    end
+    % Create output folder
+    mkdir(outputPath);
+    
+
+    % ===== DATA CONVERSION =====
+    % Prepare the ChannelMat File
+    % This is a file that just contains information for the location of the electrodes.
+    Nchannels = numChannels;
+    connected = true(Nchannels, 1);
+    chanMap   = 1:Nchannels;
+    chanMap0ind = chanMap - 1;
+    
+    % Get the channels in the montage
+    % First check if any montages have been assigned
+    [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);
+    
+    % Adjust the possible clusters based on the number of channels   
+    doubleChannels = 2*max(montageOccurences); % Each Montage will be treated as its own entity.
+    ops.Nfilt = ceil(doubleChannels/32)*32;    % number of clusters to use (2-4 times more than Nchan, should be a multiple of 32)
+    
+    
+    % If the coordinates are assigned, convert 3d to 2d
+    if sum(sum([ChannelMat.Channel.Loc]))~=0 % If values are already assigned
+        alreadyAssignedLocations = 1;
+    else
+        alreadyAssignedLocations = 0;
+    end
+    
+    channelsCoords = zeros(length(Channels),3); % THE 3D COORDINATES
+    if alreadyAssignedLocations
+        for iChannel = 1:length(Channels)
+            for iMontage = 1:length(Montages)
+                if strcmp(Channels(iChannel).Group, Montages{iMontage})
+                    channelsCoords(iChannel,1:3) = Channels(iChannel).Loc;
                 end
             end
-
-            % APPLY TRANSORMATION TO A FLAT SURFACE (X-Y COORDINATES: IGNORE Z)
-            converted_coordinates = zeros(length(Channels),3);
-            for iMontage = 1:length(Montages)
-                single_array_coords = channelsCoords(channelsMontage==iMontage,:);
-                % SVD approach
-                [U, S, V] = svd(single_array_coords-mean(single_array_coords));
-                lower_rank = 2;% Get only the first two components
-                converted_coordinates(channelsMontage==iMontage,:)=U(:,1:lower_rank)*S(1:lower_rank,1:lower_rank)*V(:,1:lower_rank)'+mean(single_array_coords);
-            end
-
-            xcoords = converted_coordinates(:,1); 
-            ycoords = converted_coordinates(:,2);
-        else 
-            xcoords = (1:length(Channels))';
-            ycoords = ones(length(Channels),1);
         end
-        
-        kcoords = channelsMontage'; % grouping of channels (i.e. tetrode groups)
-        fs = sFile.prop.sfreq; % sampling frequency
 
-        save(bst_fullfile(outputPath, 'chanMap.mat'), ...
-            'chanMap','connected', 'xcoords', 'ycoords', 'kcoords', 'chanMap0ind', 'fs')
-        
-        
-        % Width of the spike-waveforms - NEEDS TO BE EVEN
-        ops.nt0  = 0.0017*fs; % Width of the spike Waveforms. (1.7ms) THIS NEEDS TO BE EVEN. AN ODD VALUE DOESN'T GIVE ANY WAVEFORMS (The Kilosort2Neurosuite Function doesn't accommodate odd numbers)
-        if mod(ops.nt0,2)
-            ops.nt0 =ops.nt0+1;
+        % APPLY TRANSORMATION TO A FLAT SURFACE (X-Y COORDINATES: IGNORE Z)
+        converted_coordinates = zeros(length(Channels),3);
+        for iMontage = 1:length(Montages)
+            single_array_coords = channelsCoords(channelsMontage==iMontage,:);
+            % SVD approach
+            [U, S, V] = svd(single_array_coords-mean(single_array_coords));
+            lower_rank = 2;% Get only the first two components
+            converted_coordinates(channelsMontage==iMontage,:)=U(:,1:lower_rank)*S(1:lower_rank,1:lower_rank)*V(:,1:lower_rank)'+mean(single_array_coords);
         end
-        ops.nt0 = round(ops.nt0); % Rounding error if not force integer here
-        
-        % Case of less neighbors (default config file value) than actual channels
-        % For enabling PHY, make sure the value is less than the maximum
-        % number of channels (maybe equal is also OK, probably not) and not empty.
+
+        xcoords = converted_coordinates(:,1); 
+        ycoords = converted_coordinates(:,2);
+    else 
+        xcoords = (1:length(Channels))';
+        ycoords = ones(length(Channels),1);
+    end
+    
+    kcoords = channelsMontage'; % grouping of channels (i.e. tetrode groups)
+    fs = sFile.prop.sfreq; % sampling frequency
+
+    save(bst_fullfile(outputPath, 'chanMap.mat'), ...
+        'chanMap','connected', 'xcoords', 'ycoords', 'kcoords', 'chanMap0ind', 'fs')
+    
+    
+    % Width of the spike-waveforms - NEEDS TO BE EVEN
+    ops.nt0  = 0.0017*fs; % Width of the spike Waveforms. (1.7ms) THIS NEEDS TO BE EVEN. AN ODD VALUE DOESN'T GIVE ANY WAVEFORMS (The Kilosort2Neurosuite Function doesn't accommodate odd numbers)
+    if mod(ops.nt0,2)
+        ops.nt0 =ops.nt0+1;
+    end
+    ops.nt0 = round(ops.nt0); % Rounding error if not force integer here
+    
+    % Case of less neighbors (default config file value) than actual channels
+    % For enabling PHY, make sure the value is less than the maximum
+    % number of channels (maybe equal is also OK, probably not) and not empty.
 %         ops.nNeighPC = []; % visualization only (Phy): number of channnels to mask the PCs, leave empty to skip (12)		
 %         ops.nNeigh   = [];
-        if ops.nNeighPC > numChannels
-            ops.nNeighPC = numChannels - 1;
-            ops.nNeigh   = numChannels - 1;
-        end
-        
-        % Kilosort outputs a rez.mat file. The supervised part (Klusters) gets as input the rez file, and a .xml file (with parameters).
-        % Create .xml
-        xmlFile = bst_fullfile(outputPath, [fBase '.xml']);
-        CreateXML(ChannelMat, fs, xmlFile, ops);
-        
-        cd(outputPath);
-        
-        % Convert to the right input for KiloSort
-        converted_raw_File = ConvertForKilosort(sInputs(i), BinSize * 1e9, UseSsp); % This converts into int16.
-        
+    if ops.nNeighPC > numChannels
+        ops.nNeighPC = numChannels - 1;
+        ops.nNeigh   = numChannels - 1;
+    end
+    
+    % Kilosort outputs a rez.mat file. The supervised part (Klusters) gets as input the rez file, and a .xml file (with parameters).
+    % Create .xml
+    xmlFile = bst_fullfile(outputPath, [fBase '.xml']);
+    CreateXML(ChannelMat, fs, xmlFile, ops);
+    
+    cd(outputPath);
+    
+    % Convert to the right input for KiloSort
+    converted_raw_File = ConvertForKilosort(sInput, BinSize * 1e9, UseSsp); % This converts into int16.
+    
 
-        %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
-        bst_progress('text', 'Kilosort: Spike-sorting');
-        
-        % Some residual parameters that need the outputPath and the converted Raw signal
-        ops.fbinary  =  converted_raw_File; % will be created for 'openEphys'
-        ops.fproc    = bst_fullfile(outputPath, 'temp_wh.bin'); % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
-        ops.chanMap  = bst_fullfile(outputPath, 'chanMap.mat'); % make this file using createChannelMapFile.m
-        ops.root     = outputPath; % 'openEphys' only: where raw files are
-        ops.basename = fBase;
-        ops.fs       = fs; % sampling rate
-        ops.NchanTOT = numChannels; % total number of channels
-        ops.Nchan    = numChannels; % number of active channels
-        
-        % KiloSort
-        if ops.GPU     
-            gpuDevice(1); % initialize GPU (will erase any existing GPU arrays)
+    % ===== SPIKE SORTING =====
+    bst_progress('text', 'Kilosort: Spike-sorting');
+    % Some residual parameters that need the outputPath and the converted Raw signal
+    ops.fbinary  =  converted_raw_File; % will be created for 'openEphys'
+    ops.fproc    = bst_fullfile(outputPath, 'temp_wh.bin'); % residual from RAM of preprocessed data		% It was .dat, I changed it to .bin - Make sure this is correct
+    ops.chanMap  = bst_fullfile(outputPath, 'chanMap.mat'); % make this file using createChannelMapFile.m
+    ops.root     = outputPath; % 'openEphys' only: where raw files are
+    ops.basename = fBase;
+    ops.fs       = fs; % sampling rate
+    ops.NchanTOT = numChannels; % total number of channels
+    ops.Nchan    = numChannels; % number of active channels
+    
+    % Initialize GPU (will erase any existing GPU arrays)
+    if ops.GPU     
+        gpuDevice(1);
+    end
+    
+    [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
+    try
+        rez = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
+    catch
+        if ops.GPU
+            % ~\.brainstorm\plugins\kilosort\KiloSort-master\CUD?\mexGPUall.m
+            % needs to be called and compile the .cu files.
+            % Suggested environment: Matlab 2018a, CUDA 9.0, VS 13.
+            bst_report('Error', sProcess, sInput, 'Error trying to spike-sort on the GPU. Have you set up CUDA correctly? Check https://github.com/cortex-lab/KiloSort for installation instructions');
+            return;
+        else
+            bst_report('Error', sProcess, sInput, 'Error with Kilosort while training on the CPU');
+            return;
         end
+    end
         
-        [rez, DATA, uproj] = preprocessData(ops); % preprocess data and extract spikes for initialization
-        try
-            rez = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
-        catch
-            if ops.GPU
-                % ~\.brainstorm\plugins\kilosort\KiloSort-master\CUD?\mexGPUall.m
-                % needs to be called and compile the .cu files.
-                % Suggested environment: Matlab 2018a, CUDA 9.0, VS 13.
-                bst_report('Error', sProcess, sInputs, 'Error trying to spike-sort on the GPU. Have you set up CUDA correctly? Check https://github.com/cortex-lab/KiloSort for installation instructions');
-                return;
-            else
-                bst_report('Error', sProcess, sInputs, 'Error with Kilosort while training on the CPU');
-                return;
-            end
-        end
-            
-        rez = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)        
-        
-        %%save matlab results file
-        save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
-        % remove temporary file
-        delete(ops.fproc);
+    rez = fullMPMU(rez, DATA);% extract final spike times (overlapping extraction)
+    
+    % Save matlab results file
+    save(fullfile(ops.root,  'rez.mat'), 'rez', '-v7.3');
+    % remove temporary file
+    delete(ops.fproc);
 
-        % Now convert the rez.mat and the .xml to Neuroscope format so it can be read from Klusters
-        %  Downloaded from: https://github.com/brendonw1/KilosortWrapper
-        %  This creates 4 types of files x Number of montages (Groups of electrodes)
-        % .clu: holds the cluster each spike belongs to
-        % .fet: holds the feature values of each spike
-        % .res: holds the spiketimes
-        % .spk: holds the spike waveforms
-        Kilosort2Neurosuite(rez)
-        
-        
-        %%%%%%%%%%%%%%%%%%%  Create Brainstorm Events %%%%%%%%%%%%%%%%%%%
-        bst_progress('text', 'Saving events file...');
-        
-        % Delete existing spike events
-        process_spikesorting_supervised('DeleteSpikeEvents', sInputs(i).FileName);
-        
-        sFile.RawFile = sInputs(i).FileName;
-        ImportKilosortEvents(sFile, ChannelMat, fPath, rez);
-        
-        cd(previous_directory);
-        
-        % Fetch FET files
-        spikes = [];
-        if ~iscell(Montages)
-            Montages = {Montages};
-        end
-        for iMontage = 1:length(Montages)
-            fetFile = dir(bst_fullfile(outputPath, ['*.fet.' num2str(iMontage)]));
-            if isempty(fetFile)
-                continue;
-            end
-            curStruct = struct();
-            curStruct.Path = outputPath;
-            curStruct.File = fetFile.name;
-            curStruct.Name = Montages{iMontage};
-            curStruct.Mod  = 0;
-            if isempty(spikes)
-                spikes = curStruct;
-            else
-                spikes(end+1) = curStruct;
-            end
-        end
-        
-        % ===== SAVE SPIKE FILE =====
-        % Build output filename
-        NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_kilo_' fBase]);
-        NewBstFile = [NewBstFilePrefix '.mat'];
-        iFile = 1;
-        commentSuffix = '';
-        while exist(NewBstFile, 'file') == 2
-            iFile = iFile + 1;
-            NewBstFile = [NewBstFilePrefix '_' num2str(iFile) '.mat'];
-            commentSuffix = [' (' num2str(iFile) ')'];
-        end
-        % Build output structure
-        DataMat_spikesorter = struct();
-        DataMat_spikesorter.Comment  = ['KiloSort Spike Sorting' commentSuffix];
-        DataMat_spikesorter.DataType = 'raw';%'ephys';
-        DataMat_spikesorter.Device   = 'KiloSort';
-        DataMat_spikesorter.Parent   = outputPath;
-        DataMat_spikesorter.Spikes   = spikes;
-        DataMat_spikesorter.RawFile  = sInputs(i).FileName;
-        DataMat_spikesorter.Name     = NewBstFile;
-        % Add history field
-        DataMat_spikesorter = bst_history('add', DataMat_spikesorter, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
-        % Save file on hard drive
-        bst_save(NewBstFile, DataMat_spikesorter, 'v6');
-        % Add file to database
-        db_add_data(sInputs(i).iStudy, file_short(NewBstFile), DataMat_spikesorter);
-        % Return new file
-        OutputFiles{end+1} = NewBstFile;
+    % Now convert the rez.mat and the .xml to Neuroscope format so it can be read from Klusters
+    %  Downloaded from: https://github.com/brendonw1/KilosortWrapper
+    %  This creates 4 types of files x Number of montages (Groups of electrodes)
+    % .clu: holds the cluster each spike belongs to
+    % .fet: holds the feature values of each spike
+    % .res: holds the spiketimes
+    % .spk: holds the spike waveforms
+    Kilosort2Neurosuite(rez)
 
-        % ===== UPDATE DATABASE =====
-        % Update links
-        db_links('Study', sInputs(i).iStudy);
-        panel_protocols('UpdateNode', 'Study', sInputs(i).iStudy);
-    end  
+    % Restore current folder
+    cd(previous_directory);
+    
+
+    % ===== IMPORT EVENTS =====
+    bst_progress('text', 'Saving events file...');
+    
+    % Delete existing spike events
+    process_spikesorting_supervised('DeleteSpikeEvents', sInput.FileName);
+    % Add events to file
+    sFile.RawFile = sInput.FileName;
+    ImportKilosortEvents(sFile, ChannelMat, fPath, rez);
+
+    % Fetch FET files
+    spikes = [];
+    if ~iscell(Montages)
+        Montages = {Montages};
+    end
+    for iMontage = 1:length(Montages)
+        fetFile = dir(bst_fullfile(outputPath, ['*.fet.' num2str(iMontage)]));
+        if isempty(fetFile)
+            continue;
+        end
+        curStruct = struct();
+        curStruct.Path = outputPath;
+        curStruct.File = fetFile.name;
+        curStruct.Name = Montages{iMontage};
+        curStruct.Mod  = 0;
+        if isempty(spikes)
+            spikes = curStruct;
+        else
+            spikes(end+1) = curStruct;
+        end
+    end
+    
+    % ===== SAVE SPIKE FILE =====
+    % Build output filename
+    NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_kilo_' fBase]);
+    NewBstFile = [NewBstFilePrefix '.mat'];
+    iFile = 1;
+    commentSuffix = '';
+    while exist(NewBstFile, 'file') == 2
+        iFile = iFile + 1;
+        NewBstFile = [NewBstFilePrefix '_' num2str(iFile) '.mat'];
+        commentSuffix = [' (' num2str(iFile) ')'];
+    end
+    % Build output structure
+    DataMat_spikesorter = struct();
+    DataMat_spikesorter.Comment  = ['KiloSort Spike Sorting' commentSuffix];
+    DataMat_spikesorter.DataType = 'raw';%'ephys';
+    DataMat_spikesorter.Device   = 'KiloSort';
+    DataMat_spikesorter.Parent   = outputPath;
+    DataMat_spikesorter.Spikes   = spikes;
+    DataMat_spikesorter.RawFile  = sInput.FileName;
+    DataMat_spikesorter.Name     = NewBstFile;
+    % Add history field
+    DataMat_spikesorter = bst_history('add', DataMat_spikesorter, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
+    % Save file on hard drive
+    bst_save(NewBstFile, DataMat_spikesorter, 'v6');
+    % Add file to database
+    db_add_data(sInput.iStudy, file_short(NewBstFile), DataMat_spikesorter);
+    % Return new file
+    OutputFiles{end+1} = NewBstFile;
+
+    % ===== UPDATE DATABASE =====
+    % Update links
+    db_links('Study', sInput.iStudy);
+    panel_protocols('UpdateNode', 'Study', sInput.iStudy);
 end
 
 

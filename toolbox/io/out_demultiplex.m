@@ -39,6 +39,8 @@ outFiles = cellfun(@(c)bst_fullfile(OutputDir, ['raw_elec_', c]), cleanNames, 'U
 % If all files already exist: nothing else to do in this function
 isFileOk = cellfun(@(c)exist([c, '.mat'], 'file'), outFiles);
 if all(isFileOk)
+    % Add the .mat extension to the file names
+    outFiles = cellfun(@(x) [x '.mat'], outFiles, 'UniformOutput', 0);
     return;
 % If some files already exist: delete all intermediate existing file, before generating them again
 elseif any(isFileOk)
@@ -116,6 +118,7 @@ else
     end
 end
 
+% Add the .mat extension to the file names
 outFiles = cellfun(@(x) [x '.mat'], outFiles, 'UniformOutput', 0);
 
 end
