@@ -50,15 +50,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    % Spike sorter name
     sProcess.options.spikesorter.Type   = 'text';
     sProcess.options.spikesorter.Value  = 'ultramegasort2000';
     sProcess.options.spikesorter.Hidden = 1;
+    % RAM limitation
     sProcess.options.binsize.Comment = 'Maximum RAM to use: ';
     sProcess.options.binsize.Type    = 'value';
     sProcess.options.binsize.Value   = {2, 'GB', 1};
+    % Parallel processing
     sProcess.options.parallel.Comment = 'Parallel processing';
     sProcess.options.parallel.Type    = 'checkbox';
     sProcess.options.parallel.Value   = 0;
+    % Use SSP/ICA
+    sProcess.options.usessp.Comment = 'Apply the existing SSP/ICA projectors';
+    sProcess.options.usessp.Type    = 'checkbox';
+    sProcess.options.usessp.Value   = 1;
     % Separator
     sProcess.options.sep1.Type = 'label';
     sProcess.options.sep1.Comment = '<BR>';
@@ -115,8 +122,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Get other options
     isParallel = sProcess.options.parallel.Value;
+    UseSsp = sProcess.options.usessp.Value;
     LowPass = sProcess.options.lowpass.Value{1}(1);
     HighPass = sProcess.options.highpass.Value{1}(1);
+    % Get protocol info
+    ProtocolInfo = bst_get('ProtocolInfo');
+    BrainstormTmpDir = bst_get('BrainstormTmpDir');
 
     % Compute on each raw input independently
     for i = 1:length(sInputs)
@@ -144,23 +155,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         ChannelMat = in_bst_channel(sInputs(i).ChannelFile);
         numChannels = length(ChannelMat.Channel);
         % Demultiplex channels
-        sFiles = in_spikesorting_rawelectrodes(sInputs(i), BinSize * 1e9, isParallel);
+        demultiplexDir = bst_fullfile(BrainstormTmpDir, 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInputs(i).FileName);
+        sFiles = out_demultiplex(sInputs(i).FileName, sInputs(i).ChannelFile, demultiplexDir, UseSsp, BinSize * 1e9, isParallel);
         
-        %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
+        %%%%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%
         outputPath = bst_fullfile(fPath, [fBase '_ums2k_spikes']);
-        
-        % Clear if directory already exists
+        previous_directory = pwd;
+        % If output folder already exists: delete it
         if exist(outputPath, 'dir') == 7
+            % Move Matlab out of the folder to be deleted
+            if ~isempty(strfind(previous_directory, outputPath))
+                cd(bst_fileparts(outputPath));
+            end
+            % Delete existing output folder
             try
                 rmdir(outputPath, 's');
             catch
-                error('Couldnt remove spikes folder. Make sure the current directory is not that folder.')
+            	error(['Could not remove spikes folder: ' 10 outputPath 10 ' Make sure this folder is not open in another program.'])
             end
         end
+        % Create output folder
         mkdir(outputPath);
         
         %%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
-        previous_directory = pwd;
         cd(outputPath);
         if isParallel
             bst_progress('start', 'Spike-sorting', 'Extracting spikes...');

@@ -50,15 +50,22 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    % Spike sorter name
     sProcess.options.spikesorter.Type   = 'text';
     sProcess.options.spikesorter.Value  = 'kilosort';
     sProcess.options.spikesorter.Hidden = 1;
-    sProcess.options.GPU.Comment = 'GPU processing';
-    sProcess.options.GPU.Type    = 'checkbox';
-    sProcess.options.GPU.Value   = 0;
+    % RAM limitation
     sProcess.options.binsize.Comment = 'Maximum RAM to use: ';
     sProcess.options.binsize.Type    = 'value';
     sProcess.options.binsize.Value   = {2, 'GB', 1};
+    % GPU
+    sProcess.options.GPU.Comment = 'GPU processing';
+    sProcess.options.GPU.Type    = 'checkbox';
+    sProcess.options.GPU.Value   = 0;
+    % Use SSP/ICA
+    sProcess.options.usessp.Comment = 'Apply the existing SSP/ICA projectors';
+    sProcess.options.usessp.Type    = 'checkbox';
+    sProcess.options.usessp.Value   = 1;
     % Separator
     sProcess.options.sep1.Type = 'label';
     sProcess.options.sep1.Comment = '<BR>';
@@ -111,12 +118,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         error(errMsg);
     end
     
+    % Get options
+    BinSize = sProcess.options.binsize.Value{1};
+    UseSsp = sProcess.options.usessp.Value;
     % Initialize KiloSort Parameters (This initially is a copy of StandardConfig_MOVEME)
     KilosortStandardConfig();
     ops.GPU = sProcess.options.GPU.Value;
     
     % Compute on each raw input independently
     for i = 1:length(sInputs)
+        bst_progress('text', 'Kilosort: Reading input files...');
         [fPath, fBase] = bst_fileparts(file_fullpath(sInputs(i).FileName));
         % Remove "data_0raw" or "data_" tag
         if (length(fBase) > 10 && strcmp(fBase(1:10), 'data_0raw_'))
@@ -140,14 +151,21 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         %%%%%%%%%%%%%%%%%%% Prepare output folder %%%%%%%%%%%%%%%%%%%%%%        
         outputPath = bst_fullfile(fPath, [fBase '_kilosort_spikes']);
-        % Clear if directory already exists
+        previous_directory = pwd;
+        % If output folder already exists: delete it
         if exist(outputPath, 'dir') == 7
+            % Move Matlab out of the folder to be deleted
+            if ~isempty(strfind(previous_directory, outputPath))
+                cd(bst_fileparts(outputPath));
+            end
+            % Delete existing output folder
             try
                 rmdir(outputPath, 's');
             catch
-            	error('Couldnt remove spikes folder. Make sure the current directory is not that folder or that Klusters is not open.')
+            	error(['Could not remove spikes folder: ' 10 outputPath 10 ' Make sure this folder is not open in another program (e.g. Klusters).'])
             end
         end
+        % Create output folder
         mkdir(outputPath);
                 
         % Prepare the ChannelMat File
@@ -159,7 +177,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         
         % Get the channels in the montage
         % First check if any montages have been assigned
-        [Channels, Montages, channelsMontage,montageOccurences] = deal_with_channels_and_groups(ChannelMat);
+        [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);
         
         % Adjust the possible clusters based on the number of channels   
         doubleChannels = 2*max(montageOccurences); % Each Montage will be treated as its own entity.
@@ -228,13 +246,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Kilosort outputs a rez.mat file. The supervised part (Klusters) gets as input the rez file, and a .xml file (with parameters).
         % Create .xml
         xmlFile = bst_fullfile(outputPath, [fBase '.xml']);
-        createXML_bst(ChannelMat, fs, xmlFile, ops)
+        CreateXML(ChannelMat, fs, xmlFile, ops);
         
-        previous_directory = pwd;
         cd(outputPath);
         
         % Convert to the right input for KiloSort
-        converted_raw_File = in_spikesorting_convertforkilosort(sInputs(i), sProcess.options.binsize.Value{1} * 1e9); % This converts into int16.
+        converted_raw_File = ConvertForKilosort(sInputs(i), BinSize * 1e9, UseSsp); % This converts into int16.
         
 
         %%%%%%%%%%%%%%%%%%%%%%% Start the spike sorting %%%%%%%%%%%%%%%%%%%
@@ -259,7 +276,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         try
             rez = fitTemplates(rez, DATA, uproj);  % fit templates iteratively
         catch
-            if sProcess.options.GPU.Value
+            if ops.GPU
                 % ~\.brainstorm\plugins\kilosort\KiloSort-master\CUD?\mexGPUall.m
                 % needs to be called and compile the .cu files.
                 % Suggested environment: Matlab 2018a, CUDA 9.0, VS 13.
@@ -295,7 +312,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         process_spikesorting_supervised('DeleteSpikeEvents', sInputs(i).FileName);
         
         sFile.RawFile = sInputs(i).FileName;
-        convertKilosort2BrainstormEvents(sFile, ChannelMat, fPath, rez);
+        ImportKilosortEvents(sFile, ChannelMat, fPath, rez);
         
         cd(previous_directory);
         
@@ -321,12 +338,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
         end
         
-        % ===== SAVE LINK FILE =====
+        % ===== SAVE SPIKE FILE =====
         % Build output filename
-        NewBstFile = bst_fullfile(fPath, ['data_0ephys_' fBase '.mat']);
+        NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_kilo_' fBase]);
+        NewBstFile = [NewBstFilePrefix '.mat'];
+        iFile = 1;
+        commentSuffix = '';
+        while exist(NewBstFile, 'file') == 2
+            iFile = iFile + 1;
+            NewBstFile = [NewBstFilePrefix '_' num2str(iFile) '.mat'];
+            commentSuffix = [' (' num2str(iFile) ')'];
+        end
         % Build output structure
         DataMat_spikesorter = struct();
-        DataMat_spikesorter.Comment  = 'KiloSort Spike Sorting';
+        DataMat_spikesorter.Comment  = ['KiloSort Spike Sorting' commentSuffix];
         DataMat_spikesorter.DataType = 'raw';%'ephys';
         DataMat_spikesorter.Device   = 'KiloSort';
         DataMat_spikesorter.Parent   = outputPath;
@@ -350,12 +375,68 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
+%% ===== CONVERT FOR KILOSORT =====
+% Loads and creates separate raw electrode files for KiloSort (int16 file with no header)
+function converted_raw_File = ConvertForKilosort(sInput, ram, UseSsp)      
+    % Output folder
+    ProtocolInfo = bst_get('ProtocolInfo');
+    parentPath = bst_fullfile(bst_get('BrainstormTmpDir'), 'Unsupervised_Spike_Sorting', ProtocolInfo.Comment, sInput.FileName);
+    % Check if file already converted
+    converted_raw_File = bst_fullfile(parentPath, ['raw_data_no_header_' sInput.Condition(5:end) '.dat']);
+    if exist(converted_raw_File, 'file') == 2
+        disp('BST> File already converted to KiloSort input.')
+        return
+    end
+    % Make sure the temporary directory exists, otherwise create it
+    if ~exist(parentPath, 'dir')
+        mkdir(parentPath);
+    end
+    % Apply SSP/ICA when reading from data files
+    ImportOptions = db_template('ImportOptions');
+    ImportOptions.UseCtfComp = 0;
+    ImportOptions.UseSsp     = UseSsp;
 
-%% ===== CONVERT EVENTS =====
-function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
+    % Load input files
+    DataMat = in_bst_data(sInput.FileName, 'F');
+    sFile = DataMat.F;
+    ChannelMat = in_bst_channel(sInput.ChannelFile);
 
-    events_spikes = struct();
-    
+    % Separate the file to max length based on RAM
+    numChannels = length(ChannelMat.Channel);
+    max_samples = ram / 8 / numChannels;  % Double precision
+    total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq);
+    num_segments = ceil(total_samples / max_samples);
+    num_samples_per_segment = ceil(total_samples / num_segments);
+
+    % Progress bar
+    bst_progress('start', 'KiloSort spike sorting', 'Converting to int16 .dat file', 0, num_segments);
+    % Open file
+    fid = fopen(converted_raw_File, 'a');
+    % Loop on segments
+    for iSegment = 1:num_segments
+        sampleBounds(1) = (iSegment - 1) * num_samples_per_segment + round(sFile.prop.times(1)* sFile.prop.sfreq);
+        if iSegment < num_segments
+            sampleBounds(2) = sampleBounds(1) + num_samples_per_segment - 1;
+        else
+            sampleBounds(2) = total_samples + round(sFile.prop.times(1)* sFile.prop.sfreq);
+        end
+        % Read recordings
+        F = in_fread(sFile, ChannelMat, [], sampleBounds, [], ImportOptions);
+        % Adaptive conversion to int16 to avoid saturation
+        max_abs_value = max([abs(max(max(F))) abs(min(min(F)))]);
+        F = int16(F ./ max_abs_value * 15000); % The choice of 15000 for maximum is in part abstract - for 32567 the clusters look weird
+        % Write to .dat file
+        fwrite(fid, F, 'int16');
+        % Increment progress bar
+        bst_progress('inc', 1);
+    end
+    % Close file
+    fclose(fid);
+end
+
+
+%% ===== IMPORT KILOSORT EVENTS =====
+function ImportKilosortEvents(sFile, ChannelMat, parentPath, rez)
 %     st: first column is the spike time in samples, 
 %         second column is the spike template, 
 %         third column is the extracted amplitude, 
@@ -375,15 +456,14 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     
     % I assign each spike on the channel that it has the highest amplitude for the template it was matched with
     amplitude_max_channel = amplitude_max_channel';
-    spike2ChannelAssignment = amplitude_max_channel(spikeTemplates);
     
     spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     
     index = 0;
+    events_spikes = struct();
     % Fill the events fields
     for iCluster = 1:length(unique(spikeTemplates))
         selectedSpikes = find(spikeTemplates==uniqueClusters(iCluster));
-        
         index = index+1;
         
         % Write the packet to events
@@ -425,7 +505,6 @@ function convertKilosort2BrainstormEvents(sFile, ChannelMat, parentPath, rez)
     DataMat.F.events = events;    
     [folder, filename_link2Raw, extension] = bst_fileparts(sFile.RawFile);
     bst_save(bst_fullfile(parentPath, [filename_link2Raw extension]), DataMat, 'v6');
-    
 end
 
 
@@ -443,15 +522,14 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     [tmp, study] = fileparts(study);
     sMontage = num2str(iMontage);
     clu = load(bst_fullfile(SpikeSortedMat.Parent, [study '.clu.' sMontage]));
-    res = load(bst_fullfile(SpikeSortedMat.Parent, [study '.res.' sMontage]));
     fet = dlmread(bst_fullfile(SpikeSortedMat.Parent, [study '.fet.' sMontage]));
 
     % Get the channels that belong in the selected montage
-    [Channels, Montages, channelsMontage,montageOccurences] = deal_with_channels_and_groups(ChannelMat);
+    [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);
     ChannelsInMontage = ChannelMat.Channel(channelsMontage == iMontage); % Only the channels from the Montage should be loaded here to be used in the spike-events
     
 
-    %% The combination of the .clu files and the .fet file is enough to use on the converter.
+    % The combination of the .clu files and the .fet file is enough to use on the converter.
 
     % Brainstorm assign each spike to a SINGLE NEURON on each electrode. This
     % converter picks up the electrode that showed the strongest (absolute)
@@ -505,6 +583,7 @@ end
 
 
 %% ===== COPY KILOSORT CONFIG =====
+% Called by bst_plugin after installing the kilosort plugin
 function copyKilosortConfig(defaultFile, outputFile)
     if exist(outputFile, 'file') == 2
         delete(outputFile);
@@ -528,201 +607,193 @@ end
 
 
 %% ===== CREATE XML =====
-function createXML_bst(ChannelMat, Fs, xmlFile, ops)
-% Kilosort is designed to be used on shanks - this is like a probe
-% The users need to assign specific channels to specific shanks.
-% The following code takes into account several cases that can be
-% encountered: e.g. all channels already assigned to groups, none, or
-% partially
-
-% Sequentially, an .xml file with metadata is populated to be used in
-% Klusters
-
-%% First check if any montages have been assigned
-allMontages = {ChannelMat.Channel.Group};
-nEmptyMontage = length(find(cellfun(@isempty,allMontages)));
-
-if nEmptyMontage == length(ChannelMat.Channel)
-    keepChannels = find(ismember({ChannelMat.Channel.Type}, 'EEG') | ismember({ChannelMat.Channel.Type}, 'SEEG'));
+function CreateXML(ChannelMat, Fs, xmlFile, ops)
+    % Kilosort is designed to be used on shanks - this is like a probe
+    % The users need to assign specific channels to specific shanks.
+    % The following code takes into account several cases that can be
+    % encountered: e.g. all channels already assigned to groups, none, or
+    % partially
+    % Sequentially, an .xml file with metadata is populated to be used in Klusters
     
-    % No montages have been assigned. Assign all EEG/SEEG channels to a
-    % single montage
-    for iChannel = 1:length(ChannelMat.Channel)
-        if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
-            ChannelMat.Channel(iChannel).Group = 'GROUP1'; % Just adding an entry here
+    %% First check if any montages have been assigned
+    allMontages = {ChannelMat.Channel.Group};
+    nEmptyMontage = length(find(cellfun(@isempty,allMontages)));
+    
+    if nEmptyMontage == length(ChannelMat.Channel)
+        keepChannels = find(ismember({ChannelMat.Channel.Type}, 'EEG') | ismember({ChannelMat.Channel.Type}, 'SEEG'));
+        
+        % No montages have been assigned. Assign all EEG/SEEG channels to a
+        % single montage
+        for iChannel = 1:length(ChannelMat.Channel)
+            if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
+                ChannelMat.Channel(iChannel).Group = 'GROUP1'; % Just adding an entry here
+            end
+        end
+        temp_ChannelsMat = ChannelMat.Channel(keepChannels);
+    
+    elseif nEmptyMontage == 0
+        keepChannels = 1:length(ChannelMat.Channel);
+        temp_ChannelsMat = ChannelMat.Channel(keepChannels);
+    else
+        % ADD AN EXTRA MONTAGE FOR CHANNELS THAT HAVENT BEEN ASSIGNED TO A MONTAGE
+        for iChannel = 1:length(ChannelMat.Channel)
+            if isempty(ChannelMat.Channel(iChannel).Group)
+                ChannelMat.Channel(iChannel).Group = 'EMPTYGROUP'; % Just adding an entry here
+            end
+            temp_ChannelsMat = ChannelMat.Channel;
         end
     end
-    temp_ChannelsMat = ChannelMat.Channel(keepChannels);
 
-elseif nEmptyMontage == 0
-    keepChannels = 1:length(ChannelMat.Channel);
-    temp_ChannelsMat = ChannelMat.Channel(keepChannels);
-else
-    % ADD AN EXTRA MONTAGE FOR CHANNELS THAT HAVENT BEEN ASSIGNED TO A MONTAGE
-    for iChannel = 1:length(ChannelMat.Channel)
-        if isempty(ChannelMat.Channel(iChannel).Group)
-            ChannelMat.Channel(iChannel).Group = 'EMPTYGROUP'; % Just adding an entry here
-        end
-        temp_ChannelsMat = ChannelMat.Channel;
-    end
-end
-
-
-montages = unique({temp_ChannelsMat.Group},'stable');
-montages = montages(find(~cellfun(@isempty, montages)));
-
-NumChansPerProbe = [];
-
-ChannelsInMontage  = cell(length(montages),2);
-for iMontage = 1:length(montages)
-    ChannelsInMontage{iMontage,1} = ChannelMat.Channel(strcmp({ChannelMat.Channel.Group}, montages{iMontage})); % Only the channels from the Montage should be loaded here to be used in the spike-events
+    montages = unique({temp_ChannelsMat.Group},'stable');
+    montages = montages(find(~cellfun(@isempty, montages)));
     
-    for iChannel = 1:length(ChannelsInMontage{iMontage})
-        ChannelsInMontage{iMontage,2} = [ChannelsInMontage{iMontage,2} find(strcmp({ChannelMat.Channel.Name}, ChannelsInMontage{iMontage}(iChannel).Name))];
+    NumChansPerProbe = [];
+    ChannelsInMontage  = cell(length(montages),2);
+    for iMontage = 1:length(montages)
+        ChannelsInMontage{iMontage,1} = ChannelMat.Channel(strcmp({ChannelMat.Channel.Group}, montages{iMontage})); % Only the channels from the Montage should be loaded here to be used in the spike-events
+        
+        for iChannel = 1:length(ChannelsInMontage{iMontage})
+            ChannelsInMontage{iMontage,2} = [ChannelsInMontage{iMontage,2} find(strcmp({ChannelMat.Channel.Name}, ChannelsInMontage{iMontage}(iChannel).Name))];
+        end
+        NumChansPerProbe = [NumChansPerProbe length(ChannelsInMontage{iMontage,2})];
     end
-    NumChansPerProbe = [NumChansPerProbe length(ChannelsInMontage{iMontage,2})];
-end
-
-nMontages = length(montages);
-
-
-%% Define text components to assemble later
-
-chunk1 = {'<?xml version=''1.0''?>';...
-'<parameters version="1.0" creator="Brainstorm Converter">';...
-' <acquisitionSystem>';...
-['  <nBits> 16 </nBits>']};
-
-channelcountlinestart = '  <nChannels>';
-channelcountlineend = '</nChannels>';
-
-chunk2 = {['  <samplingRate>' num2str(Fs) '</samplingRate>'];...
-['  <voltageRange>20</voltageRange>'];...
-['  <amplification>1000</amplification>'];...
-'  <offset>0</offset>';...
-' </acquisitionSystem>';...
-' <fieldPotentials>';...
-% % % % % ['  <lfpSamplingRate>' num2str(defaults.LfpSampleRate) '</lfpSamplingRate>'];...
-['  <lfpSamplingRate>1250</lfpSamplingRate>'];...
-' </fieldPotentials>';...
-' <files>';...
-'  <file>';...
-'   <extension>lfp</extension>';...
-% % % % % ['   <samplingRate>' num2str(defaults.LfpSampleRate) '</samplingRate>'];...
-['   <samplingRate>1250</samplingRate>'];...
-'  </file>';...
-% '  <file>';...
-% '   <extension>whl</extension>';...
-% '   <samplingRate>39.0625</samplingRate>';...
-% '  </file>';...
-' </files>';...
-' <anatomicalDescription>';...
-'  <channelGroups>'};
-
-anatomygroupstart = '   <group>';%repeats w every new anatomical group
-anatomychannelnumberline_start = ['    <channel skip="0">'];%for each channel in an anatomical group - first part of entry
-anatomychannelnumberline_end = ['</channel>'];%for each channel in an anatomical group - last part of entry
-anatomygroupend = '   </group>';%comes at end of each anatomical group
-
-chunk3 = {' </channelGroups>';...
-  '</anatomicalDescription>';...
- '<spikeDetection>';...
-  ' <channelGroups>'};%comes after anatomical groups and before spike groups
-
-spikegroupstart = {'  <group>';...
-        '   <channels>'};%repeats w every new spike group
-spikechannelnumberline_start = ['    <channel>'];%for each channel in a spike group - first part of entry
-spikechannelnumberline_end = ['</channel>'];%for each channel in a spike group - last part of entry
-spikegroupend = {'   </channels>';...
-%    ['    <nSamples>' num2str(defaults.PointsPerWaveform) '</nSamples>'];...
-%    ['    <peakSampleIndex>' num2str(defaults.PeakPointInWaveform) '</peakSampleIndex>'];...
-%    ['    <nFeatures>' num2str(defaults.FeaturesPerWave) '</nFeatures>'];...
-   ['    <nSamples>' num2str(ops.nt0) '</nSamples>'];...
-   ['    <peakSampleIndex>16</peakSampleIndex>'];...
-   ['    <nFeatures>3</nFeatures>'];...
-    '  </group>'};%comes at end of each spike group
-
-chunk4 = {' </channelGroups>';...
- '</spikeDetection>';...
- '<neuroscope version="2.0.0">';...
-  '<miscellaneous>';...
-   '<screenGain>0.2</screenGain>';...
-   '<traceBackgroundImage></traceBackgroundImage>';...
-  '</miscellaneous>';...
-  '<video>';...
-   '<rotate>0</rotate>';...
-   '<flip>0</flip>';...
-   '<videoImage></videoImage>';...
-   '<positionsBackground>0</positionsBackground>';...
-  '</video>';...
-  '<spikes>';...
-  '</spikes>';...
-  '<channels>'};
-
-channelcolorstart = ' <channelColors>';...
-channelcolorlinestart = '  <channel>';
-channelcolorlineend = '</channel>';
-channelcolorend = {'  <color>#0080ff</color>';...
-    '  <anatomyColor>#0080ff</anatomyColor>';...
-    '  <spikeColor>#0080ff</spikeColor>';...
-   ' </channelColors>'};
-
-channeloffsetstart = ' <channelOffset>';
-channeloffsetlinestart = '  <channel>';
-channeloffsetlineend = '</channel>';
-channeloffsetend = {'  <defaultOffset>0</defaultOffset>';...
-   ' </channelOffset>'};
-
-chunk5 = {   '</channels>';...
- '</neuroscope>';...
-'</parameters>'};
-
-
-%% Make basic text 
-s = chunk1;
-s = cat(1,s,[channelcountlinestart, num2str(length(ChannelMat.Channel)) channelcountlineend]);
-s = cat(1,s,chunk2);
-
-%add channel count here
-
-for iMontage = 1:nMontages%for each probe
-    s = cat(1,s,anatomygroupstart);
-    for iChannelWithinMontage = 1:NumChansPerProbe(iMontage)%for each spike group
-        thischan = ChannelsInMontage{iMontage,2}(iChannelWithinMontage) - 1;
-        s = cat(1,s,[anatomychannelnumberline_start, num2str(thischan) anatomychannelnumberline_end]);
+    nMontages = length(montages);
+    
+    %% Define text components to assemble later
+    
+    chunk1 = {'<?xml version=''1.0''?>';...
+    '<parameters version="1.0" creator="Brainstorm Converter">';...
+    ' <acquisitionSystem>';...
+    '  <nBits> 16 </nBits>'};
+    
+    channelcountlinestart = '  <nChannels>';
+    channelcountlineend = '</nChannels>';
+    
+    chunk2 = {['  <samplingRate>' num2str(Fs) '</samplingRate>'];...
+    '  <voltageRange>20</voltageRange>';...
+    '  <amplification>1000</amplification>';...
+    '  <offset>0</offset>';...
+    ' </acquisitionSystem>';...
+    ' <fieldPotentials>';...
+    % % % % % ['  <lfpSamplingRate>' num2str(defaults.LfpSampleRate) '</lfpSamplingRate>'];...
+    '  <lfpSamplingRate>1250</lfpSamplingRate>';...
+    ' </fieldPotentials>';...
+    ' <files>';...
+    '  <file>';...
+    '   <extension>lfp</extension>';...
+    % % % % % ['   <samplingRate>' num2str(defaults.LfpSampleRate) '</samplingRate>'];...
+    '   <samplingRate>1250</samplingRate>';...
+    '  </file>';...
+    % '  <file>';...
+    % '   <extension>whl</extension>';...
+    % '   <samplingRate>39.0625</samplingRate>';...
+    % '  </file>';...
+    ' </files>';...
+    ' <anatomicalDescription>';...
+    '  <channelGroups>'};
+    
+    anatomygroupstart = '   <group>';%repeats w every new anatomical group
+    anatomychannelnumberline_start = '    <channel skip="0">';%for each channel in an anatomical group - first part of entry
+    anatomychannelnumberline_end = '</channel>';%for each channel in an anatomical group - last part of entry
+    anatomygroupend = '   </group>';%comes at end of each anatomical group
+    
+    chunk3 = {' </channelGroups>';...
+      '</anatomicalDescription>';...
+     '<spikeDetection>';...
+      ' <channelGroups>'};%comes after anatomical groups and before spike groups
+    
+    spikegroupstart = {'  <group>';...
+            '   <channels>'};%repeats w every new spike group
+    spikechannelnumberline_start = '    <channel>';%for each channel in a spike group - first part of entry
+    spikechannelnumberline_end = '</channel>';%for each channel in a spike group - last part of entry
+    spikegroupend = {'   </channels>';...
+    %    ['    <nSamples>' num2str(defaults.PointsPerWaveform) '</nSamples>'];...
+    %    ['    <peakSampleIndex>' num2str(defaults.PeakPointInWaveform) '</peakSampleIndex>'];...
+    %    ['    <nFeatures>' num2str(defaults.FeaturesPerWave) '</nFeatures>'];...
+       ['    <nSamples>' num2str(ops.nt0) '</nSamples>'];...
+       '    <peakSampleIndex>16</peakSampleIndex>';...
+       '    <nFeatures>3</nFeatures>';...
+        '  </group>'};%comes at end of each spike group
+    
+    chunk4 = {' </channelGroups>';...
+     '</spikeDetection>';...
+     '<neuroscope version="2.0.0">';...
+      '<miscellaneous>';...
+       '<screenGain>0.2</screenGain>';...
+       '<traceBackgroundImage></traceBackgroundImage>';...
+      '</miscellaneous>';...
+      '<video>';...
+       '<rotate>0</rotate>';...
+       '<flip>0</flip>';...
+       '<videoImage></videoImage>';...
+       '<positionsBackground>0</positionsBackground>';...
+      '</video>';...
+      '<spikes>';...
+      '</spikes>';...
+      '<channels>'};
+    
+    channelcolorstart = ' <channelColors>';...
+    channelcolorlinestart = '  <channel>';
+    channelcolorlineend = '</channel>';
+    channelcolorend = {'  <color>#0080ff</color>';...
+        '  <anatomyColor>#0080ff</anatomyColor>';...
+        '  <spikeColor>#0080ff</spikeColor>';...
+       ' </channelColors>'};
+    
+    channeloffsetstart = ' <channelOffset>';
+    channeloffsetlinestart = '  <channel>';
+    channeloffsetlineend = '</channel>';
+    channeloffsetend = {'  <defaultOffset>0</defaultOffset>';...
+       ' </channelOffset>'};
+    
+    chunk5 = {   '</channels>';...
+     '</neuroscope>';...
+    '</parameters>'};
+    
+    
+    %% Make basic text 
+    s = chunk1;
+    s = cat(1,s,[channelcountlinestart, num2str(length(ChannelMat.Channel)) channelcountlineend]);
+    s = cat(1,s,chunk2);
+    
+    for iMontage = 1:nMontages %for each probe
+        s = cat(1,s,anatomygroupstart);
+        for iChannelWithinMontage = 1:NumChansPerProbe(iMontage)%for each spike group
+            thischan = ChannelsInMontage{iMontage,2}(iChannelWithinMontage) - 1;
+            s = cat(1,s,[anatomychannelnumberline_start, num2str(thischan) anatomychannelnumberline_end]);
+        end
+        s = cat(1,s,anatomygroupend);
     end
-    s = cat(1,s,anatomygroupend);
-end
-
-s = cat(1,s,chunk3);
-
-for iMontage = 1:nMontages
-    s = cat(1,s,spikegroupstart);
-    for iChannelWithinMontage = 1:NumChansPerProbe(iMontage)
-        thischan = ChannelsInMontage{iMontage,2}(iChannelWithinMontage) - 1;
-        s = cat(1,s,[spikechannelnumberline_start, num2str(thischan) spikechannelnumberline_end]);
+    
+    s = cat(1,s,chunk3);
+    
+    for iMontage = 1:nMontages
+        s = cat(1,s,spikegroupstart);
+        for iChannelWithinMontage = 1:NumChansPerProbe(iMontage)
+            thischan = ChannelsInMontage{iMontage,2}(iChannelWithinMontage) - 1;
+            s = cat(1,s,[spikechannelnumberline_start, num2str(thischan) spikechannelnumberline_end]);
+        end
+        s = cat(1,s,spikegroupend);
     end
-    s = cat(1,s,spikegroupend);
-end
-
-s = cat(1,s, chunk4);
-
-for iMontage = 1:nMontages
-    for iChannelWithinMontage = 1:NumChansPerProbe(iMontage)
-        s = cat(1,s,channelcolorstart);
-        thischan = ChannelsInMontage{iMontage,2}(iChannelWithinMontage) - 1;
-        s = cat(1,s,[channelcolorlinestart, num2str(thischan) channelcolorlineend]);
-        s = cat(1,s,channelcolorend);
-        s = cat(1,s,channeloffsetstart);
-        s = cat(1,s,[channeloffsetlinestart, num2str(thischan) channeloffsetlineend]);
-        s = cat(1,s,channeloffsetend);
+    
+    s = cat(1,s, chunk4);
+    
+    for iMontage = 1:nMontages
+        for iChannelWithinMontage = 1:NumChansPerProbe(iMontage)
+            s = cat(1,s,channelcolorstart);
+            thischan = ChannelsInMontage{iMontage,2}(iChannelWithinMontage) - 1;
+            s = cat(1,s,[channelcolorlinestart, num2str(thischan) channelcolorlineend]);
+            s = cat(1,s,channelcolorend);
+            s = cat(1,s,channeloffsetstart);
+            s = cat(1,s,[channeloffsetlinestart, num2str(thischan) channeloffsetlineend]);
+            s = cat(1,s,channeloffsetend);
+        end
     end
-end
 
-s = cat(1,s, chunk5);
-
-% Output
-charcelltotext(s, xmlFile);
+    s = cat(1,s, chunk5);
+    
+    % Output
+    charcelltotext(s, xmlFile);
 end
 
 
@@ -731,22 +802,17 @@ function charcelltotext(charcell,filename)
     %based on matlab help.  Writes each row of the character cell (charcell) to a line of
     %text in the filename specified by "filename".  Char should be a cell array 
     %with format of a 1 column with many rows, each row with a single string of text.
-    
-    [nrows,ncols]= size(charcell);
-    
     fid = fopen(filename, 'w');
-    
-    for row=1:nrows
+    for row = 1:size(charcell, 1)
         fprintf(fid, '%s \n', charcell{row,:});
     end
-    
     fclose(fid);
 end
 
 
 %% ===== GET MONTAGE =====
 % Get the channels in the montage
-function [Channels, Montages, channelsMontage,montageOccurences] = deal_with_channels_and_groups(ChannelMat)
+function [Channels, Montages, channelsMontage, montageOccurences] = ParseMontage(ChannelMat)
     % First check if any montages have been assigned
     Channels = ChannelMat.Channel;
     allMontages = {Channels.Group};
@@ -755,8 +821,7 @@ function [Channels, Montages, channelsMontage,montageOccurences] = deal_with_cha
     if nEmptyMontage == length(Channels)
         keepChannels = find(ismember({Channels.Type}, 'EEG') | ismember({Channels.Type}, 'SEEG'));
 
-        % No montages have been assigned. Assign all EEG/SEEG channels to a
-        % single montage
+        % No montages have been assigned. Assign all EEG/SEEG channels to a single montage
         for iChannel = 1:length(Channels)
             if strcmp(Channels(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
                 Channels(iChannel).Group = 'All'; % Just adding an entry here

@@ -74,10 +74,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     
     sProcess.options.binsize.Comment = 'Memory to use for demultiplexing';
     sProcess.options.binsize.Type    = 'value';
-    sProcess.options.binsize.Value   = {1, 'GB', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), ot the temp folder was emptied 
-    
+    sProcess.options.binsize.Value   = {1, 'GB', 1}; % This is used in case the electrodes are not separated yet (no spike sorting done), ot the temp folder was emptied     
 end
-
 
 
 %% ===== FORMAT COMMENT =====

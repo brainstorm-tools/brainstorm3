@@ -1,8 +1,5 @@
-function sFiles = in_spikesorting_rawelectrodes( varargin )
-% IN_SPIKESORTING_RAWELECTRODES: Loads and creates if needed separate raw
-% electrode files for spike sorting purposes.
-%
-% USAGE: OutputFiles = in_spikesorting_rawelectrodes(sInput, ram, parallel)
+function outFiles = out_demultiplex(DataFile, ChannelFile, OutputDir, UseSsp, ram, parallel)
+% OUT_DEMULTIPLEX: Load a raw data file and creates separate electrode files.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,68 +19,43 @@ function sFiles = in_spikesorting_rawelectrodes( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018, 2022; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018-2022
+%          Martin Cousineau, 2018
+%          Francois Tadel, 2022
 
-sInput = varargin{1};
-if nargin < 2 || isempty(varargin{2})
-    ram = 1e9; % 1 GB
-else
-    ram = varargin{2};
-end
-if nargin < 3 || isempty(varargin{3})
-    parallel = 0;
-else
-    parallel = varargin{3};
+% If the output directory doesn't exist: create it
+if ~exist(OutputDir, 'dir')
+    mkdir(OutputDir);
 end
 
-protocol = bst_get('ProtocolInfo');
-parentPath = bst_fullfile(bst_get('BrainstormTmpDir'), ...
-                       'Unsupervised_Spike_Sorting', ...
-                       protocol.Comment, ...
-                       sInput.FileName);
-
-% Make sure the temporary directory exist, otherwise create it
-if ~exist(parentPath, 'dir')
-    mkdir(parentPath);
-end
-
-
-% Check whether the electrode files already exist
-ChannelMat = in_bst_channel(sInput.ChannelFile);
+% Load channel file
+ChannelMat = in_bst_channel(ChannelFile);
 numChannels = length(ChannelMat.Channel);
-
-% New channelNames - Without any special characters.
+% Channel names: Remove any special characters
 cleanNames = str_remove_spec_chars({ChannelMat.Channel.Name});
 
-missingFile = 0;
-sFiles = {};
-for iChannel = 1:numChannels
-    chanFile = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel} '.mat']);
-    if ~exist(chanFile, 'file')
-        missingFile = 1;
-    else
-        sFiles{end+1} = chanFile;
-    end
-end
-if ~missingFile
+% Assemble output filenames
+outFiles = cellfun(@(c)bst_fullfile(OutputDir, ['raw_elec_', c]), cleanNames, 'UniformOutput', 0);
+% If all files already exist: nothing else to do in this function
+isFileOk = cellfun(@(c)exist([c, '.mat'], 'file'), outFiles);
+if all(isFileOk)
     return;
-else
-    % Clear any remaining intermediate file
-    for iFile = 1:length(sFiles)
-        delete(sFiles{iFile});
-    end
+% If some files already exist: delete all intermediate existing file, before generating them again
+elseif any(isFileOk)
+    delete(outFiles{isFileOk});
 end
 
-
-% Otherwise, generate all of them again.
-DataMat = in_bst_data(sInput.FileName, 'F');
+% Load input data file
+DataMat = in_bst_data(DataFile, 'F');
 sFile = DataMat.F;
 sr = sFile.prop.sfreq;
 
-
+% Apply SSP/ICA when reading from data files
+ImportOptions = db_template('ImportOptions');
+ImportOptions.UseCtfComp = 0;
+ImportOptions.UseSsp     = UseSsp;
 % Special case for supported acquisition systems: Save temporary files
 % using single precision instead of double to save disk space
-ImportOptions = db_template('ImportOptions');
 if ismember(sFile.format, {'EEG-AXION', 'EEG-BLACKROCK', 'EEG-INTAN', 'EEG-PLEXON'})
     precision = 'single';
     nBytes = 4;
@@ -93,34 +65,13 @@ else
 end
 ImportOptions.Precision = precision;
 
+% Separate the file to max length based on RAM
 max_samples = ram / nBytes / numChannels;
 total_samples = round((sFile.prop.times(2) - sFile.prop.times(1)) .* sFile.prop.sfreq); % (Blackrock/Ripple complained). Removed +1
 num_segments = ceil(total_samples / max_samples);
 num_samples_per_segment = ceil(total_samples / num_segments);
 
-bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, (parallel == 0) * num_segments * numChannels);
-
-sFiles = {};
-for iChannel = 1:numChannels
-    sFiles{end + 1} = bst_fullfile(parentPath, ['raw_elec_' cleanNames{iChannel}]);
-end
-
-
-%% Check if a projector has been computed and ask if the selected components
-% should be removed
-if ~isempty(ChannelMat.Projector)
-    isOk = java_dialog('confirm', ...
-        ['(ICA/PCA) Artifact components have been computed for removal.' 10 10 ...
-             'Remove the selected components?'], 'Artifact Removal');
-    if isOk
-        ImportOptions.UseSsp = 1;
-    end
-end 
-
-
-%% Read data in segments
-sampleBounds_all = cell(num_segments,1);
-sampleBounds = [0,0];
+% Loop on segments
 for iSegment = 1:num_segments
     sampleBounds(1) = (iSegment - 1) * num_samples_per_segment + round(sFile.prop.times(1)* sFile.prop.sfreq);
     if iSegment < num_segments
@@ -128,54 +79,56 @@ for iSegment = 1:num_segments
     else
         sampleBounds(2) = total_samples + round(sFile.prop.times(1)* sFile.prop.sfreq);
     end
-
+    % Read recordings
     F = in_fread(sFile, ChannelMat, [], sampleBounds, [], ImportOptions);
-
     % Append segment to individual channel file
     if parallel
+        bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...');
         parfor iChannel = 1:numChannels
             electrode_data = F(iChannel,:);
-            fid = fopen([sFiles{iChannel} '.bin'], 'a');
+            fid = fopen([outFiles{iChannel} '.bin'], 'a');
             fwrite(fid, electrode_data, precision);
             fclose(fid);
         end
     else
+        bst_progress('start', 'Spike-sorting', 'Demultiplexing raw file...', 0, num_segments * numChannels);
         for iChannel = 1:numChannels
             electrode_data = F(iChannel,:);
-            fid = fopen([sFiles{iChannel} '.bin'], 'a');
+            fid = fopen([outFiles{iChannel} '.bin'], 'a');
             fwrite(fid, electrode_data, precision);
             fclose(fid);
             bst_progress('inc', 1);
         end
     end
-    clear F
-    sampleBounds_all{iSegment} = sampleBounds;  % This is here for an easy check that there is no overlap between segments
 end
 
-
-%% Convert binary files per channel to Matlab files
+% Convert binary files per channel to Matlab files
 if parallel
     bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...');
     parfor iChannel = 1:numChannels
-        convert2mat(sFiles{iChannel}, sr, precision);
+        convert2mat(outFiles{iChannel}, sr, precision);
     end
 else
-    bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, (parallel == 0) * numChannels);
+    bst_progress('start', 'Spike-sorting', 'Converting demultiplexed files...', 0, numChannels);
     for iChannel = 1:numChannels
-        convert2mat(sFiles{iChannel}, sr, precision);
+        convert2mat(outFiles{iChannel}, sr, precision);
         bst_progress('inc', 1);
     end
 end
 
-sFiles = cellfun(@(x) [x '.mat'], sFiles, 'UniformOutput', 0);
+outFiles = cellfun(@(x) [x '.mat'], outFiles, 'UniformOutput', 0);
 
 end
 
 
+%% ===== CONVERT BIN TO MAT =====
 function convert2mat(chanFile, sr, precision)
+    % Read .bin file
     fid = fopen([chanFile '.bin'], 'rb');
     data = fread(fid, precision);
     fclose(fid);
+    % Save .mat file
     save([chanFile '.mat'], 'data', 'sr');
-    file_delete([chanFile '.bin'], 1 ,3);
+    % Delete .bin file
+    delete([chanFile '.bin']);
 end
