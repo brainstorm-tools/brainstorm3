@@ -194,6 +194,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     else
         TimeRange = [];
     end
+    % Get split parameter
+    if isfield(sProcess.options, 'split') && isfield(sProcess.options.split, 'Value') && iscell(sProcess.options.split.Value) && ~isempty(sProcess.options.split.Value)
+        Split = sProcess.options.split.Value{1};
+    else
+        Split = 0;
+    end
     % Event names
     EvtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
     if isempty(EvtNames)
@@ -217,8 +223,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     ImportOptions.UseEvents         = 1;
     ImportOptions.EventsTimeRange   = EventsTimeRange;
     ImportOptions.iEpochs           = 1;
-    ImportOptions.SplitRaw          = (sProcess.options.split.Value{1} > 0);
-    ImportOptions.SplitLength       = sProcess.options.split.Value{1};
+    ImportOptions.SplitRaw          = (Split > 0);
+    ImportOptions.SplitLength       = Split;
     ImportOptions.UseCtfComp        = sProcess.options.usectfcomp.Value;
     ImportOptions.UseSsp            = sProcess.options.usessp.Value;
     ImportOptions.CreateConditions  = CreateConditions;
