@@ -199,7 +199,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== IMPORT EVENTS =====
     bst_progress('start', 'UltraMegaSort2000', 'Gathering spiking events...');
     % Delete existing spike events
-    process_spikesorting_supervised('DeleteSpikeEvents', sInput.FileName);
+    panel_spikes('DeleteSpikeEvents', sInput.FileName);
 
     % Build output filename
     NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_ums2k_' fBase]);
@@ -266,7 +266,7 @@ function SaveBrainstormEvents(SpikeMat, outputFile, eventNamePrefix)
     DataMat = in_bst_data(SpikeMat.RawFile);
     existingEvents = DataMat.F.events;
     for iEvent = 1:length(existingEvents)
-        if ~process_spikesorting_supervised('IsSpikeEvent', existingEvents(iEvent).label)
+        if ~panel_spikes('IsSpikeEvent', existingEvents(iEvent).label)
             if iNewEvent == 0
                 events = existingEvents(iEvent);
             else
@@ -277,7 +277,7 @@ function SaveBrainstormEvents(SpikeMat, outputFile, eventNamePrefix)
     end
     
     for iElectrode = 1:numElectrodes
-        newEvents = process_spikesorting_supervised(...
+        newEvents = panel_spikes(...
             'CreateSpikeEvents', ...
             SpikeMat.RawFile, ...
             SpikeMat.Device, ...

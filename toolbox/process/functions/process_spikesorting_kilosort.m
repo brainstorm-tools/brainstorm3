@@ -311,7 +311,7 @@ function OutputFiles = Run(sProcess, sInput)
     bst_progress('text', 'Saving events file...');
     
     % Delete existing spike events
-    process_spikesorting_supervised('DeleteSpikeEvents', sInput.FileName);
+    panel_spikes('DeleteSpikeEvents', sInput.FileName);
     % Add events to file
     sFile.RawFile = sInput.FileName;
     ImportKilosortEvents(sFile, ChannelMat, fPath, rez);
@@ -456,7 +456,7 @@ function ImportKilosortEvents(sFile, ChannelMat, parentPath, rez)
     % I assign each spike on the channel that it has the highest amplitude for the template it was matched with
     amplitude_max_channel = amplitude_max_channel';
     
-    spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+    spikeEventPrefix = panel_spikes('GetSpikesEventPrefix');
     
     index = 0;
     events_spikes = struct();
@@ -487,7 +487,7 @@ function ImportKilosortEvents(sFile, ChannelMat, parentPath, rez)
     DataMat = in_bst_data(sFile.RawFile);
     existingEvents = DataMat.F.events;
     for iEvent = 1:length(existingEvents)
-        if ~process_spikesorting_supervised('IsSpikeEvent', existingEvents(iEvent).label)
+        if ~panel_spikes('IsSpikeEvent', existingEvents(iEvent).label)
             if index == 0
                 events = existingEvents(iEvent);
             else
@@ -551,7 +551,7 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     events = struct();
     index = 0;
     
-    spikesPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+    spikesPrefix = panel_spikes('GetSpikesEventPrefix');
 
     uniqueClusters = unique(clu(2:end))'; % The first entry is just the number of clusters
 

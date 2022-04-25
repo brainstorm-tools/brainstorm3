@@ -120,7 +120,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     uniqueNeurons = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
     for iFile = 1:nTrials
         for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-            if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label) && any(ALL_TRIALS_files(iFile).Events(iEvent).times > time_window(1) & ALL_TRIALS_files(iFile).Events(iEvent).times < time_window(2))
+            if panel_spikes('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label) && any(ALL_TRIALS_files(iFile).Events(iEvent).times > time_window(1) & ALL_TRIALS_files(iFile).Events(iEvent).times < time_window(2))
                 uniqueNeurons{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
             end
         end

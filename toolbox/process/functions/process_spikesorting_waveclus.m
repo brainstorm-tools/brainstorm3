@@ -198,7 +198,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== IMPORT EVENTS =====
     bst_progress('text', 'Saving events file...');
     % Delete existing spike events
-    process_spikesorting_supervised('DeleteSpikeEvents', sInput.FileName);
+    panel_spikes('DeleteSpikeEvents', sInput.FileName);
 
     % Build output filename
     NewBstFilePrefix = bst_fullfile(fPath, ['data_0ephys_wclus_' fBase]);
@@ -263,7 +263,7 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     DataMat = in_bst_data(sFile.RawFile);
     existingEvents = DataMat.F.events;
     for iEvent = 1:length(existingEvents)
-        if ~process_spikesorting_supervised('IsSpikeEvent', existingEvents(iEvent).label)
+        if ~panel_spikes('IsSpikeEvent', existingEvents(iEvent).label)
             if iNewEvent == 0
                 events = existingEvents(iEvent);
             else
@@ -274,7 +274,7 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
     end
     
     for iElectrode = 1:numElectrodes
-        newEvents = process_spikesorting_supervised(...
+        newEvents = panel_spikes(...
             'CreateSpikeEvents', ...
             sFile.RawFile, ...
             sFile.Device, ...

@@ -251,8 +251,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
 
         %% Get meaningful label from neuron name
-        better_label = process_spikesorting_supervised('GetChannelOfSpikeEvent', labelsForDropDownMenu{iNeuron});
-        neuron = process_spikesorting_supervised('GetNeuronOfSpikeEvent', labelsForDropDownMenu{iNeuron});
+        better_label = panel_spikes('GetChannelOfSpikeEvent', labelsForDropDownMenu{iNeuron});
+        neuron = panel_spikes('GetNeuronOfSpikeEvent', labelsForDropDownMenu{iNeuron});
         if ~isempty(neuron)
             better_label = [better_label ' #' num2str(neuron)];
         end
@@ -322,7 +322,7 @@ function all = get_LFPs(trial, nChannels, sProcess, time_segmentAroundSpikes, sa
     % Important Variable here!
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
     
-    allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
+    allChannelEvents = cellfun(@(x) panel_spikes('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
     
     for ielectrode = 1: nChannels %selectedChannels

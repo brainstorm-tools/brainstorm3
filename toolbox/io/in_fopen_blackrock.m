@@ -129,7 +129,7 @@ if ~isempty(NevFile)
     % Time factor
     tFactorNev = double(hdr.SamplingFreq) / double(nev.MetaTags.TimeRes);
     % Get spike event BST prefix
-    spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+    spikeEventPrefix = panel_spikes('GetSpikesEventPrefix');
     
     % Use spikes
     if ~isempty(nev.Data.Spikes.TimeStamp)

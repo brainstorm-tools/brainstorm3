@@ -253,7 +253,7 @@ function data_derived = BayesianSpikeRemoval(ChannelName, data, Fs, sFile, Chann
     iChannel = find(ismember(cleanChannelNames, ChannelName));
     % Get the index of the event that show this electrode's spikes
     allEventLabels = {sFile.events.label};
-    spike_event_prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+    spike_event_prefix = panel_spikes('GetSpikesEventPrefix');
     % First check if there is only one neuron on the channel
     iEventforElectrode = find(ismember(allEventLabels, [spike_event_prefix ' ' ChannelMat.Channel(iChannel).Name])); % Find the index of the spike-events that correspond to that electrode (Exact string match)
     %Then check if there are multiple

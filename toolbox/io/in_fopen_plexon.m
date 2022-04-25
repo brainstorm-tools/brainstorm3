@@ -198,7 +198,7 @@ if sum(spikes_tscounts(2,:))>0 && ~strcmp(selectedSignalType, 'AI') % If spikes 
     events = repmat(db_template('event'), 1, nUnique_events);
     iEnteredEvent = 1;
 
-    spike_event_prefix = process_spikesorting_supervised('GetSpikesEventPrefix');
+    spike_event_prefix = panel_spikes('GetSpikesEventPrefix');
 
     for iChannel = 1:size(spikes_tscounts,2)-1
 

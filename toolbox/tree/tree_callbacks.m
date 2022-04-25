@@ -305,7 +305,7 @@ switch (lower(action))
                 
             % ===== SPIKES =====
             case 'spike'
-                bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []);
+                panel_spikes('OpenSpikeFile', filenameRelative);
 
             % ===== TIME-FREQUENCY =====
             case {'timefreq', 'ptimefreq'}
@@ -1832,7 +1832,7 @@ switch (lower(action))
 
 %% ===== POPUP: SPIKE =====
             case 'spike'
-                gui_component('MenuItem', jPopup, [], 'Supervised spike sorting', IconLoader.ICON_SPIKE_SORTING, [], @(h,ev)bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []));
+                gui_component('MenuItem', jPopup, [], 'Supervised spike sorting', IconLoader.ICON_SPIKE_SORTING, [], @(h,ev)panel_spikes('OpenSpikeFile', filenameRelative));
 
 %% ===== POPUP: TIME-FREQ =====
             case {'timefreq', 'ptimefreq'}
