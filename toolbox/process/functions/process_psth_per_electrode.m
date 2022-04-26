@@ -5,9 +5,6 @@ function varargout = process_psth_per_electrode( varargin )
 % neuron on each electrode if multiple have been detected). This can be nicely
 % visualized on the cortical surface if the positions of the electrodes
 % have been set, and show real time firing rate.
-% 
-% USAGE:    sProcess = process_PSTH_per_electrode('GetDescription')
-%        OutputFiles = process_PSTH_per_electrode('Run', sProcess, sInput)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -27,30 +24,27 @@ function varargout = process_psth_per_electrode( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis, 2018-2019;
+% Authors: Konstantinos Nasiotis, 2018-2019
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'PSTH Per Electrode';
+    sProcess.Comment     = 'PSTH per electrode';
     sProcess.FileTag     = 'raster';
-    sProcess.Category    = 'custom';
+    sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1505;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Raster_Plots';
+    sProcess.Index       = 1229;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    % Options: Sensor types
-    sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
-    sProcess.options.sensortypes.Type    = 'text';
-    sProcess.options.sensortypes.Value   = 'EEG';
     % Options: Bin size
     sProcess.options.binsize.Comment = 'Bin size: ';
     sProcess.options.binsize.Type    = 'value';
@@ -59,153 +53,93 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInput)
     % Initialize returned values
     OutputFiles = {};
-    % Extract method name from the process name
-    strProcess = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'data', '');
-    
-    tfOPTIONS.Method = strProcess;
-    % Add other options
 
-    if isfield(sProcess.options, 'sensortypes')
-        tfOPTIONS.SensorTypes = sProcess.options.sensortypes.Value;
-    else
-        tfOPTIONS.SensorTypes = [];
-    end
-    
+    % ==== OPTIONS =====
     % Bin size
     if isfield(sProcess.options, 'binsize') && ~isempty(sProcess.options.binsize) && ~isempty(sProcess.options.binsize.Value) && iscell(sProcess.options.binsize.Value) && sProcess.options.binsize.Value{1} > 0
         bin_size = sProcess.options.binsize.Value{1};
     else
-        bst_report('Error', sProcess, sInputs, 'Positive bin size required.');
+        bst_report('Error', sProcess, sInput, 'Positive bin size required.');
         return;
     end
-    
-    % If a time window was specified
-    if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value)
-        tfOPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
-    elseif ~isfield(tfOPTIONS, 'TimeWindow')
-        tfOPTIONS.TimeWindow = [];
-    end
-    
-    tfOPTIONS.TimeVector = in_bst(sInputs(1).FileName, 'Time');
 
-    
-    % === OUTPUT STUDY ===
-    % Get output study
-    [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sInputs);
-    tfOPTIONS.iTargetStudy = iStudy;
-    
-   
-    % Get channel file
-    sChannel = bst_get('ChannelForStudy', iStudy);
+    % ===== LOAD INPUT FILES =====
+    % Load data file
+    DataMat = in_bst_data(sInput.FileName, 'Time', 'Events', 'Comment', 'Device', 'ChannelFlag', 'History');
+    sampling_rate = round(abs(1. / (DataMat.Time(2) - DataMat.Time(1))));
     % Load channel file
-    ChannelMat = in_bst_channel(sChannel.FileName);
-    
-    % === START COMPUTATION ===
-    sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
-    
-    temp = in_bst(sInputs(1).FileName);
-    nElectrodes = size(temp.ChannelFlag,1); 
-    nTrials = length(sInputs);
-    nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
-    bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
-    
-    for ifile = 1:length(sInputs)
-        trial = in_bst(sInputs(ifile).FileName);
-        single_file_binning = zeros(nElectrodes, nBins);
+    ChannelMat = in_bst_channel(sInput.ChannelFile);
 
-        for ielectrode = 1:size(trial.F,1)
-            for ievent = 1:size(trial.Events,2)
+    % ===== COMPUTE BINNING =====
+    % Define bins
+    nBins = floor(length(DataMat.Time) / (bin_size * sampling_rate));
+    bins = linspace(DataMat.Time(1), DataMat.Time(end), nBins+1);
+    single_file_binning = zeros(length(ChannelMat.Channel), nBins);
+    % Process channel by channel
+    for iChan = 1:length(ChannelMat.Channel)
+        for iEvent = 1:size(DataMat.Events,2)
+            
+            % Bin ONLY THE FIRST NEURON'S SPIKES if there are multiple neurons!
+            if panel_spikes('IsSpikeEvent', DataMat.Events(iEvent).label) ...
+                    && panel_spikes('IsFirstNeuron', DataMat.Events(iEvent).label) ...
+                    && strcmp(ChannelMat.Channel(iChan).Name, panel_spikes('GetChannelOfSpikeEvent', DataMat.Events(iEvent).label))
                 
-                % Bin ONLY THE FIRST NEURON'S SPIKES if there are multiple neurons!
-                if panel_spikes('IsSpikeEvent', trial.Events(ievent).label) ...
-                        && panel_spikes('IsFirstNeuron', trial.Events(ievent).label) ...
-                        && strcmp(ChannelMat.Channel(ielectrode).Name, panel_spikes('GetChannelOfSpikeEvent', trial.Events(ievent).label))
-                    
-                    outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                    trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % Make sure it is inside the bin. Add 1ms offset
-                    outside_down = trial.Events(ievent).times <= bins(1);
-                    trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % Make sure it is inside the bin. Add 1ms offset
-                    
-                    [tmp, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
-                     
-                    unique_bin = unique(bin_it_belongs_to);
-                    occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
-                     
-                    single_file_binning(ielectrode,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate
-                    break
-                end
+                outside_up = DataMat.Events(iEvent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
+                DataMat.Events(iEvent).times(outside_up) = bins(end) - 0.001; % Make sure it is inside the bin. Add 1ms offset
+                outside_down = DataMat.Events(iEvent).times <= bins(1);
+                DataMat.Events(iEvent).times(outside_down) = bins(1) + 0.001; % Make sure it is inside the bin. Add 1ms offset
+                
+                [tmp, bin_it_belongs_to] = histc(DataMat.Events(iEvent).times, bins);
+                 
+                unique_bin = unique(bin_it_belongs_to);
+                occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
+                 
+                single_file_binning(iChan,occurences(1,:)) = occurences(2,:)/bin_size; % The division by the bin_size gives the Firing Rate
+                break
             end
-            
         end
         
-        
-        % Events have to be converted to the sampling rate of the binning
-        convertedEvents = trial.Events;
-        
-        for iEvent = 1:length(trial.Events)
-            [tmp, bin_it_belongs_to] = histc(trial.Events(iEvent).times, bins);
-
-            bin_it_belongs_to(bin_it_belongs_to==0) = 1;
-            convertedEvents(iEvent).times   = bins(bin_it_belongs_to);
-            
-        end
-        Events = convertedEvents;
-            
-        
-        
-        
-        %%
-        tfOPTIONS.ParentFiles = {sInputs.FileName};
-
-        % Prepare output file structure
-        FileMat.F = single_file_binning;
-        FileMat.Time = diff(bins(1:2))/2+bins(1:end-1);
-
-        FileMat.Std = [];
-        FileMat.Comment = ['PSTH: ' trial.Comment];
-        FileMat.DataType = 'recordings';
-        
-        FileMat.ChannelFlag = temp.ChannelFlag;
-        FileMat.Device      = trial.Device;
-        FileMat.Events      = Events;
-        
-        FileMat.nAvg = 1;
-        FileMat.ColormapType = [];
-        FileMat.DisplayUnits = [];
-        FileMat.History = trial.History;
-        
-        % Add history field
-        FileMat = bst_history('add', FileMat, 'compute', ...
-            ['PSTH per electrode: ' num2str(bin_size) ' ms']);
-
-        % Get output study
-        sTargetStudy = bst_get('Study', iStudy);
-        % Output filename
-        FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'data_psth');
-        OutputFiles = {FileName};
-        % Save output file and add to database
-        bst_save(FileName, FileMat, 'v6');
-        db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
-    
     end
 
+    % Events have to be converted to the sampling rate of the binning
+    convertedEvents = DataMat.Events;
+    for iEvent = 1:length(DataMat.Events)
+        [tmp, bin_it_belongs_to] = histc(DataMat.Events(iEvent).times, bins);
+        bin_it_belongs_to(bin_it_belongs_to==0) = 1;
+        convertedEvents(iEvent).times   = bins(bin_it_belongs_to);
+    end
+    Events = convertedEvents;
+        
     
+    % ===== SAVE RESULTS =====
+    % Prepare output file structure
+    FileMat = db_template('datamat');
+    FileMat.F           = single_file_binning;
+    FileMat.Time        = diff(bins(1:2))/2+bins(1:end-1);
+    FileMat.Comment     = ['PSTH: ' DataMat.Comment];
+    FileMat.DataType    = 'recordings';
+    FileMat.ChannelFlag = DataMat.ChannelFlag;
+    FileMat.Device      = DataMat.Device;
+    FileMat.Events      = Events;
+    FileMat.nAvg        = 1;
+    FileMat.History     = DataMat.History;
     
-    
-    % Display report to user
-    bst_report('Info', sProcess, sInputs, 'Success');
-    disp('BST> process_timefreq: Success');
+    % Add history field
+    FileMat = bst_history('add', FileMat, 'ptsh', ['PSTH per electrode: ' num2str(bin_size) ' ms']);
+    FileMat = bst_history('add', FileMat, 'ptsh', ['Input file: ' sInput.FileName]);
+    % Output filename
+    FileName = bst_process('GetNewFilename', bst_fileparts(sInput.FileName), 'data_psth');
+    OutputFiles = {FileName};
+    % Save output file and add to database
+    bst_save(FileName, FileMat, 'v6');
+    db_add_data(sInput.iStudy, FileName, FileMat);
 end
-
-
-
-

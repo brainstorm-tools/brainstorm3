@@ -35,7 +35,7 @@ function sProcess = GetDescription()
     sProcess.Comment     = 'Convert Raw to LFP';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1203;
+    sProcess.Index       = 1205;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/RawToLFP';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
