@@ -19,7 +19,7 @@ function varargout = process_evt_duplicate( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2016
+% Authors: Francois Tadel, Guiomar Niso, 2022
 
 eval(macro_method);
 end
