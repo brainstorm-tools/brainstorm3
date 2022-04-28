@@ -9,7 +9,7 @@ function varargout = process_bandstop( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -64,7 +64,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.freqwidth.Type    = 'value';
     sProcess.options.freqwidth.Value   = {1.5, 'Hz', 2};
     % === Display properties
-    sProcess.options.display.Comment = {'process_bandstop(''DisplaySpec'',iProcess,sfreq);', '<BR>', 'View filter response'};
+    sProcess.options.display.Comment = {'process_bandstop(''DisplaySpec'',sfreq);', '<BR>', 'View filter response'};
     sProcess.options.display.Type    = 'button';
     sProcess.options.display.Value   = [];
 end
@@ -223,16 +223,13 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
         case 'fieldtrip_butter'
             FiltSpec.NumT = FiltSpec.b(1,:) ; 
             FiltSpec.DenT = FiltSpec.a(1,:) ; 
-%             if length(FreqList)>1
-%                 for ifreq = 2:length(FreqList)
-%                     FiltSpec.NumT = conv(FiltSpec.NumT,FiltSpec.b(ifreq,:)) ; 
-%                     FiltSpec.DenT = conv(FiltSpec.DenT,FiltSpec.a(ifreq,:)) ; 
-%                 end
-%             end
             FiltSpec.order = length(FiltSpec.DenT)-1 ;
-%             FiltSpec.cutoffBand = FreqBand ; 
             % Compute the cumulative energy of the impulse response
-            [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+            if bst_get('UseSigProcToolbox')
+                [h,t] = impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+            else
+                [h,t] = oc_impz(FiltSpec.NumT,FiltSpec.DenT,[],sfreq);
+            end
             E = h(1:end) .^ 2 ;
             E = cumsum(E) ;
             E = E ./ max(E) ;
@@ -245,14 +242,17 @@ end
 
 
 %% ===== DISPLAY FILTER SPECS =====
-function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
-    % Get current process options
-    global GlobalData;
-    sProcess = GlobalData.Processes.Current(iProcess);
+function DisplaySpec(sfreq)
+    % Get current process structure
+    sProcess = panel_process_select('GetCurrentProcess');
     % Get options
     FreqList  = sProcess.options.freqlist.Value{1};
     FreqWidth = sProcess.options.freqwidth.Value{1};
     method    = 'fieldtrip_butter';
+    if isempty(FreqList) || isempty(FreqWidth)
+        disp('BST> No frequencies selected.');
+        return;
+    end
     % Compute filter specification
     [tmp, FiltSpec, Messages] =  Compute([], sfreq, FreqList, FreqWidth, method);
     if isempty(FiltSpec)
@@ -275,10 +275,9 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     end
     XFreqLim = [Freqs(1) Freqs(end)] ; 
 
-%   % Filter description: Left panel
+    % Filter description: Left panel
     strFilter1 = ['<HTML> Filter type: <B>Butterworth IIR filter</B>' '<BR>'];
     strFilter1 = [strFilter1 'Absolute value of the largest pole: &nbsp;&nbsp;<B>' num2str(max(abs(roots(a)))) '</B><BR>'];
-%     strFilter1 = [strFilter1 '3-dB Bandstop band: &nbsp;&nbsp;<B>' num2str(FiltSpec.cutoffBand(1)) '-' num2str(FiltSpec.cutoffBand(2)) ' Hz</B><BR>'];    
 
     % Filter description: Right panel
     strFilter2 = '<HTML>';
@@ -288,5 +287,4 @@ function DisplaySpec(iProcess, sfreq) %#ok<DEFNU>
     strFilter2 = [strFilter2 'Sampling frequency: &nbsp;&nbsp;<B>', num2str(sfreq), ' Hz</B><BR>'];
 
     hFig = process_bandpass('HFilterDisplay',Hf,Freqs,Ht,t,FiltSpec.transient,strFilter1,strFilter2,XFreqLim) ; 
-
 end

@@ -7,7 +7,7 @@ function varargout = panel_coordinates(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -56,11 +56,19 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % ===== Coordinates =====
         jPanelCoordinates = gui_river('Coordinates (millimeters)');
             % Coordinates
-            jPanelCoordinates.add(JLabel('  '));
-            gui_component('label', jPanelCoordinates, 'tab', '  ');
-            gui_component('label', jPanelCoordinates, 'tab', '       X');
-            gui_component('label', jPanelCoordinates, 'tab', '       Y');
-            gui_component('label', jPanelCoordinates, 'tab', '       Z');
+            jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', ' '));
+            jLabelX = gui_component('label', jPanelCoordinates, 'tab', '   X');
+            jLabelY = gui_component('label', jPanelCoordinates, 'tab', '   Y');
+            jLabelZ = gui_component('label', jPanelCoordinates, 'tab', '   Z');
+            jLabelX.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelY.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelZ.setHorizontalAlignment(javax.swing.JLabel.CENTER);
+            jLabelX.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelY.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelZ.setPreferredSize(Dimension(TEXT_WIDTH, TEXT_HEIGHT));
+            jLabelX.setFont(jFontText);
+            jLabelY.setFont(jFontText);
+            jLabelZ.setFont(jFontText);
             % === MRI ===
             jPanelCoordinates.add('br', gui_component('label', jPanelCoordinates, 'tab', 'MRI: '));
             jLabelCoordMriX = JLabel('-');
@@ -320,7 +328,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
             % Get MRI
             sMri = bst_memory('GetMri', TessInfo(iTess).SurfaceFile);
             
-        case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other'}
+        case {'Scalp', 'InnerSkull', 'OuterSkull', 'Cortex', 'Other', 'FEM'}
             sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
             scsLoc = sSurf.Vertices(vi,:);
             plotLoc = vout;
@@ -339,7 +347,7 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
                 end
             end
             % Get subject
-            sSubject = bst_get('SurfaceFile', TessInfo(iTess).SurfaceFile);
+            sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
             % == GET MRI ==
             % If subject has a MRI defined
             if ~isempty(sSubject.iAnatomy)
@@ -491,18 +499,10 @@ function ViewInMriViewer(varargin)
     if isempty(sSubject) || isempty(sSubject.iAnatomy)
         return 
     end
-    % Progress bar
-    bst_progress('start', 'MRI Viewer', 'Opening MRI Viewer...');
-    % Get protocol directories
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % MRI full filename
-    MriFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(MriFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
-    % Close progress bar
-    bst_progress('stop');
 end
 
 

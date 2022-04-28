@@ -7,7 +7,7 @@ function [DataMat, ChannelMat] = in_data_erplab(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -48,7 +48,7 @@ for i = 1:nBins
         DataMat(i).Std = ErpMat.ERP.binerror(:,:,i) * 1e-6;
     end
     % History
-    DataMat(i) = bst_history('add', DataMat(i), 'erplab', ErpMat.ERP.history);
+    DataMat(i) = bst_history('add', DataMat(i), 'erplab', ErpMat.ERP.history(:)');
 end
 
 % ===== CHANNEL FILE =====

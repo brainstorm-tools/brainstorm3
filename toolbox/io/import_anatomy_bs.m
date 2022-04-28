@@ -1,15 +1,19 @@
-function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid, isExtraMaps, isAseg)
+function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive, sFid, isVolumeAtlas, isKeepMri)
 % IMPORT_ANATOMY_BS: Import a full BrainSuite folder as the subject's anatomy.
 %
-% USAGE:  errorMsg = import_anatomy_bs(iSubject, BsDir=[], nVertices=15000)
+% USAGE:  errorMsg = import_anatomy_bs(iSubject, BsDir=[ask], nVertices=[ask], isInteractive=1, sFid=[], isVolumeAtlas=1, isKeepMri=0)
 %
 % INPUT:
-%    - iSubject  : Indice of the subject where to import the MRI
-%                  If iSubject=0 : import MRI in default subject
-%    - BsDir     : Full filename of the BrainSuite folder to import
-%    - nVertices : Number of vertices in the file cortex surface
-%    - isInteractive: If 0, no input or user interaction
-%    - sFid      : Structure with the fiducials coordinates
+%    - iSubject      : Indice of the subject where to import the MRI
+%                      If iSubject=0 : import MRI in default subject
+%    - BsDir         : Full filename of the BrainSuite folder to import
+%    - nVertices     : Number of vertices in the file cortex surface
+%    - isInteractive : If 0, no input or user interaction
+%    - sFid          : Structure with the fiducials coordinates
+%    - isVolumeAtlas : If 1, imports the svreg atlas as a set of surfaces
+%    - isKeepMri     : 0=Delete all existing anatomy files
+%                      1=Keep existing MRI volumes (when running segmentation from Brainstorm)
+%                      2=Keep existing MRI and surfaces
 % OUTPUT:
 %    - errorMsg : String: error message if an error occurs
 
@@ -17,7 +21,7 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,19 +35,18 @@ function errorMsg = import_anatomy_bs(iSubject, BsDir, nVertices, isInteractive,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author   : Francois Tadel, 2012-2018
+% Author   : Francois Tadel, 2012-2021
 % Modified : Andrew Krause, 2013
 
 %% ===== PARSE INPUTS =====
-% Import ASEG atlas
-if (nargin < 7) || isempty(isAseg)
-    isAseg = 1;
+% Keep MRI
+if (nargin < 7) || isempty(isKeepMri)
+    isKeepMri = 0;
 end
-% Extract cortical maps
-if (nargin < 6) || isempty(isExtraMaps)
-    isExtraMaps = 0;
+% Import volume atlas
+if (nargin < 6) || isempty(isVolumeAtlas)
+    isVolumeAtlas = 1;
 end
-
 % Fiducials
 if (nargin < 5) || isempty(sFid)
     sFid = [];
@@ -84,7 +87,7 @@ bst_memory('UnloadAll', 'Forced');
 % Get subject definition
 sSubject = bst_get('Subject', iSubject);
 % Check for existing anatomy
-if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
+if (~isempty(sSubject.Anatomy) && (isKeepMri == 0)) || (~isempty(sSubject.Surface) && (isKeepMri < 2))
     % Ask user whether the previous anatomy should be removed
     if isInteractive
         isDel = java_dialog('confirm', ['Warning: There is already an anatomy defined for this subject.' 10 10 ...
@@ -98,7 +101,7 @@ if ~isempty(sSubject.Anatomy) || ~isempty(sSubject.Surface)
         return;
     end
     % Delete anatomy
-    sSubject = db_delete_anatomy(iSubject);
+    sSubject = db_delete_anatomy(iSubject, isKeepMri);
 end
 
 
@@ -125,17 +128,20 @@ if isempty(FilePrefix)
     end
     return;
 end
-MriFile = {file_find(BsDir, [FilePrefix '.nii.gz']), ...
+T1File = {file_find(BsDir, [FilePrefix '.nii.gz']), ...
            file_find(BsDir, [FilePrefix '.nii']), ...
            file_find(BsDir, [FilePrefix '.img.gz']),...
            file_find(BsDir, [FilePrefix '.img'])};
-MriFile = [MriFile{find(~cellfun(@isempty, MriFile))}];
-if isempty(MriFile)
+T1File = [T1File{find(~cellfun(@isempty, T1File))}];
+if isempty(T1File)
     errorMsg = [errorMsg 'MRI file was not found: ' FilePrefix '.*' 10];
 end
 
-% Volume segmentation file
-AsegFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
+% Find volume segmentation file
+BsDirMultiParc = fullfile(BsDir,'multiparc');
+
+SvregFile = file_find(BsDir, [FilePrefix '.svreg.label.nii.gz']);
+OtherSvregFiles = file_find(BsDirMultiParc, [FilePrefix '.svreg.*.label.nii.gz'], 2, 0);
 
 % Find surfaces
 HeadFile        = file_find(BsDir, [FilePrefix '.scalp.dfs']);
@@ -149,11 +155,26 @@ TessLsphFile    = file_find(BsDir, [FilePrefix '.left.mid.cortex.svreg.dfs']);
 TessRsphFile    = file_find(BsDir, [FilePrefix '.right.mid.cortex.svreg.dfs']);
 TessLAtlsphFile = file_find(BsDir, 'atlas.left.mid.cortex.svreg.dfs');
 TessRAtlsphFile = file_find(BsDir, 'atlas.right.mid.cortex.svreg.dfs');
+
+% Find labels
+AnnotLhFiles = file_find(BsDirMultiParc, [FilePrefix '.left.mid.cortex.svreg.*.dfs'], 2, 0);
+AnnotRhFiles = file_find(BsDirMultiParc, [FilePrefix '.right.mid.cortex.svreg.*.dfs'], 2, 0);
+
+if isempty(AnnotLhFiles)
+    AnnotLhFiles = TessLhFile;
+end
+
+if isempty(AnnotRhFiles)
+    AnnotRhFiles = TessRhFile;
+end
+
 if isempty(HeadFile)
-    errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.left.pial.cortex.dfs' 10];
+    %errorMsg = [errorMsg 'Scalp file was not found: ' FilePrefix '.scalp.dfs' 10];
+    disp(['BST> Warning: Scalp file was not found: ' FilePrefix '.scalp.dfs']);
 end
 if isempty(InnerSkullFile) && isempty(OuterSkullFile)
-    errorMsg = [errorMsg 'Inner or Outer Skull File not found' 10];
+    %errorMsg = [errorMsg 'Inner or Outer Skull File not found' 10];
+    disp('BST> Warning: Inner or Outer Skull File not found.');
 end
 if isempty(TessLhFile) 
     errorMsg = [errorMsg 'Surface file was not found: ' FilePrefix '.left.pial.cortex.svreg.dfs' 10];
@@ -174,17 +195,22 @@ end
 
 
 %% ===== IMPORT MRI =====
-% Read MRI
-[BstMriFile, sMri] = import_mri(iSubject, MriFile);
-if isempty(BstMriFile)
-    errorMsg = 'Could not import BrainSuite folder: MRI was not imported properly';
-    if isInteractive
-        bst_error(errorMsg, 'Import BrainSuite folder', 0);
+if isKeepMri && ~isempty(sSubject.Anatomy)
+    BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+else
+    bst_progress('text', 'Loading MRI...');
+    % Read MRI
+    [BstT1File, sMri] = import_mri(iSubject, T1File);
+    if isempty(BstT1File)
+        errorMsg = 'Could not import BrainSuite folder: MRI was not imported properly';
+        if isInteractive
+            bst_error(errorMsg, 'Import BrainSuite folder', 0);
+        end
+        return;
     end
-    return;
+    % Enforce it as the permanent default MRI
+    sSubject = db_surface_default(iSubject, 'Anatomy', 1, 0);
 end
-% Size of the volume
-cubeSize = (size(sMri.Cube) - 1) .* sMri.Voxsize;
 
 
 %% ===== DEFINE FIDUCIALS =====
@@ -214,18 +240,12 @@ if ~isempty(FidFile)
     % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
 end
 % Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
+if ~isKeepMri && (~isInteractive || ~isempty(FidFile))
     % Use fiducials from file
     if ~isempty(FidFile)
         % Already loaded
     % Compute them from MNI transformation
     elseif isempty(sFid)
-%         NAS = [cubeSize(1)./2,  cubeSize(2),           cubeSize(3)./2];
-%         LPA = [1,               cubeSize(2)./2,        cubeSize(3)./2];
-%         RPA = [cubeSize(1),     cubeSize(2)./2,        cubeSize(3)./2];
-%         AC  = [cubeSize(1)./2,  cubeSize(2)./2 + 20,   cubeSize(3)./2];
-%         PC  = [cubeSize(1)./2,  cubeSize(2)./2 - 20,   cubeSize(3)./2];
-%         IH  = [cubeSize(1)./2,  cubeSize(2)./2,        cubeSize(3)./2 + 50];
         NAS = [];
         LPA = [];
         RPA = [];
@@ -233,7 +253,7 @@ if ~isInteractive || ~isempty(FidFile)
         PC  = [];
         IH  = [];
         isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
+        disp(['BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.' 10]);
     % Else: use the defined ones
     else
         NAS = sFid.NAS;
@@ -251,20 +271,18 @@ if ~isInteractive || ~isempty(FidFile)
         figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
     end
 % Define with the MRI Viewer
-else
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(BstMriFile, 'EditFiducials');
+elseif ~isKeepMri
+    % Open MRI Viewer for the user to select NAS/LPA/RPA fiducials
+    hFig = view_mri(BstT1File, 'EditFiducials');
     drawnow;
     bst_progress('stop');
-    % Display help message: ask user to select fiducial points
-    % jHelp = bst_help('MriSetup.html', 0);
     % Wait for the MRI Viewer to be closed
     waitfor(hFig);
-    % Close help window
-    % jHelp.close();
 end
 % Load SCS and NCS field to make sure that all the points were defined
-sMri = load(BstMriFile, 'SCS', 'NCS');
+warning('off','MATLAB:load:variableNotFound');
+sMri = load(BstT1File, 'SCS', 'NCS');
+warning('on','MATLAB:load:variableNotFound');
 if ~isComputeMni && (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || isempty(sMri.SCS.R))
     errorMsg = ['Could not import BrainSuite folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
     if isInteractive
@@ -277,7 +295,7 @@ end
 %% ===== MNI NORMALIZATION =====
 if isComputeMni
     % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstMriFile);
+    [sMri, errCall] = bst_normalize_mni(BstT1File);
     % Error handling
     errorMsg = [errorMsg errCall];
 end
@@ -290,9 +308,9 @@ if ~isempty(TessLhFile)
     [iLh, BstTessLhFile, nVertOrigL] = import_surfaces(iSubject, TessLhFile, 'DFS', 0);
     BstTessLhFile = BstTessLhFile{1};
     % Load atlas
-    if ~isempty(TessLhFile)
+    if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: left pial...');
-        [sAllAtlas, err] = import_label(BstTessLhFile, TessLhFile, 1);
+        [sAllAtlas, err] = import_label(BstTessLhFile, AnnotLhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -311,9 +329,9 @@ if ~isempty(TessRhFile)
     [iRh, BstTessRhFile, nVertOrigR] = import_surfaces(iSubject, TessRhFile, 'DFS', 0);
     BstTessRhFile = BstTessRhFile{1};
     % Load atlas
-    if ~isempty(TessRhFile)
+    if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: right pial...');
-        [sAllAtlas, err] = import_label(BstTessRhFile, TessRhFile, 1);
+        [sAllAtlas, err] = import_label(BstTessRhFile, AnnotRhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -332,9 +350,9 @@ if ~isempty(TessLwFile)
     [iLw, BstTessLwFile] = import_surfaces(iSubject, TessLwFile, 'DFS', 0);
     BstTessLwFile = BstTessLwFile{1};
     % Load atlas
-    if ~isempty(TessLwFile)
+    if ~isempty(AnnotLhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: left white...');
-        [sAllAtlas, err] = import_label(BstTessLwFile, TessLwFile, 1);
+        [sAllAtlas, err] = import_label(BstTessLwFile, AnnotLhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -353,9 +371,9 @@ if ~isempty(TessRwFile)
     [iRw, BstTessRwFile] = import_surfaces(iSubject, TessRwFile, 'DFS', 0);
     BstTessRwFile = BstTessRwFile{1};
      % Load atlas
-    if ~isempty(TessRwFile)
+    if ~isempty(AnnotRhFiles)
         bst_progress('start', 'Import BrainSuite folder', 'Loading atlas: right inner...');
-        [sAllAtlas, err] = import_label(BstTessRwFile, TessRwFile, 1);
+        [sAllAtlas, err] = import_label(BstTessRwFile, AnnotRhFiles, 1);
         errorMsg = [errorMsg err];
     end
     % Load registration square
@@ -411,7 +429,7 @@ if ~isempty(HeadFile)
     BstHeadFile = tess_downsize( BstHeadHiFile, 1082, 'reducepatch' );
     % Load MRI
     bst_progress('start', 'Import BrainSuite folder', 'Filling holes in the head surface...');
-    sMri = bst_memory('LoadMri', BstMriFile);
+    sMri = in_mri_bst(BstT1File);
     % Load head surface
     sHead = in_tess_bst(BstHeadFile);
     % Remove holes
@@ -468,15 +486,26 @@ if ~isempty(rmFiles)
     panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
 end
 
-%% ===== LOAD svreg.label.nii.gz file =====
-
-if isAseg && ~isempty(AsegFile)
+%% ===== IMPORT SVREG ATLAS =====
+if isVolumeAtlas && ~isempty(SvregFile)
+    % Import atlas as volume
+    [BstSvregFile, sMriSvreg] = import_mri(iSubject, SvregFile, 'ALL-ATLAS', 0, 1, 'svreg');
+    % Import other label volumes
+    for iFile = 1:length(OtherSvregFiles)
+        st=strfind(OtherSvregFiles{iFile},'.svreg.');
+        ed=strfind(OtherSvregFiles{iFile},'.label.nii.gz');
+        AtlasName = OtherSvregFiles{iFile}(st+7:ed-1);
+        import_mri(iSubject, OtherSvregFiles{iFile}, 'ALL-ATLAS', 0, 1, AtlasName);
+    end
     % Import atlas
-    OffsetMri=[];
-    [iAseg, BstAsegFile] = import_surfaces(iSubject, AsegFile, 'MRI-MASK', 0, OffsetMri);
+    SelLabels = {...
+        'Accumbens L', 'Hippocampus L', 'Pallidum L', 'Putamen L', 'Thalamus L', ...
+        'Accumbens R', 'Hippocampus R', 'Pallidum R', 'Putamen R', 'Thalamus R', ...
+        'Brainstem', 'Cerebellum'};
+    [iSvreg, BstSvregFile] = import_surfaces(iSubject, SvregFile, 'MRI-MASK', 0, [], SelLabels, 'subcortical');
     % Extract cerebellum only
     try
-        BstCerebFile = tess_extract_struct(BstAsegFile{1}, {'Cerebellum'}, 'svreg | cerebellum');
+        BstCerebFile = tess_extract_struct(BstSvregFile{1}, {'Cerebellum'}, 'svreg | cerebellum');
     catch
         BstCerebFile = [];
     end
@@ -494,8 +523,6 @@ if isAseg && ~isempty(AsegFile)
         file_delete({file_fullpath(BstCerebFile), file_fullpath(BstCerebLowFile)}, 1);
         db_reload_subjects(iSubject);
     end
-else
-    BstAsegFile = [];
 end
 
 

@@ -19,7 +19,7 @@ function [sFile, ChannelMat] = in_fopen_blackrock(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,13 +33,15 @@ function [sFile, ChannelMat] = in_fopen_blackrock(DataFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2021
 
-%% ===== CHECK FOR NPMK TOOLBOX =====
+
+%% ===== INSTALL NPMK LIBRARY =====
 if ~exist('openNSx', 'file')
-    error(['Reading Blackrock files requires the NPMK toolbox:' 10 ...
-           ' - Download the latest at: https://github.com/BlackrockMicrosystems/NPMK/releases' 10 ...
-           ' - Add the NPMK folder and sub-folders to your Matlab path.']);
+    [isInstalled, errMsg] = bst_plugin('Install', 'blackrock');
+    if ~isInstalled
+        error(errMsg);
+    end
 end
 
 
@@ -51,11 +53,34 @@ if ~file_exist(NevFile)
     disp(['Event file could not be found: ' NevFile]);
     NevFile = [];
 end
+% Disable the 'uV' warning (otherwise 'noread' and 'uv' are incompatible, and we have a necessary input from the command line)
+disp('BST> Disabling NPMKSettings:ShowuVWarning...');
+NPMKSettings = settingsManager;
+readOptions = {};
+NPMKSettings.ShowuVWarning = 0;
+if isfield(NPMKSettings, 'ShowZeroPadWarning')
+    NPMKSettings.ShowZeroPadWarning = 0;
+    readOptions{end+1} = 'nozeropad';
+end
+settingsManager(NPMKSettings);
 % Read the firs two samples of the file to get the header information
-rec = openNSx('noread', DataFile);
+rec = openNSx(DataFile, 'noread', readOptions{:});
 % Read useful information from there
 hdr = rec.MetaTags;
-
+% Display warning when there are multiple records
+if (length(hdr.DataPoints) > 1)
+    disp(['BST> WARNING: The file "' DataFile '" contains ' num2str(length(hdr.DataPoints)) ' blocks of recordings.']);
+    disp('     All the data blocks will appear concatenated in Brainstorm, event latencies might be wrong.');
+end
+% Time factor
+tFactorNsx = double(hdr.SamplingFreq) / double(hdr.TimeRes);
+% Samples in real life (including discontinuities) / samples in the file (all blocks contiguous starting from 0)
+hdr.RealSamples = round(double(hdr.Timestamp) * tFactorNsx);
+hdr.FileSamples = [0, cumsum(hdr.DataPoints(1:end-1)) - 1];
+% Some files have file Timestamp that are not usable here
+if (length(hdr.RealSamples) > 1) && any(diff(hdr.RealSamples) <= 0)
+    hdr.RealSamples = hdr.FileSamples;
+end
 
 %% ===== CREATE BRAINSTORM SFILE STRUCTURE =====
 % Initialize returned file structure
@@ -69,8 +94,10 @@ sFile.header    = hdr;
 sFile.comment   = [fBase, fExt];
 % Consider that the sampling rate of the file is the sampling rate of the first signal
 sFile.prop.sfreq   = hdr.SamplingFreq;
-sFile.prop.times   = [0, hdr.DataPoints - 1] ./ sFile.prop.sfreq;
+sFile.prop.times   = [0, sum(hdr.DataPoints) - 1] ./ sFile.prop.sfreq;
 sFile.prop.nAvg    = 1;
+% Acquisition time
+sFile.acq_date = datestr(datenum(hdr.DateTime), 'dd-mmm-yyyy');
 % No info on bad channels
 sFile.channelflag = ones(hdr.ChannelCount, 1);
 
@@ -99,8 +126,8 @@ if ~isempty(NevFile)
     nev = openNEV('read', NevFile, 'nomat', 'nosave');
     % Initialize list of events
     events = repmat(db_template('event'), 0);
-    % Time factor 
-    tFactor = double(rec.MetaTags.SamplingFreq) / double(nev.MetaTags.TimeRes);
+    % Time factor
+    tFactorNev = double(hdr.SamplingFreq) / double(nev.MetaTags.TimeRes);
     % Get spike event BST prefix
     spikeEventPrefix = process_spikesorting_supervised('GetSpikesEventPrefix');
     
@@ -116,7 +143,7 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).times      = round((double(nev.Data.Spikes.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
+            events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.Spikes.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
@@ -136,7 +163,7 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).times      = round((double(nev.Data.SerialDigitalIO.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
+            events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.SerialDigitalIO.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
@@ -145,17 +172,24 @@ if ~isempty(NevFile)
     
     % Use comments
     if ~isempty(nev.Data.Comments.TimeStamp)
-        % Get on which electrode the spike is happening
-        uniqueType = unique({nev.Data.Comments.Text});
-        % Create one group per electrode
+        % Get comment text
+        if (length(nev.Data.Comments.TimeStamp) > 1)
+            comments = mat2cell(nev.Data.Comments.Text, ones(1,size(nev.Data.Comments.Text,1)), size(nev.Data.Comments.Text,2))';
+        else
+            comments = {nev.Data.Comments.Text};
+        end
+        % Remove useless characters
+        comments = cellfun(@(c)strtrim(c(c~=0)), comments, 'UniformOutput', 0);
+        % Create one group of markers per comment
+        uniqueType = unique(comments);
         for i = 1:length(uniqueType)
             iEvt = length(events) + 1;
-            iOcc = strcmpi({nev.Data.Comments.Text}, uniqueType{i});
+            iOcc = strcmpi(comments, uniqueType{i});
             events(iEvt).label      = strtrim(uniqueType{i});
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).times      = round((double(nev.Data.Comments.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
+            events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.Comments.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
@@ -174,7 +208,7 @@ if ~isempty(NevFile)
             events(iEvt).color      = [];
             events(iEvt).reactTimes = [];
             events(iEvt).select     = 1;
-            events(iEvt).times      = round((double(nev.Data.PatientTrigger.TimeStamp(iOcc)) - 1) * tFactor) ./ sFile.prop.sfreq;
+            events(iEvt).times      = FixSamples(hdr, round((double(nev.Data.PatientTrigger.TimeStamp(iOcc)) - 1) * tFactorNev)) ./ sFile.prop.sfreq;
             events(iEvt).epochs     = ones(1, length(iOcc));
             events(iEvt).channels   = cell(1, size(events(iEvt).times, 2));
             events(iEvt).notes      = cell(1, size(events(iEvt).times, 2));
@@ -185,6 +219,51 @@ if ~isempty(NevFile)
     if ~isempty(events)
         sFile = import_events(sFile, [], events);
     end
+end
+
+
+% Add events to indicate block separations
+if (length(hdr.DataPoints) > 1)
+    events = repmat(db_template('event'), 1, length(hdr.DataPoints));
+    timeBlocks = [0, cumsum(hdr.DataPoints(1:end-1)) - 1] ./ sFile.prop.sfreq;
+    for iEvt = 1:length(hdr.DataPoints)
+        events(iEvt).label      = sprintf('Block%02d-%1.3fs', iEvt, hdr.RealSamples(iEvt) ./ sFile.prop.sfreq);
+        events(iEvt).color      = [];
+        events(iEvt).reactTimes = [];
+        events(iEvt).select     = 1;
+        events(iEvt).times      = timeBlocks(iEvt);
+        events(iEvt).epochs     = 1;
+        events(iEvt).channels   = {[]};
+        events(iEvt).notes      = {[]};
+    end
+    sFile = import_events(sFile, [], events);
+end
+
+end
+
+
+%% ====== FIX TIMESTAMPS =====
+% Adjust events samples when there are multiple recording blocks
+function smp = FixSamples(hdr, smp)
+    % Only one block: Nothing to fix
+    if (length(hdr.RealSamples) == 1)
+        return;
+    end
+    % Prepare a list of offsets for each sample
+    smpOffset = zeros(size(smp));
+    % Loop on all the blocks
+    for iBlock = 1:length(hdr.RealSamples)
+        % Get events in this block
+        if (iBlock == length(hdr.RealSamples))
+            blockSmp = (smp >= hdr.RealSamples(iBlock));
+        else
+            blockSmp = ((smp >= hdr.RealSamples(iBlock)) & (smp < hdr.RealSamples(iBlock+1)));
+        end
+        % Replace real time (including discontinuities) with file time (all blocks contiguous)
+        smpOffset(blockSmp) = hdr.FileSamples(iBlock) - hdr.RealSamples(iBlock);
+    end
+    % Add offset
+    smp = smp + smpOffset;
 end
 
 

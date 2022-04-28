@@ -8,7 +8,7 @@ function varargout = process_convert_raw_to_lfp( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,6 +23,7 @@ function varargout = process_convert_raw_to_lfp( varargin )
 % =============================================================================@
 %
 % Authors: Konstantinos Nasiotis 2018
+%          Francois Tadel, 2021
 
 eval(macro_method);
 end
@@ -100,25 +101,12 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         end
 
         %% Check for dependencies
-        % If DespikeLFP is selected, check if it is already installed
+        % If DespikeLFP is selected: Install DeriveLFP plugin
         if sProcess.options.despikeLFP.Value
-            % Ensure we are including the DeriveLFP folder in the Matlab path
-            DeriveLFPDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP');
-            if exist(DeriveLFPDir, 'dir')
-                addpath(genpath(DeriveLFPDir));
-            end
-
-            % Install DeriveLFP if missing
-            if ~exist('despikeLFP.m', 'file')
-                rmpath(genpath(DeriveLFPDir));
-                isOk = java_dialog('confirm', ...
-                    ['The DeriveLFP toolbox is not installed on your computer.' 10 10 ...
-                         'Download and install the latest version?'], 'DeriveLFP');
-                if ~isOk
-                    bst_report('Error', sProcess, sInput, 'This process requires the DeriveLFP toolbox.');
-                    return;
-                end
-                downloadAndInstallDeriveLFP();
+            [isInstalled, errMsg] = bst_plugin('Install', 'derivelfp');
+            if ~isInstalled
+                bst_report('Error', sProcess, [], errMsg);
+                return;
             end
         end
 
@@ -145,20 +133,26 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
             poolobj = [];
         end
 
-        %% Initialize
+        %% Check if the files are separated per channel. If not do it now.
+        % These files will be converted to LFP right after
+        sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
+        % Load full input file
+        sMat = in_bst(sInput.FileName, [], 0);
+        Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
+        % Inialize LFP matrix
+        LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time,round(Fs/NewFreq)))); % This shouldn't create a memory problem
 
+        %% Initialize
         % Prepare output file
         ProtocolInfo = bst_get('ProtocolInfo');
         newCondition = [sInput.Condition, '_LFP'];
-        sMat = in_bst(sInput.FileName, [], 0);
-        Fs = 1 / diff(sMat.Time(1:2)); % This is the original sampling rate
 
         if mod(Fs,NewFreq) ~= 0
             % This should never be an issue. Never heard of an acquisition
             % system that doesn't record in multiples of 1kHz.
             warning(['The downsampling might not be accurate. This process downsamples from ' num2str(Fs) ' to ' num2str(NewFreq) ' Hz'])
         end
-
+        
         % Get new condition name
         newStudyPath = file_unique(bst_fullfile(ProtocolInfo.STUDIES, sInput.SubjectName, newCondition));
         % Output file name derives from the condition name
@@ -189,8 +183,9 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
 
         %% Update fields before initializing the header on the binary file
         sFileTemplate.prop.sfreq = NewFreq;
+        sFileTemplate.prop.times = round(sFileTemplate.prop.times(1) * NewFreq) / NewFreq + [0, size(LFP,2)-1] ./ NewFreq;
         sFileTemplate.header.sfreq = NewFreq;
-        sFileTemplate.header.nsamples = round((sFileTemplate.prop.times(2) - sFileTemplate.prop.times(1)) .* NewFreq) + 1;
+        sFileTemplate.header.nsamples = size(LFP,2);
 
         % Update file
         sFileTemplate.CommentTag     = sprintf('resample(%dHz)', round(NewFreq));
@@ -206,14 +201,8 @@ function OutputFiles = Run(sProcess, sInputs, method) %#ok<DEFNU>
         [sFileOut, errMsg] = out_fopen(RawFileOut, RawFileFormat, sFileTemplate, ChannelMat);
 
 
-        %% Check if the files are separated per channel. If not do it now.
-        % These files will be converted to LFP right after
-        sFiles_temp_mat = in_spikesorting_rawelectrodes(sInput, sProcess.options.binsize.Value{1}(1) * 1e9, sProcess.options.paral.Value);
-
         %% Filter and derive LFP
-        LFP = zeros(length(sFiles_temp_mat), length(downsample(sMat.Time,round(Fs/NewFreq)))); % This shouldn't create a memory problem
         bst_progress('start', 'Spike-sorting', 'Converting RAW signals to LFP...', 0, (sProcess.options.paral.Value == 0) * nChannels);
-
         if sProcess.options.despikeLFP.Value
             if sProcess.options.paral.Value
                 parfor iChannel = 1:nChannels
@@ -268,7 +257,7 @@ function data = filter_and_downsample(inputFilename, Fs, filterBounds, notchFilt
         data = sMat.data';
     end
     
-    % Aplly final filter
+    % Apply final filter
     data = bst_bandpass_hfilter(data, Fs, filterBounds(1), filterBounds(2), 0, 0);
     data = downsample(data, round(Fs/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz.
 end
@@ -332,7 +321,9 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
             data_deligned_temp = [data_deligned;0];
             g = fitLFPpowerSpectrum(data_deligned_temp,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
             S = zeros(length(data_deligned_temp),1);
-            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike    
+            iSpk = round(spkSamples - nSegment/2);
+            iSpk = iSpk(iSpk > 0); % Only keep positive indices
+            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
             data_derived = despikeLFP(data_deligned_temp,S,Bs,g,opts);
             data_derived = data_derived.z';
             data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
@@ -341,7 +332,9 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         else
             g = fitLFPpowerSpectrum(data_deligned,filterBounds(1),filterBounds(2),sFile.prop.sfreq);
             S = zeros(length(data_deligned),1);
-            S(spkSamples - round(nSegment/2)) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
+            iSpk = round(spkSamples - nSegment/2);
+            iSpk = iSpk(iSpk > 0); % Only keep positive indices
+            S(iSpk) = 1; % This assumes the spike starts at 1/2 before the trough of the spike
 
             data_derived = despikeLFP(data_deligned,S,Bs,g,opts);
             data_derived = data_derived.z';
@@ -354,41 +347,8 @@ function data_derived = BayesianSpikeRemoval(inputFilename, filterBounds, sFile,
         data_derived = bst_bandpass_hfilter(data_derived, Fs, filterBounds(1), filterBounds(2), 0, 0);
     end
     
-    data_derived = downsample(data_derived, sMat.sr/1000);  % The file now has a different sampling rate (fs/30) = 1000Hz
+    data_derived = downsample(data_derived, round(sMat.sr/1000));  % The file now has a different sampling rate (fs/30) = 1000Hz
     
 end
 
-
-
-%% ===== DOWNLOAD AND INSTALL DeriveLFP =====
-function downloadAndInstallDeriveLFP()
-    DeriveLFPDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP');
-    DeriveLFPTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'DeriveLFP_tmp');
-    url = 'http://packlab.mcgill.ca/despikingtoolbox.zip';
-    % If folders exists: delete
-    if isdir(DeriveLFPDir)
-        file_delete(DeriveLFPDir, 1, 3);
-    end
-    if isdir(DeriveLFPTmpDir)
-        file_delete(DeriveLFPTmpDir, 1, 3);
-    end
-    % Create folder
-	mkdir(DeriveLFPTmpDir);
-    % Download file
-    zipFile = bst_fullfile(DeriveLFPTmpDir, 'despikingtoolbox.zip');
-    errMsg = gui_brainstorm('DownloadFile', url, zipFile, 'DeriveLFP download'); % This line downloads the file
-    if ~isempty(errMsg)
-        error(['Impossible to download DeriveLFP:' errMsg]);
-    end
-    % Unzip file
-    bst_progress('start', 'DeriveLFP', 'Installing DeriveLFP...');
-    unzip(zipFile, DeriveLFPTmpDir);
-    newDeriveLFPDir = bst_fullfile(DeriveLFPTmpDir);
-    % Move directory to proper location
-    file_move(newDeriveLFPDir, DeriveLFPDir);
-    % Delete unnecessary files
-    file_delete(DeriveLFPTmpDir, 1, 3);
-    % Add to Matlab path
-    addpath(genpath(DeriveLFPDir));
-end
 

@@ -14,7 +14,7 @@ function varargout = process_spikesorting_kilosort( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -78,7 +78,11 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
-    
+
+    % Not available in the compiled version
+    if bst_iscompiled()
+        error('This function is not available in the compiled version of Brainstorm.');
+    end
     % Check for Excel writer toolbox
     TestExcel = 'excelWriterTest.xlsx';
     try

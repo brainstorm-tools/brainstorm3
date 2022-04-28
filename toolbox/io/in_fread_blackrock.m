@@ -1,13 +1,13 @@
 function F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision)
 % IN_FREAD_BLACKROCK Read a block of recordings from a Blackrock NeuroPort file (.nev and .nsX)
 %
-% USAGE:  F = in_fread_blackrock(sFile, SamplesBounds=[], iChannels=[])
+% USAGE:  F = in_fread_blackrock(sFile, SamplesBounds=[], iChannels=[], precision='double')
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,8 +21,15 @@ function F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015
+% Authors: Francois Tadel, 2015-2021
 
+% ===== INSTALL NPMK LIBRARY =====
+if ~exist('openNSx', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'blackrock');
+    if ~isInstalled
+        error(errMsg);
+    end
+end
 
 % Parse inputs
 if (nargin < 4) || isempty(precision)
@@ -48,7 +55,10 @@ else
 end
 
 % Read the corresponding recordings
-rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, strPrecision);
+rec = openNSx('read', sFile.filename, 'channels', iChannels , 'sample', strSamples, strPrecision, 'uV');
+if iscell(rec.Data)
+    rec.Data = [rec.Data{:}];
+end
 if strcmp(precision, 'single')
     rec.Data = single(rec.Data);
 end

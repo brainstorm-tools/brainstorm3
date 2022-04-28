@@ -14,7 +14,7 @@ function strA = str_format( A, isCode, nIndent )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function strA = str_format( A, isCode, nIndent )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016
+% Authors: Francois Tadel, 2010-2021
 
 % Parse inputs
 if (nargin < 2) || isempty(isCode)
@@ -55,6 +55,8 @@ function strA = FormatValue(A, isCode, nIndent)
         if (size(A,1) > 1)
             A = reshape(A',1,[]);
         end
+        % Escape single quotes
+        A = strrep(A, '''', '''''');
         % If there are breaks: full representation with "['...' 10 '...']"
         if any(A == 10)
             strA = ['[''', strrep(A, char(10), ''' 10 '''), ''']'];
@@ -70,7 +72,11 @@ function strA = FormatValue(A, isCode, nIndent)
         strA = FormatCellArray(A, isCode, nIndent);
     % STRUCTURES
     elseif isstruct(A)
-        strA = DisplayStruct(A, isCode, nIndent + 1);
+        if ~isempty(fieldnames(A))
+            strA = DisplayStruct(A, isCode, nIndent + 1);
+        else
+            strA = 'struct()';
+        end
     elseif isCode
         strA = [];
     else
@@ -113,9 +119,11 @@ function structString = DisplayStruct(s, isCode, nIndent)
             for iField = 1:length(MatFields)
                 % Format value
                 strField = FormatValue(s(iElem).(MatFields{iField}), isCode, nIndent+1);
-                % Replace { and } with {{ and }}
-                strField = strrep(strField, '{', '{{');
-                strField = strrep(strField, '}', '}}');
+                % Replace { and } with {{ and }} (so that struct() doesn't interpret them as array of struct)
+                if iscell(s(iElem).(MatFields{iField}))
+                    strField = strrep(strField, '{', '{{');
+                    strField = strrep(strField, '}', '}}');
+                end
                 % Pad with spaces after the option name so that all the values line up nicely
                 strPad = repmat(' ', 1, maxLength - length(MatFields{iField}));
                 % Add: 'fieldname', 'fieldvalue'

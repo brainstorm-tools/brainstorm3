@@ -9,7 +9,7 @@ function varargout = process_pac( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -76,6 +76,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.target_tf.Type       = 'text';
     sProcess.options.target_tf.Value      = '';
     sProcess.options.target_tf.InputTypes = {'timefreq', 'matrix'};
+    % Ignore bad segments
+    sProcess.options.ignorebad.Comment    = 'Exclude bad segments and bad channels<BR><FONT color="#707070"><I>(Risks of dimensions mismatch when averaging multiple files)</I></FONT>';
+    sProcess.options.ignorebad.Type       = 'checkbox';
+    sProcess.options.ignorebad.Value      = 1;
+    sProcess.options.ignorebad.InputTypes = {'data', 'raw'};
 
     % ==== ESTIMATOR ====
     sProcess.options.label_pac.Comment = '<BR><B><U>Estimator options</U></B>:';
@@ -161,6 +166,12 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     else
         OPTIONS.Target = [];
     end
+    % Ignore bad segments
+    if ismember(sInputA(1).FileType, {'data','raw'}) && isfield(sProcess.options, 'ignorebad') && ~isempty(sProcess.options.ignorebad.Value)
+        OPTIONS.isIgnoreBad = sProcess.options.ignorebad.Value;
+    else
+        OPTIONS.isIgnoreBad = [];
+    end
     % All other options
     OPTIONS.NumFreqs     = sProcess.options.numfreqs.Value{1};
     OPTIONS.MaxSignals   = sProcess.options.max_block_size.Value{1};
@@ -229,7 +240,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     else
         LoadOptions.LoadFull = 1;  % Load the full file
     end
-    LoadOptions.IgnoreBad   = 1;  % From raw files: ignore the bad segments
+    LoadOptions.IgnoreBad   = OPTIONS.isIgnoreBad;  % Ignore the bad segments and bad channels from recordings
     LoadOptions.ProcessName = func2str(sProcess.Function);
     
     % Loop over input files

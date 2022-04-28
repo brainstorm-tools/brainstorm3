@@ -11,7 +11,7 @@ function varargout = panel_ieeg(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_ieeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2019
+% Authors: Francois Tadel, 2017-2021
 
 eval(macro_method);
 end
@@ -541,11 +541,11 @@ function UpdateElecProperties(isUpdateModelList)
     end
     % Update panel
     gui_validate_text(ctrl.jTextNcontacts,     [], [], {1,1024,1}, 'list',     0, valContacts,      @(h,ev)ValidateOptions('ContactNumber', ctrl.jTextNcontacts));
-    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,10}, 'optional', 1, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
-    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,10},  'optional', 1, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
-    gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,10},  'optional', 1, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
-    gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,10},  'optional', 1, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
-    gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,10}, 'optional', 1, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
+    gui_validate_text(ctrl.jTextSpacing,       [], [], {0,100,100}, 'optional', 2, valSpacing,       @(h,ev)ValidateOptions('ContactSpacing', ctrl.jTextSpacing));
+    gui_validate_text(ctrl.jTextContactLength, [], [], {0,30,100},  'optional', 2, valContactLength, @(h,ev)ValidateOptions('ContactLength', ctrl.jTextContactLength));
+    gui_validate_text(ctrl.jTextContactDiam,   [], [], {0,20,100},  'optional', 2, valContactDiam,   @(h,ev)ValidateOptions('ContactDiameter', ctrl.jTextContactDiam));
+    gui_validate_text(ctrl.jTextElecDiameter,  [], [], {0,20,100},  'optional', 2, valElecDiameter,  @(h,ev)ValidateOptions('ElecDiameter', ctrl.jTextElecDiameter));
+    gui_validate_text(ctrl.jTextElecLength,    [], [], {0,200,100}, 'optional', 2, valElecLength,    @(h,ev)ValidateOptions('ElecLength', ctrl.jTextElecLength));
     % Update button list
     if (length(sSelElec) == 1)
         colorOn  = java.awt.Color(0, 0.8, 0);
@@ -716,7 +716,8 @@ function ShowContactsMenu(jButton)
     gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS(1)));
     % Menu: Export positions
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile));            
+    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile, 0));
+    gui_component('MenuItem', jMenu, [], 'Compute atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@ExportChannelFile, 1));
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
@@ -1627,9 +1628,10 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
-            % Detect average spacing between contacts
+            % Detect average spacing between contacts (round at 1 decimal)
             newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-
+            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 1);
+            
             % Center of the electrodes
             M = mean(ElecLoc);
             % Get the principal orientation between all the vertices
@@ -2460,8 +2462,8 @@ function SetElectrodeLoc(iLoc, jButton)
         % Ask to compute MNI transformation
         isComputeMni = java_dialog('confirm', [...
             'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI transformation would also define default fiducials.' 10 10 ...
-            'Compute the MNI transformation now?'], 'Set electrode position');
+            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+            'Compute the MNI normalization now?'], 'Set electrode position');
         % Run computation
         if isComputeMni
             figure_mri('ComputeMniCoordinates', hFig);
@@ -2470,8 +2472,8 @@ function SetElectrodeLoc(iLoc, jButton)
     end
     % Make sure the points of the electrode are more than 1cm apart
     iOther = setdiff(1:size(sSelElec.Loc,2), iLoc);
-    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.01))
-        bst_error('The two points you selected are less than 1cm away.', 'Set electrode position', 0);
+    if (~isempty(sSelElec.Loc) && ~isempty(iOther) && any(sqrt(sum(bst_bsxfun(@minus, sSelElec.Loc(:,iOther), XYZ(:)).^2)) < 0.002))
+        bst_error('The two points you selected are less than 2mm away.', 'Set electrode position', 0);
         return;
     end
     % Set electrode position
@@ -2531,12 +2533,22 @@ function CenterMriOnElectrode(sElec, hFigTarget)
     if isempty(sElec) || isempty(sElec.Loc) || isequal(sElec.Loc(:,1), [0;0;0])
         return;
     end
-    xyzScs = sElec.Loc(:,1);
     % Get loaded dataset
     [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes();
     if isempty(iDSall)
         return;
     end
+    % By default: jump to the tip of the electrode
+    xyzScs = sElec.Loc(:,1);
+    % Try to get the position of the first contact of the electrode, as it might be a bit different
+    iChan = find(strcmpi({GlobalData.DataSet(iDSall(1)).Channel.Group}, sElec.Name));
+    if ~isempty(iChan)
+        [~,I] = sort_nat({GlobalData.DataSet(iDSall(1)).Channel(iChan).Name});
+        xyzChan = GlobalData.DataSet(iDSall(1)).Channel(iChan(I(1))).Loc;
+        if ~isempty(xyzChan) && all(size(xyzChan) == size(xyzScs)) && (sqrt(sum(xyzChan - xyzScs).^2) < 5)
+            xyzScs = xyzChan;
+        end
+    end    
     % Update all the figures that share this channel file
     for i = 1:length(iDSall)
         % If there is one target figure to update only:
@@ -2618,7 +2630,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
         MriFile = sSubject.Anatomy(iAnatomy).FileName;
     end
     % View MRI
-    [hFig, iDS, iFig] = view_mri(MriFile);
+    [hFig, iDS, iFig] = view_mri(MriFile, [], [], 2);
     if isempty(hFig)
         return;
     end
@@ -2632,7 +2644,7 @@ end
 
 
 %% ===== EXPORT CONTACT POSITIONS =====
-function ExportChannelFile()
+function ExportChannelFile(isAtlas)
     global GlobalData;
     % Get electrodes to save
     [sElec, iElec, iDS] = GetSelectedElectrodes();
@@ -2642,14 +2654,18 @@ function ExportChannelFile()
         return;
     end
     % Get the channels corresponding to these contacts
-    iChannels = find(ismember({GlobalData.DataSet(iDS(1)).Channel.Group}, {sElec.Name}));
-    if isempty(iChannels)s
+    iChannels = find(cellfun(@(c)any(strcmpi(c,{sElec.Name})), {GlobalData.DataSet(iDS(1)).Channel.Group}));
+    if isempty(iChannels)
         bst_error('No contact positions to export.', 'Export contacts', 0);
         return;
     end
     % Force saving the modifications
     bst_memory('SaveChannelFile', iDS(1));
     % Export the file
-    export_channel(GlobalData.DataSet(iDS(1)).ChannelFile);
+    if isAtlas
+        export_channel_atlas(GlobalData.DataSet(iDS(1)).ChannelFile, iChannels);
+    else
+        export_channel(GlobalData.DataSet(iDS(1)).ChannelFile);
+    end
 end
 

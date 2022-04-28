@@ -1,11 +1,20 @@
-function bst_userstat(isSave)
+function bst_userstat(isSave, PlugName)
 % BST_USERSTAT: Plot statistics about the Brainstorm users
+% 
+% USAGE:  bst_userstat(isSave=0, PlugName=[])         : 
+%         bst_userstat(1)        :
+%         bst_userstat(PlugName) : Display the download statistics for a specific plugin
+% INPUTS:
+%    - isSave   : If 0, display the usage statistics in Matlab figures
+%                 If 1, save usage statistics figures on the hard drive
+%    - PlugName : If string, display the download statistics of a specific plugin
+%                 If empty, display Brainstorm statistics: users, downloads, forum posts, publications
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,9 +28,12 @@ function bst_userstat(isSave)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2019
+% Authors: Francois Tadel, 2012-2022
 
 % Parse inputs
+if (nargin < 2) || isempty(PlugName)
+    PlugName = [];
+end
 if (nargin < 1) || isempty(isSave)
     isSave = 0;
 end
@@ -36,89 +48,104 @@ hf = 230;
 hFig = [];
 % Output folder for images
 ImgDir = 'C:\Work\Doc\Brainstorm\site\stat';
-% Reading function: urlread replaced with webread in Matlab 2014b
-if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @urlread;
-else
-    url_read_fcn = @webread;
-end
 
 % ===== NUMBER OF USERS =====
-% Read list of users
-str = url_read_fcn('https://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
-% Extract values
-dates = textscan(str, '%d %d');
-dates = double([dates{1}, dates{2}]);
-dates = dates(:,1) + (dates(:,2)-1)./12;
-% Create histogram
-[nUsers,year] = hist(dates, length(unique(dates)));
-nUsersTotal = cumsum(nUsers);
-% Plot figure
-hFig(end+1) = fig_report(year, nUsersTotal, 0, ...
-           [2005, max(year)], [0, ceil(nUsersTotal(end)/1000)*1000], ...
-           sprintf('User accounts: %d', length(dates)), [], 'Number of users', ...
-           [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'users.png'));
-
+if isempty(PlugName)
+    % Read list of users
+    str = bst_webread('http://neuroimage.usc.edu/bst/get_userdate.php?c=k9w8cX');
+    % Extract values
+    dates = textscan(str, '%d %d');
+    dates = double([dates{1}, dates{2}]);
+    dates = dates(:,1) + (dates(:,2)-1)./12;
+    % Create histogram
+    [nUsers,year] = hist(dates, length(unique(dates)));
+    nUsersTotal = cumsum(nUsers);
+    % Plot figure
+    hFig(end+1) = fig_report(year, nUsersTotal, 0, ...
+               [2005, max(year)], [0, ceil(nUsersTotal(end)/1000)*1000], ...
+               sprintf('User accounts: %d', length(dates)), [], 'Number of users', ...
+               [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'users.png'));
+end
        
 % ===== LOG ANALYSIS =====
-% Read list of users
-str = url_read_fcn('https://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
-% Extract values
-c = textscan(str, '%d %d %s');
-dates = double([c{1}, c{2}]);
-dates = dates(:,1) + dates(:,2)./12;
-action = c{3};
-% Create histograms
-iUpdate = find(strcmpi(action, 'Auto-update') | strcmpi(action, 'Login') | strcmpi(action, 'Download'));
-[nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
-% Look for all dates in the current year (exclude current month)
-cur = clock;
-iAvg = find((xUpdate >= 2018) & (xUpdate < 2019));
-% Remove invalid data
-nUpdate(nUpdate < 100) = interp1(xUpdate(nUpdate >= 100), nUpdate(nUpdate >= 100), xUpdate(nUpdate < 100), 'pchip');
-
-% Plot number of downloads
-[hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
-           [2005, max(xUpdate(1:end-1))], [], ...
-           sprintf('Downloads per month: Avg(2018)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
-           [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
-       
-% % Create histograms
-% iStart  = find(strcmpi(action, 'Startup'));
-% [nStart, xStart]  = hist(dates(iStart),  length(unique(dates(iStart))));
-% % Plot number of connections
-% fig_report(xStart(1:end-1), nStart(1:end-1), 0, ...
-%            [], [], ...
-%            'Number of connections per month', [], 'Number of connections', ...
-%            [165 754]);
+if isempty(PlugName)
+    % Read list of users
+    str = bst_webread('http://neuroimage.usc.edu/bst/get_logs.php?c=J7rTwq');
+    % Extract values
+    c = textscan(str, '%02d%02d%c');
+    dates = double([c{1}, c{2}]);
+    dates = 2000 + dates(:,1) + (dates(:,2) - 1)./12;
+    action = c{3};
+    % Create histograms
+    iUpdate = find((action == 'A') | (action == 'L') | (action == 'D'));
+    [nUpdate,xUpdate] = hist(dates(iUpdate), length(unique(dates(iUpdate))));
+    % Look for all dates in the current year (exclude current month)
+    iAvg = find((xUpdate >= 2020) & (xUpdate < 2021));
+    % Remove invalid data
+    iBad = ((nUpdate < 100) | (nUpdate > 4000));
+    nUpdate(iBad) = interp1(xUpdate(~iBad), nUpdate(~iBad), xUpdate(iBad), 'pchip');
+    % Plot number of downloads
+    [hFig(end+1), hAxes] = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
+               [2005, max(xUpdate(1:end-1))], [], ...
+               sprintf('Downloads per month: Avg(2020)=%d', round(mean(nUpdate(iAvg)))), [], 'Downloads per month', ...
+               [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'download.png'));
+end
 
 
 % ===== NUMBER OF FORUM POSTS =====
-% Read list of users
-str = url_read_fcn('https://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
-% Extract values
-dates = textscan(str, '%d %d');
-dates = double([dates{1}, dates{2}]);
-dates = dates(:,1) + (dates(:,2)-1)./12;
-% Create histogram
-[nPosts,year] = hist(dates, length(unique(dates)));
-% Plot figure
-hFig(end+1) = fig_report(year(1:end-1), nPosts(1:end-1), 0, ...
-           [2005, max(year)], [0 ceil(max(nPosts(1:end-1))/100)*100], ...
-           sprintf('Posts on the forum: %d', length(dates)), [], 'Forum posts per month', ...
-           [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'posts.png'));
+if isempty(PlugName)
+    % Read list of users
+    str = bst_webread('http://neuroimage.usc.edu/bst/get_posts.php?c=3Emzpjt0');
+    % Extract values
+    dates = textscan(str, '%d %d');
+    dates = double([dates{1}, dates{2}]);
+    dates = dates(:,1) + (dates(:,2)-1)./12;
+    % Create histogram
+    [nPosts,year] = hist(dates, length(unique(dates)));
+    % Plot figure
+    hFig(end+1) = fig_report(year(1:end-1), nPosts(1:end-1), 0, ...
+               [2005, max(year)], [0 ceil(max(nPosts(1:end-1))/100)*100], ...
+               sprintf('Posts on the forum: %d', length(dates)), [], 'Forum posts per month', ...
+               [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'posts.png'));
+end
 
 % ===== PUBLICATIONS =====
-% Hard coded list of publications
-year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018]; 
-nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  132  214  226];
-nPubliCurYear = 84;
-% Plot figure
-hFig(end+1) = fig_report(year, nPubli, 1, ...
-           [2000 max(year)], [], ...
-           sprintf('Peer-reviewed articles and book chapters: %d', sum(nPubli) + nPubliCurYear), [], 'Publications per year', ...
-           [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'publications.png'));
-       
+if isempty(PlugName)
+    % Hard coded list of publications
+    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021]; 
+    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  392];
+    nPubliCurYear = 104;
+    % Plot figure
+    hFig(end+1) = fig_report(year, nPubli, 1, ...
+               [2000 max(year)], [], ...
+               sprintf('Peer-reviewed articles and book chapters: %d', sum(nPubli) + nPubliCurYear), [], 'Publications per year', ...
+               [100, Hs(2) - (length(hFig)+1)*hf], isSave, bst_fullfile(ImgDir, 'publications.png'));
+end
+
+% ===== PLUGINS =====
+if ~isempty(PlugName)
+    % Download statistics
+    url = sprintf('https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=%s&action=install&list=1', PlugName);
+    str =  bst_webread(url);
+    % Process report
+    str = str_split(str, newline);
+    nTotal = length(str);
+    dates = cellfun(@(x)str_split(x,':'), str, 'UniformOutput', 0);
+    year = cellfun(@(x)str2double(x{1}(1:4)), dates);
+    month = cellfun(@(x)str2double(x{1}(6:7)), dates);
+    % Create histogram
+    dates = year + (month-1)./12;
+    [nUpdate,xUpdate] = hist(dates, length(unique(dates)));
+    % Plot figure
+    if (length(nUpdate) == 1)
+        java_dialog('msgbox', sprintf('Total number of downloads: %d', nTotal), 'Downloads');
+    else
+        hFig(end+1) = fig_report(xUpdate(1:end-1), nUpdate(1:end-1), 0, ...
+                   [2021, max(xUpdate(1:end-1))], [], ...
+                   sprintf('Total number of downloads: %d', nTotal), [], 'Downloads', ...
+                   [100, Hs(2) - (length(hFig)+1)*hf], 0, ['plugin_' PlugName]);
+    end
+end
 
 % Close progress bar / figures
 if isSave
@@ -242,6 +269,11 @@ function [hFig, hAxes] = fig_report(x, y, isMarkers, XLim, YLim, wTitle, xLabel,
     % Add a label: "No data available"
     if ~isempty(strfind(filename, 'download'))
         hText = text(2006, 300, 2, 'No data available', ...
+                     'Color',     [.7 .7 .7], ...
+                     'FontName',  'Courier New', ...
+                     'FontSize',  10);
+    elseif ~isempty(strfind(filename, 'plugin'))
+        hText = text(2021.01, 10, 2, 'No data available', ...
                      'Color',     [.7 .7 .7], ...
                      'FontName',  'Courier New', ...
                      'FontSize',  10);

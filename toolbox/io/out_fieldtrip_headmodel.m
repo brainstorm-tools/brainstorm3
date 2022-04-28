@@ -1,8 +1,8 @@
-function [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, iChannels, isIncludeRef)
+function [ftHeadmodel, ftLeadfield, iChannels] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, iChannels, isIncludeRef)
 % OUT_FIELDTRIP_HEADMODEL: Converts a head model file into a FieldTrip structure (see ft_datatype_headmodel).
 % 
-% USAGE:  [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, isIncludeRef=1);
-%         [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelMat,  ChannelMat,  isIncludeRef=1);
+% USAGE:  [ftHeadmodel, ftLeadfield, iChannels] = out_fieldtrip_headmodel(HeadModelFile, ChannelFile, isIncludeRef=1);
+%         [ftHeadmodel, ftLeadfield, iChannels] = out_fieldtrip_headmodel(HeadModelMat,  ChannelMat,  isIncludeRef=1);
 %
 % INPUTS:
 %    - HeadModelFile  : Relative path to a head model file available in the database
@@ -12,12 +12,13 @@ function [ftHeadmodel, ftLeadfield] = out_fieldtrip_headmodel(HeadModelFile, Cha
 % OUTPUTS:
 %    - ftHeadmodel    : Volume conductor model, typically returned by ft_prepare_headmodel
 %    - ftLeadfield    : Leadfield matrix, typically returned by ft_prepare_leadfield
+%    - iChannels      : Modified list of channels (after adding channels)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.

@@ -23,7 +23,7 @@ function [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector, Mo
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,7 +92,7 @@ if ~isempty(Std) && ~iscell(Std)
 end
 if ~iscell(AxesLabels)
     AxesLabels = {AxesLabels};
-end;
+end
 iFig = [];
 
 
@@ -196,6 +196,11 @@ elseif ~isempty(Modality) && ismember(Modality, {'$EEG','$MEG','$MEG GRAD','$MEG
     TsInfo.DisplayMode   = bst_get('TSDisplayMode');
     TsInfo.FlipYAxis     = bst_get('FlipYAxis');
     TsInfo.AutoScaleY    = bst_get('AutoScaleY');
+    TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
+elseif ~isempty(BaseFile) && isequal(file_gettype(BaseFile), 'matrix')
+    TsInfo.DisplayMode   = bst_get('TSDisplayMode');
+    TsInfo.FlipYAxis     = 0;
+    TsInfo.AutoScaleY    = 1;
     TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
 else
     TsInfo.DisplayMode   = 'butterfly';

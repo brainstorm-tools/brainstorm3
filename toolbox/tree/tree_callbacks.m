@@ -16,7 +16,7 @@ function jPopup = tree_callbacks( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -55,7 +55,7 @@ end
 % Initialize return variable
 jPopup = [];
 % Is Matlab running (if not it is a compiled version)
-isMatlabRunning = ~(exist('isdeployed', 'builtin') && isdeployed);
+isCompiled = bst_iscompiled();
 
 
 %% ===== GET ALL THE NEEDED OBJECTS =====
@@ -67,7 +67,7 @@ nodeType = char(bstNodes(1).getType());
 filenameRelative = char(bstNodes(1).getFileName());
 % Build full filename (depends on the file type)
 switch lower(nodeType)
-    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'other', 'subject', 'studysubject', 'anatomy'}
+    case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy', 'volatlas'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
     case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
@@ -162,12 +162,25 @@ switch (lower(action))
                 % Get subject
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
-                % Display it in MRI Viewer
+                % MRI: Display in MRI viewer
                 view_mri(filenameRelative);
-    
+                
+            % ===== VOLUME ATLAS =====
+            case 'volatlas'
+                % Get subject
+                iSubject = bstNodes(1).getStudyIndex();
+                iAnatomy = bstNodes(1).getItemIndex();
+                sSubject = bst_get('Subject', iSubject);
+                % Atlas: display as overlay on the default MRI
+                if (iAnatomy > 1)
+                    view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative);
+                else
+                    view_mri(filenameRelative);
+                end
+                
             % ===== SURFACE ===== 
             % Mark/unmark (items selected : 1/category)
-            case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers'}
+            case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
                 iSurface = bstNodes(1).getItemIndex();
@@ -178,6 +191,7 @@ switch (lower(action))
                     case 'outerskull', SurfaceType = 'OuterSkull';
                     case 'cortex',     SurfaceType = 'Cortex';
                     case 'fibers',     SurfaceType = 'Fibers';
+                    case 'fem',        SurfaceType = 'FEM';
                     case 'other',      SurfaceType = 'Other';
                 end
                 if (~ismember(iSurface, sSubject.(['i' SurfaceType])) || ~bstNodes(1).isMarked())
@@ -185,7 +199,11 @@ switch (lower(action))
                     db_surface_default(iSubject, SurfaceType, iSurface);
                 % Else, this item is already marked : display it in surface viewer
                 else
-                    view_surface(filenameRelative);
+                    if strcmpi(nodeType, 'fem')
+                        view_surface_fem(filenameRelative, [], [], [], 'NewFigure');
+                    else
+                        view_surface(filenameRelative);
+                    end
                 end
             % Other surface: display it
             case 'other'
@@ -364,7 +382,7 @@ switch (lower(action))
                                 else
                                     view_struct(filenameFull);
                                 end
-                            elseif ~isempty(strfind(filenameRelative, '_connect1_cohere')) || ~isempty(strfind(filenameRelative, '_connect1_spgranger'))
+                            elseif ~isempty(strfind(filenameRelative, '_connect1_cohere')) || ~isempty(strfind(filenameRelative, '_connect1_spgranger')) || ~isempty(strfind(filenameRelative, '_connect1_henv'))
                                 view_spectrum(filenameRelative, 'Spectrum');
                             elseif ~isempty(strfind(filenameRelative, '_connect1')) && strcmpi(DataType, 'data')
                                 view_topography(filenameRelative, [], '2DSensorCap', [], 0);
@@ -438,7 +456,12 @@ switch (lower(action))
 
             % ===== MATRIX =====
             case {'matrix', 'pmatrix'}
-                view_matrix( filenameRelative, 'TimeSeries' );
+                if ~isempty(strfind(filenameRelative, '_temporalgen'))
+                    % Decoding with temporal generalization should be opened as images
+                    view_matrix( filenameRelative, 'Image');
+                else
+                    view_matrix( filenameRelative, 'TimeSeries');
+                end
                 
             % ===== IMAGE =====
             case 'image'
@@ -535,56 +558,78 @@ switch (lower(action))
                 if ~bst_get('ReadOnly') && ((iSubject == 0) || ~sSubject.UseDefaultAnat)
                     AddSeparator(jPopup);
                     % === IMPORT ===
-                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject));
-                    gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
+                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 0));
+                    gui_component('MenuItem', jPopup, [], 'Import anatomy folder (auto)', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_anatomy, iSubject, 1));                    gui_component('MenuItem', jPopup, [], 'Import MRI', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mri, iSubject, [], [], 1));
                     gui_component('MenuItem', jPopup, [], 'Import surfaces', IconLoader.ICON_SURFACE, [], @(h,ev)bst_call(@import_surfaces, iSubject));
                     gui_component('MenuItem', jPopup, [], 'Import fibers', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@import_fibers, iSubject));
+                    gui_component('MenuItem', jPopup, [], 'Convert DWI to DTI', IconLoader.ICON_FIBERS, [], @(h,ev)bst_call(@process_dwi2dti, 'ComputeInteractive', iSubject));
                     AddSeparator(jPopup);
-                    % === USE DEFAULT ===
+                    
+                    % === ANATOMY TEMPLATE ===
                     % Get registered Brainstorm anatomy defaults
                     sTemplates = bst_get('AnatomyDefaults');
-                    if ~isempty(sTemplates)
-                        jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
-                        % Add an item per Template available
-                        for i = 1:length(sTemplates)
-                            if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
-                                Comment = ['Download: ' sTemplates(i).Name];
-                            else
-                                Comment = sTemplates(i).Name;
-                            end
-                            gui_component('MenuItem', jMenuDefaults, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
+                    % Create menus
+                    jMenuDefaults = gui_component('Menu', jPopup, [], 'Use template', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefMni = gui_component('Menu', jMenuDefaults, [], 'MNI', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefUsc = gui_component('Menu', jMenuDefaults, [], 'USC', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefFs = gui_component('Menu', jMenuDefaults, [], 'FsAverage', IconLoader.ICON_ANATOMY, [], []);
+                    jMenuDefInfants = gui_component('Menu', jMenuDefaults, [], 'Infants', IconLoader.ICON_ANATOMY, [], []);
+                    % Add an item per Template available
+                    for i = 1:length(sTemplates)
+                        % Local or download?
+                        if ~isempty(strfind(sTemplates(i).FilePath, 'http://')) || ~isempty(strfind(sTemplates(i).FilePath, 'https://')) || ~isempty(strfind(sTemplates(i).FilePath, 'ftp://'))
+                            Comment = ['Download: ' sTemplates(i).Name];
+                        else
+                            Comment = sTemplates(i).Name;
                         end
-                        % Create new template
-                        AddSeparator(jMenuDefaults);
-                        gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
-                        AddSeparator(jMenuDefaults);
-                        gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
+                        % Sub-group
+                        if ~isempty(strfind(lower(sTemplates(i).Name), 'icbm')) || ~isempty(strfind(lower(sTemplates(i).Name), 'colin'))
+                            jParent = jMenuDefMni;
+                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'usc')) || ~isempty(strfind(lower(sTemplates(i).Name), 'bci-dni'))
+                            jParent = jMenuDefUsc;
+                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'fsaverage'))
+                            jParent = jMenuDefFs;
+                        elseif ~isempty(strfind(lower(sTemplates(i).Name), 'oreilly')) || ~isempty(strfind(lower(sTemplates(i).Name), 'kabdebon')) || ~isempty(strfind(lower(sTemplates(i).Name), 'infant'))
+                            jParent = jMenuDefInfants;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jParent, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)db_set_template(iSubject, sTemplates(i), 1));
                     end
+                    % Create new template
+                    AddSeparator(jMenuDefaults);
+                    gui_component('MenuItem', jMenuDefaults, [], 'Create new template', IconLoader.ICON_ANATOMY, [], @(h,ev)export_default_anat(iSubject));
+                    gui_component('MenuItem', jMenuDefaults, [], 'Online help', IconLoader.ICON_EXPLORER, [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/DefaultAnatomy', '-browser'));
+                    
+                    % === MNI ATLASES ===
+                    % Get list of templates registered in Brainstorm
+                    sMniAtlases = bst_get('MniAtlasDefaults');
+                    jMenuSchaefer = [];
+                    % Add MNI parcellation
+                    jMenuMniVol = gui_component('Menu', jPopup, [], 'Add MNI parcellation', IconLoader.ICON_ANATOMY, [], []);
+                    for i = 1:length(sMniAtlases)
+                        % Local or download?
+                        if ~isempty(strfind(sMniAtlases(i).FilePath, 'http://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'https://')) || ~isempty(strfind(sMniAtlases(i).FilePath, 'ftp://'))
+                            Comment = ['Download: ' sMniAtlases(i).Name];
+                        else
+                            Comment = sMniAtlases(i).Name;
+                        end
+                        % Submenus
+                        if ~isempty(strfind(Comment, 'Schaefer2018_'))
+                            if isempty(jMenuSchaefer)
+                                jMenuSchaefer = gui_component('Menu', jMenuMniVol, [], 'Schaefer2018', IconLoader.ICON_ANATOMY, [], []);
+                            end
+                            jMenuMniSub = jMenuSchaefer;
+                        else
+                            jMenuMniSub = jMenuMniVol;
+                        end
+                        % Create item
+                        gui_component('MenuItem', jMenuMniSub, [], Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject, sMniAtlases(i), 1));
+                    end
+                    AddSeparator(jMenuMniVol);
+                    gui_component('MenuItem', jMenuMniVol, [], 'Import from file', IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@import_mniatlas, iSubject));
 
-                    % === GENERATE HEAD ===
-                    AddSeparator(jPopup);
-                    jItem = gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(iSubject));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
-                    % === GENERATE BEM ===
-                    jItem = gui_component('MenuItem', jPopup, [], 'Generate BEM surfaces', IconLoader.ICON_ANATOMY, [], @(h,ev)tess_bem(iSubject));
-                    % Disable if no scalp or cortex available
-                    if isempty(sSubject.iCortex) || isempty(sSubject.iScalp) || isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
-                    % === GENERATE SPM CANONICAL ===
-                    jItem = gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, []));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
-                    % === DEFACE MRI ===
-                    OPTIONS = struct('isDefaceHead', 1);
-                    jItem = gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, OPTIONS));
-                    if isempty(sSubject.Anatomy)
-                        jItem.setEnabled(0);
-                    end
-
+                    % === MRI SEGMENTATION ===
+                    fcnMriSegment(jPopup, sSubject, iSubject, [], 0);
                     % Export menu (added later)
                     if (iSubject ~= 0)
                         jMenuExport{1} = gui_component('MenuItem', [], [], 'Export subject',  IconLoader.ICON_SAVE, [], @(h,ev)export_protocol(bst_get('iProtocol'), iSubject));
@@ -694,13 +739,18 @@ switch (lower(action))
                         % Menu "Group conditions"
                         gui_component('MenuItem', jPopup, [], 'Group folders', IconLoader.ICON_FUSION, [], @(h,ev)db_group_conditions(ConditionsPaths));
                     end
+                    % === SIMULATIONS ===
+                    if (length(bstNodes) == 1) && ~isRaw
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'Simulate signals: SimMEEG', IconLoader.ICON_EEG_NEW, [], @(h,ev)bst_call(@bst_simmeeg, 'GUI', iStudy));
+                    end
                     % === EXPORT RAW FILE ===
                     if isRaw
                         % Get all raw files contained in these folders
                         RawFiles = {};
                         for i = 1:length(bstNodes)
                             sStudy = bst_get('Study', bstNodes(i).getStudyIndex());
-                            if (length(sStudy.Data) == 1) && strcmpi(sStudy.Data(1).DataType, 'raw')
+                            if ~isempty(sStudy) && (length(sStudy.Data) == 1) && strcmpi(sStudy.Data(1).DataType, 'raw')
                                 RawFiles{end+1} = sStudy.Data(1).FileName;
                             end
                         end
@@ -769,11 +819,17 @@ switch (lower(action))
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
                 Device = bst_get('ChannelDevice', filenameRelative);
                 % Replace SEEG+ECOG with iEEG
-                if all(ismember({'SEEG','ECOG'}, AllMod))
+                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, AllMod))
                     AllMod = cat(2, {'ECOG+SEEG'}, setdiff(AllMod, {'SEEG','ECOG'}));
                     if ~isempty(DisplayMod)
                         DisplayMod = cat(2, {'ECOG+SEEG'}, setdiff(DisplayMod, {'SEEG','ECOG'}));
                     end
+                end
+                % Find anatomy volumes (exclude atlases)
+                if ~isempty(sSubject.Anatomy)
+                    iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                else
+                    iVolAnat = [];
                 end
                 % If only one modality
                 if (length(DisplayMod) == 1) && ((length(bstNodes) ~= 1) || isempty(Device)) && ~ismember(Device, {'Vectorview306', 'CTF', '4D', 'KIT', 'KRISS', 'BabyMEG', 'RICOH'}) && ~ismember(DisplayMod, {'EEG','ECOG','SEEG','ECOG+SEEG','NIRS'})
@@ -799,7 +855,7 @@ switch (lower(action))
                     % For each displayable sensor type, display an item in the "display" submenu
                     for iType = 1:length(DisplayMod)
                         channelTypeDisplay = getChannelTypeDisplay(DisplayMod{iType}, DisplayMod);
-                        if ismember(DisplayMod{iType}, {'EEG','ECOG','SEEG','ECOG+SEEG'}) && (length(bstNodes) == 1)
+                        if ismember(DisplayMod{iType}, {'EEG','ECOG','SEEG','ECOG+SEEG'}) && (length(bstNodes) == 1) && (~isempty(sSubject.iScalp) || ~isempty(sSubject.iInnerSkull) || ~isempty(sSubject.iCortex) || ~isempty(sSubject.iAnatomy))
                             if ~isempty(sSubject.iScalp)
                                 gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (Head)'],     IconLoader.ICON_SURFACE_SCALP,  [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'scalp', 1));
                             end
@@ -809,23 +865,20 @@ switch (lower(action))
                             if ~isempty(sSubject.iCortex)
                                 gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (Cortex)'],   IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'cortex', 1));
                             end
-                            if ~isempty(sSubject.iAnatomy)
-                                % MRI 3D
-                               % gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'],     IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', 1));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, sSubject.Anatomy(iAnat).FileName, 1));
-                                    end
+                            % MRI 3D
+                            if (length(iVolAnat) == 1)
+                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, 'anatomy', iVolAnat(1)));
+                            elseif (length(iVolAnat) > 1)
+                                for iAnat = 1:length(iVolAnat)
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI 3D: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)DisplayChannels(bstNodes, DisplayMod{iType}, sSubject.Anatomy(iVolAnat(iAnat)).FileName, 1));
                                 end
-                                % MRI Viewer
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, sSubject.iAnatomy));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iAnat));
-                                    end
+                            end
+                            % MRI Viewer
+                            if (length(iVolAnat) == 1)
+                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(1)));
+                            elseif (length(iVolAnat) > 1)
+                                for iAnat = 1:length(iVolAnat)
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(iAnat)));
                                 end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
@@ -844,10 +897,14 @@ switch (lower(action))
                 % === ADD EEG POSITIONS ===
                 if ismember('EEG', AllMod)
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
-                elseif any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);
-                end  
-                   
+                end
+                % === SEEG CONTACT LABELLING ===
+                if (length(bstNodes) == 1) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
+                    gui_component('MenuItem', jPopup, [], 'iEEG atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@export_channel_atlas, filenameRelative, 'ECOG+SEEG'));
+                end
+                
                 % === ONLY ONE FILE SELECTED ===
                 if (length(bstNodes) == 1)
                     AddSeparator(jPopup);
@@ -884,22 +941,20 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (Cortex)'],     IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, 'cortex'));
                                 end
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(1).FileName));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iAnat).FileName));  
+                                if (length(iVolAnat) == 1)
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iVolAnat(1)).FileName));
+                                elseif (length(iVolAnat) > 1)
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI 3D: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)channel_align_manual(filenameRelative, DisplayModReg{iMod}, 1, sSubject.Anatomy(iVolAnat(iAnat)).FileName));
                                     end
                                 end
                             end
                             % Allow edition in MRI even if there is not location available for any electrode
-                            if ~isempty(sSubject.iAnatomy)
-                                if (length(sSubject.Anatomy) == 1)
-                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, 1));
-                                else
-                                    for iAnat = 1:length(sSubject.Anatomy)
-                                        gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iAnat).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iAnat));
-                                    end
+                            if (length(iVolAnat) == 1)
+                                gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(1)));
+                            elseif (length(iVolAnat) > 1)
+                                for iAnat = 1:length(iVolAnat)
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(iAnat)));
                                 end
                             end
                             AddSeparator(jMenuAlign);
@@ -941,67 +996,77 @@ switch (lower(action))
                 end
                 
 %% ===== POPUP: ANATOMY =====
-            case 'anatomy'
+            case {'anatomy', 'volatlas'}
                 iSubject = bstNodes(1).getStudyIndex();
                 sSubject = bst_get('Subject', iSubject);
-                % MENU : DISPLAY
-                jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
-                    % Display
-                    gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative));
-                    gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative));
-                    AddSeparator(jMenuDisplay);
-                    % Display as overlay
-                    if ~bstNodes(1).isMarked()
-                        % Get subject structure
-                        sSubject = bst_get('MriFile', filenameRelative);
-                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                        % Overlay menus
-                        gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                        gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                iAnatomy = [];
+                for iFile = 1:length(bstNodes)
+                    iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
+                end
+                mriComment = bstNodes(1).getComment();
+                isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
+                    
+                if (length(bstNodes) == 1)
+                    % MENU : DISPLAY
+                    jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
+                        % Display
+                        gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative));
+                        gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative));
                         AddSeparator(jMenuDisplay);
+                        % Display as overlay
+                        if ~bstNodes(1).isMarked()
+                            % Get subject structure
+                            sSubject = bst_get('MriFile', filenameRelative);
+                            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                            % Overlay menus
+                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                            gui_component('MenuItem', jMenuDisplay, [], 'Overlay on default MRI (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(MriFile, filenameRelative));
+                            AddSeparator(jMenuDisplay);
+                        end
+                        gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
+                        gui_component('MenuItem', jMenuDisplay, [], 'Coronal slices',  IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'coronal', 20));
+                        gui_component('MenuItem', jMenuDisplay, [], 'Sagittal slices', IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'sagittal', 20));
+                        if ~isAtlas
+                            AddSeparator(jMenuDisplay);
+                            gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
+                        end
+                    % === MENU: EDIT MRI ===
+                    if ~bst_get('ReadOnly') && ~isAtlas
+                        gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
                     end
-                    gui_component('MenuItem', jMenuDisplay, [], 'Axial slices',    IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'axial', 20));
-                    gui_component('MenuItem', jMenuDisplay, [], 'Coronal slices',  IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'coronal', 20));
-                    gui_component('MenuItem', jMenuDisplay, [], 'Sagittal slices', IconLoader.ICON_SLICES,  [], @(h,ev)view_mri_slices(filenameRelative, 'sagittal', 20));
-                    AddSeparator(jMenuDisplay);
-                    gui_component('MenuItem', jMenuDisplay, [], 'Histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_mri_histogram(filenameFull));
-                % === MENU: EDIT MRI ===
-                if ~bst_get('ReadOnly')
-                    gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
-                end
-                % === MENU: SET AS DEFAULT ===
-                iAnatomy = bstNodes(1).getItemIndex();
-                if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked())
-                    gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
-                end
-                % === REGISTRATION ===
-                if ~bst_get('ReadOnly')
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Compute MNI transformation', IconLoader.ICON_ANATOMY, [], @(h,ev)NormalizeMri(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', filenameRelative, struct('isDefaceHead', 0)));
-                    if ~bstNodes(1).isMarked()
-                        jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
-                        gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 1));
-                        gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'spm', 0));
-                        AddSeparator(jMenuRegister);
-                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'ncs', 'ncs'));
-                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'scs', 'scs'));
-                        gui_component('MenuItem', jMenuRegister, [], 'Reslice / vox2ras transform (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)mri_reslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
-                        AddSeparator(jMenuRegister);
-                        gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)mri_coregister(filenameRelative, [], 'vox2ras', 0));
+                    % === MENU: SET AS DEFAULT ===
+                    if ~bst_get('ReadOnly') && (length(bstNodes) == 1) && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas
+                        gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
                     end
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(filenameRelative));
-                    gui_component('MenuItem', jPopup, [], 'SPM canonical surfaces', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)process_generate_canonical('ComputeInteractive', iSubject, iAnatomy));
-                    % SEEG/ECOG
-                    AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', filenameRelative));
+                end
+                
+                if ~bst_get('ReadOnly')
+                    % === REGISTRATION ===
+                    % Get file comment
+                    if ~isAtlas && (length(bstNodes) == 1)
+                        AddSeparator(jPopup);
+                        gui_component('MenuItem', jPopup, [], 'MNI normalization', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mni_normalize('ComputeInteractive', filenameRelative));
+                        gui_component('MenuItem', jPopup, [], 'Resample volume...', IconLoader.ICON_ANATOMY, [], @(h,ev)ResampleMri(filenameRelative));
+                        if ~bstNodes(1).isMarked()
+                            jMenuRegister = gui_component('Menu', jPopup, [], 'Register with default MRI', IconLoader.ICON_ANATOMY);
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register + reslice', IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 1));
+                            gui_component('MenuItem', jMenuRegister, [], 'SPM: Register only',      IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'spm', 0));
+                            AddSeparator(jMenuRegister);
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / normalized coordinates (MNI)', IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'ncs', 'ncs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / subject coordinates (SCS)',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'scs', 'scs'));
+                            gui_component('MenuItem', jMenuRegister, [], 'Reslice / world coordinates (.nii)',     IconLoader.ICON_ANATOMY, [], @(h,ev)MriReslice(filenameRelative, [], 'vox2ras', 'vox2ras'));
+                            AddSeparator(jMenuRegister);
+                            gui_component('MenuItem', jMenuRegister, [], 'Copy fiducials from default MRI',    IconLoader.ICON_ANATOMY, [], @(h,ev)MriCoregister(filenameRelative, [], 'vox2ras', 0));
+                        end
+                    end
+                    % === MRI SEGMENTATION ===
+                    fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas);
                 end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
-                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_mri(filenameFull));
-
+                if (length(bstNodes) == 1)
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_mri, filenameFull));
+                end
 
 %% ===== POPUP: SURFACE =====
             case {'scalp', 'cortex', 'outerskull', 'innerskull', 'other'}
@@ -1013,7 +1078,7 @@ switch (lower(action))
                 gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
 
                 % === SET SURFACE TYPE ===
-                if ~bst_get('ReadOnly')
+                if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     jItemSetSurfType = gui_component('Menu', jPopup, [], 'Set surface type', IconLoader.ICON_SURFACE, [], []);
                     jItemSetSurfTypeScalp      = gui_component('MenuItem', jItemSetSurfType, [], 'Scalp',       IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)node_set_type(bstNodes(1), 'Scalp'));
                     jItemSetSurfTypeCortex     = gui_component('MenuItem', jItemSetSurfType, [], 'Cortex',      IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)node_set_type(bstNodes(1), 'Cortex'));
@@ -1039,7 +1104,7 @@ switch (lower(action))
                 end
                 
                 % SET AS DEFAULT SURFACE
-                if ~bst_get('ReadOnly')
+                if ~bst_get('ReadOnly') && (length(bstNodes) == 1)
                     iSurface = bstNodes(1).getItemIndex();
                     switch lower(nodeType)
                         case 'scalp',      SurfaceType = 'Scalp';
@@ -1072,25 +1137,13 @@ switch (lower(action))
                             % === ALIGN ALL SURFACES ===
                             gui_component('MenuItem', jMenuAlign, [], 'Edit fiducials...', IconLoader.ICON_ALIGN_SURFACES, [], @(h,ev)tess_align_fiducials(filenameRelative, {sSubject.Surface.FileName}));
                             % === MENU: ALIGN SURFACE MANUALLY ===
-                            jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
-                                % ADD ANATOMIES
-                                for iAnat = 1:length(sSubject.Anatomy)
-                                    fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
-                                    gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
-                                end
-                                % ADD SURFACES
-                                for iSurf = 1:length(sSubject.Surface)
-                                    % Ignore itself
-                                    fullSurfFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iSurf).FileName);
-                                    if ~file_compare(fullSurfFile, filenameFull)
-                                        gui_component('MenuItem', jMenuAlignManual, [], sSubject.Surface(iSurf).Comment, IconLoader.ICON_SURFACE, [], @(h,ev)tess_align_manual(fullSurfFile, filenameFull));
-                                    end
-                                end
+                            fcnPopupAlign();
                             % === MENU: LOAD FREESURFER SPHERE ===
                             AddSeparator(jMenuAlign);
                             gui_component('MenuItem', jMenuAlign, [], 'Load FreeSurfer sphere...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSphere(filenameRelative));
                             gui_component('MenuItem', jMenuAlign, [], 'Load BrainSuite square...', IconLoader.ICON_FOLDER_OPEN, [], @(h,ev)TessAddSquare(filenameRelative));
-                            gui_component('MenuItem', jMenuAlign, [], 'Display registration sphere/square', IconLoader.ICON_DISPLAY,     [], @(h,ev)view_surface_sphere(filenameRelative));
+                            gui_component('MenuItem', jMenuAlign, [], 'Display registration sphere/square', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_sphere(filenameRelative, 'orig'));
+                            gui_component('MenuItem', jMenuAlign, [], '2D projection (Mollweide)', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_sphere(filenameRelative, 'mollweide'));
                         end
                 
                     % No read-only
@@ -1103,6 +1156,9 @@ switch (lower(action))
                         end
                         if strcmpi(nodeType, 'cortex')
                             gui_component('MenuItem', jPopup, [], 'Extract envelope', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)SurfaceEnvelope_Callback(filenameFull));
+                            if ~isempty(sSubject.iInnerSkull)
+                                gui_component('MenuItem', jPopup, [], 'Force inside skull', IconLoader.ICON_SURFACE_INNERSKULL, [], @(h,ev)tess_force_envelope(filenameFull, sSubject.Surface(sSubject.iInnerSkull).FileName));
+                            end
                         end
                         gui_component('MenuItem', jPopup, [], 'Remove interpolations', IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 0));
                         gui_component('MenuItem', jPopup, [], 'Clean surface',         IconLoader.ICON_RECYCLE, [], @(h,ev)SurfaceClean_Callback(filenameFull, 1));
@@ -1110,23 +1166,58 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Import texture', IconLoader.ICON_RESULTS, [], @(h,ev)import_sources([], filenameFull));
                     end
                 end
+                % Generate FEM mesh
+                if ~bst_get('ReadOnly')
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, [], GetAllFilenames(bstNodes)));
+                end
                 % === MENU: EXPORT ===
                 % Export menu (added later)
                 jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_surfaces(filenameFull));
              
-%% ===== POPUP: FIBERS =====
-            case {'fibers'}
-                % Get subject
-                iSubject = bstNodes(1).getStudyIndex();
-                sSubject = bst_get('Subject', iSubject);
                 
+%% ===== POPUP: FIBERS =====
+            case 'fibers'             
                 % === DISPLAY ===
                 gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface(filenameRelative));
-
                 % === SUBSAMPLE ===
                 if ~bst_get('ReadOnly')
                     gui_component('MenuItem', jPopup, [], 'Less fibers...', IconLoader.ICON_DOWNSAMPLE, [], @(h,ev)fibers_downsample(filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Interpolate points...', IconLoader.ICON_FLIP, [], @(h,ev)fibers_interp(filenameFull));
+                end
+              
+%% ===== POPUP: FEM HEAD MODEL =====
+            case 'fem'
+                iSubject = bstNodes(1).getStudyIndex();
+                if (length(bstNodes) == 1)
+                    gui_component('MenuItem', jPopup, [], 'Display', IconLoader.ICON_DISPLAY, [], @(h,ev)view_surface_fem(filenameRelative, [], [], [], 'NewFigure'));
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
+                    gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Compute mesh volume', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeFemVolume', filenameRelative));
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
+                    AddSeparator(jPopup);
+                    gui_component('MenuItem', jPopup, [], 'Compute FEM tensors', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_tensors, 'ComputeInteractive', iSubject, filenameFull));
+                    % If there are tensors to display
+                    varInfo = whos('-file', filenameFull, 'Tensors');
+                    if ~isempty(varInfo) && all(varInfo.size >= 12)
+                        jMenuFemDisp = gui_component('Menu', jPopup, [], 'Display FEM tensors', IconLoader.ICON_DISPLAY, [], []);
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipsoids (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse'));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (MRI)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow'));
+                        AddSeparator(jMenuFemDisp);
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as ellipsoids (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'ellipse', [], filenameFull));
+                        gui_component('MenuItem', jMenuFemDisp, [], 'Display as arrows (FEM mesh)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@view_fem_tensors, filenameFull, 'arrow', [], filenameFull));
+                        gui_component('MenuItem', jPopup, [], 'Clear FEM tensors', IconLoader.ICON_DELETE, [], @(h,ev)bst_call(@process_fem_tensors, 'ClearTensors', filenameFull));
+                    end
+                    % === MENU: ALIGN SURFACE MANUALLY ===
+                    % Get subject
+                    iSubject = bstNodes(1).getStudyIndex();
+                    sSubject = bst_get('Subject', iSubject);
+                    % Menu: Align manually
+                    AddSeparator(jPopup);
+                    fcnPopupAlign();
                 end
                 
 %% ===== POPUP: NOISECOV =====
@@ -1156,7 +1247,7 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Copy to other subjects',   IconLoader.ICON_HEADMODEL, [], @(h,ev)db_set_noisecov(bstNodes(1).getStudyIndex(), 'AllSubjects', isDataCov));
                     end
                 end
-                
+
 %% ===== POPUP: HEADMODEL =====
             case 'headmodel'
                 % Get study description
@@ -1194,18 +1285,23 @@ switch (lower(action))
                     [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                     gui_component('MenuItem', jPopup, [], 'Check spheres', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_spheres(filenameFull, ChannelFile, sSubject));
                 end
+                
                 % === CHECK SOURCE GRID ===
                 if strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'volume') 
                     if ~bst_get('ReadOnly') && ~isSepGain
                         AddSeparator(jPopup);
                     end
-                    gui_component('MenuItem', jPopup, [], 'Check source grid', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Check source grid (Cortex)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull));
+                    gui_component('MenuItem', jPopup, [], 'Check source grid (MRI)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'V', 'MRI'));
                 elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'mixed')
                     if ~bst_get('ReadOnly') && ~isSepGain
                         AddSeparator(jPopup);
                     end
                     gui_component('MenuItem', jPopup, [], 'Check source grid (volume)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'V'));
                     gui_component('MenuItem', jPopup, [], 'Check source grid (surface)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'S'));
+                end
+                if isempty(strfind(filenameRelative, 'headmodel_grid_'))
+                    gui_component('MenuItem', jPopup, [], 'View lead field vectors', IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@view_leadfields, GetAllFilenames(bstNodes))); 
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')
@@ -1234,16 +1330,20 @@ switch (lower(action))
                     AllMod(iEDF) = [];
                 end
                 % Add iEEG when SEEG+ECOG 
-                if all(ismember({'SEEG','ECOG'}, AllMod))
+                if ~isempty(AllMod) && all(ismember({'SEEG','ECOG'}, AllMod))
                     AllMod = cat(2, {'ECOG+SEEG'}, AllMod);
                 end
-                if all(ismember({'SEEG','ECOG'}, DisplayMod))
+                if ~isempty(DisplayMod) && all(ismember({'SEEG','ECOG'}, DisplayMod))
                     DisplayMod = cat(2, {'ECOG+SEEG'}, DisplayMod);
+                end
+                % Find anatomy volumes (exclude atlases)
+                if ~isempty(sSubject.Anatomy)
+                    iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                else
+                    iVolAnat = [];
                 end
                 % One data file selected only
                 if (length(bstNodes) == 1)
-                    % Get associated subject and surfaces, if it exists
-                    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                     % RAW continuous files
                     if ~bst_get('ReadOnly') && ~isStat
                         % Import in database
@@ -1254,7 +1354,7 @@ switch (lower(action))
                             Device = bst_get('ChannelDevice', ChannelFile);
                             ChannelMat_Comment = in_bst_channel(ChannelFile,'Comment');
                             % If CTF file format
-                            if strcmpi(Device, 'CTF')
+                            if strcmpi(Device, 'CTF') || ~isempty(strfind(ChannelMat_Comment.Comment, 'CTF'))
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_ctf_convert', filenameFull, [], 'rectype', 3, 'interactive', 1));
                             elseif ~isempty(strfind(ChannelMat_Comment.Comment, 'NWB')) % Check for NWB file format
                                 gui_component('MenuItem', jPopup, [], 'Switch epoched/continous', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_process('CallProcess', 'process_nwb_convert', filenameFull, [], 'rectype', 3, 'interactive', 1, 'ChannelFile', ChannelFile));
@@ -1299,17 +1399,15 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, AllMod{iMod}));
                                 end
-                                if ~isempty(sSubject.iAnatomy)
-                                    if (length(sSubject.Anatomy) == 1)
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, AllMod{iMod}));
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, AllMod{iMod}));
-                                    else
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, AllMod{iMod}));
-                                        end
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, AllMod{iMod}));
-                                        end
+                                if (length(iVolAnat) == 1)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, AllMod{iMod}));
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, AllMod{iMod}));
+                                elseif (length(iVolAnat) > 1)
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, AllMod{iMod}));
+                                    end
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, AllMod{iMod}));
                                     end
                                 end
                             end
@@ -1352,12 +1450,15 @@ switch (lower(action))
                 else
                     % Display of multiple files
                     if ~isempty(AllMod)
-                        % === ERP IMAGE ===
+                        % === TIME SERIES / ERP IMAGE ===
+                        jMenuTs = gui_component('Menu', jPopup, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], []);
                         jMenuErp = gui_component('Menu', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], []);
                         % For each modality, display a menu
                         for iMod = 1:length(AllMod)
                             channelTypeDisplay = getChannelTypeDisplay(AllMod{iMod}, AllMod);
-                            gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'data'), 'erpimage', AllMod{iMod}));
+                            DataFilenames = GetAllFilenames(bstNodes, 'data');
+                            gui_component('MenuItem', jMenuTs, [], channelTypeDisplay, IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(DataFilenames, AllMod{iMod}, [], 'NewFigure'));
+                            gui_component('MenuItem', jMenuErp, [], channelTypeDisplay, IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(DataFilenames, 'erpimage', AllMod{iMod}));
                         end
                         % === 2DLAYOUT ===
                         mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
@@ -1384,7 +1485,7 @@ switch (lower(action))
                     end
                 end
                 % === MENU: EXPORT ===
-                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_data(GetAllFilenames(bstNodes)));
+                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_data, GetAllFilenames(bstNodes)));
 
                 % === VIEW CLUSTERS ===
                 if ~isempty(AllMod)
@@ -1592,16 +1693,28 @@ switch (lower(action))
                         end
                     end
                     % === DISPLAY ON MRI ===
-                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
+                    % Find anatomy volumes (exclude atlases)
+                    if ~isempty(sSubject.Anatomy)
+                        iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
                     else
-                        gui_component('MenuItem', jMenuActivations, [], 'No MRI available', IconLoader.ICON_WARNING, [], []);
+                        iVolAnat = [];
+                    end
+                    if (length(iVolAnat) == 1)
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                    elseif (length(iVolAnat) > 1)
+                        for iAnat = 1:length(iVolAnat)
+                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
+                        end
+                        for iAnat = 1:length(iVolAnat)
+                            gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
+                        end
                     end
                     % === DISPLAY ON SPHERE ===
                     if strcmpi(sStudy.Result(iResult).HeadModelType, 'surface') && ~isempty(sSubject) && ~isempty(sSubject.iCortex)
                         AddSeparator(jMenuActivations);
-                        gui_component('MenuItem', jMenuActivations, [], 'Display on spheres/squares', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative));
+                        gui_component('MenuItem', jMenuActivations, [], 'Display on spheres/squares', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative, 'orig'));
+                        gui_component('MenuItem', jMenuActivations, [], '2D projection (Mollweide)', IconLoader.ICON_SURFACE, [], @(h,ev)view_surface_sphere(filenameRelative, 'mollweide'));
                     end
                 end
 
@@ -1641,7 +1754,7 @@ switch (lower(action))
                 
                 % === MENU: EXPORT ===
                 % Added later...
-                jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_result(filenameFull));
+                jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_result, filenameFull));
                 if ~isRaw && (length(bstNodes) == 1)
                     jMenuExport{2} = gui_component('MenuItem', [], [], 'Export as 4D matrix', IconLoader.ICON_SAVE, [], @(h,ev)panel_process_select('ShowPanelForFile', {filenameFull}, 'process_export_spmvol'));
 %                     if ~isVolumeGrid
@@ -1673,11 +1786,22 @@ switch (lower(action))
                             gui_component('MenuItem', jMenuActivations, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
                         end
                         % === DISPLAY ON MRI ===
-                        if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
-                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative));
+                        % Find anatomy volumes (exclude atlases)
+                        if ~isempty(sSubject.Anatomy)
+                            iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
                         else
-                            gui_component('MenuItem', jMenuActivations, [], 'No MRI available', IconLoader.ICON_WARNING, [], []);
+                            iVolAnat = [];
+                        end
+                        if (length(iVolAnat) == 1)
+                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                            gui_component('MenuItem', jMenuActivations, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative));
+                        elseif (length(iVolAnat) > 1)
+                            for iAnat = 1:length(iVolAnat)
+                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
+                            end
+                            for iAnat = 1:length(iVolAnat)
+                                gui_component('MenuItem', jMenuActivations, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative));
+                            end
                         end
                     % === STAT CLUSTERS ===
                     if ~isempty(strfind(filenameRelative, '_cluster'))
@@ -1702,7 +1826,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display on MRI (3D)', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'Mri3D'));
                     gui_component('MenuItem', jPopup, [], 'Display on cortex',   IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'Cortex'));
                     AddSeparator(jPopup);
-                    gui_component('MenuItem', jPopup, [], 'Display in MRI Viewer', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'MriViewer'));
+                    gui_component('MenuItem', jPopup, [], 'Display density in MRI Viewer', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'MriViewer'));
                 else
                     gui_component('MenuItem', jPopup, [], 'Merge dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)dipoles_merge(GetAllFilenames(bstNodes)));
                 end
@@ -1716,7 +1840,8 @@ switch (lower(action))
                 sSubject  = bst_get('Subject', sStudy.BrainStormSubject);
                 DisplayMod= {};
                 % Get data type
-                if strcmpi(char(bstNodes(1).getType()), 'ptimefreq')
+                isStat = strcmpi(char(bstNodes(1).getType()), 'ptimefreq');
+                if isStat
                     TimefreqMat = in_bst_timefreq(filenameRelative, 0, 'DataType');
                     if ~isempty(TimefreqMat.DataType)
                         DataType = TimefreqMat.DataType;
@@ -1757,28 +1882,34 @@ switch (lower(action))
                 if (length(bstNodes) == 1)
                     % ===== CONNECTIVITY =====
                     if ~isempty(strfind(filenameRelative, '_connectn')) || ~isempty(strfind(filenameRelative, '_connect1'))
+
                         % [NxN] only
                         if ~isempty(strfind(filenameRelative, '_connectn'))                           
-                            gui_component('MenuItem', jPopup, [], 'Display as graph     [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));
-                            %gui_component('MenuItem', jPopup, [], 'Connectivity graph (3D)',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, '3DGraph'));
-                            gui_component('MenuItem', jPopup, [], 'Display as image    [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
+                            gui_component('MenuItem', jPopup, [], 'Display as graph [NxN]',   IconLoader.ICON_CONNECTN, [], @(h,ev)view_connect(filenameRelative, 'GraphFull'));                               
+                            gui_component('MenuItem', jPopup, [], 'Display as image [NxN]', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
                             if ~isempty(sSubject) && isfield(sSubject, 'iFibers') && ~isempty(sSubject.iFibers)
                                 gui_component('MenuItem', jPopup, [], 'Display fibers [experimental]',   IconLoader.ICON_FIBERS, [], @(h,ev)view_connect(filenameRelative, 'Fibers'));
                             end
-                            jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [1xN]', IconLoader.ICON_CONNECT1, [], []);
+                            jMenuConn1 = gui_component('Menu', [], [], 'Connectivity  [NxN]', IconLoader.ICON_CONNECTN, [], []);
                         else
                             jMenuConn1 = jPopup;
                         end
                         % Depending on the datatype
                         switch lower(DataType)
                             case 'data'
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger'))  || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_wpli')) || ~isempty(strfind(filenameRelative, '_ciplv')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
-                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
+                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) 
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));
+                                end
+                                if isempty(strfind(filenameRelative, '_connectn'))
+                                    gui_component('MenuItem', jMenuConn1, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_connect(filenameRelative, 'Image'));
                                 end
                                 if (length(jMenuConn1.getSubElements()) > 0)
                                     AddSeparator(jMenuConn1);
@@ -1789,7 +1920,8 @@ switch (lower(action))
                                 end
                             case 'results'
                                 % One channel
-                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
+                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))...
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt')) 
                                     gui_component('MenuItem', jMenuConn1, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     AddSeparator(jMenuConn1);
                                 end
@@ -1804,10 +1936,13 @@ switch (lower(action))
                                     gui_component('MenuItem', jMenuConn1, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
                                 end
                             otherwise
-                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_plvt'))
+                                if ~isempty(strfind(filenameRelative, '_cohere')) || ~isempty(strfind(filenameRelative, '_spgranger')) || ~isempty(strfind(filenameRelative, '_henv')) || ~isempty(strfind(filenameRelative, '_pte')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plv')) || ~isempty(strfind(filenameRelative, '_wpli')) || ~isempty(strfind(filenameRelative, '_ciplv')) ...
+                                        || ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
                                     gui_component('MenuItem', jPopup, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_spectrum(filenameRelative, 'Spectrum'));
                                 end
-                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time'))
+                                if ~isempty(strfind(filenameRelative, '_plvt')) || ~isempty(strfind(filenameRelative, '_corr_time')) || ~isempty(strfind(filenameRelative, '_cohere_time')) ...
+                                        || ~isempty(strfind(filenameRelative, '_wplit')) || ~isempty(strfind(filenameRelative, '_ciplvt'))
                                     gui_component('MenuItem', jPopup,     [], 'Time series', IconLoader.ICON_DATA,     [], @(h,ev)view_spectrum(filenameRelative, 'TimeSeries'));
                                     gui_component('MenuItem', jMenuConn1, [], 'One row',     IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
                                     gui_component('MenuItem', jMenuConn1, [], 'All rows',    IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'AllSensors'));
@@ -1822,81 +1957,87 @@ switch (lower(action))
                             jPopup.add(jMenuConn1);
                         end
                         % Export to file
-                        jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
-
+                        if strcmpi(nodeType, 'timefreq')
+                            jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_timefreq, filenameFull));
+                        end
+                        
                     % ===== PAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_pac_fullmaps'))
-                        gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
-                        AddSeparator(jPopup);
-                        % Depending on the datatype
-                        switch lower(DataType)
-                            case 'data'
-                                % Topography
-                                fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
-                            case 'results'
-                                gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
-                                AddSeparator(jPopup);
-                                % Cortex
-                                if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
-                                    gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
-                                end
-                                % MRI
-                                if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
-                                end
-                            otherwise
+                        if ~isStat
+                            gui_component('MenuItem', jPopup, [], 'DirectPAC maps', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative));
+                            AddSeparator(jPopup);
+                            % Depending on the datatype
+                            switch lower(DataType)
+                                case 'data'
+                                    % Topography
+                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
+                                case 'results'
+                                    gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
+                                    AddSeparator(jPopup);
+                                    % Cortex
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                                    end
+                                    % MRI
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
+                                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                    end
+                                otherwise
+                            end
                         end
                         
                     % ===== DPAC: FULL MAPS =====
                     elseif ~isempty(strfind(filenameRelative, '_dpac_fullmaps'))
-                        jMenuPac = gui_component('Menu', jPopup, [], 'DynamicPAC maps', IconLoader.ICON_PAC, [], []);
-                            gui_component('MenuItem', jMenuPac, [], 'One channel', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'SingleSensor'));
-                            if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
-                                gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'AllSensors'));
-                                gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'Spectrum'));
-                                gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'TimeSeries'));
-                            end
-                            if strcmpi(DataType, 'data')
-                                AddSeparator(jMenuPac);
-                                gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '3DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DDisc'));
-                            end
-                        jMenuPac = gui_component('Menu', jPopup, [], 'DynamicNesting maps', IconLoader.ICON_PAC, [], []);
-                            gui_component('MenuItem', jMenuPac, [], 'One channel',  IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'SingleSensor'));
-                            if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
-                                gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'AllSensors'));
-                                gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'Spectrum'));
-                                gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'TimeSeries'));
-                            end
-                            if strcmpi(DataType, 'data')
-                                AddSeparator(jMenuPac);
-                                gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '3DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DSensorCap'));
-                                gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DDisc'));
-                            end
-                        AddSeparator(jPopup);
-                        % Depending on the datatype
-                        switch lower(DataType)
-                            case 'data'
-                                % Topography
-                                fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
-                            case 'results'
-                                gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
-                                AddSeparator(jPopup);
-                                % Cortex
-                                if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
-                                    gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                        if ~isStat
+                            jMenuPac = gui_component('Menu', jPopup, [], 'DynamicPAC maps', IconLoader.ICON_PAC, [], []);
+                                gui_component('MenuItem', jMenuPac, [], 'One channel', IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'SingleSensor'));
+                                if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
+                                    gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'AllSensors'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'Spectrum'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', 'TimeSeries'));
                                 end
-                                % MRI
-                                if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
-                                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
-                                    gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                if strcmpi(DataType, 'data')
+                                    AddSeparator(jMenuPac);
+                                    gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '3DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicPAC', '2DDisc'));
                                 end
-                            otherwise
+                            jMenuPac = gui_component('Menu', jPopup, [], 'DynamicNesting maps', IconLoader.ICON_PAC, [], []);
+                                gui_component('MenuItem', jMenuPac, [], 'One channel',  IconLoader.ICON_PAC, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'SingleSensor'));
+                                if strcmpi(DataType, 'data') || strcmpi(DataType, 'matrix')
+                                    gui_component('MenuItem', jMenuPac, [], 'All channels',   IconLoader.ICON_PAC,      [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'AllSensors'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Power spectrum', IconLoader.ICON_SPECTRUM, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'Spectrum'));
+                                    gui_component('MenuItem', jMenuPac, [], 'Time series',    IconLoader.ICON_DATA,     [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', 'TimeSeries'));
+                                end
+                                if strcmpi(DataType, 'data')
+                                    AddSeparator(jMenuPac);
+                                    gui_component('MenuItem', jMenuPac, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '3DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DSensorCap'));
+                                    gui_component('MenuItem', jMenuPac, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_pac(filenameRelative, [], 'DynamicNesting', '2DDisc'));
+                                end
+                            AddSeparator(jPopup);
+                            % Depending on the datatype
+                            switch lower(DataType)
+                                case 'data'
+                                    % Topography
+                                    fcnPopupTopoNoInterp(jPopup, filenameRelative, DisplayMod, 0, 0, 0);
+                                case 'results'
+                                    gui_component('MenuItem', jPopup, [], 'One channel', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_timefreq(filenameFull, 'SingleSensor'));
+                                    AddSeparator(jPopup);
+                                    % Cortex
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iCortex) && ~isVolume
+                                        gui_component('MenuItem', jPopup, [], 'Display on cortex', IconLoader.ICON_CORTEX, [], @(h,ev)view_surface_data([], filenameRelative));
+                                    end
+                                    % MRI
+                                    if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy)
+                                        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (3D)',         IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(MriFile, filenameRelative));
+                                        gui_component('MenuItem', jPopup, [], 'Display on MRI   (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(MriFile, filenameRelative));
+                                    end
+                                otherwise
+                            end
                         end
                         
                     % ===== TIME-FREQUENCY =====
@@ -1939,17 +2080,21 @@ switch (lower(action))
                                             if ~isempty(sSubject.iCortex)
                                                 gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
                                             end
-                                            if ~isempty(sSubject.iAnatomy)
-                                                if (length(sSubject.Anatomy) == 1)
-                                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                                else
-                                                    for iAnat = 1:length(sSubject.Anatomy)
-                                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                                    end
-                                                    for iAnat = 1:length(sSubject.Anatomy)
-                                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                                    end
+                                            % Find anatomy volumes (exclude atlases)
+                                            if ~isempty(sSubject.Anatomy)
+                                                iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                                            else
+                                                iVolAnat = [];
+                                            end
+                                            if (length(iVolAnat) == 1)
+                                                gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                                gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                            elseif (length(iVolAnat) > 1)
+                                                for iAnat = 1:length(iVolAnat)
+                                                    gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
+                                                end
+                                                for iAnat = 1:length(iVolAnat)
+                                                    gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
                                                 end
                                             end
                                         end
@@ -1989,7 +2134,9 @@ switch (lower(action))
                                 end
                         end
                         % Export to file
-                        jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                        if strcmpi(nodeType, 'timefreq')
+                            jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_timefreq, filenameFull));
+                        end
                     end
                 end
                 % === STAT CLUSTERS ===
@@ -2064,17 +2211,21 @@ switch (lower(action))
                                 if ~isempty(sSubject.iCortex)
                                     gui_component('MenuItem', jMenuModality, [], 'Display on cortex', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)view_surface_data(sSubject.Surface(sSubject.iCortex).FileName, filenameRelative, DisplayMod{iMod}));
                                 end
-                                if ~isempty(sSubject.iAnatomy)
-                                    if (length(sSubject.Anatomy) == 1)
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                        gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(1).FileName, filenameRelative, DisplayMod{iMod}));
-                                    else
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                        end
-                                        for iAnat = 1:length(sSubject.Anatomy)
-                                            gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iAnat).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iAnat).FileName, filenameRelative, DisplayMod{iMod}));
-                                        end
+                                % Find anatomy volumes (exclude atlases)
+                                if ~isempty(sSubject.Anatomy)
+                                    iVolAnat = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                                else
+                                    iVolAnat = [];
+                                end
+                                if (length(iVolAnat) == 1)
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (MRI Viewer)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                    gui_component('MenuItem', jMenuModality, [], 'Display on MRI (3D)', IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(1)).FileName, filenameRelative, DisplayMod{iMod}));
+                                elseif (length(iVolAnat) > 1)
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (MRI Viewer): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
+                                    end
+                                    for iAnat = 1:length(iVolAnat)
+                                        gui_component('MenuItem', jMenuModality, [], ['Display on MRI (3D): ' sSubject.Anatomy(iVolAnat(iAnat)).Comment], IconLoader.ICON_ANATOMY, [], @(h,ev)view_surface_data(sSubject.Anatomy(iVolAnat(iAnat)).FileName, filenameRelative, DisplayMod{iMod}));
                                     end
                                 end
                             end
@@ -2117,7 +2268,7 @@ switch (lower(action))
                 end
                 % Export to file
                 if strcmpi(nodeType, 'spectrum')
-                    jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_timefreq(filenameFull));
+                    jMenuExport{1} = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_timefreq, filenameFull));
                 end
                 
                 
@@ -2155,13 +2306,17 @@ switch (lower(action))
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
                     end
+                else
+                    gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes), 'erpimage', 'none'));
                 end
                 % Export to file
-                jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)export_matrix(filenameFull));
+                if strcmpi(nodeType, 'matrix')
+                    jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_matrix, filenameFull));
+                end
                 
 %% ===== POPUP: MATRIX LIST =====
             case 'matrixlist'
-                % Nothing for now
+                gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'matrix'), 'erpimage', 'none'));
         end
         
 %% ===== POPUP: COMMON MENUS =====
@@ -2203,11 +2358,11 @@ switch (lower(action))
                 end
             end
             % ===== EXPORT TO MATLAB VARIABLE =====
-            if isfile && isMatlabRunning && ~ismember(nodeType, {'study', 'studysubject', 'defaultstudy', 'condition', 'rawcondition', 'subject', 'datalist', 'matrixlist', 'image'})
+            if isfile && ~isCompiled && ~ismember(nodeType, {'study', 'studysubject', 'defaultstudy', 'condition', 'rawcondition', 'subject', 'datalist', 'matrixlist', 'image'})
                 gui_component('MenuItem', jMenuFile, [], 'Export to Matlab', IconLoader.ICON_MATLAB_EXPORT, [], @(h,ev)export_matlab(bstNodes));
             end
             % ===== IMPORT FROM MATLAB VARIABLE =====
-            if ~bst_get('ReadOnly') && isone && isMatlabRunning
+            if ~bst_get('ReadOnly') && isone && ~isCompiled
                 if isstudy
                     gui_component('MenuItem', jMenuFile, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)db_add(iStudy));
                     gui_component('MenuItem', jMenuFile, [], 'Import source maps', IconLoader.ICON_RESULTS, [], @(h,ev)import_sources(iStudy));
@@ -2250,6 +2405,10 @@ switch (lower(action))
                         gui_component('MenuItem', jMenuFile, [], 'Fix broken link', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('FixFileLink', RawFile));
                         gui_component('MenuItem', jMenuFile, [], 'Copy to database', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('CopyRawToDatabase', RawFile));
                         % gui_component('MenuItem', jMenuFile, [], 'Delete raw file', IconLoader.ICON_RAW_DATA, [], @(h,ev)panel_record('DeleteRawFile', RawFile));
+                        % FIF: Anonymize
+                        if strcmpi(nodeType, 'rawdata') && (strcmpi(Device, 'Vectorview306') || all(ismember({'MEG MAG', 'MEG GRAD'}, AllMod)))
+                            gui_component('MenuItem', jMenuFile, [], 'Anonymize FIF file', IconLoader.ICON_RAW_DATA, [], @(h,ev)bst_call(@file_anonymize, filenameFull));
+                        end
                     end
                     gui_component('Menu', jMenuFile, [], 'Extra acquisition files', IconLoader.ICON_RAW_DATA, [], @(h,ev)CreateMenuExtraFiles(ev.getSource(), RawFile));
                 end
@@ -2328,7 +2487,7 @@ switch (lower(action))
                 gui_component('MenuItem', jMenuFile, [], 'Copy file path to clipboard', IconLoader.ICON_COPY, [], @(h,ev)clipboard('copy', filenameFull));
 
                 % ===== GO TO THIS DIRECTORY ======
-                if isMatlabRunning
+                if ~isCompiled
                     gui_component('MenuItem', jMenuFile, [], 'Go to this directory (Matlab)', IconLoader.ICON_MATLAB, [], @(h,ev)cd(destfolder));
                 end
                 % ===== LOCATE ON DISK =====
@@ -2566,6 +2725,29 @@ end % END SWITCH( ACTION )
             gui_component('MenuItem', jMenu, [], 'Scouts time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)tree_view_scouts(bstNodes));
         %end
     end
+
+%% ===== MENU: ALIGN SURFACES MANUALLY =====
+    function fcnPopupAlign()
+        import org.brainstorm.icon.*;
+
+        jMenuAlignManual = gui_component('Menu', jPopup, [], 'Align manually on...', IconLoader.ICON_ALIGN_SURFACES, [], []);
+        % ADD ANATOMIES
+        for iAnat = 1:length(sSubject.Anatomy)
+            if isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
+                fullAnatFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(iAnat).FileName);
+                gui_component('MenuItem', jMenuAlignManual, [], sSubject.Anatomy(iAnat).Comment, IconLoader.ICON_ANATOMY, [], @(h,ev)tess_align_manual(fullAnatFile, filenameFull));
+            end
+        end
+        % ADD SURFACES
+        for iSurf = 1:length(sSubject.Surface)
+            % Ignore itself
+            fullSurfFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Surface(iSurf).FileName);
+            if ~file_compare(fullSurfFile, filenameFull)
+                gui_component('MenuItem', jMenuAlignManual, [], sSubject.Surface(iSurf).Comment, IconLoader.ICON_SURFACE, [], @(h,ev)tess_align_manual(fullSurfFile, filenameFull));
+            end
+        end
+    end
+
 end % END FUNCTION
 
 
@@ -2590,7 +2772,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         % Add separator before the menu with default EEGcaps
         AddSeparator(jMenu);
     else
-        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)ImportChannelCheck(iAllStudies));
+        gui_component('MenuItem', jMenu, [], 'Import channel file', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@ImportChannelCheck, iAllStudies));
         jMenu = gui_component('Menu', jMenu, [], 'Use default EEG cap', IconLoader.ICON_CHANNEL, [], []);
     end
     % === USE DEFAULT CHANNEL FILE ===
@@ -2601,12 +2783,12 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         for iDir = 1:length(bstDefaults)
             jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Create subfolder for cap manufacturer
-            jMenuOther = gui_component('Menu', jMenuDir, [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuAnt = gui_component('Menu', jMenuDir, [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBs  = gui_component('Menu', jMenuDir, [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuBp  = gui_component('Menu', jMenuDir, [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuEgi = gui_component('Menu', jMenuDir, [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
-            jMenuNs  = gui_component('Menu', jMenuDir, [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuBs  = gui_component('Menu', [], [], 'BioSemi', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuBp  = gui_component('Menu', [], [], 'BrainProducts', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuEgi = gui_component('Menu', [], [], 'EGI', IconLoader.ICON_FOLDER_CLOSE, [], []);
+            jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Add an item per Template available
             fList = bstDefaults(iDir).contents;
             for iFile = 1:length(fList)
@@ -2634,6 +2816,25 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                 end
                 % Create item
                 gui_component('MenuItem', jMenuType, [], fList(iFile).name, IconLoader.ICON_CHANNEL, [], fcnCallback);
+            end
+            % Add if not empty
+            if (jMenuOther.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuOther);
+            end
+            if (jMenuAnt.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuAnt);
+            end
+            if (jMenuBs.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuBs);
+            end
+            if (jMenuBp.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuBp);
+            end
+            if (jMenuEgi.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuEgi);
+            end
+            if (jMenuNs.getMenuComponentCount() > 0)
+                jMenuDir.add(jMenuNs);
             end
         end
     end
@@ -2713,11 +2914,11 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
     % Display defaults
     UseSmoothing = 0;
     % Remove "MEG" from the list if there is either "MEG MAG" or "MEG GRAD" also
-    if all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod))
+    if ~isempty(AllMod) && (all(ismember({'MEG GRAD', 'MEG'}, AllMod)) || all(ismember({'MEG MAG', 'MEG'}, AllMod)))
         AllMod = setdiff(AllMod, 'MEG'); 
     end
     % Replace "MEG GRAD" with independant sensor types (MEG GRAD2, MEG GRAD3, GRADNORM)
-    if (ismember('MEG GRAD', AllMod))
+    if ~isempty(AllMod) && ismember('MEG GRAD', AllMod)
         AllMod = setdiff(AllMod, 'MEG GRAD'); 
         if isGradNorm
             AllMod{end+1} = 'MEG GRADNORM';
@@ -2773,8 +2974,82 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
     end
 end
 
-    
-%% ===== SURFACE CALLBACKS =====
+
+%% ===== MRI SEGMENTATION =====
+function fcnMriSegment(jPopup, sSubject, iSubject, iAnatomy, isAtlas)
+    import org.brainstorm.icon.*;
+    % No anatomy: nothing to do
+    if isempty(sSubject.Anatomy)
+        return;
+    end
+    % Using default anatomy
+    if isempty(iAnatomy)
+        if ~isempty(sSubject.iAnatomy) && (sSubject.iAnatomy <= length(sSubject.Anatomy))
+            MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        else
+            return
+        end
+    elseif (length(iAnatomy) == 1)
+        MriFile = sSubject.Anatomy(iAnatomy).FileName;
+    else
+        MriFile = {sSubject.Anatomy(iAnatomy).FileName};
+    end
+    % Add menu separator
+    AddSeparator(jPopup);
+
+    % === MRI/CT ===
+    if ~isAtlas
+        % Create sub-menu
+        jMenu = gui_component('Menu', jPopup, [], 'MRI segmentation', IconLoader.ICON_ANATOMY);
+        % === GENERATE HEAD/BEM ===
+        if (length(iAnatomy) <= 1)
+            gui_component('MenuItem', jMenu, [], 'Generate head surface', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)tess_isohead(MriFile));
+            gui_component('MenuItem', jMenu, [], 'Generate BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_bem, 'ComputeInteractive', iSubject, iAnatomy));
+        end
+        % === GENERATE FEM ===
+        if (length(iAnatomy) <= 2)   % T1 + optional T2
+            jItemFem = gui_component('MenuItem', jMenu, [], 'Generate FEM mesh', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeInteractive', iSubject, iAnatomy));
+        end
+        % === SEGMENTATION ===
+        if (length(iAnatomy) <= 1)
+            AddSeparator(jMenu);
+            % gui_component('MenuItem', jMenu, [], 'SPM12 canonical surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_generate_canonical, 'ComputeInteractive', iSubject, iAnatomy));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>CAT12</B>: Cortex, atlases, tissues', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_cat12, 'ComputeInteractive', iSubject, iAnatomy));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>BrainSuite</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_brainsuite, 'ComputeInteractive', iSubject, iAnatomy));
+            if ~ispc
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FastSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_fastsurfer, 'ComputeInteractive', iSubject, iAnatomy));
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FreeSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_freesurfer, 'ComputeInteractive', iSubject, iAnatomy));
+            end
+            gui_component('MenuItem', jMenu, [], '<HTML><B>SPM12</B>: Tissues, MNI normalization', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_mni_normalize, 'ComputeInteractive', MriFile, 'segment'));
+            gui_component('MenuItem', jMenu, [], '<HTML><B>FieldTrip</B>: Tissues, BEM surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_volumesegment, 'ComputeInteractive', iSubject, iAnatomy));
+            if ~ispc
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FSL/BET</B>: Extract head', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@process_segment_fsl, 'ComputeInteractive', iSubject, iAnatomy)); 
+            end
+        elseif (length(iAnatomy) == 2)   % T1 + T2
+            if ~ispc
+                AddSeparator(jMenu);
+                gui_component('MenuItem', jMenu, [], '<HTML><B>FreeSurfer</B>: Cortex, atlases', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_segment_freesurfer, 'ComputeInteractive', iSubject, iAnatomy));
+            end
+        end
+        % === DEFACE MRI ===
+        if isempty(iAnatomy)
+            gui_component('MenuItem', jPopup, [], 'Deface anatomy', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', iSubject, struct('isDefaceHead', 1)));
+        else
+            gui_component('MenuItem', jPopup, [], 'Deface volume', IconLoader.ICON_ANATOMY, [], @(h,ev)process_mri_deface('Compute', MriFile, struct('isDefaceHead', 0)));
+        end
+        % === SEEG/ECOG ===
+        if (length(iAnatomy) <= 1)
+            gui_component('MenuItem', jPopup, [], 'SEEG/ECOG implantation', IconLoader.ICON_SEEG_DEPTH, [], @(h,ev)bst_call(@panel_ieeg, 'CreateNewImplantation', MriFile));
+        end
+          
+    % === TISSUE SEGMENTATION ===
+    elseif (length(iAnatomy) == 1) && ~isempty(strfind(sSubject.Anatomy(iAnatomy).Comment, 'tissues'))
+        gui_component('MenuItem', jPopup, [], 'Generate triangular meshes', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)bst_call(@tess_meshlayer, sSubject.Anatomy(iAnatomy).FileName));
+        gui_component('MenuItem', jPopup, [], 'Generate hexa mesh (FieldTrip)', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_ft_prepare_mesh_hexa, 'ComputeInteractive', iSubject, iAnatomy));
+    end
+end
+
+                    
 %% ===== GET ALL FILENAMES =====
 function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullPath)
     % Parse inputs
@@ -2789,7 +3064,7 @@ function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullP
     for iNode = 1:length(bstNodes)
         switch char(bstNodes(iNode).getType())
             case 'datalist'
-                [iDepStudies, iDepItems] = tree_dependencies(bstNodes, targetType);
+                [iDepStudies, iDepItems] = tree_dependencies(bstNodes(iNode), targetType);
                 if isequal(iDepStudies, -10)
                     disp('BST> Error in tree_dependencies.');
                     continue;
@@ -2804,7 +3079,7 @@ function FileNames = GetAllFilenames(bstNodes, targetType, isExcludeBad, isFullP
                     end
                 end
             case 'matrixlist'
-                [iDepStudies, iDepItems] = tree_dependencies(bstNodes, targetType);
+                [iDepStudies, iDepItems] = tree_dependencies(bstNodes(iNode), targetType);
                 if isequal(iDepStudies, -10)
                     disp('BST> Error in tree_dependencies.');
                     continue;
@@ -2930,13 +3205,18 @@ end
 %% ===== EXTRACT ENVELOPE =====
 function SurfaceEnvelope_Callback(TessFile)
     % Ask user the new number of vertices
-    res = java_dialog('input', {'Number of vertices:', 'Dilate factor: (negative value for erosion)'}, 'Extract envelope', [], {'5000', '1'});
+    res = java_dialog('input', {'Number of vertices: (max 10000)', 'Dilate factor: (negative value for erosion)'}, 'Extract envelope', [], {'5000', '1'});
     if isempty(res) || (length(res) < 2) || isnan(str2double(res{1})) || isnan(str2double(res{2}))
         return
     end
     % Read user input
     newNbVertices = str2double(res{1});
     dilateMask = str2double(res{2});
+    % Validate user input
+    if newNbVertices > 10000
+        java_dialog('error', 'You cannot extract an envelope greater than 10000 vertices.', 'Extract envelope');
+        return
+    end
     % Progress bar
     bst_progress('start', 'Cortex envelope', 'Extracting envelope...');
     % Compute surface based on MRI mask
@@ -3146,6 +3426,7 @@ function SetNavgData(filenameFull)
         bst_error('Invalid value', 'Set number of trials', 0);
         return;
     end
+    DataMat.Leff = DataMat.nAvg;
     % History: Set number of trials
     DataMat = bst_history('add', DataMat, 'set_trials', ['Set number of trials: ' res]);
     % Save file
@@ -3162,10 +3443,13 @@ function CreateMenuExtraFiles(jMenu, DataFile)
     end
     % Load sFile structure
     DataMat = in_bst_data(DataFile, 'F');
-    % Get DS folder
+    % Get folder containing the raw file
     RawFolder = bst_fileparts(DataMat.F.filename);
-    nFiles = 0;
+    if ~isdir(RawFolder)
+        return;
+    end
     % Find session log file
+    nFiles = 0;
     listDir = dir(bst_fullfile(RawFolder, '*.txt'));
     for i = 1:length(listDir)
         SessionsFile = bst_fullfile(RawFolder, listDir(i).name);
@@ -3173,7 +3457,10 @@ function CreateMenuExtraFiles(jMenu, DataFile)
         nFiles = nFiles + 1;
     end
     % Find image files
-    listDir = [dir(bst_fullfile(RawFolder, '*.jpg')), dir(bst_fullfile(RawFolder, '*.gif')), dir(bst_fullfile(RawFolder, '*.JPG')), dir(bst_fullfile(RawFolder, '*.png')), dir(bst_fullfile(RawFolder, '*.tif'))];
+    listDir = [dir(bst_fullfile(RawFolder, '*.jpg')), dir(bst_fullfile(RawFolder, '*.gif')), dir(bst_fullfile(RawFolder, '*.png')), dir(bst_fullfile(RawFolder, '*.tif'))];
+    if ~ispc
+        listDir = [listDir, dir(bst_fullfile(RawFolder, '*.JPG')), dir(bst_fullfile(RawFolder, '*.GIF')), dir(bst_fullfile(RawFolder, '*.PNG')), dir(bst_fullfile(RawFolder, '*.TIF'))];
+    end
     for i = 1:length(listDir)
         ImageFile = bst_fullfile(RawFolder, listDir(i).name);
         gui_component('MenuItem', jMenu, [], listDir(i).name, IconLoader.ICON_IMAGE, [], @(h,ev)view_image(ImageFile));
@@ -3195,17 +3482,6 @@ function LoadSSP(filenameFull)
     end
 end
 
-%% ===== NORMALIZE MRI =====
-function NormalizeMri(MriFile)
-    % Unloading everything
-    bst_memory('UnloadAll', 'Forced');
-    % Call normalize function
-    [sMri, errMsg] = bst_normalize_mni(MriFile);
-    % Error handling
-    if ~isempty(errMsg)
-        bst_error(errMsg, 'Compute MNI transformation', 0);
-    end
-end
 
 %% ===== RESAMPLE MRI =====
 function ResampleMri(MriFile)
@@ -3255,7 +3531,7 @@ function SaveWhitenedData(ResultsFile)
     % Loading sources and data
     bst_progress('start', 'Model evaluation', 'Loading sources...');
     % Load source file
-    ResultsMat = in_bst_results(ResultsFile, 0,  'DataFile', 'Whitener', 'nAvg', 'GoodChannel');
+    ResultsMat = in_bst_results(ResultsFile, 0,  'DataFile', 'Whitener', 'Leff', 'GoodChannel');
     % Check the type of results file
     if isempty(ResultsMat) || isempty(ResultsMat.DataFile) || isempty(ResultsMat.Whitener) || isempty(ResultsMat.nAvg) || isempty(ResultsMat.GoodChannel)
         bst_error('The following fields must be available in the file: DataFile, Whitener, nAvg, Goodchannel.', 'Save whitened data', 0);
@@ -3268,7 +3544,7 @@ function SaveWhitenedData(ResultsFile)
     % Update progress bar
     bst_progress('start', 'Model evaluation', 'Saving whitened recordings...');
     % Factor to balance for averaged files 
-    Factor = sqrt(DataMat.nAvg / ResultsMat.nAvg); % is unity if both equal.
+    Factor = sqrt(ResultsMat.Leff); % is unity if both equal.
     % Compute whitened recordings 
     F = DataMat.F * 0;
     F(ResultsMat.GoodChannel,:) = Factor * ResultsMat.Whitener * DataMat.F(ResultsMat.GoodChannel,:); % whitened data to be displayed, z-units
@@ -3385,4 +3661,20 @@ function ImportChannelCheck(iAllStudies)
 end
 
 
+%% ===== MRI COREGISTER =====
+function MriCoregister(MriFileSrc, MriFileRef, Method, isReslice)
+    [MriFileReg, errMsg] = bst_call(@mri_coregister, MriFileSrc, MriFileRef, Method, isReslice);
+    if isempty(MriFileReg) || ~isempty(errMsg)
+        bst_error(['Could not coregister volume.', 10, 10, errMsg], 'MRI coregistration', 0);
+    end
+end
 
+function MriReslice(MriFileSrc, MriFileRef, TransfSrc, TransfRef)
+    [MriFileReg, errMsg] = bst_call(@mri_reslice, MriFileSrc, MriFileRef, TransfSrc, TransfRef);
+    if isempty(MriFileReg) || ~isempty(errMsg)
+        bst_error(['Could not reslice volume.', 10, 10, errMsg], 'MRI reslice', 0);
+    end
+end
+
+
+    

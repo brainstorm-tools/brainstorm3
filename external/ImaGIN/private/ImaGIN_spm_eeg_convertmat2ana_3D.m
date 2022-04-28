@@ -281,20 +281,26 @@ for k = 1:Nsub
     tmp=round(1000*max(abs(time(timewindow))));
     for j = timewindow % time bins
         J=round(1000*time(j));
-        if tmp<1e1
-            V.fname = sprintf('sample_%d.nii',J);
-        elseif tmp<1e2
-            V.fname = sprintf('sample_%0.2d.nii',J);
-        elseif tmp<1e3
-            V.fname = sprintf('sample_%0.3d.nii',J);
-        elseif tmp<1e4
-            V.fname = sprintf('sample_%0.4d.nii',J);
-        elseif tmp<1e5
-            V.fname = sprintf('sample_%0.5d.nii',J);
-        elseif tmp<1e6
-            V.fname = sprintf('sample_%0.6d.nii',J);
+        if (J >= 0)
+            strSign = 'p';
         else
-            V.fname = sprintf('sample_%d.nii',J);            
+            strSign = 'n';
+            J = abs(J);
+        end
+        if tmp<1e1
+            V.fname = sprintf('sample_%s%d.nii',strSign,J);
+        elseif tmp<1e2
+            V.fname = sprintf('sample_%s%0.2d.nii',strSign,J);
+        elseif tmp<1e3
+            V.fname = sprintf('sample_%s%0.3d.nii',strSign,J);
+        elseif tmp<1e4
+            V.fname = sprintf('sample_%s%0.4d.nii',strSign,J);
+        elseif tmp<1e5
+            V.fname = sprintf('sample_%s%0.5d.nii',strSign,J);
+        elseif tmp<1e6
+            V.fname = sprintf('sample_%s%0.6d.nii',strSign,J);
+        else
+            V.fname = sprintf('sample_%s%d.nii',strSign,J);            
         end                  
         
         win=j+ (-timewindowwidth:timewindowwidth);

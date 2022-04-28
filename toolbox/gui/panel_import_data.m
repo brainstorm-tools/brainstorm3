@@ -11,7 +11,7 @@ function varargout = panel_import_data(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_import_data(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2022
 
 eval(macro_method);
 end
@@ -73,7 +73,6 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
     jCheckUseEvents  = [];
     jTextTimeStart   = [];
     jTextTimeStop    = [];
-    jCheckSplit      = [];
     jTextBlockLength = [];
     jListEpochs      = [];
     jCheckAllEpochs  = [];
@@ -211,8 +210,8 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jPanelEvents.add(jTextEventsTimeStop);
             % Set callbacks
             TimeBoundsEvents = {-500, 500, sFile.prop.sfreq};
-            gui_validate_text(jTextEventsTimeStart, [], jTextEventsTimeStop, TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(1), @UpdateBaselineDefault);
-            gui_validate_text(jTextEventsTimeStop, jTextEventsTimeStart, [], TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(2), @UpdateBaselineDefault);
+            gui_validate_text(jTextEventsTimeStart, [], jTextEventsTimeStop, TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(1), @EpochTime_Callback);
+            gui_validate_text(jTextEventsTimeStop, jTextEventsTimeStart, [], TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(2), @EpochTime_Callback);
             TimeUnitBl = [];
             % Display units: ms
             jLabelTimeUnitsEvents = JLabel(' ms');
@@ -503,9 +502,16 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
                 return
             end
             % Compute number of blocks
-            TimeInterval = SelTimeBounds(2) - SelTimeBounds(1);
-            if strcmpi(TimeUnit, 'ms')
-                TimeInterval = TimeInterval / 1000;
+            isEventsSel = ~isempty(jCheckUseEvents) && jCheckUseEvents.isSelected();
+            if isEventsSel
+                EventsTimeRange = [str2double(char(jTextEventsTimeStart.getText())), ...
+                                   str2double(char(jTextEventsTimeStop.getText()))] ./ 1000;  % Always in ms
+                TimeInterval = EventsTimeRange(2) - EventsTimeRange(1);
+            else
+                TimeInterval = SelTimeBounds(2) - SelTimeBounds(1);
+                if strcmpi(TimeUnit, 'ms')
+                    TimeInterval = TimeInterval / 1000;
+                end
             end
             nbBlocks = ceil(TimeInterval / blockLength);
             % Update controls 
@@ -519,11 +525,11 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             isSplit = jCheckSplit.isSelected();
             % Enable/disable split controls
             gui_enable([jTextBlockLength, jLabelSeconds, jLabelNbBlocksTitle, jLabelNbBlocks], isSplit, 0);
-            % Unselect USE EVENTS option
-            if isSplit && ~isempty(jCheckUseEvents) && jCheckUseEvents.isSelected()
-                jCheckUseEvents.setSelected(0);
-                UseEvents_Callback();
-            end
+%             % Unselect USE EVENTS option
+%             if isSplit && ~isempty(jCheckUseEvents) && jCheckUseEvents.isSelected()
+%                 jCheckUseEvents.setSelected(0);
+%                 UseEvents_Callback();
+%             end
         end
     end
 
@@ -532,15 +538,17 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         isEventsSel = ~isempty(jCheckUseEvents) && jCheckUseEvents.isSelected();
         % Enable/disable events selection
         gui_enable([jListEvents, jLabelEpoch, jTextEventsTimeStart, jTextEventsTimeStop, jLabelTimeUnitsEvents], isEventsSel, 0);
-        % Unselect Split option
-        if isEventsSel && ~isempty(jCheckSplit) && jCheckSplit.isSelected()
-            jCheckSplit.setSelected(0);
-            RawSplit_Callback();
-        end
+%         % Unselect Split option
+%         if isEventsSel && ~isempty(jCheckSplit) && jCheckSplit.isSelected()
+%             jCheckSplit.setSelected(0);
+%             RawSplit_Callback();
+%         end
         % === Update events list ===
         UpdateEventsList();
         UpdateBaselineDefault();
         % UpdateDefaultCreateCond();
+        % Update number of samples per block
+        UpdateSamplesPerBlock();
     end
 
 %% ===== CHECKBOX: USE ALL EPOCHS ======
@@ -561,6 +569,14 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
         java_setcb(jListEpochs, 'ValueChangedCallback', cb);
         
         UpdateBaselineDefault();
+    end
+
+%% ===== TEXT: EPOCH TIME ======
+    function EpochTime_Callback(varargin)
+        % Update baseline default selection
+        UpdateBaselineDefault();
+        % Update number of samples per block
+        UpdateSamplesPerBlock();
     end
 
 %% ===== CHECKBOX: RESAMPLE =====

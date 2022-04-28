@@ -5,7 +5,7 @@ function node_delete(bstNodes, isUserConfirm)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function node_delete(bstNodes, isUserConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== INITIALIZATION =====
 % Parse inputs
@@ -62,6 +62,11 @@ switch (lower(nodeType{1}))
 
 %% ===== SUBJECT =====
     case {'subject', 'studysubject'}
+        % Cannot delete subject from exploration by category
+        if strcmpi(bst_get('Layout', 'ExplorationMode'), 'StudiesCond')
+            bst_error('Cannot delete subjects when exploring the database by conditions.', 'Delete subjects', 0);
+            return;
+        end
         % Ask user the confirmation for deleting subject
         if isUserConfirm
             isConfirmed = java_dialog('confirm', 'Remove selected subject(s) from database ?', 'Delete subjects');
@@ -78,9 +83,6 @@ switch (lower(nodeType{1}))
         end
         % Delete
         db_delete_subjects(iSubjects);
-        
-        %iModifiedSubjects = -1;   
-        %iModifiedStudies  = -1;
 
 
 %% ===== CONDITION =====
@@ -98,9 +100,8 @@ switch (lower(nodeType{1}))
                         'Deleting this link will delete permanently the file associated with it.</FONT>'];
                 % Raw file to delete is NOT in the database
                 else
-                    questStr = ['<BR><BR><FONT color="#008000">Warning: Removing links to raw files does not acually remove the raw files.<BR>' ...
-                        'To remove the native files from the hard drive, use the popup menu File > Delete raw file,<BR>' ...
-                        'or do it from your operating system file manager.</FONT>'];
+                    questStr = ['<BR><BR><FONT color="#008000">Removing links to raw files does not delete the original recordings from<BR>' ...
+                        'your hard drive. You can only do this from your operating system file manager.<BR><BR></FONT>'];
                 end
             else
                 questStr = [];
@@ -128,7 +129,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== ANATOMY =====
-    case 'anatomy'
+    case {'anatomy', 'volatlas'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         % Full file names
         FullFilesList = cellfun(@(f)fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
@@ -158,7 +159,7 @@ switch (lower(nodeType{1}))
 
 
 %% ===== SURFACES =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'other'}
+    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'fibers', 'fem', 'other'}
         bst_progress('start', 'Delete nodes', 'Deleting surfaces...');
         % Full file names
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.SUBJECTS,f), FileName', 'UniformOutput',0);
@@ -193,7 +194,7 @@ switch (lower(nodeType{1}))
                 end
                 % Update default surfaces
                 bst_set('ProtocolSubjects', ProtocolSubjects);
-                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull'}
+                for SurfType = {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
                     db_surface_default(iSubject, SurfType{1}, [], 0);
                 end
                 drawnow;
@@ -294,10 +295,10 @@ switch (lower(nodeType{1}))
     case {'data', 'datalist', 'rawdata'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         % Get data files do delete
-        [ iStudies_data,     iDatas    ] = tree_dependencies( bstNodes, 'data' );
-        [ iStudies_results,  iResults  ] = tree_dependencies( bstNodes, 'results' );
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
-        [ iStudies_dipoles,  iDipoles  ] = tree_dependencies( bstNodes, 'dipoles' );
+        [ iStudies_data,     iDatas    ] = tree_dependencies( bstNodes, 'data', -1 );
+        [ iStudies_results,  iResults  ] = tree_dependencies( bstNodes, 'results', -1 );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
+        [ iStudies_dipoles,  iDipoles  ] = tree_dependencies( bstNodes, 'dipoles', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_data, -10) || isequal(iStudies_results, -10) || isequal(iStudies_timefreq, -10) || isequal(iStudies_dipoles, -10)
             disp('BST> Error in tree_dependencies.');
@@ -384,8 +385,8 @@ switch (lower(nodeType{1}))
         % Get results files
         FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.STUDIES,f), FileName', 'UniformOutput',0);
         % Get dependent time-freq files
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
-        [ iStudies_dipoles,  iDipoles ]  = tree_dependencies( bstNodes, 'dipoles' );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
+        [ iStudies_dipoles,  iDipoles ]  = tree_dependencies( bstNodes, 'dipoles', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_timefreq, -10) || isequal(iStudies_dipoles, -10)
             disp('BST> Error in tree_dependencies.');
@@ -477,8 +478,8 @@ switch (lower(nodeType{1}))
         bst_progress('start', 'Delete nodes', 'Deleting files...');
         FullFilesList = {};
         % Get dependent time-freq files
-        [ iStudies_matrix,   iMatrix   ] = tree_dependencies( bstNodes, 'matrix' );
-        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq' );
+        [ iStudies_matrix,   iMatrix   ] = tree_dependencies( bstNodes, 'matrix', -1 );
+        [ iStudies_timefreq, iTimefreq ] = tree_dependencies( bstNodes, 'timefreq', -1 );
         % If an error occurred when looking for the for the files in the database
         if isequal(iStudies_timefreq, -10)
             disp('BST> Error in tree_dependencies.');

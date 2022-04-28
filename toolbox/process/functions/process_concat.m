@@ -5,7 +5,7 @@ function varargout = process_concat( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_concat( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2019
+% Authors: Francois Tadel, 2013-2020
 %          Marc Lalancette, 2018
 
 eval(macro_method);
@@ -365,6 +365,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             NewMat.Time = NewMat.Time(1) + (0:size(NewMat.TF,2)-1) ./ sfreq;
             % Output file tag
             fileTag = [bst_process('GetFileTag', sInputs(1).FileName), '_concat'];
+            % Remove the FFT or PSD tags, so that files are displayed as regular time-frequency files
+            fileTag = strrep(fileTag, '_psd', '');
+            fileTag = strrep(fileTag, '_fft', '');
             
         otherwise
             bst_report('Error', sProcess, sInputs(1), ['Unsupported file type: "' sInputs(1).FileType '".']);

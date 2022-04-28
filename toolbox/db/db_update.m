@@ -20,7 +20,7 @@ function db_update(LatestDbVersion, sProtocol, saveMetadata)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -326,16 +326,16 @@ if (CurrentDbVersion < 3.6) && ~isempty(ProtocolsListStudies) && ~isfield(Protoc
     bst_set('ProcessOptions', []);
 end
 
-%% ===== UPDATE 07-May-2019 =====
-% Modification: add fibers objects
-if (CurrentDbVersion < 5)
-    disp('BST> Database update: Adding support for diffusion fibers...');
+%% ===== UPDATES: 7-May-2019, 22-May-2019, 31-Aug-2019 =====
+% Modification: add fibers and FEM objects
+if (CurrentDbVersion < 5.02)
+    disp('BST> Database update: Adding support for fibers and FEM...');
     for iProt = 1:length(ProtocolsListSubjects)
         subjFields = fieldnames(ProtocolsListSubjects(iProt));
         for iField = 1:length(subjFields)
             subjField = subjFields{iField};
             nSubjects = length(ProtocolsListSubjects(iProt).(subjField));
-            sSubjects = repmat(db_template('subject'), nSubjects);
+            sSubjects = repmat(db_template('subject'), 1, nSubjects);
             for iSubj = 1:nSubjects
                 % Add iFibers to subject
                 sSubjects(iSubj) = struct_copy_fields(db_template('subject'), ProtocolsListSubjects(iProt).(subjField)(iSubj));

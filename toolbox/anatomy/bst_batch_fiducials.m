@@ -13,7 +13,7 @@ function bst_batch_fiducials(BatchFolders, isUpdate)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -198,7 +198,7 @@ for iMri = 1:length(MriFiles)
     panel_protocols('UpdateNode', 'Subject', iSubject);
 
     % === CREATE FIDUCIALS FILE ===
-    % Compute MNI transform
+    % Compute MNI normalizations
     isComputeMni = 1;
     % Save fiducials
     figure_mri('SaveFiducialsFile', sMRI, FidFile, isComputeMni);

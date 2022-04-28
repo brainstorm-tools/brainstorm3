@@ -7,7 +7,7 @@ function varargout = figure_image( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = figure_image( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2017
+% Authors: Francois Tadel, 2014-2020
 
 eval(macro_method);
 end
@@ -51,6 +51,7 @@ function hFig = CreateFigure(FigureId) %#ok<DEFNU>
                   'Tag',           FigureId.Type, ...
                   'Renderer',      rendererName, ...
                   'Color',         [.8 .8 .8], ...
+                  'Pointer',       'arrow', ...
                   'CloseRequestFcn',          @(h,ev)bst_figures('DeleteFigure',h,ev), ...
                   'KeyPressFcn',              @FigureKeyPressedCallback, ...
                   'WindowButtonDownFcn',      @FigureMouseDownCallback, ...
@@ -132,46 +133,50 @@ function ResizeCallback(hFig, ev)
     end
     % Get figure position and size in pixels
     figPos = get(hFig, 'Position');
+    % Scale figure
+    Scaling = bst_get('InterfaceScaling') / 100;
     % Define constants
-    colorbarWidth = 15;
-    marginTop     = 10;
+    colorbarWidth = 15 .* Scaling;
+    marginTop     = 10 .* Scaling;
     
     % Define the size of the bottom margin, function of the labels that have to be displayed
     XTickLabel = get(hAxes, 'XTickLabel');
     if isempty(XTickLabel)
-        marginBottom = 25;
-    elseif iscell(XTickLabel) && ~isempty(XTickLabel{1}) && isempty(num2str(XTickLabel{1}))
-        % Get the largest frequency band string
+        marginBottom = 25 .* Scaling;
+    elseif iscell(XTickLabel) && ~isempty(XTickLabel{1})
+        % Get the longest string
         strMax = max(cellfun(@length, XTickLabel));
-        marginBottom = 35 + 5 * min(15, strMax);
+        marginBottom = (35 + 5 * min(15, strMax)) .* Scaling;
     else
-        marginBottom = 40;
+        marginBottom = 40 .* Scaling;
     end
     
     % Define the size of the left margin in function of the labels that have to be displayed
     YTickLabel = get(hAxes, 'YTickLabel');
     if isempty(YTickLabel) || ~iscell(YTickLabel) || isempty(YTickLabel{1}) || ~ischar(YTickLabel{1})
-        marginLeft = 25;
+        marginLeft = 25 .* Scaling;
     else
-        % Get the largest frequency band string
+        % Get the longest string
         strMax = max(cellfun(@length, YTickLabel));
-        marginLeft = 40 + 5 * min(15, strMax);
+        marginLeft = (40 + 5 * min(15, strMax)) .* Scaling;
     end
 
     % If colorbar: Add a small label to hide the x10^exp on top of the colorbar
     hLabelHideExp = findobj(hFig, '-depth', 1, 'tag', 'labelMaskExp');
     % Reposition the colorbar
     if ~isempty(hColorbar)
-        marginRight = 55;
+        marginRight = 55 .* Scaling;
         % Position colorbar
-        colorbarPos = [figPos(3) - marginRight + 10, ...
+        colorbarPos = [figPos(3) - marginRight + 10 .* Scaling, ...
                        marginBottom, ...
                        colorbarWidth, ...
-                       figPos(4) - marginTop - marginBottom];
+                       max(1, figPos(4) - marginTop - marginBottom)];
         set(hColorbar, 'Units', 'pixels', 'Position', colorbarPos);
         % Add mask for exponent
-        maskPos = [colorbarPos(1), colorbarPos(2) + colorbarPos(4) + 5, ...
-                   figPos(3)-colorbarPos(1), figPos(4)-colorbarPos(2)-colorbarPos(4)];
+        maskPos = [colorbarPos(1), ...
+                   colorbarPos(2) + colorbarPos(4) + 5 .* Scaling, ...
+                   max(1, figPos(3)-colorbarPos(1)), ...
+                   max(1, figPos(4)-colorbarPos(2)-colorbarPos(4))];
         if isempty(hLabelHideExp)
             uicontrol(hFig,'style','text','units','pixels', 'pos', maskPos, 'tag', 'labelMaskExp', ...
                       'BackgroundColor', get(hFig, 'Color'));
@@ -180,14 +185,14 @@ function ResizeCallback(hFig, ev)
         end
     else
         delete(hLabelHideExp);
-        marginRight = 30;
+        marginRight = 30 .* Scaling;
     end
     % Reposition the axes
     set(hAxes, 'Units',    'pixels', ...
                'Position', [marginLeft, ...
                             marginBottom, ...
-                            figPos(3) - marginLeft - marginRight, ...
-                            figPos(4) - marginTop - marginBottom]);
+                            max(1, figPos(3) - marginLeft - marginRight), ...
+                            max(1, figPos(4) - marginTop - marginBottom)]);
 end
 
 
@@ -661,10 +666,15 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F, KeyEvent.CTRL_MASK));
     % ==== MENU: FIGURE ====
     jMenuFigure = gui_component('Menu', jPopup, [], 'Figure', IconLoader.ICON_LAYOUT_SHOWALL);
-        % Legend
+        % Show labels
         ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
-        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels));
+        ShortLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels, ShortLabels));
         jItem.setSelected(ShowLabels);
+        % Use short labels
+        jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
+        jItem.setEnabled(ShowLabels);
+        jItem.setSelected(ShortLabels);
         jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
@@ -689,7 +699,7 @@ end
 %  ===== DISPLAY FUNCTIONS ===================================================
 %  ===========================================================================
 %% ===== GET FIGURE DATA =====
-function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName] = GetFigureData(hFig, isResetMax)
+function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels] = GetFigureData(hFig, isResetMax)
     global GlobalData;
     % Parse inputs
     if (nargin < 2) || isempty(isResetMax)
@@ -703,12 +713,15 @@ function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName] = GetFigure
         DimLabels = [];
         DataMinMax = [];
         ShowLabels = [];
+        PageName = [];
+        ShortLabels = [];
         return;
     end
     AllLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.Labels;
     iDims      = GlobalData.DataSet(iDS).Figure(iFig).Handles.iDims;
     DimLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels;
     ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
+    ShortLabels= GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
     PageName   = GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName;
     % Get indices for 1st dimension
     if ismember(1, iDims)
@@ -784,7 +797,7 @@ function UpdateFigurePlot(hFig, isResetMax)
     % ===== GET DATA AND COLORMAP =====
     % If forced refresh: reset previous min/max
     % Get figure data
-    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName] = GetFigureData(hFig, isResetMax);
+    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels] = GetFigureData(hFig, isResetMax);
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
@@ -864,16 +877,22 @@ function UpdateFigurePlot(hFig, isResetMax)
                    'XTickLabel',     XTickLabel);
     elseif ShowLabels && iscell(Labels{2}) && ~isempty(Labels{2}) && ischar(Labels{2}{1})
         % Remove all the common parts of the labels
-        tmpLabels = str_remove_common(Labels{2});
-        if ~isempty(tmpLabels)
-            Labels{2} = tmpLabels;
+        if ShortLabels
+            tmpLabels = str_remove_common(Labels{2});
+            if ~isempty(tmpLabels)
+                Labels{2} = tmpLabels;
+            end
+            % Limit the size of the comments to 10 characters
+            for iLabel = 1:length(Labels{2})
+                if (length(Labels{2}{iLabel}) > 10)
+                    Labels{2}{iLabel} = [Labels{2}{iLabel}(1:5), '..', Labels{2}{iLabel}(end-4:end)];
+                end
+            end
         end
-        % Limit the size of the comments to 15 characters
-        Labels{2} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{2}, 'UniformOutput', 0);
         % Show the names of each row
         set(hAxes, 'XTickMode',      'manual', ...
                    'XTickLabelMode', 'manual', ...
-                   'XTick',          (1:size(FigData,1)) + 0.5, ...
+                   'XTick',          (1:size(FigData,2)) + 0.5, ...
                    'XTickLabel',     Labels{2});
         % New versions of Matlab only (Matlab >= 2014b)
         if (bst_get('MatlabVersion') >= 804)
@@ -884,14 +903,31 @@ function UpdateFigurePlot(hFig, isResetMax)
                    'XTickLabel', []);
     end
     % Y Ticks
-    if ShowLabels && ~isempty(Labels)
-        % Remove all the common parts of the labels
-        tmpLabels = str_remove_common(Labels{1});
-        if ~isempty(tmpLabels)
-            Labels{1} = tmpLabels;
+    if ShowLabels && ~isempty(Labels) && ~isempty(strfind(DimLabels{1}, 'Time')) && isnumeric(Labels{1})
+        % Get limits (time values and axes limits)
+        TimeWindow = [Labels{1}(1), Labels{1}(end)];
+        YLim = get(hAxes, 'YLim');
+        % Get reasonable ticks spacing
+        [YTick, YTickLabel] = bst_colormaps('GetTicks', TimeWindow, YLim, 1);
+        % Set the axes ticks
+        set(hAxes, 'YTickMode',      'manual', ...
+                   'YTickLabelMode', 'manual', ...
+                   'YTick',          YTick, ...
+                   'YTickLabel',     cellstr(YTickLabel));
+    elseif ShowLabels && ~isempty(Labels)
+        if ShortLabels && iscellstr(Labels{1})
+            % Remove all the common parts of the labels
+            tmpLabels = str_remove_common(Labels{1});
+            if ~isempty(tmpLabels)
+                Labels{1} = tmpLabels;
+            end
+            % Limit the size of the comments to 10 characters
+            for iLabel = 1:length(Labels{1})
+                if (length(Labels{1}{iLabel}) > 10)
+                    Labels{1}{iLabel} = [Labels{1}{iLabel}(1:5), '..', Labels{1}{iLabel}(end-4:end)];
+                end
+            end
         end
-        % Limit the size of the comments to 15 characters
-        Labels{1} = cellfun(@(c)c(max(1,length(c)-14):end), Labels{1}, 'UniformOutput', 0);
         % Show the names of each row
         set(hAxes, 'YTickMode',      'manual', ...
                    'YTickLabelMode', 'manual', ...
@@ -984,10 +1020,11 @@ end
 
 
 %% ===== SHOW/HIDE LABELS =====
-function SetShowLabels(iDS, iFig, ShowLabels)
+function SetShowLabels(iDS, iFig, ShowLabels, ShortLabels)
     global GlobalData;
     % Save new value
     GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels = ShowLabels;
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels = ShortLabels;
     % Update figure
     UpdateFigurePlot(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
     % Resize to update the size of the margins

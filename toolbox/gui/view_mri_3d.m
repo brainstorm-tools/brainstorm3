@@ -22,7 +22,7 @@ function [hFig, iDS, iFig] = view_mri_3d(MriFile, OverlayFile, SurfAlpha, hFig)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -99,6 +99,8 @@ if ~isempty(OverlayFile)
             OverlayType = 'Surface';
         case 'subjectimage'
             OverlayType = 'Anatomy';
+        case 'headmodel'
+            OverlayType = 'HeadModel';
         otherwise
             error('To do: See view_mri.m');
     end
@@ -107,12 +109,13 @@ end
 
 % ===== CREATE NEW FIGURE =====
 bst_progress('start', 'View surface', 'Loading MRI file...');
+% Prepare FigureId structure
+FigureId = db_template('FigureId');
+FigureId.Type     = '3DViz';
+FigureId.SubType  = '';
+FigureId.Modality = '';
+% Create new figure
 if isempty(hFig)
-    % Prepare FigureId structure
-    FigureId = db_template('FigureId');
-    FigureId.Type     = '3DViz';
-    FigureId.SubType  = '';
-    FigureId.Modality = '';
     % Create figure
     if NewFigure
         [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
@@ -126,6 +129,11 @@ if isempty(hFig)
     end
 else
     isNewFig = 0;
+end
+% If there is already a volume displayed in this figure, create a new one
+TessInfo = getappdata(hFig, 'Surface');
+if ~isempty(TessInfo) && ismember('Anatomy', {TessInfo.Name})
+    [hFig, iFig, isNewFig] = bst_figures('CreateFigure', iDS, FigureId, 'AlwaysCreate');
 end
 % Set application data
 setappdata(hFig, 'SubjectFile',  SubjectFile);

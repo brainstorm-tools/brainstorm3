@@ -5,7 +5,7 @@ function varargout = process_import_data_epoch( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,6 +20,7 @@ function varargout = process_import_data_epoch( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2017
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -59,7 +60,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportData', ...                      % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'multiple', ...                        % Selection mode: {single,multiple}
         'files_and_dirs', ...                  % Selection mode: {files,dirs,files_and_dirs}
-        bst_get('FileFilters', 'raw'), ...    % Get all the available file formats
+        bst_get('FileFilters', 'data'), ...    % Get all the available file formats
         'DataIn'};                             % Default file format (field name in DefaultFormats)
     % Epochs indices
     sProcess.options.iepochs.Comment = 'Epoch indices (empty=all):';
@@ -76,7 +77,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.separator.Type = 'separator';
     sProcess.options.separator.Comment = ' ';
     % Create conditions
-    sProcess.options.createcond.Comment = 'Create one condition for each trial type';
+    sProcess.options.createcond.Comment = 'Create a separate folder for each trial type';
     sProcess.options.createcond.Type    = 'checkbox';
     sProcess.options.createcond.Value   = 0;
     % Align sensors
@@ -105,6 +106,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.baseline.Type    = 'baseline';
     sProcess.options.baseline.Value   = [];
     sProcess.options.baseline.Hidden  = 1;
+    % Sensor types to remove DC offset (not displayed)
+    sProcess.options.blsensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.blsensortypes.Type    = 'text';
+    sProcess.options.blsensortypes.Value   = 'MEG, EEG';
+    sProcess.options.blsensortypes.Hidden  = 1;
 end
 
 
@@ -125,6 +131,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         FileNames  = sProcess.options.datafile.Value{1};
         FileFormat = sProcess.options.datafile.Value{2};
     elseif ~isempty(sInputs)
+        % Error if nothing in input
+        if strcmpi(sInputs(1).FileType, 'import')
+            bst_report('Error', sProcess, sInputs, 'No file selected.');
+            return
+        end
+        % Get file names
         FileNames = {sInputs.FileName};
     else
         FileNames = {};
@@ -184,12 +196,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ImportOptions.DisplayMessages  = 0;
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
-        if ~isempty(sProcess.options.baseline.Value{1})
+        % BaselineRange
+        if isequal(sProcess.options.baseline.Value{1}, 'all')
+            ImportOptions.RemoveBaseline = 'all';
+            ImportOptions.BaselineRange  = [];
+        elseif ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
-        else
-            ImportOptions.RemoveBaseline = 'all';
         end
+        % BaselineSensorType
+        if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           
+            ImportOptions.BaselineSensorType  = sProcess.options.blsensortypes.Value;
+        else
+            ImportOptions.BaselineSensorType = '';
+        end       
     else
         ImportOptions.RemoveBaseline = 'no';
     end

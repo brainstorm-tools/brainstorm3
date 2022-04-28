@@ -8,7 +8,7 @@ function varargout = process_export_spmvol( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_export_spmvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2017
+% Authors: Francois Tadel, 2013-2021
 
 eval(macro_method);
 end
@@ -100,9 +100,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isabs.Value      = 1;
     sProcess.options.isabs.InputTypes = {'results'};
     % === CUT EMPTY SLICES
-    sProcess.options.iscut.Comment = 'Cut empty slices';
+    sProcess.options.iscut.Comment = 'Cut empty slices <FONT color="#707070"><I>(not recommended)</I></FONT>';
     sProcess.options.iscut.Type    = 'checkbox';
-    sProcess.options.iscut.Value   = 1;
+    sProcess.options.iscut.Value   = 0;
 end
 
 
@@ -161,9 +161,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isCutEmpty = 0;
     end
     
+    % If there is only one trial: ignore concatenation
+    if (length(sInputs) == 1)
+        isConcatTrials = 0;
+    end
     % Check for incompatible options
     if isConcatTrials && ~isAvgTime
-        bst_report('Error', sProcess, sInputs, ['Incompatible options: "concatenate trials" and "keep time dimension".' 10 'They both need the time dimension.']);
+        bst_report('Error', sProcess, sInputs, ['Incompatible options: "Save all the trials in one file" and "Keep time dimension".' 10 'They both need the time dimension.']);
         return;
     end
     % If all the files have the same Subject/Condition: consider it is enforced (to have it numbered)
@@ -194,6 +198,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         sInput = bst_process('LoadInputFile', sInputs(iFile).FileName, [], TimeWindow, LoadOptions);
         if isempty(sInput.Data)
             bst_report('Error', sProcess, sInputs(iFile), 'Could load result file.');
+            return;
+        elseif ~isempty(sInput.RowNames) && iscell(sInput.RowNames)
+            bst_report('Error', sProcess, sInputs(iFile), 'Cannot export scouts time series as volume, use full brain results instead.');
             return;
         end
         % Load additional fields
@@ -356,11 +363,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % === BUILD OUTPUT VOLUME ===
             if isVolume
                 sMriOut = sMri;
+                % Reset nifti field, so that the header is not reused as is
+                sMriOut.Header = [];
                 % Build interpolated cube
-                sMriOut.Cube = tess_interp_mri_data(MriInterp, size(sMri.Cube), sInput.Data(:,i), isVolumeGrid);
+                sMriOut.Cube = tess_interp_mri_data(MriInterp, size(sMri.Cube(:,:,:,1)), sInput.Data(:,i), isVolumeGrid);
                 % Downsample volume
                 if (VolDownsample > 1)
-                    sMriOut = mri_downsample(sMriOut, VolDownsample);
+                    newCubeDim = [size(sMri.Cube,1), size(sMri.Cube,2), size(sMri.Cube,3)] ./ VolDownsample;
+                    newVoxsize = sMriOut.Voxsize .* VolDownsample;
+                    sMriOut = mri_resample(sMriOut, newCubeDim, newVoxsize, 'linear');
                 end
                 % Cut the empty slices
                 if isCutEmpty
@@ -371,7 +382,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         isEmptySlice{3} = find(all(all(sMriOut.Cube == 0, 1), 2));
                     end
                     % Cut unused slices
-                    if isCutEmpty
+                    if ~isempty(isEmptySlice{1}) || ~isempty(isEmptySlice{2}) || ~isempty(isEmptySlice{3})
                         sMriOut.Cube(isEmptySlice{1},:,:) = [];
                         sMriOut.Cube(:,isEmptySlice{2},:) = [];
                         sMriOut.Cube(:,:,isEmptySlice{3}) = [];
@@ -382,9 +393,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                     sMriOut.SCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.SCS.(fidname{1}), VolDownsample);
                                 end
                             end
-%                             sMriOut.SCS.T = [];
-%                             sMriOut.SCS.R = [];
-%                             sMriOut.SCS.Origin = [];
+                            sMriOut.SCS.T = [];
+                            sMriOut.SCS.R = [];
+                            sMriOut.SCS.Origin = [];
                         end
                         if isfield(sMriOut, 'NCS') 
                             for fidname = {'AC','PC','IH','T','Origin'}
@@ -392,10 +403,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                     sMriOut.NCS.(fidname{1}) = FixFiducials(sMriOut.Voxsize, isEmptySlice, sMriOut.NCS.(fidname{1}), VolDownsample);
                                 end
                             end
-%                             sMriOut.NCS.T = [];
-%                             sMriOut.NCS.R = [];
-%                             sMriOut.NCS.Origin = [];
+                            sMriOut.NCS.T = [];
+                            sMriOut.NCS.R = [];
+                            sMriOut.NCS.Origin = [];
                         end
+                        % Remove the initial transformation
+                        sMriOut.InitTransf = [];
+                        sMriOut.Header = [];
                     end
                 end
             end

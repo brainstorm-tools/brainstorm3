@@ -9,7 +9,7 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,7 +38,7 @@ end
 if (nargin < 3) || isempty(SamplesBounds)
     SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
 end
-nTimes = sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq;
+nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
 iTimes = SamplesBounds(1):SamplesBounds(2);
 % Block of times/channels to extract
 nReadChannels = double(ChannelsRange(2) - ChannelsRange(1) + 1);
@@ -163,7 +163,7 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
     fseek(sfid, offsetStart, 'bof');
     % Read annotation data (char)
     if isAnnotOnly
-        dataClass = 'char';
+        dataClass = 'uint8';
         nReadTimes = bytesPerVal * nReadTimes;  % 1 byte instead of 2
     end
     % Read trial data

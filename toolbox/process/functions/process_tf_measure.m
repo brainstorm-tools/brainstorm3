@@ -8,7 +8,7 @@ function varargout = process_tf_measure( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -87,7 +87,10 @@ end
 
 
 %% ===== COMPUTE =====
-function [Values, isError] = Compute(Values, srcMeasure, destMeasure)
+function [Values, isError] = Compute(Values, srcMeasure, destMeasure, isKeepNan)
+    if nargin < 4 || isempty(isKeepNan)
+        isKeepNan = false;
+    end
     isError = 0;
     if strcmpi(srcMeasure, destMeasure)
         return;
@@ -132,7 +135,9 @@ function [Values, isError] = Compute(Values, srcMeasure, destMeasure)
                 otherwise,         isError = 1;
             end
     end
-    Values(isnan(Values)) = 0;
+    if ~isKeepNan
+        Values(isnan(Values)) = 0;
+    end
 end
 
 
@@ -151,10 +156,16 @@ function [DefFunction, ColormapType] = GetDefaultFunction(sTimefreq) %#ok<DEFNU>
         case 'cohere',   DefFunction = 'other';       ColormapType = 'connect1';
         case 'granger',  DefFunction = 'other';       ColormapType = 'connect1';
         case 'spgranger',DefFunction = 'other';       ColormapType = 'connect1';
+        case 'henv',     DefFunction = 'other';       ColormapType = 'connect1';
         case 'plv',      DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'plvt',     DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'ciplv',    DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'ciplvt',   DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'wpli',     DefFunction = 'magnitude';   ColormapType = 'connect1';
+        case 'wplit',    DefFunction = 'magnitude';   ColormapType = 'connect1';
         case 'pac',      DefFunction = 'maxpac';      ColormapType = 'pac';
         case 'dpac',     DefFunction = 'maxpac';      ColormapType = 'pac';
+        case 'tpac',     DefFunction = 'maxpac';      ColormapType = 'pac';
         case 'ttest',    DefFunction = 'other';       ColormapType = 'stat2'; 
         otherwise,       DefFunction = 'power';       ColormapType = 'timefreq';
     end

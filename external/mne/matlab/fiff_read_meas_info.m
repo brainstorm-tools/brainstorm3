@@ -70,11 +70,11 @@ end
 
 me='MNE:fiff_read_meas_info';
 
-if nargin ~= 2 & nargin ~= 1
+if nargin ~= 2 && nargin ~= 1
     error(me,'Incorrect number of arguments');
 end
 
-if nargin == 1 & nargout == 2
+if nargin == 1 && nargout == 2
     error(me,'meas output argument is not allowed with file name specified');
 end
 
@@ -157,6 +157,8 @@ for k = 1:meas_info.nent
             proj_name = tag.data;
     end
 end
+[chs, ch_rename] = fiff_read_extended_ch_info(chs, meas_info, fid);
+
 %
 %   Check that we have everything we need
 %
@@ -265,15 +267,15 @@ end
 %
 %   Load the SSP data
 %
-projs = fiff_read_proj(fid,meas_info);
+projs = fiff_read_proj(fid,meas_info,ch_rename);
 %
 %   Load the CTF compensation data
 %
-comps = fiff_read_ctf_comp(fid,meas_info,chs);
+comps = fiff_read_ctf_comp(fid,meas_info,chs,ch_rename);
 %
 %   Load the bad channel list
 %
-bads = fiff_read_bad_channels(fid,meas_info);
+bads = fiff_read_bad_channels(fid,meas_info,ch_rename);
 %
 %   Put the data together
 %
@@ -361,7 +363,7 @@ end
 return;
 
     function [tag] = find_tag(node,findkind)
-        
+
         for p = 1:node.nent
             if node.dir(p).kind == findkind
                 tag = fiff_read_tag(fid,node.dir(p).pos);

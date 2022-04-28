@@ -8,7 +8,7 @@ function varargout = process_ft_mtmconvol( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_ft_mtmconvol( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2019
+% Authors: Francois Tadel, 2017-2021
 
 eval(macro_method);
 end
@@ -123,15 +123,13 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    % Initialize fieldtrip
-    if ~exist('ft_specest_mtmconvol', 'file')
-        bst_ft_init();
+    % Initialize FieldTrip or SPM: ft_specest_mtmconvol is in both
+    [isInstalled, errMsg] = bst_plugin('InstallMultipleChoice', {'fieldtrip', 'spm12'});
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
     end
-    % If nanmean is not available: add path fieldtrip/external/stat
-    if ~exist('nanmean', 'file')
-        ftDir = bst_fileparts(bst_fileparts(which('ft_specest_mtmconvol')));
-        addpath(bst_fullfile(ftDir, 'external', 'stats'));
-    end
+    bst_plugin('SetProgressLogo', 'fieldtrip');
     % Check for Signal Processing Toolbox when using DPSS
     if iscell(sProcess.options.mt_taper.Value)
         mt_taper = sProcess.options.mt_taper.Value{1};
@@ -144,6 +142,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     % Call TIME-FREQ process
     OutputFiles = process_timefreq('Run', sProcess, sInputs);
+    % Remove logo
+    bst_plugin('SetProgressLogo', []);
 end
 
 

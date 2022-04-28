@@ -7,7 +7,7 @@ function varargout = panel_process1(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -119,33 +119,6 @@ function sOutputs = RunProcess(varargin) %#ok<DEFNU>
     if isempty(sProcesses)
         return
     end   
-
-    % Check if FieldTrip needs to be added in the path
-    isFieldTrip = 0;
-    for i = 1:length(sProcesses)
-        % Function ft_specest_mtmconvol is both in FieldTrip and SPM, if SPM is available us it
-        if strcmp(func2str(sProcesses(i).Function), 'process_ft_mtmconvol')
-            if ~isempty(bst_get('SpmDir')) && isempty(bst_get('FieldTripDir'))
-                isOk = bst_spm_init(0, 'ft_specest_mtmconvol');
-                if ~isOk
-                    isFieldTrip = 1;
-                end
-            else
-                isFieldTrip = 1;
-            end
-        % Other FieldTrip functions: load FieldTrip
-        elseif ~isempty(strfind(func2str(sProcesses(i).Function), 'process_ft_'))
-            isFieldTrip = 1;
-            break;
-        end
-    end
-    % Add FieldTrip in the path
-    if isFieldTrip
-        isOk = bst_ft_init(1);
-        if ~isOk
-            return;
-        end
-    end
     
     % Call process function
     sOutputs = bst_process('Run', sProcesses, sFiles, [], 1);

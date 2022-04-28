@@ -9,8 +9,9 @@ function bst_set( varargin )
 %    - bst_set('BrainstormTmpDir',  BrainstormTmpDir)
 %    - bst_set('BrainstormDbDir',   BrainstormDbDir)
 %    - bst_set('LastUsedDirs',      sDirectories)
-%    - bst_set('FieldTripDir',      FieldTripDir)
-%    - bst_set('SpmDir',            SpmDir)
+%    - bst_set('BrainSuiteDir',     BrainSuiteDir)
+%    - bst_set('PythonExe',         PythonExe)
+%    - bst_set('PluginCustomPath',  PluginCustomPath)
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_set('iProtocol',         iProtocol)
@@ -54,12 +55,15 @@ function bst_set( varargin )
 %    - bst_set('TimefreqOptions_hilbert', Options)
 %    - bst_set('TimefreqOptions_plv',     Options)
 %    - bst_set('OpenMEEGOptions',         Options)
+%    - bst_set('DuneuroOptions',         Options)
 %    - bst_set('GridOptions_headmodel',   Options)
 %    - bst_set('GridOptions_dipfit',      Options)
 %    - bst_set('UniformizeTimeSeriesScales', isUniform)
 %    - bst_set('FlipYAxis',             isFlipY)
 %    - bst_set('AutoScaleY',            isAutoScaleY)
 %    - bst_set('FixedScaleY',           Modality,  Value)
+%    - bst_set('XScale',                XScale)
+%    - bst_set('YScale',                YScale)
 %    - bst_set('ShowXGrid',             isShowXGrid)
 %    - bst_set('ShowYGrid',             isShowYGrid)
 %    - bst_set('ShowZeroLines',         isShowZeroLines)
@@ -86,7 +90,7 @@ function bst_set( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -100,7 +104,8 @@ function bst_set( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2021
+%          Martin Cousineau, 2017
 
 global GlobalData;
 
@@ -247,13 +252,15 @@ switch contextName
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
-    case {'UniformizeTimeSeriesScales', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', 'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', ...
-          'GraphicsSmoothing', 'DownsampleTimeSeries', 'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
+    case {'UniformizeTimeSeriesScales', 'XScale', 'YScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
+          'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', 'GraphicsSmoothing', 'DownsampleTimeSeries', ...
+          'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
-          'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
+          'MagneticExtrapOptions', 'MriOptions', 'ConnectGraphOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
+          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
+          'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
     case 'ReadOnly'

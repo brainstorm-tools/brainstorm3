@@ -5,7 +5,7 @@ function varargout = process_fft( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_fft( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2014
+% Authors: Francois Tadel, 2012-2020
 
 eval(macro_method);
 end
@@ -31,7 +31,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Comment     = 'Fourier transform (FFT)';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Frequency';
-    sProcess.Index       = 501;
+    sProcess.Index       = 480;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ArtifactsFilter#Evaluation_of_the_noise_level';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw', 'data', 'results', 'matrix'};
@@ -43,6 +43,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
     sProcess.options.timewindow.InputTypes = {'raw', 'data'};
+    % Options: Units / scaling
+    sProcess.options.units.Comment    = {'Physical: U<SUP>2</SUP>/Hz', '<FONT color="#a0a0a0">Normalized: U<SUP>2</SUP>/Hz/s</FONT>', ...
+        '<FONT color="#a0a0a0">Before Nov 2020</FONT>', 'Units:'; ...
+        'physical', 'normalized', 'old', ''};
+    sProcess.options.units.Type       = 'radio_linelabel';
+    sProcess.options.units.Value      = 'physical';
     % Options: Scouts
     sProcess.options.clusters.Comment = '';
     sProcess.options.clusters.Type    = 'scout_confirm';

@@ -14,7 +14,7 @@ function varargout = process_spikesorting_waveclus( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -83,6 +83,12 @@ end
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     ProtocolInfo = bst_get('ProtocolInfo');
+    
+    % Not available in the compiled version
+    if bst_iscompiled()
+        bst_report('Error', sProcess, sInputs, 'This function is not available in the compiled version of Brainstorm.');
+        return
+    end
     
     if sProcess.options.binsize.Value{1} <= 0
         bst_report('Error', sProcess, sInputs, 'Invalid maximum amount of RAM specified.');
@@ -267,7 +273,8 @@ end
 function downloadAndInstallWaveClus()
     waveclusDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus');
     waveclusTmpDir = bst_fullfile(bst_get('BrainstormUserDir'), 'waveclus_tmp');
-    url = 'https://github.com/csn-le/wave_clus/archive/testing.zip';
+    url = 'https://github.com/csn-le/wave_clus/archive/master.zip';
+    
     % If folders exists: delete
     if isdir(waveclusDir)
         file_delete(waveclusDir, 1, 3);
@@ -303,7 +310,7 @@ function downloadAndInstallWaveClus()
     % Get parent folder of the unzipped file
     diropen = dir(fullfile(waveclusTmpDir, 'MATLAB*'));
     idir = find([diropen.isdir] & ~cellfun(@(c)isequal(c(1),'.'), {diropen.name}), 1);
-    newWaveclusDir = bst_fullfile(waveclusTmpDir, diropen(idir).name, 'wave_clus-testing');
+    newWaveclusDir = bst_fullfile(waveclusTmpDir, diropen(idir).name, 'wave_clus-master');
     % Move WaveClus directory to proper location
     file_move(newWaveclusDir, waveclusDir);
     % Delete unnecessary files

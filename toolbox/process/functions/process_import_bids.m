@@ -8,7 +8,7 @@ function varargout = process_import_bids( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2019; Martin Cousineau, 2018
+% Authors: Francois Tadel, 2016-2021; Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -75,7 +75,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Compute BEM surfaces
     sProcess.options.bem.Comment = 'Generate BEM skull surfaces (recommended for ECoG)';
     sProcess.options.bem.Type    = 'checkbox';
-    sProcess.options.bem.Value   = 1;
+    sProcess.options.bem.Value   = 0;
     % Register anatomy
     sProcess.options.anatregister.Comment = {'SPM12', 'No', 'Coregister anatomical volumes:'; ...
                                              'spm12', 'no', ''};
@@ -108,6 +108,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         return;
     end
     % Other options
+    OPTIONS.isInteractive    = 0;
     OPTIONS.ChannelAlign     = 2 * double(sProcess.options.channelalign.Value);
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
     OPTIONS.isGroupSessions  = sProcess.options.groupsessions.Value;
@@ -178,36 +179,43 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     end
     OPTIONS.SelectedSubjects = unique([OPTIONS.SelectedSubjects, selSubjects]);
     
-    % ===== IDENTIFY SUBJECTS =====
-    % List all the subject folders
-    subjDir = dir(bst_fullfile(BidsDir, 'sub-*'));
-    % If no subject are available, try in the derivatives folder (if we are importing tsss data only for instance)
-    if isempty(subjDir)
-        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*'));
+    % ===== FIND SUBJECTS =====
+    % List all the subject folders: regular or derivatives (FreeSurfer, MEG tsss, ...)
+    subjDir = [...
+        dir(bst_fullfile(BidsDir, 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'cat12', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', 'sub-*'))];
+    % If the folders include the session: remove it
+    for i = 1:length(subjDir)
+        iUnder = find(subjDir(i).name == '_', 1);
+        if ~isempty(iUnder)
+            subjDir(i).name = subjDir(i).name(1:iUnder-1);
+        end
     end
-    if isempty(subjDir)
-        subjDir = dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*'));
-    end
+    % Get unique subject names
+    SubjectNames = unique({subjDir.name});
+    
+    % ===== FIND SESSIONS =====
     % Loop on the subjects
     SubjectName = {};
     SubjectAnatDir = {};
     SubjectAnatFormat = {};
     SubjectSessDir = {};
     SubjectMriFiles = {};
-    for iSubj = 1:length(subjDir)
+    for iSubj = 1:length(SubjectNames)
         % Default subject name
-        subjName = subjDir(iSubj).name;
+        subjName = SubjectNames{iSubj};
         % Check if this is a subject selected for import
         if ~isempty(OPTIONS.SelectedSubjects) && ((iscell(OPTIONS.SelectedSubjects) && ~ismember(subjName, OPTIONS.SelectedSubjects)) || (ischar(OPTIONS.SelectedSubjects) && ~strcmpi(subjName, OPTIONS.SelectedSubjects)))
             disp(['BIDS> Subject "' subjName '" was not selected. Skipping...']);
             continue;
         end
-        % Get session folders
-        sessDir = dir(bst_fullfile(BidsDir, subjName, 'ses-*'));
-        % Check if sessions are defined for the derivatives
-        if isempty(sessDir) && isdir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName))
-            sessDir = dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, 'ses-*'));
-        end
+        % Get session folders: regular or derivatives
+        sessDir = [dir(bst_fullfile(BidsDir, subjName, 'ses-*')); ...
+                   dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, 'ses-*'))];
+        % Full session paths
         if isempty(sessDir)
             sessFolders = {bst_fullfile(BidsDir, subjName)};
             derivFolders = {bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName)};
@@ -215,12 +223,17 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             sessFolders = cellfun(@(c)fullfile(BidsDir, subjName, c), {sessDir.name}, 'UniformOutput', 0);
             derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
         end
-        
+
         % If there is one unique segmented anatomy: group all the sessions together
         [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName);
         % If there is no segmented folder, try SUBJID_SESSID
-        if isempty(AnatDir) && (length(sessDir) == 1)
-            [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(1).name]);
+        if isempty(AnatDir)
+            for iSes = 1:length(sessDir)
+                [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(iSes).name]);
+                if ~isempty(AnatDir)
+                    break;
+                end
+            end
         end
         
         % Get all MRI files
@@ -381,6 +394,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             switch (SubjectAnatFormat{iSubj})
                 case 'FreeSurfer'
                     errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 0);
+                case 'CAT12'
+                    errorMsg = import_anatomy_cat(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 1, 2, 1);
                 case 'BrainSuite'
                     errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, []);
                 case 'BrainVISA'
@@ -405,7 +420,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             else
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
-                    % Compute MNI transformation
+                    % Compute MNI normalization
                     [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
@@ -606,7 +621,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % Add electrodes positions if available
                 if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
                     % Is is subject or MNI coordinates
-                    isVox2ras = ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-'));
+                    isVox2ras = ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-')) || ...
+                                ~isempty(strfind(allMeegElecFormats{iFile}, '-OTHER-'));
                     % Import 
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
@@ -625,14 +641,17 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 EventsFile = [baseName, '_events.tsv'];
                 if file_exist(EventsFile)
                     bst_process('CallProcess', 'process_evt_import', newFiles, [], ...
-                        'evtfile', {EventsFile, 'BIDS'});
+                        'evtfile', {EventsFile, 'BIDS'}, ...
+                        'delete',  1);
                 end
                 
                 % Load _channels.tsv
                 ChannelsFile = [baseName, '_channels.tsv'];
                 if file_exist(ChannelsFile)
                     % Read tsv file
-                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                    % For _channels.tsv, 'name', 'type' and 'units' are required.
+                    % 'group' and 'status' are fields added by Brainstorm export to BIDS.
+                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     % Try to add info to the existing Brainstorm channel file
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
                         % For all the loaded files
@@ -655,7 +674,18 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
-                                    ChannelMat.Channel(iChanBst).Type = upper(ChanInfo{iChanBids,2});
+                                    chanType = upper(ChanInfo{iChanBids,2});
+                                    switch (chanType)
+                                        case 'MEGGRADPLANAR'    % Elekta planar gradiometer
+                                            chanType = 'MEG GRAD';
+                                        case 'MEGMAG'           % Elekta/4D/Yokogawa magnetometer
+                                            chanType = 'MEG MAG';
+                                        case 'MEGGRADAXIAL'     % CTF axial gradiometer
+                                            chanType = 'MEG';
+                                        case {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'}  % CTF/4D references
+                                            chanType = 'MEG REF';
+                                    end
+                                    ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;
                                 end
                                 % Copy group
@@ -706,6 +736,13 @@ function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'FreeSurfer';
+        end
+    % CAT12
+    elseif file_exist(bst_fullfile(DerivDir, 'cat12', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii'))
+        TestFile = file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii');
+        if ~isempty(TestFile)
+            AnatDir = bst_fileparts(bst_fileparts(TestFile));
+            AnatFormat = 'CAT12';
         end
     % BrainSuite
     elseif file_exist(bst_fullfile(DerivDir, 'brainsuite', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs'))
@@ -804,16 +841,11 @@ end
 %% ===== SELECT COORDINATE SYSTEM =====
 % Tries to find the best coordinate system available: subject space, otherwise MNI space
 function [fileList, fileSpace] = SelectCoordSystem(fileList)
-    % Orig subject space
-    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-orig')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-head')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-subject')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-scanner')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-sform')), {fileList.name}) | ...
-                ~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
+    % T1 subject space
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
-        fileSpace = 'orig';
+        fileSpace = 'Other';
         return;
     end
     % MNI

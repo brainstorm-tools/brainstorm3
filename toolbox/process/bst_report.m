@@ -14,22 +14,27 @@ function varargout = bst_report( varargin )
 %         bst_report('Open',    ReportFile=[ask], isFullReport=1)
 %         bst_report('Export',  ReportFile, HtmlFile=[ask])
 %         bst_report('Export',  ReportFile, HtmlDir)
+%         bst_report('Email',   ReportFile, username, to, subject, isFullReport=1)
 %         bst_report('Close')
 %         bst_report('Recall', ReportFile=[ask])
 %         bst_report('ClearHistory')
 % 
-%         bst_report('Snapshot', 'registration', AnyFile,     Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
-%         bst_report('Snapshot', 'ssp',          RawFile,     Comment)
-%         bst_report('Snapshot', 'noiscov',      AnyFile,     Comment)
-%         bst_report('Snapshot', 'headmodel',    AnyFile,     Comment)
-%         bst_report('Snapshot', 'data',         DataFile,    Comment, Modality)
-%         bst_report('Snapshot', 'topo',         DataFile,    Comment, Modality, Time=start)
-%         bst_report('Snapshot', 'topo',         DataFile,    Comment, Modality, [start,stop,nImages])
-%         bst_report('Snapshot', 'sources',      ResultsFile, Comment, Time=start, DataThreshold=.3, Orientation='left')
-%         bst_report('Snapshot', 'sources',      ResultsFile, Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left')   : Produces a contact sheet view
-%         bst_report('Snapshot', 'spectrum',     TimefreqFile,Comment)
-%         bst_report('Snapshot', 'dipoles',      DipolesFile, Comment, Goodness=0, Orientation='left')
-%         bst_report('Snapshot', 'timefreq',     TimefreqFile,Comment, RowName=[])
+%         bst_report('Snapshot', 'registration', AnyFile,      Comment,  Modality, Orientation='left')   : left,right,top,bottom,back,front
+%         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
+%         bst_report('Snapshot', 'noiscov',      AnyFile,      Comment)
+%         bst_report('Snapshot', 'ndatacov',     AnyFile,      Comment)
+%         bst_report('Snapshot', 'headmodel',    AnyFile,      Comment)
+%         bst_report('Snapshot', 'data',         DataFile,     Comment, Modality, Time=start, RowName=[All])
+%         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
+%         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages], Freq=0)
+%         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)
+%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
+%         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)   : Produces a contact sheet view
+%         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
+%         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
+%         bst_report('Snapshot', 'connectimage', ConnectNFile, Comment, Time=start, Freq=0);
+%         bst_report('Snapshot', 'connectgraph', ConnectNFile, Comment, Threshold, Time=start, Freq=0);
+%         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
 %
 % NOTES: 
 %    - sProcess can be replaced by the name of the process function
@@ -39,7 +44,7 @@ function varargout = bst_report( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -53,7 +58,7 @@ function varargout = bst_report( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2016
+% Authors: Francois Tadel, 2012-2022
 
 eval(macro_method);
 end
@@ -140,14 +145,15 @@ end
 %         bst_report('Snapshot', 'ssp',          RawFile,      Comment)
 %         bst_report('Snapshot', 'noiscov',      AnyFile,      Comment)
 %         bst_report('Snapshot', 'headmodel',    AnyFile,      Comment)
-%         bst_report('Snapshot', 'data',         DataFile,     Comment, Modality, Time=start)
-%         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start)
-%         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages])
-%         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left')
-%         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left')   : Produces a contact sheet view
-%         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment)
+%         bst_report('Snapshot', 'data',         DataFile,     Comment, Modality, Time=start, RowName=[All])
+%         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, Time=start, Freq=0)
+%         bst_report('Snapshot', 'topo',         DataFile,     Comment, Modality, [start,stop,nImages], Freq=0)
+%         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, Time=start, DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)
+%         bst_report('Snapshot', 'sources',      ResultsFile,  Comment, [start,stop,nImages], DataThreshold=.3, Orientation='left', SurfSmooth=30%, Freq=0)   : Produces a contact sheet view
+%         bst_report('Snapshot', 'mriviewer',    ResultsFile,  Comment, Time=start, DataThreshold=.3, Freq=0, XYZmni=[])
+%         bst_report('Snapshot', 'spectrum',     TimefreqFile, Comment, RowName=[All], Freq=0)
 %         bst_report('Snapshot', 'dipoles',      DipolesFile,  Comment, Goodness=0, Orientation='left')
-%         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[])
+%         bst_report('Snapshot', 'timefreq',     TimefreqFile, Comment, RowName=[All], Time=start, Freq=0)
 %         bst_report('Snapshot', hFig,           AnyFile,      Comment, WinPos=[200,200,400,250])
 % Note: All the input files can be either strings (one file) or cell-array of strings (many files)
 function Snapshot(SnapType, FileName, Comment, varargin)
@@ -215,25 +221,22 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 else
                     Time = [];
                 end
-                % Set the current display mode to 'butterfly'
-                curDispMode = bst_get('TSDisplayMode');
-                if ~strcmpi(curDispMode, 'butterfly')
-                    bst_set('TSDisplayMode', 'butterfly');
+                % RowName or all rows
+                if (length(varargin) >= 3) && ~isempty(varargin{3})
+                    RowName = varargin{3};
+                else
+                    RowName = [];
                 end
                 % Display recordings
                 switch (file_gettype(FileName))
                     case {'data', 'pdata'}
-                        hFig = view_timeseries(FileName, Modality);
+                        hFig = view_timeseries(FileName, Modality, RowName);
                     case {'matrix', 'pmatrix'}
                         hFig = view_matrix(FileName, 'timeseries');
                 end
                 % Set current time
                 if (length(Time) == 1)
                     panel_time('SetCurrentTime', Time);
-                end
-                % Restore the display mode
-                if ~strcmpi(curDispMode, 'butterfly')
-                    bst_set('TSDisplayMode', curDispMode);
                 end
                 
             case 'topo'
@@ -244,8 +247,17 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 else
                     Time = [];
                 end
+                if (length(varargin) >= 3) && ~isempty(varargin{3}) && ~isequal(varargin{3}, 0)
+                    Freq = varargin{3};
+                else
+                    Freq = [];
+                end
                 % Display topography
                 hFig = view_topography(FileName, Modality, '2DSensorCap');
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
                 % Contact sheet
                 if (length(Time) == 3)
                     % Set figure position / size
@@ -349,8 +361,18 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 else
                     Orient = 'left';
                 end
+                if (length(varargin) >= 4) && ~isempty(varargin{4})
+                    SurfSmooth = varargin{4};
+                else
+                    SurfSmooth = [];
+                end
+                if (length(varargin) >= 5) && ~isempty(varargin{5}) && ~isequal(varargin{5}, 0)
+                    Freq = varargin{5};
+                else
+                    Freq = [];
+                end
                 % Check data type
-                if ~ismember(file_gettype(FileName), {'link','results','presults'})
+                if ~ismember(file_gettype(FileName), {'link','results','presults','timefreq','ptimefreq'})
                     error('File must contain source information.');
                 end
                 % Call surface viewer
@@ -358,8 +380,13 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 % Set surface threshold
                 iSurf = 1;
                 panel_surface('SetDataThreshold', hFig, iSurf, DataThreshold);
+                panel_surface('SetSurfaceSmooth', hFig, iSurf, SurfSmooth, 0);
                 % Set orientation
                 figure_3d('SetStandardView', hFig, Orient);
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
 
                 % Contact sheet
                 if (length(Time) == 3)
@@ -393,6 +420,52 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                     panel_time('SetCurrentTime', Time);
                 end
                 
+            case 'mriviewer'
+                % Get arguments
+                if (length(varargin) >= 1) && ~isempty(varargin{1})
+                    Time = varargin{1};
+                else
+                    Time = [];
+                end
+                if (length(varargin) >= 2) && ~isempty(varargin{2})
+                    DataThreshold = varargin{2};
+                else
+                    DataThreshold = 0.3;
+                end
+                if (length(varargin) >= 3) && ~isempty(varargin{3}) && ~isequal(varargin{3}, 0)
+                    Freq = varargin{3};
+                else
+                    Freq = [];
+                end
+                if (length(varargin) >= 4) && ~isempty(varargin{4}) && ~isequal(varargin{4}, 0)
+                    XYZmni = varargin{4};
+                else
+                    XYZmni = [];
+                end
+                % Check data type
+                if ~ismember(file_gettype(FileName), {'link','results','presults','timefreq','ptimefreq'})
+                    error('File must contain source information.');
+                end
+                % Call surface viewer
+                hFig = view_mri([], FileName, [], 1);
+                % Set surface threshold
+                iSurf = 1;
+                panel_surface('SetDataThreshold', hFig, iSurf, DataThreshold);
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
+                % Set current time
+                if (length(Time) == 1)
+                    panel_time('SetCurrentTime', Time);
+                end
+                % Set coordinates
+                if ~isempty(XYZmni)
+                    figure_mri('SetLocation', 'mni', hFig, [], XYZmni ./ 1000);
+                end
+                % Larger default figure size
+                winPos = [100 100 450 500];
+
             case 'ssp'
                 % Load the channel file
                 [sStudy, iStudy] = bst_get('AnyFile', FileName);
@@ -448,8 +521,24 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 end
                 
             case 'spectrum'
+                % RowName or all rows
+                if (length(varargin) >= 1) && ~isempty(varargin{1})
+                    RowName = varargin{1};
+                else
+                    RowName = [];
+                end
+                % Get arguments
+                if (length(varargin) >= 2) && ~isempty(varargin{2}) && ~isequal(varargin{2}, 0)
+                    Freq = varargin{2};
+                else
+                    Freq = [];
+                end
                 % Display frequency spectrum
-                hFig = view_spectrum(FileName, 'Spectrum');
+                hFig = view_spectrum(FileName, 'Spectrum', RowName);
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
 
             case 'timefreq'
                 % RowName or all rows
@@ -458,17 +547,88 @@ function Snapshot(SnapType, FileName, Comment, varargin)
                 else
                     RowName = [];
                 end
+                % Time and frequency
+                if (length(varargin) >= 2) && ~isempty(varargin{2})
+                    Time = varargin{2};
+                else
+                    Time = [];
+                end
+                if (length(varargin) >= 3) && ~isempty(varargin{3}) && ~isequal(varargin{3}, 0)
+                    Freq = varargin{3};
+                else
+                    Freq = [];
+                end
                 % Display all TF maps
                 if isempty(RowName)
                     hFig = view_timefreq(FileName, 'AllSensors');
                 else
                     hFig = view_timefreq(FileName, 'SingleSensor', RowName);
                 end
-                
+                % Set time
+                if (length(Time) == 1)
+                    panel_time('SetCurrentTime', Time);
+                end
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
+
             case 'connectimage'
+                % Time and frequency
+                if (length(varargin) >= 1) && ~isempty(varargin{1})
+                    Time = varargin{1};
+                else
+                    Time = [];
+                end
+                if (length(varargin) >= 2) && ~isempty(varargin{2}) && ~isequal(varargin{2}, 0)
+                    Freq = varargin{2};
+                else
+                    Freq = [];
+                end
                 % Display connectivity matrix as an image
                 hFig = view_connect(FileName, 'Image');
-                
+                % Set time
+                if (length(Time) == 1)
+                    panel_time('SetCurrentTime', Time);
+                end
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
+
+            case 'connectgraph'
+                % Threshold
+                if (length(varargin) >= 1) && ~isempty(varargin{1})
+                    Threshold = varargin{1};
+                else
+                    Threshold = [];
+                end
+                % Time and frequency
+                if (length(varargin) >= 2) && ~isempty(varargin{2})
+                    Time = varargin{2};
+                else
+                    Time = [];
+                end
+                if (length(varargin) >= 3) && ~isempty(varargin{3}) && ~isequal(varargin{3}, 0)
+                    Freq = varargin{3};
+                else
+                    Freq = [];
+                end
+                % Display connectivity matrix as an image
+                hFig = view_connect(FileName, 'GraphFull');
+                % Update amplitude threshold
+                sOptions = panel_display('GetDisplayOptions');
+                sOptions.DataThreshold = Threshold / 100;
+                panel_display('SetThresholdOptions', sOptions);
+                % Set time
+                if (length(Time) == 1)
+                    panel_time('SetCurrentTime', Time);
+                end
+                % Set frequency
+                if ~isempty(Freq)
+                    panel_freq('SetCurrentFreq', Freq, 0);
+                end
+
             case 'dipoles'
                 % Goodness
                 if (length(varargin) >= 1) && ~isempty(varargin{1})
@@ -989,7 +1149,7 @@ function jFrame = HtmlViewer(strHtml, figTitle)
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_ARROW_RIGHT, 'Next report',     @(h,ev)Open('next'));
             jToolbar.addSeparator();
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_FOLDER_OPEN, 'Load report file',  @(h,ev)Open());
-            gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_SAVE, 'Export report to HTML',  @(h,ev)Export());
+            gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_SAVE, 'Export report',  @(h,ev)Export());
             jToolbar.addSeparator();
             gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_PROCESS, 'Reload pipeline', @(h,ev)Recall('loaded'));
             jToolbar.addSeparator();
@@ -1193,6 +1353,10 @@ function Recall(target)
     if (sProcesses(1).nInputs == 1)
         % Get current files list
         sCurFiles = panel_nodelist('GetFiles', 'Process1');
+        if isequal(sCurFiles, -1)
+            bst_progress('stop');
+            return;
+        end
         % Update files list if modified
         if (isempty(sCurFiles) && ~isempty(FileNames)) || (~isempty(sCurFiles) && isstruct(sCurFiles) && ~isequal({sCurFiles.FileName}, FileNames))
             % Reset files lists
@@ -1235,6 +1399,10 @@ function Recall(target)
         % Get current files list
         sCurFilesA = panel_nodelist('GetFiles', 'Process2A');
         sCurFilesB = panel_nodelist('GetFiles', 'Process2B');
+        if isequal(sCurFilesA, -1) || isequal(sCurFilesB, -1)
+            bst_progress('stop');
+            return;
+        end
         
         % Update files list if modified
         if (isempty(sCurFilesA) && ~isempty(FileNamesA)) || (~isempty(sCurFilesA) && isstruct(sCurFilesA) && ~isequal({sCurFilesA.FileName}, FileNamesA)) || ...
@@ -1280,7 +1448,7 @@ end
 %% ===== EXPORT =====
 % USAGE:  bst_report('Export', ReportFile, HtmlFile=[ask])
 %         bst_report('Export', ReportFile, HtmlDir)
-function HtmlFile = Export(ReportFile, HtmlFile)
+function HtmlFile = Export(ReportFile, HtmlFile, FileFormat)
     global GlobalData;
 
     % === PARSE INPUTS ===
@@ -1297,6 +1465,10 @@ function HtmlFile = Export(ReportFile, HtmlFile)
     if (nargin < 2) || isempty(HtmlFile)
         HtmlFile = [];
     end
+    % Get output format (HTML or PNG)
+    if (nargin < 3) || isempty(FileFormat)
+        FileFormat = 'HTML';
+    end
     
     % === GET OUTPUT FILE ===
     % If input is a directory
@@ -1312,7 +1484,13 @@ function HtmlFile = Export(ReportFile, HtmlFile)
         [fPath, fBase, fExt] = bst_fileparts(ReportFile);
         HtmlFile = bst_fullfile(LastUsedDirs.ExportImage, [fBase, '.html']);
         % Select file
-        HtmlFile = java_getfile('save', 'Export report...', HtmlFile, 'single', 'file', {{'*'}, 'HTML file (*.html)', 'HTML'}, 1);
+        [HtmlFile, FileFormat] = java_getfile('save', ...
+            'Export report...', ... % Window title
+            HtmlFile, ... % Default file
+            'single', 'files_and_dirs', ... % Selection mode
+            {'.html', 'HTML file (*.html)', 'HTML';, ... % Output formats
+             '.png',  'PNG images (*.png)', 'PNG'}, ...
+             1); % Default format
         % If no file was selected: exit
         if isempty(HtmlFile)
             return;
@@ -1322,29 +1500,108 @@ function HtmlFile = Export(ReportFile, HtmlFile)
         bst_set('LastUsedDirs', LastUsedDirs);
     end
     
-    % === SAVE FILE ===
-    % Progress bar
-    bst_progress('start', 'Report viewer', 'Exporting report to HTML...');
     % Load report file
     if isequal(ReportFile, 'current')
         ReportsMat = GlobalData.ProcessReports;
     else
         ReportsMat = load(ReportFile, 'Reports');
     end
-    % Print report to HTML
-    html = PrintToHtml(ReportsMat.Reports, 1);
-    % Open file for writing
-    fid = fopen(HtmlFile, 'wt');
-    if (fid == 0)
-        error(['Could not write file: ' HtmlFile]);
+    
+    % === SAVE FILE ===
+    % Save report images as PNG
+    if strcmp(FileFormat, 'PNG')
+        % Progress bar
+        bst_progress('start', 'Report viewer', 'Exporting report images in PNG...');
+        
+        [folder, filename, fileext] = bst_fileparts(HtmlFile);
+        nRows = size(ReportsMat.Reports, 1);
+        iImage = 1;
+
+        % Loop through entries in report
+        for iRow = 1:nRows
+            % Save images
+            if strcmp(ReportsMat.Reports{iRow,1}, 'image')
+                imwrite(ReportsMat.Reports{iRow,4}, ...
+                    bst_fullfile(folder, ...
+                    [filename sprintf('_%#02d', iImage) fileext]));
+                iImage = iImage + 1;
+            end
+        end
+        
+        % Warn user if no image was found
+        if iImage == 1
+            java_dialog('warning', 'No images found in this report.', 'Export report');
+        end
+    % Default: save report as HTML
+    else
+        % Progress bar
+        bst_progress('start', 'Report viewer', 'Exporting report to HTML...');
+        % Print report to HTML
+        html = PrintToHtml(ReportsMat.Reports, 1);
+        % Open file for writing
+        fid = fopen(HtmlFile, 'wt');
+        if (fid == 0)
+            error(['Could not write file: ' HtmlFile]);
+        end
+        % Write file
+        fwrite(fid, html);
+        % Close file
+        fclose(fid);
+        % End message
+        disp(['Report exported to: ' HtmlFile]);
     end
-    % Write file
-    fwrite(fid, html);
-    % Close file
-    fclose(fid);
-    % End message
-    disp(['Report exported to: ' HtmlFile]);
+    
     % Close progress bar
     bst_progress('stop');
 end
+
+%% ===== SEND EMAIL =====
+% USAGE:  [isOk, resp] = bst_report('Email', ReportFile, username, to, subject, isFullReport=1)
+function [isOk, resp] = Email(ReportFile, username, to, subject, isFullReport)
+    % Parse inputs
+    if (nargin < 5) || isempty(isFullReport)
+        isFullReport = 1;
+    end
+    % Minimum Matlab version: 2014b
+    if ~exist('webread', 'file')
+        error('Sending email requires Matlab >= 2014b.');
+    end
+    % Check ReportFile 
+    if ~exist(ReportFile, 'file') || isempty(ReportFile)
+        ReportFile = 'current';
+    end
+    % Get report
+    if any(strcmpi(ReportFile, {'last', 'current', 'previous', 'next', 'loaded'}))
+        Reports = GetReport(ReportFile);
+    else
+        ReportMat = load(ReportFile);
+        Reports = ReportMat.Reports;
+    end    
+    % Print report
+    if isFullReport
+        html = PrintToHtml(Reports, isFullReport);
+    else
+        html = '';
+        for iEntry = 1:size(Reports,1)
+            if ~isempty(Reports{iEntry,1}) && ~isempty(Reports{iEntry,5})
+                html = [html, Reports{iEntry,5}, ' : ', Reports{iEntry,1}];
+                if ~isempty(Reports{iEntry,2})
+                    html = [html, ' - ' func2str(Reports{iEntry,2}.Function)];
+                end
+                html = [html, 10];
+            end
+        end
+    end
+    % Send by email
+    % Matlab <= 2016a
+    if bst_verlessthan(901)
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html);
+    else
+        options = weboptions('CertificateFilename','');
+        resp = webwrite('https://neuroimage.usc.edu/bst/send_email.php', 'g', '7gA9b3EW54', 'u', username, 't', to, 's', subject, 'b', html, options);
+    end
+    % Return status
+    isOk = isequal(resp, 'ok');
+end
+
 

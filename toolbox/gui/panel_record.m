@@ -11,7 +11,7 @@ function varargout = panel_record(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -150,9 +150,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Delete group', IconLoader.ICON_EVT_TYPE_DEL, [], @(h,ev)bst_call(@EventTypeDel));
         gui_component('MenuItem', jMenu, [], 'Rename group', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventTypeRename));
         gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor));
-        jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)bst_call(@EventTypeToggleVisible));
+        jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)CallWithAccelerator(@EventTypeToggleVisible));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
-        gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad));
+        gui_component('MenuItem', jMenu, [], 'Mark group as bad/good', IconLoader.ICON_GOODBAD, [], @(h,ev)bst_call(@EventTypeToggleBad));
         jMenu.addSeparator();
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
             gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
@@ -170,15 +170,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jMenu.addSeparator();
         gui_component('MenuItem', jMenu, [], 'Edit keyboard shortcuts', IconLoader.ICON_KEYBOARD, [], @(h,ev)gui_show('panel_raw_shortcuts', 'JavaWindow', 'Event keyboard shortcuts', [], 1, 0, 0));
         jMenu.addSeparator();
-        jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)bst_call(@ToggleEvent));
+        jItem = gui_component('MenuItem', jMenu, [], 'Add / delete event', IconLoader.ICON_EVT_OCCUR_ADD, [], @(h,ev)CallWithAccelerator(@ToggleEvent));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, 0));
         jItem = gui_component('MenuItem', jMenu, [], '<HTML>Edit notes&nbsp;&nbsp;&nbsp;<FONT color="#A0A0A"><I>Double-click</I></FONT>', IconLoader.ICON_EDIT, [], @(h,ev)bst_call(@EventEditNotes));
-        jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@RejectTimeSegment));
+        jItem = gui_component('MenuItem', jMenu, [], 'Reject time segment', IconLoader.ICON_BAD, [], @(h,ev)CallWithAccelerator(@RejectTimeSegment));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_B, 0));
         jMenu.addSeparator();
-        jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)bst_call(@JumpToEvent, 'leftarrow'));
+        jItem = gui_component('MenuItem', jMenu, [], 'Jump to previous event', IconLoader.ICON_ARROW_LEFT, [], @(h,ev)CallWithAccelerator(@JumpToEvent, 'leftarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_LEFT, KeyEvent.SHIFT_MASK));
-        jItem = gui_component('MenuItem', jMenu, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)bst_call(@JumpToEvent, 'rightarrow'));
+        jItem = gui_component('MenuItem', jMenu, [], 'Jump to next event', IconLoader.ICON_ARROW_RIGHT, [], @(h,ev)CallWithAccelerator(@JumpToEvent, 'rightarrow'));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_RIGHT, KeyEvent.SHIFT_MASK));
         % Artifacts
         jMenu = gui_component('Menu', jMenuBar, [], 'Artifacts', IconLoader.ICON_MENU, [], [], 11);
@@ -197,6 +197,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'));
         jMenu.addSeparator();
         jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'));
+        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj', [], 1));
         
         % === EVENTS TYPES ===
         jListEvtType = JList();
@@ -245,6 +246,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jItemSsp',        jItemSsp, ...
                                   'jItemIca',        jItemIca, ...
                                   'jItemSspSel',     jItemSspSel, ...
+                                  'jItemSspMontage', jItemSspMontage, ...
                                   'jPanelTime',      jPanelTime, ...
                                   'jPanelEvent',     jPanelEvent, ...
                                   'jLabelEpoch',     jLabelEpoch, ...
@@ -370,6 +372,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 JumpToEvent();
             end
         end
+    end
+
+    %% ===== CALL WITH ACCELERATORS =====
+    function CallWithAccelerator(varargin)
+        % Make sure tree items are not being renamed
+        ctrl = bst_get('PanelControls', 'protocols');
+        if isempty(ctrl) || isempty(ctrl.jTreeProtocols) || ctrl.jTreeProtocols.isEditing()
+            return;
+        end
+        % Make sure the item search box is not active
+        ctrl = bst_get('BstControls');
+        if isempty(ctrl) || isempty(ctrl.jTextFilter) || ctrl.jTextFilter.hasFocus()
+            disp('cancel')
+            return;
+        end
+        % Transfer call to bst_call
+        bst_call(varargin{:});
     end
 end
 
@@ -603,11 +622,9 @@ function ValidateTimeWindow(isProgress)
         ctrl.jTextStart.setText(sprintf('%1.4f', Time(iStart)));
     end
     % Save length in user preferences
-    if (smpLength <= length(Time))
-        RawViewerOptions = bst_get('RawViewerOptions');
-        RawViewerOptions.PageDuration = smpLength / sfreq;
-        bst_set('RawViewerOptions', RawViewerOptions);
-    end
+    RawViewerOptions = bst_get('RawViewerOptions');
+    RawViewerOptions.PageDuration = smpLength / sfreq;
+    bst_set('RawViewerOptions', RawViewerOptions);
     % Progress bar
     if isProgress
         bst_progress('start', 'Update display', 'Loading recordings...');
@@ -686,7 +703,7 @@ function UpdateDisplayOptions(hFig)
     end
     ctrl.jMenuMontage.setEnabled(~isNoModality);
     % Update montage name
-    if ismember(TsInfo.Modality, {'results', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
+    if ismember(TsInfo.Modality, {'results', 'sloreta', 'timefreq', 'stat', 'none'}) || ~isempty(TsInfo.RowNames)
         ctrl.jMenuMontage.setVisible(0);
     else
         ctrl.jMenuMontage.setVisible(1);
@@ -951,6 +968,7 @@ function UpdatePanel(hFig)
     ctrl.jButtonBaseline.setVisible(isRaw);
     % Enable/disable Artifacts menus
     gui_enable([ctrl.jItemSspEog, ctrl.jItemSspEcg, ctrl.jItemSsp, ctrl.jItemIca, ctrl.jItemSspSel], isRaw);
+    % gui_enable(ctrl.jItemSspMontage, ~isRaw);
     gui_enable(ctrl.jItemEegref, isRaw && isEeg);
     % Update display options
     UpdateDisplayOptions(hFig);
@@ -1099,7 +1117,7 @@ function ReloadRecordings(isForced)
         GlobalData.DataSet(iDS).Measures.NumberOfSamples = smpLength;
         % Update linked result files
         for iRes = 1:length(GlobalData.DataSet(iDS).Results)
-            if strcmpi(file_gettype(GlobalData.DataSet(iDS).Results(iRes).FileName), 'link')
+            if strcmpi(file_gettype(GlobalData.DataSet(iDS).Results(iRes).FileName), 'link') || ~isempty(strfind(GlobalData.DataSet(iDS).Results(iRes).FileName, '_KERNEL_'))
                 GlobalData.DataSet(iDS).Results(iRes).Time = newTimeWindow;
                 GlobalData.DataSet(iDS).Results(iRes).NumberOfSamples = smpLength;
             end
@@ -1166,7 +1184,11 @@ end
 
 
 %% ===== READ RAW BLOCK =====
-function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, TimeRange, DisplayMessages, UseCtfComp, RemoveBaseline, UseSsp) %#ok<DEFNU>
+function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, TimeRange, DisplayMessages, UseCtfComp, RemoveBaseline, UseSsp, iChannels) %#ok<DEFNU>
+    % Optional inputs
+    if (nargin < 9) || isempty(iChannels)
+        iChannels = [];
+    end
     % Define reading options
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode      = 'Time';
@@ -1180,7 +1202,7 @@ function [F, TimeVector, smpBlock] = ReadRawBlock(sFile, ChannelMat, iEpoch, Tim
     startSmp = round(TimeRange(1) * sFile.prop.sfreq);
     smpBlock = startSmp + [0, blockSmpLength - 1];
     % Read a block from the raw file
-    [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, smpBlock, [], ImportOptions);
+    [F, TimeVector] = in_fread(sFile, ChannelMat, iEpoch, smpBlock, iChannels, ImportOptions);
 end
 
 
@@ -1487,7 +1509,7 @@ function JumpToEvent(iEvent, iOccur)
         % Get current time
         CurrentTime = GlobalData.UserTimeWindow.CurrentTime;
         % Distance to events times
-        distTime = events(iEvent).times(1,:) - CurrentTime;
+        distTime = mean(events(iEvent).times, 1) - CurrentTime;
         % Action: next/previous events
         switch(action)
             case {'leftarrow', 'pagedown', 'epoch-', 'epoch--'}
@@ -1509,11 +1531,20 @@ function JumpToEvent(iEvent, iOccur)
     % Get event time
     evtEpoch = events(iEvent).epochs(iOccur);
     evtTime  = mean(events(iEvent).times(:,iOccur),1);
+    % Check if event is a "full page" shortcut
+    RawViewerOptions = bst_get('RawViewerOptions');
+    iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,2), events(iEvent).label));
+    isFullPage = ~isempty(iShortcut) && any(strcmpi(RawViewerOptions.Shortcuts(iShortcut,3), 'page')) && (size(events(iEvent).times,1) == 2);
     % If event is outside of the current user time window
     UserTime = GlobalData.UserTimeWindow.Time;
     if (evtTime < UserTime(1)) || (evtTime > UserTime(2))
+        % Full page: start at the beginning of the event
+        if isFullPage
+            startTime = events(iEvent).times(1,iOccur);
         % Try to position the selected event at 30% of the time window
-        startTime = evtTime - .3 * (UserTime(2) - UserTime(1));
+        else
+            startTime = evtTime - .3 * (UserTime(2) - UserTime(1));
+        end
         % Get raw viewer window
         SetStartTime(startTime, evtEpoch);
     end
@@ -1847,8 +1878,8 @@ function EventTypeToggleVisible()
 end
 
 
-%% ===== EVENT TYPE: SET AS BAD =====
-function EventTypeSetBad()
+%% ===== EVENT TYPE: TOGGLE BAD =====
+function EventTypeToggleBad()
     % Get selected events
     iEvents = GetSelectedEvents();
     if isempty(iEvents)
@@ -1856,22 +1887,17 @@ function EventTypeSetBad()
     end
     % Get event (ignore current epoch)
     sEvents = GetEvents(iEvents, 1);
+    % Get all events
+    sEventsAll = GetEvents();
     % Update all the groups
     isModified = 0;
     for i = 1:length(sEvents)
-        % Skip the group "BAD"
-        if strcmpi(sEvents(i).label, 'bad')
-            disp('Cannot change the status of the "BAD" category.');
-            continue;
-        % Switch to good
-        elseif IsEventBad(sEvents(i).label)
-            sEvents(i).label = strrep(sEvents(i).label, 'bad ', '');
-            sEvents(i).label = strrep(sEvents(i).label, 'bad_', '');
-            sEvents(i).label = strrep(sEvents(i).label, ' bad', '');
-            sEvents(i).label = strrep(sEvents(i).label, '_bad', '');
-        % Switch to bad
+        % Switch from bad to good
+        if IsEventBad(sEvents(i).label)
+            sEvents(i) = SetEventGood(sEvents(i), sEventsAll);
+        % Switch from good to bad
         else
-            sEvents(i).label = ['bad_' sEvents(i).label];
+            sEvents(i).label = file_unique(['bad_' sEvents(i).label], {sEventsAll.label});
         end
         % Update dataset
         SetEvents(sEvents(i), iEvents(i));
@@ -1886,6 +1912,33 @@ function EventTypeSetBad()
     UpdateEventsList();
     % Update figures
     ReplotEvents();
+end
+
+
+%% ===== SET EVENT GOOD ====
+function [sEvent, isModified] = SetEventGood(sEvent, sEventsAll)
+    isModified = 0;
+    % Switch "BAD" to good
+    if strcmpi(sEvent.label, 'bad')
+        newLabel = 'undefined';
+        isModified = 1;
+    % Switch other bad events to good
+    elseif IsEventBad(sEvent.label)
+        newLabel = strrep(sEvent.label, 'bad ', '');
+        newLabel = strrep(newLabel, 'bad_', '');
+        newLabel = strrep(newLabel, ' bad', '');
+        newLabel = strrep(newLabel, '_bad', '');
+        isModified = 1;
+    end
+    % Event was modified
+    if isModified
+        % Make new label unique
+        sEvent.label = file_unique(newLabel, {sEventsAll.label});
+        % Change the color from red to orange
+        if isequal(sEvent.color, [1 0 0])
+            sEvent.color = [1 0.65 0];
+        end
+    end
 end
 
 
@@ -2056,9 +2109,14 @@ function EventConvertToExtended()
     evtWindow = round(evtWindow .* sfreq) ./ sfreq;
     
     % Apply modificiation to each event type
+    if isempty(GlobalData.FullTimeWindow) || isempty(GlobalData.FullTimeWindow.CurrentEpoch)
+        FullTimeWindow = GlobalData.DataSet(iDS).Measures.Time;
+    else
+        FullTimeWindow = GlobalData.FullTimeWindow.Epochs(GlobalData.FullTimeWindow.CurrentEpoch).Time([1, end]);
+    end
     for i = 1:length(sEvents)
-        sEvents(i).times = [max(GlobalData.DataSet(iDS).Measures.Time(1), sEvents(i).times(1,:) + evtWindow(1)); ...
-                            min(GlobalData.DataSet(iDS).Measures.Time(2), sEvents(i).times(1,:) + evtWindow(2))];
+        sEvents(i).times = [max(FullTimeWindow(1), sEvents(i).times(1,:) + evtWindow(1)); ...
+                            min(FullTimeWindow(2), sEvents(i).times(1,:) + evtWindow(2))];
         % Update event
         SetEvents(sEvents(i), iEvents(i));
     end
@@ -2104,9 +2162,12 @@ end
 
 
 %% ===== EVENT OCCUR: ADD =====
-% USAGE:  EventOccurAdd(iEvent=[selected], channelNames=[])
-function EventOccurAdd(iEvent, channelNames)
+% USAGE: [sEvent, iOccur] = EventOccurAdd(iEvent=[selected], channelNames=[])
+function [sEvent, iOccur] = EventOccurAdd(iEvent, channelNames)
     global GlobalData;
+    % Initialize returned variables
+    sEvent = [];
+    iOccur = [];
     % Parse inputs
     if (nargin < 2) || isempty(channelNames) || ~iscell(channelNames)
         channelNames = [];
@@ -2328,10 +2389,19 @@ end
 
 
 %% ===== TOGGLE EVENT AT CURRENT TIME =====
-% USAGE:  ToggleEvent(eventName=[ask], channelNames=[])
+% USAGE:  ToggleEvent(eventName=[ask], channelNames=[], isFullPage=0)
 %         ToggleEvent()
-function ToggleEvent(eventName, channelNames)
+%
+% INPUTS:
+%    - eventName    : Name of the event to add/delete
+%    - channelNames : Cell-array of strings, names of the channels associated with the new event
+%    - isFullPage   : If 0, regular behavior, if an event exists it is removed, otherwise an event is created
+%                     If 1, sleep-scoring mode, existing event is not deleted but similar events in other groups are removed
+function ToggleEvent(eventName, channelNames, isFullPage)
     % Parse inputs
+    if (nargin < 3) || isempty(isFullPage)
+        isFullPage = 0;
+    end
     if (nargin < 2) || isempty(channelNames)
         channelNames = [];
     end
@@ -2351,12 +2421,39 @@ function ToggleEvent(eventName, channelNames)
         % Get again selected event
         [iEvent, iOccur] = GetCurrentEvent();
     end
-    % There is an event at selected time: Delete it
-    if ~isempty(iOccur)
-        EventOccurDel(iEvent, iOccur);
-    % Else: add an event
+    
+    % In full page mode: attribute the page to only one event type
+    if isFullPage
+        % There is no event at selected time: Add an event
+        if isempty(iOccur)
+            [sEvent, iOccur] = EventOccurAdd(iEvent, channelNames);
+        else
+            sEvent = GetEvents(iEvent);
+        end
+        % If this is really an extended event: Look for other events at the same time
+        if (size(sEvent.times,1) == 2)
+            sAllEvents = GetEvents();
+            for i = setdiff(1:length(sAllEvents), iEvent)
+                if ~isempty(sAllEvents(i).times) && (size(sAllEvents(i).times,1) == 2)
+                    % Find overlapping event
+                    iDel = find((abs(sAllEvents(i).times(1,:) - sEvent.times(1,iOccur)) < 1e-3) & ...
+                                (abs(sAllEvents(i).times(2,:) - sEvent.times(2,iOccur)) < 1e-3));
+                    % Remove event
+                    if ~isempty(iDel)
+                        EventOccurDel(i, iDel);
+                    end
+                end
+            end
+        end
+    % In regular mode: toggle on/off
     else
-        EventOccurAdd(iEvent, channelNames);
+        % There is no event at selected time: Add an event
+        if isempty(iOccur)
+            [sEventNew, iOccurNew] = EventOccurAdd(iEvent, channelNames);
+        % There is an event at selected time: Delete it
+        elseif ~isempty(iOccur)
+            EventOccurDel(iEvent, iOccur);
+        end
     end
 end
 
@@ -2505,11 +2602,16 @@ end
 %    [bad_start_1, bad_start_2, ...
 %     bad_stop_1,  bad_stop_2, ...]
 % This array contains the sample indices of all the bad segments in the file
-function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
+function [badSeg, badEpochs, badTimes, badChan] = GetBadSegments(sFile, isChannelEvtBad) %#ok<DEFNU>
+    % Parse inputs
+    if (nargin < 2) || isempty(isChannelEvtBad)
+        isChannelEvtBad = 1;
+    end
     % Initialize empty list
     badSeg = [];
     badEpochs = [];
     badTimes = [];
+    badChan = {};
     % Get all the events
     events = sFile.events;
     if isempty(events)
@@ -2519,14 +2621,25 @@ function [badSeg, badEpochs, badTimes] = GetBadSegments(sFile) %#ok<DEFNU>
     for iEvt = 1:length(events)
         % Consider only the non-empty events that have the "bad" string in them
         if IsEventBad(events(iEvt).label) && ~isempty(events(iEvt).times)
+            % Exclude all the channel-specific events
+            if ~isChannelEvtBad
+                iOccBad = find(cellfun(@isempty, events(iEvt).channels));
+                if isempty(iOccBad)
+                    continue;
+                end
+            else
+                iOccBad = 1:size(events(iEvt).times,2);
+            end
             % If extended event
             if (size(events(iEvt).times,1) == 2)
-                badTimes = [badTimes, events(iEvt).times];
+                badTimes = [badTimes, events(iEvt).times(:,iOccBad)];
             % Else: single event
             else
-                badTimes = [badTimes, repmat(events(iEvt).times, 2, 1)];
+                badTimes = [badTimes, repmat(events(iEvt).times(:,iOccBad), 2, 1)];
             end
-            badEpochs = [badEpochs, events(iEvt).epochs];
+            badEpochs = [badEpochs, events(iEvt).epochs(iOccBad)];
+            % Get channel events
+            badChan = [badChan, events(iEvt).channels(iOccBad)];
         end
     end
     badSeg = round(badTimes .* sFile.prop.sfreq);
@@ -2621,7 +2734,7 @@ function CallProcessOnRaw(ProcessName)
             panel_ssp_selection('OpenRaw');
         end
         % Find the event type that was processed
-        if ~isempty(sProcesses) && isfield(sProcesses(1).options, 'eventname') && ~isempty(sProcesses(1).options.eventname)
+        if ~isempty(sProcesses) && isfield(sProcesses(1).options, 'eventname') && ~isempty(sProcesses(1).options.eventname.Value)
             % Get all the events
             sEvents = GetEvents();
             % Find processed event
@@ -2760,7 +2873,7 @@ function CopyRawToDatabase(DataFiles) %#ok<DEFNU>
             error('This function can be called only on external raw files.');
         end
         % Convert to CTF-CONTINUOUS if necessary
-        if strcmpi(sFileIn.format, 'CTF')
+        if strcmpi(sFileIn.format, 'CTF') && (length(sFileIn.epochs) >= 2)
             sFileIn = process_ctf_convert('Compute', sFileIn, 'continuous');
         end
         % Prepare import options (do not apply any modifier)
@@ -2986,7 +3099,3 @@ function JumpToVideoTime(hFig, oldVideoTime, newVideoTime)
     % Close progress bar
     bst_progress('stop');
 end
-
-
-
-

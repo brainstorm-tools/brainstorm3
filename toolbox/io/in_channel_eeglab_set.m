@@ -16,7 +16,7 @@ function ChannelMat = in_channel_eeglab_set(ChannelFile, isFixUnits)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -44,16 +44,19 @@ else
     ChannelFile = '';
 end
 % Convert Channel locations to Brainstorm format
-if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && isfield(SetFileMat.EEG.chanlocs(1), 'X')
+if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs)
     % Check coordinates sytem
-    isNormalizedCs = (max([SetFileMat.EEG.chanlocs.X]) <= 1);
-    if isempty(isNormalizedCs)
-        isNormalizedCs = 0;
-    elseif isNormalizedCs && isempty(isFixUnits)
-        isFixUnits = java_dialog('confirm', ['The EEGLAB file you selected contains 3D electrodes positions, but they' 10 ...
-                                           'seem to be spherical projections in a normalized coordinates system.' 10 ...
-                                           'Brainstorm needs real 3D positions, you may need to import them separately.' 10 10 ...
-                                           'Would you like Brainstorm to try to convert these positions ?'], 'EEGLAB electrodes positions');
+    isLoc = isfield(SetFileMat.EEG.chanlocs(1), 'X');
+    if isLoc
+        isNormalizedCs = (max([SetFileMat.EEG.chanlocs.X]) <= 1);
+        if isempty(isNormalizedCs)
+            isNormalizedCs = 0;
+        elseif isNormalizedCs && isempty(isFixUnits)
+            isFixUnits = java_dialog('confirm', ['The EEGLAB file you selected contains 3D electrodes positions, but they' 10 ...
+                                               'seem to be spherical projections in a normalized coordinates system.' 10 ...
+                                               'Brainstorm needs real 3D positions, you may need to import them separately.' 10 10 ...
+                                               'Would you like Brainstorm to try to convert these positions ?'], 'EEGLAB electrodes positions');
+        end
     end
     % Initialize returned structure
     nbChannels = SetFileMat.EEG.nbchan;
@@ -70,27 +73,27 @@ if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && i
         end
         ChannelMat.Channel(iChan).Name = SetFileMat.EEG.chanlocs(iChan).labels;
         % Electrode location
-        if isempty(SetFileMat.EEG.chanlocs(iChan).X) || isempty(SetFileMat.EEG.chanlocs(iChan).Y) || isempty(SetFileMat.EEG.chanlocs(iChan).Z)
-            ChannelMat.Channel(iChan).Loc = [];
-            if strcmpi(ChannelMat.Channel(iChan).Type, 'EEG')
-                ChannelMat.Channel(iChan).Type = 'Misc';
+        if isLoc
+            if isempty(SetFileMat.EEG.chanlocs(iChan).X) || isempty(SetFileMat.EEG.chanlocs(iChan).Y) || isempty(SetFileMat.EEG.chanlocs(iChan).Z)
+                ChannelMat.Channel(iChan).Loc = [];
+                if strcmpi(ChannelMat.Channel(iChan).Type, 'EEG')
+                    ChannelMat.Channel(iChan).Type = 'Misc';
+                end
+            elseif ~isNormalizedCs
+                ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X; ...
+                                                 SetFileMat.EEG.chanlocs(iChan).Y; ...
+                                                 SetFileMat.EEG.chanlocs(iChan).Z] ./ 1000;
+            elseif isFixUnits
+                ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X / 9.4 + 0.007; ...
+                                                 SetFileMat.EEG.chanlocs(iChan).Y / 11.5; ...
+                                                 SetFileMat.EEG.chanlocs(iChan).Z / 8.7 + 0.042];
+            else
+                ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X; ...
+                                                 SetFileMat.EEG.chanlocs(iChan).Y; ...
+                                                 SetFileMat.EEG.chanlocs(iChan).Z] / 10;
             end
-        elseif ~isNormalizedCs
-            ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Y; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Z] ./ 1000;
-% FT 14-Jun-2017: Removed this weird translation... check why this was in there in the first place
-%             ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X + 22; ...
-%                                              SetFileMat.EEG.chanlocs(iChan).Y; ...
-%                                              SetFileMat.EEG.chanlocs(iChan).Z + 57] ./ 1000;
-        elseif isFixUnits
-            ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X / 9.4 + 0.007; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Y / 11.5; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Z / 8.7 + 0.042];
         else
-            ChannelMat.Channel(iChan).Loc = [SetFileMat.EEG.chanlocs(iChan).X; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Y; ...
-                                             SetFileMat.EEG.chanlocs(iChan).Z] / 10;
+            ChannelMat.Channel(iChan).Loc = [];
         end
         ChannelMat.Channel(iChan).Orient  = [];
         ChannelMat.Channel(iChan).Comment = '';
@@ -98,7 +101,7 @@ if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs) && i
     end
     
     % Check distance units
-    if ~isNormalizedCs && ~isequal(isFixUnits, 0)
+    if isLoc && ~isNormalizedCs && ~isequal(isFixUnits, 0)
         if isempty(isFixUnits)
             isConfirmFix = 1;
         else

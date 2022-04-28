@@ -16,7 +16,7 @@ function db_rename_condition( oldPath, newPath, isMove, isUpdateStudyPath )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -219,7 +219,8 @@ for i = 1:length(sStudy.Timefreq)
         fileMat = load(fileFull);
         [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile', oldPath, newPath);
         [fileMat, isModified2] = replaceStruct(fileMat, 'SurfaceFile', oldPath, newPath);
-        if isModified1 || isModified2
+        [fileMat, isModified3] = replaceStruct(fileMat, 'HeadModelFile', oldPath, newPath);
+        if isModified1 || isModified2 || isModified3
             bst_save(fileFull, fileMat, 'v6');
         end
     end

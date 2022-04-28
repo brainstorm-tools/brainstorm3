@@ -56,10 +56,15 @@ N = size(data,2); %number of signals
 PTE = zeros(N,N);
 dPTE = zeros(N,N);
 
-
+% BST: Use the signal processing toolbox?
+if bst_get('UseSigProcToolbox')
+    hilbert_fcn = @hilbert;
+else
+    hilbert_fcn = @oc_hilbert;
+end
 
 %% Compute time series of the phases
-complex_data = hilbert(data);
+complex_data = hilbert_fcn(data);
 phase_data = angle(complex_data);
 phase_data = phase_data+pi;
 
@@ -97,6 +102,15 @@ end
 bins_w = [0:binsize:2*pi]; % BINS; NOTE: the last bin has a different size when using 'scott'. Does this matter?
 Nbins = length(bins_w);
 
+% BST: Check Matlab version and existence of Statistics toolbox to choose
+%      which nansum function to use.
+MatlabVersion = bst_get('MatlabVersion');
+try
+    nansum(1);
+    StatsToolbox = 1;
+catch
+    StatsToolbox = 0;
+end
 
 
 %% Compute PTE
@@ -126,10 +140,10 @@ for i=1:N
             Py_x = Py_x/(L-delay);
             Pypr_y_x = Pypr_y_x/(L-delay);
             
-            Hy = -nansum(Py.*log2(Py));
-            Hypr_y = -nansum(nansum(Pypr_y.*log2(Pypr_y)));
-            Hy_x = -nansum(nansum(Py_x.*log2(Py_x)));
-            Hypr_y_x = -nansum(nansum(nansum(Pypr_y_x.*log2(Pypr_y_x))));
+            Hy = -my_nansum(Py.*log2(Py));
+            Hypr_y = -my_nansum(my_nansum(Pypr_y.*log2(Pypr_y)));
+            Hy_x = -my_nansum(my_nansum(Py_x.*log2(Py_x)));
+            Hypr_y_x = -my_nansum(my_nansum(my_nansum(Pypr_y_x.*log2(Pypr_y_x))));
             
             % Compute PTE
             PTE(i,j) = Hypr_y+Hy_x-Hy-Hypr_y_x;
@@ -142,4 +156,17 @@ end
 tmp = triu(PTE) + tril(PTE)';
 dPTE = [triu(PTE./tmp,1) + tril(PTE./tmp',-1)];
 
+% BST: Custom nansum function in case no Statistics toolbox installed
+function res = my_nansum(A)
+    if MatlabVersion >= 805
+        % Fastest
+        res = sum(A, 'omitnan');
+    elseif StatsToolbox
+        res = nansum(A);
+    else
+        % Slowest
+        res = sum(A(~isnan(A)));
+    end
+end
+end
 

@@ -8,7 +8,7 @@ function varargout = panel_headmodel(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = panel_headmodel(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2020
 
 eval(macro_method);
 end
@@ -75,6 +75,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodMEG.addItem(BstListItem('meg_sphere', '', 'Single sphere', []));
         jComboMethodMEG.addItem(BstListItem('os_meg', '', 'Overlapping spheres', []));
         jComboMethodMEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodMEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodMEG.setSelectedIndex(1);
     else
         jCheckMethodMEG = [];
@@ -89,6 +90,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         jComboMethodEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodEEG.addItem(BstListItem('eeg_3sphereberg', '', '3-shell sphere', []));
         jComboMethodEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodEEG.setSelectedIndex(1);
     else
         jCheckMethodEEG = [];
@@ -102,6 +104,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         % Combobox
         jComboMethodECOG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodECOG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodECOG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodECOG.setSelectedIndex(0);
     else
         jCheckMethodECOG = [];
@@ -115,6 +118,7 @@ function [bstPanelNew, panelName] = CreatePanel(isMeg, isEeg, isEcog, isSeeg, is
         % Combobox
         jComboMethodSEEG = gui_component('ComboBox', jPanelMethod, 'tab hfill', [], [], [], @UpdateComment, []);
         jComboMethodSEEG.addItem(BstListItem('openmeeg', '', 'OpenMEEG BEM', []));
+        jComboMethodSEEG.addItem(BstListItem('duneuro', '', 'DUNEuro FEM', []));
         jComboMethodSEEG.setSelectedIndex(0);
     else
         jCheckMethodSEEG = [];
@@ -381,8 +385,9 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         % Replace codes with comments
         sMethod.Comment = strrep(sMethod.Comment, 'os_meg',          'Overlapping spheres');
         sMethod.Comment = strrep(sMethod.Comment, 'meg_sphere',      'Single sphere');
-        sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
         sMethod.Comment = strrep(sMethod.Comment, 'eeg_3sphereberg', '3-shell sphere');
+        sMethod.Comment = strrep(sMethod.Comment, 'openmeeg',        'OpenMEEG BEM');
+        sMethod.Comment = strrep(sMethod.Comment, 'duneuro',         'DUNEuro FEM');
         % Grid type
         if strcmpi(sMethod.HeadModelType, 'volume')
             sMethod.Comment = [sMethod.Comment ' (volume)'];
@@ -391,6 +396,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
         end
     end
     isOpenMEEG = any(strcmpi(allMethods, 'openmeeg'));
+    isDuneuro = any(strcmpi(allMethods, 'duneuro'));
     % Get protocol description
     ProtocolInfo = bst_get('ProtocolInfo');
 
@@ -436,6 +442,11 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
 %         if isfield(ChannelMat, 'Projector')
 %             OPTIONS.Projector = ChannelMat.Projector;
 %         end
+        % List of sensors
+        OPTIONS.iMeg  = [good_channel(OPTIONS.Channel, [], 'MEG'), good_channel(OPTIONS.Channel, [], 'MEG REF')];
+        OPTIONS.iEeg  = good_channel(OPTIONS.Channel, [], 'EEG');
+        OPTIONS.iEcog = good_channel(OPTIONS.Channel, [], 'ECOG');
+        OPTIONS.iSeeg = good_channel(OPTIONS.Channel, [], 'SEEG');
 
         % ===== BEST FITTING SPHERE =====
         % BestFittingSphere : .HeadCenter, .Radii, .Conductivity
@@ -555,7 +566,7 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             bst_error('Please import a cortex surface for this subject.', 'Head model', 0);
             return
         end
-
+                
         % ===== OPENMEEG =====
         if isOpenMEEG
             % Interactive interface to set the OpenMEEG options
@@ -580,11 +591,6 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
                     OPTIONS.BemNames{end+1} = 'Brain';
                     OPTIONS.BemCond(end+1)  = 1;
                 end
-                % List of sensors
-                OPTIONS.iMeg  = [good_channel(OPTIONS.Channel, [], 'MEG'), good_channel(OPTIONS.Channel, [], 'MEG REF')];
-                OPTIONS.iEeg  = good_channel(OPTIONS.Channel, [], 'EEG');
-                OPTIONS.iEcog = good_channel(OPTIONS.Channel, [], 'ECOG');
-                OPTIONS.iSeeg = good_channel(OPTIONS.Channel, [], 'SEEG');
                 % EEG: Select all layers; MEG: Select only the innermost layer
                 if ismember('openmeeg', {OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
                     OPTIONS.BemSelect = ones(size(OPTIONS.BemCond));
@@ -642,18 +648,38 @@ function [OutputFiles, errMessage] = ComputeHeadModel(iStudies, sMethod) %#ok<DE
             OPTIONS.BemCond  = OPTIONS.BemCond(OPTIONS.BemSelect);
         end
         
-        % ===== Compute HeadModel =====
+        % ===== DUNEURO =====
+        if isDuneuro
+            % Get default FEM head model
+            if isempty(sSubject.iFEM)
+                errMessage = 'No FEM head model available for this subject.';
+                return;
+            end
+            OPTIONS.FemFile = file_fullpath(sSubject.Surface(sSubject.iFEM(1)).FileName);
+            % Interactive interface to set the OpenMEEG options
+            if OPTIONS.Interactive
+                DuneuroOptions = gui_show_dialog('DUNEuro options', @panel_duneuro, 1, [], OPTIONS);
+                if isempty(DuneuroOptions)
+                    bst_progress('stop');
+                    return;
+                end
+                % Copy the selected options to the OPTIONS structure
+                OPTIONS = struct_copy_fields(OPTIONS, DuneuroOptions, 1);
+            end
+        end
+        
+        % ===== COMPUTE HEADMODEL =====
         % Start process
         [OPTIONS, errMessage] = bst_headmodeler(OPTIONS);
         if isempty(OPTIONS)
             return
         end
 
-        % ===== VERIFICATION FOR OVERLAP.SPHERES =====
-        if strcmpi(OPTIONS.MEGMethod, 'os_meg')
-            % Display all the spheres
-            % view_spheres(OPTIONS.HeadModelFile, ChannelFile, sSubject);
-        end
+%         % ===== VERIFICATION FOR OVERLAP.SPHERES =====
+%         if strcmpi(OPTIONS.MEGMethod, 'os_meg')
+%             % Display all the spheres
+%             view_spheres(OPTIONS.HeadModelFile, ChannelFile, sSubject);
+%         end
         
 %         % ===== VERIFICATION FOR OPENMEEG =====
 %         % Calculate the overlapping sphere / 3-shell sphere models for the same sensors, to validate values

@@ -5,7 +5,7 @@ function varargout = process_evt_head_motion(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,7 +19,7 @@ function varargout = process_evt_head_motion(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Elizabeth Bock, Francois Tadel, Marc Lalancette, 2013-2018
+% Authors: Elizabeth Bock, Francois Tadel, Marc Lalancette, 2013-2020
 
 eval(macro_method);
 end
@@ -290,7 +290,13 @@ end
 function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBounds, ReshapeContinuous)
     % Load and downsample continuous head localization channels.
     % HeadSamplePeriod is in (MEG) samples per (head) sample, not seconds.
-    % Locations are in meters.
+    % Locations are in meters, [nChannels, nSamples, nEpochs] possibly converted to continuous.
+    
+    % For now removing bad segments is done in process_adjust_coordinates only.
+    %     , RemoveBadSegments
+    %     if nargin < 4 || isempty(RemoveBadSegments)
+    %         RemoveBadSegments = false;
+    %     end
     
     if nargin < 3 || isempty(ReshapeContinuous)
         ReshapeContinuous = true;
@@ -322,9 +328,16 @@ function [Locations, HeadSamplePeriod, FitErrors] = LoadHLU(sInput, SamplesBound
     iFitErr = find(strcmp({ChannelMat.Channel.Type}, 'FitErr'));
     [Unused, iSortFitErr] = sort({ChannelMat.Channel(iFitErr).Name});
     nChannels = numel(iHLU);
-    if nChannels < 9
-        bst_report('Error', 'process_evt_head_motion', sInput, ...
+    if nChannels == 0
+        bst_report('Warning', 'process_evt_head_motion', sInput, ...
             'LoadHLU > Head coil position channels not found.');
+        Locations = [];
+        HeadSamplePeriod = [];
+        FitErrors = [];
+        return;
+    elseif nChannels < 9
+        bst_report('Error', 'process_evt_head_motion', sInput, ...
+            'LoadHLU > Fewer than 9 head coil position channels found.');
         Locations = [];
         HeadSamplePeriod = [];
         FitErrors = [];

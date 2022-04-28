@@ -3,7 +3,7 @@ function varargout = bst_colormaps( varargin )
 % 
 % USAGE:
 %  sColormaps = bst_colormaps('Initialize')
-%               bst_colormaps('RestoreDefaults')
+%               bst_colormaps('RestoreDefaults', ColormapType)
 %   sColormap = bst_colormaps('GetColormap', ColormapType)
 %   sColormap = bst_colormaps('GetColormap', hFig)
 %               bst_colormaps('SetColormap', ColormapType, sColormap)
@@ -54,7 +54,7 @@ function varargout = bst_colormaps( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -119,8 +119,8 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.MaxMode          = 'global';
         % Anatomy colormap
         case 'anatomy'
-            sColormap.Name             = 'bone';
-            sColormap.CMap             = bone(DEFAULT_CMAP_SIZE);
+            sColormap.Name             = 'gray';
+            sColormap.CMap             = gray(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 1;
             sColormap.MaxMode          = 'local';
         % Stat colormap (1 inputs)
@@ -142,6 +142,7 @@ function sColormap = GetDefaults(ColormapType)
             sColormap.CMap             = cmap_viridis(DEFAULT_CMAP_SIZE);
             sColormap.isAbsoluteValues = 0;
             sColormap.MaxMode          = 'global';
+            sColormap.isRealMin        = 1;
         % Time-frequency maps
         case 'timefreq'
             sColormap.Name             = 'cmap_magma';
@@ -389,7 +390,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                         DataType = 'pac';
                         
                     case 'Connect'
-                        DataFig = getappdata(sFigure.hFigure, 'DataMinMax');
+                        DataFig = bst_figures('GetFigureHandleField', sFigure.hFigure, 'DataMinMax');
                         DataType = 'connect';
                         
                     case 'Image'
@@ -641,9 +642,9 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
         jItem.setSelected(isSelected);
     end
 
-    cmapList_rainbow = {'cmap_nih', 'jet', 'cmap_jetinv', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_atlas'};
+    cmapList_rainbow = {'cmap_nih', 'jet', 'cmap_jetinv', 'hsv', 'cmap_rainramp', 'cmap_spectrum', 'cmap_atlas', 'cmap_turbo'};
     iconList_rainbow = [IconLoader.ICON_COLORMAP_NIH, IconLoader.ICON_COLORMAP_JET, IconLoader.ICON_COLORMAP_JETINV, IconLoader.ICON_COLORMAP_HSV, ...
-                        IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS];
+                        IconLoader.ICON_COLORMAP_RAINRAMP, IconLoader.ICON_COLORMAP_SPECTRUM, IconLoader.ICON_COLORMAP_ATLAS, IconLoader.ICON_COLORMAP_TURBO];
     for i = 1:length(cmapList_rainbow)
         % If the colormap #i is currently used for this surface : check the menu
         isSelected = strcmpi(cmapList_rainbow{i}, sColormap.Name);
@@ -1138,11 +1139,13 @@ function isModified = LoadColormap(ColormapType, FileName)
         % Get default import directory and formats
         LastUsedDirs = bst_get('LastUsedDirs');
         % Get LUT files
-        FileName = java_getfile( 'open', ...
+        [FileName, FileFormat] = java_getfile( 'open', ...
            'Import colormap...', ...      % Window title
            LastUsedDirs.ImportAnat, ...   % Default directory
            'single', 'files', ...         % Selection mode
-           {{'.lut'}, 'Color lookup table (*.lut)', 'LUT'}, 'LUT');
+           {{'.lut'}, 'Color lookup table (*.lut)', 'LUT'; ...
+            {'.mat'}, 'Matlab colormap matrix [nColor x 3] (*.mat)', 'MAT';...
+           }, 'MAT');
         % If no file was selected: exit
         if isempty(FileName)
             return
@@ -1154,21 +1157,50 @@ function isModified = LoadColormap(ColormapType, FileName)
     else
         isConfirm = 0;
     end
+    % Load colormap as .lut file
+    if strcmp(FileFormat, 'LUT')
+        % Open file
+        fid = fopen(FileName, 'rb');
+        if (fid < 0)
+            error(['Cannot open LUT file:' FileName]);
+        end
+        % Read file
+        CMap = fread(fid, Inf, 'uint8');
+        if (length(CMap) < 6)
+            error('Not a valid LUT file.');
+        end
+        % Close file
+        fclose(fid);
+        % Convert to Matlab format: [Ncolor x 3], values between 0 and 1
+        CMap = reshape(CMap ./ 255, [], 3);
     
-    % Open file
-	fid = fopen(FileName, 'rb');
-    if (fid < 0)
-        error(['Cannot open LUT file:' FileName]);
+    % Load colormap as .mat file
+    else
+        ContentMat = load(FileName);
+        fields = fieldnames(ContentMat);
+        validFields = {};
+        % Loop to find possible colormap matrices in fields
+        for i = 1:length(fields)
+            if ~isempty(ContentMat.(fields{i})) && isnumeric(ContentMat.(fields{i})) && size(ContentMat.(fields{i}), 2) == 3
+                validFields{end+1} = fields{i};
+            end
+        end
+        if isempty(validFields)
+            bst_error(['No valid colormap field in: "' FileName '"'], 'Load colormap', 0);
+            return
+        end
+        CMap = ContentMat.(validFields{1});
+        % If there is more than one possible colormap, ask user which colormap to load
+        if (length(validFields) > 1)
+            res = java_dialog('question', 'Please select the variable that contains your colormap:', ...
+                              'Colormap', [], validFields);
+            % If user did not answer: exit
+            if isempty(res)
+                return
+            end
+            CMap = ContentMat.(res);
+        end
     end
-    % Read file
-    CMap = fread(fid, Inf, 'uint8');
-    if (length(CMap) < 6)
-        error('Not a valid LUT file.');
-    end
-    % Close file 
-    fclose(fid);
-    % Convert to Matlab format: [Ncolor x 3], values between 0 and 1
-    CMap = reshape(CMap ./ 255, [], 3);
 
     % Read as a fixed list of colors
     if isConfirm
@@ -1342,6 +1374,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     hAxes     = setdiff(findobj(hFig, '-depth', 1, 'Type', 'axes'), hColorbar);
     hConnect  = getappdata(hFig, 'OpenGLDisplay');
+    if strcmpi(ColormapType, 'connectn') && isempty(hConnect)
+        hConnect = hAxes;
+        hAxes = [];
+    end
     % If a colorbar is defined
     if ~isempty(hColorbar)
         fFactor = [];
@@ -1354,6 +1390,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     dataBounds = GlobalData.DataSet(iDS).Dipoles(1).Time;
                 else
                     dataBounds = GlobalData.DataSet(iDS).Measures.Time;
+                end
+                if (length(dataBounds) == 2) && (dataBounds(1) == dataBounds(2))
+                    dataBounds(2) = dataBounds(2) + 0.001;
                 end
                 if (max(abs(dataBounds)) > 2)
                     fFactor = 1;
@@ -1391,23 +1430,37 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         if isempty(fFactor)
             % Use imposed units 
             if ~isempty(DisplayUnits)
-                switch(DisplayUnits)
-                    case 't',    fFactor = 1;
-                    case 'mol.l-1', fFactor = 1;
-                    case 'mmol.l-1', fFactor = 1e3;
-                    case 'umol.l-1', fFactor = 1e6;
-                    case 'U.A.'
-                        fmax = max(abs(dataBounds));
-                        if fmax < 1e3
-                            fFactor=1e6;
-                            DisplayUnits='U.A(*10^6)';
-                        elseif fmax < 1
-                            fFactor=1e3;
-                            DisplayUnits='U.A(*10^3)';
-                        else
-                            fFactor=1;
-                        end
-                    otherwise,   fFactor = 1;
+                if strcmp(DisplayUnits,'t')
+                    fFactor = 1;
+                elseif strcmp(DisplayUnits,'fT')
+                    fFactor = 1e15;                  
+                elseif strcmp(DisplayUnits,'\muV')
+                    fFactor = 1e6;                  
+                elseif strcmp(DisplayUnits,'mV')
+                    fFactor = 1e3;                                      
+                elseif ~isempty(strfind(DisplayUnits,'mol'))
+                     fmax = max(abs(dataBounds));
+                     if round(log10(fmax)) < -3
+                         fFactor = 1e6;
+                     else    
+                        fFactor = 1;  
+                     end   
+                elseif ~isempty(strfind(DisplayUnits,'OD'))
+                    fFactor = 1e3;
+                    DisplayUnits='OD(*10^-3)';
+                elseif strcmp(DisplayUnits,'U.A.')
+                    fmax = max(abs(dataBounds));
+                    if fmax < 1e3
+                        fFactor=1e6;
+                        DisplayUnits='U.A(*10^6)';
+                    elseif fmax < 1
+                        fFactor=1e3;
+                        DisplayUnits='U.A(*10^3)';
+                    else
+                        fFactor=1;
+                    end
+                else
+                     fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum
@@ -1478,7 +1531,7 @@ function SetColorbarVisible(hFig, isVisible) %#ok<DEFNU>
         FigureId = getappdata(hFig, 'FigureId');
         % Get color for colorbar text
         switch (FigureId.Type)
-            case {'3DViz', 'Topography', 'MriViewer', 'Connect'}
+            case {'3DViz', 'Topography', 'MriViewer', 'Connect'} 
                 textColor = [.8 .8 .8];
             case {'Timefreq', 'Pac', 'Image'}
                 textColor = [0 0 0];
@@ -1625,6 +1678,7 @@ end
 
 %% ===== APPLY COLORMAP MODIFIERS =====
 function sColormap = ApplyColormapModifiers(sColormap)
+    
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps
     if ~isempty(sColormap.Name)

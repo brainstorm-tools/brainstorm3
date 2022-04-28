@@ -5,7 +5,7 @@ function varargout = process_aec2( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,12 +40,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
     sProcess.isPaired    = 1;
+    sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
     sProcess = process_corr2('DefineConnectOptions', sProcess);
     % === FREQ BANDS
-    sProcess.options.label2.Comment = '<BR><U><B>Estimator options</B></U>:';
-    sProcess.options.label2.Type    = 'label';
     sProcess.options.freqbands.Comment = 'Frequency bands for the Hilbert transform:';
     sProcess.options.freqbands.Type    = 'groupbands';
     sProcess.options.freqbands.Value   = bst_get('DefaultFreqBands');
@@ -54,11 +53,10 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.isorth.Type    = 'checkbox';
     sProcess.options.isorth.Value   = 0;
     % === OUTPUT MODE
-    sProcess.options.label3.Comment = '<BR><U><B>Output configuration</B></U>:';
-    sProcess.options.label3.Type    = 'label';
     sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
     sProcess.options.outputmode.Type    = 'radio';
     sProcess.options.outputmode.Value   = 1;
+    sProcess.options.outputmode.Group   = 'output';
 end
 
 

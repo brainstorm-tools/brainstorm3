@@ -16,7 +16,7 @@ function [NewTessFile, iSurface, I, J] = tess_downsize( TessFile, newNbVertices,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -30,7 +30,7 @@ function [NewTessFile, iSurface, I, J] = tess_downsize( TessFile, newNbVertices,
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2022
 
 
 %% ===== PARSE INPUTS =====
@@ -91,7 +91,7 @@ if isempty(Method)
                         '&nbsp;&nbsp;&nbsp;| - Keeps the atlases and the subjects co-registration'], ...
                        ['<HTML><B>Matlab''s reducepatch + subdivide large faces:</B><BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - The large faces at the top of the gyri are subdivided in three<BR>' ...
-                        '&nbsp;&nbsp;&nbsp;| - <U>Damages</U> the atlases and the subjects co-registration'], ...
+                        '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subjects co-registration'], ...
                        ['<HTML><B>iso2mesh/CGAL library:</B><BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - Homogeneous mesh: all the faces have similar sizes<BR>' ...
                         '&nbsp;&nbsp;&nbsp;| - <U>Deletes</U> the atlases and the subject co-registration<BR>' ...
@@ -471,7 +471,7 @@ if isfield(TessMat, 'Atlas') && ~isempty(TessMat.Atlas) && ~isempty(I)
         for iScout = 1:length(NewTessMat.Atlas(iAtlas).Scouts)
             % Replace the old vertices index with the new ones
             [a,b,c] = intersect(NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices, I);
-            NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices = sort(J(c));
+            NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices = reshape(sort(J(c)), 1, []);
             % If scout has no vertex left: tag for deletion
             if isempty(NewTessMat.Atlas(iAtlas).Scouts(iScout).Vertices)
                 iRmScout(end+1) = iScout;

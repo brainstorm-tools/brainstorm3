@@ -5,7 +5,7 @@ function sFileOut = out_fopen_edf(OutputFile, sFileIn, ChannelMat, EpochSize, iC
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,7 +54,7 @@ if ~isRawEdf
     for iBlock = 1:nBlocks
         bst_progress('text', sprintf('Finding maximum values [%d%%]', round(iBlock/nBlocks*100)));
         % Get sample indices for a block of 1s
-        SamplesBounds = [(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)];
+        SamplesBounds = round([(iBlock - 1) * BlockSize + fileSamples(1), min(fileSamples(2), fileSamples(1) + iBlock * BlockSize)]);
         % Read the block from the file
         Fblock = in_fread(sFileIn, ChannelMat, 1, SamplesBounds);
         % Keep only the files to be saved in the output file
@@ -162,12 +162,12 @@ header.hdrlen = 256 + 256 * header.nsignal;
 for i = 1:header.nsignal
     if ~isRawEdf
         % Choose unit based on maximal value
-        if Fmax(i) > 1
+        if Fmax(i) > 0.1
             header.signal(i).unit = 'V';
             header.signal(i).unit_gain = 1;
-        elseif Fmax(i) * 1e3 > 1
-            header.signal(i).unit = 'mV';
-            header.signal(i).unit_gain = 1e3;
+%         elseif Fmax(i) * 1e3 > 1
+%             header.signal(i).unit = 'mV';
+%             header.signal(i).unit_gain = 1e3;
         else
             header.signal(i).unit = 'uV';
             header.signal(i).unit_gain = 1e6;
@@ -191,7 +191,11 @@ for i = 1:header.nsignal
         % Convert chars (1-byte) to 2-byte integers, the size of a sample
         header.signal(i).nsamples = int64((header.signal(i).nsamples + 1) / 2);
     else
-        header.signal(i).label = [ChannelMat.Channel(i).Type, ' ', ChannelMat.Channel(i).Name];
+        if strcmpi(ChannelMat.Channel(i).Type, 'EEG_NO_LOC')
+            header.signal(i).label = ['EEG ', ChannelMat.Channel(i).Name];
+        else
+            header.signal(i).label = [ChannelMat.Channel(i).Type, ' ', ChannelMat.Channel(i).Name];
+        end
         header.signal(i).nsamples = header.reclen * sFileIn.prop.sfreq;
     end
 end

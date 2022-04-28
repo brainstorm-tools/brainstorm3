@@ -8,7 +8,7 @@ function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function [vox2ras, sMri] = cs_nii2bst(sMri, vox2ras, isApply)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Francois Tadel, 2016-2017
+% Author: Francois Tadel, 2016-2021
 
 % Parse inputs
 if (nargin < 3) || isempty(isApply)
@@ -41,19 +41,17 @@ for i = 1:3
     isFlip(i) = (R(i,Pmat(i)) < 0);
     TransPerm(i,Pmat(i)) = 1;
 end
+isModified = ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0]);
 
 % Ask user
-if isempty(isApply)
-    if ~isequal(Pmat, [1 2 3]) || ~isequal(isFlip, [0 0 0])
-        isApply = java_dialog('confirm', ['A transformation is available in the MRI file.' 10 10 ...
-                                          'Do you want to apply it to the volume now?' 10 10], 'MRI orientation');
-    else
-        isApply = 0;
-    end
+if isModified && isempty(isApply)
+    isApply = java_dialog('confirm', [...
+        'A transformation is available in the MRI file.' 10 10 ...
+        'Do you want to apply it to the volume now?' 10 10], 'MRI orientation');
 end
 
 % Apply transformations
-if isApply
+if isModified && isApply
     % Permute dimensions
     sMri.Cube = permute(sMri.Cube, [Pmat 4]);
     sMri.Voxsize = sMri.Voxsize(Pmat);
@@ -85,6 +83,8 @@ if isApply
         sMri.Header.nifti.qoffset_y  = 0;
         sMri.Header.nifti.qoffset_z  = 0;
         sMri.Header.nifti.qform      = [];
+        % Update pixdim
+        sMri.Header.dim.pixdim = [1, sMri.Voxsize, 1, 0, 0, 0];
         % Save final version
         sMri.Header.nifti.vox2ras = vox2ras;
     end

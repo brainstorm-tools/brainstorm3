@@ -5,7 +5,7 @@ function varargout = process_import_anatomy( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -87,10 +87,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.ih.Comment = 'IH:&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;';
     sProcess.options.ih.Type    = 'value';
     sProcess.options.ih.Value   = {[0 0 0], 'list', 2};
-    % Option: IH
-    sProcess.options.aseg.Comment = 'Import ASEG atlas (FreeSurfer only)';
-    sProcess.options.aseg.Type    = 'checkbox';
-    sProcess.options.aseg.Value   = 1;
 end
 
 
@@ -123,8 +119,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         bst_report('Error', sProcess, [], 'Invalid number of vertices.');
         return
     end
-    % Import ASEG atlas
-    isAseg = sProcess.options.aseg.Value;
     % Fiducials positions
     NAS = sProcess.options.nas.Value{1};
     if (length(NAS) ~= 3) || all(NAS == 0)
@@ -177,20 +171,30 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % ===== IMPORT FILES =====
     % Import folder
     switch (FileFormat)
+        case 'FreeSurfer-fast'
+            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 0, 0);
         case 'FreeSurfer'
-            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 0, isAseg);
+            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 0, 1);
         case 'FreeSurfer+Thick'
-            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 1);
+            errorMsg = import_anatomy_fs(iSubject, AnatDir, nVertices, 0, sFid, 1, 1);
+        case 'BrainSuite-fast'
+            errorMsg = import_anatomy_bs(iSubject, AnatDir, nVertices, 0, sFid, 0);
         case 'BrainSuite'
-            errorMsg = import_anatomy_bs(iSubject, AnatDir, nVertices, 0, sFid);
+            errorMsg = import_anatomy_bs(iSubject, AnatDir, nVertices, 0, sFid, 1);
         case 'BrainVISA'
             errorMsg = import_anatomy_bv(iSubject, AnatDir, nVertices, 0, sFid);
+        case 'CAT12'
+            errorMsg = import_anatomy_cat(iSubject, AnatDir, nVertices, 0, sFid, 0);
+        case 'CAT12+Thick'
+            errorMsg = import_anatomy_cat(iSubject, AnatDir, nVertices, 0, sFid, 1);
         case 'CIVET'
             errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, 0, sFid, 0);
         case 'CIVET+Thick'
             errorMsg = import_anatomy_civet(iSubject, AnatDir, nVertices, 0, sFid, 1);
         case 'HCPv3'
             errorMsg = import_anatomy_hcp_v3(iSubject, AnatDir, 0);
+        case 'SimNIBS'
+            errorMsg = import_anatomy_simnibs(iSubject, AnatDir, nVertices, 0, sFid, 0);
         otherwise
             errorMsg = ['Invalid file format: ' FileFormat];
     end

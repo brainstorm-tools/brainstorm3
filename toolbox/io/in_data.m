@@ -24,7 +24,7 @@ function [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -82,7 +82,13 @@ DateOfStudy = [];
 tmpDir = bst_get('BrainstormTmpDir');
 [filePath, fileBase, fileExt] = bst_fileparts(DataFile);
 % Reading as raw continuous?
-isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', 'MEGSCAN-HDF5', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', 'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', 'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', 'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', 'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS'});
+isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', ...
+    'MEGSCAN-HDF5', 'EEG-ANT-CNT', 'EEG-ANT-MSR', 'EEG-AXION', 'EEG-BRAINAMP', 'EEG-DELTAMED', 'EEG-COMPUMEDICS-PFS', ...
+    'EEG-EGI-RAW', 'EEG-NEUROSCAN-CNT', 'EEG-NEUROSCAN-EEG', 'EEG-NEUROSCAN-AVG', 'EEG-EDF', 'EEG-BDF', ...
+    'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', ...
+    'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'EEG-SMRX', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', ...
+    'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS', 'EEG-CURRY', ...
+    'EEG-OEBIN', 'EEG-ADICHT'});
 
 %% ===== READ RAW FILE =====
 if isRaw
@@ -184,7 +190,7 @@ if isRaw
             % Get block size in samples
             blockSmpLength = round(ImportOptions.SplitLength * sFile.prop.sfreq);
             totalSmpLength = round((ImportOptions.TimeRange(2) - ImportOptions.TimeRange(1)) * sFile.prop.sfreq) + 1;
-            startSmp = round(ImportOptions.TimeRange(1) * sFile.prop.sfreq);                   
+            startSmp = round(ImportOptions.TimeRange(1) * sFile.prop.sfreq);
             % Get number of blocks
             nbBlocks = ceil(totalSmpLength / blockSmpLength);
             % For each block
@@ -220,6 +226,11 @@ if isRaw
                     % Samples range to read
                     if isExtended
                         samplesBounds = [0, diff(round(ImportOptions.events(iEvent).times(:,iOccur) * sFile.prop.sfreq))];
+                        % Disable option "Ignore shorter epochs"
+                        if ImportOptions.IgnoreShortEpochs
+                            ImportOptions.IgnoreShortEpochs = 0;
+                            bst_report('Warning', 'process_import_data_event', [], 'Importing extended epochs: disabling option "Ignore shorter epochs".');
+                        end
                     else
                         samplesBounds = round(ImportOptions.EventsTimeRange * sFile.prop.sfreq);
                     end
@@ -234,19 +245,42 @@ if isRaw
                     end
                     % Make sure all indices are valids
                     samplesEpoch = bst_saturate(samplesEpoch, round(sFile.prop.times * sFile.prop.sfreq));
-                    % Import structure
-                    BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
-                    BlocksToRead(end).iTimes     = samplesEpoch;
-                    BlocksToRead(end).Comment    = sprintf('%s (#%d)', ImportOptions.events(iEvent).label, iOccur);
-                    BlocksToRead(end).FileTag    = sprintf('%s_trial%03d', ImportOptions.events(iEvent).label, iOccur);
-                    BlocksToRead(end).TimeOffset = TimeOffset;
-                    BlocksToRead(end).nAvg       = 1;
-                    BlocksToRead(end).ImportTime = samplesEpoch / sFile.prop.sfreq;
-                    % Add condition TAG, if required in input options structure
-                    if ImportOptions.CreateConditions 
-                        CondName = strrep(ImportOptions.events(iEvent).label, '#', '');
-                        CondName = str_remove_parenth(CondName);
-                        BlocksToRead(end).FileTag = [BlocksToRead(end).FileTag, '___COND' CondName '___'];
+                    % If splitting each epoch
+                    if ImportOptions.SplitRaw && ~isempty(ImportOptions.SplitLength) && (ImportOptions.SplitLength < diff(ImportOptions.EventsTimeRange))
+                        % Get block size in samples
+                        blockSmpLength = round(ImportOptions.SplitLength * sFile.prop.sfreq);
+                        totalSmpLength = samplesEpoch(2) - samplesEpoch(1) + 1;
+                        % Get number of blocks
+                        nbBlocks = ceil(totalSmpLength / blockSmpLength);
+                        % For each block
+                        for iBlock = 1:nbBlocks
+                            % Get samples indices for this block (start ind = 0)
+                            smpBlock = samplesEpoch(1) + [(iBlock - 1) * blockSmpLength, min(iBlock * blockSmpLength - 1, totalSmpLength - 1)];
+                            % Import structure
+                            BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
+                            BlocksToRead(end).iTimes     = smpBlock;
+                            BlocksToRead(end).Comment    = sprintf('%s (#%d.%d)', ImportOptions.events(iEvent).label, iOccur, iBlock);
+                            BlocksToRead(end).FileTag    = sprintf('%s_trial%03d_block%03d', ImportOptions.events(iEvent).label, iOccur, iBlock);
+                            BlocksToRead(end).TimeOffset = TimeOffset + (iBlock - 1) .* ImportOptions.SplitLength;
+                            BlocksToRead(end).nAvg       = 1;
+                            BlocksToRead(end).ImportTime = smpBlock / sFile.prop.sfreq;
+                        end
+                    % No splitting
+                    else
+                        % Import structure
+                        BlocksToRead(end+1).iEpoch   = ImportOptions.events(iEvent).epochs(iOccur);
+                        BlocksToRead(end).iTimes     = samplesEpoch;
+                        BlocksToRead(end).Comment    = sprintf('%s (#%d)', ImportOptions.events(iEvent).label, iOccur);
+                        BlocksToRead(end).FileTag    = sprintf('%s_trial%03d', ImportOptions.events(iEvent).label, iOccur);
+                        BlocksToRead(end).TimeOffset = TimeOffset;
+                        BlocksToRead(end).nAvg       = 1;
+                        BlocksToRead(end).ImportTime = samplesEpoch / sFile.prop.sfreq;
+                        % Add condition TAG, if required in input options structure
+                        if ImportOptions.CreateConditions 
+                            CondName = strrep(ImportOptions.events(iEvent).label, '#', '');
+                            CondName = str_remove_parenth(CondName);
+                            BlocksToRead(end).FileTag = [BlocksToRead(end).FileTag, '___COND' CondName '___'];
+                        end
                     end
                 end
             end
@@ -272,7 +306,7 @@ if isRaw
 
     % ===== READING AND SAVING =====
     % Get list of bad segments in file
-    [badSeg, badEpochs] = panel_record('GetBadSegments', sFile);
+    [badSeg, badEpochs, badTimes, badChan] = panel_record('GetBadSegments', sFile);
     % Initialize returned variables
     ImportedData = repmat(db_template('Data'), 0);
 
@@ -290,7 +324,8 @@ if isRaw
             ImportOptions.BaselineRange = initBaselineRange - BlocksToRead(iFile).TimeOffset;
         end
         % Read data block
-        [F, TimeVector] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
+        [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
+        
         % If block too small: ignore it
         if (size(F,2) < 3)
             disp(sprintf('BST> Block is too small #%03d: ignoring...', iFile));
@@ -307,6 +342,7 @@ if isRaw
         DataMat.Time     = TimeVector;
         DataMat.Device   = sFile.device;
         DataMat.nAvg     = double(BlocksToRead(iFile).nAvg);
+        DataMat.DisplayUnits = DisplayUnits;
         DataMat.DataType = 'recordings';
         % Channel flag
         if ~isempty(BlocksToRead(iFile).ChannelFlag) 
@@ -316,30 +352,39 @@ if isRaw
         end
 
         % ===== GOOD / BAD TRIAL =====
+        % By default: segment of data is good
+        isBad = 0;
         % If data block has already been marked as bad at an earlier stage, keep it bad 
         if ~isempty(BlocksToRead(iFile).isBad) && BlocksToRead(iFile).isBad
-            isBad = BlocksToRead(iFile).isBad;
-        % Else: Check if not reading in a bad segment
+            isBad = 1;
+        end
+        % Get the block bounds (in samples #)
+        iTimes = BlocksToRead(iFile).iTimes;
+        % But if there are some bad segments in the file, check that the data we are reading is not overlapping with one of these segments
+        if ~isempty(iTimes) && ~isempty(badSeg)
+            % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
+            iBadSeg = find((iTimes(2) >= badSeg(1,:)) & (iTimes(1) <= badSeg(2,:)));
+        % For files read by epochs: check for bad epochs
+        elseif isempty(iTimes) && ~isempty(badEpochs)
+            iBadSeg = find(BlocksToRead(iFile).iEpoch == badEpochs);
         else
-            % By default: segment of data is good
-            isBad = 0;
-            % Get the block bounds (in samples #)
-            iTimes = BlocksToRead(iFile).iTimes;
-            % But if there are some bad segments in the file, check that the data we are
-            % reading is not overlapping with one of these segments
-            if ~isempty(iTimes) && ~isempty(badSeg)
-                % Check if this segment is outside of ALL the bad segments (either entirely before or entirely after)
-                if ~all((iTimes(2) < badSeg(1,:)) | (iTimes(1) > badSeg(2,:)))
-                    isBad = 1;
-                end
-            % For files read by epochs: check for bad epochs
-            elseif isempty(iTimes) && ~isempty(badEpochs)
-                if ismember(BlocksToRead(iFile).iEpoch, badEpochs)
-                    isBad = 1;
+            iBadSeg = [];
+        end
+        % If there are bad segments
+        if ~isempty(iBadSeg)
+            % Mark trial as bad (if not already set)
+            if (isempty(badChan) || any(cellfun(@isempty, badChan(iBadSeg))))
+                isBad = 1;
+            end
+            % Add bad channels defined by events
+            if ~isempty(badChan) && ~all(cellfun(@isempty, badChan(iBadSeg))) && ~isempty(ChannelMat)
+                iBadChan = find(ismember({ChannelMat.Channel.Name}, unique(cat(2, {}, badChan{iBadSeg}))));
+                if ~isempty(iBadChan)
+                    DataMat.ChannelFlag(iBadChan) = -1;
                 end
             end
         end
-
+        
         % ===== ADD HISTORY FIELD =====
         % This records all the processes applied in in_fread (reset field)
         DataMat = bst_history('reset', DataMat);
@@ -507,6 +552,7 @@ else
     importedBaseName = strrep(importedBaseName, '_data', '');
     % Process all the DataMat structures that were created
     ImportedData = repmat(db_template('Data'), [1, length(DataMat)]);
+    nTime = zeros(1, length(DataMat));
     for iData = 1:length(DataMat)
         % If subject name and condition were specified in the low-level import function
         if isfield(DataMat, 'SubjectName') && ~isempty(DataMat(iData).SubjectName) && isfield(DataMat, 'Condition') && ~isempty(DataMat(iData).Condition)
@@ -515,8 +561,7 @@ else
             newFileName = importedBaseName;
         end
         % Produce a default data filename          
-        BstDataFile = bst_fullfile(tmpDir, ['data_' newFileName '.mat']);
-        BstDataFile = file_unique(BstDataFile);
+        BstDataFile = bst_fullfile(tmpDir, ['data_' newFileName '_' sprintf('%04d', iData) '.mat']);
         
         % Add History: File name
         FileMat = DataMat(iData); 

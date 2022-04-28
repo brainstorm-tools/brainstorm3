@@ -8,7 +8,7 @@ function varargout = process_ctf_convert( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -143,7 +143,8 @@ function [sFile, Messages, recType] = Compute(sFile, recType)
         % Check if loaded file is epoched
         if isempty(sFile.epochs) || (length(sFile.epochs) == 1) || strcmpi(sFile.format, 'CTF-CONTINUOUS')
             Messages = 'Only the files that contain two epochs or more can be converted to continuous files.';
-            sFile = [];
+            % No need to make this an error, continue with this already continuous file.
+            % sFile = [];
             return;
         end
         % Process each epoch

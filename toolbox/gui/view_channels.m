@@ -12,7 +12,7 @@ function [hFig, iDS, iFig] = view_channels(ChannelFile, Modality, isMarkers, isL
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -173,7 +173,7 @@ end
 GlobalData.DataSet(iDS).Figure(iFig).Id.Modality = Modality;
 % Set application data
 setappdata(hFig, 'DataFile', '');
-setappdata(hFig, 'AllChannelsDisplayed', 1);
+setappdata(hFig, 'isSensorsOnly', 1);
 
 % ===== DISPLAY SENSORS =====
 % Update figure selection
@@ -201,7 +201,7 @@ if is3DElectrodes
     end
 elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'})
     figure_3d('PlotCoils', hFig, Modality, isMarkers);
-elseif strcmpi(Modality, 'NIRS-BRS')
+elseif ismember(lower(Modality), {'nirs','nirs-brs'})
     figure_3d('PlotNirsCap', hFig, isMarkers);
 else
     isMesh = ~isequal(Modality, 'SEEG');

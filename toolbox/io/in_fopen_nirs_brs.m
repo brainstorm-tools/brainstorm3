@@ -35,6 +35,8 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 %         match the index of the corresponding line in 'ml'
 %     - aux (nb_samples x nb_auxiliary_signals):
 %       Will be stored as channels AUX1, ... AUX<nb_auxiliary_signals>
+%     - CondNames (n_events cell): list of events name
+%     - s (nb_samples x n_events): events times. Contains 1 during events
 %                
 %   The "optodes.txt" and "fudicials.txt" are coordinates files with the 
 %   following format:
@@ -53,7 +55,7 @@ function [sFile, ChannelMat] = in_fopen_nirs_brs(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -95,10 +97,64 @@ sFile.device     = 'NIRS Brainsight system';
 sFile.byteorder  = 'l';
 
 % Properties of the recordings
-% Round to microsec to avoid floating imprecision
-sFile.prop.sfreq = 1 ./ ( round((nirs.t(2) - nirs.t(1)) .* 1e6) ./ 1e6 ); %sec
-sFile.prop.times = round([nirs.t(1), nirs.t(end)] .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+% Truncate significant digits to avoid numerical errors in the conversion time<->samples
+sFile.prop.sfreq = 1 ./ ( round(mean(diff(nirs.t)) .* 1e6) ./ 1e6); %sec
+sFile.prop.times = (round(nirs.t(1) .* sFile.prop.sfreq) + [0, length(nirs.t)-1]) ./ sFile.prop.sfreq;
 sFile.prop.nAvg  = 1;
+
+% Warning: Unstable sampling frequency
+if (abs(sFile.prop.times(2) - nirs.t(end)) > 1e-3)
+    disp([10, 'BST> WARNING: Unstable sampling frequency in NIRS file.']);
+    disp(sprintf('BST>   | MEAN: mean(1./diff(t))=%1.12f Hz   |   STD: std(1./diff(t))=%1.12f Hz', mean(1./diff(nirs.t)), std(1./diff(nirs.t))));
+    disp(sprintf('BST>   | Time of last sample reported in the NIRS file: %1.12f s', nirs.t(end)));
+    disp(sprintf('BST>   | Time of last sample as imported in Brainstorm: %1.12f s\n', sFile.prop.times(2)));
+end
+
+% Reading events 
+if isfield(nirs,'CondNames')
+    n_event = length(nirs.CondNames);
+    events = repmat(db_template('event'), 1, length(n_event));
+    for iEvt = 1:n_event
+        % Assume simple event (non-extended)
+        eventSample = find(nirs.s(:,iEvt)) - 1;
+        evtTime     =  eventSample ./ sFile.prop.sfreq;
+        % Events structure
+        events(iEvt).label      = nirs.CondNames{iEvt};
+        events(iEvt).times      = evtTime(:)';
+        events(iEvt).epochs     = ones(1, length(evtTime));
+        events(iEvt).notes      = cell(1, length(evtTime));
+        events(iEvt).channels   = cell(1, length(evtTime));
+        events(iEvt).reactTimes = [];
+    end
+    sFile.events = events;
+end
+
+
+% Detect saturation
+if isfield(nirs,'brainsight') && ~isempty(find(nirs.brainsight.acquisition.saturation))
+    event = db_template('event');
+    
+    saturation = nirs.brainsight.acquisition.saturation > 0 & nirs.brainsight.acquisition.digitalSaturation > 0;
+    saturated_channels = unique(nirs.brainsight.acquisition.saturation(saturation));
+    
+    for i_chan = 1:length(saturated_channels)
+        
+        saturation_chan = nirs.brainsight.acquisition.saturation == saturated_channels(i_chan) & nirs.brainsight.acquisition.digitalSaturation == saturated_channels(i_chan);
+        evtTime     =  find(saturation_chan) ./ sFile.prop.sfreq;
+        channels_saturated = cell(1, length(evtTime));
+        channels_saturated{saturated_channels(i_chan)} = 'saturated channel';
+
+        % Events structure
+        event.label      = sprintf('Saturation %d',saturated_channels(i_chan));
+        event.times      = evtTime(:)';
+        event.epochs     = ones(1, length(evtTime));
+        event.notes      = cell(1, length(evtTime));
+        event.channels   = channels_saturated;
+        event.reactTimes = [];
+        sFile.events = [sFile.events event];
+    end    
+end
+
 
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
@@ -170,6 +226,29 @@ if exist(optodes_file, 'file') == 2
 else % take optode coordinates from nirs data structure
     src_coords = nirs.SD.SrcPos;
     det_coords = nirs.SD.DetPos;
+    
+    % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
+    if all(src_coords(:,3)==0) && all(det_coords(:,3)==0)
+        src_coords(:,3) = 1;
+        det_coords(:,3) = 1;
+    end
+    if ~isfield(nirs.SD,'SpatialUnit')
+        scale = 0.01; % assume coordinate are in cm
+    else    
+        switch strtrim(nirs.SD.SpatialUnit)
+            case 'mm'
+                scale = 0.001;
+            case 'cm'
+                scale = 0.01;
+            case 'm'
+                scale = 1;
+            otherwise
+                scale = 1;
+        end
+    end
+    % Apply units
+    src_coords = scale .* src_coords;
+    det_coords = scale .* det_coords;
 end
 
 
@@ -248,7 +327,7 @@ function [coords] = load_brainsight_coords(coords_file)
     ic = 1; % counter of entries
     while(~feof(fid))
        line = textscan(fid, '%s', 1, 'delimiter', '\n');
-       if ~strcmp(line{1}{1}(1), '#') % ignore comments
+       if ~isempty(line{1}{1}) && ~strcmp(line{1}{1}(1), '#') % ignore empty lines and comments
            toks = textscan(line{1}{1}, '%s\t%s\t%d\t%f\t%f\t%f%f', ...
                            'WhiteSpace', '\b\t');
            coords(ic).name = toks{1}{1};
@@ -259,13 +338,3 @@ function [coords] = load_brainsight_coords(coords_file)
     fclose(fid);
 
 end
-
-
-
-
-
-
-
-
-
-

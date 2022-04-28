@@ -10,11 +10,12 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
 %    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
-%    - bst_get('BrainstormDefaultsDir') : Defaults folder folder of the Brainstorm distribution (may vary in compiled versions)
+%    - bst_get('BrainstormDefaultsDir') : Defaults folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
 %    - bst_get('UserMexDir')            : User temporary directory (<home>/.brainstorm/mex/)
 %    - bst_get('UserProcessDir')        : User custom processes directory (<home>/.brainstorm/process/)
 %    - bst_get('UserDefaultsDir')       : User defaults directory (<home>/.brainstorm/defaults/)
+%    - bst_get('UserPluginsDir')        : User plugins directory (brainstorm3/plugins/ if it exists, otherwise <home>/.brainstorm/plugins/)
 %    - bst_get('BrainstormDbFile')      : User brainstorm.mat file (<home>/.brainstorm/brainstorm.mat)
 %    - bst_get('BrainstormDbDir')       : User database directory (contains all the brainstorm protocols)
 %    - bst_get('DirDefaultSubject')     : Directory name of the default subject
@@ -22,13 +23,15 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('DirAnalysisInter')      : Directory name of the inter-subject analysis study 
 %    - bst_get('DirAnalysisIntra')      : Directory name of the intra-subject analysis study (for each subject)
 %    - bst_get('AnatomyDefaults')       : Get the contents of directory bstDir/defaults/anatomy
+%    - bst_get('MniAtlasDefaults')      : Get the contents of directory bstDir/defaults/mniatlas
 %    - bst_get('EegDefaults')           : Get the contents of directory bstDir/defaults/eeg
 %    - bst_get('LastUsedDirs')          : Structure with all the last used directories (last used)
 %    - bst_get('OsType', isMatlab=1)    : Get a string that describes the operating system (if isMatlab=1 return the Matlab/JVM platform, else return the real host system)
 %    - bst_get('FileFilters', DataType) : Get the list of import filters for a specific data type
-%    - bst_get('FieldTripDir')          : Full path to a local installation of FieldTrip
-%    - bst_get('SpmDir')                : Full path to a local installation of SPM
+%    - bst_get('PluginCustomPath')      : Full custom path to all plugins
+%    - bst_get('BrainSuiteDir')         : Full path to a local installation of BrainSuite
 %    - bst_get('SpmTpmAtlas')           : Full path to the SPM atlas TPM.nii
+%    - bst_get('PythonExe')             : Path to the python executable
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_get('iProtocol')             : Indice of current protocol 
@@ -121,6 +124,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('isGUI')          : Return 1 if the Brainstorm interface is displayed
 %    - bst_get('GuiLevel')       : Return GUI level:  -1=server, 0=nogui, 1=normal, 2=autopilot
 %    - bst_get('ScreenDef')      : Get screens configuration
+%    - bst_get('DecorationSize') : Get dimensions of the windows decorations
 %    - bst_get('Layout')         : Configuration of the main Brainstorm window
 %    - bst_get('Layout', prop)   : Get one property in the layout properties
 %    - bst_get('PanelContainer')                : Display list of registered panel containers
@@ -137,6 +141,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('MatlabVersion')         : Matlab version (version number * 100, eg. 801)
 %    - bst_get('MatlabReleaseName')     : Matlab version (release name, eg. "R2014a")
 %    - bst_get('JavaVersion')           : Java version
+%    - bst_get('isJavacomponent')       : Returns 1 if javacomponent is available (Matlab < 2019b), 0 otherwise
 %    - bst_get('SystemMemory')          : Amount of memory available, in Mb
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
@@ -151,7 +156,6 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('InterfaceScaling')      : {100,125,150,...} - Scales the Brainstorm GUI by a fixed factor
 %    - bst_get('GraphicsSmoothing')     : {0,1} - If 1, uses the graphics smoothing (Matlab >= 2014b)
 %    - bst_get('SystemCopy')            : {0,1} - If 1, uses the system calls mv/cp instead of movefile/copyfile (Linux only)
-%    - bst_get('JOGLVersion')           : {0,1,2}, Detect the current version of JOGL available in Matlab
 %    - bst_get('DefaultFormats')        : Default formats for importing/exporting data, channels, ... (last used)
 %    - bst_get('BFSProperties')         : Conductivities and thicknesses for 3-shell spherical forward model
 %    - bst_get('ImportDataOptions')     : Import options for recordings
@@ -165,6 +169,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('TimefreqOptions_psd')
 %    - bst_get('TimefreqOptions_hilbert')
 %    - bst_get('OpenMEEGOptions')
+%    - bst_get('DuneuroOptions')
 %    - bst_get('GridOptions_headmodel')
 %    - bst_get('GridOptions_dipfit')
 %    - bst_get('UniformizeTimeSeriesScales') : {0,1} - If 1, the Y-axis of all the time series figures have the scale
@@ -176,6 +181,8 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ShowEventsMode')             : {'dot','line','none'}
 %    - bst_get('Resolution')                 : [resX,resY] fixed resolutions for X and Y axes
 %    - bst_get('FixedScaleY', Modality)      : Struct with the scales to impose on the recordings for the selected modality
+%    - bst_get('XScale', XScale)             : {'log', 'linear'}
+%    - bst_get('YScale', YScale)             : {'log', 'linear'}
 %    - bst_get('UseSigProcToolbox')       : Use Matlab's Signal Processing Toolbox when available
 %    - bst_get('RawViewerOptions', sFile) : Display options for RAW recordings, adapt for specific file
 %    - bst_get('RawViewerOptions')        : Display options for RAW recordings
@@ -184,7 +191,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('ContactSheetOptions')     : Display options for contact sheets
 %    - bst_get('ProcessOptions')          : Options related with the data processing
 %    - bst_get('CustomColormaps')         : Gets the list of user defined colormaps
-%    - bst_get('MriOptions')              : If 1, flip left-right the views of MRI slices
+%    - bst_get('MriOptions')              : Configuration for MRI display
 %    - bst_get('DigitizeOptions')         : Digitizer options
 %    - bst_get('ReadOnly')                : Read only interface
 %    - bst_get('NodelistOptions')         : Structure with the options for file selection in the Process1 and Process2 panels
@@ -193,7 +200,6 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('JFrame', hFig)            : Get the underlying java frame for a Matlab figure
 %    - bst_get('LastPsdDisplayFunction')  : Display option of measure for spectrum (log, power, magnitude, etc.)
 %    - bst_get('PlotlyCredentials')       : Get the credentials and URL to connect to plot.ly server
-%    - bst_get('MffJarFile')              : Get the path to the MFF JAR file and whether it exists
 %    - bst_get('ExportBidsOptions')       : Additional metadata for BIDS export
 %
 % SEE ALSO bst_set
@@ -202,7 +208,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -216,7 +222,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2017
 
 %% ==== PARSE INPUTS ====
@@ -270,7 +276,7 @@ switch contextName
             Release = str_vers(ipar(1)+1:ipar(2)-1);
         end
         argout1 = Release;
-                     
+
     case 'JavaVersion'
         strver = char(java.lang.System.getProperty('java.version'));
         iDot = find(strver == '.');
@@ -279,6 +285,10 @@ switch contextName
         else 
             argout1 = str2num(strver(1:iDot(2)-1));
         end
+        
+    case 'isJavacomponent'
+        % After Matlab 2019b, javacomponent() and JavaFrame property have been deprecated
+        argout1 = (bst_get('MatlabVersion') <= 906);
         
     case 'SystemMemory'
         maxvar = [];
@@ -384,7 +394,7 @@ switch contextName
             end
         end
         argout1 = defaultsDir;
-        
+
     case 'UserReportsDir'
         reportDir = bst_fullfile(bst_get('BrainstormUserDir'), 'reports');
         if ~isdir(reportDir)
@@ -438,6 +448,21 @@ switch contextName
             end
         end
         argout1 = defDir;
+        
+    case 'UserPluginsDir'
+        % If brainstorm/plugins exists, use it (case of an environment exported and reused)
+        pluginsDir = bst_fullfile(GlobalData.Program.BrainstormHomeDir, 'plugins');
+        % Otherwise (standard case): <home>/.brainstorm/plugins/
+        if ~exist(pluginsDir, 'file')
+            pluginsDir = bst_fullfile(bst_get('BrainstormUserDir'), 'plugins');
+            if ~isdir(pluginsDir)
+                res = mkdir(pluginsDir);
+                if ~res
+                    error(['Cannot create plugins directory: "' pluginsDir '".']); 
+                end
+            end
+        end
+        argout1 = pluginsDir;
         
     case 'BrainstormDbFile'
         argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'brainstorm.mat');
@@ -1098,7 +1123,7 @@ switch contextName
             fileTag = ['_' lower(SurfaceType)];
             iTargetList = find(cellfun(@(c)~isempty(strfind(c, fileTag)), {sSubject.Surface.FileName}));
             % Put the default cortex on top of the list
-            iDefaults = intersect([sSubject.iCortex, sSubject.iScalp, sSubject.iInnerSkull, sSubject.iOuterSkull], iTargetList);
+            iDefaults = intersect([sSubject.iCortex, sSubject.iScalp, sSubject.iInnerSkull, sSubject.iOuterSkull, sSubject.iFibers, sSubject.iFEM], iTargetList);
             if ~isempty(iDefaults)
                 iTargetList = [iDefaults, setdiff(iTargetList, iDefaults)];
             end
@@ -2051,7 +2076,7 @@ switch contextName
                     sItem = sStudy.Image(iItem);
                 end
             % ===== ANATOMY =====
-            case {'cortex','scalp','innerskull','outerskull','tess','fibers'}
+            case {'cortex','scalp','innerskull','outerskull','tess','fibers','fem'}
                 [sStudy, iStudy, iItem] = bst_get('SurfaceFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
                     sItem = sStudy.Surface(iItem);
@@ -2150,7 +2175,7 @@ switch contextName
                 end
             end
             % If Condition is not added yet : add it to the list
-            if isNewCondition
+            if isNewCondition && ~isempty(sStudies(i).Condition)
                 Conditions{end+1} = sStudies(i).Condition{1};
             end
         end
@@ -2174,8 +2199,9 @@ switch contextName
         userDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy');
         userFiles = dir(userDir);
         % Combine the two lists
-        AllFiles = cat(2, cellfun(@(c)bst_fullfile(progDir,c), {progFiles.name}, 'UniformOutput', 0), ...
-                          cellfun(@(c)bst_fullfile(userDir,c), setdiff({userFiles.name}, {progFiles.name}), 'UniformOutput', 0));
+        AllProgNames = cat(2, {progFiles.name}, cellfun(@(c)cat(2,c,'.zip'), {progFiles.name}, 'UniformOutput', 0));
+        AllFiles = cat(2, cellfun(@(c)bst_fullfile(progDir,c), setdiff({progFiles.name}, {'.','..'}), 'UniformOutput', 0), ...
+                          cellfun(@(c)bst_fullfile(userDir,c), setdiff({userFiles.name}, AllProgNames), 'UniformOutput', 0));
         % Initialize list of defaults
         sTemplates = repmat(struct('FilePath',[],'Name',[]), 0);
         % Find all the valid defaults (.zip files or subdirectory with a brainstormsubject.mat in it)
@@ -2200,58 +2226,184 @@ switch contextName
             end
         end
         % Get defaults from internet 
-        if ~ismember(lower({sTemplates.Name}), 'icbm152')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
+        if ~ismember('icbm152', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
             sTemplates(end).Name = 'ICBM152';
         end
-%         if ~ismember(lower({sTemplates.Name}), 'icbm152_2016')
-%             sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016';
-%             sTemplates(end).Name = 'ICBM152_2016';
-%         end
-        if ~ismember(lower({sTemplates.Name}), 'icbm152_2016c')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2016c';
-            sTemplates(end).Name = 'ICBM152_2016c';
+        if ~ismember('icbm152_2019', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end).Name = 'ICBM152_2019';
         end
-        if ~ismember(lower({sTemplates.Name}), 'icbm152_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
+        if ~ismember('icbm152_brainsuite_2016', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_BrainSuite_2016';
             sTemplates(end).Name = 'ICBM152_BrainSuite_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
+        if ~ismember('colin27_2016', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2016';
             sTemplates(end).Name = 'Colin27_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_2012')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_2012';
-            sTemplates(end).Name = 'Colin27_2012';
-        end
-        if ~ismember(lower({sTemplates.Name}), 'colin27_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
+        if ~ismember('colin27_brainsuite_2016', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Colin27_BrainSuite_2016';
             sTemplates(end).Name = 'Colin27_BrainSuite_2016';
         end
-        if ~ismember(lower({sTemplates.Name}), 'bci-dni_brainsuite_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2016';
-            sTemplates(end).Name = 'BCI-DNI_BrainSuite_2016';
+        if ~ismember('bci-dni_brainsuite_2020', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=BCI-DNI_BrainSuite_2020';
+            sTemplates(end).Name = 'BCI-DNI_BrainSuite_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'uscbrain_brainsuite_2017')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2017';
-            sTemplates(end).Name = 'USCBrain_BrainSuite_2017';
+        if ~ismember('uscbrain_brainsuite_2020', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=USCBrain_BrainSuite_2020';
+            sTemplates(end).Name = 'USCBrain_BrainSuite_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'fsaverage_2016')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2016';
-            sTemplates(end).Name = 'FSAverage_2016';
+        if ~ismember('fsaverage_2020', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=FSAverage_2020';
+            sTemplates(end).Name = 'FsAverage_2020';
         end
-        if ~ismember(lower({sTemplates.Name}), 'infant7w_2015b')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Infant7w_2015b';
-            sTemplates(end).Name = 'Infant7w_2015b';
+        if ~ismember('kabdebon_7w', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Kabdebon_7w';
+            sTemplates(end).Name = 'Kabdebon_7w';
         end
-        if ~ismember(lower({sTemplates.Name}), 'oreilly_1y')
-            sTemplates(end+1).FilePath = 'https://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1y';
-            sTemplates(end).Name = 'Oreilly_1y';
+        if ~ismember('oreilly_0.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_0.5m_2021';
+            sTemplates(end).Name = 'Oreilly_0.5m_2021';
+        end
+        if ~ismember('oreilly_1m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_1m_2021';
+            sTemplates(end).Name = 'Oreilly_1m_2021';
+        end
+        if ~ismember('oreilly_2m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_2m_2021';
+            sTemplates(end).Name = 'Oreilly_2m_2021';
+        end
+        if ~ismember(lower({sTemplates.Name}), 'oreilly_3m_2021')
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_3m_2021';
+            sTemplates(end).Name = 'Oreilly_3m_2021';
+        end
+        if ~ismember('oreilly_4.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_4.5m_2021';
+            sTemplates(end).Name = 'Oreilly_4.5m_2021';
+        end
+        if ~ismember('oreilly_6m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_6m_2021';
+            sTemplates(end).Name = 'Oreilly_6m_2021';
+        end
+        if ~ismember('oreilly_7.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_7.5m_2021';
+            sTemplates(end).Name = 'Oreilly_7.5m_2021';
+        end
+        if ~ismember('oreilly_9m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_9m_2021';
+            sTemplates(end).Name = 'Oreilly_9m_2021';
+        end
+        if ~ismember('oreilly_10.5m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_10.5m_2021';
+            sTemplates(end).Name = 'Oreilly_10.5m_2021';
+        end
+        if ~ismember('oreilly_12m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_12m_2021';
+            sTemplates(end).Name = 'Oreilly_12m_2021';
+        end
+        if ~ismember('oreilly_15m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_15m_2021';
+            sTemplates(end).Name = 'Oreilly_15m_2021';
+        end
+        if ~ismember('oreilly_18m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_18m_2021';
+            sTemplates(end).Name = 'Oreilly_18m_2021';
+        end
+        if ~ismember('oreilly_24m_2021', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=Oreilly_24m_2021';
+            sTemplates(end).Name = 'Oreilly_24m_2021';
         end
         % If a specific template was requested
         if ~isempty(AnatName)
             iAnat = find(strcmpi({sTemplates.Name}, AnatName));
             sTemplates = sTemplates(iAnat);
+        end
+        % Sort in alphabetical order
+        if ~isempty(sTemplates)
+            [tmp__, I] = sort_nat({sTemplates(2:end).Name});
+            sTemplates = sTemplates([1, I+1]);
+        end
+        % Return defaults list
+        argout1 = sTemplates;
+        
+        
+%% ==== MNI ATLASES ====
+    % Returns the list of all the available MNI atlases
+    case 'MniAtlasDefaults'
+        % Get templates from the brainstorm3 folder
+        mniDir   = bst_fullfile(bst_get('UserDefaultsDir'), 'mniatlas');
+        mniFiles = dir(bst_fullfile(mniDir, '*.nii.gz'));
+        mniFiles = cellfun(@(c)bst_fullfile(mniDir,c), {mniFiles.name}, 'UniformOutput', 0);
+        % Initialize list of defaults
+        sTemplates = repmat(struct('FilePath',[],'Name',[],'Info',[]), 0);
+        % Find all the valid defaults (.zip files or subdirectory with a brainstormsubject.mat in it)
+        for i = 1:length(mniFiles)
+            % Decompose file name
+            [fPath, fBase, fExt] = bst_fileparts(mniFiles{i});
+            % Keep only files with .nii and .nii.gz extensions
+            if ~isempty(fBase) && (fBase(1) ~= '.') && ~isempty(fExt) && strcmpi(fExt, '.gz')
+                sTemplates(end+1).FilePath = mniFiles{i};
+                sTemplates(end).Name = strrep(fBase, '.nii', '');
+                sTemplates(end).Info = '';
+            end
+        end
+        % Sort in alphabetical order
+        if ~isempty(sTemplates)
+            [tmp__, I] = sort_nat(lower({sTemplates.Name}));
+            sTemplates = sTemplates(I);
+        end
+        
+        % Get defaults from internet
+        if ~ismember('aal2', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL2';
+            sTemplates(end).Name = 'AAL2';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
+        end
+        if ~ismember('aal3', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AAL3';
+            sTemplates(end).Name = 'AAL3';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aal/';
+        end
+        if ~ismember('aicha', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_AICHA';
+            sTemplates(end).Name = 'AICHA';
+            sTemplates(end).Info = 'https://www.gin.cnrs.fr/en/tools/aicha';
+        end
+        if ~ismember('brainnetome', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome';
+            sTemplates(end).Name = 'Brainnetome';
+            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+        end
+        if ~ismember('brainnetome_leaddbs', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brainnetome_leaddbs';
+            sTemplates(end).Name = 'Brainnetome_leaddbs';
+            sTemplates(end).Info = 'http://atlas.brainnetome.org/';
+        end
+        if ~ismember('brodmann', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Brodmann';
+            sTemplates(end).Name = 'Brodmann';
+            sTemplates(end).Info = 'https://people.cas.sc.edu/rorden/mricro/lesion.html#brod';
+        end
+        if ~ismember('hammers83', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Hammers';
+            sTemplates(end).Name = 'Hammers';
+            sTemplates(end).Info = 'http://brain-development.org/brain-atlases/adult-brain-atlases/';
+        end
+        if ~ismember('neuromorphometrics', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Neuromorphometrics';
+            sTemplates(end).Name = 'Neuromorphometrics';
+            sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
+        end
+        if ~ismember('julich-brain-v25', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Julich-Brain-v25';
+            sTemplates(end).Name = 'Julich-Brain-v25';
+            sTemplates(end).Info = 'https://search.kg.ebrains.eu/instances/Dataset/ef48c5e9-6b3c-4d5a-a9a9-e678fe10bdf6';
+        end
+        if ~ismember('schaefer2018_100_7net', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=mni_Schaefer2018';
+            sTemplates(end).Name = 'Schaefer2018';
+            sTemplates(end).Info = 'https://github.com/ThomasYeoLab/CBIG/tree/master/stable_projects/brain_parcellation/Schaefer2018_LocalGlobal';
         end
         % Return defaults list
         argout1 = sTemplates;
@@ -2260,7 +2412,19 @@ switch contextName
 %% ==== EEG DEFAULTS ====
     % Returns an array of struct(fullpath, name) of all the Brainstorm eeg nets defaults
     % Usage: EegDefaults = bst_get('EegDefaults')
+    %        EegDefaults = bst_get('EegDefaults', TemplateName=[], SetupName=[])
     case 'EegDefaults'
+        % Parse inputs
+        if (nargin >= 3)
+            SetupName = varargin{3};
+        else
+            SetupName = [];
+        end
+        if (nargin >= 2)
+            TemplateName = varargin{2};
+        else
+            TemplateName = [];
+        end
         % Get templates from the brainstorm3 folder
         progDir   = bst_fullfile(bst_get('BrainstormDefaultsDir'), 'eeg');
         progFiles = dir(bst_fullfile(progDir, '*'));
@@ -2280,16 +2444,27 @@ switch contextName
             if ~isdir(dirList{iDir}) || isempty(fBase) || strcmpi(fBase(1),'.')
                 continue;
             end
+            % Skip if it is not the requested template
+            if ~isempty(TemplateName) && ~strcmpi(fBase, TemplateName)
+                continue;
+            end
             % Get files list
             fileList = dir(bst_fullfile(dirList{iDir}, 'channel*.mat'));
             defaultsList = repmat(struct('fullpath','', 'name',''), 0);
             % Find all the valid defaults (channel files)
             for iFile = 1:length(fileList)
-                defaultsList(iFile).fullpath = bst_fullfile(dirList{iDir}, fileList(iFile).name);
                 [tmp__, baseName] = bst_fileparts(fileList(iFile).name);
-                defaultsList(iFile).name = strrep(baseName, 'channel_', '');
-                defaultsList(iFile).name = strrep(defaultsList(iFile).name, '_channel', '');
-                defaultsList(iFile).name = strrep(defaultsList(iFile).name, '_', ' ');
+                baseName = strrep(baseName, 'channel_', '');
+                baseName = strrep(baseName, '_channel', '');
+                baseName = strrep(baseName, '_', ' ');
+                % Skip if it is not the requested template
+                if ~isempty(SetupName) && ~strcmpi(baseName, SetupName)
+                    continue;
+                end
+                % Add to list of templates
+                iNewDefault = length(defaultsList) + 1;
+                defaultsList(iNewDefault).fullpath = bst_fullfile(dirList{iDir}, fileList(iFile).name);
+                defaultsList(iNewDefault).name = baseName;
             end
             % Add files list to defaults list
             if ~isempty(defaultsList)
@@ -2297,7 +2472,6 @@ switch contextName
                                                     'name',     fBase);
             end
         end
-        
         % Return defaults list
         argout1 = fullDefaultsList;
         
@@ -2312,6 +2486,9 @@ switch contextName
         for i = 1:length(iStudies)
             % Get study definition
             sStudy = bst_get('Study', iStudies(i));
+            if isempty(sStudy)
+                continue;
+            end
             % Recordings or sources
             switch (DataType)
                 case 'data'
@@ -2374,6 +2551,12 @@ switch contextName
             argout1 = [];
         else
             argout1 = GlobalData.Program.ScreenDef;
+        end
+    case 'DecorationSize'
+        if isempty(GlobalData) || isempty(GlobalData.Program) || ~isfield(GlobalData.Program, 'DecorationSize')
+            argout1 = [];
+        else
+            argout1 = GlobalData.Program.DecorationSize;
         end
     case 'Layout'
         % Default or current layout structure
@@ -2451,6 +2634,20 @@ switch contextName
         else
             argout1 = [];
         end
+        
+    case 'XScale'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'XScale')
+            argout1 = GlobalData.Preferences.XScale;
+        else
+            argout1 = 'linear';
+        end
+        
+    case 'YScale'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'YScale')
+            argout1 = GlobalData.Preferences.YScale;
+        else
+            argout1 = 'linear';
+        end        
         
     case 'ShowEventsMode'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ShowEventsMode')
@@ -2532,23 +2729,11 @@ switch contextName
             % Get screen resolution
             if isfield(GlobalData, 'Program') && isfield(GlobalData.Program, 'ScreenDef') && isfield(GlobalData.Program.ScreenDef, 'javaPos') && ~isempty(GlobalData.Program.ScreenDef(1).javaPos)
                 AvailableRes = [100 125 150 200 250 300 400];
-                iRes = bst_closest(GlobalData.Program.ScreenDef(1).javaPos.width * 125 / 1920, AvailableRes);
+                iRes = bst_closest(GlobalData.Program.ScreenDef(1).javaPos.width * 100 / 1920, AvailableRes);
                 argout1 = AvailableRes(iRes);
             else
                 argout1 = 100;
             end
-        end
-        
-    case 'JOGLVersion'
-        % If JOGL1 is available
-        if exist('javax.media.opengl.GLCanvas', 'class')
-            argout1 = 1;
-        % If JOGL2 is available
-        elseif exist('javax.media.opengl.awt.GLCanvas', 'class')
-            argout1 = 2;
-        % No JOGL available
-        else
-            argout1 = 0;
         end
 
     case 'TSDisplayMode'
@@ -2558,21 +2743,17 @@ switch contextName
             argout1 = 'butterfly';
         end 
 
-    case 'FieldTripDir'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'FieldTripDir') && ~isempty(GlobalData.Preferences.FieldTripDir)
-            if isdir(GlobalData.Preferences.FieldTripDir) && file_exist(bst_fullfile(GlobalData.Preferences.FieldTripDir, 'ft_defaults.m'))
-                argout1 = GlobalData.Preferences.FieldTripDir;
-            else
-                argout1 = [];
-            end
+    case 'PluginCustomPath'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'PluginCustomPath') && ~isempty(GlobalData.Preferences.PluginCustomPath)
+            argout1 = GlobalData.Preferences.PluginCustomPath;
         else
             argout1 = [];
         end
         
-    case 'SpmDir'
-        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'SpmDir') && ~isempty(GlobalData.Preferences.SpmDir)
-            if isdir(GlobalData.Preferences.SpmDir) && file_exist(bst_fullfile(GlobalData.Preferences.SpmDir, 'spm.m'))
-                argout1 = GlobalData.Preferences.SpmDir;
+    case 'BrainSuiteDir'
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'BrainSuiteDir') && ~isempty(GlobalData.Preferences.BrainSuiteDir)
+            if isdir(GlobalData.Preferences.BrainSuiteDir) && file_exist(bst_fullfile(GlobalData.Preferences.BrainSuiteDir, 'bdp'))
+                argout1 = GlobalData.Preferences.BrainSuiteDir;
             else
                 argout1 = [];
             end
@@ -2582,12 +2763,60 @@ switch contextName
         
     case 'SpmTpmAtlas'
         % Get template file
-        argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+        tpmUser = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
+        if file_exist(tpmUser)
+            argout1 = tpmUser;
+            disp(['SPM12 template found: ' tpmUser]);
+            return;
+        end
         % If it does not exist: check in brainstorm3 folder
-        if ~file_exist(argout1)
-            distribTpm = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
-            if file_exist(distribTpm)
-                argout1 = distribTpm;
+        tpmDistrib = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
+        if file_exist(tpmDistrib)
+            argout1 = tpmDistrib;
+            disp(['SPM12 template found: ' tpmDistrib]);
+            return;
+        end
+        % If it does not exist: check in spm12 folder
+        PlugSpm = bst_plugin('GetInstalled', 'spm12');
+        if ~isempty(PlugSpm)
+            tpmSpm = bst_fullfile(PlugSpm.Path, PlugSpm.SubFolder, 'tpm', 'TPM.nii');
+            if file_exist(tpmSpm)
+                argout1 = tpmSpm;
+                disp(['SPM12 template found: ' tpmSpm]);
+                return;
+            end
+        else
+            tpmSpm = '';
+        end
+        % Not found...
+        disp('SPM12 template not found in any of the following folders:');
+        disp([' - ' tpmUser]);
+        disp([' - ' tpmDistrib]);
+        if ~isempty(tpmSpm)
+            disp([' - ' tpmSpm]);
+        end
+        % Return the preferred location: .brainstorm/defaults/spm/TPM.nii
+        argout1 = tpmUser;
+        
+    case 'PythonExe'
+        % Get saved value
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'PythonExe') && ~isempty(GlobalData.Preferences.PythonExe)
+            if file_exist(GlobalData.Preferences.PythonExe)
+                argout1 = GlobalData.Preferences.PythonExe;
+            else
+                disp(['BST> Error: Python executable not found: ' GlobalData.Preferences.PythonExe]);
+                argout1 = [];
+            end
+        else
+            argout1 = [];
+        end
+        % If not defined in Brainstorm, but set in Matlab
+        if isempty(argout1)
+            [pyVer, PythonExe] = bst_python_ver();
+            if ~isempty(PythonExe) && file_exist(PythonExe)
+                disp(['BST> Found Python executable: ' PythonExe]);
+                argout1 = PythonExe;
+                bst_set('PythonExe', PythonExe);
             end
         end
         
@@ -2627,15 +2856,23 @@ switch contextName
         end
         
     case 'UseSigProcToolbox'
-        % Check if Signal Processing Toolbox is installed
-        isToolboxInstalled = exist('fir2', 'file');
-        % Return user preferences
-        if ~isToolboxInstalled
-            argout1 = 0;
-        elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
-            argout1 = GlobalData.Preferences.UseSigProcToolbox;
+        % In a parfor loop: GlobalData is empty => Check only if the toolbox is installed (ignore user preferences) 
+        if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'HasSigProcToolbox')
+            argout1 = exist('fir2', 'file');
         else
-            argout1 = 1;
+            % Save the result of the check for the SigProc tb
+            if isempty(GlobalData.Program.HasSigProcToolbox)
+                % Check if Signal Processing Toolbox is installed
+                GlobalData.Program.HasSigProcToolbox = (exist('fir2', 'file') == 2);
+            end
+            % Return user preferences
+            if ~GlobalData.Program.HasSigProcToolbox
+                argout1 = 0;
+            elseif isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'UseSigProcToolbox')
+                argout1 = GlobalData.Preferences.UseSigProcToolbox;
+            else
+                argout1 = 1;
+            end
         end
 
     case 'CustomColormaps'
@@ -2676,7 +2913,7 @@ switch contextName
         
     case 'DefaultFormats'
         defPref = struct(...
-            'AnatIn',      '', ...
+            'AnatIn',      'FreeSurfer', ...
             'ChannelIn',   '', ...
             'ChannelOut',  '', ...
             'DataIn',      'CTF', ...
@@ -2687,7 +2924,7 @@ switch contextName
             'EventsIn',    '', ...
             'EventsOut',   '', ...
             'MriIn',       '', ...
-            'MriOut',      '', ...
+            'MriOut',      'Nifti1', ...
             'NoiseCovIn',  '', ...
             'NoiseCovOut', '', ...
             'ResultsIn',   '', ...
@@ -2796,6 +3033,7 @@ switch contextName
             'WhiteBackground', 0, ...
             'ShowRefLines',    1, ...
             'ShowLegend',      1, ...
+            'FlipYAxis',       0, ...
             'ContourLines',    10);
         argout1 = FillMissingFields(contextName, defPref);
         
@@ -2891,7 +3129,7 @@ switch contextName
         if isempty(argout1.Freqs)
             argout1.Freqs = defPref.Freqs;
         end
-        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+        if ~isempty(argout1.FreqBands) && ((size(argout1.FreqBands,2) ~= 3) || ~all(cellfun(@ischar, argout1.FreqBands(:))) || any(cellfun(@(c)isempty(strtrim(c)), argout1.FreqBands(:))))
             argout1.FreqBands = defPref.FreqBands;
         end
 
@@ -2912,7 +3150,7 @@ switch contextName
         if isempty(argout1.Freqs)
             argout1.Freqs = defPref.Freqs;
         end
-        if ~isempty(argout1.FreqBands) && ~ischar(argout1.FreqBands{1,2})
+        if ~isempty(argout1.FreqBands) && (size(argout1.FreqBands,2) == 3) && ~ischar(argout1.FreqBands{1,2})
             argout1.FreqBands = defPref.FreqBands;
         end
         
@@ -2994,6 +3232,10 @@ switch contextName
         defPref.SplitLength  = 4000;
         argout1 = FillMissingFields(contextName, defPref);
         
+    case 'DuneuroOptions'
+        defPref = duneuro_defaults();        
+        argout1 = FillMissingFields(contextName, defPref);
+        
     case 'GridOptions_dipfit'
         defPref = struct(...
             'Method',         'isotropic', ...
@@ -3022,7 +3264,8 @@ switch contextName
             'OverlaySmooth',    0, ...
             'InterpDownsample', 3, ...
             'DistanceThresh',   6, ...
-            'UpsampleImage',    0);
+            'UpsampleImage',    0, ...
+            'DefaultAtlas',     []);
         argout1 = FillMissingFields(contextName, defPref);
         
     case 'DigitizeOptions'
@@ -3043,7 +3286,38 @@ switch contextName
                        'Labels', [])], ...
             'iMontage',     1);
         argout1 = FillMissingFields(contextName, defPref);
-        
+    
+    case 'ConnectGraphOptions'
+        % Get interface scaling factor
+        InterfaceScaling = bst_get('InterfaceScaling');
+        % Get default values
+        defPref = struct(...
+            'LobeFullLabel', 1, ...
+            'TextDisplayMode', [1 2], ...
+            'LabelSize', 7 .* InterfaceScaling ./ 100, ...
+            'NodeSize', 5 .* InterfaceScaling ./ 100, ...
+            'LinkSize', 1.5 .* InterfaceScaling ./ 100, ...
+            'BgColor', [0 0 0], ...
+            'HierarchyNodeIsVisible', 1);
+        % If we have an additional argument, get the default values
+        if nargin > 1
+            argout1 = defPref;
+        % Otherwise, get the saved values
+        else
+            savedValues = FillMissingFields(contextName, defPref);
+            
+            % if any of the fields are [], replace by default value
+            % do it here to avoid touching the common FillMissingFields
+            % function, as other tools may actually want to set [] as desired property           
+            fields = fieldnames(savedValues);
+            for i=1:numel(fields)
+                if(isempty(savedValues.(fields{i})))
+                    savedValues.(fields{i}) = defPref.(fields{i});
+                end
+            end
+            argout1 = savedValues;
+        end
+    
     case 'NodelistOptions'
         defPref = struct(...
             'String', '', ...         % What to search for
@@ -3081,10 +3355,6 @@ switch contextName
         catch
             argout3 = '';
         end
-    
-    case 'MffJarFile'
-        argout1 = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabio', 'MFF-1.2.2-jar-with-dependencies.jar');
-        argout2 = exist(argout1, 'file') == 2;
 
     case 'KlustersExecutable'
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'KlustersExecutable')
@@ -3101,16 +3371,18 @@ switch contextName
                 argout1 = {...
                     {'.img'},          'MRI: Analyze (*.img/*.hdr)',           'Analyze'; ...
                     {'.ima'},          'MRI: BrainVISA GIS (*.ima/*.dim)',     'GIS'; ...
+                    {'.ima'},          'MRI: BrainVISA GIS (*.ima/*.dim)',     'GIS'; ...
                     {'.mri'},          'MRI: CTF (*.mri)',                     'CTF'; ...
                     {'.mat'},          'MRI: FieldTrip (*.mat)',               'FT-MRI'; ...
                     {'.mgh','.mgz'},   'MRI: MGH (*.mgh,*.mgz)',               'MGH'; ...
                     {'.mnc', '.mni'},  'MRI: MNI (*.mnc,*.mni)',               'MINC'; ...
-                    {'.nii'},          'MRI: NIfTI-1 (*.nii)',                 'Nifti1'; ...
-                    {'.gz'},           'MRI: NIfTI-1 gzipped (*.nii.gz)',      'Nifti1gz'; ...
+                    {'.nii','.gz'},    'MRI: NIfTI-1 (*.nii;*.nii.gz)',        'Nifti1'; ...
                     {'_subjectimage'}, 'MRI: Brainstorm (*subjectimage*.mat)', 'BST'; ...
                     {'*'},             'MRI: DICOM (SPM converter)',           'DICOM-SPM'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'All MRI files (subject space)', 'ALL'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'All MRI files (MNI space)',     'ALL-MNI'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume atlas (subject space)',  'ALL-ATLAS'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume atlas (MNI space)',      'ALL-MNI-ATLAS'; ...
                    };
             case 'mriout'
                 argout1 = {...
@@ -3122,13 +3394,18 @@ switch contextName
                    };
             case 'anatin'
                 argout1 = {...
-                    {'.folder'}, 'FreeSurfer folder', 'FreeSurfer'; ...
-                    {'.folder'}, 'FreeSurfer folder + Thickness maps', 'FreeSurfer+Thick'; ...
-                    {'.folder'}, 'BrainSuite folder', 'BrainSuite'; ...
-                    {'.folder'}, 'BrainVISA folder', 'BrainVISA'; ...
-                    {'.folder'}, 'CIVET folder', 'CIVET'; ...
-                    {'.folder'}, 'CIVET folder + Thickness maps', 'CIVET+Thick'; ...
+                    {'.folder'}, 'FreeSurfer', 'FreeSurfer-fast'; ...
+                    {'.folder'}, 'FreeSurfer + Volume atlases', 'FreeSurfer'; ...
+                    {'.folder'}, 'FreeSurfer + Volume atlases + Thickness', 'FreeSurfer+Thick'; ...
+                    {'.folder'}, 'BrainSuite', 'BrainSuite-fast'; ...
+                    {'.folder'}, 'BrainSuite + Volume atlases', 'BrainSuite'; ...
+                    {'.folder'}, 'BrainVISA', 'BrainVISA'; ...
+                    {'.folder'}, 'CAT12', 'CAT12'; ...
+                    {'.folder'}, 'CAT12 + Thickness', 'CAT12+Thick'; ...
+                    {'.folder'}, 'CIVET', 'CIVET'; ...
+                    {'.folder'}, 'CIVET + Thickness', 'CIVET+Thick'; ...
                     {'.folder'}, 'HCP MEG/anatomy (pipeline v3)', 'HCPv3'; ...
+                    {'.folder'}, 'SimNIBS', 'SimNIBS'; ...
                    };
             case 'source4d'
                 argout1 = {...
@@ -3149,10 +3426,12 @@ switch contextName
                     {'.vtk'},   'FSL: VTK (*.vtk)',        'VTK'; ...
                     {'*'},      'FreeSurfer (*.*)',        'FS';
                     {'.off'},   'Geomview OFF (*.off)',    'OFF'; ...
-                    {'.gii'},   'GIfTI (*.gii)',           'GII'; ...
-                    {'.gii'},   'GIfTI/MNI space (*.gii)', 'GII-MNI'; ...
+                    {'.gii'},   'GIfTI / MRI coordinates (*.gii)', 'GII'; ...
+                    {'.gii'},   'GIfTI / MNI coordinates (*.gii)', 'GII-MNI'; ...
+                    {'.gii'},   'GIfTI / World coordinates (*.gii)', 'GII-WORLD'; ...
                     {'.fif'},   'MNE (*.fif)',             'FIF'; ...
                     {'.obj'},   'MNI OBJ (*.obj)',         'MNIOBJ'; ...
+                    {'.msh'},   'SimNIBS Gmsh4 (*.msh)',   'SIMNIBS'; ...
                     {'.tri'},   'TRI (*.tri)',             'TRI'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume mask or atlas (subject space)', 'MRI-MASK'; ...
                     {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz'},                  'Volume mask or atlas (MNI space)',     'MRI-MASK-MNI'; ...
@@ -3181,43 +3460,54 @@ switch contextName
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Ricoh (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'RICOH'; ...
                      {'.mat'},               'MEG/EEG: SPM (*.mat/.dat)',            'SPM-DAT'; ...
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
-                     {'.hdf5'},              'MEG/EEG: York Instruments MEGSCAN (.hdf5)', 'MEGSCAN-HDF5'; ...
+                     {'.meghdf5'},              'MEG/EEG: York Instruments MEGSCAN (.meghdf5)', 'MEGSCAN-HDF5'; ...
                      {'.bst'},               'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
+                     {'.adicht'},            'EEG: ADInstruments LabChart (*.adicht)', 'EEG-ADICHT'; ...
                      {'.msr'},               'EEG: ANT ASA (*.msr)',                 'EEG-ANT-MSR'; ...
-                     {'.cnt'},               'EEG: ANT EEProbe (*.cnt)',             'EEG-ANT-CNT'; ...
+                     {'.cnt','.avr'},        'EEG: ANT EEProbe (*.cnt;*.avr)',       'EEG-ANT-CNT'; ...
                      {'*'},                  'EEG: ASCII text (*.*)',                'EEG-ASCII'; ...
+                     {'.raw'},               'EEG: Axion AxIS (*.raw)',              'EEG-AXION'; ...
                      {'.bdf'},               'EEG: BDF (*.bdf)',                     'EEG-BDF'; ...
                      {'.avr','.mux','.mul'}, 'EEG: BESA exports (*.avr;*.mul;*.mux)', 'EEG-BESA'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Blackrock NeuroPort (*.nsX/*.nev)', 'EEG-BLACKROCK';
-                     {'.eeg'},               'EEG: BrainVision BrainAmp (*.eeg)',    'EEG-BRAINAMP'; ...
+                     {'.eeg','.dat'},        'EEG: BrainVision BrainAmp (*.eeg;*.dat)', 'EEG-BRAINAMP'; ...
                      {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
                      {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
                      {'.dat','.cdt'},        'EEG: Curry (*.dat;*.cdt)',             'EEG-CURRY'; ...
-                     {'.smr','.son'},        'EEG: CED Spike2 (*.smr;*.son)',        'EEG-SMR'; ...
+                     {'.smr','.son'},        'EEG: CED Spike2 old 32bit (*.smr;*.son)',  'EEG-SMR'; ...
+                     {'.smr','.smrx'},       'EEG: CED Spike2 new 64bit (*.smr;*.smrx)', 'EEG-SMRX'; ...
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
                      {'.edf','.rec'},        'EEG: EDF / EDF+ (*.rec;*.edf)',        'EEG-EDF'; ...
                      {'.set'},               'EEG: EEGLAB (*.set)',                  'EEG-EEGLAB'; ...
                      {'.raw'},               'EEG: EGI Netstation RAW (*.raw)',      'EEG-EGI-RAW'; ...
                      {'.mff','.bin'},        'EEG: EGI-Philips (*.mff)',             'EEG-EGI-MFF'; ...
+                     {'.edf'},               'EEG: EmotivPRO (*.edf)',               'EEG-EMOTIV'; ...
                      {'.erp','.hdr'},        'EEG: ERPCenter (*.hdr;*.erp)',         'EEG-ERPCENTER'; ...
                      {'.erp'},               'EEG: ERPLab (*.erp)',                  'EEG-ERPLAB'; ...
                      {'.mat','.hdf5'},       'EEG: g.tec Matlab (*.mat,*.hdf5)',     'EEG-GTEC'; ...
-                     {'.rhd'},               'EEG: Intan (*.rhd)',                   'EEG-INTAN'; ...
+                     {'.rhd','.rhs'},        'EEG: Intan (*.rhd,*.rhs)',             'EEG-INTAN'; ...
                      {'.mb2'},               'EEG: MANSCAN (*.mb2)',                 'EEG-MANSCAN'; ...
                      {'.trc'},               'EEG: Micromed (*.trc)',                'EEG-MICROMED'; ...
                      {'.mat'},               'EEG: Matlab matrix (*.mat)',           'EEG-MAT'; ...
                      {'.csv'},               'EEG: Muse (*.csv)',                    'EEG-MUSE-CSV'; ...
                      {'.ncs'},               'EEG: Neuralynx (*.ncs)',               'EEG-NEURALYNX'; ...
+                     {'.nwb'},               'EEG: Neurodata Without Borders (*.nwb)','NWB'; ...
+                     {'.nedf','.easy'},      'EEG: Neuroelectrics (*.nedf;*.easy)',  'EEG-NEUROELECTRICS'; ...
                      {'.bin'},               'EEG: NeurOne session folder',          'EEG-NEURONE'; ...
                      {'.cnt','.avg','.eeg','.dat'}, 'EEG: Neuroscan (*.cnt;*.eeg;*.avg;*.dat)', 'EEG-NEUROSCAN'; ...
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
                      {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
+                     {'.dat'},               'EEG: Open Ephys flat binary (*.dat)',  'EEG-OEBIN'; ...
                      {'.plx','.pl2'},        'EEG: Plexon (*.plx;*.pl2)',            'EEG-PLEXON'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.h5'},                'EEG: The Virtual Brain (*_TimeSeriesEEG.h5)', 'EEG-TVB'; ...
+                     {'.csv'},               'EEG: Wearable Sensing (*.csv)',        'EEG-WS-CSV'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
-                     {'.edf'},               'EyeLink eye tracker (*.edf)',          'EYELINK'; ...
+                     {'.bnirs','.jnirs','.snirf'}, 'NIRS: SNIRF (*.snirf)',          'NIRS-SNIRF'; ...
+                     {'.edf'},               'Eye tracker: EyeLink (*.edf)',         'EYELINK'; ...
+                     {'.tsv'},               'Eye tracker: Tobii glasses (*.tsv)',   'EYE-TOBII-TSV'; ...
                     };
             case 'raw'
                 argout1 = {...
@@ -3230,18 +3520,21 @@ switch contextName
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Ricoh (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'RICOH'; ...
                      {'.mat'},               'MEG/EEG: SPM (*.mat/.dat)',            'SPM-DAT'; ...
                      {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
-                     {'.hdf5'},              'MEG/EEG: York Instruments MEGSCAN (.hdf5)', 'MEGSCAN-HDF5'; ...
+                     {'.meghdf5'},              'MEG/EEG: York Instruments MEGSCAN (.meghdf5)', 'MEGSCAN-HDF5'; ...
                      {'.bst'},               'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
+                     {'.adicht'},            'EEG: ADInstruments LabChart (*.adicht)', 'EEG-ADICHT'; ...
                      {'.msr'},               'EEG: ANT ASA (*.msr)',                 'EEG-ANT-MSR'; ...
-                     {'.cnt'},               'EEG: ANT EEProbe (*.cnt)',             'EEG-ANT-CNT'; ...
+                     {'.cnt','.avr'},        'EEG: ANT EEProbe (*.cnt;*.avr)',       'EEG-ANT-CNT'; ...
                      {'*'},                  'EEG: ASCII text (*.*)',                'EEG-ASCII'; ...
+                     {'.raw'},               'EEG: Axion AxIS (*.raw)',              'EEG-AXION'; ...
                      {'.bdf'},               'EEG: BDF (*.bdf)',                     'EEG-BDF'; ...
                      {'.avr','.mux','.mul'}, 'EEG: BESA exports (*.avr;*.mul;*.mux)', 'EEG-BESA'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Blackrock NeuroPort (*.nsX/*.nev)', 'EEG-BLACKROCK';
-                     {'.eeg'},               'EEG: BrainVision BrainAmp (*.eeg)',    'EEG-BRAINAMP'; ...
+                     {'.eeg','.dat'},        'EEG: BrainVision BrainAmp (*.eeg;*.dat)',          'EEG-BRAINAMP'; ...
                      {'.txt'},               'EEG: BrainVision Analyzer (*.txt)',    'EEG-BRAINVISION'; ...
                      {'.sef','.ep','.eph'},  'EEG: Cartool (*.sef;*.ep;*.eph)',      'EEG-CARTOOL'; ...
-                     {'.smr','.son'},        'EEG: CED Spike2 (*.smr;*.son)',        'EEG-SMR'; ...
+                     {'.smr','.son'},        'EEG: CED Spike2 old 32bit (*.smr;*.son)',  'EEG-SMR'; ...
+                     {'.smr','.smrx'},       'EEG: CED Spike2 new 64bit (*.smr;*.smrx)', 'EEG-SMRX'; ...
                      {'.rda'},               'EEG: Compumedics ProFusion Sleep (*.rda)',  'EEG-COMPUMEDICS-PFS'; ...
                      {'.dat','.cdt'},        'EEG: Curry (*.dat;*.cdt)',             'EEG-CURRY'; ...
                      {'.bin'},               'EEG: Deltamed Coherence-Neurofile (*.bin)', 'EEG-DELTAMED'; ...
@@ -3249,26 +3542,33 @@ switch contextName
                      {'.set'},               'EEG: EEGLAB (*.set)',                  'EEG-EEGLAB'; ...
                      {'.raw'},               'EEG: EGI Netstation RAW (*.raw)',      'EEG-EGI-RAW'; ...
                      {'.mff','.bin'},        'EEG: EGI-Philips (*.mff)',             'EEG-EGI-MFF'; ...
+                     {'.edf'},               'EEG: EmotivPRO (*.edf)',               'EEG-EMOTIV'; ...
                      {'.mat','.hdf5'},       'EEG: g.tec Matlab (*.mat,*.hdf5)',     'EEG-GTEC'; ...
-                     {'.rhd'},               'EEG: Intan (*.rhd)',                   'EEG-INTAN'; ...
+                     {'.rhd','.rhs'},        'EEG: Intan (*.rhd,*.rhs)',             'EEG-INTAN'; ...
                      {'.mb2'},               'EEG: MANSCAN (*.mb2)',                 'EEG-MANSCAN'; ...
                      {'.mat'},               'EEG: Matlab matrix (*.mat)',           'EEG-MAT'; ...
                      {'.csv'},               'EEG: Muse (*.csv)',                    'EEG-MUSE-CSV'; ...
                      {'.trc'},               'EEG: Micromed (*.trc)',                'EEG-MICROMED'; ...
                      {'.ncs'},               'EEG: Neuralynx (*.ncs)',               'EEG-NEURALYNX'; ...
                      {'.nwb'},               'EEG: Neurodata Without Borders (*.nwb)','NWB'; ...
+                     {'.nedf','.easy'},      'EEG: Neuroelectrics (*.nedf;*.easy)',  'EEG-NEUROELECTRICS'; ...
                      {'.bin'},               'EEG: NeurOne session folder',          'EEG-NEURONE'; ...
                      {'.cnt','.avg','.eeg','.dat'}, 'EEG: Neuroscan (*.cnt;*.eeg;*.avg;*.dat)', 'EEG-NEUROSCAN'; ...
                      {'.eeg','.dat'},        'EEG: NeuroScope (*.eeg;*.dat)',        'EEG-NEUROSCOPE'; ...
                      {'.e'},                 'EEG: Nicolet (*.e)',                   'EEG-NICOLET'; ...
                      {'.eeg'},               'EEG: Nihon Kohden (*.eeg)',            'EEG-NK'; ...
+                     {'.dat'},               'EEG: Open Ephys flat binary (*.dat)',  'EEG-OEBIN'; ...
                      {'.plx','.pl2'},        'EEG: Plexon (*.plx;.pl2)'              'EEG-PLEXON'; ...
                      {'.ns1','.ns2','.ns3','.ns4','.ns5','.ns6'}, 'EEG: Ripple Trellis (*.nsX/*.nev)', 'EEG-RIPPLE'; ...
+                     {'.h5'},                'EEG: The Virtual Brain (*_TimeSeriesEEG.h5)', 'EEG-TVB'; ...
                      {'.tbk'},               'EEG: Tucker Davis Technologies (*.tbk)',    'EEG-TDT'; ...
-                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'SEEG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'SEEG-ALL'; ...
-                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'ECOG: Deltamed/Micromed/NK/Nicolet/BrainAmp/EDF', 'ECOG-ALL'; ...
+                     {'.csv'},               'EEG: Wearable Sensing (*.csv)',        'EEG-WS-CSV'; ...
+                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'SEEG: Deltamed/Micromed/NK/Nicolet/BrainVision/EDF', 'SEEG-ALL'; ...
+                     {'.trc','.eeg','.e','.bin','.rda','.edf','.bdf'}, 'ECOG: Deltamed/Micromed/NK/Nicolet/BrainVision/EDF', 'ECOG-ALL'; ...
                      {'.nirs'},              'NIRS: Brainsight (*.nirs)',            'NIRS-BRS'; ...
-                     {'.edf'},               'EyeLink eye tracker (*.edf)',          'EYELINK'; ...
+                     {'.bnirs','.jnirs','.snirf'}, 'NIRS: SNIRF (*.snirf)',          'NIRS-SNIRF'; ...
+                     {'.edf'},               'Eye tracker: EyeLink (*.edf)',         'EYELINK'; ...
+                     {'.tsv'},               'Eye tracker: Tobii glasses (*.tsv)',   'EYE-TOBII-TSV'; ...
                     };
 
             case 'dataout'
@@ -3280,11 +3580,17 @@ switch contextName
                     {'.eph'},   'EEG: Cartool EPH (*.eph)',                    'EEG-CARTOOL-EPH'; ...
                     {'.raw'},   'EEG: EGI NetStation RAW (*.raw)',             'EEG-EGI-RAW'; ...
                     {'.edf'},   'EEG: European Data Format (*.edf)',           'EEG-EDF'; ...
-                    {'.txt'},   'ASCII: Space-separated (*.txt)',              'ASCII-SPC'; ...
+                    {'.snirf'}, 'NIRS: SNIRF (*.snirf)',                       'NIRS-SNIRF'; ...
+                    {'.txt'},   'ASCII: Space-separated, fixed column size (*.txt)', 'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated with header, fixed column size (*.txt)', 'ASCII-SPC-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated (*.tsv)',                'ASCII-TSV'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header (*.tsv)',    'ASCII-TSV-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header transposed (*.tsv)',   'ASCII-TSV-HDR-TR'; ...
                     {'.csv'},   'ASCII: Comma-separated (*.csv)',              'ASCII-CSV'; ...
-                    {'.txt'},   'ASCII: Space-separated with header (*.txt)',  'ASCII-SPC-HDR'; ...
                     {'.csv'},   'ASCII: Comma-separated with header (*.csv)',  'ASCII-CSV-HDR'; ...
+                    {'.csv'},   'ASCII: Comma-separated with header transposed (*.csv)', 'ASCII-CSV-HDR-TR'; ...
                     {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL'; ...
+                    {'.xlsx'},  'Microsoft Excel transposed (*.xlsx)',         'EXCEL-TR'; ...
                     {'_timeseries'}, 'Brainstorm matrix (*timeseries*.mat)',   'BST'; ...
                    };
             case 'rawout'
@@ -3294,12 +3600,14 @@ switch contextName
                     {'.eeg'},   'EEG: BrainVision BrainAmp (*.eeg)',   'EEG-BRAINAMP'; ...
                     {'.raw'},   'EEG: EGI NetStation RAW (*.raw)',     'EEG-EGI-RAW'; ...
                     {'.edf'},   'EEG: European Data Format (*.edf)',   'EEG-EDF'; ...
+                    {'.snirf'}, 'NIRS: SNIRF (*.snirf)',               'NIRS-SNIRF'; ...
                    };
             case 'events'
                 argout1 = {...
                     {'.trg'},          'ANT EEProbe (*.trg)',           'ANT'; ...
+                    {'.mrk'},          'AnyWave (*.mrk)',               'ANYWAVE'; ...
                     {'.evt'},          'BESA (*.evt)',                  'BESA'; ...
-                    {'.tsv'},          'BIDS events (*.tsv)',           'BIDS'; ...
+                    {'.tsv'},          'BIDS events: onset, duration, trial_type, channel (*.tsv)', 'BIDS'; ...
                     {'.vmrk'},         'BrainVision BrainAmp (*.vmrk)', 'BRAINAMP'; ...
                     {'_events'},       'Brainstorm (events*.mat)',      'BST'; ...
                     {'.mrk'},          'Cartool (*.mrk)',               'CARTOOL'; ...
@@ -3309,13 +3617,17 @@ switch contextName
                     {'.evl','.txt'},   'Elekta-Neuromag Graph (*.evl;*.txt)',  'GRAPH'; ...
                     {'.txt','.mat'},   'FieldTrip trial definition (*.txt;*.mat)', 'TRL'; ...
                     {'.trg'},          'KRISS MEG (*.trg)',             'KDF'; ...
+                    {'.evt'},          'Micromed (*.evt)',              'MICROMED'; ...
                     {'.ev2'},          'Neuroscan (*.ev2)',             'NEUROSCAN'; ...
+                    {'.txt'},          'Nicolet export (*.txt)',        'NICOLET'; ...
+                    {'timestamps.npy'},'Open Ephys (timestamps.npy)', 'OEBIN'; ...
                     {'.log'},          'Presentation (*.log)',          'PRESENTATION'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},   'Ricoh (*.mrk;*.sqd;*.con;*.raw;*.ave)', 'RICOH'; ...
                     {'.txt'},          'XLTEK export (*.txt)',          'XLTEK'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},   'Yokogawa/KIT (*.mrk;*.sqd;*.con;*.raw;*.ave)', 'KIT'; ...
                     {'.*'},            'Array of times (*.mat;*.*)',    'ARRAY-TIMES'; ...
                     {'.*'},            'Array of samples (*.mat;*.*)',  'ARRAY-SAMPLES'; ...
+                    {'.txt','.csv'},   'CSV text file: label, time, duration (*.txt;*.csv)', 'CSV-TIME'; ...
                     {'.*'},            'CTF Video Times (.txt)',        'CTFVIDEO'; ...
                     };
             case 'channel'
@@ -3327,13 +3639,13 @@ switch contextName
                     {'.raw'},                      'MEG/EEG: ITAB (*.raw)',               'ITAB'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Ricoh (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'RICOH'; ...
                     {'.mrk','.sqd','.con','.raw','.ave'},  'MEG/EEG: Yokogawa/KIT (*.sqd;*.con;*.raw;*.ave;*.mrk)', 'KIT'; ...
-                    {'.hdf5'},                     'MEG/EEG: York Instruments MEGSCAN (.hdf5)', 'MEGSCAN-HDF5'; ...
+                    {'.meghdf5'},                     'MEG/EEG: York Instruments MEGSCAN (.meghdf5)', 'MEGSCAN-HDF5'; ...
                     {'.bst'},                      'MEG/EEG: Brainstorm binary (*.bst)',   'BST-BIN'; ...
                     {'_channel'},                  'MEG/EEG: Brainstorm (channel*.mat)',  'BST'; ...
                     {'.elc'},                      'EEG: ANT ASA/Xensor (*.elc)',         'XENSOR'; ...
                     {'.sfp','.elp','.ela','.eps'}, 'EEG: BESA (*.sfp;*.elp;*.eps/*.ela)', 'BESA'; ...
                     {'.bvef','.bvct','.txt'},      'EEG: BrainVision electrode file (*.bvef,*.bvct,*.txt)', 'BRAINVISION'; ...
-                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, subject space mm (*.tsv)',    'BIDS-ORIG-MM'; ...
+                    {'.tsv'},                      'EEG: BIDS electrodes.tsv, subject space mm (*.tsv)',    'BIDS-OTHER-MM'; ...
                     {'.tsv'},                      'EEG: BIDS electrodes.tsv, MNI space mm (*.tsv)',        'BIDS-MNI-MM'; ...
                     {'.els','.xyz'},               'EEG: Cartool (*.els;*.xyz)',          'CARTOOL'; ...
                     {'.eeg'},                      'EEG: MegDraw (*.eeg)',                'MEGDRAW'; ...
@@ -3345,8 +3657,11 @@ switch contextName
                     {'.elp'},                      'EEG: EMSE (*.elp)',                   'EMSE'; ...
                     {'.pts','.csv'},               'EEG: IntrAnat, subject space (*.pts;*.csv)', 'INTRANAT'; ...
                     {'.pts','.csv'},               'EEG: IntrAnat, MNI space (*.pts;*.csv)',     'INTRANAT_MNI'; ...
+                    {'.csv'},                      'EEG: Localite (*.csv)',                      'LOCALITE'; ...
                     {'.dat','.tri','.txt','.asc'}, 'EEG: Neuroscan (*.dat;*.tri;*.txt;*.asc)',   'NEUROSCAN'; ...
                     {'.pos','.pol','.elp','.txt'}, 'EEG: Polhemus (*.pos;*.pol;*.elp;*.txt)',    'POLHEMUS'; ...
+                    {'.csv'},                      'EEG: SimNIBS (*.csv)',             'SIMNIBS'; ...
+                    {'.h5'},                       'EEG: The Virtual Brain (*_SensorsEEG.h5)',    'TVB'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ (*.*)',       'ASCII_NXYZ'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_MNI (*.*)',   'ASCII_NXYZ_MNI'; ...
                     {'*'},                         'EEG: ASCII: Name,XYZ_World (*.*)', 'ASCII_NXYZ_WORLD'; ...
@@ -3393,42 +3708,60 @@ switch contextName
                 argout1 = {...
                     {'.dfs'},    'BrainSuite atlas (*.dfs)',      'DFS'; ...
                     {'.annot'},  'FreeSurfer atlas (*.annot)',    'FS-ANNOT'; ...
-                    {'.label'},  'FreeSurfer atlas (*.label)',    'FS-LABEL'; ...
+                    {'.label'},  'FreeSurfer ROI, single scout (*.label)',    'FS-LABEL-SINGLE'; ...
+                    {'.label'},  'FreeSurfer ROI, probability map (*.label)', 'FS-LABEL'; ...
                     {'.gii'},    'GIfTI texture (*.gii)',         'GII-TEX'; ...
                     {'.dset'},   'SUMA atlas (*.dset)',           'DSET'; ...
                     {'_scout'},  'Brainstorm scouts (*scout*.mat)', 'BST'; ...
-                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume mask or atlas (subject space)', 'MRI-MASK'; ...
-                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz'},                  'Volume mask or atlas (MNI space)',     'MRI-MASK-MNI'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume mask or atlas (dilated, subject space)', 'MRI-MASK'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz'},                  'Volume mask or atlas (dilated, MNI space)',     'MRI-MASK-MNI'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz', '_subjectimage'}, 'Volume mask or atlas (no overlap, subject space)', 'MRI-MASK-NOOVERLAP'; ...
+                    {'.mri', '.fif', '.img', '.ima', '.nii', '.mgh', '.mgz', '.mnc', '.mni', '.gz'},                  'Volume mask or atlas (no overlap, MNI space)',     'MRI-MASK-NOOVERLAP-MNI'; ...
                     };
             case 'resultsout'
                 argout1 = {...
                     {'_sources'}, 'Brainstorm sources (*sources*.mat)',        'BST'; ...
                     {'.mat'},   'FieldTrip sources (*.mat)',                   'FT-SOURCES'; ...
-                    {'.txt'},   'ASCII: Space-separated (*.txt)',              'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated, fixed columns size (*.txt)', 'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated with header, fixed column size (*.txt)', 'ASCII-SPC-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated (*.tsv)',                'ASCII-TSV'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header (*.tsv)',    'ASCII-TSV-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header transposed (*.tsv)',   'ASCII-TSV-HDR-TR'; ...
                     {'.csv'},   'ASCII: Comma-separated (*.csv)',              'ASCII-CSV'; ...
-                    {'.txt'},   'ASCII: Space-separated with header (*.txt)',  'ASCII-SPC-HDR'; ...
                     {'.csv'},   'ASCII: Comma-separated with header (*.csv)',  'ASCII-CSV-HDR'; ...
-                    {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL';
+                    {'.csv'},   'ASCII: Comma-separated with header transposed (*.csv)', 'ASCII-CSV-HDR-TR'; ...
+                    {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL'; ...
+                    {'.xlsx'},  'Microsoft Excel transposed (*.xlsx)',         'EXCEL-TR'; ...
                     };
             case 'timefreqout'
                 argout1 = {...
                     {'_timefreq'}, 'Brainstorm structure (*timefreq*.mat)',    'BST'; ...
                     {'.mat'},   'FieldTrip freq (*.mat)',                      'FT-FREQ'; ...
-                    {'.txt'},   'ASCII: Space-separated (*.txt)',              'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated, fixed columns size (*.txt)', 'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated with header, fixed column size (*.txt)', 'ASCII-SPC-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated (*.tsv)',                'ASCII-TSV'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header (*.tsv)',    'ASCII-TSV-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header transposed (*.tsv)',   'ASCII-TSV-HDR-TR'; ...
                     {'.csv'},   'ASCII: Comma-separated (*.csv)',              'ASCII-CSV'; ...
-                    {'.txt'},   'ASCII: Space-separated with header (*.txt)',  'ASCII-SPC-HDR'; ...
                     {'.csv'},   'ASCII: Comma-separated with header (*.csv)',  'ASCII-CSV-HDR'; ...
-                    {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL';
+                    {'.csv'},   'ASCII: Comma-separated with header transposed (*.csv)', 'ASCII-CSV-HDR-TR'; ...
+                    {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL'; ...
+                    {'.xlsx'},  'Microsoft Excel transposed (*.xlsx)',         'EXCEL-TR'; ...
                     };
             case 'matrixout'
                 argout1 = {...
                     {'_matrix'}, 'Brainstorm structure (*matrix*.mat)',        'BST'; ...
                     {'.mat'},   'FieldTrip timelock (*.mat)',                  'FT-TIMELOCK'; ...
-                    {'.txt'},   'ASCII: Space-separated (*.txt)',              'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated, fixed columns size (*.txt)', 'ASCII-SPC'; ...
+                    {'.txt'},   'ASCII: Space-separated with header, fixed column size (*.txt)', 'ASCII-SPC-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated (*.tsv)',                'ASCII-TSV'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header (*.tsv)',    'ASCII-TSV-HDR'; ...
+                    {'.tsv'},   'ASCII: Tab-separated with header transposed (*.tsv)',   'ASCII-TSV-HDR-TR'; ...
                     {'.csv'},   'ASCII: Comma-separated (*.csv)',              'ASCII-CSV'; ...
-                    {'.txt'},   'ASCII: Space-separated with header (*.txt)',  'ASCII-SPC-HDR'; ...
                     {'.csv'},   'ASCII: Comma-separated with header (*.csv)',  'ASCII-CSV-HDR'; ...
-                    {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL';
+                    {'.csv'},   'ASCII: Comma-separated with header transposed (*.csv)', 'ASCII-CSV-HDR-TR'; ...
+                    {'.xlsx'},  'Microsoft Excel (*.xlsx)',                    'EXCEL'; ...
+                    {'.xlsx'},  'Microsoft Excel transposed (*.xlsx)',         'EXCEL-TR'; ...
                     };
             case 'montagein'
                 argout1 = {...
@@ -3455,6 +3788,10 @@ switch contextName
             argout1 = 8;
         else
             argout1 = 9;
+        end
+        InterfaceScaling = bst_get('InterfaceScaling');
+        if (InterfaceScaling ~= 100)
+            argout1 = argout1 * InterfaceScaling / 100;
         end
         
     case 'Font'
@@ -3638,11 +3975,13 @@ switch contextName
             elseif (MatlabVersion <= 803)
                 jf = get(handle(hFig), 'javaframe');
                 jFrame = jf.fHG1Client.getWindow();
-            elseif (MatlabVersion >= 804)
+            elseif (MatlabVersion < 907)    % Matlab >= 2019b deprecated the JavaFrame property
                 warning('off', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 jf = get(hFig, 'javaframe');
                 warning('on', 'MATLAB:HandleGraphics:ObsoletedProperty:JavaFrame');
                 jFrame = jf.fHG2Client.getWindow();
+            else
+                disp('BST> Error: Matlab 2019b deprecated the JavaFrame property.');
             end
         catch
             disp('BST> Warning: Cannot get the JavaFrame property for the selected figure.');
@@ -3669,6 +4008,10 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
     sFoundStudy = [];
     iFoundStudy = [];
     iItem       = [];
+    % If no file provided, return
+    if isempty(fieldFile)
+        return;
+    end
     % Extract folder(s) of the file(s) we're looking for
     fieldParts = strfind(fieldFile, '|');
     if ~isempty(fieldParts)

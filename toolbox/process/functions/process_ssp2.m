@@ -10,7 +10,7 @@ function varargout = process_ssp2( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2019 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -614,13 +614,15 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 nTimePerBlock = length(TimeVector);
                 nBlock = ceil(size(F,2) / nTimePerBlock);
                 nBlockTotal = ceil(nMinSmp / nTimePerBlock);
-                if isRawA
+                if isRawA && ~isempty(evtName)
                     errMsg = sprintf(' - Add %d events (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                     if ~isExtended
                         nAddTime = ceil((nMinSmp - size(F,2)) / nBlock / 2);
                         newTimeWin = round([evtSmpRange(1) - nAddTime, evtSmpRange(2) + nAddTime] ./ sFile.prop.sfreq .* 1000);
                         errMsg = sprintf([errMsg, 10, ' - Increase the time window around each event to [%d,%d] ms'], newTimeWin(1), newTimeWin(2));
                     end
+                elseif isRawA && strcmpi(sFile.format, 'CTF') && length(sFile.epochs) > 1
+                    errMsg = ' - Convert the input files to continuous.';
                 else
                     errMsg = sprintf(' - Add %d files in the process list (Total: %d)', nBlockTotal - nBlock, nBlockTotal);
                 end
@@ -834,6 +836,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         sOutput.DataType    = 'recordings';
         sOutput.Device      = 'ArtifactERP';
         sOutput.nAvg        = nAvg;
+        sOutput.Leff        = nAvg;
         % Get output study
         [tmp, iOutputStudy] = bst_process('GetOutputStudy', sProcess, sInputsB);
         sOutputStudy = bst_get('Study', iOutputStudy);
@@ -871,6 +874,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             sOutput.Time        = TimeVector;
             sOutput.ChannelFlag = [];
             sOutput.nAvg        = nAvg;
+            sOutput.Leff        = nAvg;
             % Description of the signals: IC*
             sOutput.Description = cell(size(proj.Components,1),1);
             for i = 1:size(proj.Components,1)
