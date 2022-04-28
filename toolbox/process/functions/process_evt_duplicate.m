@@ -132,8 +132,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames)
             events(iCopy(i)) = events(iEvtDup(i));
             % Add "copy" tag
             events(iCopy(i)).label = file_unique(events(iCopy(i)).label, {events.label});
-            % Set new color
-            %events(iCopy(i)).color = GetNewEventColor(iCopy(i), events);
+            % Set new color            
+            events(iCopy(i)).color = panel_record('GetNewEventColor', iCopy(i), events);
         end
         
         % File was modified
