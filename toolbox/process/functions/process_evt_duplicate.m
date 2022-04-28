@@ -1,5 +1,5 @@
 function varargout = process_evt_duplicate( varargin )
-% PROCESS_EVT_DELETE: Delete a list of events.
+% PROCESS_EVT_DUPLICATE: Duplicate a list of events.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -104,7 +104,7 @@ end
 function [events, isModified] = Compute(sInput, events, EvtNames)
     % No modification
     isModified = 0;
-    % Loop on events to delete
+    % Loop on events to duplicate
     iEvtDup = [];
     strNotFound = '';
     for i = 1:length(EvtNames)
