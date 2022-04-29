@@ -65,7 +65,8 @@ function OutputFiles = Run(sProcess, sInputs)
     % Get options
     isParallel = sProcess.options.parallel.Value;
     TimeWindow = sProcess.options.timewindow.Value{1};
-   
+
+
     % ===== LOAD INPUTS =====
     % Loads all the data outside of the parfor, so it doesn't fail
     nTrials = length(sInputs);
@@ -91,7 +92,7 @@ function OutputFiles = Run(sProcess, sInputs)
     sampling_rate = round(abs(1. / (DataMats{1}.Time(2) - DataMats{1}.Time(1))));
     % Load channel file
     ChannelMat = in_bst_channel(sInputs(1).ChannelFile);
-    
+
     
     % === START COMPUTATION ===
     % Input time window
@@ -107,8 +108,8 @@ function OutputFiles = Run(sProcess, sInputs)
             LFP_trials{iFile} = get_LFPs(DataMats{iFile}, ChannelMat, TimeWindow, time_segmentAroundSpikes, sampling_rate);
         end 
     end
-        
-        
+
+
     % ===== COMPUTE SPIKE TRIGGERED AVERAGE =====
     % The Spike Triggered Average should be a 3d matrix
     % Number of neurons x Frequencies x Electrodes
@@ -116,12 +117,12 @@ function OutputFiles = Run(sProcess, sInputs)
     % and a 2D image with the other two dimensions will appear, showing the
     % coherence of the spikes of that neuron with the LFPs on every
     % electrode on all frequencies.
-
+    
     % Create a cell that holds all of the labels and one for the unique labels
     % This will be used to take the averages using the appropriate indices
+    all_labels = {};
     labelsNeurons = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
     for iFile = 1:nTrials
-        all_labels = cell(length(LFP_trials{iFile}), nTrials);
         for iNeuron = 1:length(LFP_trials{iFile})
             all_labels{iNeuron,iFile} = LFP_trials{iFile}(iNeuron).label;
             labelsNeurons{end+1} = LFP_trials{iFile}(iNeuron).label;
@@ -137,9 +138,9 @@ function OutputFiles = Run(sProcess, sInputs)
                 logicalEvents(ii,jj) = strcmp(all_labels{ii,jj}, labelsNeurons{iNeuron});
             end
         end
-
-        iEvents = zeros(nTrials,1);
-        for iFile = 1:nTrials
+        
+        iEvents = zeros(size(all_labels,2),1);
+        for iFile = 1:size(all_labels,2)
             temp = find(logicalEvents(:,iFile));
             if ~isempty(temp)
                 iEvents(iFile) = temp;
@@ -147,12 +148,12 @@ function OutputFiles = Run(sProcess, sInputs)
                 iEvents(iFile) = 0; % This shows that that neuron didn't fire any spikes on that trial
             end
         end
-
+        
         % Compute the averages of the appropriate indices
         STA_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes)); 
         std_single_neuron = zeros(length(ChannelMat.Channel), length(time_segmentAroundSpikes)); 
         divideBy = 0;
-        for iFile = 1:nTrials
+        for iFile = 1:size(all_labels,2)
             if iEvents(iFile)~=0
                 STA_single_neuron = STA_single_neuron + LFP_trials{iFile}(iEvents(iFile)).nSpikes * LFP_trials{iFile}(iEvents(iFile)).avgLFP; % The avgLFP are sum actually. 
                 divideBy = divideBy + LFP_trials{iFile}(iEvents(iFile)).nSpikes;
@@ -165,9 +166,10 @@ function OutputFiles = Run(sProcess, sInputs)
             end 
         end
         % Divide by total number of averages
-        STA_single_neuron = (STA_single_neuron./divideBy);
-%         std_single_neuron = sqrt(std_single_neuron./(divideBy - size(all_labels,2)));
+        STA_single_neuron = (STA_single_neuron./divideBy)';
+        std_single_neuron = sqrt(std_single_neuron./(divideBy - size(all_labels,2)));
     
+
         % Get meaningful label from neuron name
         better_label = panel_spikes('GetChannelOfSpikeEvent', labelsNeurons{iNeuron});
         neuron = panel_spikes('GetNeuronOfSpikeEvent', labelsNeurons{iNeuron});
@@ -179,16 +181,16 @@ function OutputFiles = Run(sProcess, sInputs)
         % ===== SAVE FILE =====
         % Prepare output file structure
         FileMat = db_template('datamat');
-        FileMat.F           = STA_single_neuron;
+        FileMat.F           = STA_single_neuron';
         FileMat.Time        = time_segmentAroundSpikes; 
-%         FileMat.Std         = 2 .* std_single_neuron; % MULTIPLY BY 2 TO GET 95% CONFIDENCE (ASSUMING NORMAL DISTRIBUTION)
+        FileMat.Std         = 2 .* std_single_neuron; % MULTIPLY BY 2 TO GET 95% CONFIDENCE (ASSUMING NORMAL DISTRIBUTION)
         FileMat.Comment     = ['Spike Triggered Average: ' str_remove_parenth(DataMats{1}.Comment) ' (' better_label ')'];
         FileMat.DataType    = 'recordings';
         FileMat.ChannelFlag = ChannelFlag;
         FileMat.Device      = DataMats{1}.Device;
-        FileMat.nAvg        = divideBy;
+        FileMat.nAvg        = 1;
         FileMat.History     = DataMats{1}.History;
-        
+
         % Add history field
         FileMat = bst_history('add', FileMat, 'compute', ['Spike Triggered Average: [' num2str(TimeWindow(1)) ', ' num2str(TimeWindow(2)) '] ms']);
         for iFile = 1:length(sInputs)
