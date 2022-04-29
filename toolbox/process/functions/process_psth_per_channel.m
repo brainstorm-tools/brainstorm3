@@ -1,8 +1,8 @@
-function varargout = process_psth_per_electrode( varargin )
-% PROCESS_PSTH_PER_ELECTRODE: Computes the PSTH per electrode.
+function varargout = process_psth_per_channel( varargin )
+% PROCESS_PSTH_PER_CHANNEL: Computes the PSTH per channel.
 
-% It displays the binned firing rate on each electrode (of only the first 
-% neuron on each electrode if multiple have been detected). This can be nicely
+% It displays the binned firing rate on each channel (of only the first 
+% neuron on each channel if multiple have been detected). This can be nicely
 % visualized on the cortical surface if the positions of the electrodes
 % have been set, and show real time firing rate.
 
@@ -34,7 +34,7 @@ end
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'PSTH per electrode';
+    sProcess.Comment     = 'PSTH per channel';
     sProcess.FileTag     = 'raster';
     sProcess.Category    = 'File';
     sProcess.SubGroup    = 'Electrophysiology';

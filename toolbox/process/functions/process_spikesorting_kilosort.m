@@ -496,7 +496,12 @@ function ImportKilosortEvents(sFile, ChannelMat, parentPath, rez)
             index = index + 1;
         end
     end
-    events = [events events_spikes];
+    
+    if ~isempty(existingEvents)
+        events = [events events_spikes];
+    else
+        events = events_spikes;
+    end
     
     save(fullfile(parentPath,'events_UNSUPERVISED.mat'),'events')
     

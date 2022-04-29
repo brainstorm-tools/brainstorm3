@@ -172,7 +172,7 @@ function OutputFiles = Run(sProcess, sInput)
     % Template structure for the creation of the output raw file
     sFileTemplate = sFileIn;
     sFileTemplate.prop.sfreq = LFP_fs;
-    sFileTemplate.prop.times = [0, (nTimeOut-1) ./ LFP_fs];
+    sFileTemplate.prop.times = [newTimeVector(1), newTimeVector(end)];
     sFileTemplate.header.sfreq = LFP_fs;
     sFileTemplate.header.nsamples = nTimeOut;
     % Convert events to new sampling rate
@@ -231,7 +231,8 @@ function data = ProcessChannel(ElecFile, isDespike, NotchFreqs, BandPass, sFileI
         % Get channel name from electrode file name
         [tmp, ChannelName] = fileparts(ElecFile);
         ChannelName = strrep(ChannelName, 'raw_elec_', '');
-        data = BayesianSpikeRemoval(ChannelName, data, sr, sFileIn, ChannelMat, cleanChannelNames);
+        data = BayesianSpikeRemoval(ChannelName, data, sr, sFileIn, ChannelMat, cleanChannelNames, BandPass);
+        data = data';
     end
     % Band-pass filter
     data = bst_bandpass_hfilter(data, sr, BandPass(1), BandPass(2), 0, 0);
@@ -242,7 +243,7 @@ end
 
 %% ===== BAYESIAN SPIKE REMOVAL =====
 % Reference: https://www.ncbi.nlm.nih.gov/pubmed/21068271
-function data_derived = BayesianSpikeRemoval(ChannelName, data, Fs, sFile, ChannelMat, cleanChannelNames)
+function data_derived = BayesianSpikeRemoval(ChannelName, data, Fs, sFile, ChannelMat, cleanChannelNames, BandPass)
     % Assume that a spike lasts 3ms
     nSegment = round(Fs * 0.003);
     Bs = eye(nSegment); % 60x60
@@ -275,7 +276,7 @@ function data_derived = BayesianSpikeRemoval(ChannelName, data, Fs, sFile, Chann
         % from spktimes to obtain the start times of the spikes
   
         if mod(length(data),2)~=0
-            data_temp = [data;0];
+            data_temp = [data 0]';
             g = fitLFPpowerSpectrum(data_temp,BandPass(1),BandPass(2),sFile.prop.sfreq);
             S = zeros(length(data_temp),1);
             iSpk = round(spkSamples - nSegment/2);

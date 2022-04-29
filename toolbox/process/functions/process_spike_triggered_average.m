@@ -165,7 +165,7 @@ function OutputFiles = Run(sProcess, sInputs)
             end 
         end
         % Divide by total number of averages
-        STA_single_neuron = (STA_single_neuron./divideBy)';
+        STA_single_neuron = (STA_single_neuron./divideBy);
 %         std_single_neuron = sqrt(std_single_neuron./(divideBy - size(all_labels,2)));
     
         % Get meaningful label from neuron name
@@ -179,7 +179,7 @@ function OutputFiles = Run(sProcess, sInputs)
         % ===== SAVE FILE =====
         % Prepare output file structure
         FileMat = db_template('datamat');
-        FileMat.F           = STA_single_neuron';
+        FileMat.F           = STA_single_neuron;
         FileMat.Time        = time_segmentAroundSpikes; 
 %         FileMat.Std         = 2 .* std_single_neuron; % MULTIPLY BY 2 TO GET 95% CONFIDENCE (ASSUMING NORMAL DISTRIBUTION)
         FileMat.Comment     = ['Spike Triggered Average: ' str_remove_parenth(DataMats{1}.Comment) ' (' better_label ')'];

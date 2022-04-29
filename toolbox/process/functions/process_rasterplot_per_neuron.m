@@ -82,7 +82,7 @@ function OutputFiles = Run(sProcess, sInputs)
             end
         end
         % If no neuron was found
-        if isempty(neuronLabels)
+        if isempty(labelsNeurons)
             bst_report('Error', sProcess, sCurrentInputs(1), 'No neurons/spiking events detected.');
             return;
         end
