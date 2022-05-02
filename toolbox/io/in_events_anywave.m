@@ -110,8 +110,8 @@ OptionalCol     = rawCellColumns(:, [2,3]);
 
 
 %% ===== DETECT CHANNELS/COLORS =====
-Color = cell(size(Label,1), 1);
-Channels = cell(size(Label,1), 1);
+Color = cell(1, size(Label,1));
+Channels = cell(1, size(Label,1));
 for iMrk = 1:size(OptionalCol,1)
     for iCol = 1:size(OptionalCol,2)
         % Empty column
@@ -132,7 +132,7 @@ end
 
 %% ===== DETECT NOTES =====
 % Second column of the file: contains an integer, most likely a frequency, or -1 if not defined
-Notes = cell(size(Label,1), 1);
+Notes = cell(1, size(Label,1));
 for iMrk = 1:size(OptionalCol,1)
     % No value
     if isnan(frequencies(iMrk)) || (frequencies(iMrk) == -1)

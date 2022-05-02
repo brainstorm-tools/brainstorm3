@@ -38,7 +38,14 @@ for i = 1:length(sFile.events)
         allTime = [allTime, sFile.events(i).times];
     end
     allInd = [allInd, repmat(i, 1, size(sFile.events(i).times,2))];
-    allChan = cat(2, allChan, sFile.events(i).channels);
+    if iscell(sFile.events(i).channels) && (size(sFile.events(i).channels,1) == 1) && (size(sFile.events(i).channels,2) == size(sFile.events(i).times,2))
+        allChan = cat(2, allChan, sFile.events(i).channels);
+    elseif iscell(sFile.events(i).channels) && (size(sFile.events(i).channels,2) == 1) && (size(sFile.events(i).channels,1) == size(sFile.events(i).times,2))
+        allChan = cat(2, allChan, sFile.events(i).channels');
+    else
+        disp(['BST> Invalid event "', sFile.events(i).label, '": Wrong dimensions for field "channels".']);
+        allChan = cat(2, allChan, cell(1, size(sFile.events(i).times,2)));
+    end
 end
 % Sort based on time
 [tmp, iSort] = sort(allTime(1,:));
