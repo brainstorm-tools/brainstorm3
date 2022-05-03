@@ -1,6 +1,9 @@
 April 2022
 - 2D Layout: Added option "Flip Y axis"
 - Distrib: Compilation with Matlab 2022a
+- IO: Import channel from ASCII files now expect mm instead of cm
+- IO: Add export events in AnyWave .mrk format
+- Ephys: Updated electrophysiology functions and tutorial
 --------------------------------------------------------------
 March 2022
 - Connectivity: Corticomuscular coherence tutorial
