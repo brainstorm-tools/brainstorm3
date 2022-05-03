@@ -33,7 +33,7 @@ function numElems = node_create_study(nodeStudy, nodeRoot, sStudy, iStudy, isExp
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2020
 
     
@@ -198,7 +198,9 @@ for i = 1:length(iNeededNodes)
         % Node modifier (0=none, 1=bad)
         Modifier = sStudy.Data(iData).BadTrial;
         % Create node
-        if strcmpi(sStudy.Data(iData).DataType, 'raw')
+        if ~isempty(strfind(sStudy.Data(iData).FileName, 'data_0ephys'))
+            nodeType = 'spike';
+        elseif strcmpi(sStudy.Data(iData).DataType, 'raw')
             nodeType = 'rawdata';
         else
             nodeType = 'data';

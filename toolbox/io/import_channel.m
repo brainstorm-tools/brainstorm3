@@ -231,9 +231,6 @@ switch (FileFormat)
             ChannelMat = AllChannelMats{1};
         end
         
-
-
-        
     case {'INTRANAT', 'INTRANAT_MNI'}
         switch (fExt)
             case 'pts'
@@ -303,17 +300,17 @@ switch (FileFormat)
         FileUnits = 'mm';
         
     case {'ASCII_XYZ', 'ASCII_XYZ_MNI', 'ASCII_XYZ_WORLD'}  % (*.*)
-        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .01);
+        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z'}, 0, .001);
         ChannelMat.Comment = 'Channels';
-        FileUnits = 'cm';
+        FileUnits = 'mm';
     case {'ASCII_NXYZ', 'ASCII_NXYZ_MNI', 'ASCII_NXYZ_WORLD'}  % (*.*)
-        ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y','Z'}, 0, .01);
+        ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y','Z'}, 0, .001);
         ChannelMat.Comment = 'Channels';
-        FileUnits = 'cm';
+        FileUnits = 'mm';
     case {'ASCII_XYZN', 'ASCII_XYZN_MNI', 'ASCII_XYZN_WORLD'}  % (*.*)
-        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z','Name'}, 0, .01);
+        ChannelMat = in_channel_ascii(ChannelFile, {'X','Y','Z','Name'}, 0, .001);
         ChannelMat.Comment = 'Channels';
-        FileUnits = 'cm';
+        FileUnits = 'mm';
     case 'ASCII_NXY'  % (*.*)
         ChannelMat = in_channel_ascii(ChannelFile, {'Name','X','Y'}, 0, .000875);
         ChannelMat.Comment = 'Channels';

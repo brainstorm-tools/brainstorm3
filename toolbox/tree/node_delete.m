@@ -531,7 +531,26 @@ switch (lower(nodeType{1}))
             end
             iModifiedStudies = unique(iItem);
         end
-        
+
+%% ===== SPIKE FILE =====
+    case 'spike'
+        bst_progress('start', 'Delete nodes', 'Deleting files...');
+        % Delete file
+        FullFilesList = cellfun(@(f)bst_fullfile(ProtocolInfo.STUDIES,f), FileName', 'UniformOutput',0);
+        if (file_delete(FullFilesList, ~isUserConfirm) == 1)
+            iUniqueStudy = unique(iItem);
+            for i=1:length(iUniqueStudy)
+                iStudy = iUniqueStudy(i);
+                iData = iSubItem(iItem == iStudy);
+                sStudy = bst_get('Study', iStudy);
+                % Remove file description from database
+                sStudy.Data(iData) = [];
+                % Study was modified
+                bst_set('Study', iStudy, sStudy);
+            end
+            iModifiedStudies = unique(iItem);
+        end
+
 %% ===== TIMEFREQ FILE =====
     case {'timefreq', 'spectrum'}
         bst_progress('start', 'Delete nodes', 'Deleting files...');

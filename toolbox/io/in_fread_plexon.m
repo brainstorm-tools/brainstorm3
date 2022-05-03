@@ -1,10 +1,7 @@
 function F = in_fread_plexon(sFile, SamplesBounds, iChannels, precision)
 % IN_FREAD_PLEXON Read a block of recordings from a Plexon file
 %
-% USAGE:  F = in_fread_intan(sFile, SamplesBounds=[], iChannels=[])
-
-% % This function is using the importer developed by Benjamin Kraus (2013)
-% https://www.mathworks.com/matlabcentral/fileexchange/42160-readplxfilec
+% USAGE:  F = in_fread_plexon(sFile, SamplesBounds=[], iChannels=[])
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -43,7 +40,11 @@ if (nargin < 3) || isempty(iChannels)
     iChannels = 1:sFile.header.ChannelCount;
 end
 if (nargin < 2) || isempty(SamplesBounds)
-    SamplesBounds = round((sFile.prop.times - sFile.header.FirstTimeStamp) .* sFile.prop.sfreq);
+    % Read entire recording
+    SamplesBounds = round((sFile.prop.times - sFile.header.FirstTimeStamp) .* sFile.prop.sfreq) + 1;
+else 
+    % Readjust the samples call based on the starting time value
+    SamplesBounds = SamplesBounds - round(sFile.header.FirstTimeStamp* sFile.prop.sfreq) + 1;
 end
 
    
@@ -55,11 +56,9 @@ nSamples  = diff(SamplesBounds) + 1;
 % Initialize Brainstorm output
 F = zeros(nChannels, nSamples, precision);
 
-for iChannel = 1:nChannels        
-    [adfreq, n, data] = plx_ad_span_v(sFile.filename, iSelectedChannels(iChannel)-1, SamplesBounds(1), SamplesBounds(2));
-    F(iChannel,:) = data;
+for iChannel = 1:nChannels 
+    % plx_ad_span_v returns values in mV
+    [adfreq, n, data] = plx_ad_span_v(sFile.filename, iSelectedChannels(iChannel)-1, SamplesBounds(1), SamplesBounds(2));    
+    F(iChannel,:) = data./1000; % Convert to V
 end
 end
-
-
-
