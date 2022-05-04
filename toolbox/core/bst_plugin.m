@@ -525,7 +525,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20220228.zip';
+    PlugDesc(end).URLzip         = 'https://download.fieldtriptoolbox.org/fieldtrip-lite-20220228.zip';
     PlugDesc(end).URLinfo        = 'http://www.fieldtriptoolbox.org';
     PlugDesc(end).TestFile       = 'ft_defaults.m';
     PlugDesc(end).ReadmeFile     = 'README';
@@ -668,13 +668,13 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'fieldtrip'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                s = bst_webread('ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/');
+                s = bst_webread('https://download.fieldtriptoolbox.org');
                 if ~isempty(s)
                     n = regexp(s,'fieldtrip-lite-(\d.*?)\.zip','tokens');
                     if ~isempty(n)
                         Version = max(cellfun(@str2double, [n{:}]));
                         Version = num2str(Version);
-                        URLzip = ['ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-' Version '.zip'];
+                        URLzip = ['https://download.fieldtriptoolbox.org/fieldtrip-lite-' Version '.zip'];
                     end
                 end
             case 'duneuro'
