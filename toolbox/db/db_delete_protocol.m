@@ -83,7 +83,7 @@ if isRemoveFiles
 end
     
 %% ===== REMOVE PROTOCOL =====
-bst_progress('start', 'Delete Protocol', 'Removing protocol...')
+bst_progress('start', 'Delete Protocol', 'Removing protocol...');
 sProtocolsListInfo(iProtocol)     = [];
 sProtocolsListSubjects(iProtocol) = [];
 sProtocolsListStudies(iProtocol)  = [];
