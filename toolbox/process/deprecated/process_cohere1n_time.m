@@ -102,7 +102,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
-    CommentTag    = sProcess.options.commenttag.Value;
+    CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
