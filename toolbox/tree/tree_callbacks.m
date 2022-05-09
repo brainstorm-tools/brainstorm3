@@ -172,7 +172,7 @@ switch (lower(action))
                 iAnatomy = bstNodes(1).getItemIndex();
                 sSubject = bst_get('Subject', iSubject);
                 % Atlas: display as overlay on the default MRI
-                if (iAnatomy > 1)
+                if (iAnatomy ~= sSubject.iAnatomy)
                     view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative);
                 else
                     view_mri(filenameRelative);
