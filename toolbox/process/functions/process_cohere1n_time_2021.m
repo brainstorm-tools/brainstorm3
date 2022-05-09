@@ -140,7 +140,7 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     posProgress = bst_progress('get');
     
     % Loop over all the time windows
-    while (timeSamps(2) < SampTimeWin(2))
+    while (timeSamps(2) <= SampTimeWin(2))
         % Set the progress bar at the same level at every iteration
         bst_progress('set', posProgress);
         % select time window
