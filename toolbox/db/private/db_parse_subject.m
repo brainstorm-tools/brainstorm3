@@ -184,7 +184,7 @@ end
 
 %% ===== DEFAULT ANATOMY/SURFACES =====
 % Sort anatomy files: first T1 and MRI, then volume atlases
-if (length(sSubject(1).Anatomy) >= 2)
+if ~isempty(sSubject) && (length(sSubject(1).Anatomy) >= 2)
     iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject(1).Anatomy.FileName}));
     if (length(iNoAtlas) >= 2)
         iT1 = find(~cellfun(@(c)isempty([strfind(lower(c), '_t1'), strfind(lower(c), '_mri')]), {sSubject(1).Anatomy(iNoAtlas).FileName}));
