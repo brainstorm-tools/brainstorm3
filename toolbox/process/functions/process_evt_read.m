@@ -295,7 +295,6 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
                 tracks = double(bitand(uint32(tracks), 2^16-1));
             end
             % Determine the precise timing of the triggers (from FieldTrip's read_ctf_trigger)
-            upflank = [0 (diff(tracks)>0 & tracks(1:(end-1))==0)];
             tracks = upflank(1:(end-trigshift)).*tracks((1+trigshift):end);
         % Other formats
         else
