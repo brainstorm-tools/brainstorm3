@@ -222,7 +222,6 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             StimChan = StimChan(1:end-3);
         end
     end
-    trigshift = fix(sFile.prop.sfreq * 9/1200);
 
     % ===== ASK READ MODE =====
     if strcmpi(EventsTrackMode, 'ask')
@@ -294,8 +293,6 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             elseif isCtfLow
                 tracks = double(bitand(uint32(tracks), 2^16-1));
             end
-            % Determine the precise timing of the triggers (from FieldTrip's read_ctf_trigger)
-            tracks = upflank(1:(end-trigshift)).*tracks((1+trigshift):end);
         % Other formats
         else
             % Old code: Might be useless and/or detrimental to the reading of the events
