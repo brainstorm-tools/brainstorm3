@@ -1591,6 +1591,10 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % Overlay on MRI: Reset Overlay cube
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     TessInfo(iTess).OverlayCube = [];
+                    % Compute min-max, if not calculated yet for the figure
+                    if isempty(TessInfo(iTess).DataMinMax)
+                        TessInfo(iTess).DataMinMax = [min(GlobalData.DataSet(iDS).Measures.F(:)), max(GlobalData.DataSet(iDS).Measures.F(:))];
+                    end
                 % Compute interpolation sensors => surface vertices
                 else
                     TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
@@ -1986,9 +1990,11 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
                 set(hAxes, 'CLim', [0 1e-30]);
             end
             DataType = TessInfo(iTess).DataSource.Type;
+            % For Data: use the modality instead
+            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                DataType = upper(ColormapInfo.Type);
             % sLORETA: Do not use regular source scaling (pAm)
-            isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'));
-            if isSLORETA 
+            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                 DataType = 'sLORETA';
             end
         end     
