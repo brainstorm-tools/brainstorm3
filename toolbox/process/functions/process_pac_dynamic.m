@@ -398,13 +398,19 @@ tic
         % Comment
         Comment = 'tPAC';
         if iscell(sInput.RowNames)
-            % Find the scout name
-            scoutName = sInput.RowNames{1};
-            k = strfind(scoutName,'.');     
-            if isempty(k)
-                Comment = [Comment, ': ' scoutName];      
+            if (length(sInput.RowNames) == 1)
+                % Find the scout name
+                scoutName = sInput.RowNames{1};
+                k = strfind(scoutName,'.');     
+                if isempty(k)
+                    Comment = [Comment, ': ' scoutName];      
+                else
+                    Comment = [Comment, ': ' scoutName(1:k-1)];
+                end
+            elseif ~isempty(OPTIONS.Target)
+                Comment = [Comment, ': ' OPTIONS.Target];
             else
-                Comment = [Comment, ': ' scoutName(1:k-1)];
+                Comment = [Comment, ': ' num2str(length(sInput.RowNames)) ' signals'];
             end
         elseif (length(sInput.RowNames) == 1)
             Comment = [Comment, ': #', num2str(sInput.RowNames(1))];
