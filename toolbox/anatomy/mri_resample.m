@@ -85,7 +85,7 @@ if (nargin < 3) || isempty(CubeDim) || isempty(Voxsize)
             bst_progress('stop');
         end
         return;
-    elseif (all(CubeDim == oldCubeDim) && all(Voxsize - oldVoxsize < 1e-4))
+    elseif (all(CubeDim == oldCubeDim) && all(abs(Voxsize - oldVoxsize) < 1e-4))
         sMriNew = sMri;
         errMsg = 'No modification.';
         if ~isProgress
