@@ -3153,7 +3153,11 @@ end
 
 
 %% ===== CLEAN SURFACE =====
-function SurfaceClean_Callback(TessFile, isRemove)
+function SurfaceClean_Callback(TessFile, isRemove,isInteractive)
+
+    if nargin < 3
+        isInteractive = 1;
+    end
     % Unload surface file
     bst_memory('UnloadSurface', TessFile);
     bst_progress('start', 'Clean surface', 'Processing file...');
@@ -3162,17 +3166,19 @@ function SurfaceClean_Callback(TessFile, isRemove)
     % Load surface file (Faces field)
     TessMat = in_tess_bst(TessFile, 0);
     % Clean surface
-    if isRemove
+    if isRemove 
         % Ask for user confirmation
-        isConfirm = java_dialog('confirm', [...
+        if isInteractive
+            isConfirm = java_dialog('confirm', [...
             'Warning: This operation may remove vertices from the surface.' 10 10 ... 
             'If you run it, you have to delete and recalculate the' 10 ...
             'headmodels and source files calculated using this surface.' 10 10 ...
             'Run the surface cleaning now?' 10 10], ...
            'Clean surface');
-        if ~isConfirm
-            bst_progress('stop');
-            return;
+            if ~isConfirm
+                bst_progress('stop');
+                return;
+            end
         end
         % Clean file
         [TessMat.Vertices, TessMat.Faces, remove_vertices, remove_faces, TessMat.Atlas] = tess_clean(TessMat.Vertices, TessMat.Faces, TessMat.Atlas);
@@ -3197,9 +3203,9 @@ function SurfaceClean_Callback(TessFile, isRemove)
     % Close progresss bar
     bst_progress('stop');
     % Display message
-    if isRemove
+    if isRemove && isInteractive
         java_dialog('msgbox', sprintf('%d vertices and %d faces removed', length(remove_vertices), length(remove_faces)), 'Clean surface');
-    else
+    elseif isInteractive
         java_dialog('msgbox', 'Done.', 'Remove interpolations');
     end
 end
@@ -3397,6 +3403,14 @@ end
 function SetDefaultSurf(iSubject, SurfaceType, iSurface)
     % Update database
     db_surface_default(iSubject, SurfaceType, iSurface);
+
+    if strcmp(SurfaceType,'Anatomy')
+        sSubject = bst_get('Subject',iSubject);
+        for iSurf = 1:length(sSubject.Surface)
+            SurfaceClean_Callback(file_fullpath(sSubject.Surface(iSurf).FileName), 0,0)
+        end
+
+    end
     % Repaint tree
     panel_protocols('RepaintTree');
 end
