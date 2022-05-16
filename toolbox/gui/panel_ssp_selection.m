@@ -497,6 +497,9 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
             % Plot single topography
             if (length(iComp) == 1)
                 EditSspPanel.hFigTopo(end+1) = view_topography(DataFile, modPlot, [], Topo, UseSmoothing, 'NewFigure');
+                % Enforce 'no units' for colorbar
+                hColorbar = findobj(EditSspPanel.hFigTopo(end), '-depth', 1, 'Tag', 'Colorbar');
+                xlabel(hColorbar, 'No units');   
             % Plot all the components in a contact sheet
             else
                 % Open figure
@@ -579,10 +582,15 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
                 TsInfo.DisplayMode = 'column';
                 setappdata(EditSspPanel.hFigTs, 'TsInfo', TsInfo);
                 % Re-plot figure
-                bst_figures('ReloadFigures', EditSspPanel.hFigTs);
+                bst_figures('ReloadFigures', EditSspPanel.hFigTs);              
             end
             % Update the montage for this figure
             panel_montage('SetCurrentMontage', EditSspPanel.hFigTs, sMontage.Name);
+            % Enforce 'no units' for scale
+            hColumnScaleText = findobj(EditSspPanel.hFigTs, '-depth', 2, 'Tag', 'ColumnScaleText');
+            txtAmp = get(hColumnScaleText, 'String');
+            txtAmp = regexprep(txtAmp,'\s.*', ' No units');
+            set(hColumnScaleText, 'String', txtAmp);  
         end
     end
 end
