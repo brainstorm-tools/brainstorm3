@@ -582,7 +582,7 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
                 TsInfo.DisplayMode = 'column';
                 setappdata(EditSspPanel.hFigTs, 'TsInfo', TsInfo);
                 % Re-plot figure
-                bst_figures('ReloadFigures', EditSspPanel.hFigTs);              
+                bst_figures('ReloadFigures', EditSspPanel.hFigTs);
             end
             % Update the montage for this figure
             panel_montage('SetCurrentMontage', EditSspPanel.hFigTs, sMontage.Name);
