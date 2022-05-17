@@ -3395,10 +3395,14 @@ end
 
 %% ===== SET DEFAULT SURFACE =====
 function SetDefaultSurf(iSubject, SurfaceType, iSurface)
+    % Progress bar
+    bst_progress('start', 'Set default', 'Updating database...');
     % Update database
     db_surface_default(iSubject, SurfaceType, iSurface);
     % Repaint tree
     panel_protocols('RepaintTree');
+    % Close progress bar
+    bst_progress('stop');
 end
 
 %% ===== SET DEFAULT HEADMODEL =====
