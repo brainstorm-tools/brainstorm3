@@ -3900,6 +3900,14 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     % Get axes zoom factor
     YLim = get(PlotHandles.hAxes, 'YLim');
     zoomFactor = YLim(2) - YLim(1);  % /(1-0)
+    % Get montage: ICA/SSP montages displayed with no units
+    if ~isempty(TsInfo.MontageName)
+        if strcmpi(TsInfo.MontageName, 'ICA components[tmp]')
+            Modality = 'ICA';
+        elseif strcmpi(TsInfo.MontageName, 'SSP components[tmp]')
+            Modality = 'SSP';
+        end
+    end
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
     [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
