@@ -102,11 +102,20 @@ end
 
 % ===== MULTIPLE COMPONENTS =====
 % Reshape F matrix in 3D: [nRow, nTime, nComponents]
-switch (nComponents)
-    case 0,  error('You should call this function for each region individually.');
-    case 1,  % Nothing to do
-    case 2,  F = cat(3, F(1:2:end,:), F(2:2:end,:));
-    case 3,  F = cat(3, F(1:3:end,:), F(2:3:end,:), F(3:3:end,:));
+if strcmpi(ScoutFunction, 'pcag')
+    % Treat all sources on the same footing (across locations and orientations),
+    % don't reshape.
+    global DataCov U
+    if isempty(DataCov)
+        error('DataCov not loaded.');
+    end
+else
+    switch (nComponents)
+        case 0,  error('You should call this function for each region individually.');
+        case 1,  % Nothing to do
+        case 2,  F = cat(3, F(1:2:end,:), F(2:2:end,:));
+        case 3,  F = cat(3, F(1:3:end,:), F(2:3:end,:), F(3:3:end,:));
+    end
 end
 nRow  = size(F,1);
 nTime = size(F,2);
@@ -170,6 +179,20 @@ switch (lower(ScoutFunction))
             [Fs(1,:,i), explained] = PcaFirstMode(F(:,:,i));
         end
         
+    % PCA computed on all data (all epochs/files), and treating all sources equally (orientations and locations).
+    case 'pcag'
+        % Eigenvalues of covar matrix = square of singular values of time series.
+        % Eigenvector of covar matrix = singular vector of time series.
+        % For now, avoid recomputing PCA repeatedly. We also can ignore sign
+        % flipping issues if we computed it multiple times.
+        if isempty(U)
+            [U, S] = eig(DataCov);
+            [S, iSort] = sort(diag(S), 'descend');
+            explained = S(1) / sum(S);
+            U = U(:, iSort(1));
+        end
+        Fs(1,:) = U' * F; 
+
     % FAST PCA : Display first mode of PCA of time series within each scout region
     case 'fastpca'
         % Reduce dimensions first

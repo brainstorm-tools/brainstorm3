@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'Scout function:'};
     sProcess.options.scoutfunc.Type       = 'radio_line';
     sProcess.options.scoutfunc.Value      = 1;
     % === FLIP SIGN
@@ -134,6 +134,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case {3, 'pca'},  ScoutFunc = 'pca';
             case {4, 'std'},  ScoutFunc = 'std';
             case {5, 'all'},  ScoutFunc = 'all';
+            case {6, 'pcag'},  ScoutFunc = 'pcag';
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else
@@ -185,6 +186,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get data filename
         [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
         
+        if iInput == 1 && strcmpi(ScoutFunc, 'pcag')
+            if ~strcmpi(sInputs(iInput).FileType, 'results') 
+                error('pcag only available for imaging kernel files.');
+            end
+            sMat = in_bst_results(sInputs(iInput).FileName, 0);
+            if ~isfield(sMat, 'ImagingKernel') || isempty(sMat.ImagingKernel)
+                error('pcag only available for imaging kernel files.');
+            end
+
+            % Get data covariance matrix for provided data file.
+            % Note that this process is called through bst_process for single
+            % files (looped over elsewhere).  So we can't compute the global
+            % covariance here.
+            % NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
+            [sStudy, iStudy] = bst_get('Study', sInputs(iInput).iStudy);
+            if numel(sStudy.NoiseCov) < 2
+                error('pcag requires data covariance matrix to be computed first.');
+            end
+            global DataCov U
+            if isempty(U)
+                DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
+                DataCov = DataCov.NoiseCov;
+            end
+        end
+
         % === READ FILES ===
         switch (sInputs(iInput).FileType)
             case 'results'
@@ -571,6 +597,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif (size(sMat.F,3) == 1)
                     sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
                     sourceStd = [];
+                    if iInput == 1 && strcmpi(SelScoutFunc, 'pcag') && isempty(U)
+                        DataCov = sResults.ImagingKernel(iRows,:) * DataCov(sResults.GoodChannel, sResults.GoodChannel) * sResults.ImagingKernel(iRows,:)';
+                    end
                 else
                     % sourceValues = zeros(length(iRows), size(sMat.F,2), size(sMat.F,3));
                     % for iFreq = 1:size(sMat.F,3)
