@@ -159,7 +159,7 @@ if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
     FilesA = FilesA(1);
     % FilesB load calls
     if ~isConnNN
-        % Load first FileA, for getting all the file metadata
+        % Load first FileB, for getting all the file metadata
         sInputB = bst_process('LoadInputFile', FilesB{1}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
         if (size(sInputB.Data,2) < 2)
             bst_report('Error', OPTIONS.ProcessName, FilesB{1}, 'Invalid time selection, check the input time window.');
@@ -295,7 +295,13 @@ for iFile = 1:length(FilesA)
     % ===== CHECK UNCONSTRAINED SOURCES =====
     % Unconstrained models?
     isUnconstrA = ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && (sInputA.nComponents ~= 1);
+    if ~isempty(sInputA.Atlas) && isfield(sInputA.Atlas, 'Scouts') && isstruct(sInputA.Atlas.Scouts) && strcmpi(sInputA.Atlas.Scouts(1).Function, 'pcag')
+        isUnconstrA = false;
+    end
     isUnconstrB = ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && (sInputB.nComponents ~= 1);
+    if ~isempty(sInputB.Atlas) && isfield(sInputB.Atlas, 'Scouts') && isstruct(sInputB.Atlas.Scouts) && strcmpi(sInputB.Atlas.Scouts(1).Function, 'pcag')
+        isUnconstrB = false;
+    end
 %     % Mixed source models not supported yet
 %     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
 %     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))

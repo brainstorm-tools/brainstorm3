@@ -1,4 +1,4 @@
-function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, scoutName)
+function Fs = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, scoutName, ScoutCov)
 % BST_SCOUT_VALUE: Combine Ns time series using the given function. Used to get scouts/clusters values.
 %
 % USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0)
@@ -105,9 +105,8 @@ end
 if strcmpi(ScoutFunction, 'pcag')
     % Treat all sources on the same footing (across locations and orientations),
     % don't reshape.
-    global DataCov U
-    if isempty(DataCov)
-        error('DataCov not loaded.');
+    if nargin < 8 || isempty(ScoutCov)
+        error('Data covariance not loaded.');
     end
 else
     switch (nComponents)
@@ -183,14 +182,13 @@ switch (lower(ScoutFunction))
     case 'pcag'
         % Eigenvalues of covar matrix = square of singular values of time series.
         % Eigenvector of covar matrix = singular vector of time series.
-        % For now, avoid recomputing PCA repeatedly. We also can ignore sign
-        % flipping issues if we computed it multiple times.
-        if isempty(U)
-            [U, S] = eig(DataCov);
-            [S, iSort] = sort(diag(S), 'descend');
-            explained = S(1) / sum(S);
-            U = U(:, iSort(1));
-        end
+        % Force data covariance to be symmetric to avoid complex results from numerical errors.
+        [U, S] = eig((ScoutCov + ScoutCov')/2);
+        [S, iSort] = sort(diag(S), 'descend');
+        explained = S(1) / sum(S);
+        U = U(:, iSort(1));
+        % Flip sign for consistency across files/epochs.
+        U = sign(sum(U,1)) * U;
         Fs(1,:) = U' * F; 
 
     % FAST PCA : Display first mode of PCA of time series within each scout region

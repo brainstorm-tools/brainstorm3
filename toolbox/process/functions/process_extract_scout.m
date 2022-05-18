@@ -167,6 +167,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         XyzFunction = 'none';
     end
     
+    ScoutCov = [];
+
     % ===== LOOP ON THE FILES =====
     for iInput = 1:length(sInputs)
         ScoutOrient = [];
@@ -204,11 +206,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             if numel(sStudy.NoiseCov) < 2
                 error('pcag requires data covariance matrix to be computed first.');
             end
-            global DataCov U
-            if isempty(U)
-                DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
-                DataCov = DataCov.NoiseCov;
-            end
+            DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
         end
 
         % === READ FILES ===
@@ -597,8 +595,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif (size(sMat.F,3) == 1)
                     sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
                     sourceStd = [];
-                    if iInput == 1 && strcmpi(SelScoutFunc, 'pcag') && isempty(U)
-                        DataCov = sResults.ImagingKernel(iRows,:) * DataCov(sResults.GoodChannel, sResults.GoodChannel) * sResults.ImagingKernel(iRows,:)';
+                    if iInput == 1 && strcmpi(SelScoutFunc, 'pcag')
+                        ScoutCov = sResults.ImagingKernel(iRows,:) * DataCov.NoiseCov(sResults.GoodChannel, sResults.GoodChannel) * sResults.ImagingKernel(iRows,:)';
                     end
                 else
                     % sourceValues = zeros(length(iRows), size(sMat.F,2), size(sMat.F,3));
@@ -666,7 +664,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 nFreq = size(sourceValues,3);
                 for iFreq = 1:nFreq
                     % Apply scout function
-                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
+                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName, ScoutCov);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
                         tmpScoutStd = [];
