@@ -395,6 +395,13 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             switch lower(EventsTrackMode)
                 case 'bit'
                     label = tracks_name{iTrack};
+                    if (MinDuration == 0) && isAcceptZero
+                        if tracks_vals{iTrack}(ixs(i)) == 1
+                            label = [label '-set'];
+                        else
+                            label = [label '-reset'];
+                        end
+                    end
                 case 'value'
                     value = tracks_vals{iTrack}(ixs(i));
                     if (length(StimChan) > 1)
