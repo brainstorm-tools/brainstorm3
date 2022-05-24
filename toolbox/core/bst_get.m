@@ -3340,6 +3340,7 @@ switch contextName
         end
 
     case 'PlotlyCredentials'
+        % Get saved username and API key
         try
             creds = loadplotlycredentials();
             argout1 = creds.username;
@@ -3348,7 +3349,7 @@ switch contextName
             argout1 = '';
             argout2 = '';
         end
-        
+        % Get saved domain
         try
             config = loadplotlyconfig();
             argout3 = config.plotly_domain;
