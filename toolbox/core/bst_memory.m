@@ -2258,7 +2258,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         isFooof = false;
         isSPRiNT = false;
     else
-        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF);
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)));
         isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT);
     end
     % Default RefRowName: all
@@ -2369,53 +2369,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     % Extract values
     % FOOOF: Swap TF data for relevant FOOOF data
     if isFooof && ~isequal(FooofDisp, 'spectrum')
-        isFooofFreq = ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.freqs);
-        if isequal(FooofDisp, 'overlay')
-            nFooofRow = 4;
-        else
-            nFooofRow = numel(iRow);
-        end
-        [s1 s2 s3] = size(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF);
-        Values = NaN([nFooofRow, s2, s3 ]);
-        nFooofFreq = sum(isFooofFreq);
-        % Check for old structure format with extra .FOOOF. level.
-        if isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data, 'FOOOF')
-            for iiRow = 1:numel(iRow)
-                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).fooofed_spectrum = ...
-                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.fooofed_spectrum;
-                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).ap_fit = ...
-                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.ap_fit;
-                GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).peak_fit = ...
-                    GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow(iiRow)).FOOOF.peak_fit;
-            end
-        end
-        % Get requested FOOOF measure
-        switch FooofDisp
-            case 'overlay'
-                Values(1,1,:) = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, 1, :);
-                Values(4,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]);
-                Values(2,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]);
-                % Peaks are fit in log space, so they are multiplicative in linear space and not in the same scale, show difference instead. 
-                Values(3,1,isFooofFreq) = Values(4,1,isFooofFreq) - Values(2,1,isFooofFreq); 
-                %Values(3,1,isFooofFreq) = permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]);
-                % Use TF min as cut-off level for peak display.
-                YLowLim = min(Values(1,1,:));
-                Values(3,1,Values(3,1,:) < YLowLim) = NaN;
-            case 'model'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).fooofed_spectrum], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'aperiodic'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).ap_fit], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'peaks'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.data(iRow).peak_fit], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'error'
-                Values(:,:,isFooofFreq) = repmat(permute(reshape([GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.stats(iRow).frequency_wise_error], nFooofFreq, []), [2, 3, 1]),[1 2 1]);
-            case 'exponent'
-                Values = [GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.aperiodics(iRow).exponent]';
-            case 'offset'
-                Values = [GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF.aperiodics(iRow).offset]';
-            otherwise
-                error('Unknown FOOOF display option.');
-        end
+        Values = process_extract_fooof('Compute', GlobalData.DataSet(iDS).Timefreq(iTimefreq), FooofDisp, iRow);
         if ~isequal(FooofDisp,'exponent') && ~isequal(FooofDisp,'offset')
             Values = Values(:,:,iFreqs); % Do not touch aperiodic parameters
             if (nnz(isnan(Values)) > 0) && length(iFreqs) == 1 % If freqslice full of NaNs (e.g., 0Hz)
@@ -2516,7 +2470,6 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         end
     end
 end
-
 
 %% ===== GET PAC VALUES =====
 % Calculate an average on the fly if there are several rows
@@ -3274,7 +3227,7 @@ function isCancel = UnloadAll(varargin)
             delete(hFigHist);
         end
         % Close spike sorting figure
-        process_spikesorting_supervised('CloseFigure');
+        panel_spikes('CloseFigure');
         % Restore default window manager
         if ~ismember(bst_get('Layout', 'WindowManager'), {'TileWindows', 'WeightWindows', 'FullArea', 'FullScreen', 'None'})
             bst_set('Layout', 'WindowManager', 'TileWindows');

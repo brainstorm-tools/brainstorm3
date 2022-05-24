@@ -219,7 +219,8 @@ for i = 1:length(sStudy.Timefreq)
         fileMat = load(fileFull);
         [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile', oldPath, newPath);
         [fileMat, isModified2] = replaceStruct(fileMat, 'SurfaceFile', oldPath, newPath);
-        if isModified1 || isModified2
+        [fileMat, isModified3] = replaceStruct(fileMat, 'HeadModelFile', oldPath, newPath);
+        if isModified1 || isModified2 || isModified3
             bst_save(fileFull, fileMat, 'v6');
         end
     end

@@ -1432,6 +1432,12 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
             if ~isempty(DisplayUnits)
                 if strcmp(DisplayUnits,'t')
                     fFactor = 1;
+                elseif strcmp(DisplayUnits,'fT')
+                    fFactor = 1e15;                  
+                elseif strcmp(DisplayUnits,'\muV')
+                    fFactor = 1e6;                  
+                elseif strcmp(DisplayUnits,'mV')
+                    fFactor = 1e3;                                      
                 elseif ~isempty(strfind(DisplayUnits,'mol'))
                      fmax = max(abs(dataBounds));
                      if round(log10(fmax)) < -3
@@ -1453,6 +1459,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     else
                         fFactor=1;
                     end
+                elseif strcmp(DisplayUnits,'a.u.')
+                    fmax = max(abs(dataBounds));
+                    [fScaled, fFactor, fUnits] = bst_getunits(fmax, DisplayUnits);
                 else
                      fFactor = 1;
                 end

@@ -30,7 +30,7 @@ function jPopup = tree_callbacks( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 import org.brainstorm.icon.*;
 import java.awt.event.KeyEvent;
@@ -69,7 +69,7 @@ filenameRelative = char(bstNodes(1).getFileName());
 switch lower(nodeType)
     case {'surface', 'scalp', 'cortex', 'outerskull', 'innerskull', 'fibers', 'fem', 'other', 'subject', 'studysubject', 'anatomy', 'volatlas'}
         filenameFull = bst_fullfile(ProtocolInfo.SUBJECTS, filenameRelative);
-    case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix'}
+    case {'study', 'condition', 'rawcondition', 'channel', 'headmodel', 'data','rawdata', 'datalist', 'results', 'kernel', 'pdata', 'presults', 'ptimefreq', 'pspectrum', 'image', 'video', 'videolink', 'noisecov', 'ndatacov', 'dipoles','timefreq', 'spectrum', 'matrix', 'matrixlist', 'pmatrix', 'spike'}
         filenameFull = bst_fullfile(ProtocolInfo.STUDIES, filenameRelative);
     case 'link'
         filenameFull = filenameRelative;
@@ -172,7 +172,7 @@ switch (lower(action))
                 iAnatomy = bstNodes(1).getItemIndex();
                 sSubject = bst_get('Subject', iSubject);
                 % Atlas: display as overlay on the default MRI
-                if (iAnatomy > 1)
+                if (iAnatomy ~= sSubject.iAnatomy)
                     view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName, filenameRelative);
                 else
                     view_mri(filenameRelative);
@@ -257,11 +257,7 @@ switch (lower(action))
             % ===== DATA =====
             % View data file (MEG and EEG)
             case {'data', 'pdata', 'rawdata'}
-                if ~isempty(strfind(filenameRelative, '_0ephys_'))
-                    bst_process('CallProcess', 'process_spikesorting_supervised', filenameRelative, []);
-                else
-                    view_timeseries(filenameRelative);
-                end
+                view_timeseries(filenameRelative);
 
             % ===== DATA/MATRIX LIST =====
             % Expand node
@@ -307,6 +303,10 @@ switch (lower(action))
                 % Display on existing figures
                 view_dipoles(filenameFull);
                 
+            % ===== SPIKES =====
+            case 'spike'
+                panel_spikes('OpenSpikeFile', filenameRelative);
+
             % ===== TIME-FREQUENCY =====
             case {'timefreq', 'ptimefreq'}
                 % Get study
@@ -1195,6 +1195,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Merge layers', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_mergelayers, filenameFull));
                     gui_component('MenuItem', jPopup, [], 'Extract surfaces', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@import_femlayers, iSubject, filenameFull, 'BSTFEM', 1));
                     gui_component('MenuItem', jPopup, [], 'Convert tetra/hexa', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'SwitchHexaTetra', filenameRelative));
+                    gui_component('MenuItem', jPopup, [], 'Compute mesh volume', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@process_fem_mesh, 'ComputeFemVolume', filenameRelative));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Resect neck', IconLoader.ICON_FEM, [], @(h,ev)bst_call(@fem_resect, filenameFull));
                     AddSeparator(jPopup);
@@ -1829,7 +1830,11 @@ switch (lower(action))
                 else
                     gui_component('MenuItem', jPopup, [], 'Merge dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)dipoles_merge(GetAllFilenames(bstNodes)));
                 end
-                
+
+%% ===== POPUP: SPIKE =====
+            case 'spike'
+                gui_component('MenuItem', jPopup, [], 'Supervised spike sorting', IconLoader.ICON_SPIKE_SORTING, [], @(h,ev)panel_spikes('OpenSpikeFile', filenameRelative));
+
 %% ===== POPUP: TIME-FREQ =====
             case {'timefreq', 'ptimefreq'}
                 % Get study description
@@ -2305,6 +2310,8 @@ switch (lower(action))
                         jMenuCluster = gui_component('Menu', jPopup, [], 'Significant clusters', IconLoader.ICON_ATLAS, [], []);
                         gui_component('MenuItem', jMenuCluster, [], 'Cluster indices', IconLoader.ICON_TIMEFREQ, [], @(h,ev)view_statcluster(filenameRelative, 'clustindex_time', []));
                     end
+                else
+                    gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes), 'erpimage', 'none'));
                 end
                 % Export to file
                 if strcmpi(nodeType, 'matrix')
@@ -2313,7 +2320,7 @@ switch (lower(action))
                 
 %% ===== POPUP: MATRIX LIST =====
             case 'matrixlist'
-                % Nothing for now
+                gui_component('MenuItem', jPopup, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(GetAllFilenames(bstNodes, 'matrix'), 'erpimage', 'none'));
         end
         
 %% ===== POPUP: COMMON MENUS =====
@@ -2334,7 +2341,7 @@ switch (lower(action))
                 gui_component('MenuItem', jMenuFile, [], 'View file history', IconLoader.ICON_MATLAB, [], @(h,ev)bst_history('view', filenameFull));
             end
             % ===== VIEW HISTOGRAM =====
-            if isfile && ~ismember(nodeType, {'subject', 'study', 'studysubject', 'condition', 'rawcondition', 'datalist', 'matrixlist', 'image', 'channel', 'rawdata', 'dipoles', 'mri', 'surface', 'cortex', 'anatomy', 'head', 'innerskull', 'outerskull', 'other'})
+            if isfile && ~ismember(nodeType, {'subject', 'study', 'studysubject', 'condition', 'rawcondition', 'datalist', 'matrixlist', 'image', 'channel', 'rawdata', 'dipoles', 'mri', 'surface', 'cortex', 'anatomy', 'head', 'innerskull', 'outerskull', 'spike', 'other'})
                 gui_component('MenuItem', jMenuFile, [], 'View histogram', IconLoader.ICON_HISTOGRAM, [], @(h,ev)view_histogram(GetAllFilenames(bstNodes)));
             end
             if (jMenuFile.getMenuComponentCount() > 0)
@@ -2802,8 +2809,6 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
                     jMenuType = jMenuBs;
                 elseif ~isempty(strfind(fList(iFile).name, 'BrainProducts'))
                     jMenuType = jMenuBp;
-                elseif ~isempty(strfind(fList(iFile).name, 'BioSemi'))
-                    jMenuType = jMenuBs;
                 elseif ~isempty(strfind(fList(iFile).name, 'GSN')) || ~isempty(strfind(fList(iFile).name, 'U562'))
                     jMenuType = jMenuEgi;
                 elseif ~isempty(strfind(fList(iFile).name, 'Neuroscan'))
@@ -3390,10 +3395,14 @@ end
 
 %% ===== SET DEFAULT SURFACE =====
 function SetDefaultSurf(iSubject, SurfaceType, iSurface)
+    % Progress bar
+    bst_progress('start', 'Set default', 'Updating database...');
     % Update database
     db_surface_default(iSubject, SurfaceType, iSurface);
     % Repaint tree
     panel_protocols('RepaintTree');
+    % Close progress bar
+    bst_progress('stop');
 end
 
 %% ===== SET DEFAULT HEADMODEL =====

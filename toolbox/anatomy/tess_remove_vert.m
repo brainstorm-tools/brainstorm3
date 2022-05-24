@@ -60,6 +60,8 @@ for iAtlas = 1:length(Atlas)
         Atlas(iAtlas).Scouts(iScout).Seed     = setdiff(Atlas(iAtlas).Scouts(iScout).Seed, iRemoveVert);
         % Renumber remaining vertices
         Atlas(iAtlas).Scouts(iScout).Vertices = iVertMap(Atlas(iAtlas).Scouts(iScout).Vertices);
+        % Make sure this is a row vector
+        Atlas(iAtlas).Scouts(iScout).Vertices = Atlas(iAtlas).Scouts(iScout).Vertices(:)';
         % Remove scout if there are no vertices left
         if isempty(Atlas(iAtlas).Scouts(iScout).Vertices)
             iScoutRm = [iScoutRm, iScout];

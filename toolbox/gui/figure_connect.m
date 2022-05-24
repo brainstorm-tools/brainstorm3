@@ -1440,8 +1440,12 @@ function BuildLinks(hFig, DataPair, IsMeasureLink)
     
     % Note: DataPair computation already removed diagonal and capped at max 5000 pairs 
     
+    
+    link0  = line(0,0);
+    arrow0 = patch(0,0,'k');
+    Links  = repmat(link0, 1, size(DataPair,1));
+    Arrows = repmat(arrow0, 1, size(DataPair,1));
     %for each link
-    Links = zeros(1, size(DataPair,1));
     for i = 1:size(DataPair,1)
         overlap = false;
         % node positions (rescaled to *unit* circle)

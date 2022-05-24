@@ -13,7 +13,7 @@ function [F, TimeVector] = fif_read_raw_segment(sFile, sfid, iTimes, iChannels)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -102,13 +102,22 @@ for k = 1:length(raw.rawdir)
             %   Depending on the state of the projection and selection
             %   we proceed a little bit differently
             %
-            if isempty(iChannels)
-                one = double(reshape(tag.data,nchan,this.nsamp));
-            else
-                one = double(reshape(tag.data,nchan,this.nsamp));
+
+            % Previous version:
+            % one = double(reshape(tag.data,nchan,this.nsamp));
+
+            % New version:
+            % Detect missing samples and pad with zeros (added by FT: 2-May-2022)
+            one = double(reshape(tag.data, nchan, []));
+            if (size(one,2) < this.nsamp)
+                nMissing = this.nsamp - size(one,2);
+                disp(sprintf('FIF> Error: Missing samples #%1.6fs to #%1.6fs. Padding with zeros...', (double(to - nMissing))/info.sfreq, double(to)/info.sfreq));
+                one = [one, ones(nchan, nMissing)];
+            end
+            % Select channels
+            if ~isempty(iChannels)
                 one = one(iChannels,:);
             end
-            
         end
         %
         %  The picking logic is a bit complicated

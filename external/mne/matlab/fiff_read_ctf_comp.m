@@ -103,7 +103,6 @@ for k = 1:length(comps)
     one.save_calibrated = calibrated;
     one.rowcals = ones(1,size(mat.data,1));
     one.colcals = ones(1,size(mat.data,2));
-    one = fiff_rename_comp(one, ch_rename);
     if ~calibrated
         %
         %   Calibrate...
@@ -143,6 +142,7 @@ for k = 1:length(comps)
     compdata(k)    = one;
     clear('row_cals');
     clear('col_cals');
+    one = fiff_rename_comp(one, ch_rename);
 end
 
 if length(compdata) > 0

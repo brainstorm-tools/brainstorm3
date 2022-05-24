@@ -99,7 +99,11 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         if isParallel
             try
                 if (bst_get('MatlabVersion') >= 802)
-                    hPool = parpool;
+                    hPool = gcp('nocreate');
+                    if isempty(hPool)
+                        bst_progress('start', 'Process', 'Starting parallel pool...');
+                        hPool = parpool;
+                    end
                 else
                     matlabpool open;
                 end
@@ -1523,7 +1527,7 @@ function sInputs = GetInputStruct(FileNames)
         end
         % Look for items in database
         switch (FileType)
-            case 'data'
+            case {'data', 'spike'}
                 [tmp, iDb, iList] = intersect({sStudy.Data.FileName}, GroupFileNames);
                 sItems = sStudy.Data(iDb);
                 if ~isempty(sItems) && strcmpi(sItems(1).DataType, 'raw')

@@ -89,7 +89,7 @@ switch (fileType)
             deletedFile{end+1} = sStudy.Timefreq(iItem).FileName;
         end
         sStudy.Timefreq(iItem) = sNew;
-    case 'data'
+    case {'data', 'spike'}
         % Create new descriptor
         sNew = db_template('Data');
         sNew.FileName = FileName;

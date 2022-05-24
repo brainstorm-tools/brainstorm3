@@ -73,6 +73,7 @@ end
 OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 % Initialize output variables
 OutputFiles = {};
+AllComments = {};
 Ravg = [];
 nAvg = 0;
 nTime = 1;
@@ -128,6 +129,7 @@ else
     hilbert_fcn = @oc_hilbert;
 end
 
+
 %% ===== CONCATENATE INPUTS / REMOVE AVERAGE =====
 sAverageA = [];
 sAverageB = [];
@@ -138,10 +140,46 @@ switch (OPTIONS.OutputMode)
     case 'avgcoh',  isConcat = 2;
     otherwise,      isConcat = 0;
 end
-% Load all the data and concatenate it
-if (isConcat >= 1)
-    bst_progress('text', 'Loading input files...');
 
+% === LOAD CALLS ONLY ===
+% Prepare load calls, data will be loaded in bst_cohn_2021
+if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
+    % Number of concatenated trials to process
+    nTrials = length(FilesA);
+    % Load first FileA, for getting all the file metadata
+    sInputA = bst_process('LoadInputFile', FilesA{1}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA);
+    if (size(sInputA.Data,2) < 2)
+        bst_report('Error', OPTIONS.ProcessName, FilesA{1}, 'Invalid time selection, check the input time window.');
+        return;
+    end
+    % FilesA load calls
+    sInputA.Data = cell(1, nTrials);
+    for iFile = 1:nTrials
+        sInputA.Data{iFile} = {@bst_process, 'LoadInputFile', FilesA{iFile}, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA};
+    end
+    FilesA = FilesA(1);
+    % FilesB load calls
+    if ~isConnNN
+        % Load first FileA, for getting all the file metadata
+        sInputB = bst_process('LoadInputFile', FilesB{1}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
+        if (size(sInputB.Data,2) < 2)
+            bst_report('Error', OPTIONS.ProcessName, FilesB{1}, 'Invalid time selection, check the input time window.');
+            return;
+        end
+        % FilesB load calls
+        sInputB.Data = cell(1, nTrials);
+        for iFile = 1:nTrials
+            sInputB.Data{iFile} = {@bst_process, 'LoadInputFile', FilesB{iFile}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB};
+        end
+        FilesB = FilesB(1);
+    else
+        sInputB = sInputA;
+    end
+
+% === LOAD AND CONCATENATE ===
+% Load all the data and concatenate it
+elseif (isConcat >= 1)
+    bst_progress('text', 'Loading input files...');
     % Number of concatenated trials to process
     nTrials = length(FilesA);
     % Concatenate FileA
@@ -167,7 +205,8 @@ if (isConcat >= 1)
     else
         sInputB = sInputA;
     end
-% Calculate evoked responses
+
+% === LOAD AND REMOVE AVERAGE ===
 elseif OPTIONS.RemoveEvoked
     % Average: Files A
     [tmp, sAverageA] = LoadAll(FilesA, OPTIONS.TargetA, OPTIONS.TimeWindow, LoadOptionsA, 0, 1, startValue);
@@ -285,6 +324,7 @@ for iFile = 1:length(FilesA)
     
     
     %% ===== COMPUTE CONNECTIVITY METRIC =====
+    % The sections below must return R matrices with dimensions: [nA x nB x nTime x nFreq]
     switch (OPTIONS.Method)
         % === CORRELATION ===
         case 'corr'
@@ -295,7 +335,11 @@ for iFile = 1:length(FilesA)
             
         % === COHERENCE ===
         case 'cohere'
-            bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            if (size(sInputA.Data,1) > 1) && (size(sInputB.Data,1) > 1)
+                bst_progress('text', sprintf('Calculating: Coherence [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
+            else
+                bst_progress('text', 'Calculating: Coherence...');
+            end
             % Compute in symmetrical way only for constrained sources
             CalculateSym = OPTIONS.isSymmetric && ~isUnconstrA && ~isUnconstrB;
             % Estimate the coherence (2021)
@@ -348,6 +392,8 @@ for iFile = 1:length(FilesA)
             end
             % Output comment
             Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
 
         % ==== GRANGER ====
         case 'granger'
@@ -420,6 +466,8 @@ for iFile = 1:length(FilesA)
             else
                 Comment = sprintf('SpGranger(%1.1fHz): ', OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
             end
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== AEC ====
         case 'aec'
@@ -477,7 +525,9 @@ for iFile = 1:length(FilesA)
                 end
             end
             % We don't want to compute again the frequency bands
-            FreqBands = [];            
+            FreqBands = [];
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== PLV ====
         case {'plv', 'wpli', 'ciplv'}
@@ -485,18 +535,18 @@ for iFile = 1:length(FilesA)
             % Get frequency bands
             nFreq = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+            nA = size(sInputA.Data,1);
+            nB = size(sInputB.Data,1);
             % Initialization for ciPLV and wPLI
             if ismember(OPTIONS.Method, {'wpli'})
                 % Replicate nB x HA, and nA x HB
-                nA = size(sInputA.Data,1);
-                nB = size(sInputB.Data,1);
                 iA = repmat(1:nA, 1, nB)';
                 iB = reshape(repmat(1:nB, nA, 1), [], 1);
             end
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreq);
+            R = zeros(nA, nB, nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreq
                 % Band-pass filter in one frequency band + Apply Hilbert transform
@@ -539,6 +589,8 @@ for iFile = 1:length(FilesA)
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, nA, nB, 1, nFreqBands);
             
         % ==== PLV-TIME ====
         case {'plvt', 'wplit', 'ciplvt'}
@@ -593,7 +645,9 @@ for iFile = 1:length(FilesA)
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
-        
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, nA, nB, nTime, nFreqBands);
+
         % ==== PTE ====
         case 'pte'
             bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
@@ -606,7 +660,7 @@ for iFile = 1:length(FilesA)
             nFreq = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Intitialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreq);
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), 1, nFreq);
             % Loop on each frequency band
             for iBand = 1:nFreq
                 % Band-pass filter in one frequency band + Apply Hilbert transform
@@ -614,9 +668,9 @@ for iFile = 1:length(FilesA)
                 % Compute PTE
                 [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));
                 if OPTIONS.isNormalized
-                    R(:,:,iBand) = dPTE;
+                    R(:,:,1,iBand) = dPTE;
                 else
-                    R(:,:,iBand) = PTE;
+                    R(:,:,1,iBand) = PTE;
                 end
             end
             % We don't want to compute again the frequency bands
@@ -634,8 +688,6 @@ for iFile = 1:length(FilesA)
             sInputB.Time = timeSamples + sInputB.Time(1);
             % File comment
             Comment = sprintf('%s (%s, %1.2fs, %dwin): ', OPTIONS.CohMeasure, OPTIONS.tfMeasure, OPTIONS.WinLength, Nwin);
-            % Prepare reshaping from 4D matrix to 3D
-            [tmp1,tmp1,nTime,nFreq] = size(R);
                     
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
@@ -647,6 +699,7 @@ for iFile = 1:length(FilesA)
     
     
     %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====
+    % R matrix is: [nA x nB x nTime x nFreq]
     if isUnconstrA || isUnconstrB
         % If there are negative values: take the signed absolute maximum
         if any(R(:) < 0)
@@ -668,30 +721,33 @@ for iFile = 1:length(FilesA)
     end
 
     %% ===== SAVE FILE =====
-    % Reshape: [A*B x nTime x nFreq]
-    R = reshape(R, [], nTime, nFreq);
+    % Reshape: [nA x nB x nTime x nFreq] => [nA*nB x nTime x nFreq]
+    R = reshape(R, [], size(R,3), size(R,4));
     % Comment
-    if isequal(FilesA, FilesB)
-        % Row name
-        if (length(sInputA.RowNames) == 1)
+    % 1xN and AxB
+    if ~isConnNN
+        % Seed (scout)
+        if OPTIONS.isScoutA
+            if (length(OPTIONS.sScoutsA) == 1)
+                Comment = [Comment, OPTIONS.sScoutsA.Label];
+            end
+        % Seed (sensor or row)
+        elseif (length(sInputA.RowNames) == 1)
             if iscell(sInputA.RowNames)
                 Comment = [Comment, sInputA.RowNames{1}];
             else
                 Comment = [Comment, '#', num2str(sInputA.RowNames(1))];
             end
-        % Scouts
-        elseif OPTIONS.isScoutA
-            if (length(OPTIONS.sScoutsA) == 1)
-                Comment = [Comment, OPTIONS.sScoutsA.Label, ', ' OPTIONS.ScoutFunc];
-            else
-                Comment = [Comment, num2str(length(OPTIONS.sScoutsA)), ' scouts, ' OPTIONS.ScoutFunc];
-            end
-            if ~strcmpi(OPTIONS.ScoutFunc, 'All')
-                 Comment = [Comment, ' ' OPTIONS.ScoutTime];
-            end
-        else
-            Comment = [Comment, 'Full'];
         end
+        % Number of target (scouts)
+        if OPTIONS.isScoutB
+            Comment = [Comment, ' x ' num2str(length(OPTIONS.sScoutsB)), ' scouts'];
+        end
+        % Add scout function and time if they are relevant
+        if ~strcmpi(OPTIONS.ScoutFunc, 'All') && (OPTIONS.isScoutA || OPTIONS.isScoutB)
+             Comment = [Comment, ', ',  OPTIONS.ScoutFunc, ' ', OPTIONS.ScoutTime];
+        end
+    %NxN
     else
         Comment = [Comment, sInputA.Comment];
     end
@@ -704,6 +760,8 @@ for iFile = 1:length(FilesA)
             nAvg = 1;
             OutputFiles{end+1} = SaveFile(R, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
         case 'avg'
+            % Concatenate files comments
+            AllComments{end+1} = Comment;
             % Compute online average of the connectivity matrices
             if isempty(Ravg)
                 Ravg = R ./ length(FilesA);
@@ -719,7 +777,7 @@ end
 
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
-    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, Comment, nAvg, OPTIONS, FreqBands);
+    OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
 end
 
 
@@ -746,6 +804,24 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     FileMat.Method    = OPTIONS.Method;
     FileMat.DataFile  = file_win2unix(DataFile);
     FileMat.nAvg      = nAvg;
+    % Comment if average comes from trials
+    if FileMat.nAvg > 1
+        listComments = Comment;
+        % If Comments are the same
+        if length(unique(listComments)) > 1
+            % Search for trial tags and remove them
+            for iComment = 1 : length(listComments)
+                [~, tmpStrs] = regexp(listComments{iComment},'\(#.+\)','match','split');
+                listComments{iComment} = deblank([tmpStrs{:}]);
+            end
+        end
+        if (length(unique(listComments)) == 1)
+            Comment = listComments{1};
+        else
+            Comment = listComments{end};
+        end
+        FileMat.Comment = sprintf('Avg: %s (%d)', Comment, FileMat.nAvg);
+    end
     % Head model
     if isfield(sInputA, 'HeadModelFile') && ~isempty(sInputA.HeadModelFile)
         FileMat.HeadModelFile = sInputA.HeadModelFile;
@@ -843,7 +919,7 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
 end
 
 
-%% ===== LOAD CONCATENATED =====
+%% ===== LOAD ALL INPUTS =====
 function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOptions, isConcat, isAverage, startValue)
     sConcat = [];
     sAverage = [];
@@ -903,6 +979,7 @@ function [sConcat, sAverage] = LoadAll(FileNames, Target, TimeWindow, LoadOption
         end
     end
 end
+
 
 function R = correlate_dims(A, B, dim)
     A = bsxfun( @minus, A, mean( A, dim) );

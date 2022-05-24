@@ -761,6 +761,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
     function UpdateProcessOptions()
         import java.awt.Dimension;
         import javax.swing.BoxLayout;
+        import org.brainstorm.list.*;
         % Starting the update
         isUpdatingPipeline = 1;
         % Font size for the options
@@ -2089,7 +2090,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         
         for iEvent = 1:length(DataEvents)
             label = DataEvents(iEvent).label;
-            isSpikeEvent = process_spikesorting_supervised('IsSpikeEvent', label);
+            isSpikeEvent = panel_spikes('IsSpikeEvent', label);
             
             if (excludeSpikes && ~isSpikeEvent) || (onlySpikes && isSpikeEvent)
                 EventList{end + 1} = label;
