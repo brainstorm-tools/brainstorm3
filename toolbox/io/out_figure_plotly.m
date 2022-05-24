@@ -30,6 +30,9 @@ end
 
 % Confirm Plotly credentials
 [username, apikey, domain] = bst_get('PlotlyCredentials');
+if isempty(domain)
+    domain = 'https://plot.ly';
+end
 [res, isCancel] = java_dialog('input', ...
     {['<html><body><p>Please enter your Plotly credentials</p><br>', ...
     '<p>Username:</p></body></html>'], 'API Key:', 'Domain (optional):'}, ...
