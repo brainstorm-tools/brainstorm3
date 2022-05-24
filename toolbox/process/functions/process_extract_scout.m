@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'Scout function:'};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'PCAgt', 'Scout function:'};
     sProcess.options.scoutfunc.Type       = 'radio_line';
     sProcess.options.scoutfunc.Value      = 1;
     % === FLIP SIGN
@@ -134,8 +134,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case {3, 'pca'},  ScoutFunc = 'pca';
             case {4, 'std'},  ScoutFunc = 'std';
             case {5, 'all'},  ScoutFunc = 'all';
-            case {6, 'pcag'},  ScoutFunc = 'pcag';
-            case {7, 'pcag3'},  ScoutFunc = 'pcag3';
+            case {6, 'pcag'},  ScoutFunc = 'pcag'; % global pca: one comp over all trials, over all sources (loc and orient)
+            case {7, 'pcag3'},  ScoutFunc = 'pcag3'; % global pca, keep 3 comp
+            case {8, 'pcagt'},  ScoutFunc = 'pcagt'; % per trial "global" pca (over source loc and orient)
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else
@@ -664,6 +665,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Loop on frequencies
                 nFreq = size(sourceValues,3);
                 for iFreq = 1:nFreq
+                    % Get covariance for this trial.
+                    if strcmpi(ScoutFunc, 'pcagt')
+                        % Remove average over time for each row
+                        Fmean = mean(sourceValues(:,:,iFreq), 2);
+                        sourceValues(:,:,iFreq) = bst_bsxfun(@minus, sourceValues(:,:,iFreq), Fmean);
+                        ScoutCov = sourceValues(:,:,iFreq) * sourceValues(:,:,iFreq)';
+                    end
                     % Apply scout function
                     tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName, ScoutCov);
                     scoutValues = cat(1, scoutValues, tmpScout);

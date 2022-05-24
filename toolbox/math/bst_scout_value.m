@@ -109,7 +109,10 @@ if strncmpi(ScoutFunction, 'pcag', 4)
         error('Data covariance not loaded.');
     end
     % For pcag, keep only 1 component.  For pcag3 we'll keep nComponents(=3).
-    nComponents = 1;
+    if ~strcmpi(ScoutFunction, 'pcag3')
+        nComponents = 1;
+    end
+    ScoutFunction = 'pcag';
 else
     switch (nComponents)
         case 0,  error('You should call this function for each region individually.');
@@ -180,8 +183,9 @@ switch (lower(ScoutFunction))
             [Fs(1,:,i), explained] = PcaFirstMode(F(:,:,i));
         end
         
-    % PCA computed on all data (all epochs/files), and treating all sources equally (orientations and locations).
-    case {'pcag', 'pcag3'}
+    % PCA computed on all data (all epochs/files) or single trial ('pcagt'), and
+    % treating all sources equally (orientations and locations).
+    case 'pcag'
         % Eigenvalues of covar matrix = square of singular values of time series.
         % Eigenvector of covar matrix = singular vector of time series.
         % Force data covariance to be symmetric to avoid complex results from numerical errors.
