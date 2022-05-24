@@ -102,12 +102,14 @@ end
 
 % ===== MULTIPLE COMPONENTS =====
 % Reshape F matrix in 3D: [nRow, nTime, nComponents]
-if strcmpi(ScoutFunction, 'pcag')
+if strncmpi(ScoutFunction, 'pcag', 4)
     % Treat all sources on the same footing (across locations and orientations),
     % don't reshape.
     if nargin < 8 || isempty(ScoutCov)
         error('Data covariance not loaded.');
     end
+    % For pcag, keep only 1 component.  For pcag3 we'll keep nComponents(=3).
+    nComponents = 1;
 else
     switch (nComponents)
         case 0,  error('You should call this function for each region individually.');
@@ -179,17 +181,17 @@ switch (lower(ScoutFunction))
         end
         
     % PCA computed on all data (all epochs/files), and treating all sources equally (orientations and locations).
-    case 'pcag'
+    case {'pcag', 'pcag3'}
         % Eigenvalues of covar matrix = square of singular values of time series.
         % Eigenvector of covar matrix = singular vector of time series.
         % Force data covariance to be symmetric to avoid complex results from numerical errors.
         [U, S] = eig((ScoutCov + ScoutCov')/2);
         [S, iSort] = sort(diag(S), 'descend');
-        explained = S(1) / sum(S);
-        U = U(:, iSort(1));
+        explained = sum(S(1:nComponents)) / sum(S);
+        U = U(:, iSort(1:nComponents));
         % Flip sign for consistency across files/epochs.
-        U = sign(sum(U,1)) * U;
-        Fs(1,:) = U' * F; 
+        U = bsxfun(@times, sign(sum(U,1)), U);
+        Fs = permute(U' * F, [3,2,1]); % (1, nTime, nComponents)
 
     % FAST PCA : Display first mode of PCA of time series within each scout region
     case 'fastpca'

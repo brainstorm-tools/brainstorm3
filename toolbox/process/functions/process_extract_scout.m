@@ -50,7 +50,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'Scout function:'};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'Scout function:'};
     sProcess.options.scoutfunc.Type       = 'radio_line';
     sProcess.options.scoutfunc.Value      = 1;
     % === FLIP SIGN
@@ -135,6 +135,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case {4, 'std'},  ScoutFunc = 'std';
             case {5, 'all'},  ScoutFunc = 'all';
             case {6, 'pcag'},  ScoutFunc = 'pcag';
+            case {7, 'pcag3'},  ScoutFunc = 'pcag3';
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else
@@ -188,7 +189,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get data filename
         [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
         
-        if iInput == 1 && strcmpi(ScoutFunc, 'pcag')
+        if iInput == 1 && strncmpi(ScoutFunc, 'pcag', 4)
             if ~strcmpi(sInputs(iInput).FileType, 'results') 
                 error('pcag only available for imaging kernel files.');
             end
@@ -595,7 +596,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif (size(sMat.F,3) == 1)
                     sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
                     sourceStd = [];
-                    if iInput == 1 && strcmpi(SelScoutFunc, 'pcag')
+                    if iInput == 1 && strncmpi(SelScoutFunc, 'pcag', 4)
                         ScoutCov = sResults.ImagingKernel(iRows,:) * DataCov.NoiseCov(sResults.GoodChannel, sResults.GoodChannel) * sResults.ImagingKernel(iRows,:)';
                     end
                 else
