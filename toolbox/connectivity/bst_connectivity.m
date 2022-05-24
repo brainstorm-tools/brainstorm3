@@ -323,6 +323,7 @@ for iFile = 1:length(FilesA)
     
     
     %% ===== COMPUTE CONNECTIVITY METRIC =====
+    % The sections below must return R matrices with dimensions: [nA x nB x nTime x nFreq]
     switch (OPTIONS.Method)
         % === CORRELATION ===
         case 'corr'
@@ -389,6 +390,8 @@ for iFile = 1:length(FilesA)
             end
             % Output comment
             Comment = sprintf(['%s(' precision 'Hz,%dwin): '], OPTIONS.CohMeasure, fStep, OPTIONS.Nwin);
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
 
         % ==== GRANGER ====
         case 'granger'
@@ -460,6 +463,8 @@ for iFile = 1:length(FilesA)
             else
                 Comment = sprintf('SpGranger(%1.1fHz): ', OPTIONS.Freqs(2)-OPTIONS.Freqs(1));
             end
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== AEC ====
         case 'aec'
@@ -517,7 +522,9 @@ for iFile = 1:length(FilesA)
                 end
             end
             % We don't want to compute again the frequency bands
-            FreqBands = [];            
+            FreqBands = [];
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== PLV ====
         case {'plv', 'wpli', 'ciplv'}
@@ -525,18 +532,18 @@ for iFile = 1:length(FilesA)
             % Get frequency bands
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
+            nA = size(sInputA.Data,1);
+            nB = size(sInputB.Data,1);
             % Initialization for ciPLV and wPLI
             if ismember(OPTIONS.Method, {'wpli'})
                 % Replicate nB x HA, and nA x HB
-                nA = size(sInputA.Data,1);
-                nB = size(sInputB.Data,1);
                 iA = repmat(1:nA, 1, nB)';
                 iB = reshape(repmat(1:nB, nA, 1), [], 1);
             end
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            R = zeros(nA, nB, nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
@@ -579,6 +586,8 @@ for iFile = 1:length(FilesA)
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, nA, nB, 1, nFreqBands);
             
         % ==== PLV-TIME ====
         case {'plvt', 'wplit', 'ciplvt'}
@@ -633,7 +642,9 @@ for iFile = 1:length(FilesA)
             end
             % We don't want to compute again the frequency bands
             FreqBands = [];
-        
+            % Reshape as [nA x nB x nTime x nFreq]
+            R = reshape(R, nA, nB, nTime, nFreqBands);
+
         % ==== PTE ====
         case 'pte'
             bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
@@ -646,7 +657,7 @@ for iFile = 1:length(FilesA)
             nFreqBands = size(OPTIONS.Freqs, 1);
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Intitialize returned matrix
-            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
+            R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), 1, nFreqBands);
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
@@ -654,9 +665,9 @@ for iFile = 1:length(FilesA)
                 % Compute PTE
                 [dPTE, PTE] = PhaseTE_MF(permute(DataAband, [2 1]));
                 if OPTIONS.isNormalized
-                    R(:,:,iBand) = dPTE;
+                    R(:,:,1,iBand) = dPTE;
                 else
-                    R(:,:,iBand) = PTE;
+                    R(:,:,1,iBand) = PTE;
                 end
             end
             % We don't want to compute again the frequency bands
@@ -672,12 +683,8 @@ for iFile = 1:length(FilesA)
             OPTIONS.SampleRate = sfreq;
             OPTIONS.Freqs      = OPTIONS.Freqrange;
 
-            [R4d,timeSamples]       = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
-            sInputB.Time            = timeSamples + sInputB.Time(1) ;
-            [tmp1,tmp1,nTime,nBand] = size(R4d) ;
-            
-            % Rehaping a 4D matrix to 3 dim
-            R = reshape(R4d,[],nTime,nBand) ;
+            [R, timeSamples] = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
+            sInputB.Time     = timeSamples + sInputB.Time(1);
                     
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);
@@ -689,6 +696,7 @@ for iFile = 1:length(FilesA)
     
     
     %% ===== PROCESS UNCONSTRAINED SOURCES: MAX =====
+    % R matrix is: [nA x nB x nTime x nFreq]
     if isUnconstrA || isUnconstrB
         % If there are negative values: take the signed absolute maximum
         if any(R(:) < 0)
@@ -710,8 +718,8 @@ for iFile = 1:length(FilesA)
     end
 
     %% ===== SAVE FILE =====
-    % Reshape: [A*B x nTime x nFreq]
-    R = reshape(R, [], nTime, size(R,3));
+    % Reshape: [nA x nB x nTime x nFreq] => [nA*nB x nTime x nFreq]
+    R = reshape(R, [], size(R,3), size(R,4));
     % Comment
     % 1xN and AxB
     if ~isConnNN
