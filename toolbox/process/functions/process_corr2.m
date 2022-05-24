@@ -118,7 +118,7 @@ function sProcess = DefineConnectOptions(sProcess) %#ok<DEFNU>
     sProcess.options.dest_scouts.InputTypesB = {'results'};
     sProcess.options.dest_scouts.Group       = 'input';
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment     = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'Scout function:'};
+    sProcess.options.scoutfunc.Comment     = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'PCAgt', 'Scout function:'};
     sProcess.options.scoutfunc.Type        = 'radio_line';
     sProcess.options.scoutfunc.Value       = 1;
     sProcess.options.scoutfunc.InputTypes  = {'results'};

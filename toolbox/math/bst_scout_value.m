@@ -281,7 +281,7 @@ end
 
 %% Display percentage of signal explained by 1st component of PCA
 if explained
-    msg = ['BST> First component explains ' num2str(explained * 100) '% of the signal'];
+    msg = ['BST> Kept component(s) explains ' num2str(explained * 100) '% of the signal'];
     if scoutName
         msg = [msg ' of cluster ' scoutName];
     end
