@@ -266,7 +266,7 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     nbBlocks = ceil(totalLength / blockLength);
     % Progress bar, channels
     isProgressBar = bst_progress('isVisible');
-    bst_progress('start', 'Import events', 'Reading events channels...', 0, length(iChannels));
+    bst_progress('start', 'Import events', 'Reading events channels...', 0, length(iChannels) * nbBlocks);
 
     tracks_name = {};
     tracks_vals = {};
@@ -274,13 +274,11 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
     % Process each channel
     for iChannel = 1 : length(iChannels)
         % Increment progress bar
-        bst_progress('inc', 1);
         track_prev = [];
         track_vals = [];
         track_smps = [];
         % Progress bar, blocks
-        isProgressBar = bst_progress('isVisible');
-        bst_progress('start', 'Import events', ['Reading events in channel ' StimChan{iChannel} ' ...'], 0, nbBlocks);
+        bst_progress('text', ['Reading events in channel ' StimChan{iChannel} ' ...']);
         for iBlock = 1:nbBlocks
             % Increment progress bar
             bst_progress('inc', 1);
@@ -304,10 +302,6 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             track_smps = [track_smps, samplesBlock(1) + ixDiffTrack];
             % Saving ending state for next block
             track_prev = track(end);
-        end
-        % Close progress bar
-        if ~isProgressBar
-            bst_progress('stop');
         end
 
         % CTF: Read separately Upper and Lower bytes
@@ -447,7 +441,3 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
         bst_progress('stop');
     end
 end
-
-
-
-
