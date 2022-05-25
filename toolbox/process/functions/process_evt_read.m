@@ -20,6 +20,8 @@ function varargout = process_evt_read( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2021
+%          Raymundo Cassani, 2022
+%          Marc Lalancette, 2022
 
 eval(macro_method);
 end
