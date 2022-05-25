@@ -310,7 +310,6 @@ function [events, EventsTrackMode, StimChan] = Compute(sFile, ChannelMat, StimCh
             bst_progress('stop');
         end
 
-        % === BLOCK EDITED 16-JUN-2021 ===
         % CTF: Read separately Upper and Lower bytes
         if ismember(sFile.format, {'CTF', 'CTF-CONTINUOUS'})
             % Events are read as int32, while they are actually uint32: fix negative values
