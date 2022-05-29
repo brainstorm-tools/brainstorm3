@@ -40,7 +40,8 @@ function varargout = figure_3d( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2022
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -1583,6 +1584,8 @@ function DisplayFigurePopup(hFig)
         jItem.setSelected(TopoLayoutOptions.ShowRefLines);
         jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Show legend', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'ShowLegend', ~TopoLayoutOptions.ShowLegend));
         jItem.setSelected(TopoLayoutOptions.ShowLegend);
+        jItem = gui_component('CheckBoxMenuItem', jMenu, [], 'Flip Y axis', [], [], @(h,ev)figure_topo('SetTopoLayoutOptions', 'FlipYAxis', ~TopoLayoutOptions.FlipYAxis));
+        jItem.setSelected(TopoLayoutOptions.FlipYAxis);
         jPopup.addSeparator();
     end
     

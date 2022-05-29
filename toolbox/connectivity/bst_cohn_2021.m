@@ -145,20 +145,20 @@ for iFile = 1 : nFiles
     end
     [nSignalsY, nTimeY] = size(y);
     % Check minimum number of windows in input signals
-    minWin = nFiles * floor( (min(nTimeY) - nOverlap) / (nWinLen - nOverlap));
+    minWin = nFiles * floor( (nTimeY - nOverlap) / (nWinLen - nOverlap));
     % ERROR: Not enough time points
     if minWin < minWinError
         nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinError - 1);
         Messages = sprintf(['Input signals are too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
                             'Provide 2 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-                            nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
+                            nFiles, nTimeY, WinLen, WinLen, nMinMessage/Fs);
         return;
     % WARNING: Maybe not enough time points
     elseif minWin < minWinWarning
         nMinMessage = nWinLen + (nWinLen - nOverlap) * (minWinWarning - 1);
         Messages = sprintf(['Input signals may be too few (%d files) or too short (%d samples) for the requested window length (%1.2f s).\n' ...
                             'Recommendation: Provide 5 or more files with a duration >= %1.2f s; or 1 file with a duration >= %1.2f s.'], ...
-                            nFiles, min(nSamplesXs), WinLen, WinLen, nMinMessage/Fs);
+                            nFiles, nTimeY, WinLen, WinLen, nMinMessage/Fs);
     end
 
 

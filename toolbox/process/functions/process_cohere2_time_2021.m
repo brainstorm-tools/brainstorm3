@@ -53,7 +53,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.slide_win.Comment = 'Sliding time window duration:';
     sProcess.options.slide_win.Type    = 'value';
     sProcess.options.slide_win.Value   = {.350, 'ms', []};
-    % === Overlap for Sliding window (Time)
+    % === WinOverlap for Sliding window (Time)
     sProcess.options.slide_overlap.Comment = 'Sliding window overlap:';
     sProcess.options.slide_overlap.Type    = 'value';
     sProcess.options.slide_overlap.Value   = {50, '%', []};
@@ -75,7 +75,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.win_length.Type    = 'value';
     sProcess.options.win_length.Value   = {1, 's', []};
     % === OVERLAP
-    sProcess.options.overlap.Comment = 'Overlap for PSD estimation:' ;
+    sProcess.options.overlap.Comment = 'WinOverlap for PSD estimation:' ;
     sProcess.options.overlap.Type    = 'value';
     sProcess.options.overlap.Value   = {50, '%', []};
     % === HIGHEST FREQUENCY OF INTEREST
@@ -109,6 +109,7 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     if isempty(OPTIONS)
         return
     end
+    CommentTag = sProcess.options.commenttag.Value;
     % Metric options
     OPTIONS.Method = 'cohere';
     OPTIONS.RemoveEvoked  = sProcess.options.removeevoked.Value;
@@ -117,26 +118,28 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     OPTIONS.CohOverlap    = 0.50;
     OPTIONS.pThresh       = 0.05;
     OPTIONS.isSave        = 0;
-    OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value; 
-
+    OPTIONS.CohMeasure    = sProcess.options.cohmeasure.Value;
     % Sliding time windows options
-    CommentTag    = sProcess.options.commenttag.Value;
-    EstTimeWinLen = sProcess.options.slide_win.Value{1};
-    Overlap       = sProcess.options.slide_overlap.Value{1}/100;
+    WinLength  = sProcess.options.slide_win.Value{1};
+    WinOverlap = sProcess.options.slide_overlap.Value{1};
     
     % Read time information
     TimeVectorA  = in_bst(sInputA(1).FileName, 'Time');
     sfreq        = round(1/(TimeVectorA(2) - TimeVectorA(1)));
-    winLen       = round(sfreq * EstTimeWinLen);
-    overlapSamps = round(Overlap * winLen);
-    SampTimeWin  = bst_closest(OPTIONS.TimeWindow, TimeVectorA); % number of baseline sample to ignore
-    timeSamps    = [SampTimeWin(1),winLen+SampTimeWin(1)];  
-    iTime = 1;
-    % Error management
-    if (timeSamps(2) >= SampTimeWin(2))
+    % Select input time window
+    TimeVectorA = TimeVectorA((TimeVectorA >= OPTIONS.TimeWindow(1)) & (TimeVectorA <= OPTIONS.TimeWindow(2)));
+    nTime       = length(TimeVectorA);
+
+    % Compute sliding windows length
+    Lwin  = round(WinLength * sfreq);
+    Loverlap = round(Lwin * WinOverlap / 100);
+    Nwin = floor((nTime - Loverlap) ./ (Lwin - Loverlap));
+    % If window is bigger than the data
+    if (Lwin > nTime)
         bst_report('Error', sProcess, sInputA, 'Sliding window for the coherence estimation is too long compared with the epochs in input.');
         return;
     end
+
     % Check that time is the same for FilesB
     if ~isempty(sInputB)
         TimeVectorB = in_bst(sInputB(1).FileName, 'Time');
@@ -145,15 +148,16 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
             return;
         end
     end
+
     % Get progress bar position
     posProgress = bst_progress('get');
-        
     % Loop over all the time windows
-    while (timeSamps(2) < SampTimeWin(2))
+    for iWin = 1:Nwin
         % Set the progress bar at the same level at every iteration
         bst_progress('set', posProgress);
-        % select time window
-        OPTIONS.TimeWindow = TimeVectorA(timeSamps);
+        % Select time window
+        iTimes = (1:Lwin) + (iWin-1)*(Lwin - Loverlap);
+        OPTIONS.TimeWindow = TimeVectorA(iTimes([1,end]));
         % Compute metric
         if ~isempty(sInputB)
             ConnectMat = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
@@ -166,19 +170,15 @@ function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
             return;
         end
         % Start a new brainstorm structure
-        if (iTime == 1)
+        if (iWin == 1)
             NewMat = ConnectMat{1};
-            NewMat.Time = TimeVectorA(timeSamps(1));             
+            NewMat.Time = OPTIONS.TimeWindow(1);             
             NewMat.TimeBands = [];
         % Add next time point
         else
-            NewMat.TF(:,iTime,:) = ConnectMat{1}.TF;
-            NewMat.Time(end+1) = TimeVectorA(timeSamps(1));
+            NewMat.TF(:,iWin,:) = ConnectMat{1}.TF;
+            NewMat.Time(end+1) = OPTIONS.TimeWindow(1);
         end
-        % Update to the next time
-        iTime = iTime+1;
-        newStart = timeSamps(2) - overlapSamps;
-        timeSamps = [newStart, newStart+winLen];
     end
     
     % Fix time vector

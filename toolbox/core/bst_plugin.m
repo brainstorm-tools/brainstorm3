@@ -395,6 +395,75 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).LoadFolders    = {'toolbox'};
     PlugDesc(end).DeleteFiles    = {'ExampleDespiking.m', 'appendixpaper.pdf', 'downsample2x.m', 'examplelfpdespiking.mat', 'sta.m', ...
                                     'toolbox/delineSignal.m', 'toolbox/despikeLFPbyChunks.asv', 'toolbox/despikeLFPbyChunks.m'};
+                                
+    % === ELECTROPHYSIOLOGY: Kilosort ===
+    PlugDesc(end+1)              = GetStruct('kilosort');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/cortex-lab/KiloSort/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://papers.nips.cc/paper/2016/hash/1145a30ff80745b56fb0cecf65305017-Abstract.html';
+    PlugDesc(end).TestFile       = 'fitTemplates.m';
+    PlugDesc(end).ReadmeFile     = 'readme.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).RequiredPlugs  = {'kilosort-wrapper'; 'phy'; 'npy-matlab'};
+    PlugDesc(end).InstalledFcn   = 'process_spikesorting_kilosort(''copyKilosortConfig'', bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''Kilosort-master'', ''configFiles'', ''StandardConfig_MOVEME.m''), bst_fullfile(bst_get(''UserPluginsDir''), ''kilosort'', ''Kilosort-master'', ''KilosortStandardConfig.m''));';
+
+    
+    % === ELECTROPHYSIOLOGY: Kilosort Wrapper ===
+    PlugDesc(end+1)              = GetStruct('kilosort-wrapper');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/brendonw1/KilosortWrapper/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://zenodo.org/record/3604165';
+    PlugDesc(end).TestFile       = 'Kilosort2Neurosuite.m';
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    
+    % === ELECTROPHYSIOLOGY: phy ===
+    PlugDesc(end+1)              = GetStruct('phy');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/cortex-lab/phy/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://phy.readthedocs.io/en/latest/';
+    PlugDesc(end).TestFile       = 'feature_view_custom_grid.py';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    PlugDesc(end).RequiredPlugs  = {'npy-matlab'};
+    
+    % === ELECTROPHYSIOLOGY: npy-matlab ===
+    PlugDesc(end+1)              = GetStruct('npy-matlab');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/kwikteam/npy-matlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/kwikteam/npy-matlab';
+    PlugDesc(end).TestFile       = 'constructNPYheader.m';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    
+    % === ELECTROPHYSIOLOGY: ultramegasort2000 ===
+    PlugDesc(end+1)              = GetStruct('ultramegasort2000');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/danamics/UMS2K/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/danamics/UMS2K/blob/master/UltraMegaSort2000%20Manual.pdf';
+    PlugDesc(end).TestFile       = 'UltraMegaSort2000 Manual.pdf';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
+    
+    % === ELECTROPHYSIOLOGY: waveclus ===
+    PlugDesc(end+1)              = GetStruct('waveclus');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'e-phys';
+    PlugDesc(end).URLzip         = 'https://github.com/csn-le/wave_clus/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://journals.physiology.org/doi/full/10.1152/jn.00339.2018';
+    PlugDesc(end).TestFile       = 'wave_clus.m';
+    PlugDesc(end).LoadFolders    = {'*'};
+    PlugDesc(end).ReadmeFile     = 'README.md';
+    PlugDesc(end).CompiledStatus = 0;
 
     % === NIRSTORM ===
     PlugDesc(end+1)              = GetStruct('nirstorm');
@@ -418,7 +487,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).Version        = '2021.12.04';
     PlugDesc(end).Category       = 'fNIRS';
     PlugDesc(end).AutoUpdate     = 1;
-    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/git20211204/mcxlab-allinone-x86_64-git20211204.zip';
+    PlugDesc(end).URLzip         = 'http://mcx.space/nightly/release/v2020/lite/mcxlab-allinone-x86_64-v2020.zip';
     PlugDesc(end).TestFile       = 'mcxlab.m';
     PlugDesc(end).URLinfo        = 'http://mcx.space/wiki/';
     PlugDesc(end).CompiledStatus = 0;
@@ -456,7 +525,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end+1)              = GetStruct('fieldtrip');
     PlugDesc(end).Version        = 'latest';
     PlugDesc(end).AutoUpdate     = 0;
-    PlugDesc(end).URLzip         = 'ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-20220228.zip';
+    PlugDesc(end).URLzip         = 'https://download.fieldtriptoolbox.org/fieldtrip-lite-20220228.zip';
     PlugDesc(end).URLinfo        = 'http://www.fieldtriptoolbox.org';
     PlugDesc(end).TestFile       = 'ft_defaults.m';
     PlugDesc(end).ReadmeFile     = 'README';
@@ -599,13 +668,13 @@ function [Version, URLzip] = GetVersionOnline(PlugName, URLzip, isCache)
             case 'fieldtrip'
                 bst_progress('text', ['Checking latest online version for ' PlugName '...']);
                 disp(['BST> Checking latest online version for ' PlugName '...']);
-                s = bst_webread('ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/');
+                s = bst_webread('https://download.fieldtriptoolbox.org');
                 if ~isempty(s)
                     n = regexp(s,'fieldtrip-lite-(\d.*?)\.zip','tokens');
                     if ~isempty(n)
                         Version = max(cellfun(@str2double, [n{:}]));
                         Version = num2str(Version);
-                        URLzip = ['ftp://ftp.fieldtriptoolbox.org/pub/fieldtrip/fieldtrip-lite-' Version '.zip'];
+                        URLzip = ['https://download.fieldtriptoolbox.org/fieldtrip-lite-' Version '.zip'];
                     end
                 end
             case 'duneuro'

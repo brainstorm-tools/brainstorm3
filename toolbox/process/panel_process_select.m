@@ -2090,7 +2090,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         
         for iEvent = 1:length(DataEvents)
             label = DataEvents(iEvent).label;
-            isSpikeEvent = process_spikesorting_supervised('IsSpikeEvent', label);
+            isSpikeEvent = panel_spikes('IsSpikeEvent', label);
             
             if (excludeSpikes && ~isSpikeEvent) || (onlySpikes && isSpikeEvent)
                 EventList{end + 1} = label;

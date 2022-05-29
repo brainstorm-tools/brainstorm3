@@ -35,7 +35,7 @@ function [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, iEpoch, Samp
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2021
+% Authors: Francois Tadel, 2009-2022
 %          Raymundo Cassani, 2022
 
 
@@ -214,11 +214,13 @@ switch (sFile.format)
         end
         F = sFile.header.F(iChannels, iTimes);
         % Load display units
-        DataMat = load(sFile.filename, 'DisplayUnits');
-        if isfield(DataMat, 'DisplayUnits') && ~isempty(DataMat.DisplayUnits)
-            DisplayUnits = DataMat.DisplayUnits;
-        end    
-        
+        if ~isempty(sFile.filename)
+            DataMat = load(sFile.filename, 'DisplayUnits');
+            if isfield(DataMat, 'DisplayUnits') && ~isempty(DataMat.DisplayUnits)
+                DisplayUnits = DataMat.DisplayUnits;
+            end
+        end
+
     case 'EEG-INTAN'
         F = in_fread_intan(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-PLEXON'
