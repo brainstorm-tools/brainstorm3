@@ -2951,6 +2951,7 @@ switch contextName
             case 'mexa64',    argout1 = 'linux64';
             case 'mexmaci',   argout1 = 'mac32';
             case 'mexmaci64', argout1 = 'mac64';
+            case 'mexmaca64', argout1 = 'mac64';
             case 'mexs64',    argout1 = 'sol64';
             case 'mexw32',    argout1 = 'win32';
             case 'mexw64',    argout1 = 'win64';
