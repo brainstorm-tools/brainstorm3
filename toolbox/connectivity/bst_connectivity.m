@@ -675,16 +675,16 @@ for iFile = 1:length(FilesA)
             
         % ==== henv ====
         case 'henv'
-            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, ...
-                size(sInputA.Data,1), size(sInputB.Data,1)));
-            Comment = [OPTIONS.CohMeasure ' | ' OPTIONS.tfMeasure ' | '  sprintf('%1.2fs',OPTIONS.WinLength) ' | ' ...
-                sprintf('%1.2fs',OPTIONS.WinLength * OPTIONS.WinOverlap) ' | '] ;
-            
+            bst_progress('text', sprintf('Calculating: %s [%dx%d]...',OPTIONS.CohMeasure, size(sInputA.Data,1), size(sInputB.Data,1)));
+            % Process options
             OPTIONS.SampleRate = sfreq;
             OPTIONS.Freqs      = OPTIONS.Freqrange;
-
-            [R, timeSamples] = bst_henv(sInputA.Data, sInputA.Time, OPTIONS);
-            sInputB.Time     = timeSamples + sInputB.Time(1);
+            % Compute envelope correlation
+            [R, timeSamples, Nwin] = bst_henv(sInputA.Data, sInputB.Data, sInputA.Time, OPTIONS);
+            % Output file time
+            sInputB.Time = timeSamples + sInputB.Time(1);
+            % File comment
+            Comment = sprintf('%s (%s, %1.2fs, %dwin): ', OPTIONS.CohMeasure, OPTIONS.tfMeasure, OPTIONS.WinLength, Nwin);
                     
         otherwise
             bst_report('Error', OPTIONS.ProcessName, [], ['Invalid method "' OPTIONS.Method '".']);

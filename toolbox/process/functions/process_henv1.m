@@ -1,4 +1,4 @@
-function varargout = process_henv1n(varargin)
+function varargout = process_henv1(varargin)
 % PROCESS_HENV1N: Compute the time-varying COherence and enVELope measures using Hilbert transform and Morlet Wavelet
 
 % @=============================================================================
@@ -19,27 +19,26 @@ function varargout = process_henv1n(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Hossein Shahabi, Francois Tadel, 2020-2022
+% Author: Hossein Shahabi, Francois Tadel, 2022
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % === Description the process
-    sProcess.Comment     = 'Envelope Correlation NxN [2022]';
+    sProcess.Comment     = 'Envelope Correlation 1xN [2022]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 686;
+    sProcess.Index       = 685;
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % === Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
-    sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
+    sProcess = process_corr1n('DefineConnectOptions', sProcess, 0);
     % === REMOVE EVOKED REPONSE
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
@@ -156,5 +155,5 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isParallel = sProcess.options.parallel.Value ; 
 
     % === Computing connectivity matrix
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputA.FileName}, OPTIONS);
 end

@@ -40,7 +40,6 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
     sProcess.isPaired    = 1;
-    sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
     sProcess = process_corr2('DefineConnectOptions', sProcess);
