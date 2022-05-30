@@ -1,4 +1,4 @@
-function varargout = process_henv1n(varargin)
+function varargout = process_henv1(varargin)
 % PROCESS_HENV1N: Compute the time-varying COherence and enVELope measures using Hilbert transform and Morlet Wavelet
 
 % @=============================================================================

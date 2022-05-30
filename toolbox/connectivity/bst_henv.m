@@ -192,7 +192,7 @@ for f = 1:nfBins
 %             A(:,:,t,f) = (abs(CorrMat) + abs(CorrMat'))/2 ;
         else
         end
-        A(:,:,t,f) = CorrMat ;
+        A(:,:,t,f) = abs(CorrMat) ;
 
     end
 end
@@ -240,11 +240,11 @@ end
 end
 
 function ConVec = HOrthCorr(tXh,tYh)
-Xh_p = imag(bsxfun(@times, tXh, conj(tYh)./abs(tYh)));
-Yh_p = imag(bsxfun(@times, tYh, conj(tXh)./abs(tXh)));
-r1   = HMatCorr(abs(tXh),abs(Yh_p)) ;
-r2   = diag(HMatCorr(abs(Xh_p),abs(tYh)))' ;
-ConVec = (r1+r2)/2 ;
+Xh_p   = imag(bsxfun(@times, tXh, conj(tYh)./abs(tYh)));
+Yh_p   = imag(bsxfun(@times, tYh, conj(tXh)./abs(tXh)));
+r1     = HMatCorr(abs(tXh),abs(Yh_p)) ;
+r2     = diag(HMatCorr(abs(Xh_p),abs(tYh)))' ;
+ConVec = (abs(r1)+abs(r2))/2 ;
 end
 
 function At = HMatCorr(U,V)
