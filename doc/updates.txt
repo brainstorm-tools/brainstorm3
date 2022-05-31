@@ -1,5 +1,6 @@
 May 2022
 - IO: Fixed export to Plotly
+- New process: Threshold by percentile
 --------------------------------------------------------------
 April 2022
 - 2D Layout: Added option "Flip Y axis"
