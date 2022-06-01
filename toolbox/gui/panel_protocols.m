@@ -444,6 +444,19 @@ function UpdateTree(resetNodes)
         nodeRoot.add(dbNode);
     end
     
+    % Get selected node in PreviousExplorationMode
+    previousExplorationMode = bst_get('Layout', 'PreviousExplorationMode');
+    [~, prevSelNodes, numNodes] = GetSearchNodes(iSearch, previousExplorationMode);
+    % Keep previous selected node if it was type subject
+    if ~isempty(prevSelNodes) && numNodes == 1
+        prevNodeType = char(prevSelNodes(numNodes).getType());
+        if strcmp(prevNodeType, 'subject')
+            prevNodeFileName = char(prevSelNodes(numNodes).getFileName());
+            selNode = GetNode(dbNode, prevNodeFileName);
+            SaveSearchNodes(iSearch, explorationMode, dbNode, selNode, numNodes);
+        end
+    end
+
     % Remove "Loading..." node, validate changes and redraw tree
     ctrl.jTreeProtocols.setLoading(0);
     drawnow;
