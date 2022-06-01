@@ -42,6 +42,8 @@ end
 
 %% ===== REBUILD COIL-CHANNEL CORRESPONDANCE =====
 projList = {};
+gradChanTypes = [];
+coilChan = [];
 if ~isempty(grad)
     % Initialize FieldTrip
     [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
@@ -50,6 +52,10 @@ if ~isempty(grad)
     end
     % Fix glitches in the structure
     grad = ft_datatype_sens(grad);
+    % Save channel types, if they exist
+    if isfield(grad, 'chantype') && ~isempty(grad.chantype)
+        gradChanTypes = grad.chantype;
+    end
     
     % Get the list of montages to undo
     montageList = {grad.balance.current};
@@ -75,12 +81,13 @@ if ~isempty(grad)
         % Add to the list of projectors to process
         projList{end+1} = mont;
     end
-    % Remove small values to keep only the ones (diagonals can have different values when mixing GRAD and MAG)
+    % Binarize the TRA matrix to reconstruct the coil-channel correspondence matrix
+    % (diagonals can have different values when mixing GRAD and MAG)
     diagVal = max(abs(grad.tra),[],2);
-    grad.tra = bst_bsxfun(@rdivide, grad.tra, diagVal);
-    grad.tra(abs(grad.tra) < 0.5) = 0;
-    grad.tra = round(grad.tra);
-    grad.tra = bst_bsxfun(@times, grad.tra, diagVal);
+    coilChan = bst_bsxfun(@rdivide, grad.tra, diagVal);
+    coilChan(abs(coilChan) < 0.7) = 0;
+    coilChan = round(coilChan);
+    %grad.tra = bst_bsxfun(@times, grad.tra, diagVal);
 end
 
 %% ===== BUILD PROJECTOR LIST =====
@@ -162,7 +169,7 @@ for i = 1:nChannels
         % Find channel index
         ichan = find(strcmpi(chName, grad.label), 1);
         % Find corresponding coils
-        icoils = find(grad.tra(ichan,:));
+        icoils = find(coilChan(ichan,:));
         % Error: Two many coils
         if (length(icoils) > 2)
             % TODO: This is wrong: not importing the correct coil positions, not importing the SSP/ICA projectors...
@@ -174,7 +181,7 @@ for i = 1:nChannels
             % Locations
             ChannelMat.Channel(i).Loc    = grad.coilpos(icoils,:)';
             ChannelMat.Channel(i).Orient = grad.coilori(icoils,:)';
-            ChannelMat.Channel(i).Weight = grad.tra(ichan,icoils);
+            ChannelMat.Channel(i).Weight = coilChan(ichan,icoils);
         end
         
         % Apply units
@@ -186,8 +193,8 @@ for i = 1:nChannels
         
         % Get type
         if isempty(ChannelMat.Channel(i).Type)
-            if isfield(grad, 'chantype') && ~isempty(grad.chantype)
-                ChannelMat.Channel(i).Type = upper(grad.chantype{ichan});
+            if ~isempty(gradChanTypes)
+                ChannelMat.Channel(i).Type = upper(gradChanTypes{ichan});
             else
                 ChannelMat.Channel(i).Type = 'MEG';
             end
@@ -198,6 +205,7 @@ end
 %% ===== CONVERT CHANNEL TYPES =====
 for i = 1:length(ChannelMat.Channel)
     switch upper(ChannelMat.Channel(i).Type)
+        case 'MEGGRAD',     ChannelMat.Channel(i).Type = 'MEG';
         case 'MEGPLANAR',   ChannelMat.Channel(i).Type = 'MEG GRAD';
         case 'MEGMAG',      ChannelMat.Channel(i).Type = 'MEG MAG';
         case 'REFGRAD',     ChannelMat.Channel(i).Type = 'MEG REF';
