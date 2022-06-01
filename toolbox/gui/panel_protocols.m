@@ -246,6 +246,15 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Get selected paths
         selectedPaths = event.getSource.getSelectionPaths();
         nbNodes = length(selectedPaths);
+        % If one node is selected, remember it
+        if nbNodes == 1
+            iSearch = GetSelectedSearch();
+            explorationMode = bst_get('Layout', 'ExplorationMode');
+            [dbNode, ~, ~] = GetSearchNodes(iSearch, explorationMode);
+            selNode = selectedPaths(nbNodes).getLastPathComponent();
+            % Save node for quick tab changes
+            SaveSearchNodes(iSearch, explorationMode, dbNode, selNode, nbNodes);
+        end
         % If less than two nodes selected : nothing to do
         if (nbNodes < 2)
             return
