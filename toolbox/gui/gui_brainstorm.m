@@ -548,6 +548,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
                 ExplorationMode = 'StudiesCond';
             end
             % Update the Layout structure
+            PreviousExplorationMode = bst_get('Layout', 'ExplorationMode');
+            bst_set('Layout', 'PreviousExplorationMode', PreviousExplorationMode);
             bst_set('Layout', 'ExplorationMode', ExplorationMode);
             % Update tree display
             panel_protocols('UpdateTree', 0);
