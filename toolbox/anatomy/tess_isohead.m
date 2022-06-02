@@ -1,4 +1,4 @@
-function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment)
+function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment, bgLevel)
 % TESS_GENERATE: Reconstruct a head surface based on the MRI, based on an isosurface
 %
 % USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
@@ -29,6 +29,9 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 HeadFile = [];
 iSurface = [];
 % Parse inputs
+if (nargin < 6) || isempty(bgLevel)
+    bgLevel = [];
+end
 if (nargin < 5) || isempty(Comment)
     Comment = [];
 end
@@ -80,7 +83,7 @@ if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
     if isempty(bgLevel)
         bgLevel = sMri.Histogram.bgLevel;
     end
-else
+elseif isempty(bgLevel)
     bgLevel = sMri.Histogram.bgLevel;
 end
 % Check parameters values
@@ -149,7 +152,7 @@ InsideMask = (Fill(headmask, 1) & Fill(headmask, 2) & Fill(headmask, 3));
 headmask = InsideMask | (Dilate(InsideMask) & headmask);
 % Keep only central connected volume (trim "beard" or bubbles)
 headmask = CenterSpread(headmask);
-bst_progress('inc', 20);
+bst_progress('inc', 15);
 
 % view_mri_slices(headmask, 'x', 20)
 
@@ -161,7 +164,7 @@ bst_progress('text', 'Creating isosurface...');
 [sHead.Faces, sHead.Vertices] = mri_isosurface(headmask, 0.5);
 % Flip x-y back to our voxel coordinates.
 sHead.Vertices = sHead.Vertices(:, [2, 1, 3]);
-bst_progress('inc', 20);
+bst_progress('inc', 10);
 % Downsample to a maximum number of vertices
 % maxIsoVert = 60000;
 % if (length(sHead.Vertices) > maxIsoVert)
@@ -172,7 +175,7 @@ bst_progress('inc', 20);
 % Remove small objects
 bst_progress('text', 'Removing small patches...');
 [sHead.Vertices, sHead.Faces] = tess_remove_small(sHead.Vertices, sHead.Faces);
-bst_progress('inc', 20);
+bst_progress('inc', 15);
 
 % Clean final surface
 % This is very strange, it doesn't look at face locations, only the normals.
@@ -183,14 +186,22 @@ bst_progress('inc', 20);
 % Smooth voxel artefacts, but preserve shape and volume.
 bst_progress('text', 'Smoothing voxel artefacts...');
 % Should normally use 1 as voxel size, but using a larger value smooths.
-sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 50, [], false); % voxel/smoothing size, iterations, verbose
+% Restrict iterations to make it faster, smooth a bit more (normal to surface
+% only) after downsampling.
+sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 5, [], false); % voxel/smoothing size, iterations, verbose
+bst_progress('inc', 20);
 
 % Downsampling isosurface
 if (length(sHead.Vertices) > nVertices)
     bst_progress('text', 'Downsampling surface...');
     [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
-    bst_progress('inc', 20);
+    bst_progress('inc', 15);
 end
+
+bst_progress('text', 'Smoothing...');
+sHead.Vertices = SurfaceSmooth(sHead.Vertices, sHead.Faces, 2, [], 45, 0, false); % voxel/smoothing size, iterations, freedom (normal), verbose
+bst_progress('inc', 10);
+
 % Convert to SCS
 sHead.Vertices = cs_convert(sMri, 'voxel', 'scs', sHead.Vertices);
 % Flip face order to Brainstorm convention
@@ -216,7 +227,7 @@ sHead.Faces = sHead.Faces(:,[2,1,3]);
 
 %% ===== SAVE FILES =====
 bst_progress('text', 'Saving new file...');
-bst_progress('inc', 15);
+bst_progress('inc', 10);
 % Create output filenames
 ProtocolInfo = bst_get('ProtocolInfo');
 SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
