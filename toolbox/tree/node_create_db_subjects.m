@@ -52,9 +52,8 @@ numTotalElems  = 0;
 % Get current protocol subjects list
 ProtocolSubjects = bst_get('ProtocolSubjects');
 if (isempty(ProtocolSubjects))
-    %warning('Brainstorm:NoProtocol', 'No protocol selected')
     return
-end;
+end
 % Get current protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
 % Get current subject

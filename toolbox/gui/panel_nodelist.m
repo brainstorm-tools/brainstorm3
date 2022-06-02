@@ -600,16 +600,10 @@ function AddFiles(nodelistName, Filenames, isTreeUpdate) %#ok<DEFNU>
                 continue;
             end
             % Get study node
-            nodeStudy = [nodeRootExp.findChild('condition', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('rawcondition', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('studysubject', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('study', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('defaultstudy', iStudy, -1, 1)];
+            nodeStudy = panel_protocols('GetStudyNode', nodeRootExp, iStudy);
             if isempty(nodeStudy)
                 bst_error(['File is not displayed in database explorer: ' 10 Filenames{i}], 'Add files', 0);
                 continue;
-            else
-                nodeStudy = nodeStudy(1);
             end
             % Create study node
             panel_protocols('CreateStudyNode', nodeStudy(1));

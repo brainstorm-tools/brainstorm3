@@ -14,6 +14,7 @@ function varargout = panel_protocols(varargin)
 %        nodeFound = panel_protocols('SelectNode',          nodeRoot, FileName )
 %        nodeFound = panel_protocols('GetNode',             nodeType, iStudy, iFile )
 %        nodeFound = panel_protocols('GetNode',             FileName )
+%        nodeStudy = panel_protocols('GetStudyNode',        nodeRoot, iStudy)
 %        nodeStudy = panel_protocols('SelectStudyNode',     nodeStudy )  % Select given 'study' tree node
 %        nodeStudy = panel_protocols('SelectStudyNode',     iStudy )     % Find 'study' tree node with studyIndex = iStudy and select it
 %                    panel_protocols('SelectSubject',       SubjectName) % Select and expand subject node
@@ -600,13 +601,8 @@ function UpdateNode(category, indices, isExpandTrials)
                         % NOTHING TO DO
                     case {'StudiesSubj', 'StudiesCond'}
                         % Find the target study node (possible types: studysubject, condition, study)
-                        nodeStudy = [nodeRoot.findChild('studysubject', iStudy, -1, 1), ...
-                                     nodeRoot.findChild('condition',    iStudy, -1, 1), ...
-                                     nodeRoot.findChild('rawcondition', iStudy, -1, 1), ...
-                                     nodeRoot.findChild('study',        iStudy, -1, 1), ...
-                                     nodeRoot.findChild('defaultstudy', iStudy, -1, 1)];
+                        nodeStudy = GetStudyNode(nodeRoot, iStudy);
                         if ~isempty(nodeStudy)
-                            nodeStudy = nodeStudy(1);                           
                             % Do not update nodes are haven't been created yet ("Loading...")
                             if (nodeStudy.getChildCount() == 1) && strcmpi(char(nodeStudy.getChildAt(0).getType()), 'loading')
                                 continue;
@@ -841,6 +837,8 @@ function nodeStudy = SelectStudyNode( varargin )
     if ~isempty(ProtocolInfo)
         ProtocolInfo.iStudy = nodeStudy.getStudyIndex();
         bst_set('ProtocolInfo', ProtocolInfo);
+        % Update selected node in search nodes
+        UpdateSearchSelStudy(nodeStudy);
     end
 end
 
@@ -901,15 +899,9 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
     % If nothing was found: expand the trials lists to look for the files
     if isExpand
         % Get study node
-        nodeStudy = [nodeRoot.findChild('condition', iStudy, -1, 1), ...
-                     nodeRoot.findChild('studysubject', iStudy, -1, 1), ...
-                     nodeRoot.findChild('rawcondition', iStudy, -1, 1), ...
-                     nodeRoot.findChild('study', iStudy, -1, 1), ...
-                     nodeRoot.findChild('defaultstudy', iStudy, -1, 1)];
+        nodeStudy = GetStudyNode(nodeRoot, iStudy);
         if isempty(nodeStudy)
             return; 
-        else
-            nodeStudy = nodeStudy(1);
         end
         % If this node is not rendered yet: render it
         if (nodeStudy.getChildCount() == 1) && strcmpi(char(nodeStudy.getChildAt(0).getType()), 'loading')
@@ -933,6 +925,19 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
                 return;
             end
         end
+    end
+end
+
+
+%% ===== NODE: GET STUDY NODE =====
+function nodeStudy = GetStudyNode(nodeRoot, iStudy)
+    nodeStudy = [nodeRoot.findChild('condition', iStudy, -1, 1), ...
+                 nodeRoot.findChild('studysubject', iStudy, -1, 1), ...
+                 nodeRoot.findChild('rawcondition', iStudy, -1, 1), ...
+                 nodeRoot.findChild('study', iStudy, -1, 1), ...
+                 nodeRoot.findChild('defaultstudy', iStudy, -1, 1)];
+    if ~isempty(nodeStudy)
+        nodeStudy = nodeStudy(1);
     end
 end
 
@@ -1933,6 +1938,45 @@ function SaveSearchNodes(iSearch, explorationMode, rootNode, selNode, numNodes)
     end
 end
 
+
+% Update the selected node in the current search node.
+%
+% Params:
+%  - selNode: the node currently selected in the tree
+%
+% Returns: nothing
+function UpdateSearchSelStudy(selNode)
+    global GlobalData;
+
+    % Get selected search tab
+    iSearch = GetSelectedSearch();
+    if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
+        return;
+    end
+    % Get study index
+    iStudy = selNode.getStudyIndex();
+    sStudy = bst_get('Study');
+    % Get subject index
+    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+
+    % Anatomy: Search for the subject node 
+    newNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode.findChild('subject', iSubject, -1, 0);
+    if ~isempty(newNode)
+        GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode = newNode;
+    end
+    % Functional/subjects: Search for study node
+    newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode, iStudy);
+    if ~isempty(newNode)
+        GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode = newNode;
+    end
+    % Functional/conditions: Search for study node
+    newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode, iStudy);
+    if ~isempty(newNode)
+        GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode = newNode;
+    end
+end
+
+
 % Clears all saved searches nodes from memory
 %
 % Params:
@@ -1950,7 +1994,7 @@ function ResetSearchNodes(iSearches)
     
     for iSearch = iSearches
         GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
-        GlobalData.DataBase.Searches.Active(iSearch).AnatRootNode = [];
+        GlobalData.DataBase.Searches.Active(iSearch).AnatSelNode = [];
         GlobalData.DataBase.Searches.Active(iSearch).FuncSubjRootNode = [];
         GlobalData.DataBase.Searches.Active(iSearch).FuncSubjSelNode  = [];
         GlobalData.DataBase.Searches.Active(iSearch).FuncCondRootNode = [];
