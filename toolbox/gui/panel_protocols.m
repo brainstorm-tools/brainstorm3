@@ -1959,20 +1959,26 @@ function UpdateSearchSelStudy(selNode)
     % Get subject index
     [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
 
-    % Anatomy: Search for the subject node 
-    newNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode.findChild('subject', iSubject, -1, 0);
-    if ~isempty(newNode)
-        GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode = newNode;
+    % Anatomy: Search for the subject node
+    if ~isempty(GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode)
+        newNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode.findChild('subject', iSubject, -1, 0);
+        if ~isempty(newNode)
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode = newNode;
+        end
     end
     % Functional/subjects: Search for study node
-    newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode, iStudy);
-    if ~isempty(newNode)
-        GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode = newNode;
+    if ~isempty(GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode)
+        newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode, iStudy);
+        if ~isempty(newNode)
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode = newNode;
+        end
     end
     % Functional/conditions: Search for study node
-    newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode, iStudy);
-    if ~isempty(newNode)
-        GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode = newNode;
+    if ~isempty(GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode)
+        newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode, iStudy);
+        if ~isempty(newNode)
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode = newNode;
+        end
     end
 end
 
