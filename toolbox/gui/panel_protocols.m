@@ -247,7 +247,11 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Get selected paths
         selectedPaths = event.getSource.getSelectionPaths();
         nbNodes = length(selectedPaths);
-        % If less than two nodes selected : nothing to do
+        % If one node is selected: Remember it
+        if nbNodes == 1
+            UpdateSearchSelNode(selectedPaths(nbNodes).getLastPathComponent());
+        end
+        % If less than two nodes selected: nothing else to do
         if (nbNodes < 2)
             return
         end
@@ -436,6 +440,58 @@ function UpdateTree(resetNodes)
         nodeRoot.add(dbNode);
     end
     
+    % When switching between exploration modes: Try to keep the same node selection
+    prevExplorationMode = bst_get('Layout', 'PreviousExplorationMode');
+    if ~isempty(prevExplorationMode) && ~isequal(prevExplorationMode, explorationMode)
+        [prevDbNode, prevSelNode] = GetSearchNodes(iSearch, prevExplorationMode);
+        % If there was a previous node selection
+        if ~isempty(prevSelNode)
+            newSelNode = [];
+            % Between functional views: keep the same file selected
+            if ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
+                prevFileName = char(prevSelNode.getFileName())
+                if ~isempty(prevFileName) && (length(prevFileName) > 4) && isequal(prevFileName(end-3:end), '.mat')
+                    newSelNode = GetNode(dbNode, prevFileName);
+                end
+                % If could not find file, get study
+                if ~isempty(newSelNode)
+                    
+                end
+            % From functional view to anatomy view: Keeps the same subject
+            elseif ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && isequal(explorationMode, 'Subjects')
+                % Get old subject index
+                iStudyOld = prevSelNode.getStudyIndex();
+                if (iStudyOld >= 1)
+                    sStudyOld = bst_get('Study', iStudyOld);
+                    [sSubjectOld, iSubjectOld] = bst_get('Subject', sStudyOld.BrainStormSubject);
+                    % Get new subject index
+                    iSubjectNew = selNode.getStudyIndex();
+                    % If the subject changed: select the parent node for the new subject
+                    if ~isequal(iSubjectNew, iSubjectOld)
+                        newSelNode = dbNode.findChild('subject', iSubjectOld, -1, 0);
+                    end
+                end
+            % From anatomy view to functional view: Keeps the same subject
+            elseif isequal(prevExplorationMode, 'Subjects') && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
+                % Get old subject index
+                iSubjectOld = prevSelNode.getStudyIndex();
+                % Get new subject index
+                iStudyNew = selNode.getStudyIndex();
+                sStudyNew = bst_get('Study', iStudyNew);
+                [sSubjectNew, iSubjectNew] = bst_get('Subject', sStudyNew.BrainStormSubject);
+                % If the subject changed: select the parent node for the new subject
+                if ~isequal(iSubjectNew, iSubjectOld)
+                    newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 0);
+                end
+            end
+            % Updated selected node
+            if ~isempty(newSelNode)
+                selNode = newSelNode;
+                UpdateSearchSelNode(newSelNode, iSearch, explorationMode);
+            end
+        end
+    end
+
     % Remove "Loading..." node, validate changes and redraw tree
     ctrl.jTreeProtocols.setLoading(0);
     drawnow;
@@ -837,8 +893,6 @@ function nodeStudy = SelectStudyNode( varargin )
     if ~isempty(ProtocolInfo)
         ProtocolInfo.iStudy = nodeStudy.getStudyIndex();
         bst_set('ProtocolInfo', ProtocolInfo);
-        % Update selected node in search nodes
-        UpdateSearchSelStudy(nodeStudy);
     end
 end
 
@@ -1945,40 +1999,30 @@ end
 %  - selNode: the node currently selected in the tree
 %
 % Returns: nothing
-function UpdateSearchSelStudy(selNode)
+function UpdateSearchSelNode(selNode, iSearch, explorationMode)
     global GlobalData;
 
     % Get selected search tab
-    iSearch = GetSelectedSearch();
-    if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
-        return;
-    end
-    % Get study index
-    iStudy = selNode.getStudyIndex();
-    sStudy = bst_get('Study');
-    % Get subject index
-    [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
-
-    % Anatomy: Search for the subject node
-    if ~isempty(GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode)
-        newNode = GlobalData.DataBase.Searches.Active(iSearch+1).AnatRootNode.findChild('subject', iSubject, -1, 0);
-        if ~isempty(newNode)
-            GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode = newNode;
+    if (nargin < 2) || isempty(iSearch)
+        iSearch = GetSelectedSearch();
+        if iSearch + 1 > length(GlobalData.DataBase.Searches.Active)
+            return;
         end
     end
-    % Functional/subjects: Search for study node
-    if ~isempty(GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode)
-        newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjRootNode, iStudy);
-        if ~isempty(newNode)
-            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode = newNode;
-        end
+    % Get current exploration mode if not specified
+    if (nargin < 3) || isempty(explorationMode)
+        explorationMode = bst_get('Layout', 'ExplorationMode');
     end
-    % Functional/conditions: Search for study node
-    if ~isempty(GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode)
-        newNode = GetStudyNode(GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondRootNode, iStudy);
-        if ~isempty(newNode)
-            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode = newNode;
-        end
+    % Update selected node for current exploration mode
+    switch explorationMode
+        case 'Subjects'  % Anatomy view
+            GlobalData.DataBase.Searches.Active(iSearch+1).AnatSelNode = selNode;
+        case 'StudiesSubj'  % Functional view, grouped by subjects
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncSubjSelNode = selNode;
+        case 'StudiesCond'  % Functional view, grouped by conditions
+            GlobalData.DataBase.Searches.Active(iSearch+1).FuncCondSelNode = selNode;
+        otherwise
+            error('Unsupported database view mode');
     end
 end
 
