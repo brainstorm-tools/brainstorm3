@@ -591,7 +591,7 @@ switch contextName
             end
             
             if ~isempty(sStudy)
-                sSubject = db_get(sqlConn, Subject, sStudy.Subject, 'FileName');
+                sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'FileName');
                 sStudy.BrainStormSubject = sSubject.FileName;
                 
                 if isempty(sStudy.Condition)
