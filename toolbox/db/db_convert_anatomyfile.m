@@ -26,31 +26,35 @@ function outStructs = db_convert_anatomyfile(inStructs, type)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Raymundo Cassani, 2021
+% Authors: Raymundo Cassani, 2021-2022
 
 % Validate 'type' argument
-if ~exist('type','var') || isempty(type)
+if (nargin < 2) || isempty(type)
     type = '';
 end
 
-nStructs = length(inStructs);
+% Output
+outStructs = [];
 
+nStructs = length(inStructs);
 if nStructs < 1
-    outStructs = [];
     return
 end 
 
 % Verify the sense of the conversion
 % New to old
-if all(isfield(inStructs(1), {'Id', 'Type'})) 
-    outStructs = repmat(db_template(inStructs(1).Type), 1, nStructs);
-    for iStruct = 1 : nStructs 
-        % Common fields
-        outStructs(iStruct).FileName = inStructs(iStruct).FileName;
-        outStructs(iStruct).Comment  = inStructs(iStruct).Name;
-        % Extra fields
-        if strcmpi(inStructs(iStruct).Type, 'surface')
-            outStructs(iStruct).SurfaceType = inStructs(iStruct).SurfaceType;    
+if all(isfield(inStructs(1), {'Id', 'Type'}))
+    % Old structures should be of the same type
+    if length(unique({inStructs.Type})) == 1
+        outStructs = repmat(db_template(inStructs(1).Type), 1, nStructs);
+        for iStruct = 1 : nStructs
+            % Common fields
+            outStructs(iStruct).FileName = inStructs(iStruct).FileName;
+            outStructs(iStruct).Comment  = inStructs(iStruct).Name;
+            % Extra fields
+            if strcmpi(inStructs(iStruct).Type, 'surface')
+                outStructs(iStruct).SurfaceType = inStructs(iStruct).SurfaceType;
+            end
         end
     end
     
@@ -65,11 +69,11 @@ else
         % Extra fileds
         switch lower(type)
             case 'anatomy'
-            % No extra fields
+                % No extra fields
             case 'surface'
-            outStructs(iStruct).SurfaceType = inStructs(iStruct).SurfaceType;
+                outStructs(iStruct).SurfaceType = inStructs(iStruct).SurfaceType;
             otherwise
-            error('Unsupported input structure type');
+                error('Unsupported input structure type');
         end
     end
 end
