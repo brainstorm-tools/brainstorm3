@@ -26,7 +26,8 @@ function varargout = panel_display(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2016; Martin Cousineau, 2017-2019
+% Authors: Francois Tadel, 2010-2022
+%          Martin Cousineau, 2017-2019
 
 eval(macro_method);
 end
@@ -95,21 +96,29 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     
     
     %% ===== CONNECT: DATA THRESHOLD =====
-    jPanelThreshold = gui_river([1,1], [2,2,2,2], 'Intensity Thresh. (0 - 0)');
+    jPanelThreshold = gui_river([1,1], [2,2,2,2], 'Intensity threshold (0 - 0)');
         % Connectivity slider
         jSliderThreshold = JSlider(0, 100, 0);
+        jSliderThreshold.setToolTipText('Connectivity measure: display only values above the selected threshold value.');
         java_setcb(jSliderThreshold, 'MouseReleasedCallback', @SliderConnect_Callback, ...
                                      'KeyPressedCallback',    @SliderConnect_Callback);
         jSliderThreshold.setPreferredSize(java_scaled('dimension', 130, 22));
         jPanelThreshold.add('hfill', jSliderThreshold);
         % Threshold label
         jLabelConnectThresh = gui_component('label', jPanelThreshold, [], '0.00 ', {JLabel.LEFT, java_scaled('dimension', 40, 22)});
-        % Quick preview
-        % java_setcb(jSliderThreshold, 'StateChangedCallback',  @(h,ev)jLabelConnectThresh.setText(sprintf('%1.2d', double(ev.getSource().getValue()))));
+        % Percentile slider
+        jSliderPercent = JSlider(0, 1000, 0);
+        jSliderPercent.setToolTipText('Percentile: Display only the top n% values in the connectivity matrix.');
+        java_setcb(jSliderPercent, 'MouseReleasedCallback', @SliderConnect_Callback, ...
+                                   'KeyPressedCallback',    @SliderConnect_Callback);
+        jSliderPercent.setPreferredSize(java_scaled('dimension', 130, 22));
+        jPanelThreshold.add('br hfill', jSliderPercent);
+        % Threshold label
+        jLabelConnectPercent = gui_component('label', jPanelThreshold, [], '100 %', {JLabel.LEFT, java_scaled('dimension', 40, 22)});
     jPanelNew.add(jPanelThreshold);
         
     %% ===== CONNECT: DISTANCE THRESHOLD =====
-    jPanelDistance = gui_river([0,0], [2,2,2,2], 'Distance Filtering (0 - 150 mm)');
+    jPanelDistance = gui_river([0,0], [2,2,2,2], 'Distance filtering (0 - 150 mm)');
         % Minimum Distance title
         jLabelMinimumDistance = gui_component('label', [], [], 'Min.', {JLabel.LEFT, java_scaled('dimension', 25, 22)});
         jPanelDistance.add('br', jLabelMinimumDistance);
@@ -227,6 +236,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jCheckHighRes',          jCheckHighRes, ...
                                   'jSliderThreshold',       jSliderThreshold, ...
                                   'jLabelConnectThresh',    jLabelConnectThresh, ...
+                                  'jSliderPercent',         jSliderPercent, ...
+                                  'jLabelConnectPercent',   jLabelConnectPercent, ...
                                   'jSliderMinimumDistance', jSliderMinimumDistance, ...
                                   'jToggleOut',             jToggleOut, ...
                                   'jToggleIn',              jToggleIn, ...
@@ -254,6 +265,8 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Process slider callbacks only if it has focus
         if jSliderThreshold.hasFocus()
             SetThresholdOptions();
+        elseif jSliderPercent.hasFocus()
+            SetConnectPercent();
         elseif jSliderMinimumDistance.hasFocus()
             SetDistanceOptions();
         end
@@ -600,9 +613,14 @@ function UpdatePanel(hFig)
             Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
             % Threshold filter
             Threshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
-            SliderValue = (Threshold - ThresholdMinMax(1)) / Diff * 100;
+            SliderValue = round((Threshold - ThresholdMinMax(1)) / Diff * 100);
             ctrl.jSliderThreshold.setValue(SliderValue);
             ctrl.jLabelConnectThresh.setText(num2str(Threshold,3));
+            % Percentiles
+            Percentiles = bst_figures('GetFigureHandleField', hFig, 'Percentiles');
+            p = bst_closest(Threshold, Percentiles) - 1;
+            ctrl.jSliderPercent.setValue(p);
+            ctrl.jLabelConnectPercent.setText(sprintf('%1.1f %%', 100 - p/10));
             % Distance filter
             MinimumDistanceThresh = bst_figures('GetFigureHandleField', hFig, 'MeasureMinDistanceFilter');
             ctrl.jSliderMinimumDistance.setValue(MinimumDistanceThresh);
@@ -627,7 +645,7 @@ function UpdatePanel(hFig)
             % Update filtering title
             MinIntensity = sprintf('%1.3f',ThresholdMinMax(1));
             MaxIntensity = sprintf('%1.3f',ThresholdMinMax(2));
-            ctrl.jPanelThreshold.get('Border').setTitle(['Intensity Thresh. (' MinIntensity ' - ' MaxIntensity ')']);
+            ctrl.jPanelThreshold.get('Border').setTitle(['Intensity Threshold (' MinIntensity ' - ' MaxIntensity ')']);
             MinDistance = num2str(0);
             MaxDistance = num2str(150);
             ctrl.jPanelDistance.get('Border').setTitle(['Distance Filtering (' MinDistance ' - ' MaxDistance 'mm)']);
@@ -1164,6 +1182,8 @@ function SetThresholdOptions(sOptions)
         % Set mutex
         ConnectSliderMutex = 0.005;
 
+        % Progress bar
+        bst_progress('start', 'Threshold', 'Updating graph...');
         % Threshold min/max
         ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
         if isempty(ThresholdMinMax)
@@ -1175,10 +1195,12 @@ function SetThresholdOptions(sOptions)
         % Get current threshold
         curDataThreshold = bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold');
         if isempty(curDataThreshold)
+            bst_progress('stop');
             return;
         end
         % Nothing changed
         if (sOptions.DataThreshold == curDataThreshold)
+            bst_progress('stop');
             return;
         end
         % Refresh figure with new threshold
@@ -1186,7 +1208,8 @@ function SetThresholdOptions(sOptions)
         figure_connect('UpdateColormap', hFig);
         % Update panel
         UpdatePanel(hFig);
-        
+        bst_progress('stop');
+
         % Release mutex
         ConnectSliderMutex = [];
     else
@@ -1328,48 +1351,35 @@ function SetFiberFilteringOptions(sOptions, FiberFilter)
 end
 
 
-%% ===== THRESHOLD SLIDER KEYBOARD ACTION =====
-function ConnectKeyCallback(ev)     %#ok<DEFNU>
-    global ConnectSliderMutex;
+%% ===== SET PERCENTILE =====
+function SetConnectPercent()
     % Get panel controls
     ctrl = bst_get('PanelControls', 'Display');
     if isempty(ctrl)
         return;
     end
-    % Set a mutex to prevent to enter twice at the same time in the routine
-    if (isempty(ConnectSliderMutex))
-        tic
-        % Set mutex
-        ConnectSliderMutex = 1;
-        % === CONVERT KEY EVENT TO MATLAB ===
-        [keyEvent, isControl, isShift] = gui_brainstorm('ConvertKeyEvent', ev);
-        if isempty(keyEvent.Key)
-            ConnectSliderMutex = [];
-            return
-        end
-        % === PROCESS KEY ===
-        % Get current threshold
-        curThresh = ctrl.jSliderThreshold.getValue();
-        % Switch between different keys
-        switch (keyEvent.Key)
-            case {'+','add'},      curThresh = curThresh + 1;
-            case {'-','subtract'}, curThresh = curThresh - 1;
-            otherwise,  curThresh = [];
-        end
-        % Change current threshold
-        if ~isempty(curThresh) && (curThresh >= 0) && (curThresh <= 100)
-            ctrl.jSliderThreshold.setValue(curThresh);
-            SetThresholdOptions();
-        end
-        drawnow;
-        % Release mutex
-        ConnectSliderMutex = [];
-    else
-        % Release mutex if last keypress was processed more than one 2s ago
-        % (restore keyboard after a bug...)
-        t = toc;
-        if (t > 2)
-            ConnectSliderMutex = [];
-        end
+    % Get selected percentile
+    p = ctrl.jSliderPercent.getValue();
+    % Update text
+    ctrl.jLabelConnectPercent.setText(sprintf('%1.1f %%', 100 - p/10));
+    % Get current figure
+    hFig = bst_figures('GetCurrentFigure', 'TF');
+    if isempty(hFig)
+        return
     end
+    % Get percentiles
+    Percentiles = bst_figures('GetFigureHandleField', hFig, 'Percentiles');
+    % Threshold min/max
+    ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
+    if isempty(ThresholdMinMax)
+        ThresholdMinMax = getappdata(hFig, 'DataMinMax');
+    end
+    Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
+    % Set value for the threshold
+    SliderValue = round((Percentiles(p+1) - ThresholdMinMax(1)) / Diff * 100);
+    ctrl.jSliderThreshold.setValue(SliderValue);
+    % Validate change
+    SetThresholdOptions();
 end
+
+
