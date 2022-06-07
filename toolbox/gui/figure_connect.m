@@ -995,9 +995,9 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     % Compute values for all percentiles (for thresholding by percentile)
     ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
     if ThresholdAbsoluteValue
-        Percentiles = bst_prctile(abs(M(:)), 0:0.1:100);
+        Percentiles = bst_prctile(abs(M(:)), 0.1:0.1:99.9);
     else
-        Percentiles = bst_prctile(M(:), 0:0.1:100);
+        Percentiles = bst_prctile(M(:), 0.1:0.1:99.9);
     end
 
     % Zero-out the diagonal because its useless

@@ -25,17 +25,16 @@ function value = bst_prctile(vector, percentile)
 %          Raymundo Cassani, 2022      
 
 % Try to use toolbox function
-try
+if exist('prctile','file')
     value = prctile(vector, percentile);
     return;
-catch
 end
 
 % Check inputs
 if ~isvector(vector)
     error('Only vectors supported.');
 end
-if percentile < 0 || percentile > 100
+if any(percentile < 0 | percentile > 100)
     error('Input percentile must be a real value between 0 and 100.');
 end
 
@@ -45,9 +44,8 @@ rank   = percentile / 100 * length(vector);
 lowerRank = floor(rank + 0.5);
 upperRank = lowerRank + 1;
 fraction  = rank - lowerRank;
-lowerRank = max([1, lowerRank]);
-upperRank = min(length(vector), upperRank);
-
+lowerRank(lowerRank < 1) = 1;
+upperRank(upperRank > length(vector)) = length(vector);
 value = 0.5 * (vector(lowerRank) + vector(upperRank));
 
 if fraction ~= 0

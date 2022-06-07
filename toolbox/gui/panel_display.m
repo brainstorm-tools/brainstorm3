@@ -107,7 +107,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % Threshold label
         jLabelConnectThresh = gui_component('label', jPanelThreshold, [], '0.00 ', {JLabel.LEFT, java_scaled('dimension', 40, 22)});
         % Percentile slider
-        jSliderPercent = JSlider(0, 1000, 0);
+        jSliderPercent = JSlider(1, 999, 1);
         jSliderPercent.setToolTipText('Percentile: Display only the top n% values in the connectivity matrix.');
         java_setcb(jSliderPercent, 'MouseReleasedCallback', @SliderConnect_Callback, ...
                                    'KeyPressedCallback',    @SliderConnect_Callback);
@@ -618,7 +618,7 @@ function UpdatePanel(hFig)
             ctrl.jLabelConnectThresh.setText(num2str(Threshold,3));
             % Percentiles
             Percentiles = bst_figures('GetFigureHandleField', hFig, 'Percentiles');
-            p = bst_closest(Threshold, Percentiles) - 1;
+            p = bst_closest(Threshold, Percentiles);
             ctrl.jSliderPercent.setValue(p);
             ctrl.jLabelConnectPercent.setText(sprintf('%1.1f %%', 100 - p/10));
             % Distance filter
@@ -1376,7 +1376,7 @@ function SetConnectPercent()
     end
     Diff = ThresholdMinMax(2) - ThresholdMinMax(1);
     % Set value for the threshold
-    SliderValue = round((Percentiles(p+1) - ThresholdMinMax(1)) / Diff * 100);
+    SliderValue = round((Percentiles(p) - ThresholdMinMax(1)) / Diff * 100);
     ctrl.jSliderThreshold.setValue(SliderValue);
     % Validate change
     SetThresholdOptions();
