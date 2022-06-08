@@ -450,29 +450,40 @@ function UpdateTree(resetNodes)
             % Between functional views: keep the same file selected
             if ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
                 prevFileName = char(prevSelNode.getFileName());
-                if ~isempty(prevFileName) && (length(prevFileName) > 4)
-                    if isequal(prevFileName(end-3:end), '.mat') && ~strcmpi(char(prevSelNode.getType()), 'studysubject')
-                        newSelNode = GetNode(dbNode, prevFileName);
-                    else
-                        iStudyOld = prevSelNode.getStudyIndex();
-                        newSelNode = GetStudyNode(dbNode, iStudyOld);
-                    end
+                if ~isempty(prevFileName) && (length(prevFileName) > 4) && isequal(prevFileName(end-3:end), '.mat')
+                    newSelNode = GetNode(dbNode, prevFileName);
                 end
             % From functional view to anatomy view: Keeps the same subject
-            elseif ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && isequal(explorationMode, 'Subjects') && ismember(char(prevSelNode.getType()), {'studysubject'})
-                prevFileName = char(prevSelNode.getFileName());
-                [sSubjectOld, iSubjectOld] = bst_get('Subject', prevFileName);
-                if sSubjectOld.UseDefaultAnat
-                    iSubjectOld = 0;
+            elseif ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && isequal(explorationMode, 'Subjects')
+                % Get old subject index
+                iStudyOld = prevSelNode.getStudyIndex();
+                if (iStudyOld >= 1)
+                    sStudyOld = bst_get('Study', iStudyOld);
+                    [sSubjectOld, iSubjectOld] = bst_get('Subject', sStudyOld.BrainStormSubject);
+                    if sSubjectOld.UseDefaultAnat
+                        iSubjectOld = 0;
+                    end
+                    % Get new subject index
+                    iSubjectNew = selNode.getStudyIndex();
+                    % If the subject changed: select the parent node for the new subject
+                    if ~isequal(iSubjectNew, iSubjectOld)
+                        newSelNode = dbNode.findChild('subject', iSubjectOld, -1, 0);
+                    end
                 end
-                newSelNode = dbNode.findChild('subject', iSubjectOld, -1, 0);
-            % From anatomy view to functional view: Keeps the same subject node
-            elseif isequal(prevExplorationMode, 'Subjects') && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'}) && ismember(char(prevSelNode.getType()), {'subject'})
+            % From anatomy view to functional view: Keeps the same subject
+            elseif isequal(prevExplorationMode, 'Subjects') && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
                 % Get old subject index
                 iSubjectOld = prevSelNode.getStudyIndex();
                 % If default anatomy is selected: nothing can be done
                 if (iSubjectOld >= 1)
-                    newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 0);
+                    % Get new subject index
+                    iStudyNew = selNode.getStudyIndex();
+                    sStudyNew = bst_get('Study', iStudyNew);
+                    [sSubjectNew, iSubjectNew] = bst_get('Subject', sStudyNew.BrainStormSubject);
+                    % If the subject changed: select the parent node for the new subject
+                    if ~isequal(iSubjectNew, iSubjectOld)
+                        newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 0);
+                    end
                 end
             end
             % Updated selected node
