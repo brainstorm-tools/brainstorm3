@@ -41,6 +41,9 @@ end
 
 
 %% ===== REBUILD COIL-CHANNEL CORRESPONDANCE =====
+% The strategy developed here is a heuristic that might need to be refined in the future.
+% Reference:  https://github.com/fieldtrip/fieldtrip/issues/2040
+%             https://github.com/fieldtrip/fieldtrip/issues/507
 projList = {};
 gradChanTypes = [];
 coilChan = [];
@@ -81,13 +84,17 @@ if ~isempty(grad)
         % Add to the list of projectors to process
         projList{end+1} = mont;
     end
-    % Binarize the TRA matrix to reconstruct the coil-channel correspondence matrix
-    % (diagonals can have different values when mixing GRAD and MAG)
-    diagVal = max(abs(grad.tra),[],2);
-    coilChan = bst_bsxfun(@rdivide, grad.tra, diagVal);
-    coilChan(abs(coilChan) < 0.7) = 0;
-    coilChan = round(coilChan);
-    %grad.tra = bst_bsxfun(@times, grad.tra, diagVal);
+    % If TRA matrix is not a binary coil-channel adjacency matrix
+    if any(~ismember(unique(grad.tra), [-1 0 1]))
+        % Normalize each row separately because diagonals can have different values when mixing GRAD and MAG
+        diagVal = max(abs(grad.tra),[],2);
+        coilChan = bst_bsxfun(@rdivide, grad.tra, diagVal);
+        % Binarize the TRA matrix to reconstruct the coil-channel correspondence matrix
+        coilChan(abs(coilChan) < 0.7) = 0;  % Hope that balancing (ICA,SSP) would never exceed 70% of the maximum value per row
+        coilChan = round(coilChan);         % Three possible values:  -1, 0, 1
+    else
+        coilChan = grad.tra;
+    end
 end
 
 %% ===== BUILD PROJECTOR LIST =====
