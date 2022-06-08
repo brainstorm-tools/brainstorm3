@@ -317,13 +317,14 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.weighty = 1;
     c.fill    = GridBagConstraints.BOTH;
     c.insets  = Insets(2,4,2,4);
-    % Buttons: Zoom-, Zoom+, Cancel, Save
+    % Buttons: Zoom-, Zoom+, SetCoord, View3DHead, Cancel, Save
     c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out<BR>[-] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
     c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in<BR>[+] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
     c.gridx = 3;  c.weightx = 0.1;  Handles.jButtonSetCoord  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig));
-    c.gridx = 4;  c.weightx = 0.7;  gui_component('label', Handles.jPanelValidate, c, '');
-    c.gridx = 5;  c.weightx = 0.4;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
-    c.gridx = 6;  c.weightx = 0.4;  Handles.jButtonSave   = gui_component('button', Handles.jPanelValidate, c, 'Save',   [], '', @(h,ev)ButtonSave_Callback(hFig));
+    c.gridx = 4;  c.weightx = 0.1;  Handles.jButtonView3DHead  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_SURFACE_SCALP,  'View 3D head surface',  @(h,ev)jButtonView3DHead_Callback(hFig));
+    c.gridx = 5;  c.weightx = 0.3;  gui_component('label', Handles.jPanelValidate, c, '');
+    c.gridx = 6;  c.weightx = 0.3;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
+    c.gridx = 7;  c.weightx = 0.3;  Handles.jButtonSave   = gui_component('button', Handles.jPanelValidate, c, 'Save',   [], '', @(h,ev)ButtonSave_Callback(hFig));
     
     % ===== CONFIGURE OBJECTS =====
     % Set labels in white
@@ -838,6 +839,67 @@ function ButtonSetCoordinates_Callback(hFig)
     end
     % Move the slices
     SetLocation('mri', sMri, Handles, MRI);
+end
+
+%% ===== BUTTON VIEW 3D HEAD =====
+function jButtonView3DHead_Callback(hFig)
+    % Get Mri and figure Handles
+    [sMri,TessInfo,iTess,iMri] = panel_surface('GetSurfaceMri', hFig); %#ok<ASGLU> 
+    Handles = bst_figures('GetFigureHandles', hFig);
+    % Could use bst_figures('GetFigureWithSurface') to look for existing figure, but
+    % seems much simpler to save its handle in the MRI Viewer figure.
+if ~isfield(Handles, 'hView3DHeadFig') || isempty(Handles.hView3DHeadFig)
+%     isNewFig = true;
+    % Give default initial positions to missing fids.
+    isFidsChanged = false;
+    FidNames = {'NAS', 'LPA', 'RPA'};
+    % In MRI coordinates (RAS mm)
+    DefaultFidLocs = round(bsxfun(@times, [1, 0.5, 0.5; 0.5, 0, 0.5; 0.5, 1, 0.5], size(sMri.Cube) .* sMri.Voxsize));
+    for iFid = 1:numel(FidNames)
+        if ~isfield(sMri.SCS, FidNames{iFid}) || isempty(sMri.SCS.(FidNames{iFid}))
+            isFidsChanged = true;
+            sMri.SCS.(FidNames{iFid}) = DefaultFidLocs(iFid, :);
+        end
+    end
+    if isFidsChanged
+        global GlobalData;
+        % Reload fiducials
+        [sMri, Handles] = LoadLandmarks(sMri, Handles);
+        % Mark MRI as modified
+        Handles.isModifiedMri = 1;
+        %bst_figures('SetFigureHandles', hFig, Handles);
+        GlobalData.Mri(iMri) = sMri;
+    end
+    % Generate head surface.
+    [Vertices, Faces] = tess_isohead(sMri, 15000, 0, 0, ''); % Don't save, return surface instead.
+    % Coordinates are
+    % Create figure.
+    SurfAlpha = .1; % as in channel_align_manual
+    [Handles.hView3DHeadFig, iDS, iFig, hPatch] = view_surface_matrix(Vertices, Faces, SurfAlpha);
+    View3DHeadFigHandles = bst_figures('GetFigureHandles', Handles.hView3DHeadFig);
+    bst_figures('SetFigureHandles', hFig, Handles);
+
+    % Update figure name
+%     bst_figures('UpdateFigureName', Handles.hView3DHeadFig);
+    % Set figure visible
+%     set(Handles.hView3DHeadFig, 'Visible', 'on');
+
+    % Select surface tab
+%     gui_brainstorm('SetSelectedTab', 'Surface');
+% else
+%     isNewFig = false;
+end
+
+% Bring to front?
+% Update current figure selection
+bst_figures('SetCurrentFigure', Handles.hView3DHeadFig, '3D');
+
+%     cs = 'voxel';
+%     XYZ = GetLocation(cs, sMri, Handles);
+%     % SetLocation(cs, sMri, Handles, XYZ);
+% 
+% bst_progress('stop');
+%     DeleteFigure(h, 'NoUnload')
 end
 
 
