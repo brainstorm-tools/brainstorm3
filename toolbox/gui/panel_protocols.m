@@ -450,8 +450,15 @@ function UpdateTree(resetNodes)
             % Between functional views: keep the same file selected
             if ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && ismember(explorationMode, {'StudiesSubj', 'StudiesCond'})
                 prevFileName = char(prevSelNode.getFileName());
-                if ~isempty(prevFileName) && (length(prevFileName) > 4) && isequal(prevFileName(end-3:end), '.mat')
-                    newSelNode = GetNode(dbNode, prevFileName);
+                if ~isempty(prevFileName) && (length(prevFileName) > 4)
+                    if isequal(prevFileName(end-3:end), '.mat') && ~strcmpi(char(prevSelNode.getType()), 'studysubject')
+                        newSelNode = GetNode(dbNode, prevFileName);
+                    else
+                        iStudyOld = prevSelNode.getStudyIndex();
+                        if iStudyOld > 0
+                            newSelNode = GetStudyNode(dbNode, iStudyOld);
+                        end
+                    end
                 end
             % From functional view to anatomy view: Keeps the same subject
             elseif ismember(prevExplorationMode, {'StudiesSubj', 'StudiesCond'}) && isequal(explorationMode, 'Subjects')
