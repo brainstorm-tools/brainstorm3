@@ -408,7 +408,15 @@ tic
                     Comment = [Comment, ': ' scoutName(1:k-1)];
                 end
             elseif ~isempty(OPTIONS.Target)
-                Comment = [Comment, ': ' OPTIONS.Target];
+                if ischar(OPTIONS.Target)
+                    Comment = [Comment, ': ' OPTIONS.Target];
+                elseif iscell(OPTIONS.Target) && (length(OPTIONS.Target) >= 2)  % Scout names
+                    if (length(OPTIONS.Target{2}) == 1)
+                        Comment = [Comment, ': ' OPTIONS.Target{2}{1}];
+                    else
+                        Comment = [Comment, ': ' num2str(length(OPTIONS.Target{2}{1})) ' scouts'];
+                    end
+                end
             else
                 Comment = [Comment, ': ' num2str(length(sInput.RowNames)) ' signals'];
             end
