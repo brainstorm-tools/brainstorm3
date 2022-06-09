@@ -1443,7 +1443,7 @@ function [iDS, iDipoles] = LoadDipolesFile(DipolesFile, isTimeCheck) %#ok<DEFNU>
     if isempty(iDipoles) && isempty(iResults)
         GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
         if ~isempty(ChannelFile)
-            GlobalData.DataSet(iDS).ChannelFile = file_short(ChannelFile);
+            LoadChannelFile(iDS, ChannelFile);
         end
         GlobalData.DataSet(iDS).DataFile    = '';
     end

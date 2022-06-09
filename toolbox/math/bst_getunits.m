@@ -150,6 +150,14 @@ switch lower(DataType)
         valFactor = 1e3;
         valUnits  = 'mm';
         
+    case {'ica', 'ssp'}
+        [valFactor, valUnits] = GetExponent(val);
+        if (valFactor == 0)
+            valUnits = 'a.u.';
+        else
+            valUnits = ['x' valUnits ' a.u.'];
+        end
+
     otherwise
         if isempty(val) || ((val < 1000) && (val > 0.1))
             valFactor = 1;

@@ -20,6 +20,7 @@ function out_figure_plotly(hFig)
 % =============================================================================@
 %
 % Authors: Martin Cousineau, 2017
+%          Francois Tadel, 2022
 
 % Install/load plotly library
 [isInstalled, errMsg] = bst_plugin('Install', 'plotly');
@@ -29,6 +30,9 @@ end
 
 % Confirm Plotly credentials
 [username, apikey, domain] = bst_get('PlotlyCredentials');
+if isempty(domain)
+    domain = 'https://plot.ly';
+end
 [res, isCancel] = java_dialog('input', ...
     {['<html><body><p>Please enter your Plotly credentials</p><br>', ...
     '<p>Username:</p></body></html>'], 'API Key:', 'Domain (optional):'}, ...
@@ -47,6 +51,9 @@ if strcmpi(get(hFig, 'Tag'), 'FigHistograms')
     set(hFig, 'UserData', figData);
 end
 
+% Disable figure management (otherwise cloning resizes the figure)
+WindowManager = bst_get('Layout', 'WindowManager');
+bst_set('Layout', 'WindowManager', 'None');
 % Clone figure
 hTempFig = bst_figures('CloneFigure', hFig);
 set(hTempFig, 'Visible', 'off');
@@ -105,7 +112,7 @@ bst_progress('text', 'Sending figure...');
 PlotlyException = [];
 try
     % Prepare figure
-    p = plotlyfig(hTempFig, 'filename', figName);
+    p = plotlyfig(hTempFig, 'filename', figName, 'fileopt', 'new', 'offline', false);
     
     % ===== Last minute tweaking =====
     % Remove height and width so that Plotly automatically resizes the fig
@@ -121,6 +128,9 @@ end
 
 % Close cloned figure
 close(hTempFig);
+% Restore figure management
+bst_set('Layout', 'WindowManager', WindowManager);
+% Close progress bar
 bst_progress('stop');
 
 % Check whether an error or warning occurred

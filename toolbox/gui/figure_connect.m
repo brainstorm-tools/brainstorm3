@@ -116,9 +116,6 @@ function ResetDisplay(hFig)
     setappdata(hFig, 'DisplayBidirectionalMeasure', 0);
     setappdata(hFig, 'DataThreshold', 0.5);
     setappdata(hFig, 'DistanceThreshold', 0);
-    if isappdata(hFig, 'DataPair')
-        rmappdata(hFig, 'DataPair');
-    end
     if isappdata(hFig, 'HierarchyNodesMask')
         rmappdata(hFig, 'HierarchyNodesMask');
     end
@@ -994,6 +991,15 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
    
     % === GET DATA ===
     [~, ~, ~, M, ~, ~, ~, ~] = GetFigureData(hFig);
+
+    % Compute values for all percentiles (for thresholding by percentile)
+    ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
+    if ThresholdAbsoluteValue
+        Percentiles = bst_prctile(abs(M(:)), 0.1:0.1:99.9);
+    else
+        Percentiles = bst_prctile(M(:), 0.1:0.1:99.9);
+    end
+
     % Zero-out the diagonal because its useless
     M = M - diag(diag(M));
     
@@ -1036,7 +1042,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
         M(~Valid) = 0;
     end
  
-    % Convert matrixu to data pair 
+    % Convert matrix to data pair 
     DataPair = MatrixToDataPair(hFig, M);
     fprintf('%.0f Connectivity measure loaded\n', size(DataPair, 1));
  
@@ -1055,6 +1061,8 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     end
     % Update figure variable
     bst_figures('SetFigureHandleField', hFig, 'DataMinMax', DataMinMax);
+    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
+    bst_figures('SetFigureHandleField', hFig, 'Percentiles', Percentiles);
     % Clear memory
     clear M;
 end
@@ -1311,8 +1319,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     setappdata(hFig, 'LoadingOptions', Options);
     % Clean and compute Datapair
     DataPair = LoadConnectivityData(hFig, Options, Atlas, SurfaceMat);    
-    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
-    
+
     % Compute distance between regions
     MeasureDistance = [];
     if ~isempty(RowLocs)
@@ -1942,8 +1949,6 @@ function UpdateFigurePlot(hFig)
     Options = getappdata(hFig, 'LoadingOptions');
     % Clean and Build Datapair
     DataPair = LoadConnectivityData(hFig, Options);
-    % Update structure
-    bst_figures('SetFigureHandleField', hFig, 'DataPair', DataPair);
         
     % Update measure distance
     MeasureDistance = [];

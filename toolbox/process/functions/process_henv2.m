@@ -1,4 +1,4 @@
-function varargout = process_henv1n(varargin)
+function varargout = process_henv2(varargin)
 % PROCESS_HENV1N: Compute the time-varying COherence and enVELope measures using Hilbert transform and Morlet Wavelet
 
 % @=============================================================================
@@ -19,27 +19,28 @@ function varargout = process_henv1n(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Hossein Shahabi, Francois Tadel, 2020-2022
+% Author: Hossein Shahabi, Francois Tadel, 2022
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % === Description the process
-    sProcess.Comment     = 'Envelope Correlation NxN [2022]';
+    sProcess.Comment     = 'Envelope Correlation AxB [2022]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
-    sProcess.Index       = 686;
+    sProcess.Index       = 658;
     sProcess.Description = 'http://neuroimage.usc.edu/brainstorm/Tutorials/Connectivity';
     % === Definition of the input accepted by this process
     sProcess.InputTypes  = {'data',     'results',  'matrix'};
     sProcess.OutputTypes = {'timefreq', 'timefreq', 'timefreq'};
-    sProcess.nInputs     = 1;
+    sProcess.nInputs     = 2;
     sProcess.nMinFiles   = 1;
+    sProcess.isPaired    = 1;
     sProcess.isSeparator = 1;
     
     % === CONNECT INPUT
-    sProcess = process_corr1n('DefineConnectOptions', sProcess, 1);
+    sProcess = process_corr2('DefineConnectOptions', sProcess);
     % === REMOVE EVOKED REPONSE
     sProcess.options.removeevoked.Comment = 'Remove evoked response from each trial';
     sProcess.options.removeevoked.Type    = 'checkbox';
@@ -99,12 +100,12 @@ function Comment = FormatComment(sProcess) %#ok<DEFNU>
 end
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputA, sInputB) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
     
     % === Input options
-    OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
+    OPTIONS = process_corr2('GetConnectOptions', sProcess, sInputA, sInputB);
     if isempty(OPTIONS)
         return
     end
@@ -156,5 +157,5 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     OPTIONS.isParallel = sProcess.options.parallel.Value ; 
 
     % === Computing connectivity matrix
-    OutputFiles = bst_connectivity({sInputA.FileName}, [], OPTIONS);
+    OutputFiles = bst_connectivity({sInputA.FileName}, {sInputB.FileName}, OPTIONS);
 end

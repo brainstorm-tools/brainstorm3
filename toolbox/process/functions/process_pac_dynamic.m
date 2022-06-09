@@ -368,28 +368,15 @@ tic
         end
                 
         % ===== APPLY SOURCE ORIENTATION =====
-        if strcmpi(sInput.DataType, 'results') && (sInput.nComponents > 1)
-            % Number of values per vertex
-            switch (sInput.nComponents)
-                case 2
-                    sPAC.ValPAC         = (sPAC.ValPAC(1:2:end,:,:)           + sPAC.ValPAC(2:2:end,:,:))           / 2;
-                    sPAC.NestingFreq    = (sPAC.NestingFreq(1:2:end,:,:)      + sPAC.NestingFreq(2:2:end,:,:))      / 2;
-                    sPAC.NestedFreq     = (sPAC.NestedFreq(1:2:end,:,:)       + sPAC.NestedFreq(2:2:end,:,:))       / 2;
-                    sPAC.PhasePAC       = (sPAC.PhasePAC(1:2:end,:,:)         + sPAC.PhasePAC(2:2:end,:,:))         / 2;
-                    sPAC.DynamicPAC     = (sPAC.DynamicPAC(1:2:end,:,:,:)     + sPAC.DynamicPAC(2:2:end,:,:,:))     / 2;
-                    sPAC.DynamicNesting = (sPAC.DynamicNesting(1:2:end,:,:,:) + sPAC.DynamicNesting(2:2:end,:,:,:)) / 2;
-                    sPAC.DynamicPhase   = (sPAC.DynamicPhase(1:2:end,:,:,:)   + sPAC.DynamicPhase(2:2:end,:,:,:))   / 2;
-                    sInput.RowNames     = sInput.RowNames(1:2:end);
-                case 3
-                    sPAC.ValPAC         = (sPAC.ValPAC(1:3:end,:,:)           + sPAC.ValPAC(2:3:end,:,:)           + sPAC.ValPAC(3:3:end,:,:))           / 3;
-                    sPAC.NestingFreq    = (sPAC.NestingFreq(1:3:end,:,:)      + sPAC.NestingFreq(2:3:end,:,:)      + sPAC.NestingFreq(3:3:end,:,:))      / 3;
-                    sPAC.NestedFreq     = (sPAC.NestedFreq(1:3:end,:,:)       + sPAC.NestedFreq(2:3:end,:,:)       + sPAC.NestedFreq(3:3:end,:,:))       / 3;
-                    sPAC.PhasePAC       = (sPAC.PhasePAC(1:3:end,:,:)         + sPAC.PhasePAC(2:3:end,:,:)         + sPAC.PhasePAC(3:3:end,:,:))         / 3;
-                    sPAC.DynamicPAC     = (sPAC.DynamicPAC(1:3:end,:,:,:)     + sPAC.DynamicPAC(2:3:end,:,:,:)     + sPAC.DynamicPAC(3:3:end,:,:,:))     / 3;
-                    sPAC.DynamicNesting = (sPAC.DynamicNesting(1:3:end,:,:,:) + sPAC.DynamicNesting(2:3:end,:,:,:) + sPAC.DynamicNesting(3:3:end,:,:,:)) / 3;
-                    sPAC.DynamicPhase   = (sPAC.DynamicPhase(1:3:end,:,:,:)   + sPAC.DynamicPhase(2:3:end,:,:,:)   + sPAC.DynamicPhase(3:3:end,:,:,:))   / 3;
-                    sInput.RowNames     = sInput.RowNames(1:3:end);
-            end
+        % Section copied from bst_timefreq
+        if ismember(sInput.DataType, {'results','scout','matrix'}) && isequal(sInput.nComponents, 3)
+            sPAC.ValPAC         = bst_source_orient([], sInput.nComponents, [], sPAC.ValPAC,         'mean', sInput.DataType, sInput.RowNames);
+            sPAC.NestingFreq    = bst_source_orient([], sInput.nComponents, [], sPAC.NestingFreq,    'mean', sInput.DataType, sInput.RowNames);
+            sPAC.NestedFreq     = bst_source_orient([], sInput.nComponents, [], sPAC.NestedFreq,     'mean', sInput.DataType, sInput.RowNames);
+            sPAC.PhasePAC       = bst_source_orient([], sInput.nComponents, [], sPAC.PhasePAC,       'mean', sInput.DataType, sInput.RowNames);
+            sPAC.DynamicPAC     = bst_source_orient([], sInput.nComponents, [], sPAC.DynamicPAC,     'mean', sInput.DataType, sInput.RowNames);
+            sPAC.DynamicNesting = bst_source_orient([], sInput.nComponents, [], sPAC.DynamicNesting, 'mean', sInput.DataType, sInput.RowNames);
+            [sPAC.DynamicPhase, ~, sInput.RowNames] = bst_source_orient([], sInput.nComponents, [], sPAC.DynamicPhase, 'mean', sInput.DataType, sInput.RowNames);
         end
 
         % ===== SAVE FILE =====
@@ -408,7 +395,15 @@ tic
                     Comment = [Comment, ': ' scoutName(1:k-1)];
                 end
             elseif ~isempty(OPTIONS.Target)
-                Comment = [Comment, ': ' OPTIONS.Target];
+                if ischar(OPTIONS.Target)
+                    Comment = [Comment, ': ' OPTIONS.Target];
+                elseif iscell(OPTIONS.Target) && (length(OPTIONS.Target) >= 2)  % Scout names
+                    if (length(OPTIONS.Target{2}) == 1)
+                        Comment = [Comment, ': ' OPTIONS.Target{2}{1}];
+                    else
+                        Comment = [Comment, ': ' num2str(length(OPTIONS.Target{2}{1})) ' scouts'];
+                    end
+                end
             else
                 Comment = [Comment, ': ' num2str(length(sInput.RowNames)) ' signals'];
             end
@@ -606,7 +601,7 @@ hilMar = 1/5;                              % Percentage of margin for Hilber tra
 bandNestingLen= max(2,1/(winLen+margin));  % Length of band nesting -- considering the resolution in FFT domain with available window length
 isMirror = 0;                              % Mirroring the data in filtering
 isRelax  = 1;                              % Attenuation of the filter in the stopband (1 => 40 dB, 0 => 60 dB)
-Method = 'bst-hfilter-2016'                % Version of the filter 
+Method = 'bst-hfilter-2016';               % Version of the filter 
 minExtracFreq = max(1/winLen, fpBand(1));  % minimum frequency that could be extracted as nestingFreq
 doInterpolation = Options.doInterpolation; % Applying interpolation in frequency and time domain
 logCenters = Options.logCenters;           % Choose the center frequencies for f_A with log space in faBand
