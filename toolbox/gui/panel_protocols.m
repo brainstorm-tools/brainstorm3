@@ -466,15 +466,19 @@ function UpdateTree(resetNodes)
                 iStudyOld = prevSelNode.getStudyIndex();
                 if (iStudyOld >= 1)
                     sStudyOld = bst_get('Study', iStudyOld);
-                    [sSubjectOld, iSubjectOld] = bst_get('Subject', sStudyOld.BrainStormSubject);
-                    if sSubjectOld.UseDefaultAnat
-                        iSubjectOld = 0;
-                    end
-                    % Get new subject index
-                    iSubjectNew = selNode.getStudyIndex();
-                    % If the subject changed: select the parent node for the new subject
-                    if ~isequal(iSubjectNew, iSubjectOld)
-                        newSelNode = dbNode.findChild('subject', iSubjectOld, -1, 0);
+                    if ~isempty(sStudyOld)
+                        [sSubjectOld, iSubjectOld] = bst_get('Subject', sStudyOld.BrainStormSubject);
+                        if ~isempty(sSubjectOld)
+                            if sSubjectOld.UseDefaultAnat
+                                iSubjectOld = 0;
+                            end
+                            % Get new subject index
+                            iSubjectNew = selNode.getStudyIndex();
+                            % If the subject changed: select the parent node for the new subject
+                            if ~isequal(iSubjectNew, iSubjectOld)
+                                newSelNode = dbNode.findChild('subject', iSubjectOld, -1, 0);
+                            end
+                        end
                     end
                 end
             % From anatomy view to functional view: Keeps the same subject
@@ -486,10 +490,16 @@ function UpdateTree(resetNodes)
                     % Get new subject index
                     iStudyNew = selNode.getStudyIndex();
                     sStudyNew = bst_get('Study', iStudyNew);
-                    [sSubjectNew, iSubjectNew] = bst_get('Subject', sStudyNew.BrainStormSubject);
-                    % If the subject changed: select the parent node for the new subject
-                    if ~isequal(iSubjectNew, iSubjectOld)
-                        newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 0);
+                    if ~isempty(sStudyNew)
+                        [sSubjectNew, iSubjectNew] = bst_get('Subject', sStudyNew.BrainStormSubject);
+                        % If the subject changed: Select the parent node for the new subject
+                        if ~isequal(iSubjectNew, iSubjectOld)
+                            if isequal(explorationMode, 'StudiesSubj')
+                                newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 0);
+                            elseif isequal(explorationMode, 'StudiesCond')
+                                newSelNode = dbNode.findChild('studysubject', -1, iSubjectOld, 1);
+                            end
+                        end
                     end
                 end
             end
@@ -591,7 +601,7 @@ function UpdateNode(category, indices, isExpandTrials)
         return;
     end
     % Reset searches (otherwise the new nodes are added to one search tab only)
-    panel_protocols('ResetSearchNodes');
+    ResetSearchNodes();
     % Get root of the exploration tree 
     treeModel   = ctrl.jTreeProtocols.getModel();
     nodeRootTmp = treeModel.getRoot();
