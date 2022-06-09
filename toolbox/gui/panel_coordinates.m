@@ -347,13 +347,18 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
                 end
             end
             % Get subject
-            sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
-            % == GET MRI ==
-            % If subject has a MRI defined
-            if ~isempty(sSubject.iAnatomy)
-                % Load MRI
-                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                sMri = bst_memory('LoadMri', MriFile);
+            SubjectFile = getappdata(hFig, 'SubjectFile');
+            if ~isempty(SubjectFile)
+                sSubject = bst_get('Subject', SubjectFile);
+                % == GET MRI ==
+                % If subject has a MRI defined
+                if ~isempty(sSubject.iAnatomy)
+                    % Load MRI
+                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                    sMri = bst_memory('LoadMri', MriFile);
+                else
+                    sMri = [];
+                end
             else
                 sMri = [];
             end

@@ -37,6 +37,7 @@ if (nargin < 5) || isempty(Comment)
     Comment = [];
 end
 % MriFile instead of subject index
+sMri = [];
 if ischar(iSubject)
     MriFile = iSubject;
     [sSubject, iSubject] = bst_get('MriFile', MriFile);
@@ -55,7 +56,7 @@ else
 end
 
 %% ===== LOAD MRI =====
-if ~isempty(MriFile)
+if isempty(sMri)
     % Load MRI
     bst_progress('start', 'Generate head surface', 'Loading MRI...');
     sMri = bst_memory('LoadMri', MriFile);
