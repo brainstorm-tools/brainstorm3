@@ -3,7 +3,7 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 %
 % USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
 %         [HeadFile, iSurface] = tess_isohead(MriFile,  nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
-%         [Vertices, Faces]    = tess_isohead(sMri,     nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
+%         [Vertices, Faces]    = tess_isohead(sMri,     nVertices=10000, erodeFactor=0, fillFactor=2)
 %
 % If input is loaded MRI structure, no surface file is created and the surface vertices and faces are returned instead.
 
@@ -48,7 +48,8 @@ elseif isstruct(iSubject)
     sMri = iSubject;
     MriFile = sMri.FileName;
     [sSubject, iSubject] = bst_get('MriFile', MriFile);
-    %isSave = false;  
+    % Don't save a surface file, instead return surface directly.
+    isSave = false;  
 else
     error('Wrong input type.');
 end
