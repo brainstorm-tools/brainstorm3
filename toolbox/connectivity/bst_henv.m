@@ -24,6 +24,9 @@ function [A, timePoints, nWindows] = bst_henv(X, Y, Time, OPTIONS)
 %   - timePoints   : Time vector corresponding to the connectivity matrix
 %   - nWindows     : Number of estimator windows
 %
+% REFERENCES:
+%   - Comparisons with previous AEC implementation is discussed on the forum: https://neuroimage.usc.edu/forums/t/30358
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm

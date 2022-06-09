@@ -1,3 +1,8 @@
+June 2022
+- Connectivity: New slider to threshold by percentile in Display tab
+- Connectivity: Deprecation of older AEC processes, replaced with HENV
+- GUI: Keep file selection when navigating between tabs
+--------------------------------------------------------------
 May 2022
 - IO: Fixed export to Plotly
 - New process: Threshold by percentile

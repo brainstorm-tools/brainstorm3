@@ -467,7 +467,9 @@ for iFile = 1:length(FilesA)
             R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== AEC ====
-        case 'aec'
+        % WARNING: This function has been deprecated. Now using the HENV implementation instead
+        % See discussion on the forum: https://neuroimage.usc.edu/forums/t/30358
+        case 'aec'   % DEPRECATED
             bst_progress('text', sprintf('Calculating: AEC [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'AEC: ';
             % Get frequency bands
