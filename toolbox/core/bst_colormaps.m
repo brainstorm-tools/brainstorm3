@@ -1100,8 +1100,15 @@ function isModified = NewCustomColormap(ColormapType, Name, CMap)
         % Get Colormap figure handle
         cme = getappdata(0, 'CMEditor');
         % Wait for the end of the Colormap Editor execution
-        while ~isempty(cme.getFrame())
-            pause(0.3);
+        if ismethod(cme, 'getFrame')
+            while ~isempty(cme.getFrame())
+                pause(0.3);
+            end
+        else
+            while ~isempty(cme)
+                pause(0.3);
+                cme = getappdata(0, 'CMEditor');
+            end
         end
         CMap = get(hTmp, 'Colormap');
         % Close editor figure
