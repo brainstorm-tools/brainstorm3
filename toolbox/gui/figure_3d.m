@@ -604,10 +604,25 @@ function FigureMouseUpCallback(hFig, varargin)
         elseif isSelectingCorticalSpot
             panel_scout('CreateScoutMouse', hFig);
             
-        % === SELECTING POINT (COORDINATES PANEL) ===
+        % === SELECTING POINT ===
         elseif isSelectingCoordinates
+            % Selecting from Coordinates panel
             if gui_brainstorm('isTabVisible', 'Coordinates')
                 panel_coordinates('SelectPoint', hFig);
+            % Selecting fiducials linked with MRI viewer
+            else
+                hView3DHeadFig = findobj(0, 'Type', 'Figure', 'Tag', 'View3DHeadFig', '-depth', 1);
+                if ~isempty(hView3DHeadFig)
+                    % Find the closest surface point that was selected
+                    [TessInfo, iTess, pout] = panel_coordinates('ClickPointInSurface', hView3DHeadFig);
+                    if isempty(TessInfo)
+                        return
+                    end
+                    % Get linked MRI viewer
+                    hMriViewer = get(hView3DHeadFig, 'UserData');
+                    % Set coordinates in linked MRI viewer
+                    figure_mri('SetLocation', 'mri', hMriViewer, [], pout' / 1000);
+                end
             end
             
         % === TIME-FREQ CORTICAL POINT ===

@@ -84,7 +84,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         'Renderer',      rendererName, ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off', ...
-        'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
+        'CloseRequestFcn',         @(h,ev)ButtonCancel_Callback(h,ev), ...
         'KeyPressFcn',             @FigureKeyPress_Callback, ...
         'WindowButtonDownFcn',     [], ...
         'WindowButtonMotionFcn',   [], ...
@@ -278,7 +278,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridx = 3;  c.gridy = 2;  Handles.jCheckViewSliders   = gui_component('checkbox', Handles.jPanelDisplayOptions, c, 'Controls',     [], '', @(h,ev)checkViewControls_Callback(hFig,ev));
     c.gridx = 4;  c.gridy = 1;  Handles.jRadioNeurological  = gui_component('radio',    Handles.jPanelDisplayOptions, c, 'Neurological', groupOrient, '', @(h,ev)orientation_Callback(hFig,ev));
     c.gridx = 4;  c.gridy = 2;  Handles.jRadioRadiological  = gui_component('radio',    Handles.jPanelDisplayOptions, c, 'Radiological', groupOrient, '', @(h,ev)orientation_Callback(hFig,ev));
-    % Pptions selected by default
+    % Options selected by default
     Handles.jCheckViewCrosshair.setSelected(1);
     Handles.jCheckViewSliders.setSelected(1);
     
@@ -316,14 +316,15 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     c.gridy   = 1; 
     c.weighty = 1;
     c.fill    = GridBagConstraints.BOTH;
-    c.insets  = Insets(2,4,2,4);
-    % Buttons: Zoom-, Zoom+, Cancel, Save
-    c.gridx = 1;  c.weightx = 0.1;  Handles.jButtonZoomMinus = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out<BR>[-] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
-    c.gridx = 2;  c.weightx = 0.1;  Handles.jButtonZoomPlus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in<BR>[+] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
-    c.gridx = 3;  c.weightx = 0.1;  Handles.jButtonSetCoord  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig));
-    c.gridx = 4;  c.weightx = 0.7;  gui_component('label', Handles.jPanelValidate, c, '');
-    c.gridx = 5;  c.weightx = 0.4;  Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
-    c.gridx = 6;  c.weightx = 0.4;  Handles.jButtonSave   = gui_component('button', Handles.jPanelValidate, c, 'Save',   [], '', @(h,ev)ButtonSave_Callback(hFig));
+    c.insets  = Insets(2,3,2,3);
+    % Buttons: Zoom-, Zoom+, SetCoord, View3DHead, Cancel, Save
+    c.gridx = 1;  c.weightx = 0.1; Handles.jButtonZoomMinus  = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_MINUS, '<HTML><B>Zoom out<BR>[-] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view', @(h,ev)ButtonZoom_Callback(hFig, '-'));
+    c.gridx = 2;  c.weightx = 0.1; Handles.jButtonZoomPlus   = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_ZOOM_PLUS,  '<HTML><B>Zoom in<BR>[+] or [CTRL + Mouse scroll]</B><BR>Double-click to reset view',  @(h,ev)ButtonZoom_Callback(hFig, '+'));
+    c.gridx = 3;  c.weightx = 0.1; Handles.jButtonSetCoord   = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_VIEW_SCOUT_IN_MRI,  'Set the current coordinates',  @(h,ev)ButtonSetCoordinates_Callback(hFig));
+    c.gridx = 4;  c.weightx = 0.1; Handles.jButtonView3DHead = gui_component('button', Handles.jPanelValidate, c, '', IconLoader.ICON_SURFACE_SCALP,  'View 3D head surface',  @(h,ev)ButtonView3DHead_Callback(hFig));
+    c.gridx = 5;  c.weightx = 0.7;   gui_component('label', Handles.jPanelValidate, c, '');
+    c.gridx = 6;  c.weightx = 0.3;   Handles.jButtonCancel = gui_component('button', Handles.jPanelValidate, c, 'Cancel', [], '', @(h,ev)ButtonCancel_Callback(hFig));
+    c.gridx = 7;  c.weightx = 0.3;   Handles.jButtonSave   = gui_component('button', Handles.jPanelValidate, c, 'Save',   [], '', @(h,ev)ButtonSave_Callback(hFig));
     
     % ===== CONFIGURE OBJECTS =====
     % Set labels in white
@@ -360,7 +361,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         jButtonsFid(i).setMaximumSize(Dimension(500,25));
     end
     % Remove margins for buttons
-    jButtonsAll = [jButtonsFid, Handles.jButtonSave, Handles.jButtonCancel];
+    jButtonsAll = [Handles.jButtonZoomMinus, Handles.jButtonZoomPlus, Handles.jButtonSetCoord, Handles.jButtonView3DHead, jButtonsFid, Handles.jButtonSave, Handles.jButtonCancel];
     for i = 1:length(jButtonsAll)
         jButtonsAll(i).setMargin(java.awt.Insets(0,0,0,0));
     end
@@ -540,6 +541,11 @@ function SetFigureStatus(hFig, isEditFiducials, isEditVolume, isOverlay, isEeg, 
     % Update controls: Fiducials
     Handles.jPanelCS.setVisible(Handles.isEditFiducials);
     Handles.jPanelCSHidden.setVisible(~Handles.isEditFiducials);
+    Handles.jButtonView3DHead.setVisible(Handles.isEditFiducials);
+    % Close 3D head figure if it was opened during editing.
+    if ~Handles.isEditFiducials && isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+        close(Handles.hView3DHeadFig);
+    end
     % Update controls: Edit volume
     Handles.jButtonRotateS.setVisible(Handles.isEditVolume);
     Handles.jButtonRotateA.setVisible(Handles.isEditVolume);
@@ -703,6 +709,16 @@ function checkCrosshair_Callback(hFig, varargin)
         set(hCrosshairs, 'Visible', 'off');
         Handles.jCheckViewCrosshair.setSelected(0);
     end
+
+    % Also toggle cursor on 3D head figure.
+    if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+        View3DHeadHandles = bst_figures('GetFigureHandles', Handles.hView3DHeadFig);
+        if Handles.jCheckViewCrosshair.isSelected
+            set(View3DHeadHandles.hMriPointsFid(4), 'Visible', 'on');
+        else
+            set(View3DHeadHandles.hMriPointsFid(4), 'Visible', 'off');
+        end
+    end
 end
 
 %% ===== CHECKBOX: VIEW SLIDERS =====
@@ -839,6 +855,85 @@ function ButtonSetCoordinates_Callback(hFig)
     % Move the slices
     SetLocation('mri', sMri, Handles, MRI);
 end
+
+%% ===== BUTTON VIEW 3D HEAD =====
+function ButtonView3DHead_Callback(hFig)
+%     global GlobalData;
+    % Get Mri and figure Handles
+    [sMri,TessInfo,iTess,iMri] = panel_surface('GetSurfaceMri', hFig); %#ok<ASGLU>
+    Handles = bst_figures('GetFigureHandles', hFig);
+    % Could use bst_figures('GetFigureWithSurface') to look for existing figure, but
+    % seems much simpler to save its handle in the MRI Viewer figure.
+    if ~isfield(Handles, 'hView3DHeadFig') || isempty(Handles.hView3DHeadFig) || ~ishandle(Handles.hView3DHeadFig)
+        % Save original fiducial coordinates (if any)
+        oldSCS = sMri.SCS;
+        % Define fake fiducials for creating the head surface
+        sMri.SCS.NAS = [0.5, 1, 0.5] .* size(sMri.Cube) .* sMri.Voxsize;
+        sMri.SCS.LPA = [0, 0.5, 0.5] .* size(sMri.Cube) .* sMri.Voxsize;
+        sMri.SCS.RPA = [1, 0.5, 0.5] .* size(sMri.Cube) .* sMri.Voxsize;
+        [Transf, sMri] = cs_compute(sMri, 'scs');
+        % Generate head surface
+        [Vertices, Faces] = tess_isohead(sMri, 20000, 0, 0, '');
+        % Convert coordinates back to MRI (mm) so that the head surface doesn't have
+        % to be updated when we move fiducials
+        Vertices = cs_convert(sMri, 'scs', 'mri', Vertices) * 1000;
+        % Create figure
+        SurfAlpha = .2;
+        Handles.hView3DHeadFig = view_surface_matrix(Vertices, Faces, SurfAlpha);
+        % Start coordinates selection
+        setappdata(Handles.hView3DHeadFig, 'isSelectingCoordinates', 1);
+        set(Handles.hView3DHeadFig, ...
+            'Pointer',  'cross', ...
+            'UserData', hFig, ...
+            'Tag',      'View3DHeadFig');
+        % Save 3D figure handle in the MRIViewer handles
+        bst_figures('SetFigureHandles', hFig, Handles);
+        % Get Brainstorm handles for 3D figure
+        View3DHeadHandles = bst_figures('GetFigureHandles', Handles.hView3DHeadFig);
+        View3DHeadHandles.hFig = Handles.hView3DHeadFig;
+        % Set default view from "front", but we're in MRI coords, so it's "left".
+        figure_3d('SetStandardView', View3DHeadHandles.hFig, 'left');
+        % Display fiducial points
+        FidNames = {'NAS', 'LPA', 'RPA'};
+        PtsColors = [0 .5 0;   0 .8 0;   .4 1 .4;   1 1 0];
+        hAx = findobj(View3DHeadHandles.hFig, 'Tag', 'Axes3D');
+        for iFid = 1:length(FidNames)
+            % Display if possible the fiducials that were already saved
+            if (length(oldSCS.(FidNames{iFid})) == 3)
+                MriFidLoc = oldSCS.(FidNames{iFid});
+            else
+                MriFidLoc = sMri.SCS.(FidNames{iFid});
+            end
+            % Display fiducials, could switch to spheres if this doesn't work well.
+            View3DHeadHandles.hMriPointsFid(iFid) = line(MriFidLoc(:,1), MriFidLoc(:,2), MriFidLoc(:,3), ...
+                'Parent',          hAx, ...
+                'LineWidth',       2, ...
+                'LineStyle',       'none', ...
+                'MarkerFaceColor', PtsColors(iFid,:), ...
+                'MarkerEdgeColor', PtsColors(iFid,:), ...
+                'MarkerSize',      7, ...
+                'Marker',          'o', ...
+                'Tag',             'MriPointsFid');
+        end
+        % Add cursor cross
+        iFid = 4;
+        CursorLoc = GetLocation('mri', sMri, Handles) * 1000;
+        View3DHeadHandles.hMriPointsFid(iFid) = line(CursorLoc(:,1), CursorLoc(:,2), CursorLoc(:,3), ...
+            'Parent',          hAx, ...
+            'LineWidth',       2, ...
+            'LineStyle',       'none', ...
+            'MarkerEdgeColor', PtsColors(iFid,:), ...
+            'MarkerSize',      12, ...
+            'Marker',          '+', ...
+            'Tag',             'ptCoordinates');
+        bst_figures('SetFigureHandles', View3DHeadHandles.hFig, View3DHeadHandles);
+    end
+    % Update current figure selection
+    if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+        bst_figures('SetCurrentFigure', Handles.hView3DHeadFig, '3D');
+    end
+end
+
 
 
 %% =======================================================================================
@@ -1342,6 +1437,7 @@ function UpdateSurfaceColor(hFig, varargin) %#ok<DEFNU>
 end
 
 %% ===== DISPLAY CROSSHAIR =====
+% Move crosshair on each slice, and cursor in 3D head view
 function UpdateCrosshairPosition(sMri, Handles)
     mmCoord = GetLocation('mri', sMri, Handles) .* 1000;
     if isempty(Handles.crosshairSagittalH) || ~ishandle(Handles.crosshairSagittalH)
@@ -1356,6 +1452,12 @@ function UpdateCrosshairPosition(sMri, Handles)
     % Axial
     set(Handles.crosshairAxialH, 'YData', mmCoord(2) .* [1 1]);
     set(Handles.crosshairAxialV, 'XData', mmCoord(1) .* [1 1]);
+
+    if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+        % Update cursor location on 3D head figure.
+        View3DHeadHandles = bst_figures('GetFigureHandles', Handles.hView3DHeadFig);
+        set(View3DHeadHandles.hMriPointsFid(4), 'xdata', mmCoord(1), 'ydata', mmCoord(2), 'zdata', mmCoord(3));
+    end
 end
     
 
@@ -2358,6 +2460,14 @@ function SetFiducial(hFig, FidCategory, FidName)
     Handles.isModifiedMri = 1;
     bst_figures('SetFigureHandles', hFig, Handles);
     GlobalData.Mri(iMri) = sMri;
+
+    if strcmpi(FidCategory, 'SCS') && isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+        % Update fiducial location on 3D head figure.
+        FidNames = {'NAS', 'LPA', 'RPA'};
+        iFid = find(strcmp(FidNames, FidName));
+        View3DHeadHandles = bst_figures('GetFigureHandles', Handles.hView3DHeadFig);
+        set(View3DHeadHandles.hMriPointsFid(iFid), 'xdata', XYZ(1), 'ydata', XYZ(2), 'zdata', XYZ(3));
+    end
 end
 
 
@@ -2389,12 +2499,20 @@ end
 function ButtonCancel_Callback(hFig, varargin)
     global GlobalData;
     % Get figure Handles
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
-    % Mark that nothing changed
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
-    % Unload all datasets that used this MRI
-    sMri = panel_surface('GetSurfaceMri', hFig);
-    bst_memory('UnloadMri', sMri.FileName);
+    Handles = bst_figures('GetFigureHandles', hFig);
+    % If figure is correctly registered
+    if ~isempty(Handles)
+        % Mark that nothing changed
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
+        % Unload all datasets that used this MRI
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        bst_memory('UnloadMri', sMri.FileName);
+        % Also close 3D head figure if present.
+        if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+            close(Handles.hView3DHeadFig);
+        end
+    end
     % Close figure
     if ishandle(hFig)
         close(hFig);
