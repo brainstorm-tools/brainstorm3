@@ -736,55 +736,55 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     
     % ===== CONTRAST / BRIGHTNESS PANEL =====
-    strTooltip = ['<HTML><BLOCKQUOTE><B>Contrast and brightness</B>: <BR><BR>' ...
-      'These values can be directly modified from any figure<BR>' ...
-      'by clicking on the colorbar and moving the mouse.<BR><BR>' ...
-      '- Horizontal moves : increase/decrease contrast<BR>' ...
-      '- Vertical moves : increase/decrease brightness<BR>' ...
-      '</BLOCKQUOTE></HTML>' ];
-    % == CONTRAST ==
-    % Create base menu entry
-    jPanel = gui_component('Panel');
-    jPanel.setOpaque(0);
-    jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
-    jMenu.add(jPanel);
-    % Title
-    jLabel = gui_component('label', [], '', 'Contrast:  ');
-    jPanel.add(jLabel, BorderLayout.CENTER);
-    % Spin button
-    val = round(sColormap.Contrast * 100);
-    spinmodel = SpinnerNumberModel(val, -100, 100, 2);
-    jSpinner = JSpinner(spinmodel);
-    jSpinner.setPreferredSize(Dimension(55,23));
-    jSpinner.setToolTipText(strTooltip);
-    java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Contrast'));
-    jPanel.add(jSpinner, BorderLayout.EAST);
+    if isempty(strfind(sColormap.Name, 'custom_'))
+        strTooltip = ['<HTML><BLOCKQUOTE><B>Contrast and brightness</B>: <BR><BR>' ...
+          'These values can be directly modified from any figure<BR>' ...
+          'by clicking on the colorbar and moving the mouse.<BR><BR>' ...
+          '- Horizontal moves : increase/decrease contrast<BR>' ...
+          '- Vertical moves : increase/decrease brightness<BR>' ...
+          '</BLOCKQUOTE></HTML>' ];
+        % == CONTRAST ==
+        % Create base menu entry
+        jPanel = gui_component('Panel');
+        jPanel.setOpaque(0);
+        jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
+        jMenu.add(jPanel);
+        % Title
+        jLabel = gui_component('label', [], '', 'Contrast:  ');
+        jPanel.add(jLabel, BorderLayout.CENTER);
+        % Spin button
+        val = round(sColormap.Contrast * 100);
+        spinmodel = SpinnerNumberModel(val, -100, 100, 2);
+        jSpinner = JSpinner(spinmodel);
+        jSpinner.setPreferredSize(Dimension(55,23));
+        jSpinner.setToolTipText(strTooltip);
+        java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Contrast'));
+        jPanel.add(jSpinner, BorderLayout.EAST);
 
-    % == BRIGHTNESS ==
-    % Create base menu entry
-    jPanel = gui_component('Panel');
-    jPanel.setOpaque(0);
-    jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
-    jMenu.add(jPanel);
-    % Title
-    jLabel = gui_component('label', [], '', 'Brightness:  ');
-    jPanel.add(jLabel, BorderLayout.WEST);
-    % Spin button
-    val = -round(sColormap.Brightness * 100);
-    spinmodel = SpinnerNumberModel(val, -100, 100, 2);
-    jSpinner = JSpinner(spinmodel);
-    jSpinner.setPreferredSize(Dimension(55,23));
-    jSpinner.setToolTipText(strTooltip);
-    java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Brightness'));
-    jPanel.add(jSpinner, BorderLayout.EAST);
+        % == BRIGHTNESS ==
+        % Create base menu entry
+        jPanel = gui_component('Panel');
+        jPanel.setOpaque(0);
+        jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
+        jMenu.add(jPanel);
+        % Title
+        jLabel = gui_component('label', [], '', 'Brightness:  ');
+        jPanel.add(jLabel, BorderLayout.WEST);
+        % Spin button
+        val = -round(sColormap.Brightness * 100);
+        spinmodel = SpinnerNumberModel(val, -100, 100, 2);
+        jSpinner = JSpinner(spinmodel);
+        jSpinner.setPreferredSize(Dimension(55,23));
+        jSpinner.setToolTipText(strTooltip);
+        java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Brightness'));
+        jPanel.add(jSpinner, BorderLayout.EAST);
+        CreateSeparator(jMenu, isPermanent);
+    end
 
     % Display/hide colorbar
-    CreateSeparator(jMenu, isPermanent);
     jCheckDisp = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
     jCheckDisp.setSelected(sColormap.DisplayColorbar);
-    
 
-    
     % Open menu in a new window
     if ~isPermanent
         gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
@@ -1688,10 +1688,9 @@ end
 
 %% ===== APPLY COLORMAP MODIFIERS =====
 function sColormap = ApplyColormapModifiers(sColormap)
-    
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps
-    if ~isempty(sColormap.Name)
+    if ~isempty(sColormap.Name) && isempty(strfind(sColormap.Name, 'custom_'))
         sColormap.CMap = eval(sprintf('%s(%d)', sColormap.Name, DEFAULT_CMAP_SIZE));
         mapSize = size(sColormap.CMap, 1);
         
