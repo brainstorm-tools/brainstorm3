@@ -1,8 +1,8 @@
 name: 'coil_def.dat Update Checker' 
 on: 
   schedule:
-    # runs at 9:00h UTC, any day of the month, any month, on Monday.
-    - cron: '0 9 * * 1'
+    # runs at 9:00h UTC, every day of the month, every month, on Mondays to Fridays.
+    - cron: '0 9 * * 1-5'
 
 permissions:
   issues: write
