@@ -84,7 +84,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
         'Renderer',      rendererName, ...
         'BusyAction',    'cancel', ...
         'Interruptible', 'off', ...
-        'CloseRequestFcn',         @(h,ev)bst_figures('DeleteFigure',h,ev), ...
+        'CloseRequestFcn',         @(h,ev)ButtonCancel_Callback(h,ev), ...
         'KeyPressFcn',             @FigureKeyPress_Callback, ...
         'WindowButtonDownFcn',     [], ...
         'WindowButtonMotionFcn',   [], ...
@@ -2499,20 +2499,23 @@ end
 function ButtonCancel_Callback(hFig, varargin)
     global GlobalData;
     % Get figure Handles
-    [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
     Handles = bst_figures('GetFigureHandles', hFig);
-    % Mark that nothing changed
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
-    % Unload all datasets that used this MRI
-    sMri = panel_surface('GetSurfaceMri', hFig);
-    bst_memory('UnloadMri', sMri.FileName);
+    % If figure is correctly registered
+    if ~isempty(Handles)
+        % Mark that nothing changed
+        [hFig,iFig,iDS] = bst_figures('GetFigure', hFig);
+        GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
+        % Unload all datasets that used this MRI
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        bst_memory('UnloadMri', sMri.FileName);
+        % Also close 3D head figure if present.
+        if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
+            close(Handles.hView3DHeadFig);
+        end
+    end
     % Close figure
     if ishandle(hFig)
         close(hFig);
-    end
-    % Also close 3D head figure if present.
-    if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
-        close(Handles.hView3DHeadFig);
     end
 end
 
