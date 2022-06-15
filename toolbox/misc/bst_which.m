@@ -88,10 +88,11 @@ else
         end
         % XTERM
         if system('which xterm > /dev/null')
-            system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
+            [status, cmdout] = system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
             if status == 0, return; end
         end
         % Error
+        disp(cmdout);
         error('No terminal emulator found for your operating system.');
         
     % === FILE EXPLORERS ===
@@ -115,6 +116,7 @@ else
             if status == 0, return; end
         end
         % Error
+        disp(cmdout);
         error('No file manager found for your operating system.');
     end
 end
