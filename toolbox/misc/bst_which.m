@@ -73,7 +73,7 @@ else
         xdg_deskptop = getenv('XDG_CURRENT_DESKTOP');
         switch xdg_deskptop
             % GNOME & Cinnamom
-            case {'GNOME', 'GNOME-Classic:GNOME', 'GNOME-Flashback:GNOME'}
+            case {'GNOME', 'GNOME-Classic:GNOME', 'GNOME-Flashback:GNOME', 'Cinnamon', 'X-Cinnamon'}
                 [status, cmdout] = system(['gnome-terminal --working-directory="' filepath '" &']);
             % KDE
             case 'KDE'
