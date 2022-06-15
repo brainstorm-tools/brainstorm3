@@ -70,44 +70,46 @@ elseif strncmp(computer,'MAC',3)
 else
     % === TERMINAL ===
     if isTerminal
-        % GNOME
-        isGnome = system('which gnome-terminal');
-        if (isGnome == 0)
-            system(['gnome-terminal --working-directory="' filepath '" &']);
-            return
+        xdg_deskptop = getenv('XDG_CURRENT_DESKTOP');
+        switch xdg_deskptop
+            % GNOME & Cinnamom
+            case {'GNOME', 'GNOME-Classic:GNOME', 'GNOME-Flashback:GNOME'}
+                [status, cmdout] = system(['gnome-terminal --working-directory="' filepath '" &']);
+            % KDE
+            case 'KDE'
+                [status, cmdout] = system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && konsole --workdir "' filepath '" &']);
+            % MATE
+            case 'MATE'
+                [status, cmdout] = system(['mate-terminal --working-directory="' filepath '" &']);
+            otherwise
+                status = 1;
         end
-        % KDE
-        isKde = system('which konsole');
-        if (isKde == 0)
-            system(['konsole --workdir "' filepath '" &']);
-            return
+        if status ~= 0
+            [status, cmdout] = system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
         end
-        % ELSE: XTERM
-        isXterm = system('which xterm');
-        if (isXterm == 0)
-            system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
-            return
-        end
+        return
+
         
     % === FILE EXPLORERS ===
     else
         % Any X Desktop Group (XDG) compliant
-        ixXdg = system('which xdg-open');
+        [ixXdg, cmdout] = system('which xdg-open');
         if (ixXdg == 0)          
-            system(['xdg-open "' filepath '"']);
+            [status, cmdout] = system(['xdg-open "' filepath '"']);
+            if status == 0
+                return
+            end
+        end
+        % DOLPHIN (KDE)
+        [isKde, cmdout] = system('which dolphin');
+        if (isKde == 0)
+            system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && dolphin "' filepath '" &']);
             return
         end
         % NAUTILUS (GNOME)
-        isGnome = system('which nautilus');
+        [isGnome, cmdout] = system('which nautilus');
         if (isGnome == 0)
-            %unix(['xterm -e "nautilus \"' filepath '\""']);
             system(['nautilus "' filepath '" &']);
-            return
-        end
-        % KONQUEROR (KDE)
-        isKde = system('which konqueror');
-        if (isKde == 0)
-            system(['xterm -e "konqueror \"' filepath '\"" &']);
             return
         end
         % Error
