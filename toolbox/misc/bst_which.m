@@ -93,24 +93,22 @@ else
     % === FILE EXPLORERS ===
     else
         % Any X Desktop Group (XDG) compliant
-        [ixXdg, cmdout] = system('which xdg-open');
+        ixXdg = system('which xdg-open > /dev/null');
         if (ixXdg == 0)          
             [status, cmdout] = system(['xdg-open "' filepath '"']);
-            if status == 0
-                return
-            end
+            if status == 0, return; end
         end
         % DOLPHIN (KDE)
-        [isKde, cmdout] = system('which dolphin');
+        isKde = system('which dolphin > /dev/null');
         if (isKde == 0)
-            system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && dolphin "' filepath '" &']);
-            return
+            [status, cmdout] = system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && dolphin "' filepath '" &']);
+            if status == 0, return; end
         end
         % NAUTILUS (GNOME)
-        [isGnome, cmdout] = system('which nautilus');
+        isGnome = system('which nautilus > /dev/null');
         if (isGnome == 0)
-            system(['nautilus "' filepath '" &']);
-            return
+            [status, cmdout] = system(['nautilus "' filepath '" &']);
+            if status == 0, return; end
         end
         % Error
         error('No file manager found for your operating system.');
