@@ -71,24 +71,28 @@ else
     % === TERMINAL ===
     if isTerminal
         xdg_deskptop = getenv('XDG_CURRENT_DESKTOP');
-        switch xdg_deskptop
-            % GNOME & Cinnamom
-            case {'GNOME', 'GNOME-Classic:GNOME', 'GNOME-Flashback:GNOME', 'Cinnamon', 'X-Cinnamon'}
-                [status, cmdout] = system(['gnome-terminal --working-directory="' filepath '" &']);
-            % KDE
-            case 'KDE'
-                [status, cmdout] = system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && konsole --workdir "' filepath '" &']);
-            % MATE
-            case 'MATE'
-                [status, cmdout] = system(['mate-terminal --working-directory="' filepath '" &']);
-            otherwise
-                status = 1;
+        % KDE default terminal
+        if strcmp('KDE', xdg_deskptop) && (system('which konsole > /dev/null') == 0)
+            [status, cmdout] = system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && konsole --workdir "' filepath '" &']);
+            if status == 0, return; end
         end
-        if status ~= 0
-            [status, cmdout] = system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
+        % MATE default terminal
+        if strcmp('MATE', xdg_deskptop) && (system('which mate-terminal > /dev/null') == 0)
+            [status, cmdout] = system(['mate-terminal --working-directory="' filepath '" &']);
+            if status == 0, return; end
         end
-        return
-
+        % GNOME terminal
+        if system('which gnome-terminal > /dev/null') == 0
+            [status, cmdout] = system(['gnome-terminal --working-directory="' filepath '" &']);
+            if status == 0, return; end
+        end
+        % XTERM
+        if system('which xterm > /dev/null')
+            system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
+            if status == 0, return; end
+        end
+        % Error
+        error('No terminal emulator found for your operating system.');
         
     % === FILE EXPLORERS ===
     else
