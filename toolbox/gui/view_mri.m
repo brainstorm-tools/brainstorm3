@@ -201,9 +201,7 @@ elseif isempty(hFig)
     sMri = bst_memory('LoadMri', MriFile);
     % If fiducials not defined: force MRI edition
     if isempty(sMri.SCS) || ~isfield(sMri.SCS, 'NAS') || ~isfield(sMri.SCS, 'LPA') || ~isfield(sMri.SCS, 'RPA') || ...
-           isempty(sMri.NCS) || ~isfield(sMri.NCS, 'AC')  || ~isfield(sMri.NCS, 'PC')  || ~isfield(sMri.NCS, 'IH') || ...
-           isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA) || ...
-           isempty(sMri.NCS.AC)  || isempty(sMri.NCS.PC)  || isempty(sMri.NCS.IH)
+           isempty(sMri.SCS.NAS) || isempty(sMri.SCS.LPA) || isempty(sMri.SCS.RPA)
         isEditFiducials = 1;
     end
 end
