@@ -22,7 +22,8 @@ function varargout = process_import_bids( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2021; Martin Cousineau, 2018
+% Authors: Francois Tadel, 2016-2022
+%          Martin Cousineau, 2018
 
 eval(macro_method);
 end
@@ -35,7 +36,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Import';
     sProcess.Index       = 41;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/RestingOmega#Import_the_dataset';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'import'};
     sProcess.OutputTypes = {'data'};
@@ -57,30 +58,31 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.bidsdir.Type    = 'filename';
     sProcess.options.bidsdir.Value   = SelectOptions;
     % Subject selection
-    sProcess.options.selectsubj.Comment = 'Names of subjects to import:';
+    sProcess.options.selectsubj.Comment = 'Names of subjects to import (empty=all):';
     sProcess.options.selectsubj.Type    = 'text';
     sProcess.options.selectsubj.Value   = '';
     % Option: Number of vertices
     sProcess.options.nvertices.Comment = 'Number of vertices (cortex): ';
     sProcess.options.nvertices.Type    = 'value';
     sProcess.options.nvertices.Value   = {15000, '', 0};
-    % Align sensors
-    sProcess.options.channelalign.Comment = 'Align sensors using headpoints';
-    sProcess.options.channelalign.Type    = 'checkbox';
-    sProcess.options.channelalign.Value   = 1;
-    % Group sessions
-    sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
-    sProcess.options.groupsessions.Type    = 'checkbox';
-    sProcess.options.groupsessions.Value   = 1;
-    % Compute BEM surfaces
-    sProcess.options.bem.Comment = 'Generate BEM skull surfaces (recommended for ECoG)';
-    sProcess.options.bem.Type    = 'checkbox';
-    sProcess.options.bem.Value   = 0;
+    % MNI normalization
+    sProcess.options.mni.Comment = {'Linear', 'Non-linear', 'No', 'MNI normalization:'; ...
+                                    'maff8', 'segment', 'no', ''};
+    sProcess.options.mni.Type    = 'radio_linelabel';
+    sProcess.options.mni.Value   = 'maff8';
     % Register anatomy
     sProcess.options.anatregister.Comment = {'SPM12', 'No', 'Coregister anatomical volumes:'; ...
                                              'spm12', 'no', ''};
     sProcess.options.anatregister.Type    = 'radio_linelabel';
     sProcess.options.anatregister.Value   = 'spm12';
+    % Group sessions
+    sProcess.options.groupsessions.Comment = 'Import multiple anat sessions to the same subject';
+    sProcess.options.groupsessions.Type    = 'checkbox';
+    sProcess.options.groupsessions.Value   = 1;
+    % Align sensors
+    sProcess.options.channelalign.Comment = 'Align sensors using headpoints';
+    sProcess.options.channelalign.Type    = 'checkbox';
+    sProcess.options.channelalign.Value   = 1;
 end
 
 
@@ -112,7 +114,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OPTIONS.ChannelAlign     = 2 * double(sProcess.options.channelalign.Value);
     OPTIONS.SelectedSubjects = strtrim(str_split(sProcess.options.selectsubj.Value, ','));
     OPTIONS.isGroupSessions  = sProcess.options.groupsessions.Value;
-    OPTIONS.isGenerateBem    = sProcess.options.bem.Value;
+    OPTIONS.MniMethod        = sProcess.options.mni.Value;
     OPTIONS.RegisterMethod   = sProcess.options.anatregister.Value;
     
     % === IMPORT DATASET ===
@@ -150,8 +152,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         'ChannelAlign',     0, ...
         'SelectedSubjects', [], ...
         'isGroupSessions',  1, ...
-        'isGenerateBem',    1, ...
-        'RegisterMethod',   'spm12');
+        'MniMethod',        'maff8', ...  % {'maff8','segment','no'}
+        'RegisterMethod',   'spm12');     % {'smp12','no'}
     OPTIONS = struct_copy_fields(OPTIONS, Def_OPTIONS, 0);
 
     % ===== GET THE BIDS FOLDER =====
@@ -209,17 +211,28 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         subjName = SubjectNames{iSubj};
         % Check if this is a subject selected for import
         if ~isempty(OPTIONS.SelectedSubjects) && ((iscell(OPTIONS.SelectedSubjects) && ~ismember(subjName, OPTIONS.SelectedSubjects)) || (ischar(OPTIONS.SelectedSubjects) && ~strcmpi(subjName, OPTIONS.SelectedSubjects)))
-            disp(['BIDS> Subject "' subjName '" was not selected. Skipping...']);
+            msg = [Messages 10 'Subject "' subjName '" was not selected. Skipping...'];
+            disp(['BIDS> ' msg]);
+            Messages = [Messages 10 msg];
             continue;
         end
         % Get session folders: regular or derivatives
         sessDir = [dir(bst_fullfile(BidsDir, subjName, 'ses-*')); ...
                    dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, 'ses-*'))];
-        % Full session paths
+        % Get full paths to session folders (if any)
         if isempty(sessDir)
             sessFolders = {bst_fullfile(BidsDir, subjName)};
             derivFolders = {bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName)};
         else
+            % Re-order session names: move "ses-preimp" or "ses-pre" at the top, for iEEG (pre-implantation images are usually the reference)
+            if (length(sessDir) > 1)
+                iSesPreimp = find(ismember({sessDir.name}, {'ses-preimp', 'ses-pre'}));
+                if ~isempty(iSesPreimp)
+                    iReorder = [iSesPreimp, setdiff(1:length(sessDir), iSesPreimp)];
+                    sessDir = sessDir(iReorder);
+                end
+            end
+            % Full session paths
             sessFolders = cellfun(@(c)fullfile(BidsDir, subjName, c), {sessDir.name}, 'UniformOutput', 0);
             derivFolders = cellfun(@(c)fullfile(BidsDir, 'derivatives', 'meg_derivatives', subjName, c), {sessDir.name}, 'UniformOutput', 0);
         end
@@ -305,15 +318,6 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
             SubjectMriFiles{end+1}   = GetSubjectMri(bst_fullfile(sessFolders{1}, 'anat'));
         end
-        
-        % Reorder MRI: Add the onesin "ses-pre" in front of the others, so that they are imported first and become the defaults
-        if (length(SubjectMriFiles{end}) > 1)
-            iSesPre = find(~cellfun(@(c)isempty(strfind(c,'ses-pre')), SubjectMriFiles{end}));
-            if ~isempty(iSesPre) && (length(iSesPre) < length(SubjectMriFiles{end}))
-                iReorder = [iSesPre, setdiff(1:length(SubjectMriFiles{end}),iSesPre)];
-                SubjectMriFiles{end} = SubjectMriFiles{end}(iReorder);
-            end
-        end
     end
     
 %     % Perform some checks
@@ -350,7 +354,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     % ===== IMPORT FILES =====
     for iSubj = 1:length(SubjectName)
         errorMsg = [];
-        
+        MriMatchOrigImport = {};
+
         % === GET/CREATE SUBJECT ===
         % Get subject 
         [sSubject, iSubject] = bst_get('Subject', SubjectName{iSubj});
@@ -405,6 +410,11 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 otherwise
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
+            % Compute non-linear MNI normalization if requested (the linear was already computed during the import)
+            if isempty(errorMsg) && isequal(OPTIONS.MniMethod, 'segment')
+                sSubject = bst_get('Subject', sSubject);
+                [sMri, errorMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
+            end
         end
         % Import MRI
         if ~isSkipAnat && ~isempty(SubjectMriFiles{iSubj})
@@ -421,15 +431,26 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
                     % Compute MNI normalization
-                    [sMri, errorMsg] = bst_normalize_mni(BstMriFile);
+                    switch (OPTIONS.MniMethod)
+                        case 'maff8'
+                            [sMri, errorMsg] = bst_normalize_mni(BstMriFile, 'maff8');
+                        case 'segment'
+                            [sMri, errorMsg] = bst_normalize_mni(BstMriFile, 'segment');
+                        case 'no'
+                            % Nothing to do
+                    end
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
                 else
                     MrisToRegister{end+1} = BstMriFile;
                 end
+                % Save correspondance original MRI/imported MRI
+                MriMatchOrigImport(end+1, 1:2) = {SubjectMriFiles{iSubj}{1}, BstMriFile};
                 % Add other volumes
                 for i = 2:length(SubjectMriFiles{iSubj})
                     MrisToRegister{end+1} = import_mri(iSubject, SubjectMriFiles{iSubj}{i}, 'ALL', 0, 1);
+                    % Save correspondance original MRI/imported MRI
+                    MriMatchOrigImport(end+1, 1:2) = {SubjectMriFiles{iSubj}{i}, MrisToRegister{end}};
                 end
             end
             % Register anatomical volumes if requested
@@ -455,22 +476,48 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                             bst_set('Subject', iSubject, sSubject);
                         end
                     end
+                    % Replace the MRI file path in the matching matrix
+                    iMatch = find(strcmp(MriMatchOrigImport(:,2), MrisToRegister{i}));
+                    if ~isempty(iMatch)
+                        MriMatchOrigImport{iMatch,2} = file_fullpath(MriFileReg);
+                    end
                 end
             end
-        end
-        % Compute BEM skull surfaces
-        if ~isSkipAnat && OPTIONS.isGenerateBem
-            sFiles = bst_process('CallProcess', 'process_generate_bem', [], [], ...
-                'subjectname', SubjectName{iSubj}, ...
-                'nscalp',      1922, ...
-                'nouter',      1922, ...
-                'ninner',      1922, ...
-                'thickness',   4);
-            if isempty(sFiles)
-                if ~isempty(errorMsg)
-                    errorMsg = [errorMsg, 10];
+        % Get the previous matching of MRI file names / Brainstorm database names
+        else
+            % Look for the file name in the import history of all the volumes in the subject anatomy
+            for iAnat = 1:length(sSubject.Anatomy)
+                % Skip volume atlases
+                if ~isempty(strfind(sSubject.Anatomy(iAnat).FileName, '_volatlas'))
+                    continue;
                 end
-                errorMsg = [errorMsg, 'Could not generate BEM surfaces for subject: ', SubjectName{iSubj}];
+                % Load MRI history
+                MriMat = load(file_fullpath(sSubject.Anatomy(iAnat).FileName), 'History');
+                if isfield(MriMat, 'History') && ~isempty(MriMat.History)
+                    % Get the import history
+                    iImport = find(strcmpi(MriMat.History(:,2), 'import'), 1);
+                    if isempty(iImport)
+                        continue;
+                    end
+                    % Parse the import string
+                    ImportMri = strrep(MriMat.History{iImport,3}, 'Import from: ', '');
+                    if ~file_exist(ImportMri)
+                        continue;
+                    end
+                    % If multiple files have the same import MRI: keep the one with the shortest file name (not post-processed)
+                    if ~isempty(MriMatchOrigImport)
+                        iPrevMri = find(strcmp(MriMatchOrigImport(:,1), ImportMri));
+                    else
+                        iPrevMri = [];
+                    end
+                    if ~isempty(iPrevMri)
+                        if (length(ImportMri) < MriMatchOrigImport{iPrevMri,2})
+                            MriMatchOrigImport{iPrevMri,2} = ImportMri;
+                        end
+                    else
+                        MriMatchOrigImport(end+1,1:2) = {ImportMri, sSubject.Anatomy(iAnat).FileName};
+                    end
+                end
             end
         end
         % Error handling
@@ -497,8 +544,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         allMeegDates = {};
         allMeegElecFiles = {};
         allMeegElecFormats = {};
+        allMeegElecAnatRef = {};
         subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
-%         DefaultMri = [];
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
                 % If the subject already has this session, skip it.
@@ -530,7 +577,9 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Not recognized
                             if (length(fDate) ~= 3)
-                                disp(['BIDS> Warning: Date format not recognized: "' tsvValues{iDate,2} '"']);
+                                msg = ['Date format not recognized: "' tsvValues{iDate,2} '"'];
+                                disp(['BIDS> Warning: ' msg]);
+                                Messages = [Messages 10 msg];
                                 fDate = [0 0 0];
                             end
                             tsvDates{iDate} = datestr(datenum(fDate(1), fDate(2), fDate(3)), 'dd-mmm-yyyy');
@@ -542,6 +591,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     posUnits = 'mm';
                     electrodesFile = [];
                     electrodesSpace = 'orig';
+                    electrodesAnatRef = [];
                     
                     % === COORDSYSTEM.JSON ===
                     % Get _coordsystem.json files
@@ -555,9 +605,27 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
                             posUnits = sCoordsystem.iEEGCoordinateUnits;
                         end
-%                         if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor) && file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
-%                             DefaultMri = bst_fullfile(BidsDir, sCoordsystem.IntendedFor);
-%                         end
+                        if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
+                            if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
+                                % Check whether the IntendedFor files is already imported as a volume
+                                if ~isempty(MriMatchOrigImport)
+                                    iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
+                                else
+                                    iMriImported = [];
+                                end
+                                if ~isempty(iMriImported)
+                                    electrodesAnatRef = MriMatchOrigImport{iMriImported,2};
+                                else
+                                    msg = ['The file in coordsystem.json/IntendedFor is not imported to the database: ' sCoordsystem.IntendedFor];
+                                    disp(['BIDS> Warning: ' msg]);
+                                    Messages = [Messages 10 msg];
+                                end
+                            else
+                                msg = ['The file in coordsystem.json/IntendedFor does not exist: ' sCoordsystem.IntendedFor];
+                                disp(['BIDS> Warning: ' msg]);
+                                Messages = [Messages 10 msg];
+                            end
+                        end
                     end
                     
                     % === ELECTRODES.TSV ===
@@ -588,6 +656,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         % Add electrodes file
                         allMeegElecFiles{end+1} = electrodesFile;
                         allMeegElecFormats{end+1} = ['BIDS-' upper(electrodesSpace) '-' upper(posUnits)];
+                        allMeegElecAnatRef{end+1} = electrodesAnatRef;
                     end
                 end
             end
@@ -621,14 +690,20 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % Add electrodes positions if available
                 if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
                     % Is is subject or MNI coordinates
-                    isVox2ras = ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-')) || ...
-                                ~isempty(strfind(allMeegElecFormats{iFile}, '-OTHER-'));
+                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-')) ||  ~isempty(strfind(allMeegElecFormats{iFile}, '-OTHER-'))
+                        % If using the vox2ras transformation: also removes the SPM coregistrations computed in Brainstorm
+                        % after importing the files, as these transformation were not available in the BIDS dataset
+                        isVox2ras = 2;
+                    else
+                        isVox2ras = 0;
+                    end
                     % Import 
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
                         'usedefault',  1, ...
                         'fixunits',    0, ...
-                        'vox2ras',     isVox2ras);
+                        'vox2ras',     isVox2ras, ...
+                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'});
                 end
                 % Get base file name
                 iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
@@ -842,17 +917,24 @@ end
 % Tries to find the best coordinate system available: subject space, otherwise MNI space
 function [fileList, fileSpace] = SelectCoordSystem(fileList)
     % T1 subject space
-    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-other')), {fileList.name}));
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-other')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
         fileSpace = 'Other';
         return;
     end
-    % MNI
-    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'-mni')), {fileList.name}));
+    % IXI549Space SPM12 space
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-ixi549space')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
-        fileSpace = 'mni';
+        fileSpace = 'IXI549Space';
+        return;
+    end
+    % Other MNI space
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-mni')), {fileList.name}));
+    if ~isempty(iSel)
+        fileList = fileList(iSel);
+        fileSpace = 'MNI';
         return;
     end
     % Nothing interpretable found: Use first in the list

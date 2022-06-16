@@ -59,11 +59,9 @@ for iChan = 1:nChan
     end
     % Type
     chType = tsvValues{iChan,6};
-    if isequal(chType, 'depth')
+    if isequal(chType, 'depth') || isequal(chType, 'seeg')
         ChannelMat.Channel(iChan).Type = 'SEEG';
-    elseif isequal(chType, 'grid') || isequal(chType, 'strip')
-        ChannelMat.Channel(iChan).Type = 'ECOG';
-    elseif isequal(chType, 'grid')
+    elseif isequal(chType, 'grid') || isequal(chType, 'strip') || isequal(chType, 'ecog')
         ChannelMat.Channel(iChan).Type = 'ECOG';
     elseif ~isempty(strfind(ChannelFile, '/ieeg/')) || ~isempty(strfind(ChannelFile, '\\ieeg\\'))
         ChannelMat.Channel(iChan).Type = 'SEEG';

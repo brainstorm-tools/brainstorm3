@@ -155,7 +155,7 @@ switch lower(Method)
         % spm_jobman('interactive', matlabbatch)
         spm_jobman('run',matlabbatch)
         % Read output volume
-        [sMriReg, vox2ras] = in_mri(NiiRegFile, 'ALL', 0, 0);
+        sMriReg = in_mri(NiiRegFile, 'ALL', 0, 0);
         % If an error occurred in SPM
         if isempty(sMriReg)
             errMsg = 'An unknown error occurred while executing SPM. See the logs in the command window.';
@@ -179,6 +179,18 @@ switch lower(Method)
         else
             isUpdateScs = 1;
             isUpdateNcs = 1;
+        end
+
+        % ===== COMPUTE TRANSFORMATION MATRIX =====
+        % Get transformations MRI=>WORLD (vox2ras) for original volume
+        vox2ras_src = cs_convert(sMriSrc, 'mri', 'world');
+        vox2ras_reg = cs_convert(sMriReg, 'mri', 'world');
+        % If there are vox2ras transformation matrices available
+        if ~isempty(vox2ras_src) && ~isempty(vox2ras_reg)
+            % Compute the transformation from the original to the registered volume
+            transfReg = vox2ras_reg * inv(vox2ras_src);
+            % Save in the registered MRI structure
+            sMriReg.InitTransf(end+1,[1 2]) = {'reg', transfReg};
         end
 
     % ===== METHOD: MNI =====
@@ -308,6 +320,7 @@ if ~isempty(MriFileSrc)
     % Update comment
     sMriReg.Comment = file_unique(sMriReg.Comment, {sSubject.Anatomy.Comment});
     % Add history entry
+    sMriReg.History = sMriSrc.History;
     sMriReg = bst_history('add', sMriReg, 'resample', ['MRI co-registered on default file (' Method '): ' MriFileRef]);
     % Save new file
     MriFileRegFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));

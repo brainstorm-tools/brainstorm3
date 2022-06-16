@@ -1,7 +1,7 @@
-function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
+function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras, RefMriFile)
 % IMPORT_CHANNEL: Imports a channel file (definition of the sensors).
 % 
-% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask], isApplyVox2ras=[ask])
+% USAGE:  BstChannelFile = import_channel(iStudies=none, ChannelFile=[ask], FileFormat, ChannelReplace=1, ChannelAlign=[ask], isSave=1, isFixUnits=[ask], isApplyVox2ras=[ask], RefMriFile=[])
 %
 % INPUT:
 %    - iStudies       : Indices of the studies where to import the ChannelFile
@@ -17,9 +17,12 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 %    - isFixUnits     : If 1, tries to convert the distance units to meters automatically
 %                       If 0, does not fix the distance units
 %                       If [], ask for the scaling to apply
-%    - isApplyVox2ras : If 1, uses the existing voxel=>subject transformation from the MRI file, if available
-%                       If 0, does not use the voxel=>subject transformation
+%    - isApplyVox2ras : If 0, does not use the voxel=>subject transformation
+%                       If 1, uses the existing voxel=>subject transformation from the MRI file, if available
+%                       If 2, uses the existing voxel=>subject transformation AND the coregistration transformation (see process_import_bids)
 %                       If [], ask for user decision
+%    - RefMriFile     : Relative file name to a MRI file imported for the current subject
+%                       When isApplyVox2ras=1: use this file instead of the reference MRI for getting the vox2ras transformation
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -39,10 +42,13 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== PARSE INPUTS =====
 Output = [];
+if (nargin < 9) || isempty(RefMriFile)
+    RefMriFile = [];
+end
 if (nargin < 8) || isempty(isApplyVox2ras)
     isApplyVox2ras = [];
 end
@@ -337,7 +343,7 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
 end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
-if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS', 'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'})
+if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS', 'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'}) && ~isApplyVox2ras
     isApplyVox2ras = 1;
 end
 
@@ -405,9 +411,12 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
     end
     % If there is a MRI for this subject
     if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
-        % Load the MRI
-        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
-        sMri = load(MriFile, 'InitTransf', 'SCS', 'Voxsize');
+        % Get the reference MRI (specified in input, or selected in the database)
+        if isempty(RefMriFile) || ~file_exist(file_fullpath(RefMriFile))
+            RefMriFile = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+        end
+        % Load the reference MRI (which contains the vox2mri transformation that should be used to interpret the coordinates)
+        sMri = load(file_fullpath(RefMriFile), 'InitTransf', 'SCS', 'Voxsize');
         % If there is a valid transformation
         if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
             % Ask user if necessary
@@ -421,6 +430,13 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
             if isApplyVox2ras
                 % Get the transformation WORLD=>MRI (in meters)
                 Transf = cs_convert(sMri, 'world', 'mri');
+                % Applies the coregistration transformation to the sensor positions, if requested
+                if (isApplyVox2ras == 2)
+                    iTransfReg = find(strcmpi(sMri.InitTransf(:,1), 'reg'), 1);
+                    if ~isempty(iTransfReg)
+                        Transf = Transf * sMri.InitTransf{iTransfReg,2};
+                    end
+                end
                 % Add the transformation MRI=>SCS
                 if isfield(sMri,'SCS') && isfield(sMri.SCS,'R') && ~isempty(sMri.SCS.R) && isfield(sMri.SCS,'T') && ~isempty(sMri.SCS.T)
                     Transf = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1] * Transf;
