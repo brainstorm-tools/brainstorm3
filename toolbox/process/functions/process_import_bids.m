@@ -545,6 +545,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         allMeegElecFiles = {};
         allMeegElecFormats = {};
         allMeegElecAnatRef = {};
+        allMeegElecFiducials = {};
         subjConditions = bst_get('ConditionsForSubject', sSubject.FileName);
         for isess = 1:length(SubjectSessDir{iSubj})
             if isdir(SubjectSessDir{iSubj}{isess})
@@ -577,9 +578,12 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                             end
                             % Not recognized
                             if (length(fDate) ~= 3)
-                                msg = ['Date format not recognized: "' tsvValues{iDate,2} '"'];
-                                disp(['BIDS> Warning: ' msg]);
-                                Messages = [Messages 10 msg];
+                                % Display warning only if something was set but not interpreted
+                                if ~isempty(tsvValues{iDate,2}) && ~isequal(lower(tsvValues{iDate,2}), 'n/a')
+                                    msg = ['Date format not recognized: "' tsvValues{iDate,2} '"'];
+                                    disp(['BIDS> Warning: ' msg]);
+                                    Messages = [Messages 10 msg];
+                                end
                                 fDate = [0 0 0];
                             end
                             tsvDates{iDate} = datestr(datenum(fDate(1), fDate(2), fDate(3)), 'dd-mmm-yyyy');
@@ -592,19 +596,50 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     electrodesFile = [];
                     electrodesSpace = 'orig';
                     electrodesAnatRef = [];
+                    sFid = [];
                     
                     % === COORDSYSTEM.JSON ===
                     % Get _coordsystem.json files
                     coordsystemDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_coordsystem.json'));
+                    % If multiple coordinate system files in the same folder: not expected unless multiple coordinate systems are available
                     if (length(coordsystemDir) > 1)
                         % Select by order of preference: subject space or MNI space
-                        coordsystemDir = SelectCoordSystem(coordsystemDir);
+                        [coordsystemDir, coordsystemSpace, msg] = SelectCoordSystem(coordsystemDir);
+                        if ~isempty(msg)
+                            disp(['BIDS> Warning: ' msg]);
+                            Messages = [Messages 10 msg];
+                        end
                     end
+                    % Read useful metadata from _coordinates.tsv file
                     if (length(coordsystemDir) == 1)
+                        % Read json file
                         sCoordsystem = bst_jsondecode(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name));
+                        % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinatesi in the same units (it would be weird to do otherwise, but it might happen)
                         if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
                             posUnits = sCoordsystem.iEEGCoordinateUnits;
+                        elseif isfield(sCoordsystem, 'EEGCoordinateUnits') && ~isempty(sCoordsystem.EEGCoordinateUnits) && ismember(sCoordsystem.EEGCoordinateUnits, {'mm','cm','m'})
+                            posUnits = sCoordsystem.EEGCoordinateUnits;
+                        elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
+                            posUnits = sCoordsystem.MEGCoordinateUnits;
                         end
+                        % Get anatomical landmarks: NAS, LPA, RPA
+                        if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinates') && ~isempty(sCoordsystem.AnatomicalLandmarkCoordinates)
+                            % Get units
+                            if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinateUnits') && ~isempty(sCoordsystem.AnatomicalLandmarkCoordinateUnits) && ismember(sCoordsystem.AnatomicalLandmarkCoordinateUnits, {'mm','cm','m'})
+                                landmarksUnits = sCoordsystem.AnatomicalLandmarkCoordinateUnits;
+                            else
+                                landmarksUnits = posUnits;
+                            end
+                            lm = sCoordsystem.AnatomicalLandmarkCoordinates;
+                            % Get all fiducials
+                            if isfield(lm, 'NAS') && (length(lm.NAS)==3) && isfield(lm, 'LPA') && (length(lm.LPA)==3) && isfield(lm, 'RPA') && (length(lm.RPA)==3) && ~(isequal(lm.NAS(:), [0;0;0]) && isequal(lm.LPA(:), [0;0;0]) && isequal(lm.RPA(:), [0;0;0]))
+                                sFid = struct(...
+                                    'NAS', bst_units_ui(landmarksUnits, lm.NAS(:)'), ...
+                                    'LPA', bst_units_ui(landmarksUnits, lm.LPA(:)'), ...
+                                    'RPA', bst_units_ui(landmarksUnits, lm.RPA(:)'));
+                            end
+                        end
+                        % For iEEG: Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
                         if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
                             if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
                                 % Check whether the IntendedFor files is already imported as a volume
@@ -631,9 +666,17 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     % === ELECTRODES.TSV ===
                     % Get electrodes positions
                     electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
-                    if (length(electrodesDir) >= 1)
+                    % If multiple positions in the same folder: not expected unless multiple coordinate systems are available
+                    if (length(electrodesDir) > 1)
                         % Select by order of preference: subject space, MNI space or first in the list
-                        [electrodesDir, electrodesSpace] = SelectCoordSystem(electrodesDir);
+                        [electrodesDir, electrodesSpace, msg] = SelectCoordSystem(electrodesDir);
+                        if ~isempty(msg)
+                            disp(['BIDS> Warning: ' msg]);
+                            Messages = [Messages 10 msg];
+                        end
+                    end
+                    % Get full file path to _electrodes.tsv
+                    if (length(electrodesDir) == 1)
                         electrodesFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, electrodesDir(1).name);
                     end
                     % Read the contents of the session folder
@@ -657,6 +700,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         allMeegElecFiles{end+1} = electrodesFile;
                         allMeegElecFormats{end+1} = ['BIDS-' upper(electrodesSpace) '-' upper(posUnits)];
                         allMeegElecAnatRef{end+1} = electrodesAnatRef;
+                        allMeegElecFiducials{end+1} = sFid;
                     end
                 end
             end
@@ -697,13 +741,14 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     else
                         isVox2ras = 0;
                     end
-                    % Import 
+                    % Import electrode positions
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
                         'usedefault',  1, ...
                         'fixunits',    0, ...
                         'vox2ras',     isVox2ras, ...
-                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'});
+                        'mrifile',     {allMeegElecAnatRef{iFile}, 'BST'}, ...
+                        'fiducials',   allMeegElecFiducials{iFile});
                 end
                 % Get base file name
                 iLast = find(allMeegFiles{iFile} == '_', 1, 'last');
@@ -915,7 +960,8 @@ end
 
 %% ===== SELECT COORDINATE SYSTEM =====
 % Tries to find the best coordinate system available: subject space, otherwise MNI space
-function [fileList, fileSpace] = SelectCoordSystem(fileList)
+function [fileList, fileSpace, wrnMsg] = SelectCoordSystem(fileList)
+    wrnMsg = [];
     % T1 subject space
     iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-other')), {fileList.name}));
     if ~isempty(iSel)
@@ -938,7 +984,7 @@ function [fileList, fileSpace] = SelectCoordSystem(fileList)
         return;
     end
     % Nothing interpretable found: Use first in the list
-    disp(['BIDS> Warning: Could not detect subject coordinate system, using randomly "' fileList(1).name '".']);
+    wrnMsg = ['Could not interpret subject coordinate system, using randomly "' fileList(1).name '".'];
     fileList = fileList(1);
     fileSpace = 'unknown';
 end

@@ -25,10 +25,10 @@ function ChannelMat = in_channel_bids(ChannelFile, factor)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2018
+% Authors: Francois Tadel, 2018-2022
 
 % Read the TSV file
-tsvValues = in_tsv(ChannelFile, {'name', 'x', 'y', 'z', 'group', 'type'});
+tsvValues = in_tsv(ChannelFile, {'name', 'x', 'y', 'z', 'group', 'type'}, 0);
 if isempty(tsvValues) || isempty(tsvValues{1,1})
     disp('BIDS> Error: Invalid _electrodes.tsv file.');
     ChannelMat = [];

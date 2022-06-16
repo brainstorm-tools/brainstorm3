@@ -19,7 +19,7 @@ function varargout = process_channel_addloc( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2017
+% Authors: Francois Tadel, 2015-2022
 
 eval(macro_method);
 end
@@ -92,6 +92,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.mrifile.Type    = 'filename';
     sProcess.options.mrifile.Value   = SelectOptions;
     sProcess.options.mrifile.Class   = 'Vox2ras';
+    % Option: Fiducials
+    sProcess.options.fiducials.Comment = 'Anatomical fiducials';
+    sProcess.options.fiducials.Type    = 'label';
+    sProcess.options.fiducials.Value   = [];
+    sProcess.options.fiducials.Hidden  = 1;
 end
 
 
@@ -127,6 +132,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         MriFile = [];
     end
+    % Get fiducials
+    if isfield(sProcess.options, 'fiducials') && isfield(sProcess.options.fiducials, 'Value')
+        sFid = sProcess.options.fiducials.Value;
+        isApplyVox2ras = 0;
+    else
+        sFid = [];
+    end
 
     % Get channel studies
     [tmp, iChanStudies] = bst_get('ChannelForStudy', [sInputs.iStudy]);
@@ -134,6 +146,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Load file
     if ~isempty(ChannelFile)
         ChannelMat = import_channel(iChanStudies, ChannelFile, FileFormat, [], [], 0, isFixUnits, isApplyVox2ras, MriFile);
+        % Apply fiducials
+        if ~isempty(sFid) && isfield(sFid, 'NAS') && (length(sFid.NAS)==3) && isfield(sFid, 'LPA') && (length(sFid.LPA)==3) && isfield(sFid, 'RPA') && (length(sFid.RPA)==3) && ~(isequal(sFid.NAS(:), [0;0;0]) && isequal(sFid.LPA(:), [0;0;0]) && isequal(sFid.RPA(:), [0;0;0]))
+            ChannelMat.SCS.NAS = sFid.NAS;
+            ChannelMat.SCS.LPA = sFid.LPA;
+            ChannelMat.SCS.RPA = sFid.RPA;
+            ChannelMat = channel_detect_type(ChannelMat, 1);
+        end
     end
 
     % ===== USE DEFAULT =====
