@@ -2039,7 +2039,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
         else
             if isInteractive
-                bst_error(['No inner skull surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+                bst_error(['No inner skull surface for this subject.' 10 'Compute BEM surfaces first.'], 'Compute contact normals', 0);
             end
             return;
         end
@@ -2048,7 +2048,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
             SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         else
             if isInteractive
-                bst_error(['No head surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+                bst_error(['No head surface for this subject.' 10 'Compute head surface first.'], 'Compute contact normals', 0);
             end
             return;
         end
