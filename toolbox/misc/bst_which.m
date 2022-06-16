@@ -70,47 +70,53 @@ elseif strncmp(computer,'MAC',3)
 else
     % === TERMINAL ===
     if isTerminal
-        % GNOME
-        isGnome = system('which gnome-terminal');
-        if (isGnome == 0)
-            system(['gnome-terminal --working-directory="' filepath '" &']);
-            return
+        xdg_deskptop = getenv('XDG_CURRENT_DESKTOP');
+        % KDE default terminal
+        if strcmp('KDE', xdg_deskptop) && (system('which konsole > /dev/null') == 0)
+            [status, cmdout] = system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && konsole --workdir "' filepath '" &']);
+            if status == 0, return; end
         end
-        % KDE
-        isKde = system('which konsole');
-        if (isKde == 0)
-            system(['konsole --workdir "' filepath '" &']);
-            return
+        % MATE default terminal
+        if strcmp('MATE', xdg_deskptop) && (system('which mate-terminal > /dev/null') == 0)
+            [status, cmdout] = system(['mate-terminal --working-directory="' filepath '" &']);
+            if status == 0, return; end
         end
-        % ELSE: XTERM
-        isXterm = system('which xterm');
-        if (isXterm == 0)
-            system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
-            return
+        % GNOME terminal
+        if system('which gnome-terminal > /dev/null') == 0
+            [status, cmdout] = system(['gnome-terminal --working-directory="' filepath '" &']);
+            if status == 0, return; end
         end
+        % XTERM
+        if system('which xterm > /dev/null')
+            [status, cmdout] = system(['xterm -e ''cd "' filepath '" && /bin/bash'' &']);
+            if status == 0, return; end
+        end
+        % Error
+        disp(cmdout);
+        error('No terminal emulator found for your operating system.');
         
     % === FILE EXPLORERS ===
     else
         % Any X Desktop Group (XDG) compliant
-        ixXdg = system('which xdg-open');
+        ixXdg = system('which xdg-open > /dev/null');
         if (ixXdg == 0)          
-            system(['xdg-open "' filepath '"']);
-            return
+            [status, cmdout] = system(['xdg-open "' filepath '"']);
+            if status == 0, return; end
+        end
+        % DOLPHIN (KDE)
+        isKde = system('which dolphin > /dev/null');
+        if (isKde == 0)
+            [status, cmdout] = system(['export LD_LIBRARY_PATH=/usr/lib/x86_64-linux-gnu && dolphin "' filepath '" &']);
+            if status == 0, return; end
         end
         % NAUTILUS (GNOME)
-        isGnome = system('which nautilus');
+        isGnome = system('which nautilus > /dev/null');
         if (isGnome == 0)
-            %unix(['xterm -e "nautilus \"' filepath '\""']);
-            system(['nautilus "' filepath '" &']);
-            return
-        end
-        % KONQUEROR (KDE)
-        isKde = system('which konqueror');
-        if (isKde == 0)
-            system(['xterm -e "konqueror \"' filepath '\"" &']);
-            return
+            [status, cmdout] = system(['nautilus "' filepath '" &']);
+            if status == 0, return; end
         end
         % Error
+        disp(cmdout);
         error('No file manager found for your operating system.');
     end
 end
