@@ -280,14 +280,7 @@ function hdr = nifti_read_hdr(fid, isReadMulti)
         end
     % === ANALYZE UNITS ===
     else
-        switch (deblank(dim.vox_units))
-            case 'mm'
-                factor = 1;
-            case 'm'
-                factor = 1000;
-            otherwise
-                factor = 1;
-        end
+        factor = 1000 * bst_units_ui(dim.vox_units);
         dim.pixdim(2:4) = (double(dim.pixdim(2:4)) * factor);
     end
 
