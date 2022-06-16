@@ -1537,7 +1537,7 @@ function PlotHandles = PlotAxesButterfly(hAxes, PlotHandles, TfInfo, TsInfo, X, 
                         strAmp = 'Corrected imaginary phase locking value';
                     case {'plvm', 'plvtm'}
                         strAmp = 'Phase locking value magnitude';
-                    case 'aec'
+                    case 'aec'      % DEPRECATED
                         strAmp = 'Average envelope correlation';
                         % Hilbert (time-varying)
                     case 'coh'

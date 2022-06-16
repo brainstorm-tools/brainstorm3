@@ -2951,6 +2951,7 @@ switch contextName
             case 'mexa64',    argout1 = 'linux64';
             case 'mexmaci',   argout1 = 'mac32';
             case 'mexmaci64', argout1 = 'mac64';
+            case 'mexmaca64', argout1 = 'mac64arm';
             case 'mexs64',    argout1 = 'sol64';
             case 'mexw32',    argout1 = 'win32';
             case 'mexw64',    argout1 = 'win64';
@@ -3340,6 +3341,7 @@ switch contextName
         end
 
     case 'PlotlyCredentials'
+        % Get saved username and API key
         try
             creds = loadplotlycredentials();
             argout1 = creds.username;
@@ -3348,7 +3350,7 @@ switch contextName
             argout1 = '';
             argout2 = '';
         end
-        
+        % Get saved domain
         try
             config = loadplotlyconfig();
             argout3 = config.plotly_domain;

@@ -27,7 +27,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2021
+%          Francois Tadel, 2008-2022
 
 
 %% ===== MATLAB CHECK =====
@@ -280,6 +280,10 @@ if ~isempty(bstOptions)
     % Reset current search filter
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
+    end
+    % Reset previous exploration mode
+    if isfield(GlobalData.Preferences, 'Layout') && isfield(GlobalData.Preferences.Layout, 'PreviousExplorationMode')
+        GlobalData.Preferences.Layout.PreviousExplorationMode = GlobalData.Preferences.Layout.ExplorationMode;
     end
     % Check database structure for updates
     db_update(CurrentDbVersion);

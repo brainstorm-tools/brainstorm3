@@ -571,17 +571,7 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
         iSrcGain = (3 * (iSrc(1)-1) + 1) : 3*iSrc(end);
         % ===== MEG =====
         if ismember(OPTIONS.MEGMethod, {'meg_sphere', 'os_meg'})
-            % Function os_meg can only accept calls to groups of sensors with the same number of coils
-            % => Group the sensors by number of coils and call os_meg as many times as needed
-            grpCoils = unique(nCoilsPerSensor(iAllMeg));
-            % Loop on each group of sensors
-            for iGrp = 1:length(grpCoils)
-                % Get all the sensors with this amount of coils
-                nCoils = grpCoils(iGrp);
-                iMegGrp = iAllMeg(nCoilsPerSensor(iAllMeg) == nCoils);
-                % Compute (os_meg)
-                Gain(iMegGrp,iSrcGain) = bst_meg_sph(OPTIONS.GridLoc(iSrc,:)', OPTIONS.Channel(iMegGrp), Param(iMegGrp));
-            end
+            Gain(iAllMeg,iSrcGain) = bst_meg_sph(OPTIONS.GridLoc(iSrc,:)', OPTIONS.Channel(iAllMeg), Param(iAllMeg));
         end
         % ===== EEG =====
         if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')

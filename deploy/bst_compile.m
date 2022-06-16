@@ -279,10 +279,11 @@ end
 
 
 %% ===== TERMINATION =====
-% Close Brainstorm (if it was started in this script)
-if isNogui
-    brainstorm stop;
-end
+% Do not close Brainstorm, otherwise it deletes the compiled package from the tmp folder
+% % Close Brainstorm (if it was started in this script)
+% if isNogui
+%     brainstorm stop;
+% end
 % Done
 stopTime = toc(tCompile);
 if (stopTime > 60)

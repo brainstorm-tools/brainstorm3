@@ -496,7 +496,11 @@ function PlotComponents(UseSmoothing, isPlotTopo, isPlotTs)
             end
             % Plot single topography
             if (length(iComp) == 1)
-                EditSspPanel.hFigTopo(end+1) = view_topography(DataFile, modPlot, [], Topo, UseSmoothing, 'NewFigure');
+                hFig = view_topography(DataFile, modPlot, [], Topo, UseSmoothing, 'NewFigure');
+                EditSspPanel.hFigTopo(end+1) = hFig;
+                % Set colormap scaling factor
+                ColormapInfo = getappdata(hFig, 'Colormap');
+                bst_colormaps('ConfigureColorbar', hFig, ColormapInfo.Type, modPlot, 'a.u.');
             % Plot all the components in a contact sheet
             else
                 % Open figure
