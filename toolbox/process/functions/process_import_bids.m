@@ -420,7 +420,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         if ~isSkipAnat && ~isempty(SubjectMriFiles{iSubj})
             MrisToRegister = {};
             % Import first MRI
-            BstMriFile = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
+            [BstMriFile, sMri] = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
                 if ~isempty(errorMsg)
                     errorMsg = [errorMsg, 10];
@@ -428,6 +428,36 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 errorMsg = [errorMsg, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
             % Compute additional files
             else
+                % Look for adjacent .json file with fiducials definitions (NAS/LPA/RPA)
+                jsonFile = strrep(SubjectMriFiles{iSubj}{1}, '.nii', '');
+                jsonFile = strrep(jsonFile, '.gz', '');
+                jsonFile = [jsonFile, '.json'];
+                % If json file exists
+                if file_exist(jsonFile)
+                    % Load fiducials from json file
+                    json = bst_jsondecode(jsonFile);
+                    [sFid, msg] = GetFiducials(json, 'voxel');
+                    if ~isempty(msg)
+                        Messages = [Messages, 10, msg];
+                    end
+                    % If there are fiducials defined in the json file
+                    if ~isempty(sFid)
+                        % Apply re-orientation of the volume to the fiducials coordinates
+                        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'reorient'));
+                        if ~isempty(iTransf)
+                            tReorient = sMri.InitTransf{iTransf(1),2};
+                            fidNames = fieldnames(sFid);
+                            for f = fidNames(:)'
+                                sFid.(f{1}) = (tReorient * [sFid.(f{1}) 1]')';
+                                sFid.(f{1}) = sFid.(f{1})(1:3);
+                            end
+                        end
+                        % Save in MRI
+                        SCS = sFid;
+                        save(BstMriFile, 'SCS', '-append');
+                    end
+                end
+
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
                     % Compute MNI normalization
@@ -622,23 +652,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
                             posUnits = sCoordsystem.MEGCoordinateUnits;
                         end
-                        % Get anatomical landmarks: NAS, LPA, RPA
-                        if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinates') && ~isempty(sCoordsystem.AnatomicalLandmarkCoordinates)
-                            % Get units
-                            if isfield(sCoordsystem, 'AnatomicalLandmarkCoordinateUnits') && ~isempty(sCoordsystem.AnatomicalLandmarkCoordinateUnits) && ismember(sCoordsystem.AnatomicalLandmarkCoordinateUnits, {'mm','cm','m'})
-                                landmarksUnits = sCoordsystem.AnatomicalLandmarkCoordinateUnits;
-                            else
-                                landmarksUnits = posUnits;
-                            end
-                            lm = sCoordsystem.AnatomicalLandmarkCoordinates;
-                            % Get all fiducials
-                            if isfield(lm, 'NAS') && (length(lm.NAS)==3) && isfield(lm, 'LPA') && (length(lm.LPA)==3) && isfield(lm, 'RPA') && (length(lm.RPA)==3) && ~(isequal(lm.NAS(:), [0;0;0]) && isequal(lm.LPA(:), [0;0;0]) && isequal(lm.RPA(:), [0;0;0]))
-                                sFid = struct(...
-                                    'NAS', bst_units_ui(landmarksUnits, lm.NAS(:)'), ...
-                                    'LPA', bst_units_ui(landmarksUnits, lm.LPA(:)'), ...
-                                    'RPA', bst_units_ui(landmarksUnits, lm.RPA(:)'));
-                            end
-                        end
+                        % Get fiducials structure
+                        sFid = GetFiducials(sCoordsystem, posUnits);
                         % For iEEG: Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
                         if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
                             if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
@@ -989,4 +1004,60 @@ function [fileList, fileSpace, wrnMsg] = SelectCoordSystem(fileList)
     fileSpace = 'unknown';
 end
 
+
+%% ===== GET FIDUCIALS STRUCTURE =====
+function [sFid, Messages] = GetFiducials(json, defaultUnits)
+    Messages = [];
+    % No anatomical landmarks: NAS, LPA, RPA
+    if ~isfield(json, 'AnatomicalLandmarkCoordinates') && ~isempty(json.AnatomicalLandmarkCoordinates)
+        sFid = [];
+        return
+    end
+    % Get units
+    if isfield(json, 'AnatomicalLandmarkCoordinateUnits') && ~isempty(json.AnatomicalLandmarkCoordinateUnits) && ismember(json.AnatomicalLandmarkCoordinateUnits, {'mm','cm','m'})
+        landmarksUnits = json.AnatomicalLandmarkCoordinateUnits;
+    else
+        landmarksUnits = defaultUnits;
+    end
+    % Get anatomical landmarks
+    lm = json.AnatomicalLandmarkCoordinates;
+    % Get the positions for each fiducial
+    sFid = struct('NAS', [], 'LPA', [], 'RPA', []);
+    fidNames = {};
+    for fid = {'NAS', 'LPA', 'RPA'}
+        % Fiducial with the exact name: use this one
+        if isfield(lm, fid{1})
+            fidNames = fid(1);
+        % Otherwise: get all the landmarks that include the fiducial name, and later average them
+        else
+            fields = fieldnames(lm);
+            iField = find(~cellfun(@(c)isempty(strfind(c, fid{1})), fields));
+            if ~isempty(iField)
+                fidNames = fields(iField);
+            end
+        end
+        % Get all the coordinates available in this structure
+        for i = 1:length(fidNames)
+            fidNamesAvg = {};
+            if (length(lm.(fidNames{i})) == 3) && ~isequal(reshape(lm.(fidNames{i}), 1, 3), [0,0,0])
+                sFid.(fid{1}) = [sFid.(fid{1}); reshape(lm.(fidNames{i}), 1, 3)];
+                fidNamesAvg{end+1} = fidNames{i};
+            end
+            % Warning when averaging multiple positions
+            if (length(fidNamesAvg) > 1)
+                Messages = [Messages, 'NAS: Averaging fields: ', sprintf('%s ', fidNamesAvg{:}), 10];
+            end
+        end
+        % Average all the positions
+        sFid.(fid{1}) = mean(sFid.(fid{1}), 1);
+        % Apply units
+        if ~strcmpi(defaultUnits, 'voxel')
+            sFid.(fid{1}) = bst_units_ui(landmarksUnits, sFid.(fid{1}));
+        end
+    end
+    % Cancel if not all fiducials were found 
+    if isempty(sFid.NAS) || isempty(sFid.LPA) || isempty(sFid.RPA)
+        sFid = [];
+    end
+end
 

@@ -1,4 +1,4 @@
-function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
+function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, isNormalize)
 % IN_MRI: Detect file format and load MRI file.
 % 
 % USAGE:  in_mri(MriFile, FileFormat='ALL', isInteractive=1, isNormalize=0)
@@ -8,7 +8,10 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 %     - isInteractive : 0 or 1
 %     - isNormalize   : If 1, converts values to uint8 and scales between 0 and 1
 % OUTPUT:
-%     - MRI         : Standard brainstorm structure for MRI volumes
+%     - MRI       : Standard brainstorm structure for MRI volumes
+%     - vox2ras   : [4x4] transformation matrix: voxels to RAS coordinates
+%                   (corresponds to MNI coordinates if the volume is registered to the MNI space)
+%     - tReorient : Transformation matrix of the volume in order to convert it to Brainstorm voxel coordinates
 
 % NOTES:
 %     - MRI structure:
@@ -45,7 +48,7 @@ function [MRI, vox2ras] = in_mri(MriFile, FileFormat, isInteractive, isNormalize
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 % Parse inputs
 if (nargin < 4) || isempty(isNormalize)
@@ -65,6 +68,7 @@ end
 % Initialize returned variables
 MRI = [];
 vox2ras = [];
+tReorient = [];
 
 % ===== GUNZIP FILE =====
 if ~iscell(MriFile)
@@ -118,15 +122,15 @@ switch (FileFormat)
         MRI = in_mri_gis(MriFile, ByteOrder);
     case {'Nifti1', 'Analyze'}
         if isInteractive
-            [MRI, vox2ras] = in_mri_nii(MriFile, 1, [], []);
+            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, [], []);
         else
-            [MRI, vox2ras] = in_mri_nii(MriFile, 1, 1, 0);
+            [MRI, vox2ras, tReorient] = in_mri_nii(MriFile, 1, 1, 0);
         end
     case 'MGH'
         if isInteractive
-            [MRI, vox2ras] = in_mri_mgh(MriFile, [], []);
+            [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, [], []);
         else
-            [MRI, vox2ras] = in_mri_mgh(MriFile, 1, 0);
+            [MRI, vox2ras, tReorient] = in_mri_mgh(MriFile, 1, 0);
         end
     case 'KIT'
         error('Not supported yet');
@@ -154,14 +158,17 @@ end
 if ~isfield(MRI, 'Comment') || isempty(MRI.Comment)
     MRI.Comment = Comment;
 end
-% If a transformation was defined
+% Prepare the history of transformations
+if ~isfield(MRI, 'InitTransf') || isempty(MRI.InitTransf)
+    MRI.InitTransf = cell(0,2);
+end
+% If a world/scanner transformation was defined: save it
 if ~isempty(vox2ras)
-    % Prepare the history of transformations
-    if ~isfield(MRI, 'InitTransf') || isempty(MRI.InitTransf)
-        MRI.InitTransf = cell(0,2);
-    end
-    % Save this transformation in the MRI
     MRI.InitTransf(end+1,[1 2]) = {'vox2ras', vox2ras};
+end
+% If an automatic reorientation of the volume was performed: save it
+if ~isempty(tReorient)
+    MRI.InitTransf(end+1,[1 2]) = {'reorient', tReorient};
 end
 
 
