@@ -626,6 +626,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     electrodesFile = [];
                     electrodesSpace = 'orig';
                     electrodesAnatRef = [];
+                    electrodesCoordSystem = [];
                     sFid = [];
                     
                     % === COORDSYSTEM.JSON ===
@@ -654,8 +655,17 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                         % Get fiducials structure
                         sFid = GetFiducials(sCoordsystem, posUnits);
-                        % For iEEG: Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
-                        if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
+                        % If there are no fiducials: there is no easy waya to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
+                        if isempty(sFid)
+                            if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
+                            elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
+                            elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
+                                electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                            end
+                        % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
+                        elseif isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
                             if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
                                 % Check whether the IntendedFor files is already imported as a volume
                                 if ~isempty(MriMatchOrigImport)
@@ -688,6 +698,14 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         if ~isempty(msg)
                             disp(['BIDS> Warning: ' msg]);
                             Messages = [Messages 10 msg];
+                        end
+                    end
+                    % If the coordinate system is specified in the _coordsystem.json and no fiducials are available
+                    if ~isempty(electrodesCoordSystem)
+                        if strcmpi(electrodesCoordSystem, 'ACPC')
+                            electrodesSpace = 'ACPC';
+                        elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM')) 
+                            electrodesSpace = 'MNI';
                         end
                     end
                     % Get full file path to _electrodes.tsv
@@ -988,7 +1006,7 @@ function [fileList, fileSpace, wrnMsg] = SelectCoordSystem(fileList)
     iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-ixi549space')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
-        fileSpace = 'IXI549Space';
+        fileSpace = 'MNI';
         return;
     end
     % Other MNI space
@@ -1009,12 +1027,12 @@ end
 function [sFid, Messages] = GetFiducials(json, defaultUnits)
     Messages = [];
     % No anatomical landmarks: NAS, LPA, RPA
-    if ~isfield(json, 'AnatomicalLandmarkCoordinates') && ~isempty(json.AnatomicalLandmarkCoordinates)
+    if ~isfield(json, 'AnatomicalLandmarkCoordinates') || isempty(json.AnatomicalLandmarkCoordinates)
         sFid = [];
         return
     end
     % Get units
-    if isfield(json, 'AnatomicalLandmarkCoordinateUnits') && ~isempty(json.AnatomicalLandmarkCoordinateUnits) && ismember(json.AnatomicalLandmarkCoordinateUnits, {'mm','cm','m'})
+    if ismember(json.AnatomicalLandmarkCoordinateUnits, {'mm','cm','m'})
         landmarksUnits = json.AnatomicalLandmarkCoordinateUnits;
     else
         landmarksUnits = defaultUnits;
@@ -1037,16 +1055,16 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
             end
         end
         % Get all the coordinates available in this structure
+        fidNamesAvg = {};
         for i = 1:length(fidNames)
-            fidNamesAvg = {};
             if (length(lm.(fidNames{i})) == 3) && ~isequal(reshape(lm.(fidNames{i}), 1, 3), [0,0,0])
                 sFid.(fid{1}) = [sFid.(fid{1}); reshape(lm.(fidNames{i}), 1, 3)];
                 fidNamesAvg{end+1} = fidNames{i};
             end
-            % Warning when averaging multiple positions
-            if (length(fidNamesAvg) > 1)
-                Messages = [Messages, 'NAS: Averaging fields: ', sprintf('%s ', fidNamesAvg{:}), 10];
-            end
+        end
+        % Warning when averaging multiple positions
+        if (length(fidNamesAvg) > 1)
+            Messages = [Messages, fid{1}, ': Averaging fields: ', sprintf('%s ', fidNamesAvg{:}), 10];
         end
         % Average all the positions
         sFid.(fid{1}) = mean(sFid.(fid{1}), 1);
