@@ -167,7 +167,7 @@ end
 head_center = mean(env_vert);
 % Center head on (0,0,0)
 env_vert = bst_bsxfun(@minus, env_vert, head_center);
-% Orient in Talairach coordinate system (just the axes, not the coordinates
+% Orient in Talairach coordinate system
 Transf = cs_compute(sMri, 'tal');
 if isempty(Transf)
     error('Could not compute the MRI=>TAL transformation.');

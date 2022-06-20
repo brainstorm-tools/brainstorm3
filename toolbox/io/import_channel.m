@@ -131,13 +131,13 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
-    case {'BIDS-ORIG-MM', 'BIDS-OTHER-MM', 'BIDS-MNI-MM'}
+    case {'BIDS-ORIG-MM', 'BIDS-OTHER-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
         FileUnits = 'm';
-    case {'BIDS-ORIG-CM', 'BIDS-OTHER-CM', 'BIDS-MNI-CM'}
+    case {'BIDS-ORIG-CM', 'BIDS-OTHER-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
         FileUnits = 'm';
-    case {'BIDS-ORIG-M', 'BIDS-OTHER-M', 'BIDS-MNI-M'}
+    case {'BIDS-ORIG-M', 'BIDS-OTHER-M', 'BIDS-MNI-M', 'BIDS-ACPC-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
         
@@ -390,6 +390,36 @@ if ismember(FileFormat, {'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'I
     % Do not convert the positions to SCS
     isAlignScs = 0;
     
+%% ===== ACPC TRANSFORMATION =====
+elseif ismember(FileFormat, {'BIDS-ACPC-MM', 'BIDS-ACPC-CM', 'BIDS-ACPC-M'})
+    % Warning for multiple studies
+    if (length(iStudies) > 1)
+        warning(['WARNING: When importing ACPC positions for multiple subjects: the ACPC transformation from the first subject is used for all of them.' 10 ...
+                 'Please consider importing your subjects seprately.']);
+    end
+    % If we know the destination study: convert from MNI to SCS coordinates
+    if ~isempty(iStudies)
+        % Get the subject for the first study
+        sStudy = bst_get('Study', iStudies(1));
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        % Get the subject's MRI
+        if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+            error('You need the subject anatomy in order to load sensor positions in ACPC coordinates.');
+        end
+        % Load the MRI
+        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+        sMri = in_mri_bst(MriFile);
+        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.NCS, 'AC') || isempty(sMri.NCS.AC) || ~isfield(sMri.NCS, 'PC') || isempty(sMri.NCS.PC) || ~isfield(sMri.NCS, 'IH') || isempty(sMri.NCS.IH)
+            error(['All fiducials must be defined for this subject (NAS,LPA,RPA,AC,PC,IH)' 10 'in order to load sensor positions in ACPC coordinates.']);
+        end
+        % Convert all the coordinates: ACPC => SCS
+        fcnTransf = @(Loc)cs_convert(sMri, 'acpc', 'scs', Loc')';
+        AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
+        ChannelMat = AllChannelMats{1};
+    end
+    % Do not convert the positions to SCS
+    isAlignScs = 0;
+
 %% ===== MRI/NII TRANSFORMATION =====
 % If the SCS coordinates are not defined (NAS/LPA/RPA fiducials), try to use the MRI=>subject transformation available in the MRI (eg. NIfTI sform/qform)
 % Only available if there is one study in output
