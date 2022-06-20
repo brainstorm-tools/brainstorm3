@@ -2690,7 +2690,10 @@ function SaveModifications()
             end
         end
         % Save file
-        bst_save(file_fullpath(GlobalData.Surface(iSurf).FileName), s, 'v7', 1);
+        SurfaceFile = file_fullpath(GlobalData.Surface(iSurf).FileName);
+        if ~isempty(SurfaceFile) && file_exist(SurfaceFile)
+            bst_save(SurfaceFile, s, 'v7', 1);
+        end
         % Reset the modified state
         GlobalData.Surface(iSurf).isAtlasModified = 0;
     end
