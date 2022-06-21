@@ -28,11 +28,13 @@ function sMat = in_bst_channel(MatFile, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2022
 
 %% ===== PARSE INPUTS =====
 % Full file name
-MatFile = file_fullpath(MatFile);
+if ~file_exist(MatFile)
+    MatFile = file_fullpath(MatFile);
+end
 if ~file_exist(MatFile)
     error(['Channel file was not found: ' 10 file_short(MatFile) 10 'Please reload this protocol (right-click > reload).']);
 end

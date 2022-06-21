@@ -64,7 +64,7 @@ elseif (length(DataFiles) > 1) && ~strcmpi(ObjType, 'Epoched')
 end
 % Check that data files are available in the database
 MeasDate = [];
-if ~isempty(DataFiles)
+if ~isempty(DataFiles) && isappdata(0, 'BrainstormRunning')
     sStudy = bst_get('DataFile', DataFiles{1});
     % Get study date
     if isempty(sStudy)
