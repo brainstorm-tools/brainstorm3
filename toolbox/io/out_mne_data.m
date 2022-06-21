@@ -63,15 +63,15 @@ elseif (length(DataFiles) > 1) && ~strcmpi(ObjType, 'Epoched')
     error('Only "Epoched" objects accept multiple input files.');
 end
 % Check that data files are available in the database
+MeasDate = [];
 if ~isempty(DataFiles)
     sStudy = bst_get('DataFile', DataFiles{1});
-    if isempty(sStudy)
-        error(['File not found: ' DataFiles{1}]);
-    end
     % Get study date
-    MeasDate = sStudy.DateOfStudy;
-else
-    MeasDate = [];
+    if isempty(sStudy)
+        warning(['File not found in database: ' DataFiles{1}]);
+    else
+        MeasDate = sStudy.DateOfStudy;
+    end
 end
 
 
