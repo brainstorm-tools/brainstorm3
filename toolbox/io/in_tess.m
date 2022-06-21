@@ -1,7 +1,7 @@
-function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
+function [TessMat, Labels] = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
 % IN_TESS: Detect file format and load tesselation file.
 %
-% USAGE:  TessMat = in_tess(TessFile, FileFormat='ALL', sMri=[], Offset=[], SelLabels=[all]);
+% USAGE:  [TessMat, Labels] = in_tess(TessFile, FileFormat='ALL', sMri=[], Offset=[], SelLabels=[all]);
 %
 % INPUT: 
 %     - TessFile   : full path to a tesselation file
@@ -34,7 +34,7 @@ function TessMat = in_tess(TessFile, FileFormat, sMri, OffsetMri, SelLabels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
 
 %% ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(SelLabels)
@@ -52,6 +52,7 @@ end
 isConvertScs = 1;
 % Initialize returned variables
 TessMat = [];
+Labels = [];
 
 
 %% ===== DETECT FILE FORMAT ====
@@ -214,7 +215,7 @@ switch (FileFormat)
         end
         
     case 'MRI-MASK'
-        TessMat = in_tess_mrimask(TessFile, 0, SelLabels);
+        [TessMat, Labels] = in_tess_mrimask(TessFile, 0, SelLabels);
         
     case 'MRI-MASK-MNI'
         TessMat = in_tess_mrimask(TessFile, 1, SelLabels);

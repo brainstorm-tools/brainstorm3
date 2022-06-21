@@ -6,6 +6,7 @@ June 2022
 - BIDS import: Added support for IntendedFor in _coordsystem.json
 - BIDS import: Added support for anatomical landmarks (_t1w.json and _coordsystem.json)
 - Distrib: Compilation with Matlab 2022b
+- Anatomy: Create surfaces from MRI volume atlas
 --------------------------------------------------------------
 May 2022
 - IO: Fixed export to Plotly

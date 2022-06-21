@@ -1003,7 +1003,7 @@ switch (lower(action))
                 for iFile = 1:length(bstNodes)
                     iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
                 end
-                mriComment = bstNodes(1).getComment();
+                mriComment = char(bstNodes(1).getComment());
                 isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                     
                 if (length(bstNodes) == 1)
@@ -1035,8 +1035,12 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
                     end
                     % === MENU: SET AS DEFAULT ===
-                    if ~bst_get('ReadOnly') && (length(bstNodes) == 1) && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas
+                    if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas
                         gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
+                    end
+                    % === MENU: CREATE SURFACES ===
+                    if ~bst_get('ReadOnly') && isAtlas && isempty(strfind(mriComment, 'tissues'))
+                        gui_component('MenuItem', jPopup, [], 'Create surfaces', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@import_surfaces, iSubject, filenameFull, 'MRI-MASK', 0, [], [], mriComment));
                     end
                 end
                 

@@ -1,8 +1,8 @@
-function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, fileType )
+function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, fileType, Labels)
 % TESS_CONCATENATE: Concatenate various surface files into one new file.
 %
-% USAGE:  [NewTessFile, iSurface] = tess_concatenate(TessFiles, NewComment='New surface', fileType='Other')
-%          [NewTessMat, iSurface] = tess_concatenate(TessMats,  NewComment='New surface', fileType='Other')
+% USAGE:  [NewTessFile, iSurface] = tess_concatenate(TessFiles, NewComment='New surface', fileType='Other', Labels)
+%          [NewTessMat, iSurface] = tess_concatenate(TessMats,  NewComment='New surface', fileType='Other', Labels)
 % 
 % INPUT: 
 %    - TessFiles   : Cell-array of paths to surfaces files to concatenate
@@ -31,9 +31,12 @@ function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, file
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2022
 
 % Parse inputs
+if (nargin < 4) || isempty(Labels)
+    Labels = [];
+end
 if (nargin < 3) || isempty(fileType)
     fileType = [];
 end
@@ -135,8 +138,17 @@ for iFile = 1:length(TessFiles)
         oldTess.Atlas(iAtlasStruct).Scouts(1).Label    = scoutComment;
         oldTess.Atlas(iAtlasStruct).Scouts(1).Function = 'Mean';
         oldTess.Atlas(iAtlasStruct).Scouts(1).Region   = [scoutHemi 'U'];
+        % If there are labels in inputs, try to get a color for the scout
+        if ~isempty(Labels) && (size(Labels,2) == 3)
+            iLabel = find(strcmpi(Labels(:,2), scoutComment));
+            if ~isempty(iLabel)
+                oldTess.Atlas(iAtlasStruct).Scouts(1).Color = Labels{iLabel,3} ./ 255;
+            end
+        end
         % Set scout color
-        oldTess.Atlas(iAtlasStruct).Scouts(1) = panel_scout('SetColorAuto', oldTess.Atlas(iAtlasStruct).Scouts(1));
+        if isempty(oldTess.Atlas(iAtlasStruct).Scouts(1).Color)
+            oldTess.Atlas(iAtlasStruct).Scouts(1) = panel_scout('SetColorAuto', oldTess.Atlas(iAtlasStruct).Scouts(1));
+        end
     end
     
     % Concatenate atlases/scouts
