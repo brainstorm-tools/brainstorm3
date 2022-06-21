@@ -206,7 +206,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             case {event.VK_DELETE, event.VK_BACK_SPACE}
                 if ismember(char(targetNodes(1).getType()), {'subjectdb', 'studydbsubj', 'studydbcond'})
                     % Cancel action
-                else
+                elseif ~bst_get('ReadOnly')
                     % Replace the "Link to raw file" nodes with their
                     % parent, except for spike-sorted raw files
                     if strcmpi(char(targetNodes(1).getType()), 'rawdata') ...
@@ -218,24 +218,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                     end
                     % Delete nodes
                     bst_call(@node_delete, targetNodes);
-                    %node_delete(targetNodes);
                 end
             % F5 : REFRESH
             case event.VK_F5
                 UpdateTree();
             % CTRL+C: COPY
             case event.VK_C
-                if event.isControlDown()
+                if event.isControlDown() && ~bst_get('ReadOnly')
                     CopyNode(targetNodes, 0);
                 end
             % CTRL+X: CUT
             case event.VK_X
-                if event.isControlDown()
+                if event.isControlDown() && ~bst_get('ReadOnly')
                     CopyNode(targetNodes, 1);
                 end
             % CTRL+V: PASTE
             case event.VK_V
-                if event.isControlDown()
+                if event.isControlDown() && ~bst_get('ReadOnly')
                     PasteNode(targetNodes);
                 end
         end
@@ -293,7 +292,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         newComment = char(ev.getSource.getCellEditorValue());
         % If the Comment field changed => need to update the DataBase and the node
         % Node: Cannot rename nodes starting with '(' => Special nodes
-        if ~isempty(newComment) && ~strcmp(bstNode.getComment(), newComment) && (newComment(1) ~= '(')
+        if ~isempty(newComment) && ~strcmp(bstNode.getComment(), newComment) && (newComment(1) ~= '(') && ~bst_get('ReadOnly')
             % Rename node
             bst_call(@node_rename, bstNode, newComment);            
         end       
@@ -302,7 +301,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
     %% ===== TREE DROP =====
     function protocolTreeDrop_Callback(hObject, ev)
         % Get Brainstorm GUI structure
-        if isempty(ev.getChildIndices())
+        if isempty(ev.getChildIndices()) && ~bst_get('ReadOnly')
             isCut = 1;
             if CopyNode(jTreeDragHandler.getSrcNodes(), isCut)
                 PasteNode(jTreeDragHandler.getDestNode());
