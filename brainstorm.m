@@ -43,7 +43,7 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 % Make sure that "more" is off
 more off
@@ -71,14 +71,27 @@ end
 
 % Set dynamic JAVA CLASS PATH
 if ~exist('org.brainstorm.tree.BstNode', 'class')
-    % Download Brainstorm JARs if missing
-    BstJar = [BrainstormHomeDir '/java/brainstorm.jar'];
+    % Brainstorm jar file
+    BstJar = fullfile(BrainstormHomeDir, 'java', 'brainstorm.jar');
+    UpdateFile = fullfile(BrainstormHomeDir, 'java', 'outdated_jar.txt');
+    % If there is a flag file indicating that brainstorm.jar should be deleted (see bst_update.m)
+    if exist(UpdateFile, 'file')
+        delete(BstJar);
+        delete(UpdateFile);
+        if exist(UpdateFile, 'file') || exist(BstJar, 'file')
+            errordlg(['The following files could not be deleted automatically:' 10 BstJar 10 UpdateFile 10 10 ...
+                      'An error occurred during the Brainstorm update.' 10 ...
+                      'Delete this brainstorm3 folder and download manually' 10 ...
+                      'a new one from the Brainstorm website.']);
+        end
+    end
+    % Download brainstorm.jar if missing
     if ~exist(BstJar, 'file')
         disp('BST> Downloading brainstorm.jar...');
         bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
     end
     % Add Brainstorm JARs to classpath
-    javaaddpath([BrainstormHomeDir '/java/RiverLayout.jar']);
+    javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
     javaaddpath(BstJar);
 end
 
