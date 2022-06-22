@@ -59,7 +59,7 @@ SubjectId = varargin{2};
 
 % Get subject ID
 if ischar(SubjectId)
-    sSubject = db_get(sqlConn, 'Subject', SubjectId, 'Id');
+    sSubject = db_get(sqlConn, 'Subject', struct('Name', SubjectId), 'Id');
     SubjectId = sSubject.Id;
 end
 
