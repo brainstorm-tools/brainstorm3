@@ -1888,8 +1888,10 @@ function iAtlas = SetAtlas(SurfaceFile, iAtlasIn, sAtlas)
     end
     % Fix the structure of the file
     sAtlas = FixAtlasStruct(sAtlas);
+    % Is it a volume atlas
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
     % Set default region based on Desikan-Killiany atlas
-    if ~isempty(sAtlas.Scouts) && any(ismember({sAtlas.Scouts.Region}, {'UU','LU','RU','CU'})) && ~strcmpi(sAtlas.Name, 'Desikan-Killiany') && ~isempty(GlobalData.Surface(iSurf).Atlas)
+    if ~isVolumeAtlas && ~isempty(sAtlas.Scouts) && any(ismember({sAtlas.Scouts.Region}, {'UU','LU','RU','CU'})) && ~strcmpi(sAtlas.Name, 'Desikan-Killiany') && ~isempty(GlobalData.Surface(iSurf).Atlas)
         iDK = find(strcmpi({GlobalData.Surface(iSurf).Atlas.Name}, 'Desikan-Killiany'));
         if ~isempty(iDK)
             sAtlas.Scouts = SetDefaultRegions(sAtlas.Scouts, GlobalData.Surface(iSurf).Atlas(iDK(1)).Scouts);
