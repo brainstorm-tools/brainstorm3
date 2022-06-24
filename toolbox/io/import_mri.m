@@ -1,7 +1,7 @@
-function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
+function [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat, isInteractive, isAutoAdjust, Comment, Labels)
 % IMPORT_MRI: Import a MRI file in a subject of the Brainstorm database
 % 
-% USAGE: [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
+% USAGE: [BstMriFile, sMri, Messages] = import_mri(iSubject, MriFile, FileFormat='ALL', isInteractive=0, isAutoAdjust=1, Comment=[], Labels=[])
 %               BstMriFiles = import_mri(iSubject, MriFiles, ...)   % Import multiple volumes at once
 %
 % INPUT:
@@ -16,6 +16,8 @@ function [BstMriFile, sMri] = import_mri(iSubject, MriFile, FileFormat, isIntera
 %    - Labels        : Labels attached to this file (cell array {Nlabels x 3}: {index, text, RGB})
 % OUTPUT:
 %    - BstMriFile : Full path to the new file if success, [] if error
+%    - sMri       : Brainstorm MRI structure
+%    - Messages   : String, messages reported by this function
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -56,6 +58,7 @@ end
 % Initialize returned variables
 BstMriFile = [];
 sMri = [];
+Messages = [];
 % Get Protocol information
 ProtocolInfo     = bst_get('ProtocolInfo');
 ProtocolSubjects = bst_get('ProtocolSubjects');
@@ -153,6 +156,12 @@ if iscell(MriFile)
 else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
+% Split file name
+[fPath, fBase, fExt] = bst_fileparts(MriFile);
+if strcmpi(fExt, '.gz')
+    [tmp, fBase, fExt2] = bst_fileparts(fBase);
+    fExt = [fExt, fExt2];
+end
 
 
 %% ===== GET ATLAS LABELS =====
@@ -172,7 +181,6 @@ else
 end
 % Get atlas comment
 if isAtlas && isempty(Comment) && ~iscell(MriFile)
-    [fPath, fBase, fExt] = bst_fileparts(MriFile);
     switch (fBase)
         case 'aseg'
             Comment = 'ASEG';
@@ -260,8 +268,8 @@ if (iAnatomy > 1) && (isInteractive || isAutoAdjust)
 
         % === ASK RESLICE ===
         if isInteractive && (~strcmpi(RegMethod, 'Ignore') || ...
-            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && any(ismember(sMriRef.InitTransf(:,1), 'vox2ras')) && ...
-             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && any(ismember(sMri.InitTransf(:,1),    'vox2ras')) && ...
+            (isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1)) && ...
+             isfield(sMri,    'InitTransf') && ~isempty(sMri.InitTransf)    && ismember('vox2ras', sMri.InitTransf(:,1)) && ...
              ~isResliceDisabled))
             % If the volumes don't have the same size, add a warning
             if ~isSameSize

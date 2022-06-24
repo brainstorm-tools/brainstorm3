@@ -216,7 +216,7 @@ for iFile = 1:length(SourceFiles)
             sMri = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
         end
         % Convert from RAS(source files) to RAS(subject anat)
-        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember(sMri.InitTransf(:,1), 'vox2ras')
+        if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
             iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));
             ras2vox = inv(sMri.InitTransf{iTransf,2});
             grid = bst_bsxfun(@plus, ras2vox(1:3,1:3) * grid', ras2vox(1:3,4))';

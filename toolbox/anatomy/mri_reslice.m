@@ -239,7 +239,7 @@ end
 if isfield(sMriSrc, 'NCS')
     sMriReg.NCS = sMriRef.NCS;
 end
-if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember(sMriRef.InitTransf(:,1), 'vox2ras')
+if isfield(sMriRef, 'InitTransf') && ~isempty(sMriRef.InitTransf) && ismember('vox2ras', sMriRef.InitTransf(:,1))
     sMriReg.InitTransf = sMriRef.InitTransf;
 end
 if isfield(sMriRef, 'Header') && isfield(sMriRef.Header, 'nifti') && isfield(sMriRef.Header.nifti, 'vox2ras') && ~isempty(sMriRef.Header.nifti.vox2ras)
