@@ -156,12 +156,6 @@ if iscell(MriFile)
 else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
 end
-% Split file name
-[fPath, fBase, fExt] = bst_fileparts(MriFile);
-if strcmpi(fExt, '.gz')
-    [tmp, fBase, fExt2] = bst_fileparts(fBase);
-    fExt = [fExt, fExt2];
-end
 
 
 %% ===== GET ATLAS LABELS =====
@@ -181,6 +175,7 @@ else
 end
 % Get atlas comment
 if isAtlas && isempty(Comment) && ~iscell(MriFile)
+    [fPath, fBase, fExt] = bst_fileparts(MriFile);
     switch (fBase)
         case 'aseg'
             Comment = 'ASEG';

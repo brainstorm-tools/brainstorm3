@@ -73,13 +73,13 @@ tReorient = [];
 % ===== GUNZIP FILE =====
 if ~iscell(MriFile)
     % Get file extension
-    [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+    [fPath, fBase, fExt] = bst_fileparts(MriFile);
     % If file is gzipped
-    if strcmpi(fileExt, '.gz')
+    if strcmpi(fExt, '.gz')
         % Get temporary folder
         tmpDir = bst_get('BrainstormTmpDir');
         % Target file
-        gunzippedFile = bst_fullfile(tmpDir, fileBase);
+        gunzippedFile = bst_fullfile(tmpDir, fBase);
         % Unzip file
         res = org.brainstorm.file.Unpack.gunzip(MriFile, gunzippedFile);
         if ~res
@@ -87,12 +87,14 @@ if ~iscell(MriFile)
         end
         % Import gunzipped file
         MriFile = gunzippedFile;
-        [filePath, fileBase, fileExt] = bst_fileparts(MriFile);
+        [fPathTmp, fBase, fExt] = bst_fileparts(MriFile);
     end
     % Default comment
-    Comment = fileBase;
+    Comment = fBase;
 else
     Comment = 'MRI';
+    fBase = [];
+    fPath = [];
 end
 
                 
@@ -101,7 +103,7 @@ isMni = ismember(FileFormat, {'ALL-MNI', 'ALL-MNI-ATLAS'});
 isAtlas = ismember(FileFormat, {'ALL-ATLAS', 'ALL-MNI-ATLAS', 'SPM-TPM'});
 if ismember(FileFormat, {'ALL', 'ALL-ATLAS', 'ALL-MNI', 'ALL-MNI-ATLAS'})
     % Switch between file extensions
-    switch (lower(fileExt))
+    switch (lower(fExt))
         case '.mri',                  FileFormat = 'CTF';
         case {'.ima', '.dim'},        FileFormat = 'GIS';
         case {'.img','.hdr','.nii'},  FileFormat = 'Nifti1';
@@ -142,7 +144,7 @@ switch (FileFormat)
         MRI = in_mri_fieldtrip(MriFile);
     case 'BST'
         % Check that the filename contains the 'subjectimage' tag
-        if ~isempty(strfind(lower(fileBase), 'subjectimage'))
+        if ~isempty(strfind(lower(fBase), 'subjectimage'))
             MRI = load(MriFile);
         end
     case 'SPM-TPM'
@@ -238,6 +240,43 @@ if isfield(MRI, 'talCS') && isfield(MRI.talCS, 'FiducialName') && ~isempty(MRI.t
     MRI.NCS = NCS;
     % Remove old fields
     MRI = rmfield(MRI, 'talCS');
+end
+
+
+%% ===== READ FIDUCIALS FROM BIDS JSON =====
+if ~isempty(fPath)
+    % Look for adjacent .json file with fiducials definitions (NAS/LPA/RPA)
+    jsonFile = bst_fullfile(fPath, [fBase, '.json']);
+    % If json file exists
+    if file_exist(jsonFile)
+        % Load json file
+        json = bst_jsondecode(jsonFile);
+        [sFid, msg] = process_import_bids('GetFiducials', json, 'voxel');
+        if ~isempty(msg)
+            Messages = [Messages, 10, msg];
+        end
+        % If there are fiducials defined in the json file
+        if ~isempty(sFid)
+            % Apply re-orientation of the volume to the fiducials coordinates
+            iTransf = find(strcmpi(MRI.InitTransf(:,1), 'reorient'));
+            if ~isempty(iTransf)
+                tReorient = MRI.InitTransf{iTransf(1),2};
+                tReorient(1:3,4) = tReorient(1:3,4) .* MRI.Voxsize';   % Convert translation from voxel to millimeters (MRI coordinates, in which the fiducials are saved)
+                fidNames = fieldnames(sFid);
+                for f = fidNames(:)'
+                    sFid.(f{1}) = (tReorient * [sFid.(f{1}) 1]')';
+                    sFid.(f{1}) = sFid.(f{1})(1:3);
+                end
+            end
+            % Save in MRI structure
+            MRI.SCS.NAS = sFid.NAS;
+            MRI.SCS.LPA = sFid.LPA;
+            MRI.SCS.RPA = sFid.RPA;
+            MRI.NCS.AC = sFid.AC;
+            MRI.NCS.PC = sFid.PC;
+            MRI.NCS.IH = sFid.IH;
+        end
+    end
 end
 
 

@@ -3,6 +3,7 @@ function varargout = process_import_bids( varargin )
 %
 % USAGE:           OutputFiles = process_import_bids('Run', sProcess, sInputs)
 %         [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=0)
+%             [sFid, Messages] = process_import_bids('GetFiducials', json, defaultUnits)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -206,6 +207,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
     SubjectAnatFormat = {};
     SubjectSessDir = {};
     SubjectMriFiles = {};
+    SubjectFidMriFile = {};
     for iSubj = 1:length(SubjectNames)
         % Default subject name
         subjName = SubjectNames{iSubj};
@@ -261,13 +263,15 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             end
         end
         
+        % Subject index
+        iSubj = length(SubjectName) + 1;
         % If a single anatomy folder is found
         if ~isempty(AnatDir)
-            SubjectName{end+1}       = subjName;
-            SubjectAnatDir{end+1}    = AnatDir;
-            SubjectAnatFormat{end+1} = AnatFormat;
-            SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
-            SubjectMriFiles{end+1}   = allMriFiles;
+            SubjectName{iSubj}       = subjName;
+            SubjectAnatDir{iSubj}    = AnatDir;
+            SubjectAnatFormat{iSubj} = AnatFormat;
+            SubjectSessDir{iSubj}    = cat(2, sessFolders, derivFolders);
+            SubjectMriFiles{iSubj}   = allMriFiles;
         % Check for multiple sessions
         elseif (length(sessFolders) > 1)
             % Check for multiple session segmentation
@@ -283,11 +287,11 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             if isSessSeg
                 for isess = 1:length(sessFolders)
                     [sessAnatDir, sessAnatFormat] = GetSubjectSeg(BidsDir, [subjName, '_', sessDir(isess).name]);
-                    SubjectName{end+1}       = [subjName, '_', sessDir(isess).name];
-                    SubjectAnatDir{end+1}    = sessAnatDir;
-                    SubjectAnatFormat{end+1} = sessAnatFormat;
-                    SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
-                    SubjectMriFiles{end+1}   = allMriFiles;
+                    SubjectName{iSubj}       = [subjName, '_', sessDir(isess).name];
+                    SubjectAnatDir{iSubj}    = sessAnatDir;
+                    SubjectAnatFormat{iSubj} = sessAnatFormat;
+                    SubjectSessDir{iSubj}    = {sessFolders{isess}, derivFolders{isess}};
+                    SubjectMriFiles{iSubj}   = allMriFiles;
                 end
             % There are no segmentations, check if there is one T1 volume per session or per subject
             else
@@ -295,28 +299,63 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 if isSessMri && ~OPTIONS.isGroupSessions
                     for isess = 1:length(sessFolders)
                         sessMriFiles = GetSubjectMri(bst_fullfile(sessFolders{isess}, 'anat'));
-                        SubjectName{end+1}       = [subjName, '_', sessDir(isess).name];
-                        SubjectAnatDir{end+1}    = [];
-                        SubjectAnatFormat{end+1} = [];
-                        SubjectSessDir{end+1}    = {sessFolders{isess}, derivFolders{isess}};
-                        SubjectMriFiles{end+1}   = sessMriFiles;
+                        SubjectName{iSubj}       = [subjName, '_', sessDir(isess).name];
+                        SubjectAnatDir{iSubj}    = [];
+                        SubjectAnatFormat{iSubj} = [];
+                        SubjectSessDir{iSubj}    = {sessFolders{isess}, derivFolders{isess}};
+                        SubjectMriFiles{iSubj}   = sessMriFiles;
                     end
                 % One common anatomy for all the sessions
                 else
-                    SubjectName{end+1}       = subjName;
-                    SubjectAnatDir{end+1}    = [];
-                    SubjectAnatFormat{end+1} = [];
-                    SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
-                    SubjectMriFiles{end+1}   = allMriFiles;
+                    SubjectName{iSubj}       = subjName;
+                    SubjectAnatDir{iSubj}    = [];
+                    SubjectAnatFormat{iSubj} = [];
+                    SubjectSessDir{iSubj}    = cat(2, sessFolders, derivFolders);
+                    SubjectMriFiles{iSubj}   = allMriFiles;
                 end
             end
         % One session
         elseif (length(sessFolders) == 1)
-            SubjectName{end+1}       = subjName;
-            SubjectAnatDir{end+1}    = [];
-            SubjectAnatFormat{end+1} = [];
-            SubjectSessDir{end+1}    = cat(2, sessFolders, derivFolders);
-            SubjectMriFiles{end+1}   = GetSubjectMri(bst_fullfile(sessFolders{1}, 'anat'));
+            SubjectName{iSubj}       = subjName;
+            SubjectAnatDir{iSubj}    = [];
+            SubjectAnatFormat{iSubj} = [];
+            SubjectSessDir{iSubj}    = cat(2, sessFolders, derivFolders);
+            SubjectMriFiles{iSubj}   = GetSubjectMri(bst_fullfile(sessFolders{1}, 'anat'));
+        end
+
+        % For each MRI, look for a JSON file with fiducials defined
+        fidMriFile = [];
+        fiducials = [];
+        iMriRef = 1;
+        for iMri = 1:length(SubjectMriFiles{end})
+            % Split file name
+            [fPath, fBase, fExt] = bst_fileparts(SubjectMriFiles{end}{iMri});
+            if strcmpi(fExt, '.gz')
+                [tmp, fBase, fExt2] = bst_fileparts(fBase);
+                fExt = [fExt, fExt2];
+            end
+            % Look for adjacent .json file with fiducials definitions (NAS/LPA/RPA)
+            jsonFile = bst_fullfile(fPath, [fBase, '.json']);
+            % If json file exists
+            if file_exist(jsonFile)
+                % Load json file
+                json = bst_jsondecode(jsonFile);
+                sFid = GetFiducials(json, 'voxel');
+                % If there are fiducials defined: use them as inputs to FreeSurfer import (and other segmentations)
+                if ~isempty(sFid)
+                    fidMriFile = SubjectMriFiles{end}{iMri};
+                    fiducials = sFid;
+                    iMriRef = iMri;
+                    % Stop looking through volumes: only the first one with fiducials is considered
+                    break;
+                end
+            end
+        end
+        SubjectFidMriFile{iSubj} = fidMriFile;
+        % If there is a MRI with fiducials found: move it at the top of the MRI list, to make it the reference MRI
+        if ~isempty(fidMriFile) && (iMriRef > 1)
+            iReorder = [iMriRef, setdiff(1:length(SubjectMriFiles{iSubj}), iMriRef)];
+            SubjectMriFiles{iSubj} = SubjectMriFiles{iSubj}(iReorder);
         end
     end
     
@@ -375,7 +414,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             end
         end
         
-        % === IMPORT ANATOMY ===
+        % === IMPORT ANATOMY: SEGMENTATION FOLDER ===
         % Do not ask interactively for anatomical fiducials: if they are not set, use default positions from MNI template
         isInteractiveAnat = 0;
         % If the anatomy is already set: issue a warning
@@ -395,18 +434,25 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 end
                 OPTIONS.nVertices = str2double(OPTIONS.nVertices);
             end
+            % If there are fiducials define: record these, to use them when importing FreeSurfer (or other) segmentations
+            if ~isempty(SubjectFidMriFile{iSubj})
+                sMriFid = in_mri(SubjectFidMriFile{iSubj}, 'ALL', 0);
+            else
+                sMriFid = [];
+            end
+
             % Import subject anatomy
             switch (SubjectAnatFormat{iSubj})
                 case 'FreeSurfer'
-                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 0);
+                    errorMsg = import_anatomy_fs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid, 0);
                 case 'CAT12'
-                    errorMsg = import_anatomy_cat(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 1, 2, 1);
+                    errorMsg = import_anatomy_cat(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid, 1, 2, 1);
                 case 'BrainSuite'
-                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, []);
+                    errorMsg = import_anatomy_bs(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid);
                 case 'BrainVISA'
-                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, []);
+                    errorMsg = import_anatomy_bv(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid);
                 case 'CIVET'
-                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, [], 0);
+                    errorMsg = import_anatomy_civet(iSubject, SubjectAnatDir{iSubj}, OPTIONS.nVertices, isInteractiveAnat, sMriFid, 0);
                 otherwise
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
@@ -416,6 +462,8 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 [sMri, errorMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
             end
         end
+
+        % === IMPORT ANATOMY: MRI FILES ===
         % Import MRI
         if ~isSkipAnat && ~isempty(SubjectMriFiles{iSubj})
             MrisToRegister = {};
@@ -428,36 +476,6 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 errorMsg = [errorMsg, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
             % Compute additional files
             else
-                % Look for adjacent .json file with fiducials definitions (NAS/LPA/RPA)
-                jsonFile = strrep(SubjectMriFiles{iSubj}{1}, '.nii', '');
-                jsonFile = strrep(jsonFile, '.gz', '');
-                jsonFile = [jsonFile, '.json'];
-                % If json file exists
-                if file_exist(jsonFile)
-                    % Load fiducials from json file
-                    json = bst_jsondecode(jsonFile);
-                    [sFid, msg] = GetFiducials(json, 'voxel');
-                    if ~isempty(msg)
-                        Messages = [Messages, 10, msg];
-                    end
-                    % If there are fiducials defined in the json file
-                    if ~isempty(sFid)
-                        % Apply re-orientation of the volume to the fiducials coordinates
-                        iTransf = find(strcmpi(sMri.InitTransf(:,1), 'reorient'));
-                        if ~isempty(iTransf)
-                            tReorient = sMri.InitTransf{iTransf(1),2};
-                            fidNames = fieldnames(sFid);
-                            for f = fidNames(:)'
-                                sFid.(f{1}) = (tReorient * [sFid.(f{1}) 1]')';
-                                sFid.(f{1}) = sFid.(f{1})(1:3);
-                            end
-                        end
-                        % Save in MRI
-                        SCS = sFid;
-                        save(BstMriFile, 'SCS', '-append');
-                    end
-                end
-
                 % If there was no segmentation imported before: normalize and create head surface
                 if isempty(SubjectAnatDir{iSubj})
                     % Compute MNI normalization
@@ -1027,22 +1045,26 @@ end
 function [sFid, Messages] = GetFiducials(json, defaultUnits)
     Messages = [];
     % No anatomical landmarks: NAS, LPA, RPA
-    if ~isfield(json, 'AnatomicalLandmarkCoordinates') || isempty(json.AnatomicalLandmarkCoordinates)
+    if isfield(json, 'FiducialsCoordinates') && ~isempty(json.FiducialsCoordinates)
+        fieldName = 'Fiducials';
+    elseif isfield(json, 'AnatomicalLandmarkCoordinates') && ~isempty(json.AnatomicalLandmarkCoordinates)
+        fieldName = 'AnatomicalLandmark';
+    else
         sFid = [];
         return
     end
     % Get units
-    if ismember(json.AnatomicalLandmarkCoordinateUnits, {'mm','cm','m'})
-        landmarksUnits = json.AnatomicalLandmarkCoordinateUnits;
+    if isfield(json, [fieldName 'CoordinateUnits']) && ismember(json.([fieldName 'CoordinateUnits']), {'mm','cm','m'})
+        units = json.([fieldName 'CoordinateUnits']);
     else
-        landmarksUnits = defaultUnits;
+        units = defaultUnits;
     end
     % Get anatomical landmarks
-    lm = json.AnatomicalLandmarkCoordinates;
+    lm = json.([fieldName 'Coordinates']);
     % Get the positions for each fiducial
-    sFid = struct('NAS', [], 'LPA', [], 'RPA', []);
+    sFid = struct('NAS', [], 'LPA', [], 'RPA', [], 'AC', [], 'PC', [], 'IH', []);
     fidNames = {};
-    for fid = {'NAS', 'LPA', 'RPA'}
+    for fid = reshape(fieldnames(sFid), 1, [])
         % Fiducial with the exact name: use this one
         if isfield(lm, fid{1})
             fidNames = fid(1);
@@ -1070,7 +1092,7 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
         sFid.(fid{1}) = mean(sFid.(fid{1}), 1);
         % Apply units
         if ~strcmpi(defaultUnits, 'voxel')
-            sFid.(fid{1}) = bst_units_ui(landmarksUnits, sFid.(fid{1}));
+            sFid.(fid{1}) = bst_units_ui(units, sFid.(fid{1}));
         end
     end
     % Cancel if not all fiducials were found 
