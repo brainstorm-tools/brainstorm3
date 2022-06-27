@@ -206,6 +206,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 badSeg = badSeg - fileSamples(1) + 1;
                 if ~isempty(TimeWindow)
                     badSeg = badSeg - (bst_closest(TimeWindow(1), DataMat.Time) - 1);
+                    % badSeg outside of TimeVector: 0=in, 1=half-in 2=out
+                    badSeg_status = sum(badSeg < 1) + sum(badSeg > length(TimeVector), 1);
+                    % Ignore badSeg out of TimeVector
+                    badSeg(:,badSeg_status == 2) = [];
+                    % Handle badSeg half-in TimeVector
+                    badSeg(1, badSeg(1, :) < 0) = 1;
+                    badSeg(2, badSeg(2, :) > length(TimeVector)) = length(TimeVector);
+                    badSeg(:, badSeg(1, :) == badSeg(2, :)) = [];
                 end
                 % Create file mask
                 Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
