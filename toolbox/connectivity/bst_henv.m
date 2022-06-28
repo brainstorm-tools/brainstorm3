@@ -206,7 +206,7 @@ switch (OPTIONS.HStatDyn)
     case 'dynamic'  % Time-varying networks
         timePoints = timePoints/Fs ;
     case 'static'   % Average among all networks
-        A = nanmean(A,3);
+        A = bst_nanmean(A,3);
         timePoints = median(timePoints/Fs) ;
 end
 end
@@ -262,3 +262,4 @@ At = zeros(n1,n2) ;
         end
     end
 end
+
