@@ -263,14 +263,16 @@ if isUpdateScs || isUpdateNcs
     if ~isempty(mri2world_reg) && ~isempty(mri2world_ref)
         % Apply transformation: reference MRI => SPM RAS/world => registered MRI
         Transf = inv(mri2world_reg) * (mri2world_ref);
+        % Convert to millimeters, just like the SCS and NCS transformation matrices
+        Transf(1:3,4) = Transf(1:3,4) .* 1000;
         % SCS coordinates
         if isUpdateScs && isfield(sMriRef, 'SCS')
             SCS = sMriRef.SCS;
             % Update fiducials coordinates
             if all(isfield(SCS, {'NAS','LPA','RPA'})) && ~isempty(SCS.NAS) && ~isempty(SCS.LPA) && ~isempty(SCS.RPA)
-                NAS = (Transf * [SCS.NAS ./ 1000, 1]')' .* 1000;
-                LPA = (Transf * [SCS.LPA ./ 1000, 1]')' .* 1000;
-                RPA = (Transf * [SCS.RPA ./ 1000, 1]')' .* 1000;
+                NAS = (Transf * [SCS.NAS, 1]')';
+                LPA = (Transf * [SCS.LPA, 1]')';
+                RPA = (Transf * [SCS.RPA, 1]')';
                 sMriReg.SCS.NAS = NAS(1:3);
                 sMriReg.SCS.LPA = LPA(1:3);
                 sMriReg.SCS.RPA = RPA(1:3);
@@ -287,9 +289,9 @@ if isUpdateScs || isUpdateNcs
             NCS = sMriRef.NCS;
             % Update NCS fiducials
             if all(isfield(NCS, {'AC','PC','IH'})) && ~isempty(NCS.AC) && ~isempty(NCS.PC) && ~isempty(NCS.IH)
-                AC = (Transf * [NCS.AC ./ 1000, 1]')' .* 1000;
-                PC = (Transf * [NCS.PC ./ 1000, 1]')' .* 1000;
-                IH = (Transf * [NCS.IH ./ 1000, 1]')' .* 1000;
+                AC = (Transf * [NCS.AC, 1]')';
+                PC = (Transf * [NCS.PC, 1]')';
+                IH = (Transf * [NCS.IH, 1]')';
                 sMriReg.NCS.AC = AC(1:3);
                 sMriReg.NCS.PC = PC(1:3);
                 sMriReg.NCS.IH = IH(1:3);
