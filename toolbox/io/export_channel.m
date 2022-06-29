@@ -119,7 +119,7 @@ if isMniTransf || isWorldTransf
             iMri = iNoAtlas;
         % Interactive: Ask which MRI volume to use
         elseif isInteractive
-            mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Export to MRI scanner coordindates', [], {sSubject.Anatomy(iNoAtlas).Comment});
+            mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Export to MRI scanner coordinates', [], {sSubject.Anatomy(iNoAtlas).Comment});
             if isempty(mriComment)
                 return
             end

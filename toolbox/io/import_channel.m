@@ -459,7 +459,7 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
                     iMri = iNoAtlas;
                 % Interactive: Ask which MRI volume to use
                 elseif isInteractive
-                    mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Import as MRI scanner coordindates', [], {sSubject.Anatomy(iNoAtlas).Comment});
+                    mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Import as MRI scanner coordinates', [], {sSubject.Anatomy(iNoAtlas).Comment});
                     if isempty(mriComment)
                         return
                     end
