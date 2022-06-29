@@ -1,7 +1,7 @@
 function ChannelMat = in_channel_bids(ChannelFile, factor)
 % IN_CHANNEL_BIDS:  Read 3D cartesian positions from a BIDS _electrodes.tsv file.
 %
-% USAGE:  ChannelMat = in_channel_bids(ChannelFile, posUnits)
+% USAGE:  ChannelMat = in_channel_bids(ChannelFile, factor)
 %
 % INPUTS: 
 %     - ChannelFile : Full path to the .tsv file

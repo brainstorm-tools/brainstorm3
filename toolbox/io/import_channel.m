@@ -23,6 +23,8 @@ function [Output, ChannelFile, FileFormat] = import_channel(iStudies, ChannelFil
 %                       If [], ask for user decision
 %    - RefMriFile     : Relative file name to a MRI file imported for the current subject
 %                       When isApplyVox2ras=1: use this file instead of the reference MRI for getting the vox2ras transformation
+%                       When isApplyVox2ras=2: uses this file AND reverts the registration matrix that was possibly 
+%                                              applied after the volume was imported (to matche the original .nii)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -74,6 +76,7 @@ end
 %% ===== SELECT CHANNEL FILE =====
 % If file to load was not defined : open a dialog box to select it
 if isempty(ChannelFile)
+    isInteractive = 1;
     % Get default import directory and formats
     LastUsedDirs = bst_get('LastUsedDirs');
     DefaultFormats = bst_get('DefaultFormats');
@@ -94,6 +97,8 @@ if isempty(ChannelFile)
     % Save default import format
     DefaultFormats.ChannelIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
+else
+    isInteractive = 0;
 end
 
 
@@ -343,8 +348,11 @@ if isempty(ChannelMat) || ((~isfield(ChannelMat, 'Channel') || isempty(ChannelMa
 end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
-if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS', 'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'}) && ~isApplyVox2ras
-    isApplyVox2ras = 1;
+% Use world coordinates by defaults for some specific file formats
+if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
+    isApplyVox2ras = 1;   % Use the current vox2ras matrix in the MRI file
+elseif ismember(FileFormat, {'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'})
+    isApplyVox2ras = 2;   % Use the vox2ras matrix AND reverts the registration done in Brainstorm, to match the original file
 end
 
 
@@ -443,7 +451,27 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
     if ~isempty(sSubject.Anatomy) && ~isempty(sSubject.Anatomy(1).FileName)
         % Get the reference MRI (specified in input, or selected in the database)
         if isempty(RefMriFile) || ~file_exist(file_fullpath(RefMriFile))
-            RefMriFile = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            % If there are multiple MRIs
+            if (length(sSubject.Anatomy) > 1)
+                % Consider only the volumes that are not volume atlases
+                iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+                if (length(iNoAtlas) == 1)
+                    iMri = iNoAtlas;
+                % Interactive: Ask which MRI volume to use
+                elseif isInteractive
+                    mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Import as MRI scanner coordindates', [], {sSubject.Anatomy(iNoAtlas).Comment});
+                    if isempty(mriComment)
+                        return
+                    end
+                    iMri = iNoAtlas(find(strcmp({sSubject.Anatomy(iNoAtlas).Comment}, mriComment), 1));
+                % Non-interactive: Use the default MRI
+                else
+                    iMri = sSubject.iAnatomy;
+                end
+            else
+                iMri = 1;
+            end
+            RefMriFile = file_fullpath(sSubject.Anatomy(iMri).FileName);
         end
         % Load the reference MRI (which contains the vox2mri transformation that should be used to interpret the coordinates)
         sMri = load(file_fullpath(RefMriFile), 'InitTransf', 'SCS', 'Voxsize');
