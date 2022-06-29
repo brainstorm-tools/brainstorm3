@@ -76,9 +76,9 @@ if (fid < 0)
    error('Cannot open file'); 
 end
 % Write header: column names
-ColNames = {'name', 'x', 'y', 'z', 'group', 'type'};
-fprintf(fid, '%s\t', ColNames{:});
-fprintf(fid, '\n');
+ColNames = {'name', 'x', 'y', 'z', 'size', 'group', 'type'};
+fprintf(fid, '%s\t', ColNames{1:end-1});
+fprintf(fid, '%s\n', ColNames{end});
 % Write file: one line per location
 for i = 1:length(Label)
     for iCol = 1:length(ColNames)
@@ -91,6 +91,8 @@ for i = 1:length(Label)
                 fprintf(fid, '%1.6f\t', Loc(2,i));
             case 'z'
                 fprintf(fid, '%1.6f\t', Loc(3,i));
+            case 'size'
+                fprintf(fid, 'n/a\t');
             case 'group'
                 fprintf(fid, '%s\t', Group{i});
             case 'type'
