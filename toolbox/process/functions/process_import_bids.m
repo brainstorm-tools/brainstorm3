@@ -325,7 +325,6 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
 
         % For each MRI, look for a JSON file with fiducials defined
         fidMriFile = [];
-        fiducials = [];
         iMriRef = 1;
         for iMri = 1:length(SubjectMriFiles{end})
             % Split file name
@@ -344,7 +343,6 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % If there are fiducials defined: use them as inputs to FreeSurfer import (and other segmentations)
                 if ~isempty(sFid)
                     fidMriFile = SubjectMriFiles{end}{iMri};
-                    fiducials = sFid;
                     iMriRef = iMri;
                     % Stop looking through volumes: only the first one with fiducials is considered
                     break;
@@ -642,9 +640,10 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 for mod = {'meg', 'eeg', 'ieeg'}
                     posUnits = 'mm';
                     electrodesFile = [];
-                    electrodesSpace = 'orig';
+                    electrodesSpace = 'ScanRAS';
                     electrodesAnatRef = [];
                     electrodesCoordSystem = [];
+                    coordsystemSpace = [];
                     sFid = [];
                     
                     % === COORDSYSTEM.JSON ===
@@ -673,7 +672,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                         % Get fiducials structure
                         sFid = GetFiducials(sCoordsystem, posUnits);
-                        % If there are no fiducials: there is no easy waya to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
+                        % If there are no fiducials: there is no easy way to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
                         if isempty(sFid)
                             if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
                                 electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
@@ -681,9 +680,12 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                                 electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
                             elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
                                 electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                            elseif ~isempty(coordsystemSpace)
+                                electrodesCoordSystem = coordsystemSpace;
                             end
+                        end
                         % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
-                        elseif isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
+                        if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
                             if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
                                 % Check whether the IntendedFor files is already imported as a volume
                                 if ~isempty(MriMatchOrigImport)
@@ -784,11 +786,12 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 RawFiles = [RawFiles{:}, newFiles];
                 % Add electrodes positions if available
                 if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
-                    % Is is subject or MNI coordinates
-                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-ORIG-')) ||  ~isempty(strfind(allMeegElecFormats{iFile}, '-OTHER-'))
+                    % Subject T1 coordinates (space-ScanRAS)
+                    if ~isempty(strfind(allMeegElecFormats{iFile}, '-SCANRAS-'))
                         % If using the vox2ras transformation: also removes the SPM coregistrations computed in Brainstorm
                         % after importing the files, as these transformation were not available in the BIDS dataset
                         isVox2ras = 2;
+                    % Or MNI coordinates (space-IXI549Space or other MNI space)
                     else
                         isVox2ras = 0;
                     end
@@ -1013,11 +1016,18 @@ end
 % Tries to find the best coordinate system available: subject space, otherwise MNI space
 function [fileList, fileSpace, wrnMsg] = SelectCoordSystem(fileList)
     wrnMsg = [];
-    % T1 subject space
-    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-other')), {fileList.name}));
+    % T1 subject space (after 2022)
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-scanras')), {fileList.name}));
     if ~isempty(iSel)
         fileList = fileList(iSel);
-        fileSpace = 'Other';
+        fileSpace = 'ScanRAS';
+        return;
+    end
+    % T1 subject space (before 2022)
+    iSel = find(~cellfun(@(c)isempty(strfind(lower(c),'space-other')), {fileList.name}) | ~cellfun(@(c)isempty(strfind(lower(c),'space-orig')), {fileList.name}));
+    if ~isempty(iSel)
+        fileList = fileList(iSel);
+        fileSpace = 'ScanRAS';
         return;
     end
     % IXI549Space SPM12 space
@@ -1037,7 +1047,7 @@ function [fileList, fileSpace, wrnMsg] = SelectCoordSystem(fileList)
     % Nothing interpretable found: Use first in the list
     wrnMsg = ['Could not interpret subject coordinate system, using randomly "' fileList(1).name '".'];
     fileList = fileList(1);
-    fileSpace = 'unknown';
+    fileSpace = 'ScanRAS';
 end
 
 

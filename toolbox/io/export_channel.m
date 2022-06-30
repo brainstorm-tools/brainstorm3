@@ -56,7 +56,7 @@ if isempty(OutputChannelFile)
         case 'CARTOOL-XYZ',    DefaultExt = '.xyz';
         case 'BESA-SFP',       DefaultExt = '.sfp';
         case 'BESA-ELP',       DefaultExt = '.elp';
-        case 'BIDS-OTHER-MM',  DefaultExt = '_electrodes.tsv';
+        case 'BIDS-SCANRAS-MM',DefaultExt = '_electrodes.tsv';
         case 'BIDS-MNI-MM',    DefaultExt = '_electrodes.tsv';
         case 'CURRY-RES',      DefaultExt = '.res';
         case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
@@ -97,8 +97,8 @@ end
 
 % ===== TRANSFORMATIONS =====
 isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM'});
-isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-OTHER-MM'});
-isRevertReg = ismember(FileFormat, {'BIDS-OTHER-MM'});
+isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM'});
+isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM'});
 % Get patient MRI (if needed)
 if isMniTransf || isWorldTransf
     % Get channel file
@@ -192,9 +192,11 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','-Y','X','Z'}, 1, 0, 0, .01);
     case 'BESA-ELP'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','Y','X','Z'}, 1, 0, 0, .01);
-    case 'BIDS-OTHER-MM'
+    case 'BIDS-SCANRAS-MM'
+        % Transf is a 4x4 transformation matrix
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf);
     case 'BIDS-MNI-MM'
+        % Transf is a MRI structure with the definition of MNI normalization
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf);
     case 'CURRY-RES'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'indice','-Y','X','Z','indice','name'}, 1, 0, 0, .001);

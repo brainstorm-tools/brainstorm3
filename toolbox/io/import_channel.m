@@ -136,13 +136,13 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
-    case {'BIDS-ORIG-MM', 'BIDS-OTHER-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM'}
+    case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
         FileUnits = 'm';
-    case {'BIDS-ORIG-CM', 'BIDS-OTHER-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM'}
+    case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
         FileUnits = 'm';
-    case {'BIDS-ORIG-M', 'BIDS-OTHER-M', 'BIDS-MNI-M', 'BIDS-ACPC-M'}
+    case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
         
@@ -351,7 +351,7 @@ isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS',
 % Use world coordinates by defaults for some specific file formats
 if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
     isApplyVox2ras = 1;   % Use the current vox2ras matrix in the MRI file
-elseif ismember(FileFormat, {'BIDS-OTHER-MM', 'BIDS-OTHER-CM', 'BIDS-OTHER-M'})
+elseif ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-SCANRAS-CM', 'BIDS-SCANRAS-M'})
     isApplyVox2ras = 2;   % Use the vox2ras matrix AND reverts the registration done in Brainstorm, to match the original file
 end
 
