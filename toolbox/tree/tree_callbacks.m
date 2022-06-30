@@ -2799,6 +2799,10 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Add an item per Template available
             fList = bstDefaults(iDir).contents;
+            % Sort in natural order
+            [tmp,I] = sort_nat({fList.name});
+            fList = fList(I);
+            % Create an entry for each default
             for iFile = 1:length(fList)
                 % Define callback function
                 if isAddLoc 
