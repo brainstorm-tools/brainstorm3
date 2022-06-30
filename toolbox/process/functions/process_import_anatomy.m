@@ -259,8 +259,10 @@ function [isComputeMni, errorMsg] = SetFiducials(iSubject, AnatDir, MriFile, sFi
         % If there is a full MRI structure passed in input, with fiducials in the SCS/NCS structures  -  Call from BIDS import process
         elseif all(isfield(sFid, {'Cube', 'SCS'})) && all(isfield(sFid.SCS, {'NAS', 'LPA', 'RPA'})) && ~isempty(sFid.SCS.NAS) && ~isempty(sFid.SCS.LPA) && ~isempty(sFid.SCS.RPA) 
             sMriFid = sFid;
+            % Load MRI
+            sMri = load(MriFile);
             % Compute coregistration from the fiducials MRI to the T1 MRI from the segmentation
-            sMriReg = mri_coregister(sMriFid, 'spm', 0);
+            sMriReg = mri_coregister(sMri, sMriFid, 'spm', 0);
             % Get fiducials from registered volume
             NAS = sMriReg.SCS.NAS;
             LPA = sMriReg.SCS.LPA;
