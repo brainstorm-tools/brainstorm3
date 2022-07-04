@@ -264,8 +264,8 @@ if ~isempty(fPath)
                 tReorient(1:3,4) = tReorient(1:3,4) .* MRI.Voxsize';   % Convert translation from voxel to millimeters (MRI coordinates, in which the fiducials are saved)
                 fidNames = fieldnames(sFid);
                 for f = fidNames(:)'
-                    sFid.(f{1}) = (tReorient * [sFid.(f{1}) 1]')';
-                    sFid.(f{1}) = sFid.(f{1})(1:3);
+                    sFid.(f{1}) = (tReorient * [sFid.(f{1}) - 1, 1]')';   % -1 to convert from 1-based to 0-based voxel coordinates
+                    sFid.(f{1}) = sFid.(f{1})(1:3) + 1;                   % +1 to convert from 0-based to 1-based voxel coordinates
                 end
             end
             % Save in MRI structure

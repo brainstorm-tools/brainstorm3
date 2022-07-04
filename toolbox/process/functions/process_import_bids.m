@@ -1100,8 +1100,11 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
         end
         % Average all the positions
         sFid.(fid{1}) = mean(sFid.(fid{1}), 1);
+        % Voxels: Convert from 0-based (file) to 1-based (Brainstorm)
+        if strcmpi(defaultUnits, 'voxel')
+            sFid.(fid{1}) = sFid.(fid{1}) + 1;
         % Apply units
-        if ~strcmpi(defaultUnits, 'voxel')
+        else
             sFid.(fid{1}) = bst_units_ui(units, sFid.(fid{1}));
         end
     end
