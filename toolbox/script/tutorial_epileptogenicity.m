@@ -159,16 +159,16 @@ sEvt1(2).epochs  = 1;
 sEvt1(2).channels= {{}};
 sEvt1(2).notes   = {[]};
 % SZ1
-sEvt1(1).times   = 120.800;
-sEvt1(2).times   = [72.800; 77.800];
+sEvt1(1).times   = 1325.466;
+sEvt1(2).times   = [1277.467; 1282.467];
 % SZ2
 sEvt2 = sEvt1;
-sEvt2(1).times   = 143.510;
-sEvt2(2).times   = [103.510; 108.510];
+sEvt2(1).times   = 2368.901;
+sEvt2(2).times   = [2328.900; 2333.900];
 % SZ3
 sEvt3 = sEvt1;
-sEvt3(1).times   = 120.287;
-sEvt3(2).times   = [45.287; 50.287];
+sEvt3(1).times   = 12142.805;
+sEvt3(2).times   = [12067.805; 12072.805];
 % Process: Events: Import from file
 bst_process('CallProcess', 'process_evt_import', sFilesRaw(1), [], ...
     'evtfile', {sEvt1, 'struct'}, ...
