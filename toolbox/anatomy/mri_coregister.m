@@ -1,8 +1,8 @@
-function [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
 % MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
-% USAGE:  [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
-%            [sMriReg, errMsg, fileTag] = mri_coregister(sMriSrc,    sMriRef, ...)
+% USAGE:  [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
+%            [sMriReg, errMsg, fileTag, sMriReg] = mri_coregister(sMriSrc,    sMriRef, ...)
 %
 % INPUTS:
 %    - MriFileSrc : Relative path to the Brainstorm MRI file to register
@@ -15,9 +15,9 @@ function [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, 
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
-%    - sMriReg    : Brainstorm MRI structure with the registered volume
 %    - errMsg     : Error messages if any
 %    - fileTag    : Tag added to the comment/filename
+%    - sMriReg    : Brainstorm MRI structure with the registered volume
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
