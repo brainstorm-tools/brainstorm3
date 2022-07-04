@@ -212,7 +212,7 @@ end
 
 %% ===== DEFINE FIDUCIALS =====
 % Set fiducials (with linear MNI normalization disabled)
-[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, BvDir, BstT1File, sFid, 0, isInteractive, 0);
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, BvDir, BstT1File, sFid, 0, isInteractive, 1);
 % Error handling
 if ~isempty(errCall)
     errorMsg = [errorMsg, errCall];
@@ -222,15 +222,6 @@ if ~isempty(errCall)
         end
         return;
     end
-end
-
-
-%% ===== MNI NORMALIZATION =====
-if isComputeMni
-    % Call normalize function
-    [sMri, errCall] = bst_normalize_mni(BstT1File);
-    % Error handling
-    errorMsg = [errorMsg errCall];
 end
 
 

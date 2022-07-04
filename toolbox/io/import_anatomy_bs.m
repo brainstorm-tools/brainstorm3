@@ -214,11 +214,11 @@ end
 
 %% ===== DEFINE FIDUCIALS / MNI NORMALIZATION =====
 % Set fiducials and/or compute linear MNI normalization
-[sMri, errCall] = process_import_anatomy('SetFiducials', iSubject, BsDir, BstT1File, sFid, isKeepMri, isInteractive);
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, BsDir, BstT1File, sFid, isKeepMri, isInteractive);
 % Error handling
 if ~isempty(errCall)
     errorMsg = [errorMsg, errCall];
-    if isempty(sMri)
+    if isempty(isComputeMni)
         if isInteractive
             bst_error(errorMsg, 'Import BrainSuite folder', 0);
         end

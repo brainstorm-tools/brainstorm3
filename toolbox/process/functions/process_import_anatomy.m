@@ -303,6 +303,7 @@ function [isComputeMni, errorMsg] = SetFiducials(iSubject, AnatDir, MriFile, sFi
     % Call normalize function
     if AllowMni && isComputeMni
         [sMri, errorMsg] = bst_normalize_mni(MriFile);
+        isComputeMni = 0;
     end
 end
 

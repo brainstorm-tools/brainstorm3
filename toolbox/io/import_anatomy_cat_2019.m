@@ -12,7 +12,7 @@ function errorMsg = import_anatomy_cat_2019(iSubject, CatDir, nVertices, isInter
 %    - sFid         : Structure with the fiducials coordinates
 %                     Or full MRI structure with fiducials defined in the SCS structure, to be registered with the FS MRI
 %    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps
-%    - isKeepMri    : 0=Delete all existing anatomy files
+%    - isKeepMri    : 0=Delete all existing anatomy files (when importing a segmentation folder generated without Brainstorm into an empty subject)
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
 %                     2=Keep existing MRI and surfaces
 %    - isTissues     : If 1, combine the tissue probability maps (/mri/p*.nii) into a "tissue" volume
@@ -240,8 +240,11 @@ end
 
 
 %% ===== IMPORT MRI =====
+% Context: Execution of CAT12 from an MRI already imported in the Brainstorm database
 if isKeepMri && ~isempty(sSubject.Anatomy)
     BstT1File = file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+    sMri = in_mri_bst(BstT1File);
+% Context: CAT12 was executed independently from Brainstorm, now importing the output folder in an empty subject
 else
     % Read MRI
     [BstT1File, sMri] = import_mri(iSubject, T1File);
@@ -458,7 +461,7 @@ if isExtraMaps && ~isempty(CortexHiFile)
     % Create a condition "CAT12"
     iStudy = db_add_condition(iSubject, 'CAT12');
     % Import cortical thickness
-    if ~isempty(ThickLhFile) && ~isempty(ThickLhFile)
+    if ~isempty(ThickLhFile) && ~isempty(ThickRhFile)
         import_sources(iStudy, CortexHiFile, ThickLhFile, ThickRhFile, 'FS', 'thickness');
     end
     % Import gyrification
