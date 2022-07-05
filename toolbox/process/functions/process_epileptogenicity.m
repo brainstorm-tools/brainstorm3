@@ -96,11 +96,13 @@ end
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
     % Initialize SPM
-    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+    [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'spm12');
     if ~isInstalled
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
+    % Add "matlabbatch" folder to the path, because of some weird bugs
+    addpath(bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'matlabbatch'));
     
     % ===== GET OPTIONS =====
     % Get all the options
