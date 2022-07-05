@@ -104,7 +104,6 @@ end
 
 %% ===== LOAD CHANNEL FILE =====
 ChannelMat = [];
-FileUnits = 1;
 % Progress bar
 isProgressBar = bst_progress('isVisible');
 if ~isProgressBar
@@ -128,6 +127,7 @@ switch (FileFormat)
     case {'FIF', '4D', 'KIT', 'BST-BIN', 'KDF', 'RICOH', 'ITAB', 'MEGSCAN-HDF5'}
         [sFile, ChannelMat] = in_fopen(ChannelFile, FileFormat, ImportOptions);
         if isempty(ChannelMat)
+            bst_progress('stop');
             return;
         end
         FileUnits = 'm';
@@ -138,10 +138,10 @@ switch (FileFormat)
     % ===== EEG ONLY =====
     case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
-        FileUnits = 'm';
+        FileUnits = 'mm';
     case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
-        FileUnits = 'm';
+        FileUnits = 'cm';
     case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
@@ -338,6 +338,8 @@ switch (FileFormat)
         ChannelMat = in_channel_ascii(ChannelFile, {'TH','PHI'}, 0, .0875);
         ChannelMat.Comment = 'Channels';
         FileUnits = '';
+    otherwise
+        error(['File format is not supported: ' FileFormat]);
 end
 % No data imported
 isHeadPoints = isfield(ChannelMat, 'HeadPoints') && ~isempty(ChannelMat.HeadPoints.Loc);
@@ -461,6 +463,7 @@ elseif ~isScsDefined && ~isequal(isApplyVox2ras, 0) && ~isempty(iStudies)
                 elseif isInteractive
                     mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Import as MRI scanner coordinates', [], {sSubject.Anatomy(iNoAtlas).Comment});
                     if isempty(mriComment)
+                        bst_progress('stop');
                         return
                     end
                     iMri = iNoAtlas(find(strcmp({sSubject.Anatomy(iNoAtlas).Comment}, mriComment), 1));
