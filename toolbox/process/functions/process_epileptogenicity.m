@@ -421,6 +421,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             % Import and load file
             ImportedDataMat = in_data(groupFiles{i}, ChannelMat, 'EEG-ASCII', ImportOptions);
             fileMat = load(ImportedDataMat.FileName);
+            fileMat.F = fileMat.F(:,1);
             % Concatenate with previous files
             if isempty(DataMat)
                 DataMat = fileMat;

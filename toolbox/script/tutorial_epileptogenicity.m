@@ -169,6 +169,16 @@ sFilesOnsets = bst_process('CallProcess', 'process_import_data_event', sFilesRaw
     'createcond',  0, ...
     'ignoreshort', 0, ...
     'usessp',      0);
+% Rename folders
+db_rename_condition(bst_fullfile(SubjectName, 'sub-01_ses-postimp_task-seizure_run-01_ieeg'), bst_fullfile(SubjectName, 'run-01'));
+db_rename_condition(bst_fullfile(SubjectName, 'sub-01_ses-postimp_task-seizure_run-02_ieeg'), bst_fullfile(SubjectName, 'run-02'));
+db_rename_condition(bst_fullfile(SubjectName, 'sub-01_ses-postimp_task-seizure_run-03_ieeg'), bst_fullfile(SubjectName, 'run-03'));
+% Search again for files
+sFilesBaselines = bst_process('CallProcess', 'process_select_search', [], [], ...
+    'search', '([name CONTAINS "Baseline"])');
+sFilesOnsets = bst_process('CallProcess', 'process_select_search', [], [], ...
+    'search', '([name CONTAINS "Onset"])');
+
 
 % ===== BIPOLAR MONTAGE =====
 MontageName = [SubjectName, ': SEEG (bipolar 2)[tmp]'];
