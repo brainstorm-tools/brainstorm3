@@ -9,9 +9,9 @@ function [MRI, vox2ras, tReorient] = in_mri(MriFile, FileFormat, isInteractive, 
 %     - isNormalize   : If 1, converts values to uint8 and scales between 0 and 1
 % OUTPUT:
 %     - MRI       : Standard brainstorm structure for MRI volumes
-%     - vox2ras   : [4x4] transformation matrix: voxels to RAS coordinates
+%     - vox2ras   : [4x4] transformation matrix: voxels 0-based to RAS coordinates
 %                   (corresponds to MNI coordinates if the volume is registered to the MNI space)
-%     - tReorient : Transformation matrix of the volume in order to convert it to Brainstorm voxel coordinates
+%     - tReorient : [4x4] transformation matrix: (voxels 0-based scanner) TO (voxels 0-based Brainstorm)
 
 % NOTES:
 %     - MRI structure:
@@ -249,7 +249,7 @@ if ~isempty(fPath)
     jsonFile = bst_fullfile(fPath, [fBase, '.json']);
     % If json file exists
     if file_exist(jsonFile)
-        % Load json file
+        % Load json file: 0-based voxel coordinates
         json = bst_jsondecode(jsonFile);
         [sFid, msg] = process_import_bids('GetFiducials', json, 'voxel');
         if ~isempty(msg)
@@ -260,21 +260,20 @@ if ~isempty(fPath)
             % Apply re-orientation of the volume to the fiducials coordinates
             iTransf = find(strcmpi(MRI.InitTransf(:,1), 'reorient'));
             if ~isempty(iTransf)
-                tReorient = MRI.InitTransf{iTransf(1),2};
-                tReorient(1:3,4) = tReorient(1:3,4) .* MRI.Voxsize';   % Convert translation from voxel to millimeters (MRI coordinates, in which the fiducials are saved)
+                tReorient = MRI.InitTransf{iTransf(1),2};  % Voxel 0-based transformation, from original to Brainstorm
                 fidNames = fieldnames(sFid);
                 for f = fidNames(:)'
-                    sFid.(f{1}) = (tReorient * [sFid.(f{1}) - 1, 1]')';   % -1 to convert from 1-based to 0-based voxel coordinates
-                    sFid.(f{1}) = sFid.(f{1})(1:3) + 1;                   % +1 to convert from 0-based to 1-based voxel coordinates
+                    sFid.(f{1}) = (tReorient * [sFid.(f{1}), 1]')';
+                    sFid.(f{1}) = sFid.(f{1})(1:3);
                 end
             end
-            % Save in MRI structure
-            MRI.SCS.NAS = sFid.NAS;
-            MRI.SCS.LPA = sFid.LPA;
-            MRI.SCS.RPA = sFid.RPA;
-            MRI.NCS.AC = sFid.AC;
-            MRI.NCS.PC = sFid.PC;
-            MRI.NCS.IH = sFid.IH;
+            % Convert from (0-based VOXEL) to (1-based voxel) to (MRI)
+            MRI.SCS.NAS = (sFid.NAS + 1) .* MRI.Voxsize;
+            MRI.SCS.LPA = (sFid.LPA + 1) .* MRI.Voxsize;
+            MRI.SCS.RPA = (sFid.RPA + 1) .* MRI.Voxsize;
+            MRI.NCS.AC = (sFid.AC + 1) .* MRI.Voxsize;
+            MRI.NCS.PC = (sFid.PC + 1) .* MRI.Voxsize;
+            MRI.NCS.IH = (sFid.IH + 1) .* MRI.Voxsize;
         end
     end
 end
