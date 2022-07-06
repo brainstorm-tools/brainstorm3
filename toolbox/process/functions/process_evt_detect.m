@@ -520,6 +520,9 @@ end
 function badSeg = GetBadSegments(sFile, TimeWindow, DataMatTime, nReadTimes)
     % Get list of bad segments in file
     badSeg = panel_record('GetBadSegments', sFile);
+    if isempty(badSeg)
+        return;
+    end
     % Adjust with beginning of file
     badSeg = badSeg - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
     % Keep bad segments in TimeWindow

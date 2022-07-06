@@ -1,3 +1,6 @@
+July 2022
+- Doc: Updated SEEG/epileptogenicity tutorial (new BIDS dataset)
+--------------------------------------------------------------
 June 2022
 - Connectivity: New slider to threshold by percentile in Display tab
 - Connectivity: Deprecation of older AEC processes, replaced with HENV
