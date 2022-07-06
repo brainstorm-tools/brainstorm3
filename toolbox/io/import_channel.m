@@ -353,6 +353,8 @@ isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS',
 % Use world coordinates by defaults for some specific file formats
 if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
     isApplyVox2ras = 1;   % Use the current vox2ras matrix in the MRI file
+elseif ismember(FileFormat, {'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN'})
+    isApplyVox2ras = 0;   % Disable vox2ras for ASCII formats that are explicitly in SCS
 elseif ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-SCANRAS-CM', 'BIDS-SCANRAS-M'})
     isApplyVox2ras = 2;   % Use the vox2ras matrix AND reverts the registration done in Brainstorm, to match the original file
 end
