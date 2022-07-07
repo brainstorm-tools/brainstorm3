@@ -113,6 +113,7 @@ sProtocolsListInfo(iProtocol).UseDefaultAnat = sProtocol.UseDefaultAnat;
 sProtocolsListInfo(iProtocol).UseDefaultChannel = sProtocol.UseDefaultChannel;
 % Database information
 sProtocolsListInfo(iProtocol).Database = sProtocol.Database;
+sProtocolsListInfo(iProtocol).iReadFiles = sProtocol.iReadFiles;
 
 %% ===== UPDATE EXISTING PROTOCOL DATABASE =====
 if strcmpi(action, 'load')
