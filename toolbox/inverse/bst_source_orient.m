@@ -1,4 +1,4 @@
-function [SourceValues, GridAtlas, RowNames] = bst_source_orient(iVertices, nComponents, GridAtlas, SourceValues, Function, DataType, RowNames)
+function [SourceValues, GridAtlas, RowNames, Comp] = bst_source_orient(iVertices, nComponents, GridAtlas, SourceValues, Function, DataType, RowNames, SourceCov)
 % BST_SOURCE_ORIENT: Constrain source orientation for an unconstrained or mixed source model.
 %
 % USAGE:  SourceValues = bst_source_orient(iVertices=[], nComponents, GridAtlas, SourceValues, Function, DataType=[], RowNames=[])
@@ -42,6 +42,9 @@ function [SourceValues, GridAtlas, RowNames] = bst_source_orient(iVertices, nCom
 % Authors: Francois Tadel, 2014
 
 % Parse inputs
+if (nargin < 8)
+	SourceCov = [];
+end
 if (nargin < 7) || isempty(RowNames)
 	RowNames = [];
 end
@@ -90,7 +93,7 @@ if (nComponents == 0)
                 SourceBlocks{end+1} = SourceValues(iVertSource,:,:,:);
             case {'U','L'}
                 % Apply grouping function
-                SourceBlocks{end+1} = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function);
+                SourceBlocks{end+1} = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function, SourceCov);
                 % If the row names are defined
                 if ~isempty(RowNames) && iscell(RowNames)
                     RowNamesBlocks{end+1} = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceBlocks{end},1), iVertSource);
@@ -128,14 +131,14 @@ else
             SourceValues = SourceValues(iVertSource,:,:,:);
         case 2
             % Apply grouping function
-            SourceValues = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], Function);
+            [SourceValues, Comp] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], Function, SourceCov);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
                 RowNames = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceValues,1), iVertSource);
             end
         case 3
             % Apply grouping function
-            SourceValues = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function);
+            [SourceValues, Comp] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function, SourceCov);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
                 RowNames = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceValues,1), iVertSource);                
@@ -153,7 +156,11 @@ end
 
 
 %% ====== APPLY FUNCTION =====
-function Values = ApplyFunction(Values, i1, i2, i3, Function)
+function [Values, Comp] = ApplyFunction(Values, i1, i2, i3, Function, SourceCov)
+    if nargin < 6
+        SourceCov = [];
+    end
+    Comp = [];
     switch (Function)
         case 'max'
             if ~isempty(i3)
@@ -198,10 +205,18 @@ function Values = ApplyFunction(Values, i1, i2, i3, Function)
                 Values = abs(Values(i1,:,:,:)).^2 + abs(Values(i2,:,:,:)).^2;
             end
         case 'pca'
+            % Here, SourceCov is actually time window indices for computing the PCA.
             if ~isempty(i3)
-                Values = bst_scout_value(Values, 'none', [], 3, 'pca', 0);
+                [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pca', 0, [], SourceCov);
             else
-                Values = bst_scout_value(Values, 'none', [], 2, 'pca', 0);
+                [Values, Comp] = bst_scout_value(Values, 'none', [], 2, 'pca', 0, [], SourceCov);
+            end
+        case 'pcag'
+            % Here, SourceCov is the source covariance matrices, size (nComp,nComp,nSource).
+            if ~isempty(i3)
+                [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pcag', 0, [], SourceCov);
+            else
+                [Values, Comp] = bst_scout_value(Values, 'none', [], 2, 'pcag', 0, [], SourceCov);
             end
         case 'none'
             % Nothing to do

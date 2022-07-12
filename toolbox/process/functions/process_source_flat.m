@@ -33,7 +33,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % ===== PROCESS =====
     % Description the process
     sProcess.Comment     = 'Unconstrained to flat map';
-    sProcess.Category    = 'File';
+    sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Sources';
     sProcess.Index       = 337;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation?highlight=(Unconstrained+to+flat+map)#Z-score';
@@ -48,9 +48,13 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA</B>: First mode of svd(x,y,z)'};
+                                       '<B>PCA</B>: First mode of svd(x,y,z)', ...
+                                       '<B>Global PCA</B>: First mode across trials'};
     sProcess.options.method.Type    = 'radio';
     sProcess.options.method.Value   = 1;
+    sProcess.options.pcawindow.Comment = 'PCA window:';
+    sProcess.options.pcawindow.Type    = 'timewindow';
+    sProcess.options.pcawindow.Value   = [];
 end
 
 
@@ -61,47 +65,96 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
-    OutputFiles = {};
+function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+    OutputFiles = cell(1, numel(sInputs));
     % Get options
     switch(sProcess.options.method.Value)
         case 1, Method = 'rms';  fileTag = 'norm';
         case 2, Method = 'pca';  fileTag = 'pca';
+        case 3, Method = 'pcag';  fileTag = 'pcag';
     end
+    for iInput = 1:numel(sInputs)
+        % ===== PROCESS INPUT =====
+        % Load the source file
+        ResultsMat = in_bst_results(sInputs(iInput).FileName, 1);
+        % Also get kernel if pca
+        if strncmpi(Method, 'pca', 3)
+            ResK = in_bst_results(sInputs(iInput).FileName, 0);
+            if ~isempty(ResK.ImagingKernel)
+                ResultsMat.ImagingKernel = ResK.ImagingKernel;
+            end
+        end
+        % Error: Not an unconstrained model
+        if (ResultsMat.nComponents == 1) || (ResultsMat.nComponents == 2)
+            bst_report('Error', sProcess, sInputs(iInput), 'The input file is not an unconstrained source model.');
+            return;
+        end
+        % Get study description
+        sStudy = bst_get('Study', sInputs(iInput).iStudy);
+        if isfield(sProcess.options, 'pcawindow') && ~isempty(sProcess.options.pcawindow) && ~isempty(sProcess.options.pcawindow.Value) && iscell(sProcess.options.pcawindow.Value)
+            PcaWindow = sProcess.options.pcawindow.Value{1};
+        else
+            PcaWindow = [];
+        end
+        if ~isempty(PcaWindow)
+            % Get time indices
+            if (length(ResultsMat.Time) <= 2)
+                iPcaTime = 1:length(ResultsMat.Time);
+            else
+                iPcaTime = panel_time('GetTimeIndices', ResultsMat.Time, PcaWindow);
+                if isempty(iPcaTime)
+                    bst_report('Error', sProcess, sInputs(iInput), 'Invalid time window option.');
+                    return;
+                end
+            end
+        end
 
-    % ===== PROCESS INPUT =====
-    % Load the source file
-    ResultsMat = in_bst_results(sInput.FileName, 1);
-    % Error: Not an unconstrained model
-    if (ResultsMat.nComponents == 1) || (ResultsMat.nComponents == 2)
-        bst_report('Error', sProcess, sInput, 'The input file is not an unconstrained source model.');
-        return;
-    end
-    % Compute flat map
-    ResultsMat = Compute(ResultsMat, Method);
+        % Compute flat map
+        ResultsMat = Compute(ResultsMat, Method, [], sStudy, iPcaTime);
 
-    % ===== SAVE FILE =====
-    % File tag
-    if ~isempty(strfind(sInput.FileName, '_abs_zscore'))
-        FileType = 'results_abs_zscore';
-    elseif ~isempty(strfind(sInput.FileName, '_zscore'))
-        FileType = 'results_zscore';
-    else
-        FileType = 'results';
+        % ===== SAVE FILE =====
+        ResultsMat.Comment = [ResultsMat.Comment sprintf('_%d-%d', PcaWindow*1000)];
+        % Make comment unique
+        ResultsMat.Comment = file_unique(ResultsMat.Comment, {sStudy.Result.Comment});
+        % File tag
+        if ~isempty(strfind(sInputs(iInput).FileName, '_abs_zscore'))
+            FileType = 'results_abs_zscore';
+        elseif ~isempty(strfind(sInputs(iInput).FileName, '_zscore'))
+            FileType = 'results_zscore';
+        else
+            FileType = 'results';
+        end
+        % Save as kernel if possible.
+        if ~isempty(ResultsMat.ImagingKernel) 
+            ResultsMat.ImageGridAmp = [];            
+            % For global PCA method, save a single shared kernel.
+            if strcmpi(Method, 'pcag')
+                ResultsMat.DataFile = '';
+                % db_add doesn't make it a shared kernel.
+                %SharedFile = db_add(sInputs(iInput).iStudy, ResultsMat);
+                SharedFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_KERNEL_' fileTag]);
+                bst_save(SharedFile, ResultsMat, 'v6');
+                db_add_data(sInputs(iInput).iStudy, SharedFile, ResultsMat);
+                panel_protocols('UpdateNode', 'Study', sInputs(iInput).iStudy); 
+                % Find links to the result kernel that was just created
+                % This includes bad trials (same as process_inverse I think).
+                OutputFiles = db_links('Study', sInputs(iInput).iStudy);
+                OutputFiles(~contains(OutputFiles, file_short(SharedFile))) = [];
+                return;
+            end
+        end
+        % Output filename
+        OutputFiles{iInput} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' fileTag]);
+        % Save on disk
+        bst_save(OutputFiles{iInput}, ResultsMat, 'v6');
+        % Register in database
+        db_add_data(sInputs(iInput).iStudy, OutputFiles{iInput}, ResultsMat);
     end
-    % Get study description
-    sStudy = bst_get('Study', sInput.iStudy);
-    % Output filename
-    OutputFiles{1} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' fileTag]);
-    % Save on disk
-    bst_save(OutputFiles{1}, ResultsMat, 'v6');
-    % Register in database
-    db_add_data(sInput.iStudy, OutputFiles{1}, ResultsMat);
 end
 
 
 %% ===== COMPUTE =====
-function ResultsMat = Compute(ResultsMat, Method, Field)
+function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
     % Field to process
     if (nargin < 3) || isempty(Field)
         Field = 'ImageGridAmp';
@@ -122,7 +175,45 @@ function ResultsMat = Compute(ResultsMat, Method, Field)
         % Unconstrained source models
         case 3
             % Apply source orientations
-            ResultsMat.(Field) = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method);
+            if strncmpi(Method, 'pca', 3) && isfield(ResultsMat, 'ImagingKernel') && ~isempty(ResultsMat.ImagingKernel)
+                Ker = reshape(ResultsMat.ImagingKernel, ResultsMat.nComponents, [], size(ResultsMat.ImagingKernel,2)); % (nComp, nSource, nChan)
+            else
+                Ker = [];
+            end
+            if strncmpi(Method, 'pcag', 4)
+                if ~isfield(ResultsMat, 'ImagingKernel') || isempty(ResultsMat.ImagingKernel)
+                    error('pcag only available for imaging kernel files.');
+                end
+                % Get data covariance matrix for provided data file.
+                % Note that this process is called through bst_process for single
+                % files (looped over elsewhere).  So we can't compute the global
+                % covariance here.
+                % NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
+                if numel(sStudy.NoiseCov) < 2
+                    error('pcag requires data covariance matrix to be computed first.');
+                end
+                DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
+                if ResultsMat.nComponents > 1
+                    % Maybe more efficient: save 3x3xnSource instead of (3*nSource)^2
+                    SourceCov = squeeze( sum(bsxfun(@times, sum(bsxfun(@times, permute(Ker, [3,4,1,2]), DataCov.NoiseCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel)), 1), ... % (1, nChan, nComp, nSource)
+                        permute(Ker, [1,3,4,2])), 2) ); % (nComp, nComp, nSource)
+                else
+                    SourceCov = [];
+                    %SourceCov = ResultsMat.ImagingKernel * DataCov.NoiseCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel) * ResultsMat.ImagingKernel';
+                end
+            elseif strcmpi(Method, 'pca')
+                SourceCov = iPcaTime;
+            else
+                SourceCov = [];
+            end
+            [ResultsMat.(Field), GridAtlas, RowNames, Comp] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], SourceCov);
+            % Resulting kernel
+            if ~isempty(Comp) && ~isempty(Ker)
+                ResultsMat.ImagingKernel = squeeze(sum(bsxfun(@times, Ker, Comp), 1)); % nSource, nChan
+                ResultsMat.Flattening = Comp'; % nSource, nComp
+            else
+                ResultsMat.ImagingKernel = [];
+            end
             % Set the number components
             ResultsMat.nComponents = 1;
     end
@@ -133,6 +224,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field)
     switch(Method)
         case 'rms',  fileTag = 'norm';
         case 'pca',  fileTag = 'pca';
+        case 'pcag',  fileTag = 'pcag';
     end
     % Reset the data file initial path
     if ~isempty(ResultsMat.DataFile)
