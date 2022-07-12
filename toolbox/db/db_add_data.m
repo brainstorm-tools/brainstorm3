@@ -86,9 +86,9 @@ if isempty(iItem)
         queryCond.ExtraStr1 = sNew.ExtraStr1;
     end
     
-    sFiles = db_get(sqlConn, 'FunctionalFile', queryCond, 'Name');
-    if ~isempty(sFiles)
-        Comment = file_unique(sNew.Name, {sFiles.Name});
+    sFuncFiles = db_get(sqlConn, 'FunctionalFile', queryCond, 'Name');
+    if ~isempty(sFuncFiles)
+        Comment = file_unique(sNew.Name, {sFuncFiles.Name});
         % Modify input file
         if ~isequal(Comment, sNew.Name)
             save(file_fullpath(FileName), 'Comment', '-append');
@@ -96,17 +96,17 @@ if isempty(iItem)
         end
     end
     
-    % Update database
-    db_set(sqlConn, 'FunctionalFile', 'insert', sNew);
+    % Insert in database
+    db_set(sqlConn, 'FunctionalFile', sNew);
 else
     % Delete replaced file
-    sOld = db_get(sqlConn, 'FunctionalFile', iItem, 'FileName');
-    if ~isempty(sOld)
-        file_delete(bst_fullfile(ProtocolInfo.STUDIES, sOld.FileName), 1);
+    sFuncFileOld = db_get(sqlConn, 'FunctionalFile', iItem, 'FileName');
+    if ~isempty(sFuncFileOld)
+        file_delete(bst_fullfile(ProtocolInfo.STUDIES, sFuncFileOld.FileName), 1);
     end
     
     % Update database
-    db_set(sqlConn, 'FunctionalFile', 'update', sNew, struct('Id', iItem));
+    db_set(sqlConn, 'FunctionalFile', sNew, iItem);
 end
 sql_close(sqlConn);
 

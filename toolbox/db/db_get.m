@@ -19,26 +19,33 @@ function varargout = db_get(varargin)
 %    - db_get('SubjectFromFunctionalFile', FileId)        : Find Subject for FunctionalFile with FileID 
 %    - db_get('SubjectFromFunctionalFile', FileName)      : Find Subject for FunctionalFile with FileID 
 %
-% ====== STUDIES =======================================================================
-%    - db_get('StudiesFromSubject', SubjectID, 'intra_subject', 'default_study') : Find Studies for Subject with SubjectID (with intra_subject and default_study)
-%    - db_get('StudiesFromSubject', SubjectIDs)  : Find Studies for Subject with SubjectID (w/o intra_subject and default_study)
-%    - db_get('StudiesFromSubject', SubjectName) : Find Studies for Subject with SubjectName (w/o intra_subject and default_study)
-%    - db_get('DefaultStudy', iSubject)
-%    - db_get('Study', StudyID) : Find Study by ID
-%    - db_get('Studies', Fields) : Get all Studies in current protocol
-%    - db_get('Studies')         : Get all Studies in current protocol
-%
-% ====== ANATOMY AND FUNCTIONAL FILES ==================================================
+% ====== ANATOMY FILES =================================================================
 %    - db_get('FilesWithSubject')  :                        :
-%    - db_get('FilesWithStudy')    :                       :
 %    - db_get('AnatomyFile', FileIDs,   Fields) : Find anatomy file(s) by ID(s) 
 %    - db_get('AnatomyFile', FileNames, Fields) : Find anatomy file(s) by FileName(s)
 %    - db_get('AnatomyFile', CondQuery, Fields) : Find anatomy file(s) with a Query
-%    - db_get('FunctionalFile', FileIDs,   Fields) : Find functional file(s) by ID(s) 
-%    - db_get('FunctionalFile', FileNames, Fields) : Find functional file(s) by FileName(s)
-%    - db_get('FunctionalFile', CondQuery, Fields) : Find functional file(s) with a Query
-%    - db_get('ChannelFromStudy', StudyID) : Find current Channel for Study with StudyID  
 %
+% ====== STUDIES =======================================================================
+%    - db_get('StudiesFromSubject', SubjectID,   Fields, 'intra_subject', 'default_study') : Find Studies for Subject with SubjectID (with intra_subject and default_study)
+%    - db_get('StudiesFromSubject', SubjectID,   Fields) : Find Studies for Subject with SubjectID (w/o intra_subject and default_study)
+%    - db_get('StudiesFromSubject', SubjectName, Fields) : Find Studies for Subject with SubjectName (w/o intra_subject and default_study)
+%    - db_get('DefaultStudy', iSubject, Fields)
+%    - db_get('Study', StudyIDs,         Fields) : Get study(s) by ID(s)
+%    - db_get('Study', StudyFileNames,   Fields) : Get study(s) by FileName(s)
+%    - db_get('Study', CondQuery,        Fields) : Get study(s) with a Query
+%    - db_get('Study', '@inter',         Fields) : Get @inter study
+%    - db_get('Study', '@default_study', Fields) : Get @default_study study
+%    - db_get('Study');                          : Get current subject in current protocol
+%    - db_get('Studies')             : Get all studies in current protocol, exclude @inter and global @default_study
+%    - db_get('Studies', 0, Fields)  : Get all studies in current protocol, exclude @inter and global @default_study
+%    - db_get('Studies', 1, Fields)  : Get all studies in current protocol, include @inter and global @default_study
+%
+% ====== FUNCTIONAL FILES ==============================================================
+%    - db_get('FilesWithStudy', StudyID, FunctionalFileType, Fields) Get all functional files for study with ID
+%    - db_get('FunctionalFile', FileIDs,   Fields) : Get functional file(s) by ID(s) 
+%    - db_get('FunctionalFile', FileNames, Fields) : Get functional file(s) by FileName(s)
+%    - db_get('FunctionalFile', CondQuery, Fields) : Get functional file(s) with a Query
+%    - db_get('ChannelFromStudy', StudyID) : Find current Channel for Study with StudyID  
 %
 % SEE ALSO db_set
 %
@@ -207,129 +214,44 @@ switch contextName
         end
         varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', [], addQuery);
 
+
 %% ==== SUBJECTS COUNT ====
     % nSubjects = db_get('SubjectCount')
     case 'SubjectCount'
         varargout{1} = sql_query(sqlConn, 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
-        
+
+
 %% ==== FILES WITH SUBJECT ====
     % sAnatomyFiles = db_get('FilesWithSubject', SubjectID, AnatomyFileType, Fields)
+    %               = db_get('FilesWithSubject', SubjectID, AnatomyFileType)
+    %               = db_get('FilesWithSubject', SubjectID)
     case 'FilesWithSubject'
         condQuery.Subject = args{1};
+        fields = '*';
         if length(args) > 1 
             condQuery.Type = lower(args{2});
             if length(args) > 2
                 fields = args{3};
-            else
-                fields = '*';
             end
         end
         varargout{1} = db_get(sqlConn, 'AnatomyFile', condQuery, fields);
 
 
 %% ==== FILES WITH STUDY ====
-    % sFiles = db_get('FilesWithStudy', FileType (e.g. Data), StudyID)
+    % sFunctionalFiles = db_get('FilesWithStudy', StudyID, FunctionalFileType, Fields)
+    %                  = db_get('FilesWithStudy', StudyID, FunctionalFileType)
+    %                  = db_get('FilesWithStudy', StudyID)
     case 'FilesWithStudy'
-        % Special case: sStudy = db_get('FilesWithStudy', sStudy)
-        % This sets the functional file fields in sStudy (e.g. Data)
-        if length(args) == 1
-            sStudy = args{1};
-            iStudy = sStudy.Id;
-            types = {'Channel', 'Data', 'HeadModel', 'Result', 'Stat', ...
-                'Image', 'NoiseCov', 'Dipoles', 'Timefreq', 'Matrix'};
-
-            for iType = 1:length(types)
-                sStudy.(types{iType}) = repmat(db_template(types{iType}), 0);
-            end
-        elseif length(args) > 1
-            types  = {lower(args{1})};
-            iStudy = args{2};
-            sStudy = [];
-            sAnatFiles = repmat(db_template(types{1}),0);
-        else
-            error('Invalid call.');
-        end
-
-        if length(args) > 2
-            cond = args{3};
-        else
-            cond = struct();
-        end
-        cond.Study = iStudy;
-        extraQry = 'ORDER BY Id';
-        if isempty(sStudy)
-            % Noise and data covariance used to be merged
-            if strcmpi(types{1}, 'noisecov')
-                extraQry = ['AND Type IN ("noisecov", "ndatacov") ' extraQry];
-            else
-                cond.Type = types{1};
+        condQuery.Study = args{1};
+        fields = '*';
+        if length(args) > 1
+            condQuery.Type = lower(args{2});
+            if length(args) > 2
+                fields = args{3};
             end
         end
+        varargout{1} = db_get(sqlConn, 'FunctionalFile', condQuery, fields);
 
-        results = sql_query(sqlConn, 'select', 'functionalfile', '*', cond, extraQry);
-
-        for iFile = 1:length(results)
-            type = results(iFile).Type;
-            if ~isempty(sStudy)
-                if strcmpi(type, 'ndatacov')
-                    iType = find(strcmpi(types, 'noisecov'), 1);
-                else
-                    iType = find(strcmpi(types, type), 1);
-                end
-                
-                if isempty(iType)
-                    continue;
-                end
-            end
-
-            sFile = getFunctionalFileStruct(type, results(iFile));
-
-            if ~isempty(sStudy)
-                % Special case to make sure noise and data covariances are
-                % in the expected order (1. noise, 2. data)
-                if strcmpi(type, 'noisecov')
-                    if isempty(sStudy.NoiseCov)
-                        sStudy.NoiseCov = sFile;
-                    else
-                        sStudy.NoiseCov(1) = sFile;
-                    end
-                elseif strcmpi(type, 'ndatacov')
-                    if isempty(sStudy.NoiseCov)
-                        sStudy.NoiseCov = repmat(db_template('NoiseCov'),1,2);
-                    end
-                    sStudy.NoiseCov(2) = sFile;
-                else
-                    if isempty(sStudy.(types{iType}))
-                        sStudy.(types{iType}) = sFile;
-                    else
-                        sStudy.(types{iType})(end + 1) = sFile;
-                    end
-                end
-            else
-                % Special case to make sure noise and data covariances are
-                % in the expected order (1. noise, 2. data)
-                if strcmpi(type, 'noisecov')
-                    if isempty(sAnatFiles)
-                        sAnatFiles = sFile;
-                    else
-                        sAnatFiles(1) = sFile;
-                    end
-                elseif strcmpi(type, 'ndatacov')
-                    if isempty(sAnatFiles)
-                        sAnatFiles = repmat(db_template('NoiseCov'),1,2);
-                    end
-                    sAnatFiles(2) = sFile;
-                else
-                    sAnatFiles(end + 1) = sFile;
-                end
-            end
-        end
-
-        if ~isempty(sStudy)
-            varargout{1} = sStudy;
-        else
-            varargout{1} = sAnatFiles;
-        end
 
 %% ==== ANATOMY FILE ====
     % sAnatomyFiles = db_get('AnatomyFile', FileIDs,   Fields)
@@ -395,7 +317,7 @@ switch contextName
           
         
 %% ==== FUNCTIONAL FILE ====
-    % [sFiles, sItems] = db_get('FunctionalFile', FileIDs,   Fields)
+    % sFunctionalFiles = db_get('FunctionalFile', FileIDs,   Fields)
     %                  = db_get('FunctionalFile', FileNames, Fields)
     %                  = db_get('FunctionalFile', CondQuery, Fields)
     case 'FunctionalFile'
@@ -403,6 +325,7 @@ switch contextName
         iFiles = args{1};
         fields = '*';                              
         templateStruct = db_template('FunctionalFile');
+        resultStruct = templateStruct;
 
         if ischar(iFiles)
             iFiles = {iFiles};
@@ -410,17 +333,24 @@ switch contextName
             condQuery = args{1};           
         end
 
+        % Parse Fields parameter
         if length(args) > 1
             fields = args{2};
-            if ischar(fields)
-                fields = {fields};
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
+                % Verify requested fields
+                if ~all(isfield(templateStruct, fields))
+                    error('Invalid Fields requested in db_get()');
+                else
+                    resultStruct = [];
+                    for i = 1 : length(fields)
+                        resultStruct.(fields{i}) = templateStruct.(fields{i});
+                    end
+                end
             end
-            for i = 1 : length(fields)
-                resultStruct.(fields{i}) = templateStruct.(fields{i});
-            end
-        else
-            resultStruct = templateStruct;
-        end
+        end         
 
         % Input is FileIDs and FileNames
         if ~isstruct(iFiles)
@@ -446,24 +376,14 @@ switch contextName
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery(1));
         end
-        sItems = [];
-        
-        % If output expected, all fields requested, and all sFiles are same Type     
-        if nargout > 1 && isequal(fields, '*') && length(unique({sFiles(:).Type})) == 1
-            nFiles = length(sFiles);
-            sItems = repmat(db_template(sFiles(1).Type), 1, nFiles);
-            for i = 1 : nFiles
-                sItems(i) = getFunctionalFileStruct(sFiles(i).Type, sFiles(i));
-            end
-        end        
-
         varargout{1} = sFiles;
-        varargout{2} = sItems;
+
+
 %% ==== SUBJECT FROM STUDY ====
     % iSubject = db_get('SubjectFromStudy', StudyID)
     case 'SubjectFromStudy'
         iStudy = args{1};
-        sStudy = sql_query(sqlConn, 'select', 'Study', 'Subject', struct('Id', iStudy));
+        sStudy = db_get(sqlConn, 'Study', iStudy, 'Subject');
 
         if ~isempty(sStudy)
             iSubject = sStudy.Subject;
@@ -473,6 +393,7 @@ switch contextName
 
         varargout{1} = iSubject;
 
+
 %% ==== CHANNEL FROM STUDY ====
     % iFile = db_get('ChannelFromStudy', StudyID)
     case 'ChannelFromStudy'
@@ -480,8 +401,7 @@ switch contextName
         varargout{1} = [];
         varargout{2} = [];
         
-        sStudy = sql_query(sqlConn, 'select', 'Study', ...
-            {'Id', 'Subject', 'Name', 'iChannel'}, struct('Id', iStudy));
+        sStudy = db_get(sqlConn, 'Study', iStudy, {'Id', 'Subject', 'Name', 'iChannel'});
         if ~isempty(sStudy)
             iChanStudy = iStudy;
             % === Analysis-Inter node ===
@@ -489,9 +409,7 @@ switch contextName
                 % If no channel file is defined in 'Analysis-intra' node: look in 
                 if isempty(sStudy.iChannel)
                     % Get global default study
-                    sStudy = sql_query(sqlConn, 'select', 'Study', ...
-                        {'Id', 'Subject', 'iChannel'}, ...
-                        struct('Subject', 0, 'Name', '@default_study'));
+                    sStudy = db_get(sqlConn, 'DefaultStudy', 0, {'Id', 'Subject', 'iChannel'});
                     iChanStudy = sStudy.Id;
                 end
             % === All other nodes ===
@@ -500,8 +418,7 @@ switch contextName
                 sSubject = db_get(sqlConn, 'Subject', sStudy.Subject, 'UseDefaultChannel');
                 % Subject uses default channel/headmodel
                 if ~isempty(sSubject) && (sSubject.UseDefaultChannel ~= 0)
-                    sStudy = sql_query(sqlConn, 'select', 'Study', {'Id', 'iChannel'}, ...
-                        struct('Subject', sStudy.Subject, 'Name', '@default_study'));
+                    sStudy = db_get(sqlConn, 'DefaultStudy', sStudy.Subject, {'Id', 'iChannel'});
                     if ~isempty(sStudy)
                         iChanStudy = sStudy.Id;
                     end
@@ -511,9 +428,9 @@ switch contextName
             if ~isempty(sStudy)
                 % If no channel selected, find first channel in study
                 if isempty(sStudy.iChannel)
-                    sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', sStudy.Id, 'Type', 'channel'), 'Id');
-                    if ~isempty(sFile)
-                        sStudy.iChannel = sFile(1).Id;
+                    sFuncFile = db_get(sqlConn, 'FunctionalFile', struct('Study', sStudy.Id, 'Type', 'channel'), 'Id');
+                    if ~isempty(sFuncFile)
+                        sStudy.iChannel = sFuncFile(1).Id;
                     end
                 end
 
@@ -523,13 +440,23 @@ switch contextName
                 end
             end
         end
-    
+
+
 %% ==== STUDIES FROM SUBJECT ====        
-    % iStudies = db_get('StudiesFromSubject', iSubject)                                   % Exclude 'intra_subject' and 'default_study')
-    %          = db_get('StudiesFromSubject', iSubject, 'intra_subject', 'default_study') % Include 'intra_subject' and 'default_study')
-    %          = db_get('StudiesFromSubject', SubjectName)
+    % sStudies = db_get('StudiesFromSubject', iSubject,    Fields)                                   % Exclude 'intra_subject' and 'default_study')
+    %          = db_get('StudiesFromSubject', iSubject,    Fileds, 'intra_subject', 'default_study') % Include 'intra_subject' and 'default_study')
+    %          = db_get('StudiesFromSubject', SubjectName, Fields)
     case 'StudiesFromSubject'
         iSubject = args{1};
+        fields = '*';
+        if length(args) >= 2 && ~strcmp('intra_subject', args{2}) && ~strcmp('default_study', args{2})
+            fields = args{2};
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
+            end
+        end
         
         addQuery = [];
         if length(args) < 2 || ~ismember('intra_subject', args(2:end))
@@ -551,19 +478,24 @@ switch contextName
             result.close();
             varargout{1} = iStudies;
         else
-            sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('Subject', iSubject), addQuery);
+            sStudy = sql_query(sqlConn, 'select', 'Study', fields, struct('Subject', iSubject), addQuery);
             if isempty(sStudy)
                 varargout{1} = [];
             else
-                varargout{1} = [sStudy.Id];
+                varargout{1} = sStudy;
             end
         end
 
+
 %% ==== DEFAULT STUDY ====       
-    % iStudy = db_get('DefaultStudy', iSubject)
+    % sStudy = db_get('DefaultStudy', iSubject, Fields)
     case 'DefaultStudy'
+        fields = '*';
         iSubject = args{1};
         varargout{1} = [];
+        if length(args) > 1
+            fields = args{2};
+        end
         defaultStudy = bst_get('DirDefaultStudy');
         
         % === DEFAULT SUBJECT ===
@@ -583,28 +515,116 @@ switch contextName
             end
         end
         
-        sStudy = sql_query(sqlConn, 'select', 'Study', 'Id', struct('Subject', iSubject, 'Name', defaultStudy));
+        sStudy = db_get(sqlConn, 'Study', struct('Subject', iSubject, 'Name', defaultStudy), fields);
         if ~isempty(sStudy)
-            varargout{1} = sStudy.Id;
+            varargout{1} = sStudy;
         end
+
+
 %% ==== STUDY ====   
-    % sStudy = db_get('Study', StudyID)
+    % sStudy = db_get('Study', StudyIDs,         Fields);
+    %        = db_get('Study', StudyFileNames,   Fields);
+    %        = db_get('Study', CondQuery,        Fields);
+    %        = db_get('Study', '@inter',         Fields);
+    %        = db_get('Study', '@default_study', Fields);
+    %        = db_get('Study');
     case 'Study'
-        iStudy = args{1};
-        varargout{1} = sql_query(sqlConn, 'select', 'Study', '*', struct('Id', iStudy));
+        % Default parameters
+        fields = '*';
+        templateStruct = db_template('Study');
+        resultStruct = templateStruct;
+
+        % Parse first parameter
+        if isempty(args)
+           ProtocolInfo = bst_get('ProtocolInfo');
+           iStudies = ProtocolInfo.iStudy;
+        else
+           iStudies = args{1};
+        end
+        % StudyFileNames and CondQuery cases
+        if ischar(iStudies)
+            if strcmp(iStudies, '@inter')
+                iStudies = struct('Name', iStudies);
+                condQuery = iStudies;
+            elseif strcmp(iStudies, '@default_study')
+                sSubject = db_get(sqlConn, 'Subject', '@default_subject', 'Id');
+                iStudies = struct('Name', iStudies, 'Subject', sSubject.Id);
+                condQuery = iStudies;
+            else
+                iStudies = {iStudies};
+            end
+        elseif isstruct(iStudies)
+            condQuery = args{1};
+        end
+
+        % Parse Fields parameter
+        if length(args) > 1
+            fields = args{2};
+            if ~strcmp(fields, '*')
+                if ischar(fields)
+                    fields = {fields};
+                end
+                % Verify requested fields
+                if ~all(isfield(templateStruct, fields))
+                    error('Invalid Fields requested in db_get()');
+                else
+                    resultStruct = [];
+                    for i = 1 : length(fields)
+                        resultStruct.(fields{i}) = templateStruct.(fields{i});
+                    end
+                end
+            end
+        end
+
+        % Input is StudyIDs or StudyFileNames
+        if ~isstruct(iStudies)
+            sStudies = repmat(resultStruct, 0);
+            for i = 1:length(iStudies)
+                if iscell(iStudies)
+                    condQuery.FileName = iStudies{i};
+                else
+                    condQuery.Id = iStudies(i);
+                end
+                result = sql_query(sqlConn, 'select', 'study', fields, condQuery);
+                if isempty(result)
+                    if isfield(condQuery, 'FileName')
+                        entryStr = ['FileName "', iStudies{i}, '"'];
+                    else
+                        entryStr = ['Id "', num2str(iStudies(i)), '"'];
+                    end
+                    warning(['Study with ', entryStr, ' was not found in database.']);
+                else
+                    sStudies(i) = result;
+                end
+            end
+        else % Input is struct query
+            sStudies = sql_query(sqlConn, 'select', 'study', fields, condQuery(1));
+        end
+        varargout{1} = sStudies;
+
 
 %% ==== STUDIES ====              
-    % sStudy = db_get('Studies', Fields)
-    %        = db_get('Studies')
+    % sStudy = db_get('Studies')             % Exclude @inter and global @default_study
+    %        = db_get('Studies', 0, Fields)  % Exclude @inter and global @default_study
+    %        = db_get('Studies', 1, Fields)  % Include @inter and global @default_study
     case 'Studies'
+        includeGlobalStudies  = [];
+        fields = '*';
+        % Parse arguments
         if length(args) > 0
-            fields = args{1};
-        else
-            fields = '*';
+            includeGlobalStudies = args{1};
+            if length(args) > 1
+                fields = args{2};
+            end
+        end
+        % Exclude global studies if indicated
+        addQuery = '';
+        if isempty(includeGlobalStudies) || (includeGlobalStudies == 0)
+            addQuery = 'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")';
         end
         
-        varargout{1} = sql_query(sqlConn, 'select', 'Study', fields, [], ...
-            'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")');
+        varargout{1} = sql_query(sqlConn, 'select', 'Study', fields, [], addQuery);
+
 
 %% ==== SUBJECT FROM FUNCTIONAL FILE ====              
     % iSubject = db_get('SubjectFromFunctionalFile', FileId)
@@ -624,7 +644,8 @@ switch contextName
             varargout{1} = [];
         end
         result.close();
-        
+
+
 %% ==== ERROR ====      
     otherwise
         error('Invalid context : "%s"', contextName);
@@ -639,72 +660,4 @@ end
 if handleConn
     sql_close(sqlConn);
 end
-end
-
-%% ==== LOCAL HELPERS ====
-
-% Get a specific functional file db_template structure from the generic
-% db_template('FunctionalFile') structure
-function sFile = getFunctionalFileStruct(type, funcFile)
-    sFile = db_template(type);
-    if isempty(funcFile)
-        return;
-    end
-    sFile.FileName = funcFile.FileName;
-    sFile.Comment  = funcFile.Name;
-
-    % Extra fields
-    switch lower(type)
-        case 'data'
-            sFile.DataType = funcFile.SubType;
-            sFile.BadTrial = funcFile.ExtraNum;
-
-        case 'channel'
-            sFile.nbChannels = funcFile.ExtraNum;
-            sFile.Modalities = str_split(funcFile.ExtraStr1, ',');
-            sFile.DisplayableSensorTypes = str_split(funcFile.ExtraStr2, ',');
-
-        case {'result', 'results'}
-            sFile.DataFile      = funcFile.ExtraStr1;
-            sFile.isLink        = funcFile.ExtraNum;
-            sFile.HeadModelType = funcFile.ExtraStr2;
-
-        case 'timefreq'
-            sFile.DataFile = funcFile.ExtraStr1;
-            sFile.DataType = funcFile.ExtraStr2;
-
-        case 'stat'
-            sFile.Type       = funcFile.SubType;
-            sFile.pThreshold = funcFile.ExtraStr1;
-            sFile.DataFile   = funcFile.ExtraStr2;
-
-        case 'headmodel'
-            sFile.HeadModelType = funcFile.SubType;
-            modalities = str_split(funcFile.ExtraStr1, ',');
-            methods    = str_split(funcFile.ExtraStr2, ',');
-
-            for iMod = 1:length(modalities)
-                switch upper(modalities{iMod})
-                    case 'MEG'
-                        sFile.MEGMethod = methods{iMod};
-                    case 'EEG'
-                        sFile.EEGMethod = methods{iMod};
-                    case 'ECOG'
-                        sFile.ECOGMethod = methods{iMod};
-                    case 'SEEG'
-                        sFile.SEEGMethod = methods{iMod};
-                    otherwise
-                        error('Unsupported modality for head model method.');
-                end
-            end
-
-        case 'dipoles'
-            sFile.DataFile = funcFile.ExtraStr1;
-
-        case {'matrix', 'noisecov', 'ndatacov', 'image'}
-            % Nothing to add
-
-        otherwise
-            error('Unsupported functional file type.');
-    end
 end

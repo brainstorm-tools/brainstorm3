@@ -121,7 +121,7 @@ for iSubject = iSubjectsList
     sNewStudy.DateOfStudy       = StudyMat.DateOfStudy;
     sNewStudy.Condition         = ConditionName;
     % Add study to Brainstorm database
-    iNewStudy = sql_query(sqlConn, 'insert', 'Study', sNewStudy);
+    iNewStudy = db_set(sqlConn, 'Study', sNewStudy);
     % Add to returned indices list
     iStudies = [iStudies iNewStudy];
     isModified = 1;

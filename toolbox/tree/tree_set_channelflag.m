@@ -55,9 +55,9 @@ else
         error('Invalid call.');
     end
     % Get studies for files in input
-    sFiles = db_get('FunctionalFile', bstNodes, {'Id', 'Study'});
-    iStudies = [sFiles(:).Study];
-    iFiles   = [sFiles(:).Id];
+    sFuncFiles = db_get('FunctionalFile', bstNodes, {'Id', 'Study'});
+    iStudies = [sFuncFiles(:).Study];
+    iFiles   = [sFuncFiles(:).Id];
 end
 
 % No files found : return
@@ -117,11 +117,11 @@ for i = 1:length(iStudies)
     % Get data file
     iStudy = iStudies(i);
     iFile  = iFiles(i);
-    sFile = db_get(sqlConn, 'FunctionalFile', iFile, {'Type', 'FileName', 'Name', 'SubType'});
-    if isempty(sFile)
+    sFuncFile = db_get(sqlConn, 'FunctionalFile', iFile, {'Type', 'FileName', 'Name', 'SubType'});
+    if isempty(sFuncFile)
         continue;
     end
-    isRaw = strcmpi(sFile.Type, 'data') && strcmpi(sFile.SubType, 'raw');
+    isRaw = strcmpi(sFuncFile.Type, 'data') && strcmpi(sFuncFile.SubType, 'raw');
     if isRaw && isDetectFlat
         if isFirstError
             bst_error('This process can only be applied on imported recordings.', 'Detect flat channels', 0);
@@ -129,7 +129,7 @@ for i = 1:length(iStudies)
         end
         continue;
     end
-    DataFile = sFile.FileName;
+    DataFile = sFuncFile.FileName;
     DataFileFull = file_fullpath(DataFile);
     
     % Get channel file
@@ -179,7 +179,7 @@ for i = 1:length(iStudies)
     warning on MATLAB:load:variableNotFound
     
     % Build information string
-    strCond = [' - ' bst_fileparts(sFile.FileName) '/' sFile.Name ': '];
+    strCond = [' - ' bst_fileparts(sFuncFile.FileName) '/' sFuncFile.Name ': '];
     % Find bad channels
     iBad = find(DataMat.ChannelFlag == -1);
     % Add bad channels to string

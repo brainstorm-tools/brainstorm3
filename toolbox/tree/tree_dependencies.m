@@ -177,7 +177,8 @@ try
                 % Check for bad trials
                 if ~GetBadTrials
                     % Get study
-                    [~, sData] = db_get('FunctionalFile', nodeFileNames{iNode});
+                    sFuncFile = db_get('FunctionalFile', nodeFileNames{iNode});
+                    sData = db_convert_functionalfile(sFuncFile);
                     % Ignore bad trials
                     if sData.BadTrial
                         continue;
@@ -544,12 +545,12 @@ if ~isempty(iTargetStudies)
                 if ~GetBadTrials
                     qryCond.ExtraNum = 0;
                 end
-                sFiles = db_get('FunctionalFile', qryCond, 'Id');
+                sFuncFiles = db_get('FunctionalFile', qryCond, 'Id');
                 
                 % Add data files to list
-                if ~isempty(sFiles)
-                    iDepStudies = [iDepStudies, repmat(iStudies(i), 1, length(sFiles))];
-                    iDepItems   = [iDepItems,   [sFiles.Id]];
+                if ~isempty(sFuncFiles)
+                    iDepStudies = [iDepStudies, repmat(iStudies(i), 1, length(sFuncFiles))];
+                    iDepItems   = [iDepItems,   [sFuncFiles.Id]];
                 end
 
             case 'results'

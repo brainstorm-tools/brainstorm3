@@ -12,17 +12,26 @@ function varargout = db_set(varargin)
 % ====== SUBJECTS ======================================================================
 %
 %
-% ====== STUDIES =======================================================================
 %
-%
-% ====== ANATOMY AND FUNCTIONAL FILES ==================================================
+% ====== ANATOMY FILES =================================================================
 %    - db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
-%    - db_set('FilesWithStudy', FileType, db_template('data/timefreq/etc'), StudyID)
-%    - db_set('FilesWithStudy', sStudy, [selectedChannel/HeadModel])
-%    - db_set('FunctionalFile', 'insert', db_template('FunctionalFile'))
-%    - db_set('FunctionalFile', 'update', db_template('FunctionalFile'), struct('Id', 1))
-%    - db_set('ParentCount', ParentFile, modifier, count)    
 %
+% ====== STUDIES =======================================================================
+%    - db_set('Study', 'Delete')            : Delete all Studies
+%    - db_set('Study', 'Delete', StudyId)   : Delete Study by ID
+%    - db_set('Study', 'Delete', CondQuery) : Delete Study with Query
+%    - db_set('Study', Study)               : Insert Study
+%    - db_set('Study', Study, StudyId)      : Update Study by ID
+%
+% ====== FUNCTIONAL FILES ==============================================================
+%    - db_set('FilesWithStudy', 'Delete' , StudyID)        : Delete All FunctionalFiles from StudyID
+%    - db_set('FilesWithStudy', sFunctionalFiles, StudyID) : Insert FunctionalFiles with StudyID
+%    - db_set('FunctionalFile', 'Delete')                         : Delete all FunctionalFiles
+%    - db_set('FunctionalFile', 'Delete', FunctionalFileId)       : Delete FunctionalFile by ID 
+%    - db_set('FunctionalFile', 'Delete', CondQuery)              : Delete FunctionalFile with Query
+%    - db_set('FunctionalFile', FunctionalFile)                   : Insert FunctionalFile
+%    - db_set('FunctionalFile', FunctionalFile, FunctionalFileId) : Update FunctionalFile by ID
+%    - db_set('ParentCount', ParentFile, modifier, count)    
 %
 % SEE ALSO db_get
 %
@@ -236,207 +245,206 @@ switch contextName
             end
         end
 
-%% ==== FILES WITH STUDY ====
-    % db_set('FilesWithStudy', FileType, db_template('data/timefreq/etc'), StudyID)
-    % db_set('FilesWithStudy', sStudy, [selectedChannel/HeadModel])
-    case 'FilesWithStudy'
-        selFile = [];
-        % Special case: db_set('FilesWithStudy', sStudy)
-        if length(args) < 3
-            sStudy = args{1};
-            iStudy = sStudy.Id;
-            % Note: Order important here, as potential parent files (Data, Matrix, Result)
-            % should be created before potential child files (Result, Timefreq, dipoles).
-            types = {'Channel', 'HeadModel', 'Data', 'Matrix', 'Result', ...
-                'Stat', 'Image', 'NoiseCov', 'Dipoles', 'Timefreq'};
-            % Create structure to save inserted IDs of potential parent files.
-            fileIds = struct('filename', [], 'id', [], 'numChildren', 0);
-            parentFiles = struct('data', repmat(fileIds, 0), ...
-                'matrix', repmat(fileIds, 0), ...
-                'result', repmat(fileIds, 0));
-            
-            % Return IDs of selected files if requested
-            if length(args) > 1
-                if iscell(args{2})
-                    selFile = args{2};
-                else
-                    selFile = args(2);
-                end
-                varargout{1} = cell(1, length(selFile));
-            end
-        else
-            types  = {lower(args{1})};
-            sFiles = args{2};
-            iStudy = args{3};
-            sStudy = [];
+
+%% ==== STUDY ====
+    % [Success]          db_set('Study', 'Delete')
+    % [Success]          db_set('Study', 'Delete', StudyId)
+    % [Success]          db_set('Study', 'Delete', CondQuery)
+    % [StudyId, Study] = db_set('Study', Study)
+    % [StudyId, Study] = db_set('Study', Study, StudyId)
+    case 'Study'
+        % Default parameters
+        iStudy = [];
+        varargout{1} = [];
+
+        if length(args) < 1
+            error('Error in number of arguments')
         end
 
-        for iType = 1:length(types)
-            if ~isempty(sStudy)
-                sFiles = sStudy.(types{iType});
-                type = lower(types{iType});
+        sStudy = args{1};
+        if length(args) > 1
+            iStudy = args{2};
+        end
+        % Delete
+        if ischar(sStudy) && strcmpi(sStudy, 'delete')
+            if isempty(iStudy)
+                % Delete all rows in Study table
+                delResult = sql_query(sqlConn, 'delete', 'study');
             else
-                type = types{iType};
+                if isstruct(iStudy)
+                    % Delete using the CondQuery
+                    delResult = sql_query(sqlConn, 'delete', 'study', iStudy);
+                elseif isnumeric(iStudy)
+                    % Delete using iStudy
+                    delResult = sql_query(sqlConn, 'delete', 'study', struct('Id', iStudy));
+                end
             end
-            
-            % Group trials
-            if ismember(type, {'data', 'matrix'})
-                dataGroups = repmat(struct('name', [], 'parent', [], ...
-                    'files', repmat(db_template('FunctionalFile'),0)), 0);
+            if delResult > 0
+                varargout{1} = 1;
             end
 
-            for iFile = 1:length(sFiles)
-                functionalFile = db_template('FunctionalFile');
-                functionalFile.Study = iStudy;
-                functionalFile.Type = type;
-                functionalFile.FileName = sFiles(iFile).FileName;
-                functionalFile.Name = sFiles(iFile).Comment;
-                
-                % Noise and data covariances used to share their type, with
-                % 1st one being noise and second one being data.
-                if strcmpi(type, 'NoiseCov')
-                    if iFile == 1
-                        functionalFile.Type = 'noisecov';
-                    else
-                        functionalFile.Type = 'ndatacov';
+        % Insert or Update
+        elseif isstruct(sStudy)
+            if isempty(iStudy)
+                if isempty(sStudy.Subject)
+                    % Get ID of parent subject
+                    sSubject = db_get(sqlConn, 'Subject', sStudy.BrainStormSubject, 'Id');
+                    sStudy.Subject = sSubject.Id;
+                end
+                % Insert Study row
+                sStudy.Id = [];
+                iStudy = sql_query(sqlConn, 'insert', 'study', sStudy);
+                varargout{1} = iStudy;
+            else
+                % Update Study row
+                if ~isfield(sStudy, 'Id') || isempty(sStudy.Id) || sStudy.Id == iStudy
+                    resUpdate = sql_query(sqlConn, 'update', 'study', sStudy, struct('Id', iStudy));
+                else
+                    error('Cannot update Study, Ids do not match');
+                end
+                if resUpdate>0
+                    varargout{1} = iStudy;
+                end
+            end
+            % If requested, get the inserted or updated row
+            if nargout > 1
+                varargout{2} = db_get(sqlConn, 'study', iStudy);
+            end
+        else
+            % No action
+        end
+
+
+%% ==== FILES WITH STUDY ====
+    % [Success]          = db_set('FilesWithStudy', 'Delete'        , StudyID)
+    % [sFunctionalFiles] = db_set('FilesWithStudy', sFunctionalFiles, StudyID)
+    case 'FilesWithStudy'
+        sFuncFiles = args{1};
+        iStudy = args{2};
+        
+        % Delete all FunctionalFiles with StudyID
+        if ischar(sFuncFiles) && strcmpi(sFuncFiles, 'delete')
+            delResult = sql_query(sqlConn, 'delete', 'functionalfile', struct('Study', iStudy));
+            varargout{1} = 1;
+
+        % Insert FunctionalFiles to StudyID
+        elseif isstruct(sFuncFiles)
+            nFunctionalFiles = length(sFuncFiles);
+            insertedIds = zeros(1, nFunctionalFiles);
+            for ix = 1 : nFunctionalFiles
+                sFuncFiles(ix).Study = iStudy;
+                insertedIds(ix) = db_set(sqlConn, 'FunctionalFile', sFuncFiles(ix));
+            end
+            % If requested get all the inserted FunctionalFiles
+            if nargout > 0
+                varargout{1} = db_get(sqlConn, 'FunctionalFile', insertedIds);
+            end
+        end
+
+        
+%% ==== FUNCTIONAL FILES ====
+    % [Success]                            db_set('FunctionalFile', 'Delete')
+    % [Success]                            db_set('FunctionalFile', 'Delete', FunctionalFileId)
+    % [Success]                            db_set('FunctionalFile', 'Delete', CondQuery)
+    % [FunctionalFileId, FunctionalFile] = db_set('FunctionalFile', FunctionalFile)
+    % [FunctionalFileId, FunctionalFile] = db_set('FunctionalFile', FunctionalFile, FunctionalFileId)
+    case 'FunctionalFile'
+        % Default parameters
+        iFunctionalFile = [];
+        varargout{1} = [];
+
+        if length(args) < 1
+            error('Error in number of arguments')
+        end
+        
+        sFuncFile = args{1};
+        if length(args) > 1
+            iFunctionalFile = args{2};
+        end
+        % Delete
+        if ischar(sFuncFile) && strcmpi(sFuncFile, 'delete')
+            if isempty(iFunctionalFile)
+                % Delete all rows in FunctionalFile table
+                delResult = sql_query(sqlConn, 'delete', 'functionalfile');
+            else
+                if isstruct(iFunctionalFile)
+                    % Delete using the CondQuery
+                    delResult = sql_query(sqlConn, 'delete', 'functionalfile', iFunctionalFile);
+                elseif isnumeric(iFunctionalFile)
+                    % Get Id for parent of FunctionalFile to delete
+                    parent = db_get(sqlConn, 'FunctionalFile', iFunctionalFile, 'ParentFile');
+                    % Delete using iFunctionalFile
+                    delResult = sql_query(sqlConn, 'delete', 'functionalfile', struct('Id', iFunctionalFile));
+                    % Reduce the number of children in parent
+                    if ~isempty(parent) && ~isempty(parent.ParentFile)
+                       db_set(sqlConn, 'ParentCount', parent.ParentFile, '-', 1);
                     end
                 end
+            end
+            if delResult > 0
+                varargout{1} = 1;
+            end
 
-                % Extra fields
-                switch type
-                    case 'data'
-                        functionalFile.SubType  = sFiles(iFile).DataType;
-                        functionalFile.ExtraNum = sFiles(iFile).BadTrial;
+        % Insert or Update
+        elseif isstruct(sFuncFile)
+            % Modify UNIX time
+            sFuncFile.LastModified = bst_get('CurrentUnixTime');
 
-                    case 'channel'
-                        functionalFile.ExtraNum  = sFiles(iFile).nbChannels;
-                        functionalFile.ExtraStr1 = str_join(sFiles(iFile).Modalities, ',');
-                        functionalFile.ExtraStr2 = str_join(sFiles(iFile).DisplayableSensorTypes, ',');
-
-                    case {'result', 'results'}
-                        functionalFile.ExtraStr1  = sFiles(iFile).DataFile;
-                        functionalFile.ExtraNum   = sFiles(iFile).isLink;
-                        functionalFile.ExtraStr2  = sFiles(iFile).HeadModelType;
-                        functionalFile.ParentFile = GetParent('data', sFiles(iFile).DataFile);
-
-                    case 'timefreq'
-                        functionalFile.ExtraStr1  = sFiles(iFile).DataFile;
-                        functionalFile.ExtraStr2  = sFiles(iFile).DataType;
-                        functionalFile.ParentFile = GetParent({'data', 'result', 'matrix'}, sFiles(iFile).DataFile);
-
-                    case 'stat'
-                        functionalFile.SubType   = sFiles(iFile).Type;
-                        functionalFile.ExtraStr1 = sFiles(iFile).pThreshold;
-                        functionalFile.ExtraStr2 = sFiles(iFile).DataFile;
-
-                    case 'headmodel'
-                        % Get list of methods and modalities
-                        allMods = {'MEG', 'EEG', 'ECOG', 'SEEG'};
-                        modalities = {};
-                        methods = {};
-                        for iMod = 1:length(allMods)
-                            field = [allMods{iMod} 'Method'];
-                            if ~isempty(sFiles(iFile).(field))
-                                modalities{end + 1} = allMods{iMod};
-                                methods{end + 1} = sFiles(iFile).(field);
+            % Insert FunctionalFile row
+            if isempty(iFunctionalFile)
+                sFuncFile.Id = [];
+                switch sFuncFile.Type
+                    % If data or matrix, check for datalist and matrixlist
+                    case {'data', 'matrix'}
+                        typeList = [sFuncFile.Type, 'list'];
+                        cleanName = str_remove_parenth(sFuncFile.Name);
+                        list = sql_query(sqlConn, 'select', 'functionalfile', 'Id', ...
+                               struct('Name', cleanName, 'Study', sFuncFile.Study), ...;
+                               [' AND Type == "' typeList '"']);
+                        if ~isempty(list)
+                            sFuncFile.ParentFile = list.Id;
+                        end
+                    % Check for parent files
+                    case {'dipoles', 'result', 'results', 'timefreq'}
+                        if ~isempty(sFuncFile.ExtraStr1) % Parent FileName
+                            % Seach parent in database (ignore datalist and matrixlist functionalfiles)
+                            parent = sql_query(sqlConn, 'select', 'functionalfile', 'Id', ...
+                                     struct('FileName', sFuncFile.ExtraStr1), ...;
+                                     ' AND Type <> "datalist" AND Type <> "matrixlist"');
+                            if ~isempty(parent)
+                                sFuncFile.ParentFile = parent.Id;
                             end
                         end
-
-                        functionalFile.SubType   = sFiles(iFile).HeadModelType;
-                        functionalFile.ExtraStr1 = str_join(modalities, ',');
-                        functionalFile.ExtraStr2 = str_join(methods, ',');
-                        
-                    case 'dipoles'
-                        functionalFile.ExtraStr1  = sFiles(iFile).DataFile;
-                        functionalFile.ParentFile = GetParent({'result', 'data'}, sFiles(iFile).DataFile);
-
-                    case {'matrix', 'noisecov', 'image'}
-                        % Nothing to add
-
+                    % Other types
                     otherwise
-                        error('Unsupported functional file type');
+                        % Do nothing
+                end
+                iFunctionalFile = sql_query(sqlConn, 'insert', 'functionalfile', sFuncFile);
+                varargout{1} = iFunctionalFile;
+                % Increase the number of children in parent or list
+                if ~isempty(sFuncFile.ParentFile) && sFuncFile.ParentFile > 0
+                   db_set(sqlConn, 'ParentCount', sFuncFile.ParentFile, '+', 1);
                 end
 
-                % For data trials, do not insert them right away in the 
-                % database since we need to group in trial groups first
-                if ismember(type, {'data', 'matrix'})
-                    comment = str_remove_parenth(functionalFile.Name);
-                    iPos = find(strcmp(comment, {dataGroups.name}), 1);
-                    if ~isempty(iPos)
-                        dataGroups(iPos).files(end + 1) = functionalFile;
-                    else
-                        dataGroups(end + 1).name = comment;
-                        dataGroups(end).files = functionalFile;
-                    end
+            % Update FunctionalFile row
+            else
+                if ~isfield(sFuncFile, 'Id') || isempty(sFuncFile.Id) || sFuncFile.Id == iFunctionalFile
+                    resUpdate = sql_query(sqlConn, 'update', 'functionalfile', sFuncFile, struct('Id', iFunctionalFile));
                 else
-                    FileId = ModifyFunctionalFile(sqlConn, 'insert', functionalFile);
-                    if ~isempty(selFile)
-                        iSel = find(strcmpi(functionalFile.FileName, selFile));
-                        if ~isempty(iSel)
-                            varargout{1}(iSel) = {FileId};
-                        end
-                    end
-                    
-                    % Save inserted ID if this is a potential parent file
-                    if ~isempty(sStudy) && ismember(type, {'data', 'matrix', 'result', 'results'})
-                        SaveParent(type, functionalFile.FileName, FileId);
-                    end
+                    error('Cannot update FunctionalFile, Ids do not match');
+                end
+                if resUpdate > 0
+                    varargout{1} = iFunctionalFile;
                 end
             end
-            
-            % Create trial groups
-            if ismember(type, {'data', 'matrix'})
-                for iGroup = 1:length(dataGroups)
-                    nFiles = length(dataGroups(iGroup).files);
-                    
-                    if nFiles > 4
-                        % Insert file for group
-                        functionalFile = db_template('FunctionalFile');
-                        functionalFile.Study = iStudy;
-                        functionalFile.Type = [type 'list'];
-                        functionalFile.FileName = dataGroups(iGroup).files(1).FileName;
-                        functionalFile.Name = dataGroups(iGroup).name;
-                        functionalFile.NumChildren = nFiles;
-                        ParentId = ModifyFunctionalFile(sqlConn, 'insert', functionalFile);
-                    else
-                        ParentId = [];
-                    end
-                    
-                    % Insert trials
-                    for iFile = 1:nFiles
-                        dataGroups(iGroup).files(iFile).ParentFile = ParentId;
-                        FileId = ModifyFunctionalFile(sqlConn, 'insert', dataGroups(iGroup).files(iFile));
-                        SaveParent(type, dataGroups(iGroup).files(iFile).FileName, FileId);
-                    end
-                end
+            % If requested, get the inserted or updated row
+            if nargout > 1
+                varargout{2} = db_get(sqlConn, 'FunctionalFile', iFunctionalFile);
             end
-        end
-        
-        % Update children count of parent files
-        fieldTypes = fieldnames(parentFiles);
-        for iField = 1:length(fieldTypes)
-            for iFile = 1:length(parentFiles.(fieldTypes{iField}))
-                if parentFiles.(fieldTypes{iField})(iFile).numChildren > 0
-                    ModifyFunctionalFile(sqlConn, 'update', ...
-                        struct('NumChildren', parentFiles.(fieldTypes{iField})(iFile).numChildren), ...
-                        struct('Id', parentFiles.(fieldTypes{iField})(iFile).id));
-                end
-            end
-        end
-        
-%% ==== FUNCTIONAL FILE ====       
-    % db_set('FunctionalFile', 'insert', db_template('FunctionalFile'))
-    % db_set('FunctionalFile', 'update', db_template('FunctionalFile'), struct('Id', 1))
-    case 'FunctionalFile'
-        queryType = args{1};
-        sFile = args{2};
-        if length(args) > 2
-            updateCondition = args{3};
         else
-            updateCondition = [];
+            % No action
         end
-        
-        varargout{1} = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition);
+
 
 %% ==== PARENT COUNT ====       
     % db_set('ParentCount', ParentFile, modifier, count)
@@ -475,79 +483,5 @@ if handleConn
     sql_close(sqlConn);
 end
 
-%% ==== NESTED HELPERS ====
-
-%
-function SaveParent(type, fileName, id)
-    if strcmp(type, 'results')
-        fieldType = 'result';
-    else
-        fieldType = type;
-    end
-    parentFiles.(fieldType)(end + 1).filename = FileStandard(fileName);
-    parentFiles.(fieldType)(end).id = id;
-    parentFiles.(fieldType)(end).numChildren = 0;
-end
-
-% 
-function FileId = GetParent(types, fileName)
-    FileId = [];
-    if isempty(fileName)
-        return;
-    end
-    if ~iscell(types)
-        types = {types};
-    end
-    
-    fileName = FileStandard(fileName);
-    for iCurType = 1:length(types)
-        if strcmp(types{iCurType}, 'results')
-            fieldType = 'result';
-        else
-            fieldType = types{iCurType};
-        end
-        
-        iFound = find(strcmp(fileName, {parentFiles.(fieldType).filename}), 1);
-        if ~isempty(iFound)
-            FileId = parentFiles.(fieldType)(iFound).id;
-            parentFiles.(fieldType)(iFound).numChildren = parentFiles.(fieldType)(iFound).numChildren + 1;
-            return;
-        end
-    end
-end
-end
-
-%% ==== LOCAL HELPERS ====
-
-% Concatenate strings using delimiter
-function outStr = str_join(cellStr, delimiter)
-    outStr = '';
-    for iCell = 1:length(cellStr)
-        if iCell > 1
-            outStr = [outStr delimiter];
-        end
-        outStr = [outStr cellStr{iCell}];
-    end
-end
-
-% Format FileName
-function FileName = FileStandard(FileName)
-    % Replace '\' with '/'
-    FileName(FileName == '\') = '/';
-    % Remove first slash (filenames all relative)
-    if (FileName(1) == '/')
-        FileName = FileName(2:end);
-    end
-end
-
-% Set UNIX time when Insert or Update a FunctionalFile
-function res = ModifyFunctionalFile(sqlConn, queryType, sFile, updateCondition)
-    if nargin < 4
-        updateCondition = [];
-    end
-
-    sFile.LastModified = bst_get('CurrentUnixTime');
-    
-    res = sql_query(sqlConn, queryType, 'functionalfile', sFile, updateCondition);
 end
 

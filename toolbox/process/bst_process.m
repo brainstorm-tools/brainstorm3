@@ -1586,7 +1586,8 @@ function sInputs = GetInputStruct(FileNames)
         [sInputs(iGroupFiles).SubjectFile] = deal(file_win2unix(SubjectFile));
         % Get channel file
         if iChannel ~= 0
-            [~, sChannel] = db_get(sqlConn, 'FunctionalFile', iChannel);
+            sFuncFile = db_get(sqlConn, 'FunctionalFile', iChannel);
+            sChannel = db_convert_functionalfile(sFuncFile);
             [sInputs(iGroupFiles).ChannelFile]  = deal(file_win2unix(sChannel.FileName));
             [sInputs(iGroupFiles).ChannelTypes] = deal(sChannel.Modalities);
         end
@@ -1597,24 +1598,25 @@ function sInputs = GetInputStruct(FileNames)
         % Get item info
         for iItem = 1:length(iGroupFiles)
             iInput = iGroupFiles(iItem);
-            [sFile, sItem] = db_get(sqlConn, 'FunctionalFile', GroupFileNames{iItem});
+            sFuncFile = db_get(sqlConn, 'FunctionalFile', GroupFileNames{iItem});
+            sItem = db_convert_functionalfile(sFuncFile);
             
             % Skip if file not found in database
             if isempty(sItem)
                 continue;
             end
-            
+
             % Extract input type
-            if strcmpi(sFile.Type, 'data') && strcmpi(sItem.DataType, 'raw')
+            if strcmpi(sFuncFile.Type, 'data') && strcmpi(sItem.DataType, 'raw')
                 InputType = 'raw';
-            elseif strcmpi(sFile.Type, 'link')
+            elseif strcmpi(sFuncFile.Type, 'link')
                 InputType = 'results';
             else
-                InputType = sFile.Type;
+                InputType = sFuncFile.Type;
             end
             
             % Fill structure
-            sInputs(iInput).iItem = sFile.Id;
+            sInputs(iInput).iItem = sFuncFile.Id;
             sInputs(iInput).FileType = InputType;
             sInputs(iInput).FileName = sItem.FileName;
             sInputs(iInput).Comment = sItem.Comment;

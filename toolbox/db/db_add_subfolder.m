@@ -72,8 +72,8 @@ for iStudy = iStudies
         sFile.ParentFile = iParent;
         
         % Get parent name
-        sParent = db_get(sqlConn, 'FunctionalFile', iParent, 'FileName');
-        sFile.FileName = bst_fullfile(sParent.FileName, FolderName);
+        sFuncFileParent = db_get(sqlConn, 'FunctionalFile', iParent, 'FileName');
+        sFile.FileName = bst_fullfile(sFuncFileParent.FileName, FolderName);
     else
         % Get Subject & Study names
         result = sql_query(sqlConn, ['SELECT Study.Name AS StudyName, Subject.Name AS SubjectName ' ...
@@ -93,7 +93,7 @@ for iStudy = iStudies
         mkdir(FolderPath);
     end
     
-    iItem = sql_query(sqlConn, 'insert', 'FunctionalFile', sFile);
+    iItem = db_set(sqlConn, 'FunctionalFile', sFile);
     iItems(end + 1) = iItem;
 end
 sql_close(sqlConn);

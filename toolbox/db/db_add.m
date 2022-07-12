@@ -135,14 +135,14 @@ if isAnatomy
 else
     % Get parent file
     if ~isempty(ParentFile)
-        sParent = db_get(sqlConn, 'FunctionalFile', ParentFile, {'FileName', 'Type'});
-        if strcmpi(sParent.Type, 'folder')
-            ParentFolder = sParent.FileName;
+        sFuncFileParent = db_get(sqlConn, 'FunctionalFile', ParentFile, {'FileName', 'Type'});
+        if strcmpi(sFuncFileParent.Type, 'folder')
+            ParentFolder = sFuncFileParent.FileName;
         else
-            ParentFolder = bst_fileparts(sParent.FileName);
+            ParentFolder = bst_fileparts(sFuncFileParent.FileName);
         end
     else
-        sStudy = sql_query(sqlConn, 'select', 'Study', 'FileName', struct('Id', iTarget));
+        sStudy = db_get(sqlConn, 'Study', iTarget, 'FileName');
         ParentFolder = bst_fileparts(sStudy.FileName);
     end
     % Build full filename
@@ -162,19 +162,19 @@ if ismember(fileType, {'subjectimage', 'channel', 'noisecov', 'ndatacov'})
 %                 delfile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(1).FileName);
 %             end
         case 'channel'
-            sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'channel'), 'Filename');
-            if ~isempty(sFile)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile.FileName);
+            sFuncFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'channel'), 'Filename');
+            if ~isempty(sFuncFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFuncFile.FileName);
             end
         case 'noisecov'
-            sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'noisecov'), 'Filename');
-            if ~isempty(sFile)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
+            sFuncFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'noisecov'), 'Filename');
+            if ~isempty(sFuncFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFuncFile(1).FileName);
             end
         case 'ndatacov'
-            sFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'ndatacov'), 'Filename');
-            if ~isempty(sFile)
-                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFile(1).FileName);
+            sFuncFile = db_get(sqlConn, 'FunctionalFile', struct('Study', iTarget, 'Type', 'ndatacov'), 'Filename');
+            if ~isempty(sFuncFile)
+                delfile = bst_fullfile(ProtocolInfo.STUDIES, sFuncFile(1).FileName);
             end
     end
     % Replace file
@@ -268,7 +268,7 @@ else
             error('Unsupported for now.');
     end
     %TODO, get rest of metadata from file (see db_parse_study)
-    db_set(sqlConn, 'FunctionalFile', 'insert', sFile);
+    db_set(sqlConn, 'FunctionalFile', sFile);
     % Update count of parent file
     db_set(sqlConn, 'ParentCount', ParentFile, '+', 1);
 end
