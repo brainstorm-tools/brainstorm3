@@ -57,6 +57,11 @@ maxNameLength = 16;
 if (any(MriFile == '.') || (length(MriFile) > maxNameLength)) && file_exist(MriFile)
     % Get file name
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
+    % LABELS: Try to get a side .txt with the labels
+    LabelsFile = bst_fullfile(fPath, [fBase, '.txt']);
+    if file_exist(LabelsFile)
+        Labels = in_label_mricron(LabelsFile);
+    end
     fBase = strrep(fBase, '.nii', '');
     % LABELS: Try to get a side .csv with the labels
     LabelsFile = bst_fullfile(fPath, [fBase, '.csv']);
