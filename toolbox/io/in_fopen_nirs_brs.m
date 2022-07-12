@@ -234,17 +234,8 @@ else % take optode coordinates from nirs data structure
     end
     if ~isfield(nirs.SD,'SpatialUnit')
         scale = 0.01; % assume coordinate are in cm
-    else    
-        switch strtrim(nirs.SD.SpatialUnit)
-            case 'mm'
-                scale = 0.001;
-            case 'cm'
-                scale = 0.01;
-            case 'm'
-                scale = 1;
-            otherwise
-                scale = 1;
-        end
+    else
+        scale = bst_units_ui(nirs.SD.SpatialUnit);
     end
     % Apply units
     src_coords = scale .* src_coords;

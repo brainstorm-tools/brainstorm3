@@ -1003,7 +1003,7 @@ switch (lower(action))
                 for iFile = 1:length(bstNodes)
                     iAnatomy(iFile) = bstNodes(iFile).getItemIndex();
                 end
-                mriComment = bstNodes(1).getComment();
+                mriComment = char(bstNodes(1).getComment());
                 isAtlas = strcmpi(nodeType, 'volatlas') || ~isempty(strfind(mriComment, 'tissues')) || ~isempty(strfind(mriComment, 'aseg')) || ~isempty(strfind(mriComment, 'atlas'));
                     
                 if (length(bstNodes) == 1)
@@ -1035,8 +1035,12 @@ switch (lower(action))
                         gui_component('MenuItem', jPopup, [], 'Edit MRI...', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, 'EditMri'));
                     end
                     % === MENU: SET AS DEFAULT ===
-                    if ~bst_get('ReadOnly') && (length(bstNodes) == 1) && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas
+                    if ~bst_get('ReadOnly') && (~ismember(iAnatomy, sSubject.iAnatomy) || ~bstNodes(1).isMarked()) && ~isAtlas
                         gui_component('MenuItem', jPopup, [], 'Set as default MRI', IconLoader.ICON_GOOD, [], @(h,ev)SetDefaultSurf(iSubject, 'Anatomy', iAnatomy));
+                    end
+                    % === MENU: CREATE SURFACES ===
+                    if ~bst_get('ReadOnly') && isAtlas && isempty(strfind(mriComment, 'tissues'))
+                        gui_component('MenuItem', jPopup, [], 'Create surfaces', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@import_surfaces, iSubject, filenameFull, 'MRI-MASK', 0, [], [], mriComment));
                     end
                 end
                 
@@ -1383,8 +1387,8 @@ switch (lower(action))
                                 end
                             elseif ismember(AllMod{iMod}, {'ECOG','SEEG','ECOG+SEEG'})
                                 AddSeparator(jMenuModality);
-                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
-                                gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
+                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, filenameRelative, AllMod{iMod}, '2DLayout'));
+                                gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, filenameRelative, AllMod{iMod}, '2DElectrodes'));
                             end
                             % === DISPLAY ON SCALP ===
                             % => ONLY for EEG, and if a scalp is defined
@@ -1464,12 +1468,12 @@ switch (lower(action))
                         mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
                         if (length(mod2D) == 1)
                             channelTypeDisplay = getChannelTypeDisplay(mod2D{1}, AllMod);
-                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{1}, '2DLayout'));
+                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{1}, '2DLayout'));
                         elseif (length(mod2D) > 1)
                             jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
                             for iMod = 1:length(mod2D)
                                 channelTypeDisplay = getChannelTypeDisplay(mod2D{iMod}, AllMod);
-                                gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{iMod}, '2DLayout'));
+                                gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{iMod}, '2DLayout'));
                             end
                         end
                         AddSeparator(jPopup);
@@ -1542,8 +1546,8 @@ switch (lower(action))
                                 fcnPopupTopoNoInterp(jMenuModality, filenameRelative, AllMod(iMod), 1, 0, 0);
                             elseif ismember(AllMod{iMod}, {'ECOG','SEEG','ECOG+SEEG'})
                                 AddSeparator(jMenuModality);
-                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DLayout'));
-                                gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(filenameRelative, AllMod{iMod}, '2DElectrodes'));
+                                gui_component('MenuItem', jMenuModality, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, filenameRelative, AllMod{iMod}, '2DLayout'));
+                                gui_component('MenuItem', jMenuModality, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, filenameRelative, AllMod{iMod}, '2DElectrodes'));
                             end
                             % === DISPLAY ON SCALP ===
                             if strcmpi(AllMod{iMod}, 'EEG') && ~isempty(sSubject) && ~isempty(sSubject.iScalp) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)
@@ -1600,12 +1604,12 @@ switch (lower(action))
                     mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
                     if (length(mod2D) == 1)
                         channelTypeDisplay = getChannelTypeDisplay(mod2D{1}, AllMod);
-                        gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'pdata', 1, 0), mod2D{1}, '2DLayout'));
+                        gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes, 'pdata', 1, 0), mod2D{1}, '2DLayout'));
                     elseif (length(mod2D) > 1)
                         jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
                         for iMod = 1:length(mod2D)
                             channelTypeDisplay = getChannelTypeDisplay(mod2D{iMod}, AllMod);
-                            gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'pdata', 1, 0), mod2D{iMod}, '2DLayout'));
+                            gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes, 'pdata', 1, 0), mod2D{iMod}, '2DLayout'));
                         end
                     end
                 end
@@ -1631,12 +1635,12 @@ switch (lower(action))
                         mod2D = intersect(DisplayMod, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'});
                         if (length(mod2D) == 1)
                             channelTypeDisplay = getChannelTypeDisplay(mod2D{1}, AllMod);
-                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{1}, '2DLayout'));
+                            gui_component('MenuItem', jPopup, [], ['2D Layout: ' channelTypeDisplay], IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{1}, '2DLayout'));
                         elseif (length(mod2D) > 1)
                             jMenu2d = gui_component('Menu', jPopup, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], []);
                             for iMod = 1:length(mod2D)
                                 channelTypeDisplay = getChannelTypeDisplay(mod2D{iMod}, AllMod);
-                                gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{iMod}, '2DLayout'));
+                                gui_component('MenuItem', jMenu2d, [], channelTypeDisplay, IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, GetAllFilenames(bstNodes, 'data', 1, 0), mod2D{iMod}, '2DLayout'));
                             end
                         end
                         AddSeparator(jPopup);
@@ -2795,6 +2799,10 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             jMenuNs  = gui_component('Menu', [], [], 'NeuroScan', IconLoader.ICON_FOLDER_CLOSE, [], []);
             % Add an item per Template available
             fList = bstDefaults(iDir).contents;
+            % Sort in natural order
+            [tmp,I] = sort_nat({fList.name});
+            fList = fList(I);
+            % Create an entry for each default
             for iFile = 1:length(fList)
                 % Define callback function
                 if isAddLoc 
@@ -2874,26 +2882,26 @@ function fcnPopupDisplayTopography(jMenu, FileName, AllMod, Modality, isStat)
     AddSeparator(jMenu);
     % Interpolation
     if ~ismember(Modality, {'SEEG','ECOG+SEEG'})
-        gui_component('MenuItem', jMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '3DSensorCap'));
+        gui_component('MenuItem', jMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DSensorCap'));
         if ~ismember(Modality, {'NIRS','ECOG'})
-            gui_component('MenuItem', jMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DSensorCap'));
-            gui_component('MenuItem', jMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, Modality, '2DDisc'));
+            gui_component('MenuItem', jMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '2DSensorCap'));
+            gui_component('MenuItem', jMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '2DDisc'));
         end
     end
-    gui_component('MenuItem', jMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, Modality, '2DLayout'));
+    gui_component('MenuItem', jMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '2DLayout'));
     % 3D Electrodes
     if strcmpi(Modality, 'EEG')
-        gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
+        gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DElectrodes'));
     elseif strcmpi(Modality, 'ECOG')
-        gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
-        gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes'));
+        gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '2DElectrodes'));
+        gui_component('MenuItem', jMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DElectrodes'));
     elseif ismember(Modality, {'SEEG', 'ECOG+SEEG'})
-        gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '2DElectrodes'));
-        gui_component('MenuItem', jMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-Scalp'));
-        gui_component('MenuItem', jMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-Cortex'));
-        gui_component('MenuItem', jMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DElectrodes-MRI'));
+        gui_component('MenuItem', jMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '2DElectrodes'));
+        gui_component('MenuItem', jMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DElectrodes-Scalp'));
+        gui_component('MenuItem', jMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DElectrodes-Cortex'));
+        gui_component('MenuItem', jMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DElectrodes-MRI'));
     elseif strcmpi(Modality, 'NIRS')
-        gui_component('MenuItem', jMenu, [], '3D optodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, Modality, '3DOptodes'));
+        gui_component('MenuItem', jMenu, [], '3D optodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, Modality, '3DOptodes'));
     end
     
     % === NO MAGNETIC INTERPOLATION ===
@@ -2946,28 +2954,28 @@ function jSubMenus = fcnPopupTopoNoInterp(jMenu, FileName, AllMod, is2DLayout, i
                 jSubMenus = [];
             end
             if ~ismember(AllMod{iMod}, {'SEEG','ECOG+SEEG'})
-                gui_component('MenuItem', jSubMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DSensorCap', [], UseSmoothing, hFig));
+                gui_component('MenuItem', jSubMenu, [], '3D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '3DSensorCap', [], UseSmoothing, hFig));
                 if ~ismember(AllMod{iMod}, {'NIRS','ECOG'})
-                    gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig));
-                    gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig));
+                    gui_component('MenuItem', jSubMenu, [], '2D Sensor cap', IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '2DSensorCap', [], UseSmoothing, hFig));
+                    gui_component('MenuItem', jSubMenu, [], '2D Disc',       IconLoader.ICON_TOPOGRAPHY, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '2DDisc',      [], UseSmoothing, hFig));
                 end
             end
             % 2D Layout
             if is2DLayout
-                gui_component('MenuItem', jSubMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DLayout'));
+                gui_component('MenuItem', jSubMenu, [], '2D Layout', IconLoader.ICON_2DLAYOUT, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '2DLayout'));
             end
             % 3D Electrodes
             if ~AlwaysCreate
                 if strcmpi(AllMod{iMod}, 'EEG')
-                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '3DElectrodes'));
                 elseif strcmpi(AllMod{iMod}, 'ECOG')
-                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '2DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '3DElectrodes'));
                 elseif ismember(AllMod{iMod}, {'SEEG', 'ECOG+SEEG'})
-                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '2DElectrodes'));
-                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
-                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
-                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)view_topography(FileName, AllMod{iMod}, '3DElectrodes-MRI'));
+                    gui_component('MenuItem', jSubMenu, [], '2D Electrodes', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '2DElectrodes'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Head)',   IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '3DElectrodes-Scalp'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (Cortex)', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '3DElectrodes-Cortex'));
+                    gui_component('MenuItem', jSubMenu, [], '3D Electrodes (MRI 3D)', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@view_topography, FileName, AllMod{iMod}, '3DElectrodes-MRI'));
                 end
             end
         end
@@ -3395,10 +3403,14 @@ end
 
 %% ===== SET DEFAULT SURFACE =====
 function SetDefaultSurf(iSubject, SurfaceType, iSurface)
+    % Progress bar
+    bst_progress('start', 'Set default', 'Updating database...');
     % Update database
     db_surface_default(iSubject, SurfaceType, iSurface);
     % Repaint tree
     panel_protocols('RepaintTree');
+    % Close progress bar
+    bst_progress('stop');
 end
 
 %% ===== SET DEFAULT HEADMODEL =====

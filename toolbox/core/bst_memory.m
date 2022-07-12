@@ -8,7 +8,7 @@ function [ varargout ] = bst_memory( varargin )
 %      [iDS, iResult] = bst_memory('LoadResultsFileFull',  ResultsFile)
 %      [iDS, iDipole] = bst_memory('LoadDipolesFile',      DipolesFile)
 %       [iDS, iTimef] = bst_memory('LoadTimefreqFile',     TimefreqFile)
-%                       bst_memory('LoadMri',              iDS, MriFile);
+%        [sMri, iMri] = bst_memory('LoadMri',              iDS, MriFile);
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
@@ -1443,7 +1443,7 @@ function [iDS, iDipoles] = LoadDipolesFile(DipolesFile, isTimeCheck) %#ok<DEFNU>
     if isempty(iDipoles) && isempty(iResults)
         GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
         if ~isempty(ChannelFile)
-            GlobalData.DataSet(iDS).ChannelFile = file_short(ChannelFile);
+            LoadChannelFile(iDS, ChannelFile);
         end
         GlobalData.DataSet(iDS).DataFile    = '';
     end

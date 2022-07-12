@@ -1,3 +1,21 @@
+July 2022
+- Doc: Updated SEEG/epileptogenicity tutorial (new BIDS dataset)
+--------------------------------------------------------------
+June 2022
+- Connectivity: New slider to threshold by percentile in Display tab
+- Connectivity: Deprecation of older AEC processes, replaced with HENV
+- GUI: Keep file selection when navigating between tabs
+- MRI Viewer: Setting fiducials on the head surface
+- BIDS import: Added support for IntendedFor in _coordsystem.json
+- BIDS import: Added support for anatomical landmarks (_t1w.json and _coordsystem.json)
+- Distrib: Compilation with Matlab 2022b
+- Anatomy: Create surfaces from MRI volume atlas
+- IO: Export BIDS _electrodes.tsv, with the choice of the reference MRI
+--------------------------------------------------------------
+May 2022
+- IO: Fixed export to Plotly
+- New process: Threshold by percentile
+--------------------------------------------------------------
 April 2022
 - 2D Layout: Added option "Flip Y axis"
 - Distrib: Compilation with Matlab 2022a

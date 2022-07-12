@@ -1,12 +1,14 @@
-function export_channel( BstChannelFile, OutputChannelFile, FileFormat)
+function export_channel(BstChannelFile, OutputChannelFile, FileFormat, isInteractive)
 % EXPORT_CHANNEL: Export a Channel file to one of the supported file formats.
 %
-% USAGE:  export_channel( BstChannelFile, OutputChannelFile=[ask], FileFormat=[ask])
+% USAGE:  export_channel(BstChannelFile, OutputChannelFile=[ask], FileFormat=[ask], isInteractive=1)
 %
-% INPUT: 
+% INPUTS: 
 %     - BstChannelFile    : Full path to input Brainstorm MRI file to be exported
 %     - OutputChannelFile : Full path to target file (extension will determine the format)
 %     - FileFormat        : String, format of the exported channel file
+%     - isInteractive     : If 1, the function is allowed to ask questions interactively to the user
+%                           If 0, the function makes default choices with no interaction
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -26,14 +28,18 @@ function export_channel( BstChannelFile, OutputChannelFile, FileFormat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 % ===== PASRSE INPUTS =====
-if (nargin < 1) || isempty(BstChannelFile)
-    error('Brainstorm:InvalidCall', 'Invalid use of export_channel()');
+if (nargin < 4) || isempty(isInteractive)
+    isInteractive = 1;
 end
 if (nargin < 2)
     OutputChannelFile = [];
+    FileFormat = [];
+end
+if (nargin < 1) || isempty(BstChannelFile)
+    error('Brainstorm:InvalidCall', 'Invalid use of export_channel()');
 end
 
 % ===== SELECT OUTPUT FILE =====
@@ -50,6 +56,8 @@ if isempty(OutputChannelFile)
         case 'CARTOOL-XYZ',    DefaultExt = '.xyz';
         case 'BESA-SFP',       DefaultExt = '.sfp';
         case 'BESA-ELP',       DefaultExt = '.elp';
+        case 'BIDS-SCANRAS-MM',DefaultExt = '_electrodes.tsv';
+        case 'BIDS-MNI-MM',    DefaultExt = '_electrodes.tsv';
         case 'CURRY-RES',      DefaultExt = '.res';
         case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
         case 'EGI',            DefaultExt = '.sfp';
@@ -88,8 +96,9 @@ end
 
 
 % ===== TRANSFORMATIONS =====
-isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG'});
-isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS'});
+isMniTransf = ismember(FileFormat, {'ASCII_XYZ_MNI-EEG', 'ASCII_NXYZ_MNI-EEG', 'ASCII_XYZN_MNI-EEG', 'BIDS-MNI-MM'});
+isWorldTransf = ismember(FileFormat, {'ASCII_XYZ_WORLD-EEG', 'ASCII_NXYZ_WORLD-EEG', 'ASCII_XYZN_WORLD-EEG', 'ASCII_XYZ_WORLD-HS', 'ASCII_NXYZ_WORLD-HS', 'ASCII_XYZN_WORLD-HS', 'BIDS-SCANRAS-MM'});
+isRevertReg = ismember(FileFormat, {'BIDS-SCANRAS-MM'});
 % Get patient MRI (if needed)
 if isMniTransf || isWorldTransf
     % Get channel file
@@ -99,10 +108,34 @@ if isMniTransf || isWorldTransf
     % Get the subject's MRI
     if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
         error('You need the subject anatomy in order to export the sensor positions to MNI or world coordinates.');
+    % MNI coordinates: always use the default MRI
+    elseif isMniTransf
+        iMri = sSubject.iAnatomy;
+    % If there are multiple MRIs
+    elseif (length(sSubject.Anatomy) > 1)
+        % Consider only the volumes that are not volume atlases
+        iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+        if (length(iNoAtlas) == 1)
+            iMri = iNoAtlas;
+        % Interactive: Ask which MRI volume to use
+        elseif isInteractive
+            mriComment = java_dialog('combo', '<HTML>Select the reference MRI:<BR><BR>', 'Export to MRI scanner coordinates', [], {sSubject.Anatomy(iNoAtlas).Comment});
+            if isempty(mriComment)
+                return
+            end
+            iMri = iNoAtlas(find(strcmp({sSubject.Anatomy(iNoAtlas).Comment}, mriComment), 1));
+        % Non-interactive: Use the default MRI
+        else
+            iMri = sSubject.iAnatomy;
+        end
+    else
+        iMri = 1;
     end
-    % Load the MRI
-    MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+    % Load the MRI transformations
+    MriFile = file_fullpath(sSubject.Anatomy(iMri).FileName);
     sMri = load(MriFile, 'SCS', 'NCS', 'InitTransf', 'Voxsize');
+else
+    sMri = [];
 end
 % MNI transformation
 if isMniTransf
@@ -120,6 +153,11 @@ elseif isWorldTransf
     end
     % Compute the transformation SCS => WORLD
     Transf = cs_convert(sMri, 'scs', 'world');
+    % If exporting to BIDS format AND there are transformations that were applied to MRI after it was imported to Brainstorm
+    iTransfReg = find(strcmpi(sMri.InitTransf(:,1), 'reg'), 1);
+    if ~isempty(iTransfReg) && isRevertReg
+        Transf = inv(sMri.InitTransf{iTransfReg,2}) * Transf;
+    end
 else
     Transf = [];
 end
@@ -154,6 +192,12 @@ switch FileFormat
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','-Y','X','Z'}, 1, 0, 0, .01);
     case 'BESA-ELP'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'Name','Y','X','Z'}, 1, 0, 0, .01);
+    case 'BIDS-SCANRAS-MM'
+        % Transf is a 4x4 transformation matrix
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf);
+    case 'BIDS-MNI-MM'
+        % Transf is a MRI structure with the definition of MNI normalization
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf);
     case 'CURRY-RES'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'indice','-Y','X','Z','indice','name'}, 1, 0, 0, .001);
     case 'EEGLAB-XYZ'

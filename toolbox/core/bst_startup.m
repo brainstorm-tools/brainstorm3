@@ -27,7 +27,7 @@ function bst_startup(BrainstormHomeDir, GuiLevel, BrainstormDbDir)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, John C. Mosher, 1999
-%          Francois Tadel, 2008-2021
+%          Francois Tadel, 2008-2022
 
 
 %% ===== MATLAB CHECK =====
@@ -143,10 +143,7 @@ localRel.day   = str2num(Release(5:6));
 if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
-% % Force Matlab to recycle the files instead of deleting them
-% if exist('recycle','builtin') && strcmpi(recycle, 'off')
-%     recycle('on');
-% end
+
 
 %% ===== FORCE COMPILATION OF SOME INTERFACE FILES =====
 if (GuiLevel == 1)
@@ -280,6 +277,10 @@ if ~isempty(bstOptions)
     % Reset current search filter
     if isfield(GlobalData.Preferences, 'NodelistOptions') && isfield(GlobalData.Preferences.NodelistOptions, 'String') && ~isempty(GlobalData.Preferences.NodelistOptions.String)
         GlobalData.Preferences.NodelistOptions.String = '';
+    end
+    % Reset previous exploration mode
+    if isfield(GlobalData.Preferences, 'Layout') && isfield(GlobalData.Preferences.Layout, 'PreviousExplorationMode')
+        GlobalData.Preferences.Layout.PreviousExplorationMode = GlobalData.Preferences.Layout.ExplorationMode;
     end
     % Check database structure for updates
     db_update(CurrentDbVersion);
@@ -674,6 +675,7 @@ try
 catch
     fwrite(fid, ['Host: Unknown (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
 end
+fclose(fid);
 
 
 %% ===== SET TEMPORARY FOLDER =====

@@ -831,7 +831,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Save the atlas in the file
         newMat.Atlas = db_template('atlas');
-        newMat.Atlas.Name = 'process_extract_scout';
+        if (size(AtlasList,1) == 1)
+            newMat.Atlas.Name = AtlasList{1,1};
+        else
+            newMat.Atlas.Name = 'process_extract_scout';
+        end
         newMat.Atlas.Scouts = sScoutsFinal;
 
         % === HISTORY ===

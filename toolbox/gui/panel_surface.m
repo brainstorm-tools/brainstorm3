@@ -34,7 +34,7 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2019
 
 eval(macro_method);
@@ -1064,8 +1064,12 @@ function UpdateSurfaceProperties()
     % Ignore for MRI slices
     if isAnatomy
         sMri = bst_memory('GetMri', TessInfo(iSurface).SurfaceFile);
-        mriSize = size(sMri.Cube(:,:,:,1));
-        ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
+        if ~isempty(sMri)
+            mriSize = size(sMri.Cube(:,:,:,1));
+            ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
+        else
+            ResectXYZ = [0,0,0];
+        end
         radioSelected = 'none';
     elseif ischar(TessInfo(iSurface).Resect)
         ResectXYZ = [0,0,0];
@@ -1819,6 +1823,10 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % Check the MRI dimensions
                 if ~isequal(size(sMriOverlay.Cube(:,:,:,1)), size(sMri.Cube(:,:,:,1)))
                     bst_error('The dimensions of the two volumes do not match.', 'Data mismatch', 0);
+                    isOk = 0;
+                    return;
+                elseif all(abs(sMriOverlay.Voxsize - sMri.Voxsize) > 0.1)
+                    bst_error('The resolution of the two volumes do not match. Resample the overlay first.', 'Data mismatch', 0);
                     isOk = 0;
                     return;
                 end

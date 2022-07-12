@@ -19,14 +19,14 @@ function varargout = process_henv1n(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Hossein Shahabi, Francois Tadel, 2020
+% Author: Hossein Shahabi, Francois Tadel, 2020-2022
 eval(macro_method);
 end
 
 %% ===== GET DESCRIPTION =====
 function sProcess = GetDescription() %#ok<DEFNU>
     % === Description the process
-    sProcess.Comment     = 'Envelope Correlation NxN [2020]';
+    sProcess.Comment     = 'Envelope Correlation NxN [2022]';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Connectivity';
     sProcess.Index       = 686;

@@ -271,12 +271,10 @@ switch contextName
             error('Invalid call to bst_set.');
         end
         [username, apiKey, domain] = varargin{2:4};
-        
+        % Default domain: plot.ly
         if isempty(domain)
-            % Default Plot.ly server
-            domain = 'http://plot.ly';
+            domain = 'https://plot.ly';
         end
-        
         % Plotly needs a URL with HTTP and no trailing slash.
         if strfind(domain, 'https://')
             domain = strrep(domain, 'https://', 'http://');
@@ -286,7 +284,7 @@ switch contextName
         if domain(end) == '/'
             domain = domain(1:end-1);
         end
-        
+        % Save credentials
         saveplotlycredentials(username, apiKey);
         saveplotlyconfig(domain);
         

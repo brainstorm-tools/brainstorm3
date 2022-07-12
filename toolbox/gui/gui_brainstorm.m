@@ -547,6 +547,9 @@ function GUI = CreateWindow() %#ok<DEFNU>
             elseif (jToolButtonStudiesCond.isSelected())
                 ExplorationMode = 'StudiesCond';
             end
+            % Save current exploration mode (for tracking of selected nodes)
+            PreviousExplorationMode = bst_get('Layout', 'ExplorationMode');
+            bst_set('Layout', 'PreviousExplorationMode', PreviousExplorationMode);
             % Update the Layout structure
             bst_set('Layout', 'ExplorationMode', ExplorationMode);
             % Update tree display

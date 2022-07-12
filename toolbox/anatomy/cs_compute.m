@@ -5,7 +5,7 @@ function [Transf, sMri] = cs_compute(sMri, csname)
 %
 % INPUT:
 %     - sMri   : Brainstorm MRI structure
-%     - csname : Coordinate system for which we need to evaluate the transformation {'scs','mni','tal'}
+%     - csname : Coordinate system for which we need to evaluate the transformation {'scs','mni','acpc','tal'}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -25,7 +25,7 @@ function [Transf, sMri] = cs_compute(sMri, csname)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 
 Transf = [];
 
@@ -76,8 +76,40 @@ switch lower(csname)
     case 'mni'
         error('To estimate the MNI coordinates: right-click on the MRI > MNI normalization.');
 
+    % ===== MRI => ACPC =====
+    case 'acpc'
+        % The necessary points are not defined
+        if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)
+            disp('BST> Cannot compute MRI=>TAL transformation: Missing fiducial points.');
+            return;
+        end
+        % Get coordinates in meters
+        AC = sMri.NCS.AC / 1000;
+        PC = sMri.NCS.PC / 1000;
+        IH = sMri.NCS.IH / 1000;
+        % Compute axes: Code from FieldTrip (ft_headcoordinates.m)
+        origin = AC;
+        diry   = AC - PC;
+        dirz   = IH - AC;
+        dirx   = cross(diry,dirz);
+        dirz   = cross(dirx,diry);
+        dirx   = dirx/norm(dirx);
+        diry   = diry/norm(diry);
+        dirz   = dirz/norm(dirz);
+        % Compute the rotation matrix
+        rot = eye(4);
+        rot(1:3,1:3) = inv(eye(3) / [dirx; diry; dirz]);
+        % compute the translation matrix
+        tra = eye(4);
+        tra(1:4,4) = [-origin(:); 1];
+        % Combine these to compute the full homogeneous transformation matrix
+        transform = rot * tra;
+        % Return in split format
+        Transf.R = transform(1:3,1:3);
+        Transf.T = transform(1:3,4);
 
-    % ===== MRI => TAL =====
+    % ===== SCS => TAL =====
+    % Not a real TALAIRACH system, used only from tess_envelope.m
     case 'tal'
         % The necessary points are not defined
         if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)

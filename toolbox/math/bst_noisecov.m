@@ -34,7 +34,7 @@ function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Opti
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2022
 
 %% ===== RETURN DEFAULT OPTIONS =====
 % Options structure
@@ -107,19 +107,33 @@ ChannelTypes = unique({ChannelMat.Channel(iChan).Type});
 
 
 %% ===== READ ALL TIME VECTORS =====
+% Progress bar
+bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, length(DataFiles));
 % Regular list of imported data files
 if ~isRaw
-    % Read all the Time vectors
-    DataMats = in_bst_data_multi(DataFiles);
-    % Check sampling rates
-    SamplingRate = DataMats(1).SamplingRate;
-    % Frequency
-    if any(abs(SamplingRate - [DataMats.SamplingRate]) > 1e-6)
-        error(['The files you selected have different sampling frequencies. They should not be processed together.' 10 ...
-               'Please only select recordings with the same sampling frequency.']);
+    nFiles = length(DataFiles);
+    DataMats = repmat(struct('Time', [], 'SamplingRate', [], 'nAvg', [], 'Leff', [], 'iEpoch', [], 'iBadTime', []), nFiles);
+    % Loop on all input files
+    for iFile = 1:length(DataFiles)
+        % Load file metadata
+        DataMat = in_bst_data(DataFiles{iFile}, 'Time', 'nAvg', 'Leff');
+        % Check file time
+        if (length(DataMat.Time) < 3)
+            error(['File has no time dimension: ' DataFiles{iFile}]);
+        end
+        % Check sampling rate 
+        if (iFile == 1)
+            SamplingRate = DataMat.Time(2) - DataMat.Time(1);
+        elseif (abs(SamplingRate - (DataMat.Time(2) - DataMat.Time(1))) > 1e-6)
+            error(['The files you selected have different sampling frequencies. They should not be processed together.' 10 ...
+                   'Please only select recordings with the same sampling frequency.']);
+        end
+        % Save values
+        DataMats(iFile).Time = DataMat.Time;
+        DataMats(iFile).nAvg = DataMat.nAvg;
+        DataMats(iFile).Leff = DataMat.Leff;
+        bst_progress('inc', 1);
     end
-    DataMats(1).iBadTime = [];
-    nFiles = length(DataMats);
 % Raw file
 else
     % Only one raw file allowed
@@ -180,7 +194,6 @@ else
             end
             if ~isempty(iBadTime)
                 DataMats(iNew).iBadTime = iBadTime;
-                % DataMats(iNew).Time(iBadTime) = [];
             end
         end
     end
@@ -188,6 +201,8 @@ else
 end
 % Get number of samples and sampling rates
 nSamples = length([DataMats.Time]) - length([DataMats.iBadTime]);
+% Close progress bar
+bst_progress('stop');
 % Check number of actual samples available for computation
 if (nSamples == 0)
     error('This selection does not contain any file that can be used for computing the covariance matrix.');

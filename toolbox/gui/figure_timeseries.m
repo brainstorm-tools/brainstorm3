@@ -1331,6 +1331,7 @@ function ResizeCallback(hFig, ev)
     hButtonGainMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainMinus');
     hButtonGainPlus      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonGainPlus');
     hButtonAutoScale     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonAutoScale');
+    hButtonFlipY         = findobj(hFig, '-depth', 1, 'Tag', 'ButtonFlipY');
     hButtonMenu          = findobj(hFig, '-depth', 1, 'Tag', 'ButtonMenu');
     hButtonZoomDown      = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomDown');
     hButtonZoomMinus     = findobj(hFig, '-depth', 1, 'Tag', 'ButtonZoomMinus');
@@ -1346,11 +1347,14 @@ function ResizeCallback(hFig, ev)
         set(hButtonGainMinus, 'Position', [figPos(3)-butSize-1, 2*butSize, butSize, butSize]);
         set(hButtonGainPlus,  'Position', [figPos(3)-butSize-1, 3*butSize, butSize, butSize]);
     end
+    if ~isempty(hButtonFlipY)
+        set(hButtonFlipY, 'Position', [figPos(3)-butSize-1, 4.5*butSize, butSize, butSize]);
+    end
     if ~isempty(hButtonAutoScale)
-        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 5*butSize, butSize, butSize]);
+        set(hButtonAutoScale, 'Position', [figPos(3)-butSize-1, 5.5*butSize, butSize, butSize]);
     end
     if ~isempty(hButtonMenu)
-        set(hButtonMenu, 'Position', [figPos(3)-butSize-1, 6*butSize, butSize, butSize]);
+        set(hButtonMenu, 'Position', [figPos(3)-butSize-1, 6.5*butSize, butSize, butSize]);
     end
     if ~isempty(hButtonZoomUp)
         set(hButtonZoomDown,  'Position', [figPos(3)-butSize-1, 8*butSize, butSize, butSize]);
@@ -3176,6 +3180,8 @@ function isOk = PlotFigure(iDS, iFig, F, TimeVector, isFastUpdate, Std)
         set(PlotHandles(1).hColumnScale, 'Visible', 'off');
         cla(PlotHandles(1).hColumnScale);
     end
+
+    % X axis scale
     if ~isfield(TsInfo, 'XScale')
         TsInfo.XScale = 'linear';
         setappdata(hFig, 'TsInfo', TsInfo);
@@ -3900,6 +3906,14 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     % Get axes zoom factor
     YLim = get(PlotHandles.hAxes, 'YLim');
     zoomFactor = YLim(2) - YLim(1);  % /(1-0)
+    % Get montage: ICA/SSP montages displayed with no units
+    if ~isempty(TsInfo.MontageName)
+        if strcmpi(TsInfo.MontageName, 'ICA components[tmp]')
+            Modality = 'ICA';
+        elseif strcmpi(TsInfo.MontageName, 'SSP components[tmp]')
+            Modality = 'SSP';
+        end
+    end
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
     [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
@@ -3922,12 +3936,13 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
          'Color',   'k', ... 
          'Tag',     'ColumnScaleBar', ...
          'Parent',  PlotHandles.hColumnScale);
-    % Plot data units
+    % Print amplitude and units
     if barMeasure < 10
       txtAmp = sprintf('%1.1f %s', barMeasure, fUnits);
     else
       txtAmp = sprintf('%d %s', round(barMeasure), fUnits);
     end
+    % Plot text: data vaules + units + Y direction
     if ~isempty(PlotHandles.hColumnScaleText) && ishandle(PlotHandles.hColumnScaleText)
         set(PlotHandles.hColumnScaleText, 'String', txtAmp);
     else
@@ -3986,6 +4001,13 @@ function CreateScaleButtons(iDS, iFig)
     h10 = bst_javacomponent(hFig, 'button', [], [], IconLoader.ICON_SCROLL_DOWN, ...
         '<HTML><TABLE><TR><TD>Scroll down</TD></TR><TR><TD><B> &nbsp; [Right+left click + Mouse down]<BR> &nbsp; [Middle click + Mouse down]</B></TD></TR></TABLE>', ...
         @(h,ev)FigurePan(hFig, [0, .9]), 'ButtonZoomDown');
+    % Flip Y axis
+    if TsInfo.FlipYAxis
+        iconFlipY = IconLoader.ICON_Y_DOWN;
+    else
+        iconFlipY = IconLoader.ICON_Y_UP;
+    end
+    h11 = bst_javacomponent(hFig, 'button', [], [], iconFlipY, 'Flip Y axis', @(h,ev)SetProperty(hFig, 'FlipYAxis'), 'ButtonFlipY');
     % Visible / not visible
     if isRaw
         set([h1 h2], 'Visible', 'off');
