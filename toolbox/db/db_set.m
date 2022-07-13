@@ -205,43 +205,28 @@ switch contextName
             % No action
         end
         
-    
 %% ==== FILES WITH SUBJECT ====
-    % [sAnatomyFiles, iSelected] = db_set('FilesWithSubject', sAnatomyFiles, SubjectID, iSelected)
+    % [Success]       = db_set('FilesWithSubject', 'Delete'     , SubjectID)
+    % [sAnatomyFiles] = db_set('FilesWithSubject', sAnatomyFiles, SubjectID)
     case 'FilesWithSubject'
-        sAnatomyFiles = args{1};
+        sAnatFiles = args{1};
         iSubject = args{2};
-        nAnatomyFiles = length(sAnatomyFiles);
-        if length(args) > 2
-            if iscell(args{3})
-                selFile = args{3};
-            else
-                selFile = args(3);
-            end
-            varargout{2} = cell(1, length(selFile));
-        else
-            selFile = [];
-        end
-
-        if nargout > 0
-            varargout{1} = repmat(db_template('AnatomyFile'), 1, nAnatomyFiles);
-        end
         
-        for iAnatomyFile = 1 : nAnatomyFiles
-            sAnatomyFile = sAnatomyFiles(iAnatomyFile);
-            sAnatomyFile.Subject = iSubject;
-            insertedId = db_set(sqlConn, 'AnatomyFile', sAnatomyFile);
-
+        % Delete all AnatomyFiles with SubjectID
+        if ischar(sAnatFiles) && strcmpi(sAnatFiles, 'delete')
+            delResult = sql_query(sqlConn, 'delete', 'anatomyfile', struct('Subject', iSubject));
+            varargout{1} = 1;
+        % Insert AnatomyFiles to SubjectID
+        elseif isstruct(sAnatFiles)
+            nAnatomyFiles = length(sAnatFiles);
+            insertedIds = zeros(1, nAnatomyFiles);
+            for ix = 1 : nAnatomyFiles
+                sAnatFiles(ix).Subject = iSubject;
+                insertedIds(ix) = db_set(sqlConn, 'AnatomyFile', sAnatFiles(ix));
+            end
+            % If requested get all the inserted AnatomyFiles
             if nargout > 0
-                sAnatomyFile.Id = insertedId;
-                varargout{1}(iAnatomyFile) = sAnatomyFile;
-
-                if ~isempty(selFile)
-                    iSel = find(strcmpi(sAnatomyFile.FileName, selFile));
-                    if ~isempty(iSel)
-                        varargout{2}(iSel) = {sAnatomyFile.Id};
-                    end
-                end
+                varargout{1} = db_get(sqlConn, 'AnatomyFile', insertedIds);
             end
         end
 

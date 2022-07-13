@@ -14,7 +14,9 @@ function varargout = db_get(varargin)
 %    - db_get('Subject', SubjectFileNames, Fields, isRaw) : Find subject(s) by FileName(s)
 %    - db_get('Subject', CondQuery,        Fields, isRaw) : Find subject(s) with a Query
 %    - db_get('Subject')                                  : Get current subject in current protocol 
-%    - db_get('Subjects', includeDefault)                 : Get all subjects in current protocol 
+%    - db_get('Subjects')                                 : Get all subjects in current protocol, exclude @default_subject
+%    - db_get('Subjects', 0, Fields)                      : Get all subjects in current protocol, exclude @default_subject
+%    - db_get('Subjects', 1, Fields)                      : Get all subjects in current protocol, include @default_subject
 %    - db_get('SubjectFromStudy', StudyID)                : Find Subject for Study with StudyID  
 %    - db_get('SubjectFromFunctionalFile', FileId)        : Find Subject for FunctionalFile with FileID 
 %    - db_get('SubjectFromFunctionalFile', FileName)      : Find Subject for FunctionalFile with FileID 
@@ -203,16 +205,27 @@ switch contextName
         
 
 %% ==== SUBJECTS ====
-    % sSubjects = db_get('Subjects');    % Exclude @default_subject
-    %           = db_get('Subjects', 1); % Include @default_subject
+    % sSubjects = db_get('Subjects');            % Exclude @default_subject
+    %           = db_get('Subjects', 0, Fields); % Include @default_subject
+    %           = db_get('Subjects', 1, Fields); % Include @default_subject
     case 'Subjects'
-        includeDefaultSub = ~isempty(args);
-        if ~includeDefaultSub
-            addQuery = ' WHERE Name <> "@default_subject"';
-        else
-            addQuery = '';
+        includeDefaultSub = [];
+        fields = '*';
+        % Parse arguments
+        if length(args) > 0
+            includeDefaultSub = args{1};
+            if length(args) > 1
+                fields = args{2};
+            end
         end
-        varargout{1} = sql_query(sqlConn, 'select', 'subject', '*', [], addQuery);
+
+        % Exclude global studies if indicated
+        addQuery = '';
+        if isempty(includeDefaultSub) || (includeDefaultSub == 0)
+            addQuery = ' WHERE Name <> "@default_subject"';
+        end
+
+        varargout{1} = sql_query(sqlConn, 'select', 'Subject', fields, [], addQuery);
 
 
 %% ==== SUBJECTS COUNT ====

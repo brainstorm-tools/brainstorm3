@@ -144,9 +144,7 @@ switch contextName
         end
     
     case 'ProtocolSubjects'
-        %contextValue = db_template('ProtocolSubjects');
         sqlConn = sql_connect();
-        
         % Delete existing subjects and anatomy files
         db_set(sqlConn, 'Subject', 'delete');
         db_set(sqlConn, 'AnatomyFile', 'delete');
@@ -160,48 +158,12 @@ switch contextName
             if isempty(sSubject)
                 continue
             end
-            if iSubject == 0
-                sSubject.Id = 0;
-            else
-                sSubject.Id = [];
-            end
-            
-            % Extract selected anat/surf files to get inserted ID later
-            categories = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'};
-            selectedFiles = cell(1, length(categories));
-            for iCat = 1:length(categories)
-                field = ['i' categories{iCat}];
-                if ~isempty(sSubject.(field)) && ischar(sSubject.(field))
-                    selectedFiles{iCat} = sSubject.(field);
-                    sSubject.(field) = [];
-                else
-                    selectedFiles{iCat} = [];
-                end
-            end
             
             % Insert subject
             SubjectId = db_set(sqlConn, 'Subject', sSubject);
-            
-            % Convert Anatomy & Surface files to AnatomyFiles and insert
-            sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
-                             db_convert_anatomyfile(sSubject.Surface, 'surface')];
-            [~, selectedFiles] = db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, SubjectId, selectedFiles);
-
-            % Update subject entry to add selected AnatomyFiles, if any
-            hasSelFiles = 0;
-            selFiles = struct();
-            for iCat = 1:length(categories)
-                if ~isempty(selectedFiles{iCat})
-                    hasSelFiles = 1;
-                    selFiles.(['i' categories{iCat}]) = selectedFiles{iCat};
-                end
-            end
-            if hasSelFiles
-                db_set(sqlConn, 'Subject', selFiles, SubjectId);
-            end
+            sSubject.Id = SubjectId;
+            bst_set('Subject', sSubject.Id, sSubject);
         end
-        
-        sql_close(sqlConn);
         
     case 'ProtocolStudies'
         sqlConn = sql_connect();
@@ -257,16 +219,37 @@ switch contextName
             sExistingSubject = db_get(sqlConn, 'Subject', iSubject, 'Id');
         end
         
-        % Extract selected anat/surf files to get inserted ID later
+        % Get FileNames for currently selected Anatomy and Surface files
         categories = {'Anatomy', 'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'};
         selectedFiles = cell(1, length(categories));
         for iCat = 1:length(categories)
-            field = ['i' categories{iCat}];
+            category = categories{iCat};
+            field = ['i' category];
             if ~isempty(sSubject.(field)) && ischar(sSubject.(field))
                 selectedFiles{iCat} = sSubject.(field);
-                sSubject.(field) = [];
-            else
-                selectedFiles{iCat} = [];
+            elseif ~isempty(sSubject.(field)) && isnumeric(sSubject.(field)) && sSubject.(field) > 0
+                % Get FileName with previous file ID before it's deleted
+                sAnatFile = db_get(sqlConn, 'AnatomyFile', sSubject.(field), 'FileName');
+                if ~isempty(sAnatFile)
+                    selectedFiles{iCat} = sAnatFile.FileName;
+                end
+            end
+            % Set default selected files
+            if isempty(selectedFiles{iCat})
+                switch category
+                    case 'Anatomy'
+                        if ~isempty(sSubject.(category))
+                            selectedFiles{iCat} = sSubject.(category)(1).FileName;
+                        end
+
+                    case {'Scalp', 'Cortex', 'InnerSkull', 'OuterSkull', 'Fibers', 'FEM'}
+                        if ~isempty(sSubject.Surface)
+                            ix_def = find(strcmpi({sSubject.Surface.SurfaceType}, category), 1, 'first');
+                            if ~isempty(ix_def)
+                                selectedFiles{iCat} = sSubject.Surface(ix_def);
+                            end
+                        end
+                end
             end
         end
         
@@ -274,6 +257,13 @@ switch contextName
         if ~isempty(sExistingSubject)
             sSubject.Id = sExistingSubject.Id;
             sExistingSubject.Id = db_set(sqlConn, 'Subject', sSubject, sExistingSubject.Id);
+            if sExistingSubject.Id
+                iSubject = sExistingSubject.Id;
+                argout1 = iSubject;
+            else
+                iSubject = [];
+            end
+        % If subject is new, INSERT query
         else
             sSubject.Id = [];
             iSubject = db_set(sqlConn, 'Subject', sSubject);
@@ -282,29 +272,28 @@ switch contextName
             end
         end
         
-        if ~isempty(argout1)
+        if ~isempty(iSubject)
             % Delete existing anatomy files
-            db_set(sqlConn, 'AnatomyFile', 'delete', struct('Subject', argout1));
+            db_set(sqlConn, 'FilesWithSubject', 'Delete', iSubject);
                        
             % Convert Anatomy & Surface files to AnatomyFiles and insert
             sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
                              db_convert_anatomyfile(sSubject.Surface, 'surface')];
-            [~, selectedFiles] = db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, argout1, selectedFiles);
-            
-            
-            % Update subject entry to add selected anat/surf files, if any
+            db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, iSubject);
+
+            % Set selected Anatomy and Surface files
             hasSelFiles = 0;
             selFiles = struct();
             for iCat = 1:length(categories)
                 if ~isempty(selectedFiles{iCat})
                     hasSelFiles = 1;
-                    selFiles.(['i' categories{iCat}]) = selectedFiles{iCat};
+                    sAnatFile = db_get(sqlConn, 'AnatomyFile', selectedFiles{iCat}, 'Id');
+                    selFiles.(['i' categories{iCat}]) = sAnatFile.Id;
                 end
             end
             if hasSelFiles
-                db_set(sqlConn, 'Subject', selFiles, argout1);
+                db_set(sqlConn, 'Subject', selFiles, iSubject);
             end
-            
         end
         sql_close(sqlConn);
         

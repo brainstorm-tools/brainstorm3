@@ -525,8 +525,9 @@ switch contextName
         if ((argout2 <= 0) || (argout2 > length(GlobalData.DataBase.ProtocolInfo))), warning('Brainstorm:InvalidIndex', 'Invalid index'), return, end
         % Get requested protocol structure
         argout1 = GlobalData.DataBase.(contextName)(argout2);
-        
+
     case 'ProtocolSubjects'
+        warning('bst_get(\''%s'') is deprecated with the new Brainstorm database system.', contextName);
         argout1 = db_template('ProtocolSubjects');
         if GlobalData.DataBase.iProtocol == 0
             % No protocol loaded
@@ -536,34 +537,28 @@ switch contextName
             error('No database information.');
         end
         
-        % Get all subjects
-        sqlConn = sql_connect();
-        sSubjects = db_get(sqlConn, 'Subjects', 1);
-        
         iDefaultSubject = [];
-        for iSubject = 1:length(sSubjects)
-            sSubject = sSubjects(iSubject);
-            % Find default subject
-            if strcmp(sSubject.Name, '@default_subject')
-                iDefaultSubject = iSubject;
-            end           
-            % Get all anatomy files of each subject
-            sSubject.Anatomy = [repmat(db_template('Anatomy'), 0), ...
-                db_convert_anatomyfile(db_get(sqlConn, 'FilesWithSubject', sSubject.Id, 'anatomy'))]; 
-            sSubject.Surface = [repmat(db_template('Surface'), 0), ...
-                db_convert_anatomyfile(db_get(sqlConn, 'FilesWithSubject', sSubject.Id, 'surface'))]; 
-            sSubjects(iSubject) = sSubject;
+        sSubjects  = repmat(db_template('Subject'), 0);
+        subjectIds = db_get('Subjects', 1, 'Id');
+        % Get all subjects
+        if ~isempty(subjectIds)
+            subjectIds = [subjectIds.Id];
+            for ix = 1:length(subjectIds)
+                % Get subject, israw=1
+                sSubject = bst_get('Subject', subjectIds(ix), 1);
+                if strcmp(sSubject.Name, '@default_subject')
+                    iDefaultSubject = subjectIds(ix);
+                end
+                sSubjects(end + 1) = sSubject;
+            end
         end
-        
         % Separate default subject
         if ~isempty(iDefaultSubject)
             argout1.DefaultSubject = sSubjects(iDefaultSubject);
             sSubjects(iDefaultSubject) = [];
         end
+        % All other subjects
         argout1.Subject = sSubjects;
-        
-        sql_close(sqlConn);
-        
         
     case 'ProtocolStudies'
         warning('bst_get(\''%s'') is deprecated with the new Brainstorm database system.', contextName);
