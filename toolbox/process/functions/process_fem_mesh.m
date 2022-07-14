@@ -568,6 +568,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 errMsg = [errMsg, errInstall];
                 return;
             end
+            % Add SMP12 "matlabbatch" folder, it's used inside spm_jobman()
+            [isOk, errMsg, PlugDesc] = bst_plugin('Load', 'spm12');
+            % Add "matlabbatch" folder to the path, because of some weird bugs
+            addpath(bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'matlabbatch'));
+
             bst_plugin('SetProgressLogo', 'brain2mesh');
             % Get TPM.nii template
             tpmFile = bst_get('SpmTpmAtlas');
