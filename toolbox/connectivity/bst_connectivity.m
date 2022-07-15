@@ -555,12 +555,7 @@ for iFile = 1:length(FilesA)
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
-            % Initialization for ciPLV and wPLI
-            if ismember(OPTIONS.Method, {'wpli'})
-                % Replicate nB x HA, and nA x HB
-                iA = repmat(1:nA, 1, nB)';
-                iB = reshape(repmat(1:nB, nA, 1), [], 1);
-            end
+            nT = size(sInputB.Data,2);
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
@@ -601,7 +596,14 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
+                        %    The one below is the "debiased" version
                         R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
+                        num = abs(imag(phaseA*phaseB'));
+                        den = zeros(nA,nB);
+                        for t = 1:nT
+                            den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
+                        end
+                        R(:,:,iBand) = num./den;
                         Comment = 'wPLI: ';
                 end
             end
