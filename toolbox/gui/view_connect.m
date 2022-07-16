@@ -78,12 +78,14 @@ switch file_gettype(TimefreqFile)
             error('File is not registered in database.');
         end
         sTimefreq = sStudy.Timefreq(iTf);
+        isStat = 0;
     case 'ptimefreq'
         [sStudy, iStudy, iStat] = bst_get('StatFile', TimefreqFile);
         if isempty(sStudy)
             error('File is not registered in database.');
         end
         sTimefreq = sStudy.Stat(iStat);
+        isStat = 1;
     otherwise
         error('File type not supported.');
 end
@@ -273,8 +275,10 @@ else
 end
 % Set figure data
 setappdata(hFig, 'Timefreq', TfInfo);
-% Display options panel
-gui_brainstorm('ShowToolTab', 'Display');
+% Display options panel (not for stat, as the thresholding is already done)
+if ~isStat
+    gui_brainstorm('ShowToolTab', 'Display');
+end
 
 %% ===== DRAW FIGURE =====
 figure_connect('LoadFigurePlot', hFig);
