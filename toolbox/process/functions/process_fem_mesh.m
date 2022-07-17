@@ -27,7 +27,7 @@ function varargout = process_fem_mesh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Takfarinas Medani, 2019-2021
+% Authors: Francois Tadel, Takfarinas Medani, 2019-2022
 
 eval(macro_method);
 end
@@ -242,9 +242,12 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
         % Cut neck (below MNI coordinate below Z=Zneck)
         if (OPTIONS.Zneck < 0)
             [sMriT1tmp, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT1, [0, 0, 1, -OPTIONS.Zneck./1000]);
-            % Error handling (if MNI normalization failed)
+            % Error handling (e.g. if MNI normalization failed)
             if ~isempty(errNorm)
-                errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10];
+                % Do not issue warning if cutting the neck didn't do anything: users shouldn't get a warning if there is no neck in the MRI 
+                if isempty(strfind(errNorm, 'No voxels'))
+                    errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10];
+                end
                 % Do not return: This is only a warning
             elseif ~isempty(sMriT1tmp)
                 sMriT1 = sMriT1tmp;
@@ -263,7 +266,10 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             [sMriT2tmp, maskCut, errNorm] = process_mri_deface('CutMriPlane', sMriT2, [0, 0, 1, -OPTIONS.Zneck./1000]);
             % Error handling (if MNI normalization failed)
             if ~isempty(errNorm)
-                errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10 10];
+                % Do not issue warning if cutting the neck didn't do anything: users shouldn't get a warning if there is no neck in the MRI 
+                if isempty(strfind(errNorm, 'No voxels'))
+                    errMsg = ['Error trying to cut the neck from T1 using linear MNI normalization: ' 10 errNorm 10 10];
+                end
                 % Do not return: This is only a warning
             elseif ~isempty(sMriT2tmp)
                 sMriT2 = sMriT2tmp;
