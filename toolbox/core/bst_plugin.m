@@ -531,7 +531,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).UnloadPlugs    = {'spm12', 'roast'};
-    PlugDesc(end).LoadFolders    = {'specest', 'preproc', 'forward', 'src', 'utilities', 'matlabbatch'};
+    PlugDesc(end).LoadFolders    = {'specest', 'preproc', 'forward', 'src', 'utilities'};
     PlugDesc(end).GetVersionFcn  = 'ft_version';
     PlugDesc(end).LoadedFcn      = ['global ft_default; ' ...
                                     'ft_default = []; ' ...
@@ -550,6 +550,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).UnloadPlugs    = {'fieldtrip', 'roast'};
+    PlugDesc(end).LoadFolders    = {'matlabbatch'};
     PlugDesc(end).GetVersionFcn  = 'bst_getoutvar(2, @spm, ''Ver'')';
     PlugDesc(end).LoadedFcn      = 'spm(''defaults'',''EEG'');';
     % ================================================================================================================
