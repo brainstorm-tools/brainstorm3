@@ -597,7 +597,8 @@ for iFile = 1:length(FilesA)
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
                         %    The one below is the "debiased" version
-                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
+                        % Proposed by Daniele Marinazzo
+                        % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
                         num = abs(imag(phaseA*phaseB'));
                         den = zeros(nA,nB);
                         for t = 1:nT
