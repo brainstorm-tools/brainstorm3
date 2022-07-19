@@ -571,9 +571,9 @@ if ~isempty(nodeListIntra_cond)
         % Remove temporary analysis node
         nodeListIntra_cond.removeFromParent();
         % If there are other special nodes (Analysis-Inter, GlobalCommonfiles), put it after them
-        if (nbChild >= 2) && (nodeParent.getChildAt(1).toString.charAt(0) == '(')
+        if (nbChild >= 2) && (length(nodeParent.getChildAt(1).toString) > 1) && (nodeParent.getChildAt(1).toString.charAt(0) == '(')
             iInsert = 2;
-        elseif (nbChild >= 1) && (nodeParent.getChildAt(0).toString.charAt(0) == '(')
+        elseif (nbChild >= 1) && (length(nodeParent.getChildAt(0).toString) > 1) && (nodeParent.getChildAt(0).toString.charAt(0) == '(')
             iInsert = 1;
         else
             iInsert = 0;
