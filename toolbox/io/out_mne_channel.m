@@ -25,7 +25,7 @@ function mneInfo = out_mne_channel(ChannelFile, iChannels)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2021
+% Authors: Francois Tadel, 2021-2022
 
 
 %% ===== PARSE INPUT =====
@@ -78,8 +78,6 @@ if ~isempty(ChannelFile) && (isempty(ChannelMat.SCS) || isempty(ChannelMat.SCS.N
         ChannelMat.SCS.NAS = cs_convert(sMri, 'mri', 'scs', sMri.SCS.NAS ./ 1000);
         ChannelMat.SCS.LPA = cs_convert(sMri, 'mri', 'scs', sMri.SCS.LPA ./ 1000);
         ChannelMat.SCS.RPA = cs_convert(sMri, 'mri', 'scs', sMri.SCS.RPA ./ 1000);
-    else
-        
     end
 end
 
@@ -113,10 +111,9 @@ mneInfo = py.mne.create_info(ch_names, 1000, ch_types);
 % Unlocking Info object
 mneSetStatus = py.getattr(mneInfo, '__setstate__');
 mneSetStatus(py.dict(pyargs('_unlocked', true)));
-% Add Brainstorm version
-bstver = bst_get('Version');
-mneInfo{'hpi_meas'} = py.list(py.dict(pyargs('creator', ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'])));
-
+% % Add Brainstorm version
+% bstver = bst_get('Version');
+% mneInfo{'hpi_meas'} = py.list(py.dict(pyargs('creator', ['Brainstorm ', bstver.Version, ' (', bstver.Date ')'])));
 
 % ===== TRANSFORMATIONS =====
 % Get existing transformation
@@ -355,17 +352,19 @@ if ~isempty(ChannelMat.Projector)
         for iComp = 1:length(selComp)
             % Find channels that are used in this projector
             iChannels = find(any(ChannelMat.Projector(iProj).Components,2));
+            % Create data dictionnary
+            projData = py.dict(pyargs(...
+                'nrow', py.int(1), ...
+                'ncol', py.int(length(iChannels)), ...
+                'row_names', py.None, ...
+                'col_names', py.list({ChannelMat.Channel(iChannels).Name}), ...
+                'data',      py.numpy.array(ChannelMat.Projector(iProj).Components(iChannels,selComp(iComp))', pyargs('ndmin', py.int(2)))));
             % Create Projection object
-            pyProj = py.mne.Projection();
-            pyProj{'kind'}   = FIFF.FIFFV_PROJ_ITEM_FIELD;
-            pyProj{'desc'}   = py.str(ChannelMat.Projector(iProj).Comment);
-            pyProj{'active'} = py.bool(ChannelMat.Projector(iProj).Status == 2);
-            pyProj{'data'}              = py.dict();
-            pyProj{'data'}{'nrow'}      = py.int(1);
-            pyProj{'data'}{'ncol'}      = py.int(length(iChannels));
-            pyProj{'data'}{'row_names'} = py.None;
-            pyProj{'data'}{'col_names'} = py.list({ChannelMat.Channel(iChannels).Name});
-            pyProj{'data'}{'data'}      = py.numpy.array(ChannelMat.Projector(iProj).Components(iChannels,selComp(iComp))', pyargs('ndmin', py.int(2)));
+            pyProj = py.mne.Projection(pyargs(...
+                'data', projData, ...
+                'kind', FIFF.FIFFV_PROJ_ITEM_FIELD, ...
+                'desc', py.str(ChannelMat.Projector(iProj).Comment), ...
+                'active', py.bool(ChannelMat.Projector(iProj).Status == 2)));
             % Add to list of projectors
             mneInfo{'projs'}.append(pyProj);
         end

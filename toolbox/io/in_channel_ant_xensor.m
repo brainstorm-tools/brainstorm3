@@ -69,7 +69,7 @@ while 1
         switch (curBlock)
             case 'labels'
                 % If labels where not read yet: read them
-                if isempty(ChannelMat.Channel(iChannel).Name)
+                if (iChannel <= length(ChannelMat.Channel)) && isempty(ChannelMat.Channel(iChannel).Name)
                     % Remove extra spaces
                     read_line = strtrim(read_line);
                     % All channels in one line separated by tabs

@@ -143,10 +143,7 @@ localRel.day   = str2num(Release(5:6));
 if (MatlabVersion <= 803)
     disp('BST> Warning: For better graphics, use Matlab >= 2014b');
 end
-% % Force Matlab to recycle the files instead of deleting them
-% if exist('recycle','builtin') && strcmpi(recycle, 'off')
-%     recycle('on');
-% end
+
 
 %% ===== FORCE COMPILATION OF SOME INTERFACE FILES =====
 if (GuiLevel == 1)
@@ -678,6 +675,7 @@ try
 catch
     fwrite(fid, ['Host: Unknown (' char(java.lang.System.getProperty('os.name')) ' ' char(java.lang.System.getProperty('os.version')) ')' 10]);
 end
+fclose(fid);
 
 
 %% ===== SET TEMPORARY FOLDER =====

@@ -116,7 +116,7 @@ if isfield(sMri, 'Header') && isfield(sMri.Header, 'nifti') && all(isfield(sMri.
 else
     % === QFORM ===
     % XFORM_SCANNER: Scanner-based referential: from the vox2ras matrix
-    if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && any(ismember(sMri.InitTransf(:,1), 'vox2ras'))
+    if isfield(sMri, 'InitTransf') && ~isempty(sMri.InitTransf) && ismember('vox2ras', sMri.InitTransf(:,1))
         nifti.qform_code = 1;  % NIFTI_XFORM_SCANNER_ANAT
         % Use directly the unmodified vox2ras from the original file
         iTransf = find(strcmpi(sMri.InitTransf(:,1), 'vox2ras'));

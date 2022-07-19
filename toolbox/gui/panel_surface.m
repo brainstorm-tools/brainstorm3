@@ -1064,8 +1064,12 @@ function UpdateSurfaceProperties()
     % Ignore for MRI slices
     if isAnatomy
         sMri = bst_memory('GetMri', TessInfo(iSurface).SurfaceFile);
-        mriSize = size(sMri.Cube(:,:,:,1));
-        ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
+        if ~isempty(sMri)
+            mriSize = size(sMri.Cube(:,:,:,1));
+            ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
+        else
+            ResectXYZ = [0,0,0];
+        end
         radioSelected = 'none';
     elseif ischar(TessInfo(iSurface).Resect)
         ResectXYZ = [0,0,0];

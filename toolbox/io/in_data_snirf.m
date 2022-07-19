@@ -31,16 +31,7 @@ jnirs = loadsnirf(DataFile);
 
 %% ===== CHANNEL FILE ====
 % Get scaling units
-switch strtrim(str_remove_spec_chars(jnirs.nirs.metaDataTags.LengthUnit(:)'))
-    case 'mm'
-        scale = 0.001;
-    case 'cm'
-        scale = 0.01;
-    case 'm'
-        scale = 1;
-    otherwise
-        scale = 1;
-end
+scale = bst_units_ui(jnirs.nirs.metaDataTags.LengthUnit(:)');
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
     

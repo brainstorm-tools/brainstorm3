@@ -2507,7 +2507,9 @@ function ButtonCancel_Callback(hFig, varargin)
         GlobalData.DataSet(iDS).Figure(iFig).Handles.isModifiedMri = 0;
         % Unload all datasets that used this MRI
         sMri = panel_surface('GetSurfaceMri', hFig);
-        bst_memory('UnloadMri', sMri.FileName);
+        if ~isempty(sMri)
+            bst_memory('UnloadMri', sMri.FileName);
+        end
         % Also close 3D head figure if present.
         if isfield(Handles, 'hView3DHeadFig') && ~isempty(Handles.hView3DHeadFig) && ishandle(Handles.hView3DHeadFig)
             close(Handles.hView3DHeadFig);

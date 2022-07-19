@@ -156,10 +156,8 @@ for i = 1:nChannels
         if ~any(isnan(elec.elecpos(ichan,:))) && ~any(isinf(elec.elecpos(ichan,:))) && ~all(elec.elecpos(ichan,:) == 0)
             ChannelMat.Channel(i).Loc(:,1) = elec.elecpos(ichan,:);
             % Apply units
-            if isequal(elec.unit, 'mm')
-                ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 1000;
-            elseif isequal(elec.unit, 'cm')
-                ChannelMat.Channel(i).Loc(:,1) = ChannelMat.Channel(i).Loc(:,1) ./ 100;
+            if isfield(elec, 'unit') && ~isempty(elec.unit)
+                ChannelMat.Channel(i).Loc(:,1) = bst_units_ui(elec.unit, ChannelMat.Channel(i).Loc(:,1));
             end
         end
         % Get type
@@ -190,14 +188,10 @@ for i = 1:nChannels
             ChannelMat.Channel(i).Orient = grad.coilori(icoils,:)';
             ChannelMat.Channel(i).Weight = coilChan(ichan,icoils);
         end
-        
         % Apply units
-        if isfield(grad, 'unit') && isequal(grad.unit, 'cm')
-            ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 100;
-        elseif isfield(grad, 'unit') && isequal(grad.unit, 'mm')
-            ChannelMat.Channel(i).Loc = ChannelMat.Channel(i).Loc ./ 1000;
+        if isfield(grad, 'unit') && ~isempty(grad.unit)
+            ChannelMat.Channel(i).Loc(:,1) = bst_units_ui(grad.unit, ChannelMat.Channel(i).Loc(:,1));
         end
-        
         % Get type
         if isempty(ChannelMat.Channel(i).Type)
             if ~isempty(gradChanTypes)

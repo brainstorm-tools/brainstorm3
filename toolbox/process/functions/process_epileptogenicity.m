@@ -96,7 +96,7 @@ end
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
     % Initialize SPM
-    [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+    [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'spm12');
     if ~isInstalled
         bst_report('Error', sProcess, [], errMsg);
         return;
@@ -421,6 +421,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             % Import and load file
             ImportedDataMat = in_data(groupFiles{i}, ChannelMat, 'EEG-ASCII', ImportOptions);
             fileMat = load(ImportedDataMat.FileName);
+            fileMat.F = fileMat.F(:,1);
             % Concatenate with previous files
             if isempty(DataMat)
                 DataMat = fileMat;

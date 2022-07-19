@@ -310,15 +310,34 @@ for iFile = 1:length(FilesA)
     
     % ===== GET SCOUTS SCTRUCTURES =====
     % Save scouts structures in the options
+    % Scouts for FilesA
     if OPTIONS.isScoutA
         OPTIONS.sScoutsA = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputA.SurfaceFile, OPTIONS.TargetA);
     else
         OPTIONS.sScoutsA = [];
     end
+    % Scouts for FilesB
+    OPTIONS.sScoutsB = [];
+    OPTIONS.sScoutsAtlasB = [];
+    OPTIONS.sScoutsGridLocB = [];
     if OPTIONS.isScoutB
-        OPTIONS.sScoutsB = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputB.SurfaceFile, OPTIONS.TargetB);
-    else
-        OPTIONS.sScoutsB = [];
+        [OPTIONS.sScoutsB, AtlasNames] = process_extract_scout('GetScoutsInfo', OPTIONS.ProcessName, [], sInputB.SurfaceFile, OPTIONS.TargetB);
+        % Get atlas name
+        uniqueAtlasNames = unique(AtlasNames);
+        if (length(uniqueAtlasNames) == 1)
+            OPTIONS.sScoutsAtlasNameB = AtlasNames{1};
+            % Volume atlas: get the GridLoc
+            if panel_scout('ParseVolumeAtlas', OPTIONS.sScoutsAtlasNameB)
+                % Load the GridLoc from the first input source file
+                warning off MATLAB:load:variableNotFound
+                sResultsVol = load(file_fullpath(FilesB{iFile}), 'GridLoc');
+                warning on MATLAB:load:variableNotFound
+                % Return the GridLoc
+                if ~isempty(sResultsVol) && isfield(sResultsVol, 'GridLoc')
+                    OPTIONS.sScoutsGridLocB = sResultsVol.GridLoc;
+                end
+            end
+        end
     end
     
     
@@ -536,12 +555,7 @@ for iFile = 1:length(FilesA)
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
-            % Initialization for ciPLV and wPLI
-            if ismember(OPTIONS.Method, {'wpli'})
-                % Replicate nB x HA, and nA x HB
-                iA = repmat(1:nA, 1, nB)';
-                iB = reshape(repmat(1:nB, nA, 1), [], 1);
-            end
+            nT = size(sInputB.Data,2);
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
@@ -582,7 +596,15 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
+                        %    The one below is the "debiased" version
+                        % Proposed by Daniele Marinazzo
+                        % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
+                        num = abs(imag(phaseA*phaseB'));
+                        den = zeros(nA,nB);
+                        for t = 1:nT
+                            den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
+                        end
+                        R(:,:,iBand) = num./den;
                         Comment = 'wPLI: ';
                 end
             end
@@ -857,7 +879,14 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     if OPTIONS.isScoutB
         % Save the atlas in the file
         FileMat.Atlas = db_template('atlas');
-        FileMat.Atlas.Name   = OPTIONS.ProcessName;
+        if ~isempty(OPTIONS.sScoutsAtlasNameB)
+            FileMat.Atlas.Name = OPTIONS.sScoutsAtlasNameB;
+        else
+            FileMat.Atlas.Name = OPTIONS.ProcessName;
+        end
+        if ~isempty(OPTIONS.sScoutsGridLocB)
+            FileMat.GridLoc = OPTIONS.sScoutsGridLocB;
+        end
         FileMat.Atlas.Scouts = OPTIONS.sScoutsB;
     elseif ~isempty(sInputB.Atlas)
         FileMat.Atlas = sInputB.Atlas;

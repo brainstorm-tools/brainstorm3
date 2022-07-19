@@ -91,9 +91,9 @@ A          = zeros(nX,nY,nWindows,nfBins) ;  % Pre-define the connectivity matri
 % Consider a fixed 5 sec for transient (filter) effect (each side)
 tranLen = 5 * Fs ;
 if numBlocks>1
-    X_Data3D = dataDimTran(X,tranLen) ;
+    [X_Data3D, blockLen3D, actLen] = dataDimTran(X,tranLen,numBlocks) ;
     if ~sameInp
-        Y_Data3D = dataDimTran(Y,tranLen) ; 
+        Y_Data3D = dataDimTran(Y,tranLen,numBlocks) ; 
     end
 end
 
@@ -206,20 +206,20 @@ switch (OPTIONS.HStatDyn)
     case 'dynamic'  % Time-varying networks
         timePoints = timePoints/Fs ;
     case 'static'   % Average among all networks
-        A = nanmean(A,3);
+        A = bst_nanmean(A,3);
         timePoints = median(timePoints/Fs) ;
 end
 end
 
-function Data3D = dataDimTran(Data2D,tranLen)
+function [Data3D,blockLen3D,actLen] = dataDimTran(Data2D,tranLen,numBlocks)
+% Total Length of the Data
+[nSig,N] = size(Data2D) ;
+actLen   = (N/numBlocks) ;
 tfBlockRem = rem(N,numBlocks) ;
 % Adding zero to the end of the data (few samples)
 if tfBlockRem ~= 0
-    Data(:,end:end+(numBlocks-tfBlockRem)) = 0 ;
+    Data2D(:,end:end+(numBlocks-tfBlockRem)) = 0 ;
 end
-% Total Length of the Data
-[tmp1,N] = size(Data) ;
-actLen   = (N/numBlocks) ;
 % Compute the length of each block
 blockLen3D = actLen + 2*tranLen ;
 % Pre-define the data in 3D format (Signals x Samples x Blcoks)
@@ -238,7 +238,7 @@ for k = 1:numBlocks
         range2D = ((k-1)*actLen - tranLen) + (1:blockLen3D) ;
         range3D = 1:blockLen3D ;
     end
-    Data3D(:,range3D,k) = Data(:,range2D) ;
+    Data3D(:,range3D,k) = Data2D(:,range2D) ;
 end
 end
 
@@ -262,3 +262,4 @@ At = zeros(n1,n2) ;
         end
     end
 end
+

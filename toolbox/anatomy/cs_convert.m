@@ -6,8 +6,8 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 %
 % INPUT: 
 %     - sMri  : Brainstorm MRI structure
-%     - src   : Current coordinate system {'voxel','mri','scs','mni','world'}
-%     - dest  : Target coordinate system {'voxel','mri','scs','mni','world'}
+%     - src   : Current coordinate system {'voxel','mri','scs','mni','acpc','world'}
+%     - dest  : Target coordinate system {'voxel','mri','scs','mni','acpc','world'}
 %     - P     : a Nx3 matrix of point coordinates to convert
 %
 % DESCRIPTION:   https://neuroimage.usc.edu/brainstorm/CoordinateSystems
@@ -19,7 +19,12 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 %               Axis X: From the origin towards the Nasion (exactly through)
 %               Axis Y: From the origin towards LPA in the plane defined by (NAS,LPA,RPA), and orthogonal to X axis
 %               Axiz Z: From the origin towards the top of the head 
-%     - mni   : MNI coordinates based on SPM affine registration
+%     - mni   : MNI coordinates based on SPM affine or non-linear registration
+%     - acpc  : Based on: Anterior commissure (AC), Posterior commissure (PC) and an interhemisperic point (IH)
+%               Origin: AC
+%               Axis X: From the origin towards the right
+%               Axis Y: Negative y-axis is passing from AC through PC
+%               Axis Z: Passing through a mid-hemispheric point in the superior direction
 %     - world : Transformation available in the initial file loaded as the default MRI (vox2ras/qform/world transformation)
 
 % @=============================================================================
@@ -40,7 +45,7 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
@@ -82,6 +87,16 @@ if strcmpi(src, 'world') || strcmpi(dest, 'world') || (strcmpi(src, 'mni') && is
     world2mri = inv(mri2world);
 end
 
+% ===== COMPUTE ACPC TRANSFORMATION =====
+if strcmpi(src, 'acpc') || strcmpi(dest, 'acpc')
+    tACPC = cs_compute(sMri, 'acpc');
+    if isempty(tACPC) || isempty(tACPC.R)
+        P = [];
+        return;
+    end
+    scs2acpc = [tACPC.R, tACPC.T; 0 0 0 1];
+end
+
 % ===== CONVERT SRC => MRI =====
 % Evaluate the transformation to apply
 switch lower(src)
@@ -118,6 +133,9 @@ switch lower(src)
             P = [];
             return;
         end
+    case 'acpc'
+        % ACPC => SCS => MRI
+        RT1 = inv(scs2acpc);
     case 'world'
         RT1 = world2mri;
     otherwise
@@ -156,6 +174,9 @@ switch lower(dest)
             P = [];
             return;
         end
+    case 'acpc'
+        % MRI => SCS => ACPC
+        RT2 = scs2acpc;
     case 'world'
         RT2 = mri2world;
     otherwise

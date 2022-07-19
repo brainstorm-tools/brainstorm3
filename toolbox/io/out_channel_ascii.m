@@ -1,7 +1,7 @@
 function out_channel_ascii( BstFile, OutputFile, Format, isEEG, isHeadshape, isHeader, Factor, Transf)
-% OUT_CHANNEL_CARTOOL: Exports a Brainstorm channel file in an ascii file.
+% OUT_CHANNEL_ASCII: Exports a Brainstorm channel file in an ascii file.
 %
-% USAGE:  out_channel_ascii( BstFile, OutputFile, Format={X,Y,Z}, isEEG=1, isHeadshape=1, isHeader=0, Factor=1, Transf=[]);
+% USAGE:  out_channel_ascii( BstFile, OutputFile, Format={X,Y,Z}, isEEG=1, isHeadshape=1, isHeader=0, Factor=.01, Transf=[]);
 %
 % INPUT: 
 %     - BstFile    : full path to Brainstorm file to export

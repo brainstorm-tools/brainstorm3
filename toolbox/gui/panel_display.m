@@ -603,7 +603,7 @@ function UpdatePanel(hFig)
 
         % === CONNECTIVITY ===
         % Connectivity display panel options
-        if strcmpi(FigureId.Type, 'Connect')
+        if strcmpi(FigureId.Type, 'Connect') && ~strcmpi(file_gettype(GlobalData.DataSet(iDS).Timefreq(iTimefreq).FileName), 'ptimefreq')
             ctrl.jPanelThreshold.setVisible(1);
             % Get Threshold Min/Max
             ThresholdMinMax = bst_figures('GetFigureHandleField', hFig, 'ThresholdMinMax');
