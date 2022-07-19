@@ -75,7 +75,7 @@ else
     conditions.ParentFile = iFile;
     additionalQry = [];
 end
-sFiles = sql_query([], 'select', 'functionalfile', '*', conditions, additionalQry);
+sFiles = sql_query('SELECT', 'FunctionalFile', conditions, '*', additionalQry);
 
 % Sort files by natural order
 [tmp, iSort] = sort_nat({sFiles.Name});

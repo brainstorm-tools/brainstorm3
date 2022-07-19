@@ -180,7 +180,6 @@ switch contextName
             else
                 sStudy = contextValue.Study(iStudy);
             end
-            sStudy.Condition = char(sStudy.Condition);
 
             % Skip empty Default / Analysis studies
             if isempty(sStudy) || ((iStudy < 1 || ismember(sStudy.Name, {'@default_study', '@intra', '@inter'})) ...
@@ -193,6 +192,7 @@ switch contextName
             end
 
             % Insert study
+            sStudy.Condition = char(sStudy.Condition);
             StudyId = db_set('Study', sStudy);
             sStudy.Id = StudyId;
             bst_set('Study', sStudy.Id, sStudy);
@@ -344,6 +344,7 @@ switch contextName
                 end
             end
             
+            sStudies(i).Condition = char(sStudies(i).Condition);
             % If study exists, UPDATE query
             if ~isempty(sExistingStudy)
                 sStudies(i).Id = sExistingStudy.Id;

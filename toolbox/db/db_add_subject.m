@@ -68,7 +68,7 @@ end
 sqlConn = sql_connect();
 
 % Check the subject unicity
-if sql_row_exists(sqlConn, 'Subject', struct('Name', sSubject.Name))
+if sql_query(sqlConn, 'EXIST', 'Subject', struct('Name', sSubject.Name))
     % A subject with the same Name is found : display an error box and return to 'Subject editor' window
     bst_error(sprintf('Subject "%s" already exists in protocol.', sSubject.Name), 'Subject editor', 0);
     sSubject = [];

@@ -224,7 +224,7 @@ else
             extraQry = [extraQry ' AND ExtraStr1 IS NULL'];
         end
     end
-    sFiles = sql_query(sqlConn, 'select', 'FunctionalFile', 'Name', qryCond, extraQry);
+    sFiles = sql_query(sqlConn, 'SELECT', 'FunctionalFile', qryCond, 'Name', extraQry);
     
     if ismember(fileType, {'data', 'results', 'stat', 'timefreq', 'matrix'})
         matVer = 'v6';

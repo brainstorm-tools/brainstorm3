@@ -50,7 +50,7 @@ end
 try
     for i = 1:length(LockIds)
         LockId = LockIds(i);
-        sql_query(sqlConn, 'delete', 'lock', struct('Id', LockId));
+        sql_query(sqlConn, 'DELETE', 'Lock', struct('Id', LockId));
     end
 catch ME
     % Close SQL connection if error

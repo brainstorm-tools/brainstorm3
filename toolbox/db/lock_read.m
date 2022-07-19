@@ -70,10 +70,10 @@ try
     if isempty(StudyId) && isempty(FileId)
         % We want a new whole subject lock, make sure no existing lock
         % relates to this subject
-        sLock = sql_query(sqlConn, 'select', 'lock', '*', struct('Subject', SubjectId), IdQuery);
+        sLock = sql_query(sqlConn, 'SELECT', 'Lock', struct('Subject', SubjectId), '*', IdQuery);
     else
         % Check for existing whole subject lock
-        sLock = sql_query(sqlConn, 'select', 'lock', '*', struct('Subject', SubjectId), ...
+        sLock = sql_query(sqlConn, 'SELECT', 'lock', struct('Subject', SubjectId), '*', ...
             [IdQuery ' AND Study IS NULL AND File IS NULL']);
     end
 
@@ -82,17 +82,17 @@ try
         if isempty(FileId)
             % We want a whole new study lock, make sure no existing lock
             % relates to this study
-            sLock = sql_query(sqlConn, 'select', 'lock', '*', struct('Study', StudyId), IdQuery);
+            sLock = sql_query(sqlConn, 'SELECT', 'Lock', struct('Study', StudyId), '*', IdQuery);
         else
             % Check for existing whole study lock
-            sLock = sql_query(sqlConn, 'select', 'lock', '*', struct('Study', StudyId), ...
+            sLock = sql_query(sqlConn, 'SELECT', 'Lock', struct('Study', StudyId), '*', ...
                 [IdQuery ' AND File IS NULL']);
         end
     end
 
     % Check for file lock
     if isempty(sLock) && ~isempty(FileId)
-        sLock = sql_query(sqlConn, 'select', 'lock', '*', struct('File', FileId), IdQuery);
+        sLock = sql_query(sqlConn, 'SELECT', 'Lock', struct('File', FileId), '*', IdQuery);
     end
 
     % Check for parent file lock
@@ -105,7 +105,7 @@ try
             end
 
             ParentId = sFuncFileParent.ParentFile;
-            sLock = sql_query(sqlConn, 'select', 'lock', '*', struct('File', ParentId), IdQuery);
+            sLock = sql_query(sqlConn, 'SELECT', 'Lock', struct('File', ParentId), '*', IdQuery);
             if ~isempty(sLock)
                 break;
             end

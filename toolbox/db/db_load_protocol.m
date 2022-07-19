@@ -54,7 +54,7 @@ for i = 1:length(iProtocols)
     else
         % Load database info about protocol
         sqlConn = sql_connect(dbInfo);
-        sProtocol = sql_query(sqlConn, 'select', 'protocol', {'UseDefaultAnat', 'UseDefaultChannel'}, []);
+        sProtocol = sql_query(sqlConn, 'SELECT', 'Protocol', [], {'UseDefaultAnat', 'UseDefaultChannel'});
         sql_close(sqlConn, dbInfo);
         %TODO: iStudy
         %GlobalData.DataBase.ProtocolInfo(iProtocols(i)).iStudy            = ProtocolMat.ProtocolInfo.iStudy;

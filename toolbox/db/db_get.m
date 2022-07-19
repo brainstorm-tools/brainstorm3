@@ -163,7 +163,7 @@ switch contextName
                 else
                     condQuery.Id = iSubjects(i);
                 end
-                result = sql_query(sqlConn, 'select', 'subject', fields, condQuery);
+                result = sql_query(sqlConn, 'SELECT', 'Subject', condQuery, fields);
                 if isempty(result)
                     if isfield(condQuery, 'FileName')
                         entryStr = ['FileName "', iSubjects{i}, '"'];
@@ -175,7 +175,7 @@ switch contextName
                 sSubjects(i) = result;
             end
         else % Input is struct query
-            sSubjects = sql_query(sqlConn, 'select', 'subject', fields, condQuery(1));
+            sSubjects = sql_query(sqlConn, 'SELECT', 'Subject', condQuery(1), fields);
         end
 
         % Retrieve default subject if needed
@@ -222,16 +222,16 @@ switch contextName
         % Exclude global studies if indicated
         addQuery = '';
         if isempty(includeDefaultSub) || (includeDefaultSub == 0)
-            addQuery = ' WHERE Name <> "@default_subject"';
+            addQuery = 'AND Name <> "@default_subject"';
         end
 
-        varargout{1} = sql_query(sqlConn, 'select', 'Subject', fields, [], addQuery);
+        varargout{1} = sql_query(sqlConn, 'SELECT', 'Subject', [], fields, addQuery);
 
 
 %% ==== SUBJECTS COUNT ====
     % nSubjects = db_get('SubjectCount')
     case 'SubjectCount'
-        varargout{1} = sql_query(sqlConn, 'count', 'subject', [], 'WHERE Name <> "@default_subject"');
+        varargout{1} = sql_query(sqlConn, 'COUNT', 'Subject', [], [], 'AND Name <> "@default_subject"');
 
 
 %% ==== FILES WITH SUBJECT ====
@@ -312,7 +312,7 @@ switch contextName
                 else
                     condQuery.Id = iFiles(i);
                 end
-                result = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery);
+                result = sql_query(sqlConn, 'SELECT', 'AnatomyFile', condQuery, fields);
                 if isempty(result)
                     if isfield(condQuery, 'FileName')
                         entryStr = ['FileName "', iFiles{i}, '"'];
@@ -324,7 +324,7 @@ switch contextName
                 sFiles(i) = result;            
             end
         else % Input is struct query
-            sFiles = sql_query(sqlConn, 'select', 'anatomyfile', fields, condQuery(1));
+            sFiles = sql_query(sqlConn, 'SELECT', 'AnatomyFile', condQuery(1), fields);
         end   
         varargout{1} = sFiles;
           
@@ -375,7 +375,7 @@ switch contextName
                 else
                     condQuery.Id = iFiles(i);
                 end
-                result = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery);
+                result = sql_query(sqlConn, 'SELECT', 'FunctionalFile', condQuery, fields);
                 if isempty(result)
                     if isfield(condQuery, 'FileName')
                         entryStr = ['FileName "', iFiles{i}, '"'];
@@ -387,7 +387,7 @@ switch contextName
                 sFiles(i) = result;  
             end
         else % Input is struct query
-            sFiles = sql_query(sqlConn, 'select', 'functionalfile', fields, condQuery(1));
+            sFiles = sql_query(sqlConn, 'SELECT', 'FunctionalFile', condQuery(1), fields);
         end
         varargout{1} = sFiles;
 
@@ -491,7 +491,7 @@ switch contextName
             result.close();
             varargout{1} = iStudies;
         else
-            sStudy = sql_query(sqlConn, 'select', 'Study', fields, struct('Subject', iSubject), addQuery);
+            sStudy = sql_query(sqlConn, 'SELECT', 'Study', struct('Subject', iSubject), fields, addQuery);
             if isempty(sStudy)
                 varargout{1} = [];
             else
@@ -598,7 +598,7 @@ switch contextName
                 else
                     condQuery.Id = iStudies(i);
                 end
-                result = sql_query(sqlConn, 'select', 'study', fields, condQuery);
+                result = sql_query(sqlConn, 'SELECT', 'Study', condQuery, fields);
                 if isempty(result)
                     if isfield(condQuery, 'FileName')
                         entryStr = ['FileName "', iStudies{i}, '"'];
@@ -611,7 +611,7 @@ switch contextName
                 end
             end
         else % Input is struct query
-            sStudies = sql_query(sqlConn, 'select', 'study', fields, condQuery(1));
+            sStudies = sql_query(sqlConn, 'SELECT', 'Study', condQuery(1), fields);
         end
         varargout{1} = sStudies;
 
@@ -633,10 +633,10 @@ switch contextName
         % Exclude global studies if indicated
         addQuery = '';
         if isempty(includeGlobalStudies) || (includeGlobalStudies == 0)
-            addQuery = 'WHERE Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")';
+            addQuery = 'AND Name <> "@inter" AND (Subject <> 0 OR Name <> "@default_study")';
         end
         
-        varargout{1} = sql_query(sqlConn, 'select', 'Study', fields, [], addQuery);
+        varargout{1} = sql_query(sqlConn, 'SELECT', 'Study', [], fields, addQuery);
 
 
 %% ==== SUBJECT FROM FUNCTIONAL FILE ====              

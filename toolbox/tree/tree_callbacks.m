@@ -532,7 +532,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Edit protocol', IconLoader.ICON_EDIT,        [], @(h,ev)gui_edit_protocol('edit', iProtocol));
                     gui_component('MenuItem', jPopup, [], 'New subject',   IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)db_edit_subject);
                     % If does not exist yet: create group analysis subject
-                    if ~sql_row_exists([], 'Subject', struct('Name', bst_get('NormalizedSubjectName')))
+                    if ~sql_query('EXIST', 'Subject', struct('Name', bst_get('NormalizedSubjectName')))
                         gui_component('MenuItem', jPopup, [], 'New group analysis',   IconLoader.ICON_SUBJECT_NEW, [], @(h,ev)NewGroupAnalysis);
                     end
                     gui_component('MenuItem', jPopup, [], 'New folder', IconLoader.ICON_FOLDER_NEW,  [], @(h,ev)db_add_condition('*'));

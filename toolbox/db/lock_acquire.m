@@ -149,7 +149,7 @@ try
         end
 
         % Add lock
-        LockId = sql_query(sqlConn, 'insert', 'lock', LockData);
+        LockId = sql_query(sqlConn, 'INSERT', 'Lock', LockData);
 
         % Query again to make sure lock is still unique!
         sLock = lock_read(sqlConn, SubjectId, StudyId, FileId, LockId);

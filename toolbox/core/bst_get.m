@@ -2466,8 +2466,7 @@ switch contextName
                 addQuery = [addQuery ')'];
             end
             
-            sFiles = sql_query([], 'select', 'FunctionalFile', 'FileName', ...
-                struct('Type', DataType), addQuery);
+            sFiles = sql_query('SELECT', 'FunctionalFile', struct('Type', DataType), 'FileName', addQuery);
             FileNames = {sFiles.FileName};
         end
         argout1 = FileNames;
