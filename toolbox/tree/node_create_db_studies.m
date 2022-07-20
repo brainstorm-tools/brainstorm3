@@ -71,7 +71,7 @@ end
 
 % Get the default and inter study and all subjects
 sqlConn = sql_connect();
-sDefaultStudy  = db_get(sqlConn, 'DefaultStudy', 0, {'Id', 'FileName'});
+sDefaultStudy  = db_get(sqlConn, 'DefaultStudy', '@default_subject', {'Id', 'FileName'});
 sAnalysisStudy = db_get(sqlConn, 'Study', bst_get('DirAnalysisInter'), {'Id', 'FileName'});
 sSubjects = db_get(sqlConn, 'Subjects', 1);
 sql_close(sqlConn);

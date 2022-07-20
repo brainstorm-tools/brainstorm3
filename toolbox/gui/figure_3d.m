@@ -1248,14 +1248,14 @@ function SetStandardView(hFig, viewNames)
     if isempty(Ranat) && ~isempty(TessInfo) && ~isempty(TessInfo(1).SurfaceFile)
         % Get subject
         sqlConn = sql_connect();
-        sAnatomyFile = db_get(sqlConn, 'AnatomyFile', TessInfo(1).SurfaceFile, 'Subject');
-        sSubject     = db_get(sqlConn, 'Subject', sAnatomyFile.Subject, 'iAnatomy');
-        sAnatomyFile = db_get(sqlConn, 'AnatomyFile', sSubject.iAnatomy);
+        sAnatFile = db_get(sqlConn, 'AnatomyFile', TessInfo(1).SurfaceFile, 'Subject');
+        sSubject     = db_get(sqlConn, 'Subject', sAnatFile.Subject, 'iAnatomy');
+        sAnatFile = db_get(sqlConn, 'AnatomyFile', sSubject.iAnatomy);
         sql_close(sqlConn);
         % If there is an MRI associated with it
-        if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy) && ~isempty(sAnatomyFile.FileName)
+        if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy) && ~isempty(sAnatFile.FileName)
             % Load the SCS+MNI transformation from this file
-            sMri = load(file_fullpath(sAnatomyFile.FileName), 'NCS', 'SCS', 'Comment');
+            sMri = load(file_fullpath(sAnatFile.FileName), 'NCS', 'SCS', 'Comment');
             if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
                 % Calculate the SCS => MNI rotation   (inverse(MRI=>SCS) * MRI=>MNI)
                 Ranat = sMri.NCS.R * pinv(sMri.SCS.R);

@@ -72,8 +72,8 @@ end
 
 % Get new default surface
 if ~isempty(iSurface)
-    sAnatomyFile = db_get(sqlConn, 'AnatomyFile', iSurface);
-    DefaultFile = sAnatomyFile.FileName;    
+    sAnatFile = db_get(sqlConn, 'AnatomyFile', iSurface);
+    DefaultFile = sAnatFile.FileName;
 else
     DefaultFile = '';
 end

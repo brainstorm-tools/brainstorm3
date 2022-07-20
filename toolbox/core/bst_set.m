@@ -277,9 +277,9 @@ switch contextName
             db_set(sqlConn, 'FilesWithSubject', 'Delete', iSubject);
                        
             % Convert Anatomy & Surface files to AnatomyFiles and insert
-            sAnatomyFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
-                             db_convert_anatomyfile(sSubject.Surface, 'surface')];
-            db_set(sqlConn, 'FilesWithSubject', sAnatomyFiles, iSubject);
+            sAnatFiles = [db_convert_anatomyfile(sSubject.Anatomy, 'anatomy'), ...
+                          db_convert_anatomyfile(sSubject.Surface, 'surface')];
+            db_set(sqlConn, 'FilesWithSubject', sAnatFiles, iSubject);
 
             % Set selected Anatomy and Surface files
             hasSelFiles = 0;

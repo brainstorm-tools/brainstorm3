@@ -1145,10 +1145,10 @@ switch contextName
         end
         sqlConn = sql_connect();
         % Look for specific surface file
-        sAnatomyFile = db_get(sqlConn, 'AnatomyFile', SurfaceFile); 
-        argout1 = db_get(sqlConn, 'Subject', sAnatomyFile.Subject);
-        argout2 = sAnatomyFile.Subject;
-        argout3 = sAnatomyFile.Id;  
+        sAnatFile = db_get(sqlConn, 'AnatomyFile', SurfaceFile);
+        argout1 = db_get(sqlConn, 'Subject', sAnatFile.Subject);
+        argout2 = sAnatFile.Subject;
+        argout3 = sAnatFile.Id;
         sql_close(sqlConn);
         
 %% ==== SURFACE FILE BY TYPE ====

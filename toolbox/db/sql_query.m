@@ -123,22 +123,29 @@ action = lower(varargin{1});
 
 % Argument 1
 table  = args{1};
+% Get table for condition
+tableCond = table;
+% Last table between 'JOIN' and 'ON'
+tmp = regexp(table, '(?<=JOIN\s+)(.*?)(?=\s+ON)', 'match');
+if ~isempty(tmp)
+    tableCond = tmp{end};
+end
 
 % Argument 2
 % Condition or Data structures
 if nargs > 1 && ~isempty(args{2}) && isstruct(args{2})
     args{2} = removeEmptyValues(args{2});
-    args{2} = removeSkippedValues(args{2}, table);
+    args{2} = removeSkippedValues(args{2}, tableCond);
 else
     args{2} = struct(); % Default
 end
 
 % Argument 3
-% Fields strings, Additional query string or Data structure
+% Fields strings, Additional query string or Condition structure
 if nargs > 2 && ~isempty(args{3})
     if isstruct(args{3})
         args{3} = removeEmptyValues(args{3});
-        args{3} = removeSkippedValues(args{3}, table);
+        args{3} = removeSkippedValues(args{3}, tableCond);
     end
 else
     args{3} = '';       % Default
@@ -189,6 +196,8 @@ switch action
             iResult = result;
         % Select case
         else
+            % Get table for result (first table)
+            table = char(regexp(table, '^\w*', 'match'));
             % Prepare output structure
             defValues  = db_template(table);
             fieldTypes = db_template(table, 'fields');
@@ -199,6 +208,8 @@ switch action
             else
                 outputStruct = struct();
                 for iField = 1:length(fields)
+                    % Remove pattern 'Table.' if it exists
+                    fields{iField} = char(regexp(fields{iField}, '[^\.]*$', 'match'));
                     outputStruct.(fields{iField}) = defValues.(fields{iField});
                 end
             end

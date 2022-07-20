@@ -10,28 +10,37 @@ function varargout = db_set(varargin)
 %
 %
 % ====== SUBJECTS ======================================================================
-%
-%
+%    - db_set('Subject', 'Delete')            : Delete all Subjects
+%    - db_set('Subject', 'Delete', SubjectId) : Delete Subject by ID
+%    - db_set('Subject', 'Delete', CondQuery) : Delete Subject with Query
+%    - db_set('Subject', sSubject)            : Insert Subject
+%    - db_set('Subject', sSubject, SubjectId) : Update Subject by ID
 %
 % ====== ANATOMY FILES =================================================================
-%    - db_set('FilesWithSubject', FileType, db_template('anatomy/surface'), SubjectID, selectedAnat/Surf)
+%    - db_set('AnatomyFile', 'Delete')                      : Delete all AnatomyFiles
+%    - db_set('AnatomyFile', 'Delete', AnatomyFileId)       : Delete AnatomyFile by ID
+%    - db_set('AnatomyFile', 'Delete', CondQuery)           : Delete AnatomyFile with Query
+%    - db_set('AnatomyFile', sAnatomyFile)                  : Insert AnatomyFile
+%    - db_set('AnatomyFile', sAnatomyFile, AnatomyFileId)   : Update AnatomyFile by ID
+%    - db_set('FilesWithSubject', 'Delete' , SubjectID)     : Delete all AnatomyFiles from SubjectID
+%    - db_set('FilesWithSubject', sAnatomyFiles, SubjectID) : Insert AnatomyFiles with SubjectID
 %
 % ====== STUDIES =======================================================================
 %    - db_set('Study', 'Delete')            : Delete all Studies
 %    - db_set('Study', 'Delete', StudyId)   : Delete Study by ID
 %    - db_set('Study', 'Delete', CondQuery) : Delete Study with Query
-%    - db_set('Study', Study)               : Insert Study
-%    - db_set('Study', Study, StudyId)      : Update Study by ID
+%    - db_set('Study', sStudy)              : Insert Study
+%    - db_set('Study', sStudy, StudyId)     : Update Study by ID
 %
 % ====== FUNCTIONAL FILES ==============================================================
-%    - db_set('FilesWithStudy', 'Delete' , StudyID)        : Delete All FunctionalFiles from StudyID
-%    - db_set('FilesWithStudy', sFunctionalFiles, StudyID) : Insert FunctionalFiles with StudyID
-%    - db_set('FunctionalFile', 'Delete')                         : Delete all FunctionalFiles
-%    - db_set('FunctionalFile', 'Delete', FunctionalFileId)       : Delete FunctionalFile by ID 
-%    - db_set('FunctionalFile', 'Delete', CondQuery)              : Delete FunctionalFile with Query
-%    - db_set('FunctionalFile', FunctionalFile)                   : Insert FunctionalFile
-%    - db_set('FunctionalFile', FunctionalFile, FunctionalFileId) : Update FunctionalFile by ID
-%    - db_set('ParentCount', ParentFile, modifier, count)    
+%    - db_set('FunctionalFile', 'Delete')                          : Delete all FunctionalFiles
+%    - db_set('FunctionalFile', 'Delete', FunctionalFileId)        : Delete FunctionalFile by ID
+%    - db_set('FunctionalFile', 'Delete', CondQuery)               : Delete FunctionalFile with Query
+%    - db_set('FunctionalFile', sFunctionalFile)                   : Insert FunctionalFile
+%    - db_set('FunctionalFile', sFunctionalFile, FunctionalFileId) : Update FunctionalFile by ID
+%    - db_set('FilesWithStudy', 'Delete' , StudyID)                : Delete All FunctionalFiles from StudyID
+%    - db_set('FilesWithStudy', sFunctionalFiles, StudyID)         : Insert FunctionalFiles with StudyID
+%    - db_set('ParentCount', ParentFileID, modifier, count)        : Update NumChildren field in ParentFileID
 %
 % SEE ALSO db_get
 %
@@ -79,11 +88,11 @@ varargout = {};
 % Set required context structure
 switch contextName
 %% ==== SUBJECT ====
-    % [Success]              db_set('Subject', 'Delete')
-    % [Success]              db_set('Subject', 'Delete', SubjectId)
-    % [Success]              db_set('Subject', 'Delete', CondQuery)
+    % Success              = db_set('Subject', 'Delete')
+    %                      = db_set('Subject', 'Delete', SubjectId)
+    %                      = db_set('Subject', 'Delete', CondQuery)
     % [SubjectId, Subject] = db_set('Subject', Subject)
-    % [SubjectId, Subject] = db_set('Subject', Subject, SubjectId)
+    %                      = db_set('Subject', Subject, SubjectId)
     case 'Subject'
         % Default parameters
         iSubject = [];       
@@ -145,38 +154,38 @@ switch contextName
 
         
 %% ==== ANATOMY FILES ====
-    % [Success]                      db_set('AnatomyFile', 'Delete')
-    % [Success]                      db_set('AnatomyFile', 'Delete', AnatomyFileId)
-    % [Success]                      db_set('AnatomyFile', 'Delete', CondQuery)
+    % Success                      = db_set('AnatomyFile', 'Delete')
+    %                              = db_set('AnatomyFile', 'Delete', AnatomyFileId)
+    %                              = db_set('AnatomyFile', 'Delete', CondQuery)
     % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile)
-    % [AnatomyFileId, AnatomyFile] = db_set('AnatomyFile', AnatomyFile, AnatomyFileId)
+    %                              = db_set('AnatomyFile', AnatomyFile, AnatomyFileId)
     case 'AnatomyFile'
         % Default parameters
-        iAnatomyFile = [];       
+        iAnatFile = [];
         varargout{1} = [];
         
         if length(args) < 1
             error('Error in number of arguments')
         end
         
-        sAnatomyFile = args{1};
+        sAnatFile = args{1};
         if length(args) > 1
-            iAnatomyFile = args{2};
+            iAnatFile = args{2};
         end
         % Delete 
-        if ischar(sAnatomyFile) && strcmpi(sAnatomyFile, 'delete')
-            if isempty(iAnatomyFile)
+        if ischar(sAnatFile) && strcmpi(sAnatFile, 'delete')
+            if isempty(iAnatFile)
                 % Delete all rows in AnatomyFile table
                 delResult = sql_query(sqlConn, 'DELETE', 'AnatomyFile');
                 % Reset auto-increment
                 sql_query(sqlConn, 'RESET-AUTOINCREMENT', 'AnatomyFile');
             else
-                if isstruct(iAnatomyFile)
+                if isstruct(iAnatFile)
                     % Delete using the CondQuery
-                    delResult = sql_query(sqlConn, 'DELETE', 'AnatomyFile', iAnatomyFile);
-                elseif isnumeric(iAnatomyFile)
+                    delResult = sql_query(sqlConn, 'DELETE', 'AnatomyFile', iAnatFile);
+                elseif isnumeric(iAnatFile)
                     % Delete using iAnatomyFile
-                    delResult = sql_query(sqlConn, 'DELETE', 'AnatomyFile', struct('Id', iAnatomyFile));
+                    delResult = sql_query(sqlConn, 'DELETE', 'AnatomyFile', struct('Id', iAnatFile));
                 end
             end
             if delResult > 0
@@ -184,34 +193,34 @@ switch contextName
             end
             
         % Insert or Update    
-        elseif isstruct(sAnatomyFile)
-            if isempty(iAnatomyFile)
+        elseif isstruct(sAnatFile)
+            if isempty(iAnatFile)
                 % Insert AnatomyFile row
-                sAnatomyFile.Id = []; 
-                iAnatomyFile = sql_query(sqlConn, 'INSERT', 'AnatomyFile', sAnatomyFile);
-                varargout{1} = iAnatomyFile;
+                sAnatFile.Id = [];
+                iAnatFile = sql_query(sqlConn, 'INSERT', 'AnatomyFile', sAnatFile);
+                varargout{1} = iAnatFile;
             else
                 % Update iAnatomyFile row
-                if ~isfield(sAnatomyFile, 'Id') || isempty(sAnatomyFile.Id) || sAnatomyFile.Id == iAnatomyFile
-                    resUpdate = sql_query(sqlConn, 'UPDATE', 'AnatomyFile', sAnatomyFile, struct('Id', iAnatomyFile));
+                if ~isfield(sAnatFile, 'Id') || isempty(sAnatFile.Id) || sAnatFile.Id == iAnatFile
+                    resUpdate = sql_query(sqlConn, 'UPDATE', 'AnatomyFile', sAnatFile, struct('Id', iAnatFile));
                 else
                     error('Cannot update AnatomyFile, Ids do not match');
                 end
                 if resUpdate>0
-                    varargout{1} = iAnatomyFile;
+                    varargout{1} = iAnatFile;
                 end
             end
             % If requested, get the inserted or updated row
             if nargout > 1
-                varargout{2} = db_get(sqlConn, 'AnatomyFile', iAnatomyFile);
+                varargout{2} = db_get(sqlConn, 'AnatomyFile', iAnatFile);
             end
         else
             % No action
         end
         
 %% ==== FILES WITH SUBJECT ====
-    % [Success]       = db_set('FilesWithSubject', 'Delete'     , SubjectID)
-    % [sAnatomyFiles] = db_set('FilesWithSubject', sAnatomyFiles, SubjectID)
+    % Success       = db_set('FilesWithSubject', 'Delete'     , SubjectID)
+    % sAnatomyFiles = db_set('FilesWithSubject', sAnatomyFiles, SubjectID)
     case 'FilesWithSubject'
         sAnatFiles = args{1};
         iSubject = args{2};
@@ -236,11 +245,11 @@ switch contextName
 
 
 %% ==== STUDY ====
-    % [Success]          db_set('Study', 'Delete')
-    % [Success]          db_set('Study', 'Delete', StudyId)
-    % [Success]          db_set('Study', 'Delete', CondQuery)
+    % Success          = db_set('Study', 'Delete')
+    %                  = db_set('Study', 'Delete', StudyId)
+    %                  = db_set('Study', 'Delete', CondQuery)
     % [StudyId, Study] = db_set('Study', Study)
-    % [StudyId, Study] = db_set('Study', Study, StudyId)
+    %                  = db_set('Study', Study, StudyId)
     case 'Study'
         % Default parameters
         iStudy = [];
@@ -307,8 +316,8 @@ switch contextName
 
 
 %% ==== FILES WITH STUDY ====
-    % [Success]          = db_set('FilesWithStudy', 'Delete'        , StudyID)
-    % [sFunctionalFiles] = db_set('FilesWithStudy', sFunctionalFiles, StudyID)
+    % Success          = db_set('FilesWithStudy', 'Delete'        , StudyID)
+    % sFunctionalFiles = db_set('FilesWithStudy', sFunctionalFiles, StudyID)
     case 'FilesWithStudy'
         sFuncFiles = args{1};
         iStudy = args{2};
@@ -334,14 +343,14 @@ switch contextName
 
         
 %% ==== FUNCTIONAL FILES ====
-    % [Success]                            db_set('FunctionalFile', 'Delete')
-    % [Success]                            db_set('FunctionalFile', 'Delete', FunctionalFileId)
-    % [Success]                            db_set('FunctionalFile', 'Delete', CondQuery)
-    % [FunctionalFileId, FunctionalFile] = db_set('FunctionalFile', FunctionalFile)
-    % [FunctionalFileId, FunctionalFile] = db_set('FunctionalFile', FunctionalFile, FunctionalFileId)
+    % Success                           = db_set('FunctionalFile', 'Delete')
+    %                                   = db_set('FunctionalFile', 'Delete', FunctionalFileId)
+    %                                   = db_set('FunctionalFile', 'Delete', CondQuery)
+    % FunctionalFileId, FunctionalFile] = db_set('FunctionalFile', FunctionalFile)
+    %                                   = db_set('FunctionalFile', FunctionalFile, FunctionalFileId)
     case 'FunctionalFile'
         % Default parameters
-        iFunctionalFile = [];
+        iFuncFile = [];
         varargout{1} = [];
 
         if length(args) < 1
@@ -350,24 +359,24 @@ switch contextName
         
         sFuncFile = args{1};
         if length(args) > 1
-            iFunctionalFile = args{2};
+            iFuncFile = args{2};
         end
         % Delete
         if ischar(sFuncFile) && strcmpi(sFuncFile, 'delete')
-            if isempty(iFunctionalFile)
+            if isempty(iFuncFile)
                 % Delete all rows in FunctionalFile table
                 delResult = sql_query(sqlConn, 'DELETE', 'FunctionalFile');
                 % Reset auto-increment
                 sql_query(sqlConn, 'RESET-AUTOINCREMENT', 'FunctionalFile');
             else
-                if isstruct(iFunctionalFile)
+                if isstruct(iFuncFile)
                     % Delete using the CondQuery
-                    delResult = sql_query(sqlConn, 'DELETE', 'FunctionalFile', iFunctionalFile);
-                elseif isnumeric(iFunctionalFile)
+                    delResult = sql_query(sqlConn, 'DELETE', 'FunctionalFile', iFuncFile);
+                elseif isnumeric(iFuncFile)
                     % Get Id for parent of FunctionalFile to delete
-                    parent = db_get(sqlConn, 'FunctionalFile', iFunctionalFile, 'ParentFile');
+                    parent = db_get(sqlConn, 'FunctionalFile', iFuncFile, 'ParentFile');
                     % Delete using iFunctionalFile
-                    delResult = sql_query(sqlConn, 'DELETE', 'FunctionalFile', struct('Id', iFunctionalFile));
+                    delResult = sql_query(sqlConn, 'DELETE', 'FunctionalFile', struct('Id', iFuncFile));
                     % Reduce the number of children in parent
                     if ~isempty(parent) && ~isempty(parent.ParentFile)
                        db_set(sqlConn, 'ParentCount', parent.ParentFile, '-', 1);
@@ -384,10 +393,10 @@ switch contextName
             sFuncFile.LastModified = bst_get('CurrentUnixTime');
 
             % Insert FunctionalFile row
-            if isempty(iFunctionalFile)
+            if isempty(iFuncFile)
                 sFuncFile.Id = [];
                 switch sFuncFile.Type
-                    % If data or matrix, check for datalist and matrixlist
+                    % If data or matrix, check for 'datalist' and 'matrixlist'
                     case {'data', 'matrix'}
                         typeList = [sFuncFile.Type, 'list'];
                         cleanName = str_remove_parenth(sFuncFile.Name);
@@ -400,7 +409,7 @@ switch contextName
                     % Check for parent files
                     case {'dipoles', 'result', 'results', 'timefreq'}
                         if ~isempty(sFuncFile.ExtraStr1) % Parent FileName
-                            % Seach parent in database (ignore datalist and matrixlist functionalfiles)
+                            % Search parent in database (ignore 'datalist' and 'matrixlist' FunctionalFiles)
                             parent = sql_query(sqlConn, 'SELECT', 'FunctionalFile', ...
                                      struct('FileName', sFuncFile.ExtraStr1), ...
                                      'Id', 'AND Type <> "datalist" AND Type <> "matrixlist"');
@@ -412,27 +421,27 @@ switch contextName
                     otherwise
                         % Do nothing
                 end
-                iFunctionalFile = sql_query(sqlConn, 'INSERT', 'FunctionalFile', sFuncFile);
-                varargout{1} = iFunctionalFile;
+                iFuncFile = sql_query(sqlConn, 'INSERT', 'FunctionalFile', sFuncFile);
+                varargout{1} = iFuncFile;
                 % Increase the number of children in parent or list
                 if ~isempty(sFuncFile.ParentFile) && sFuncFile.ParentFile > 0
                    db_set(sqlConn, 'ParentCount', sFuncFile.ParentFile, '+', 1);
                 end
 
-            % Update FunctionalFile row
+            % Update iFunctionalFile row
             else
-                if ~isfield(sFuncFile, 'Id') || isempty(sFuncFile.Id) || sFuncFile.Id == iFunctionalFile
-                    resUpdate = sql_query(sqlConn, 'UPDATE', 'FunctionalFile', sFuncFile, struct('Id', iFunctionalFile));
+                if ~isfield(sFuncFile, 'Id') || isempty(sFuncFile.Id) || sFuncFile.Id == iFuncFile
+                    resUpdate = sql_query(sqlConn, 'UPDATE', 'FunctionalFile', sFuncFile, struct('Id', iFuncFile));
                 else
                     error('Cannot update FunctionalFile, Ids do not match');
                 end
                 if resUpdate > 0
-                    varargout{1} = iFunctionalFile;
+                    varargout{1} = iFuncFile;
                 end
             end
             % If requested, get the inserted or updated row
             if nargout > 1
-                varargout{2} = db_get(sqlConn, 'FunctionalFile', iFunctionalFile);
+                varargout{2} = db_get(sqlConn, 'FunctionalFile', iFuncFile);
             end
         else
             % No action

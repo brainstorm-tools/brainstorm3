@@ -1341,8 +1341,7 @@ switch (lower(action))
                 iData = bstNodes(1).getItemIndex();
                 sFuncFile = db_get('FunctionalFile', iData);
                 sData = db_convert_functionalfile(sFuncFile);
-                iSubject = db_get('SubjectFromStudy', iStudy);
-                sSubject = bst_get('Subject', iSubject);
+                sSubject = db_get('SubjectFromStudy', iStudy);
                 % Data type
                 DataType = sData.DataType;
                 isStat = ~strcmpi(DataType, 'recordings') && ~strcmpi(DataType, 'raw');

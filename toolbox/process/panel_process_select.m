@@ -93,7 +93,8 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
         SubjectIds   = [sSubjects.Id];
         SubjectNames = {sSubjects.Name};
         if ~isempty(ProtocolInfo.iStudy)
-            iSelSubject = db_get(sqlConn, 'SubjectFromStudy', ProtocolInfo.iStudy);
+            sSubjectTmp = db_get(sqlConn, 'SubjectFromStudy', ProtocolInfo.iStudy, 'Id');
+            iSelSubject = sSubjectTmp.Id;
         end
     end
     sql_close(sqlConn);
