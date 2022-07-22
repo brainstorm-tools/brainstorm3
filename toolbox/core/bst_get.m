@@ -1143,13 +1143,11 @@ switch contextName
         else
             error('Invalid call to bst_get().');
         end
-        sqlConn = sql_connect();
         % Look for specific surface file
-        sAnatFile = db_get(sqlConn, 'AnatomyFile', SurfaceFile);
-        argout1 = db_get(sqlConn, 'Subject', sAnatFile.Subject);
+        sAnatFile = db_get('AnatomyFile', SurfaceFile, {'Id', 'Subject'});
+        argout1 = bst_get('Subject', sAnatFile.Subject);
         argout2 = sAnatFile.Subject;
         argout3 = sAnatFile.Id;
-        sql_close(sqlConn);
         
 %% ==== SURFACE FILE BY TYPE ====
     % Usage : [sSurface, iSurface] = bst_get('SurfaceFileByType', iSubject,    SurfaceType)
