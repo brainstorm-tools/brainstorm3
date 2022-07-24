@@ -213,9 +213,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         subjName = SubjectNames{iSubj};
         % Check if this is a subject selected for import
         if ~isempty(OPTIONS.SelectedSubjects) && ((iscell(OPTIONS.SelectedSubjects) && ~ismember(subjName, OPTIONS.SelectedSubjects)) || (ischar(OPTIONS.SelectedSubjects) && ~strcmpi(subjName, OPTIONS.SelectedSubjects)))
-            msg = [Messages 10 'Subject "' subjName '" was not selected. Skipping...'];
-            disp(['BIDS> ' msg]);
-            Messages = [Messages 10 msg];
+            disp(['BIDS> Subject "' subjName '" was not selected. Skipping...']);
             continue;
         end
         % Get session folders: regular or derivatives
