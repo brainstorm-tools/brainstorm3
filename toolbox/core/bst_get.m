@@ -759,11 +759,9 @@ switch contextName
         else
             InterSubject = 0;
         end
-        
-        qry = ['SELECT Study.Id FROM Study ' ...
-            'LEFT JOIN Subject ON Subject.Id = Study.Subject ' ...
-            'WHERE Subject.FileName = "%s"'];
-        
+        % Join query
+        joinQry  = 'Study LEFT JOIN Subject On Study.Subject = Subject.Id';
+        addQuery = 'AND Subject.FileName = "%s"';
         % Remove "analysis_intra" and "default_study" studies from list
         notName = {};
         if ~IntraStudies
@@ -776,25 +774,23 @@ switch contextName
             notName{end + 1} = bst_get('DirAnalysisInter');
         end
         if ~isempty(notName)
-            qry = [qry ' AND Study.Name NOT IN ('];
+            addQuery = [addQuery ' AND Study.Name NOT IN ('];
             for iName = 1:length(notName)
                 if iName > 1
-                    qry = [qry ', '];
+                    addQuery = [addQuery ', '];
                 end
-                qry = [qry '"' notName{iName} '"'];
+                addQuery = [addQuery '"' notName{iName} '"'];
             end
-            qry = [qry ')'];
+            addQuery = [addQuery ')'];
         end
-        
         % Search all the current protocol's studies
         iStudies = [];
         for i=1:length(SubjectFile)
-            result = sql_query(sqlConn, sprintf(qry, SubjectFile{i}));
-            while result.next()
-                iStudies(end + 1) = result.getInt('Id');
-            end
-            result.close();
+            sStudies = sql_query(sqlConn, 'SELECT', joinQry, [], 'Study.Id', ...
+                                 sprintf (addQuery, SubjectFile{i}));
+            iStudies = [iStudies, [sStudies.Id]];
         end
+        sql_close(sqlConn);
         % Return results
         if ~isempty(iStudies)
             % Return studies
@@ -803,7 +799,6 @@ switch contextName
             argout1 = repmat(db_template('Study'), 0);
             argout2 = [];
         end
-        sql_close(sqlConn);
               
         
 %% ==== STUDY WITH CONDITION PATH ====
@@ -844,41 +839,25 @@ switch contextName
             end
             SubjectName = condSplit{1};
             ConditionName = condSplit{2};
-            
-            qry = 'SELECT Study.Id AS StudyId FROM Study ';
-            % If first element is '*', search for condition in all the studies
-            if (SubjectName(1) == '*')
-                qry = [qry 'WHERE'];
-            % Else : search for condition only in studies that are linked to the subject specified in the ConditionPath
-            else
-                qry = [qry 'LEFT JOIN Subject on Subject.Id = Study.Subject ' ...
-                    'WHERE Subject.Name = "' SubjectName '" AND'];
-            end
-            qry = [qry ' Study.Condition = "' ConditionName '"'];
 
             iStudies = [];
-            sqlConn = sql_connect();
-            result = sql_query(sqlConn, qry);
-            while result.next()
-                iStudies(end + 1) = result.getInt('StudyId');
+            % If first element is '*', search for condition in all the studies
+            if (SubjectName(1) == '*')
+                sStudies = db_get('Study', struct('Condition', ConditionName), 'Id');
+            % Else : search for condition only in studies that are linked to the subject specified in the ConditionPath
+            else
+                % Join query
+                joinQry  = 'Study LEFT JOIN Subject On Study.Subject = Subject.Id';
+                addQuery = ['AND Subject.Name = "' SubjectName '" ' ...
+                            'AND Study.Condition = "' ConditionName '"'];
+                sStudies = sql_query('SELECT', joinQry, [], 'Study.Id', addQuery);
             end
-            result.close();
-            sql_close(sqlConn);
+            iStudies = [iStudies, [sStudies.Id]];
             
-            % Nothing to search
-            if isempty(iStudies)
-                return
-            end
-
             % Return results
             if ~isempty(iStudies)
-                sStudies = repmat(db_template('Study'), 1, length(iStudies));
-                for i = length(iStudies)
-                    sStudies(i) = db_get('Study', iStudies(i));
-                end
                 % Return studies
-                argout1 = sStudies;
-                argout2 = iStudies;
+                [argout1, argout2] = bst_get('Study', iStudies);
             else
                 argout1 = repmat(db_template('Study'), 0);
                 argout2 = [];
