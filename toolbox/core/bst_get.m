@@ -2032,45 +2032,52 @@ switch contextName
         switch (fileType)
             % ===== FUNCTIONAL =====
             case 'channel'
-                [sStudy, iStudy] = bst_get('ChannelFile', FileName);
-                iItem = 1;
+                [sStudy, iStudy, iItem] = bst_get('ChannelFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Channel;
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'headmodel'
                 [sStudy, iStudy, iItem] = bst_get('HeadModelFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.HeadModel(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'noisecov'
                 [sStudy, iStudy, iItem] = bst_get('NoiseCovFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.NoiseCov(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'ndatacov'
                 [sStudy, iStudy, iItem] = bst_get('DataCovFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.NoiseCov(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'data'
                 [sStudy, iStudy, iItem] = bst_get('DataFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Data(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case {'results', 'link'}
                 [sStudy, iStudy, iItem] = bst_get('ResultsFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Result(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case {'presults', 'pdata','ptimefreq','pmatrix'}
                 [sStudy, iStudy, iItem] = bst_get('StatFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Stat(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'dipoles'
                 [sStudy, iStudy, iItem] = bst_get('DipolesFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Dipoles(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'timefreq'
                 % Remove optional RefRowName
@@ -2080,12 +2087,14 @@ switch contextName
                 end
                 [sStudy, iStudy, iItem] = bst_get('TimefreqFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Timefreq(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'matrix'
                 [sStudy, iStudy, iItem] = bst_get('MatrixFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Matrix(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             case 'brainstormstudy'
                 [sStudy, iStudy] = bst_get('Study', FileName);
@@ -2096,18 +2105,21 @@ switch contextName
             case {'image', 'video', 'videolink'}
                 [sStudy, iStudy, iItem] = bst_get('ImageFile', FileName, iStudies);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Image(iItem);
+                    sFunctFile = db_get('FunctionalFile', iItem);
+                    sItem = db_convert_functionalfile(sFunctFile);
                 end
             % ===== ANATOMY =====
             case {'cortex','scalp','innerskull','outerskull','tess','fibers','fem'}
                 [sStudy, iStudy, iItem] = bst_get('SurfaceFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Surface(iItem);
+                    sAnatFile = db_get('AnatomyFile', iItem);
+                    sItem = db_convert_anatomyfile(sAnatFile);
                 end
             case 'subjectimage'
                 [sStudy, iStudy, iItem] = bst_get('MriFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
-                    sItem = sStudy.Anatomy(iItem);
+                    sAnatFile = db_get('AnatomyFile', iItem);
+                    sItem = db_convert_anatomyfile(sAnatFile);
                 end
             case 'brainstormsubject'
                 [sStudy, iStudy] = bst_get('Subject', FileName);
