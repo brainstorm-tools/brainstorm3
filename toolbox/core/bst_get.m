@@ -981,7 +981,6 @@ switch contextName
             return;
         end
         % Parse inputs
-        sqlConn = sql_connect();
         sSubject = [];
         if (nargin == 1)
             iSubject = 0;
@@ -1006,7 +1005,6 @@ switch contextName
         % === NORMAL SUBJECT ===
         else
             if isempty(sSubject) || ~sSubject.UseDefaultChannel
-                sql_close(sqlConn);
                 return;
             end
             % === GLOBAL DEFAULT STUDY ===
@@ -1017,15 +1015,13 @@ switch contextName
             % === SUBJECT'S DEFAULT STUDY ===
             elseif sSubject.UseDefaultChannel == 1
                 % Get studies related to subject
-                sStudy = db_get(sqlConn, 'DefaultStudy', iSubject, 'Id');
+                sStudy = db_get('DefaultStudy', iSubject, 'Id');
                 if ~isempty(sStudy)
                     argout1 = bst_get('Study', sStudy.Id);
                     argout2 = sStudy.Id;
                 end
             end
         end
-        
-        sql_close(sqlConn);
         
         
 %% ==== SUBJECT ====
