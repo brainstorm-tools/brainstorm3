@@ -958,17 +958,11 @@ switch contextName
         else
             error('Invalid call to bst_get()');
         end
-        % Get subject
-        sSubject = bst_get('Subject', iSubject, 1);
-        % Get studies related to subject
-        [sSubjStudies, iSubjStudies] = bst_get('StudyWithSubject', sSubject.FileName, 'intra_subject');
-        % Look for the 'AnalysisIntra' study
-        iFound = find(cellfun(@(c)ismember(bst_get('DirAnalysisIntra'), c), {sSubjStudies.Condition}));
-        iAnalStudy = iSubjStudies(iFound);
-        sAnalStudy = sSubjStudies(iFound);
+        % Get index of 'AnalysisIntra' study
+        sStudy = db_get('Study', struct('Subject', iSubject, 'Name', bst_get('DirAnalysisIntra')), 'Id');
         % Return found structure
-        argout1 = sAnalStudy;
-        argout2 = iAnalStudy;        
+        argout1 = bst_get('Study', sStudy.Id);
+        argout2 = sStudy.Id;
         
         
 %% ==== ANALYSIS STUDY (INTER) ====
