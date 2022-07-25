@@ -1468,7 +1468,7 @@ switch contextName
         end
         % Return HeadModel structure
         if ~isempty(sStudy.iHeadModel)
-            argout1 = sStudy.HeadModel(sStudy.iHeadModel(1));
+            argout1 = db_convert_functionalfile(db_get('FunctionalFile', sStudy.iHeadModel));
         else
             argout1 = [];
         end
