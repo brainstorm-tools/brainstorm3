@@ -1196,32 +1196,11 @@ switch contextName
             error('Invalid call to bst_get().');
         end
 
-        % Remove SUBJECTS path from MriFile
-        MriFile = file_short(MriFile);
-        % Look for MRI file in DefaultSubject
-        if ~isempty(ProtocolSubjects.DefaultSubject)
-            % Find the first MRI that matches the MriFile
-            iMri = find(file_compare(MriFile, {ProtocolSubjects.DefaultSubject.Anatomy.FileName}), 1);
-            % If a MRI was found in default subject : return it
-            if ~isempty(iMri)
-                argout1  = ProtocolSubjects.DefaultSubject;
-                argout2    = 0;
-                argout3 = iMri;
-                return
-            end
-        end
-        % Look for MRI file in all the MRIs of all subjects
-        for iSubj = 1:length(ProtocolSubjects.Subject)
-            % Find the first MRI that matches the MriFile
-            iMri = find(file_compare(MriFile, {ProtocolSubjects.Subject(iSubj).Anatomy.FileName}), 1);
-            % If a MRI was found in current subject : return it
-            if ~isempty(iMri)
-                argout1  = ProtocolSubjects.Subject(iSubj);
-                argout2    = iSubj;
-                argout3 = iMri;
-                return
-            end
-        end
+        % Look for specific MRI file
+        sAnatFile = db_get('AnatomyFile', MriFile, {'Id', 'Subject'});
+        argout1 = bst_get('Subject', sAnatFile.Subject);
+        argout2 = sAnatFile.Subject;
+        argout3 = sAnatFile.Id;
 
         
 %% ==== CHANNEL FILE ====
