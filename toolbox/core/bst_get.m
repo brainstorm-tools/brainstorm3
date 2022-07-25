@@ -1797,9 +1797,12 @@ switch contextName
         % Data files: get all the depending results, and then all the timefreq for those results
         if strcmpi(DataType, 'data')
             [tmp, tmp, iResults] = bst_get('ResultsForDataFile', FileName, iStudy);
-            for i = 1:length(iResults);
+            for i = 1:length(iResults)
+                % Get FileName for depending results file
+                sFuncFile = db_get('FunctionalFile', iResults(i), 'FileName');
+                FileNameRes = sFuncFile.FileName;
                 % Search selected studies
-                [tmp, tmp, iTfRes] = findFileInStudies('Timefreq', 'DataFile', sStudy.Result(iResults(i)).FileName, iStudy);
+                [tmp, tmp, iTfRes] = findFileInStudies('Timefreq', 'DataFile', FileNameRes, iStudy);
                 if ~isempty(iTfRes)
                     iTf = [iTf iTfRes];
                 end
@@ -1845,9 +1848,12 @@ switch contextName
         % Data files: get all the depending results, and then all the timefreq for those results
         if strcmpi(DataType, 'data')
             [tmp, tmp, iResults] = bst_get('ResultsForDataFile', FileName, iStudy);
-            for i = 1:length(iResults);
+            for i = 1:length(iResults)
+                % Get FileName for depending results file
+                sFuncFile = db_get('FunctionalFile', iResults(i), 'FileName');
+                FileNameRes = sFuncFile.FileName;
                 % Search selected studies
-                [tmp, tmp, iDipRes] = findFileInStudies('Dipoles', 'DataFile', sStudy.Result(iResults(i)).FileName, iStudy);
+                [tmp, tmp, iDipRes] = findFileInStudies('Dipoles', 'DataFile', FileNameRes, iStudy);
                 if ~isempty(iDipRes)
                     iDip = [iDip, iDipRes];
                 end
@@ -3923,7 +3929,8 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
         if ~isempty(iItem)
             sFoundStudy  = sStudy;
             iFoundStudy  = sStudy.Id;
-            iItem = iValidFiles(iItem);
+            sFuncFile = db_get('FunctionalFile', sStudy.(fieldGroup)(iValidFiles(iItem)), 'Id');
+            iItem = sFuncFile.Id;
             return
         end
     end
