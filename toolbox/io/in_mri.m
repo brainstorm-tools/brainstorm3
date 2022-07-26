@@ -71,6 +71,7 @@ vox2ras = [];
 tReorient = [];
 
 % ===== GUNZIP FILE =====
+gunzippedFile = [];
 if ~iscell(MriFile)
     % Get file extension
     [fPath, fBase, fExt] = bst_fileparts(MriFile);
@@ -315,5 +316,8 @@ if isMni && ~isempty(vox2ras) && (~isfield(MRI, 'NCS') || ~isfield(MRI.NCS, 'R')
 end
 
 
-
+%% ===== DELETE TEMPORARY FILE =====
+if ~isempty(gunzippedFile)
+    file_delete(gunzippedFile, 1, 3);
+end
 
