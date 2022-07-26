@@ -2162,20 +2162,12 @@ switch contextName
         if isempty(sStudy)
             return;
         end
-        % Get associated data file
-        switch (fileType)
-            case 'data'
-                RelatedDataFile = sStudy.Data(iFile).FileName;
-            case {'pdata','presults','ptimefreq','pmatrix'}
-                RelatedDataFile = sStudy.Stat(iFile).DataFile;
-            case {'results', 'link'}
-                RelatedDataFile = sStudy.Result(iFile).DataFile;
-            case 'dipoles'
-                RelatedDataFile = sStudy.Dipoles(iFile).DataFile;
-            case 'timefreq'
-                RelatedDataFile = sStudy.Timefreq(iFile).DataFile;
-            otherwise
-                RelatedDataFile = '';
+        % Get parent file
+        RelatedDataFile = '';
+        sFunctFile = db_get('FunctionalFile', iFile, 'ParentFile');
+        if ~isempty(sFunctFile.ParentFile)
+            sFunctFileParent = db_get('FunctionalFile', sFunctFile.ParentFile, 'FileName');
+            RelatedDataFile = sFunctFileParent.FileName;
         end
         % If related file is results: get related data file
         if ~isempty(RelatedDataFile)
