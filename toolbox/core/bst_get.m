@@ -1159,21 +1159,25 @@ switch contextName
             if ~isfield(sSubject, field) || isempty(sSubject.(field))
                 return
             end
-            argout1 = sSubject.Surface(sSubject.(field));
-            argout2 = sSubject.(field); 
+            sAnatFile = db_get('AnatomyFile', sSubject.(field));
+            argout1 = db_convert_anatomyfile(sAnatFile);
+            argout2 = sAnatFile.Id;
         % === RETURN ALL THE SURFACES ===
         else
+            % Surface filenames for Subject
+            sAnatFiles = db_get('AnatomyFile', struct('Subject', sSubject.Id, 'Type', 'surface'), {'Id', 'FileName'});
             % Build the list of tagged surfaces
             fileTag = ['_' lower(SurfaceType)];
-            iTargetList = find(cellfun(@(c)~isempty(strfind(c, fileTag)), {sSubject.Surface.FileName}));
+            iTargetList = find(cellfun(@(c)~isempty(strfind(c, fileTag)), {sAnatFiles.FileName}));
             % Put the default cortex on top of the list
             iDefaults = intersect([sSubject.iCortex, sSubject.iScalp, sSubject.iInnerSkull, sSubject.iOuterSkull, sSubject.iFibers, sSubject.iFEM], iTargetList);
             if ~isempty(iDefaults)
                 iTargetList = [iDefaults, setdiff(iTargetList, iDefaults)];
             end
             % Return all cortex surfaces
-            argout1 = sSubject.Surface(iTargetList);
-            argout2 = iTargetList; 
+            sAnatFiles = db_get('AnatomyFile', [sAnatFiles(iTargetList).Id]);
+            argout1 = db_convert_anatomyfile(sAnatFiles);
+            argout2 = [sAnatFiles.Id];
         end
         
         
