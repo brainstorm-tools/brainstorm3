@@ -121,12 +121,6 @@ end
 LoadOptionsA.LoadFull = ~isempty(OPTIONS.TargetA)  || ~ismember(OPTIONS.Method, {'cohere'});  
 LoadOptionsB = LoadOptionsA;
 LoadOptionsB.LoadFull = ~isempty(OPTIONS.TargetB) || ~ismember(OPTIONS.Method, {'cohere'});
-% Use the signal processing toolbox?
-if bst_get('UseSigProcToolbox')
-    hilbert_fcn = @hilbert;
-else
-    hilbert_fcn = @oc_hilbert;
-end
 
 
 %% ===== CONCATENATE INPUTS / REMOVE AVERAGE =====
@@ -500,13 +494,17 @@ for iFile = 1:length(FilesA)
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
-                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
-                HA = hilbert_fcn(DataAband')';                
+                iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
+                Wn=iband/(sfreq/2);
+                [num,den]=butter(1,Wn);
+                HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
+                
                 if isConnNN
                     HB = HA;
                 else
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
-                    HB = hilbert_fcn(DataBband')';
+                    %DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
+                    %HB = hilbert_fcn(DataBband')';
+                    HB=filfilt_hilbert ( num, den, sInputB.Data',1 )';
                 end
                 if OPTIONS.isOrth
                     if isConnNN
@@ -564,14 +562,17 @@ for iFile = 1:length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                    HA = hilbert_fcn(DataAband')';
+                    iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
+                    Wn=iband/(sfreq/2);
+                    [num,den]=butter(1,Wn);
+                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                    HA = hilbert_fcn(DataAband')';
-                    HB = hilbert_fcn(DataBband')';
+                    iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
+                    Wn=iband/(sfreq/2);
+                    [num,den]=butter(1,Wn);
+                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
+                    HB=filfilt_hilbert ( num, den, sInputB.Data',1 )';
                 end
                 phaseA = HA ./ abs(HA);
                 phaseB = HB ./ abs(HB);
@@ -632,14 +633,17 @@ for iFile = 1:length(FilesA)
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
                 if isConnNN
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                    HA = hilbert_fcn(DataAband')';
+                    iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
+                    Wn=iband/(sfreq/2);
+                    [num,den]=butter(1,Wn);
+                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
                     HB = HA;
                 else
-                    DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
-                    HA = hilbert_fcn(DataAband')';
-                    HB = hilbert_fcn(DataBband')';
+                    iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
+                    Wn=iband/(sfreq/2);
+                    [num,den]=butter(1,Wn);
+                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
+                    HB=filfilt_hilbert ( num, den, sInputB.Data',1 )';
                 end
                 % Compute the (ci)PLV and wPLI in time for each pair
                 phaseA = repmat(HA,[nB 1]) ./ abs(repmat(HA,[nB 1]));
