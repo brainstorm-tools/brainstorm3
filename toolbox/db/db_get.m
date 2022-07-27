@@ -23,6 +23,8 @@ function varargout = db_get(varargin)
 %    - db_get('SubjectFromStudy', StudyFileName, SubjectFields) : Find SubjectID for StudyFileName
 %    - db_get('SubjectFromFunctionalFile', FileId, SubjectFields)   : Find Subject for FunctionalFile with FileID
 %    - db_get('SubjectFromFunctionalFile', FileName, SubjectFields) : Find Subject for FunctionalFile with FileName
+%    - db_get('SubjectFromAnatomyFile', FileId, SubjectFields)   : Find Subject for AnatomyFile with FileID
+%    - db_get('SubjectFromAnatomyFile', FileName, SubjectFields) : Find Subject for AnatomyFile with FileName
 %
 % ====== ANATOMY FILES =================================================================
 %    - db_get('FilesWithSubject', SubjectID, AnatomyFileType, Fields) : Get AnatomyFiles for SubjectID
@@ -56,6 +58,10 @@ function varargout = db_get(varargin)
 %    - db_get('ChannelFromStudy', StudyID)       : Find current Channel for StudyID
 %    - db_get('ChannelFromStudy', StudyFileName) : Find current Channel for StudyFileName
 %    - db_get('ChannelFromStudy', CondQuery)     : Find current Channel for Query struct
+%
+% ====== ANY FILE ======================================================================
+%    - db_get('AnyFile', FileName)         : Get any file by FileName
+%    - db_get('AnyFile', FileName, Fields) : Get any file by FileName. Fields must be valid for the FileName
 %
 % SEE ALSO db_set
 %
@@ -146,7 +152,7 @@ switch contextName
                 end
                 % Verify requested fields
                 if ~all(isfield(templateStruct, fields))
-                    error('Invalid Fields requested in db_get()');
+                    error('Invalid Fields requested in db_get(''Subject'')');
                 else
                     resultStruct = [];
                     for i = 1 : length(fields)
@@ -167,7 +173,7 @@ switch contextName
             sSubjects = repmat(resultStruct, 1, nSubjects);
             for i = 1:nSubjects
                 if iscell(iSubjects)
-                    condQuery.FileName = iSubjects{i};
+                    condQuery.FileName = file_short(iSubjects{i});
                 else
                     condQuery.Id = iSubjects(i);
                 end
@@ -178,9 +184,10 @@ switch contextName
                     else
                         entryStr = ['Id "', num2str(iSubjects(i)), '"'];
                     end
-                    error(['Subject with ', entryStr, ' was not found in database.']);
+                    warning(['Subject with ', entryStr, ' was not found in database.']);
+                else
+                    sSubjects(i) = result;
                 end
-                sSubjects(i) = result;
             end
         else % Input is struct query
             sSubjects = sql_query(sqlConn, 'SELECT', 'Subject', condQuery(1), fields);
@@ -300,7 +307,7 @@ switch contextName
                 end
                 % Verify requested fields
                 if ~all(isfield(templateStruct, fields))
-                    error('Invalid Fields requested in db_get()');
+                    error('Invalid Fields requested in db_get(''AnatomyFile'')');
                 else
                     resultStruct = [];
                     for i = 1 : length(fields)
@@ -316,7 +323,7 @@ switch contextName
             sFiles = repmat(resultStruct, 1, nFiles);
             for i = 1:nFiles
                 if iscell(iFiles)
-                    condQuery.FileName = iFiles{i};
+                    condQuery.FileName = file_short(iFiles{i});
                 else
                     condQuery.Id = iFiles(i);
                 end
@@ -327,9 +334,10 @@ switch contextName
                     else
                         entryStr = ['Id "', num2str(iFiles(i)), '"'];
                     end
-                    error(['AnatomyFile with ', entryStr, ' was not found in database.']);
+                    warning(['AnatomyFile with ', entryStr, ' was not found in database.']);
+                else
+                    sFiles(i) = result;
                 end
-                sFiles(i) = result;            
             end
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'SELECT', 'AnatomyFile', condQuery(1), fields);
@@ -363,7 +371,7 @@ switch contextName
                 end
                 % Verify requested fields
                 if ~all(isfield(templateStruct, fields))
-                    error('Invalid Fields requested in db_get()');
+                    error('Invalid Fields requested in db_get(''FunctionalFile'')');
                 else
                     resultStruct = [];
                     for i = 1 : length(fields)
@@ -379,7 +387,7 @@ switch contextName
             sFiles = repmat(resultStruct, 1, nFiles);
             for i = 1:nFiles
                 if iscell(iFiles)
-                    condQuery.FileName = iFiles{i};
+                    condQuery.FileName = file_short(iFiles{i});
                 else
                     condQuery.Id = iFiles(i);
                 end
@@ -390,9 +398,10 @@ switch contextName
                     else
                         entryStr = ['Id "', num2str(iFiles(i)), '"'];
                     end
-                    error(['FunctionalFile with ', entryStr, ' was not found in database.']);
+                    warning(['FunctionalFile with ', entryStr, ' was not found in database.']);
+                else
+                    sFiles(i) = result;
                 end
-                sFiles(i) = result;  
             end
         else % Input is struct query
             sFiles = sql_query(sqlConn, 'SELECT', 'FunctionalFile', condQuery(1), fields);
@@ -420,7 +429,7 @@ switch contextName
         addQuery = 'AND Study.';
         % Complete query with FileName of FileID
         if ischar(args{1})
-            addQuery = [addQuery 'FileName = "' args{1} '"'];
+            addQuery = [addQuery 'FileName = "' file_short(args{1}) '"'];
         else
             addQuery = [addQuery 'Id = ' num2str(args{1})];
         end
@@ -495,11 +504,12 @@ switch contextName
             fields = cellfun(@(x) ['Study.' x], fields, 'UniformOutput', 0);
         end
         % Join query
-        joinQry = 'Study LEFT JOIN Subject On Study.Subject = Subject.Id';
+        joinQry = 'Study LEFT JOIN Subject ON Study.Subject = Subject.Id';
         % Add query
         addQuery = 'AND Subject.';
         % Complete query with FileName of FileID
         if ischar(args{1})
+            args{1} = file_short(args{1});
             [~, ~, fExt] = bst_fileparts(args{1});
             % Argument is not a Matlab .mat filename, assume it is a directory
             if ~strcmpi(fExt, '.mat')
@@ -589,7 +599,7 @@ switch contextName
                 end
                 % Verify requested fields
                 if ~all(isfield(templateStruct, fields))
-                    error('Invalid Fields requested in db_get()');
+                    error('Invalid Fields requested in db_get(''Study'')');
                 else
                     resultStruct = [];
                     for i = 1 : length(fields)
@@ -604,7 +614,7 @@ switch contextName
             sStudies = repmat(resultStruct, 0);
             for i = 1:length(iStudies)
                 if iscell(iStudies)
-                    condQuery.FileName = iStudies{i};
+                    condQuery.FileName = file_short(iStudies{i});
                 else
                     condQuery.Id = iStudies(i);
                 end
@@ -670,12 +680,78 @@ switch contextName
         addQuery = 'AND FunctionalFile.';
         % Complete query with FileName of FileID
         if ischar(args{1})
-            addQuery = [addQuery 'FileName = "' args{1} '"'];
+            addQuery = [addQuery 'FileName = "' file_short(args{1}) '"'];
         else
             addQuery = [addQuery 'Id = ' num2str(args{1})];
         end
         % Select query
         varargout{1} = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
+
+
+%% ==== SUBJECT FROM ANATOMY FILE ====
+    % sSubject = db_get('SubjectFromAnatomyFile', FileId,   SubjectFields)
+    %          = db_get('SubjectFromAnatomyFile', FileName, SubjectFields)
+    case 'SubjectFromAnatomyFile'
+        fields = '*';
+        varargout{1} = [];
+        if length(args) > 1
+            fields = args{2};
+        end
+        if ischar(fields), fields = {fields}; end
+        % Prepend 'Subject.' to requested fields
+        if ~strcmp('*', fields{1})
+            fields = cellfun(@(x) ['Subject.' x], fields, 'UniformOutput', 0);
+        end
+        % Join query
+        joinQry = 'Subject LEFT JOIN AnatomyFile ON Subject.Id = AnatomyFile.Subject ';
+        % Add query
+        addQuery = 'AND AnatomyFile.';
+        % Complete query with FileName of FileID
+        if ischar(args{1})
+            addQuery = [addQuery 'FileName = "' file_short(args{1}) '"'];
+        else
+            addQuery = [addQuery 'Id = ' num2str(args{1})];
+        end
+        % Select query
+        varargout{1} = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
+
+
+%% ==== ANY FILE ====
+    % [sItem, itemTable] = db_get('AnyFile', FileName)
+    % [sItem, itemTable] = db_get('AnyFile', FileName, Fields)
+    case 'AnyFile'
+        fields = '*';
+        varargout{1} = [];
+        varargout{2} = '';
+        if length(args) > 1
+            fields = args{2};
+        end
+        % Get data format
+        fileName = file_short(args{1});
+        fileType = file_gettype(fileName);
+        if isempty(fileType)
+            error('File type is not recognized in db_get(''AnyFile'').');
+        end
+        % Table according fileType
+        switch fileType
+            % Subject
+            case 'brainstormsubject'
+                table = 'Subject';
+            % Study
+            case 'brainstormstudy'
+                table = 'Study';
+            % Anatomy file
+            case {'cortex','scalp','innerskull','outerskull','tess','fibers','fem', 'subjectimage'}
+                table = 'AnatomyFile';
+            % Functional file
+            case {'channel', 'headmodel', 'noisecov', 'ndatacov', ...
+                  'data', 'results', 'link', ...
+                  'presults', 'pdata','ptimefreq','pmatrix', ...
+                  'dipoles', 'timefreq', 'matrix', 'image', 'video', 'videolink'}
+                table = 'FunctionalFile';
+        end
+        varargout{1} = db_get(sqlConn, table, fileName, fields);
+        varargout{2} = table;
 
 
 %% ==== ERROR ====      
