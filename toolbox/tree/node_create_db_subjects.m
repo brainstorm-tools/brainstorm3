@@ -57,7 +57,14 @@ if (isempty(ProtocolInfo))
 end
 % Get current protocol subjects list
 sSubjects = db_get('Subjects', 1);
+% Index @default_subject
 iDefaultSubject = find(strcmp({sSubjects.Name}, bst_get('DirDefaultSubject')), 1);
+% Find subject "Group_analysis"
+iSubjectGroup = find(strcmpi({sSubjects.Name}, bst_get('NormalizedSubjectName')));
+% If it exists: Remove it from the sorted list
+if ~isempty(iSubjectGroup)
+    sSubjects(iSubjectGroup) = [];
+end
 
 %TODO: Save current study in GlobalData, retrieve current subject and return it as bstDefaultNode
     
@@ -107,5 +114,5 @@ end
 function hasChildren = subjectHasChildren(sSubject)
     hasChildren = ~isempty(sSubject.iAnatomy) || ~isempty(sSubject.iScalp) || ~isempty(sSubject.iCortex) ...
         || ~isempty(sSubject.iInnerSkull) || ~isempty(sSubject.iOuterSkull) || ~isempty(sSubject.iFibers) ...
-        || ~isempty(sSubject.iFEM) || ~isempty(sSubject.iOther);
+        || ~isempty(sSubject.iFEM) || ~isempty(sSubject.iOther) || sSubject.UseDefaultAnat;
 end

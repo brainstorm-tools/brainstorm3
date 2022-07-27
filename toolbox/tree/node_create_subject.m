@@ -51,7 +51,7 @@ showParentNodes = node_show_parents(iSearch);
 nodeSubject.setFileName(sSubject.FileName);
 nodeSubject.setItemIndex(0);
 nodeSubject.setStudyIndex(iSubject);
-if (iSubject ~= 0)
+if ~strcmpi(sSubject.Name, bst_get('DirDefaultSubject'))
     nodeSubject.setComment(sSubject.Name);
 else
     nodeSubject.setComment('(Default anatomy)');
@@ -59,7 +59,7 @@ end
 
 % Anatomy files to use : Individual or Protocol defaults
 % ==== Default anatomy ====
-if sSubject.UseDefaultAnat && (iSubject ~= 0)
+if sSubject.UseDefaultAnat && ~strcmpi(sSubject.Name, bst_get('DirDefaultSubject'))
     nodeLink = BstNode('defaultanat', '(Default anatomy)', '', 0, 0);
     nodeSubject.add(nodeLink);
 
