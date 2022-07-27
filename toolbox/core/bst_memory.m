@@ -86,13 +86,14 @@ function [sMri,iMri] = LoadMri(MriFile)
     if isnumeric(MriFile)
         % Get subject
         iSubject = MriFile;
-        sSubject = bst_get('Subject', iSubject);
+        sSubject = db_get('Subject', iSubject, {'Name', 'iAnatomy'});
         % If subject does not have a MRI
-        if isempty(sSubject.Anatomy) || isempty(sSubject.iAnatomy)
+        if isempty(sSubject.iAnatomy)
             error('No MRI avaialable for subject "%s".', sSubject.Name);
         end
         % Get MRI file
-        MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+        sAnatFile = db_get('AnatomyFile', sSubject.iAnatomy, 'FileName');
+        MriFile = sAnatFile.FileName;
     else
         sSubject = bst_get('MriFile', MriFile);
     end

@@ -1249,11 +1249,10 @@ function SetStandardView(hFig, viewNames)
         % Get subject
         sqlConn = sql_connect();
         sAnatFile = db_get(sqlConn, 'AnatomyFile', TessInfo(1).SurfaceFile, 'Subject');
-        sSubject     = db_get(sqlConn, 'Subject', sAnatFile.Subject, 'iAnatomy');
-        sAnatFile = db_get(sqlConn, 'AnatomyFile', sSubject.iAnatomy);
-        sql_close(sqlConn);
         % If there is an MRI associated with it
-        if ~isempty(sSubject) && ~isempty(sSubject.iAnatomy) && ~isempty(sAnatFile.FileName)
+        if ~isempty(sAnatFile.Subject)
+            sSubject  = db_get(sqlConn, 'Subject', sAnatFile.Subject, 'iAnatomy');
+            sAnatFile = db_get(sqlConn, 'AnatomyFile', sSubject.iAnatomy);
             % Load the SCS+MNI transformation from this file
             sMri = load(file_fullpath(sAnatFile.FileName), 'NCS', 'SCS', 'Comment');
             if isfield(sMri, 'NCS') && isfield(sMri.NCS, 'R') && ~isempty(sMri.NCS.R) && isfield(sMri, 'SCS') && isfield(sMri.SCS, 'R') && ~isempty(sMri.SCS.R)
@@ -1261,6 +1260,7 @@ function SetStandardView(hFig, viewNames)
                 Ranat = sMri.NCS.R * pinv(sMri.SCS.R);
             end
         end
+        sql_close(sqlConn);
     end
     % Get the rotation to change orientation
     if ~isempty(Ranat)

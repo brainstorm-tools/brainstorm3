@@ -51,21 +51,31 @@ if (nargin < 3) || isempty(iSurface)
     if strcmpi(SurfaceType, 'Anatomy')
         % Try to find the default surface file
         if ~isempty(defSurfFile)
-            iSurface = find(file_compare({sSubject.Anatomy.FileName}, defSurfFile), 1);
+            sAnatFile = db_get(sqlConn, 'AnatomyFile', defSurfFile);
         end
         % If default not found: Use the first one
-        if isempty(iSurface) && ~isempty(sSubject.Anatomy)
-            iSurface = 1;
+        if isempty(sAnatFile.Id)
+            iSurface = [];
+            condQuery = struct('Subject', sSubject.Id, 'Type', 'anatomy');
+            sAnatFiles = db_get(sqlConn, 'AnatomyFile', condQuery, 'Id');
+            if ~isempty(sAnatFiles)
+                iSurface = sAnatFiles(1).Id;
+            end
         end
     % == SURFACE ==
     else
         % Try to find the default surface file
         if ~isempty(defSurfFile)
-            iSurface = find(file_compare({sSubject.Surface.FileName}, defSurfFile), 1);
+            sAnatFile = db_get(sqlConn, 'AnatomyFile', defSurfFile);
         end
         % If default not found: Use the first one
-        if isempty(iSurface) && ~isempty(sSubject.Surface)
-            iSurface = find(strcmpi({sSubject.Surface.SurfaceType}, SurfaceType), 1);
+        if isempty(sAnatFile.Id)
+            iSurface = [];
+            condQuery = struct('Subject', sSubject.Id, 'Type', 'surface', 'SurfaceType', SurfaceType);
+            sAnatFiles = db_get(sqlConn, 'AnatomyFile', condQuery, 'Id');
+            if ~isempty(sAnatFiles)
+                iSurface = sAnatFiles(1).Id;
+            end
         end
     end
 end

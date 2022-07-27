@@ -619,10 +619,10 @@ function UpdateNode(category, indices, isExpandTrials)
     % Switch between nodes type to update
     switch lower(category)
         case 'subject'
-            % Get Protocol information
-            ProtocolSubjects = bst_get('ProtocolSubjects');
+            % Get Subject information
             for i = 1:length(indices)
                 iSubject = indices(i);
+                sSubject = db_get('Subject', iSubject);
                 % Exploration mode
                 switch bst_get('Layout', 'ExplorationMode')
                     case 'Subjects'
@@ -633,11 +633,7 @@ function UpdateNode(category, indices, isExpandTrials)
                             % Remove all children from this node
                             nodeSubject.removeAllChildren();
                             % Create new subject node (default node / normal node)
-                            if (iSubject == 0)
-                                node_create_subject(nodeSubject, nodeRoot, ProtocolSubjects.DefaultSubject, 0, 0);
-                            else
-                                node_create_subject(nodeSubject, nodeRoot, ProtocolSubjects.Subject(iSubject), iSubject, 0);
-                            end
+                            node_create_subject(nodeSubject, nodeRoot, sSubject, iSubject, 0);
                             % Refresh node display
                             treeModel.reload(nodeSubject);
                         % Else: reload the whole tree
@@ -945,12 +941,19 @@ function nodeFound = GetNode( nodeRoot, nodeTypes, iStudy, iFile )
     if (nargin <= 2)
         % Find file in database
         FileName = nodeTypes;
-        sFuncFile = db_get('FunctionalFile', file_short(FileName), {'Id', 'Study'});
-        if isempty(sFuncFile)
+        [sItem, table] = db_get('AnyFile', FileName);
+        if isempty(sItem.Id)
             return
         end
-        iFile = sFuncFile.Id;
-        iStudy = sFuncFile.Study;
+        iFile = sItem.Id;
+        switch table
+            case {'Subject', 'Study'}
+                iStudy = sItem.Id;
+            case 'AnatomyFile'
+                iStudy = sItem.Subject;
+            case 'FunctionalFile'
+                iStudy = sItem.Study;
+        end
         nodeTypes = file_gettype(FileName);
         isExpand = 1;
     else

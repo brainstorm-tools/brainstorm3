@@ -1188,12 +1188,6 @@ switch contextName
         if isempty(GlobalData.DataBase.iProtocol) || (GlobalData.DataBase.iProtocol == 0)
             return;
         end
-        % Get list of current protocol subjects
-        ProtocolSubjects = GlobalData.DataBase.ProtocolSubjects(GlobalData.DataBase.iProtocol);
-        if isempty(ProtocolSubjects)
-            return
-        end
-        
         % Parse inputs
         if (nargin == 2)
             MriFile = varargin{2};

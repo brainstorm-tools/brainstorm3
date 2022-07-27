@@ -41,7 +41,8 @@ if isempty(sSubject.Anatomy)
     bst_error('You need to import the subject''s MRI before aligning anything with it.', 'Align surfaces', 0);
     return
 end
-gAlignFid.MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+sAnatFile = db_get('AnatomyFile', sSubject.iAnatomy, 'FileName');
+gAlignFid.MriFile = sAnatFile.FileName;
 % Get initial positions
 sMri = load(file_fullpath(gAlignFid.MriFile), 'SCS');
 gAlignFid.SCSold = sMri.SCS;

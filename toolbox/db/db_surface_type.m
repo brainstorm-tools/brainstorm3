@@ -27,13 +27,15 @@ newFileName = '';
 % Get full filename
 SurfaceFileFull = file_fullpath(SurfaceFile);
 % Find surface in database
-[sSubject, iSubject, iSurf] = bst_get('SurfaceFile', SurfaceFile);
-initType = sSubject.Surface(iSurf).SurfaceType;
+sAnatFile = db_get('AnatomyFile', SurfaceFile);
+initType = sAnatFile.SurfaceType;
 % Check if surface type changed
 if strcmpi(initType, targetType)
     newFileName = SurfaceFile;
     return;
 end
+% Find subject
+sSubject = db_get('Subject', sAnatFile.Subject);
 
 % Define the tag to tag to add at the end of the file
 switch targetType
@@ -63,26 +65,25 @@ newFileName = file_short(newSurfaceFileFull);
 bst_history('add', newSurfaceFileFull, 'set_type', ['Set surface type: ' targetType]);
 
 % === Update surface type and filename ===
-sSubject.Surface(iSurf).SurfaceType = targetType;
-sSubject.Surface(iSurf).FileName    = newFileName;
+db_set('AnatomyFile', struct('SurfaceType', targetType, 'FileName', newFileName), sAnatFile.Id);
 % If the modified surface was selected : unselect it
-sSubject.iScalp      = setdiff(sSubject.iScalp,      iSurf);
-sSubject.iCortex     = setdiff(sSubject.iCortex,     iSurf);
-sSubject.iOuterSkull = setdiff(sSubject.iOuterSkull, iSurf);
-sSubject.iInnerSkull = setdiff(sSubject.iInnerSkull, iSurf);
-sSubject.iFibers     = setdiff(sSubject.iFibers,     iSurf);
-sSubject.iFEM        = setdiff(sSubject.iFEM,        iSurf);
-sSubject.iOther      = setdiff(sSubject.iOther,      iSurf);
+sSubject.iScalp      = setdiff(sSubject.iScalp,      sAnatFile.Id);
+sSubject.iCortex     = setdiff(sSubject.iCortex,     sAnatFile.Id);
+sSubject.iOuterSkull = setdiff(sSubject.iOuterSkull, sAnatFile.Id);
+sSubject.iInnerSkull = setdiff(sSubject.iInnerSkull, sAnatFile.Id);
+sSubject.iFibers     = setdiff(sSubject.iFibers,     sAnatFile.Id);
+sSubject.iFEM        = setdiff(sSubject.iFEM,        sAnatFile.Id);
+sSubject.iOther      = setdiff(sSubject.iOther,      sAnatFile.Id);
 % Update subject in database
-bst_set('Subject', iSubject, sSubject);
+db_set('Subject', sSubject, sSubject.Id);
 
 % Set the modified surface as default
 if ~strcmpi(targetType, 'Other')   
-    db_surface_default(iSubject, targetType, iSurf);
+    db_surface_default(sSubject.Id, targetType, sAnatFile.Id);
 end
 % Update the default surface for the source type
 if ~strcmpi(initType, 'Other')  
-    db_surface_default(iSubject, initType);
+    db_surface_default(sSubject.Id, initType);
 end
 % Save database
 db_save(); 
