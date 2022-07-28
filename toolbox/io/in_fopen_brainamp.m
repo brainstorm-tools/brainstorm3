@@ -224,7 +224,7 @@ end
 
 %% ===== READ EVENTS =====
 if ~isempty(VmrkFile)
-    sFile = import_events(sFile, [], VmrkFile, 'BRAINAMP');
+    sFile = import_events(sFile, [], VmrkFile, 'BRAINAMP', [], 0);
 end
 
 
