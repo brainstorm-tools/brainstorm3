@@ -201,14 +201,14 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
 
     % Processing for BDF status file
     if isBdfStatus
-        % Mask to keep only the first 15 bits (Triggers bits)
+        % Mask to keep only the first 16 bits (Triggers bits)
         % Bit 16    : High when new Epoch is started
         % Bit 17-19 : Speed bits 0 1 2
         % Bit 20 	: High when CMS is within range
         % Bit 21 	: Speed bit 3
         % Bit 22 	: High when battery is low
         % Bit 23    : High if ActiveTwo MK2
-        F = bitand(F, bin2dec('000000000111111111111111'));
+        F = bitand(F, hex2dec('00FFFF'));
     % Processing for real data
     elseif ~isAnnotOnly
         % Convert to double

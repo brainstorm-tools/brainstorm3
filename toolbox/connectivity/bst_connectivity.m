@@ -561,12 +561,7 @@ for iFile = 1:length(FilesA)
             BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
-            % Initialization for ciPLV and wPLI
-            if ismember(OPTIONS.Method, {'wpli'})
-                % Replicate nB x HA, and nA x HB
-                iA = repmat(1:nA, 1, nB)';
-                iB = reshape(repmat(1:nB, nA, 1), [], 1);
-            end
+            nT = size(sInputB.Data,2);
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
@@ -607,7 +602,15 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);  % Proposed by Daniele Marinazzo
+                        %    The one below is the "debiased" version
+                        % Proposed by Daniele Marinazzo
+                        % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
+                        num = abs(imag(phaseA*phaseB'));
+                        den = zeros(nA,nB);
+                        for t = 1:nT
+                            den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
+                        end
+                        R(:,:,iBand) = num./den;
                         Comment = 'wPLI: ';
                 end
             end
@@ -628,9 +631,6 @@ for iFile = 1:length(FilesA)
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
             R = zeros(nA * nB, nTime, nFreqBands);
-            % Replicate nB x HA, and nA x HB
-            iA = repmat(1:nA, 1, nB)';
-            iB = reshape(repmat(1:nB, nA, 1), [], 1);
 
             % ===== VERSION S.BAILLET =====
             % PLV = exp(1i * (angle(HA) - angle(HB)));
@@ -647,9 +647,9 @@ for iFile = 1:length(FilesA)
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
-                % Compute the PLV in time for each pair
-                phaseA = HA(iA,:) ./ abs(HA(iA,:));
-                phaseB = HB(iB,:) ./ abs(HB(iB,:));
+                % Compute the (ci)PLV and wPLI in time for each pair
+                phaseA = repmat(HA,[nB 1]) ./ abs(repmat(HA,[nB 1]));
+                phaseB = repelem(HB,nA, 1) ./ abs(repelem(HB,nA, 1));
                 switch (OPTIONS.Method)
                     case 'plvt'
                         % R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));  % Sylvain Baillet, slower

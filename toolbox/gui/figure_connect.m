@@ -906,8 +906,20 @@ end
 %  ===========================================================================
  
 %% ===== GET FIGURE DATA =====
-function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] = GetFigureData(hFig)
+function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector, isStat] = GetFigureData(hFig)
     global GlobalData;
+    % Initialize returned variables
+    Time = [];
+    Freqs = [];
+    TfInfo = [];
+    TF = [];
+    RowNames = [];
+    DataType = [];
+    Method = [];
+    FullTimeVector = [];
+    isStat = [];
+
+
     % === GET FIGURE INFO ===
     % Get selected frequencies and rows
     TfInfo = getappdata(hFig, 'Timefreq');
@@ -919,6 +931,8 @@ function [Time, Freqs, TfInfo, TF, RowNames, DataType, Method, FullTimeVector] =
     if isempty(iDS)
         return
     end
+    % Stat results?
+    isStat = strcmpi(file_gettype(TfInfo.FileName), 'ptimefreq');
     
     % ===== GET TIME =====
     [Time, iTime] = bst_memory('GetTimeVector', iDS, [], 'CurrentTimeIndex');
@@ -977,20 +991,16 @@ function IsDirectional = IsDirectionalData(hFig)
     end
 end
  
-function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
+function [DataPair, isStat] = LoadConnectivityData(hFig, Options)
     % Parse input
     if (nargin < 2)
         Options = struct();
-    end
-    if (nargin < 3)
-        Atlas = [];
-        Surface = [];
     end
     % Maximum number of data allowed
     MaximumNumberOfData = 5000;
    
     % === GET DATA ===
-    [~, ~, ~, M, ~, ~, ~, ~] = GetFigureData(hFig);
+    [~, ~, ~, M, ~, ~, ~, ~, isStat] = GetFigureData(hFig);
 
     % Compute values for all percentiles (for thresholding by percentile)
     ThresholdAbsoluteValue = getappdata(hFig, 'ThresholdAbsoluteValue');
@@ -1012,7 +1022,7 @@ function DataPair = LoadConnectivityData(hFig, Options, Atlas, Surface)
     end
     
     % === THRESHOLD ===
-    if ((size(M, 1) * size(M, 2)) > MaximumNumberOfData)
+    if ~isStat && ((size(M, 1) * size(M, 2)) > MaximumNumberOfData)
         % Validity mask
         Valid = ones(size(M));
         Valid(M == 0) = 0;
@@ -1323,7 +1333,7 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
     Options.Highest = 1;
     setappdata(hFig, 'LoadingOptions', Options);
     % Clean and compute Datapair
-    DataPair = LoadConnectivityData(hFig, Options, Atlas, SurfaceMat);    
+    [DataPair, isStat] = LoadConnectivityData(hFig, Options);    
 
     % Compute distance between regions
     MeasureDistance = [];
@@ -1340,8 +1350,11 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
         
     %% ===== Init Filters =====
     % Default intensity threshold
-    MinThreshold = 0.9;
-    
+    if isStat
+        MinThreshold = 0;
+    else
+        MinThreshold = 0.9;
+    end
     % Don't refresh display for each filter at loading time
     Refresh = 0;
     
@@ -1997,7 +2010,7 @@ function UpdateFigurePlot(hFig)
         Refresh);
     SetMeasureAnatomicalFilterTo(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureAnatomicalFilter'), Refresh);
     SetMeasureThreshold(hFig, bst_figures('GetFigureHandleField', hFig, 'MeasureThreshold'), Refresh);
-    
+
     % Update region datapair if possible
     RegionFunction = getappdata(hFig, 'RegionFunction');
     if isempty(RegionFunction)

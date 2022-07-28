@@ -101,8 +101,6 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         bst_report('Error', sProcess, [], errMsg);
         return;
     end
-    % Add "matlabbatch" folder to the path, because of some weird bugs
-    addpath(bst_fullfile(PlugDesc.Path, PlugDesc.SubFolder, 'matlabbatch'));
     
     % ===== GET OPTIONS =====
     % Get all the options
