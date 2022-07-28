@@ -497,14 +497,14 @@ for iFile = 1:length(FilesA)
                 iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
                 Wn=iband/(sfreq/2);
                 [num,den]=butter(1,Wn);
-                HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
+                HA=filtfilt_hilbert ( num, den, sInputA.Data',1 )';
                 
                 if isConnNN
                     HB = HA;
                 else
                     %DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2));
                     %HB = hilbert_fcn(DataBband')';
-                    HB=filfilt_hilbert ( num, den, sInputB.Data',1 )';
+                    HB=filtfilt_hilbert ( num, den, sInputB.Data',1 )';
                 end
                 if OPTIONS.isOrth
                     if isConnNN
@@ -565,14 +565,14 @@ for iFile = 1:length(FilesA)
                     iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
                     Wn=iband/(sfreq/2);
                     [num,den]=butter(1,Wn);
-                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
+                    HA=filtfilt_hilbert ( num, den, sInputA.Data',1 )';
                     HB = HA;
                 else
                     iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
                     Wn=iband/(sfreq/2);
                     [num,den]=butter(1,Wn);
-                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
-                    HB=filfilt_hilbert ( num, den, sInputB.Data',1 )';
+                    HA=filtfilt_hilbert ( num, den, sInputA.Data',1 )';
+                    HB=filtfilt_hilbert ( num, den, sInputB.Data',1 )';
                 end
                 phaseA = HA ./ abs(HA);
                 phaseB = HB ./ abs(HB);
@@ -636,14 +636,14 @@ for iFile = 1:length(FilesA)
                     iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
                     Wn=iband/(sfreq/2);
                     [num,den]=butter(1,Wn);
-                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
+                    HA=filtfilt_hilbert ( num, den, sInputA.Data',1 )';
                     HB = HA;
                 else
                     iband=[BandBounds(iBand,1) BandBounds(iBand,2)];
                     Wn=iband/(sfreq/2);
                     [num,den]=butter(1,Wn);
-                    HA=filfilt_hilbert ( num, den, sInputA.Data',1 )';
-                    HB=filfilt_hilbert ( num, den, sInputB.Data',1 )';
+                    HA=filtfilt_hilbert ( num, den, sInputA.Data',1 )';
+                    HB=filtfilt_hilbert ( num, den, sInputB.Data',1 )';
                 end
                 % Compute the (ci)PLV and wPLI in time for each pair
                 phaseA = repmat(HA,[nB 1]) ./ abs(repmat(HA,[nB 1]));
