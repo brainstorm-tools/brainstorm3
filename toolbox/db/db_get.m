@@ -12,6 +12,7 @@ function varargout = db_get(varargin)
 % ====== SUBJECTS ======================================================================
 %    - db_get('Subject', SubjectIDs,         Fields, isRaw) : Get Subject(s) by ID(s)
 %    - db_get('Subject', SubjectFileNames,   Fields, isRaw) : Get Subject(s) by FileName(s)
+%    - db_get('Subject', SubjectNames,       Fields, isRaw) : Get Subject(s) by Name(s)
 %    - db_get('Subject', CondQuery,          Fields, isRaw) : Get Subject(s) with a Query struct
 %    - db_get('Subject', '@default_subject', Fields)        : Get default Subject
 %    - db_get('Subject')                                    : Get current Subject in current protocol
@@ -112,6 +113,7 @@ switch contextName
 %% ==== SUBJECT ====
     % sSubject = db_get('Subject', SubjectIDs,         Fields, isRaw);
     %          = db_get('Subject', SubjectFileNames,   Fields, isRaw);
+    %          = db_get('Subject', SubjectNames,       Fields, isRaw);
     %          = db_get('Subject', CondQuery,          Fields, isRaw);
     %          = db_get('Subject', '@default_subject', Fields);    
     %          = db_get('Subject');
@@ -173,7 +175,13 @@ switch contextName
             sSubjects = repmat(resultStruct, 1, nSubjects);
             for i = 1:nSubjects
                 if iscell(iSubjects)
-                    condQuery.FileName = file_short(iSubjects{i});
+                    iSubjects{i} = file_short(iSubjects{i});
+                    [~, ~, fExt] = bst_fileparts(iSubjects{i});
+                    % Argument is not a Matlab .mat filename, assume it is a directory
+                    if ~strcmpi(fExt, '.mat')
+                        iSubjects{i} = bst_fullfile(file_standardize(iSubjects{i}), 'brainstormsubject.mat');
+                    end
+                    condQuery.FileName = iSubjects{i};
                 else
                     condQuery.Id = iSubjects(i);
                 end
