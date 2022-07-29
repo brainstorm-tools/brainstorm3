@@ -60,12 +60,12 @@ end
 
 % ===== ORIENTATION SIGN FLIP =====
 % Flip only if there are mixed signs in F (+ and -)
-FlipMask = [];
 if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(ScoutFunction), {'all', 'none'}) && ...
         (size(F,1) > 1) && ~all(F(:) > 0)
     % Check for NaN or Inf values
     if (any(isnan(Orient(:))) || any(isinf(Orient(:))))
         disp('BST> Warning: The vertex normals contain some NaN or Inf values, cannot flip signs. Please check the quality of the cortex surface.');
+        FlipMask = [];
     else
         % Take the SVD to get the dominant orientation in this patch
         % v(:,1) is the dominant orientation
@@ -80,14 +80,24 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
     end
 
     % If not all the values are of the same sign, flip
-    if ~isempty(FlipMask)
-        if all(FlipMask == 1)
-            FlipMask = [];
-        else
-            % Multiply the values by FlipMask
-            F = bst_bsxfun(@times, F, FlipMask);
-            disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
-        end
+    if ~isempty(FlipMask) && ~all(FlipMask == 1)
+% DATA-DEPENDENT CANCELATION: REMOVED ON 14-APR-2016 AFTER SKYPE DISCUSSION WITH RL, JM, DP
+%         % Multiply the values by FlipMask
+%         tmpF = bst_bsxfun(@times, F, FlipMask);
+%         % Evaluate if the maximum of the average increased 
+%         maxOld = max(abs(mean(F,1)));
+%         maxNew = max(abs(mean(tmpF,1)));
+%         ratioMax = maxNew(1) ./ maxOld(1);
+%         % If ratio is > 1: the sign flip had a positive effect, keep it
+%         if (ratioMax > 1)
+%             disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
+%             F = tmpF;
+%         else
+%             disp(['BST> Sign flipping cancelled because it decreases the signal amplitude (ratio=' num2str(ratioMax) ').']);
+%         end
+        % Multiply the values by FlipMask
+        F = bst_bsxfun(@times, F, FlipMask);
+        disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
     end
 end
 
@@ -109,18 +119,12 @@ end
 nRow  = size(F,1);
 nTime = size(F,2);
 explained = 0;
-Comp = [];
 
 %% ===== COMBINE ALL VERTICES =====
 switch (lower(ScoutFunction))       
     % MEAN : Average of the patch activity at each time instant
     case 'mean'
         Fs = mean(F,1);
-        if isempty(FlipMask)
-            Comp = ones(nRow, 1) ./ nRow;
-        else
-            Comp = FlipMask ./ nRow;
-        end
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
         Fs = std(F,[],1);
@@ -169,13 +173,8 @@ switch (lower(ScoutFunction))
     case 'pca'
         % Signal decomposition
         Fs = zeros(1, nTime, nComponents);
-        Comp = zeros(nRow, nComponents);
         for i = 1:nComponents
-            [Fs(1,:,i), explained, Comp(:,i)] = PcaFirstMode(F(:,:,i));
-            % Take into account previously applied sign flipping.
-            if ~isempty(FlipMask)
-                Comp(:,i) = Comp(:,i) .* FlipMask;
-            end
+            [Fs(1,:,i), explained] = PcaFirstMode(F(:,:,i));
         end
         
     % FAST PCA : Display first mode of PCA of time series within each scout region
@@ -192,21 +191,13 @@ switch (lower(ScoutFunction))
             % Find the nMax most powerful/spiky source time series
             %powF = sum(F.*F,2);
             powF = max(Fn,[],2) ./ (mean(Fn,2) + eps*min(Fn(:)));
-            [tmp__, iF] = sort(powF,'descend');
-            iF = iF(1:nMax);
-            F = F(iF,:,:);
-        else
-            iF = 1:nRow;
+            [tmp__, isF] = sort(powF,'descend');
+            F = F(isF(1:nMax),:,:);
         end
         % Signal decomposition
         Fs = zeros(1, nTime, nComponents);
-        Comp = zeros(nRow, nComponents);
         for i = 1:nComponents
-            [Fs(1,:,i), explained, Comp(iF,i)] = PcaFirstMode(F(:,:,i));
-            % Take into account previously applied sign flipping.
-            if ~isempty(FlipMask)
-                Comp(:,i) = Comp(:,i) .* FlipMask;
-            end
+            [Fs(1,:,i), explained] = PcaFirstMode(F(:,:,i));
         end
         
     % STAT : Average values as if they were statistical results => ignore all the zero-values
@@ -230,7 +221,7 @@ end
 %% ===== COMBINE ALL ORIENTATIONS =====
 % If there are more than one component in output
 if (nComponents > 1) && (size(Fs,3) > 1)
-    nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow (=nSource)
+    nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
     % Start from the scouts time series
     F = Fs;
     % Different options to combine the three orientations
@@ -239,35 +230,15 @@ if (nComponents > 1) && (size(Fs,3) > 1)
         case 'pca'
             warning('This older PCA implementation suffers from sign flipping between trials.  Global PCA should be used instead.');
             Fs = zeros(nRow, nTime);
-            ScoutComp = Comp;
             Comp = zeros(nComponents, nRow);
             % For each vertex: Signal decomposition
             for i = 1:nRow
                 [Fs(i,:), explained, Comp(:,i)] = PcaFirstMode(squeeze(F(i,:,:))');
             end
-            % Combine scout and orientation components
-            if ~isempty(ScoutComp)
-                Comp = ScoutComp * Comp; % (nRow before scout func, 1)
-            end
             
         case 'pcag'
             Fs = zeros(nRow, nTime);
-            if ~isempty(Comp)
-                % We must compute the new covariance matrix for the scout.
-                Cov = Comp' * Cov * Comp; 
-                [U, S] = eig((Cov + Cov')/2);
-                [S, iSort] = sort(diag(S), 'descend');
-                explained = explained * (S(1) / sum(S));
-                U = U(:, iSort(1));
-                % Flip sign for consistency across files/epochs. 
-                % This simple choice of sign is equivalent to choosing positive correlation of the 
-                % component timeseries (concatenated across trials) with the mean timeseries across xyz.
-                CompSign = sign(sum(U,1));
-                U = CompSign .* U;
-                Fs = sum(bsxfun(@times, permute(U, [2,3,1]), F(1,:,:)), 3); % matrix mult of U with F on 3rd dim, gives size (1, nTime)
-                % Combine scout PCA and orientation PCA components
-                Comp = Comp * U; % (original nRow, 1)
-            elseif ~ismember(lower(ScoutFunction), {'all', 'none', 'mean', 'pca', 'pcag'})
+            if ~ismember(lower(ScoutFunction), {'all', 'none', 'mean', 'pca'})
                 error('Global PCA on orientations (XyzFunction = ''pcag'') after scout function other than PCA or mean not implemented.')
                 % To deal with other (non linear) scout functions would require 2 steps to load all scout trials.
             else
@@ -315,10 +286,19 @@ end
 
 
 %% ===== PCA: FIRST MODE =====
-function [F, explained, U] = PcaFirstMode(F)
-    % Do not remove average over time for each row again, it could be better computed previously over baseline.
+function [F, explained, U] = PcaFirstMode(F, isRemoveOffset)
+    % Keep default of removing offset for now as this function is used in many places
+    % and it's not clear if/where it could be needed.  In principle though, it could
+    % be better computed previously over baseline.
+    if nargin < 2 || isempty(isRemoveOffset)
+        isRemoveOffset = true;
+    end
     % Signal decomposition
-    [U, S] = svd(F, 'econ');
+    if isRemoveOffset
+        [U, S] = svd(bst_bsxfun(@minus, F, mean(F,2)), 'econ');
+    else
+        [U, S] = svd(F, 'econ');
+    end
     S = diag(S);
     explained = S(1).^2 / sum(S.^2);
     U = U(:,1);
