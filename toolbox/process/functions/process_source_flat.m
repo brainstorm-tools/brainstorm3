@@ -48,13 +48,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA</B>: First mode of svd(x,y,z)', ...
-                                       '<B>Global PCA</B>: First mode across trials'};
+                                       '<B>PCA</B>: First mode of svd(x,y,z)<BR>(requires pre-computed data covariance across epochs)'};
     sProcess.options.method.Type    = 'radio';
     sProcess.options.method.Value   = 1;
-    sProcess.options.pcawindow.Comment = 'PCA window:';
-    sProcess.options.pcawindow.Type    = 'timewindow';
-    sProcess.options.pcawindow.Value   = [];
 end
 
 
@@ -70,8 +66,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     switch(sProcess.options.method.Value)
         case 1, Method = 'rms';  fileTag = 'norm';
-        case 2, Method = 'pca';  fileTag = 'pca';
-        case 3, Method = 'pcag';  fileTag = 'pcag';
+        case 2, Method = 'pcag';  fileTag = 'pca';
     end
     for iInput = 1:numel(sInputs)
         % ===== PROCESS INPUT =====
@@ -91,29 +86,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Get study description
         sStudy = bst_get('Study', sInputs(iInput).iStudy);
-        if isfield(sProcess.options, 'pcawindow') && ~isempty(sProcess.options.pcawindow) && ~isempty(sProcess.options.pcawindow.Value) && iscell(sProcess.options.pcawindow.Value)
-            PcaWindow = sProcess.options.pcawindow.Value{1};
-        else
-            PcaWindow = [];
-        end
-        if ~isempty(PcaWindow)
-            % Get time indices
-            if (length(ResultsMat.Time) <= 2)
-                iPcaTime = 1:length(ResultsMat.Time);
-            else
-                iPcaTime = panel_time('GetTimeIndices', ResultsMat.Time, PcaWindow);
-                if isempty(iPcaTime)
-                    bst_report('Error', sProcess, sInputs(iInput), 'Invalid time window option.');
-                    return;
-                end
-            end
-        end
 
         % Compute flat map
-        ResultsMat = Compute(ResultsMat, Method, [], sStudy, iPcaTime);
+        ResultsMat = Compute(ResultsMat, Method, [], sStudy);
 
         % ===== SAVE FILE =====
-        ResultsMat.Comment = [ResultsMat.Comment sprintf('_%d-%d', PcaWindow*1000)];
         % Make comment unique
         ResultsMat.Comment = file_unique(ResultsMat.Comment, {sStudy.Result.Comment});
         % File tag
@@ -154,7 +131,7 @@ end
 
 
 %% ===== COMPUTE =====
-function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
+function ResultsMat = Compute(ResultsMat, Method, Field, sStudy)
     % Field to process
     if (nargin < 3) || isempty(Field)
         Field = 'ImageGridAmp';
@@ -182,7 +159,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
             end
             if strncmpi(Method, 'pcag', 4)
                 if ~isfield(ResultsMat, 'ImagingKernel') || isempty(ResultsMat.ImagingKernel)
-                    error('pcag only available for imaging kernel files.');
+                    error('PCA flattening only available for imaging kernel files.');
                 end
                 % Get data covariance matrix for provided data file.
                 % Note that this process is called through bst_process for single
@@ -190,7 +167,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
                 % covariance here.
                 % NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
                 if numel(sStudy.NoiseCov) < 2
-                    error('pcag requires data covariance matrix to be computed first.');
+                    error('PCA flattening requires data covariance matrix to be computed first.');
                 end
                 DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
                 if ResultsMat.nComponents > 1
@@ -201,8 +178,6 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
                     SourceCov = [];
                     %SourceCov = ResultsMat.ImagingKernel * DataCov.NoiseCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel) * ResultsMat.ImagingKernel';
                 end
-            elseif strcmpi(Method, 'pca')
-                SourceCov = iPcaTime;
             else
                 SourceCov = [];
             end
@@ -210,7 +185,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
             % Resulting kernel
             if ~isempty(Comp) && ~isempty(Ker)
                 ResultsMat.ImagingKernel = squeeze(sum(bsxfun(@times, Ker, Comp), 1)); % nSource, nChan
-                ResultsMat.Flattening = Comp'; % nSource, nComp
+                %ResultsMat.Flattening = Comp'; % nSource, nComp
             else
                 ResultsMat.ImagingKernel = [];
             end
@@ -224,7 +199,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy, iPcaTime)
     switch(Method)
         case 'rms',  fileTag = 'norm';
         case 'pca',  fileTag = 'pca';
-        case 'pcag',  fileTag = 'pcag';
+        case 'pcag',  fileTag = 'pca';
     end
     % Reset the data file initial path
     if ~isempty(ResultsMat.DataFile)

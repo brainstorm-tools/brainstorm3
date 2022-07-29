@@ -205,14 +205,13 @@ function [Values, Comp] = ApplyFunction(Values, i1, i2, i3, Function, SourceCov)
                 Values = abs(Values(i1,:,:,:)).^2 + abs(Values(i2,:,:,:)).^2;
             end
         case 'pca'
-            % Here, SourceCov is actually time window indices for computing the PCA.
             if ~isempty(i3)
-                [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pca', 0, [], SourceCov);
+                [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pca', 0);
             else
-                [Values, Comp] = bst_scout_value(Values, 'none', [], 2, 'pca', 0, [], SourceCov);
+                [Values, Comp] = bst_scout_value(Values, 'none', [], 2, 'pca', 0);
             end
         case 'pcag'
-            % Here, SourceCov is the source covariance matrices, size (nComp,nComp,nSource).
+            % SourceCov is the source covariance matrices, size (nComp,nComp,nSource).
             if ~isempty(i3)
                 [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pcag', 0, [], SourceCov);
             else

@@ -13,6 +13,7 @@ function [Fs, Comp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, Xyz
 %     - XyzFunction    : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'none'}
 %     - isSignFlip     : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - scoutName      : Name of the scout or cluster you're extracting
+%     - Cov            : Covariance matrix between rows of F, but pre-computed across trials. Used for PCA.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -32,7 +33,7 @@ function [Fs, Comp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, Xyz
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Sylvain Baillet, Francois Tadel, John Mosher, 2010-2016
+% Authors: Sylvain Baillet, Francois Tadel, John Mosher, Marc Lalancette, 2010-2022
 
 % ===== PARSE INPUTS =====
 if (nargin < 8) 
@@ -53,15 +54,18 @@ end
 if (nargin < 3)
     Orient = [];
 end
+if (nargin < 2) || isempty(ScoutFunction)
+    ScoutFunction = 'none';
+end
 
 % ===== ORIENTATION SIGN FLIP =====
 % Flip only if there are mixed signs in F (+ and -)
-if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~strcmpi(ScoutFunction,'all') && ~strcmpi(ScoutFunction,'pcag') && ~strcmpi(ScoutFunction,'pcag3') && ...
+FlipMask = [];
+if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(ScoutFunction), {'all', 'none', 'pcag'}) && ...
         (size(F,1) > 1) && ~all(F(:) > 0)
     % Check for NaN or Inf values
     if (any(isnan(Orient(:))) || any(isinf(Orient(:))))
         disp('BST> Warning: The vertex normals contain some NaN or Inf values, cannot flip signs. Please check the quality of the cortex surface.');
-        FlipMask = [];
     else
         % Take the SVD to get the dominant orientation in this patch
         % v(:,1) is the dominant orientation
@@ -76,14 +80,14 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~strcmpi(ScoutFunctio
     end
 
     % If not all the values are of the same sign, flip
-    if ~isempty(FlipMask) && ~all(FlipMask == 1)
-        % Multiply the values by FlipMask
-        F = bst_bsxfun(@times, F, FlipMask);
-        % Also adjust Cov for pcagt.
-        if ~isempty(Cov) && ~isvector(Cov)
-            Cov = bst_bsxfun(@times, bst_bsxfun(@times, Cov, FlipMask), FlipMask');
+    if ~isempty(FlipMask)
+        if all(FlipMask == 1)
+            FlipMask = [];
+        else
+            % Multiply the values by FlipMask
+            F = bst_bsxfun(@times, F, FlipMask);
+            disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
         end
-        disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
     end
 end
 
@@ -95,34 +99,23 @@ if (strcmpi(ScoutFunction, 'none') || strcmpi(ScoutFunction, 'all')) && strcmpi(
 end
 
 % ===== MULTIPLE COMPONENTS =====
-% Need to keep track of nSource & nComponents for pcag3
-nSource = size(F,1) / nComponents;
 % Reshape F matrix in 3D: [nRow, nTime, nComponents], except for pcag where we
 % treat all sources on the same footing (across locations and orientations)
-if ~strncmpi(ScoutFunction, 'pcag', 4) || strcmpi(ScoutFunction, 'pcagx')
+if ~strncmpi(ScoutFunction, 'pcag', 4)
     switch (nComponents)
         case 0,  error('You should call this function for each region individually.');
         case 1,  % Nothing to do
         case 2,  F = cat(3, F(1:2:end,:), F(2:2:end,:));
         case 3,  F = cat(3, F(1:3:end,:), F(2:3:end,:), F(3:3:end,:));
     end
-    % Cov will also need to be treated similarly for pcagx, but we need the full
-    % Cov later if we also do orientation pcag after pcagx.
-end
-if strncmpi(ScoutFunction, 'pcag', 4)
+else %if strncmpi(ScoutFunction, 'pcag', 4)
     if isempty(Cov)
         error('Data covariance not loaded.');
     end
-    % For pcag, keep only 1 component. For pcagx, 1 per input component. For pcag3, 3.
-    if strcmpi(ScoutFunction, 'pcag')
-        nComponents = 1;
-    elseif strcmpi(ScoutFunction, 'pcag3')
-        nComponents = 3;
-    end
-    ScoutFunction = 'pcag';
-else
+    % For pcag, keep only 1 component.
+    nComponents = 1;
 end
-nRow  = size(F,1); % nSource (pca, pcagx, non-pca) or nSource*nComponents (pcag, pcagt, pcag3)
+nRow  = size(F,1); % nSource (or nSource*nComponents for pcag)
 nTime = size(F,2);
 explained = 0;
 Comp = [];
@@ -132,7 +125,11 @@ switch (lower(ScoutFunction))
     % MEAN : Average of the patch activity at each time instant
     case 'mean'
         Fs = mean(F,1);
-        Comp = FlipMask(nRow, 1) ./ nRow;
+        if isempty(FlipMask)
+            Comp = ones(nRow, 1) ./ nRow;
+        else
+            Comp = FlipMask ./ nRow;
+        end
     % STD : Standard deviation of the patch activity at each time instant
     case 'std'
         Fs = std(F,[],1);
@@ -183,57 +180,34 @@ switch (lower(ScoutFunction))
         Fs = zeros(1, nTime, nComponents);
         Comp = zeros(nRow, nComponents);
         for i = 1:nComponents
-            [Fs(1,:,i), explained, Comp(:,i)] = PcaFirstMode(F(:,:,i), Cov); % Cov here is actually time window indices.
+            [Fs(1,:,i), explained, Comp(:,i)] = PcaFirstMode(F(:,:,i));
+            % Take into account previously applied sign flipping.
+            if ~isempty(FlipMask)
+                Comp(:,i) = Comp(:,i) .* FlipMask;
+            end
         end
         
-    % PCA computed on all data (all epochs/files) ('pcag') or single trial
-    % ('pcagt'), and treating all sources equally (orientations and locations),
-    % or each orientation separately ('pcagx').
-    % (Single trial and separate orientations is what 'pca' does.)
+    % PCA computed on all data (all epochs/files) and treating all sources equally (orientations and locations).
+    % ('pca' does single trials and separate orientations.)
     case 'pcag'
-
-        if size(F,3) > 1 % pcagx
-            Fs = zeros(1, nTime, nComponents);
-            Comp = zeros(nRow, nComponents); % nRow = nSource here
-            for iC = 1:size(F,3)
-                % Here we only use the single component elements of Cov.
-                [U, S] = eig((Cov(iC:nComponents:end,iC:nComponents:end) + Cov(iC:nComponents:end,iC:nComponents:end)')/2);
-                [S, iSort] = sort(diag(S), 'descend');
-                %                 explained = sum(S(1)) / sum(S);
-                U = U(:, iSort(1));
-                % Flip sign(s) for consistency across files/epochs.
-                CompSign = sign(sum(U,1));
-                U = bsxfun(@times, CompSign, U);
-                Fs(:,:,iC) = U' * F(:,:,iC); % (1, nTime, nComponents)
-                Comp(:,iC) = U;
-            end
-            
-        else
-            % Eigenvalues of covar matrix = square of singular values of time series.
-            % Eigenvector of covar matrix = singular vector of time series.
-            % Force data covariance to be symmetric to avoid complex results from numerical errors.
-            % Cov is size (nRow,nRow,nCompIn), where nRow can be
-            % nVertex or nVertex*nComponents
-            [U, S] = eig((Cov + Cov')/2);
-            [S, iSort] = sort(diag(S), 'descend');
-            explained = sum(S(1:nComponents)) / sum(S);
-            U = U(:, iSort(1:nComponents));
-            % Flip sign(s) for consistency across files/epochs.
-            % Need to be careful now that this can be per trial (pcagt) For
-            % per-trial, get the sign from the correlation with the (hopefully
-            % pre-flipped based on orientation) scout mean timeseries.
-            %                 CompSign = sign(mean(F,1) * (U' * F)');
-            % For global, get the sign from something trial-independent.
-            % Correlation with the trial mean scout mean timeseries. Both can be
-            % obtained with the same formula, using the covariance matrix.
-            % Since U are eigenvectors of Cov, and S are positive, it simplifies
-            % to the sum of U.
-            %             CompSign = sign(ones(1, size(U,1)) * Cov * U);
-            CompSign = sign(sum(U,1));
-            U = bsxfun(@times, CompSign, U);
-            Fs = permute(U' * F, [3,2,1]); % (1, nTime, nComponents)
-            Comp = U;
-        end
+        % Eigenvalues of covar matrix = square of singular values of time series.
+        % Eigenvector of covar matrix = singular vector of time series.
+        % Force data covariance to be symmetric to avoid complex results from numerical errors.
+        % Cov is size (nRow,nRow), where nRow can be nVertex or nVertex*nComponents
+        [U, S] = eig((Cov + Cov')/2);
+        [S, iSort] = sort(diag(S), 'descend');
+        explained = sum(S(1:nComponents)) / sum(S);
+        U = U(:, iSort(1:nComponents));
+        % Flip sign(s) for consistency across files/epochs. 
+        % Choose positive correlation of the component timeseries (concatenated
+        % across trials) with the mean timeseries across scout vertices. 
+        %CompSign = sign(ones(1, size(U,1)) * Cov * U);
+        % Since U are eigenvectors of Cov, and S are positive, it simplifies to the
+        % sum of U elements.
+        CompSign = sign(sum(U,1));
+        U = bsxfun(@times, CompSign, U);
+        Fs = permute(U' * F, [3,2,1]); % (1, nTime, nComponents)
+        Comp = U;
 
     % FAST PCA : Display first mode of PCA of time series within each scout region
     case 'fastpca'
@@ -286,12 +260,13 @@ if (nComponents > 1) && (size(Fs,3) > 1)
     switch lower(XyzFunction)
         % Compute the PCA of all the components
         case 'pca'
+            warning('This older PCA implementation suffers from sign flipping between trials.  Global PCA should be used instead.');
             Fs = zeros(nRow, nTime);
             ScoutComp = Comp;
             Comp = zeros(nComponents, nRow);
             % For each vertex: Signal decomposition
             for i = 1:nRow
-                [Fs(i,:), explained, Comp(:,i)] = PcaFirstMode(squeeze(F(i,:,:))', Cov); % Cov here is actually time window indices.
+                [Fs(i,:), explained, Comp(:,i)] = PcaFirstMode(squeeze(F(i,:,:))');
             end
             % Combine scout and orientation components
             if ~isempty(ScoutComp)
@@ -301,15 +276,6 @@ if (nComponents > 1) && (size(Fs,3) > 1)
         case 'pcag'
             Fs = zeros(nRow, nTime);
             if ~isempty(Comp)
-                % For pcagx we have to "expand" Comp (which are for single x,y
-                % or z) to the full covariance (xyz).
-                if size(Comp,1) < size(Cov,1)
-                    FullComp = zeros(nSource * nComponents, nComponents);
-                    for iC = 1:nComponents
-                        FullComp(nSource * (iC-1) + (iC:nComponents:(nSource*nComponents))) = Comp(:,iC);
-                    end
-                    Comp = FullComp;
-                end
                 % We must compute the new covariance matrix for the scout.
                 Cov = Comp' * Cov * Comp; 
                 [U, S] = eig((Cov + Cov')/2);
@@ -317,12 +283,15 @@ if (nComponents > 1) && (size(Fs,3) > 1)
                 explained = explained * (S(1) / sum(S));
                 U = U(:, iSort(1));
                 % Flip sign for consistency across files/epochs. 
+                % This simple choice of sign is equivalent to choosing positive
+                % correlation of the component timeseries (concatenated across
+                % trials) with the mean timeseries across xyz.
                 CompSign = sign(sum(U,1));
                 U = CompSign .* U;
                 Fs = sum(bsxfun(@times, permute(U, [2,3,1]), F(1,:,:)), 3); % matrix mult of U with F on 3rd dim, gives size (1, nTime)
                 % Combine scout PCA and orientation PCA components
                 Comp = Comp * U; % (original nRow, 1)
-            elseif nRow < nSource
+            elseif ~ismember(lower(ScoutFunction), {'all', 'none', 'mean', 'pca', 'pcag'})
                 error('Global PCA on orientations (XyzFunction = ''pcag'') after scout function other than PCA or mean not implemented.')
                 % To deal with other (non linear) scout functions would require 2 steps to load all scout trials.
             else
@@ -351,21 +320,6 @@ if (nComponents > 1) && (size(Fs,3) > 1)
             % We consider that a Scout function was applied 
             % (case where no function is applied is handled at the beginning of the function)
             Fs = permute(Fs, [3,2,1]);
-            %             F = Fs; % size(1,nTime,nComponents)
-            %             Fs = zeros(nComponents, nTime);
-            %             switch (size(F,3))
-            %                 case 2
-            %                     Fs(1:2:end) = F(:,:,1);
-            %                     Fs(2:2:end) = F(:,:,2);
-            %                 case 3
-            %                     Fs(1:3:end) = F(:,:,1);
-            %                     Fs(2:3:end) = F(:,:,2);
-            %                     Fs(3:3:end) = F(:,:,3);
-            %             end
-            % for ScoutFunction pcagx or pcag3 on constrained, reshape also Comp.  
-            if ~isempty(Comp) && size(Comp,2) == nComponents && size(Comp,1) == nSource
-                Comp = reshape(Comp', [], 1);
-            end
             
     % Otherwise: error
     otherwise
@@ -385,38 +339,24 @@ end
 
 
 %% ===== PCA: FIRST MODE =====
-function [F, explained, U] = PcaFirstMode(F, iWin)
+function [F, explained, U] = PcaFirstMode(F)
 % Modified to use restricted time window for component computation, but keeping full time in F.
-    % Remove average over time for each row
-    %Fmean = mean(F,2);
-    %F = bst_bsxfun(@minus, F, Fmean);
+    % Do not remove average over time for each row again, it could be better computed previously over baseline.
     % Signal decomposition
-    if nargin > 1 && ~isempty(iWin) && isvector(iWin)
-        [U,S,V] = svd(F(:,iWin), 'econ');
-    else
-        [U,S,V] = svd(F, 'econ');
-    end
+    [U, S] = svd(F, 'econ');
     S = diag(S);
     explained = S(1).^2 / sum(S.^2);
     U = U(:,1);
-% From PR 534 (https://github.com/brainstorm-tools/brainstorm3/pull/534/files)    
-    % Correct sign of the first PC
-    sign_meancorr = sign(mean(F,1) * (U' * F)');
+    % Correct sign of the first PC.  
+    % Choose sign to have positive correlation with mean timeseries.  Works best if
+    % isSignFlip was true when applied to scouts. For unconstrained source
+    % orientation flattening, this doesn't really work: it still leads to
+    % cancellation across trials.
+    %sign_meancorr = sign(mean(F,1) * (U' * F)');
+    % Mathematically equivalent simpler expression, using the definition of the
+    % eigen-decomp: U*S^2*U' = F*F' => U1' * F * F' * ones = S1^2 sum(U1)
+    sign_meancorr = sign(sum(U));
     F = sign_meancorr * U' * F;
-%     F = sign_Vcorr * S(1) * V(:,1)';    
-%     % Find where the first component projects the most over original dimensions
-%     [tmp__, nmax] = max(abs(U(:,1))); 
-%     % What's the sign of absolute max amplitude along this dimension?
-%     [tmp__, i_omaxx] = max(abs(F(nmax,:)));
-%     sign_omaxx = sign(F(nmax,i_omaxx));
-%     % Sign of maximum in first component time series
-%     [Vmaxx, i_Vmaxx] = max(abs(V(:,1)));
-%     sign_Vmaxx = sign(V(i_Vmaxx,1));
-%     % Reconcile signs
-%     F = sign_Vmaxx * sign_omaxx * S(1) * V(:,1)';
-%     % Add the weighted average back to the signal
-%     % The mean is derived from the original signal averages weighted by their respective contributions to the first singular vector
-%     F = F + sign_Vmaxx * sign_omaxx * U(:,1)' * Fmean;
 end
 
 

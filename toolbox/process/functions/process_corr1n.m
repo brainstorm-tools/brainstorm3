@@ -128,7 +128,7 @@ function sProcess = DefineConnectOptions(sProcess, isConnNN) %#ok<DEFNU>
     sProcess.options.scouts.InputTypes = {'results'};
     sProcess.options.scouts.Group      = 'input';
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'PCAgt', 'Scout function:'};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
     sProcess.options.scoutfunc.Type       = 'radio_line';
     sProcess.options.scoutfunc.Value      = 1;
     sProcess.options.scoutfunc.InputTypes = {'results'};
@@ -189,9 +189,6 @@ function OPTIONS = GetConnectOptions(sProcess, sInputA) %#ok<DEFNU>
             case 3, OPTIONS.ScoutFunc = 'pca';
             case 4, OPTIONS.ScoutFunc = 'std';
             case 5, OPTIONS.ScoutFunc = 'all';
-            case 6, OPTIONS.ScoutFunc = 'pcag'; % global pca: one comp over all trials, over all sources (loc and orient)
-            case 7, OPTIONS.ScoutFunc = 'pcag3'; % global pca, keep 3 comp
-            case 8, OPTIONS.ScoutFunc = 'pcagt'; % per trial "global" pca (over source loc and orient)
         end
         % Scout function order
         switch (sProcess.options.scouttime.Value)

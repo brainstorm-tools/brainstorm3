@@ -295,13 +295,7 @@ for iFile = 1:length(FilesA)
     % ===== CHECK UNCONSTRAINED SOURCES =====
     % Unconstrained models?
     isUnconstrA = ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && (sInputA.nComponents ~= 1);
-    if ~isempty(sInputA.Atlas) && isfield(sInputA.Atlas, 'Scouts') && isstruct(sInputA.Atlas.Scouts) && ismember(sInputA.Atlas.Scouts(1).Function, {'pcag', 'pcagt'})
-        isUnconstrA = false;
-    end
     isUnconstrB = ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && (sInputB.nComponents ~= 1);
-    if ~isempty(sInputB.Atlas) && isfield(sInputB.Atlas, 'Scouts') && isstruct(sInputB.Atlas.Scouts) && ismember(sInputB.Atlas.Scouts(1).Function, {'pcag', 'pcagt'})
-        isUnconstrB = false;
-    end
 %     % Mixed source models not supported yet
 %     if (ismember(sInputA.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputA.nComponents) && ~ismember(sInputA.nComponents, [1 3])) ...
 %     || (ismember(sInputB.DataType, {'results', 'scouts', 'matrix'}) && ~isempty(sInputB.nComponents) && ~ismember(sInputB.nComponents, [1 3]))

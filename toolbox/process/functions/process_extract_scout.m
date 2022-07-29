@@ -45,15 +45,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.timewindow.Comment = 'Time window:';
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
-    sProcess.options.pcawindow.Comment = 'PCA window:';
-    sProcess.options.pcawindow.Type    = 'timewindow';
-    sProcess.options.pcawindow.Value   = [];
     % === SCOUTS
     sProcess.options.scouts.Comment = '';
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'PCAg', 'PCAg3', 'PCAgt', 'PCAgx', 'Scout function:'};
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
     sProcess.options.scoutfunc.Type       = 'radio_line';
     sProcess.options.scoutfunc.Value      = 1;
     % === FLIP SIGN
@@ -137,10 +134,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             case {3, 'pca'},  ScoutFunc = 'pca';
             case {4, 'std'},  ScoutFunc = 'std';
             case {5, 'all'},  ScoutFunc = 'all';
-            case {6, 'pcag'},  ScoutFunc = 'pcag'; % global pca: one comp over all trials, over all sources (loc and orient)
-            case {7, 'pcag3'},  ScoutFunc = 'pcag3'; % global pca, keep 3 comp
-            case {8, 'pcagt'},  ScoutFunc = 'pcagt'; % per trial "global" pca (over source loc and orient)
-            case {9, 'pcagx'},  ScoutFunc = 'pcagx'; % separate x,y,z "global" pca (over source loc and trials)
             otherwise,  bst_report('Error', sProcess, [], 'Invalid scout function.');  return;
         end
     else
@@ -151,12 +144,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         TimeWindow = sProcess.options.timewindow.Value{1};
     else
         TimeWindow = [];
-    end
-    % Get PCA time window
-    if isfield(sProcess.options, 'pcawindow') && ~isempty(sProcess.options.pcawindow) && ~isempty(sProcess.options.pcawindow.Value) && iscell(sProcess.options.pcawindow.Value)
-        PcaWindow = sProcess.options.pcawindow.Value{1};
-    else
-        PcaWindow = [];
     end
     % Output options
     isConcatenate = sProcess.options.concatenate.Value && (length(sInputs) > 1);
@@ -179,8 +166,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         XyzFunction = 'none';
     end
     
-    ScoutCov = [];
-
     % ===== LOOP ON THE FILES =====
     for iInput = 1:length(sInputs)
         ScoutOrient = [];
@@ -200,27 +185,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get data filename
         [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
         
-        if iInput == 1 && strncmpi(ScoutFunc, 'pcag', 4)
-            if ~strcmpi(sInputs(iInput).FileType, 'results') 
-                error('pcag only available for imaging kernel files.');
-            end
-            sMat = in_bst_results(sInputs(iInput).FileName, 0);
-            if ~isfield(sMat, 'ImagingKernel') || isempty(sMat.ImagingKernel)
-                error('pcag only available for imaging kernel files.');
-            end
-
-            % Get data covariance matrix for provided data file.
-            % Note that this process is called through bst_process for single
-            % files (looped over elsewhere).  So we can't compute the global
-            % covariance here.
-            % NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
-            [sStudy, iStudy] = bst_get('Study', sInputs(iInput).iStudy);
-            if numel(sStudy.NoiseCov) < 2
-                error('pcag requires data covariance matrix to be computed first.');
-            end
-            DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
-        end
-
         % === READ FILES ===
         switch (sInputs(iInput).FileType)
             case 'results'
@@ -432,19 +396,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 sMat.Time(2) = sMat.Time(1) + 0.001;
             end
         end
-        if ~isempty(PcaWindow)
-            % Get time indices
-            if (length(sMat.Time) <= 2)
-                iPcaTime = 1:length(sMat.Time);
-            else
-                iPcaTime = panel_time('GetTimeIndices', sMat.Time, PcaWindow);
-                if isempty(iPcaTime)
-                    bst_report('Error', sProcess, sInputs(iInput), 'Invalid time window option.');
-                    continue;
-                end
-            end 
-        end
-
+        
         % === LOOP ON SCOUTS ===
         scoutValues  = [];
         scoutStd     = [];
@@ -458,11 +410,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iAtlasSurf = find(strcmpi(AtlasList{iAtlas,1}, {sSurf.Atlas.Name}));
             % Is this a volume atlas?
             isVolumeAtlas = panel_scout('ParseVolumeAtlas', AtlasName);
-            sMatNew = []; % For saving scout function "components"/"source maps"
             % Loop on the scouts selected for this atlas
             for iScout = 1:length(AtlasList{iAtlas,2})
                 % Get scout name
                 ScoutName = AtlasList{iAtlas,2}{iScout};
+                
                 % === ATLAS-BASED FILES ===
                 if ~isempty(iFileScouts)
                     scoutValues = cat(1, scoutValues, matValues(iFileScouts(iScout),:,:));
@@ -619,9 +571,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif (size(sMat.F,3) == 1)
                     sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
                     sourceStd = [];
-                    if strncmpi(SelScoutFunc, 'pcag', 4)
-                        ScoutCov = sResults.ImagingKernel(iRows,:) * DataCov.NoiseCov(sResults.GoodChannel, sResults.GoodChannel) * sResults.ImagingKernel(iRows,:)';
-                    end
                 else
                     % sourceValues = zeros(length(iRows), size(sMat.F,2), size(sMat.F,3));
                     % for iFreq = 1:size(sMat.F,3)
@@ -687,43 +636,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Loop on frequencies
                 nFreq = size(sourceValues,3);
                 for iFreq = 1:nFreq
-                    % Get covariance for this trial.
-                    if strcmpi(ScoutFunc, 'pcagt')
-                        %                         % Remove average over time for each row
-                        %                         Fmean = mean(sourceValues(:,:,iFreq), 2);
-                        %                         sourceValues(:,:,iFreq) = bst_bsxfun(@minus, sourceValues(:,:,iFreq), Fmean);
-                        if ~isempty(PcaWindow)
-                            ScoutCov = sourceValues(:, iPcaTime, iFreq) * sourceValues(:, iPcaTime, iFreq)';
-                        else
-                            ScoutCov = sourceValues(:, :, iFreq) * sourceValues(:, :, iFreq)';
-                        end
-                    elseif strcmpi(ScoutFunc, 'pcagx') && strcmpi(XyzFunction, 'none')
-                        % This is for temporary testing only, we might want to test none for connectivity.
-                        warning('XyzFunction set to pcag for Marc''s tests.')
-                        XyzFunction = 'pcag';
-                    elseif strcmpi(ScoutFunc, 'pca') && ~isempty(PcaWindow)
-                        ScoutCov = iPcaTime;
-                    end
                     % Apply scout function
-                    [tmpScout, ScoutComp] = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName, ScoutCov);
+                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
-                    % Save scout function component for first file only.
-                    if iInput == 1 && ~isempty(ScoutComp) && size(ScoutComp,1) == numel(iRows)
-                        % Initialize
-                        if isempty(sMatNew)
-                            sMatNew = sResults;
-                            nSources = max(size(sMatNew.ImagingKernel, 1), size(sMatNew.ImageGridAmp, 1));
-                            sMatNew.ImagingKernel = [];
-                            sMatNew.ImageGridAmp = zeros(nSources, nFreq);
-                            sMatNew.DataFile = ''; % otherwise hidden away
-                            sMatNew.Time = 1:nFreq;
-                            sMatNew = bst_history('add', sMatNew, 'scout', ['Extract scout values, component map; scout func ' SelScoutFunc ' xyz func ' XyzFunction]);
-                            %sMatNewFile = bst_process('GetNewFilename', OutputFolder, 'results_);
-                            %bst_save(FileName, FileMat, Version, isAppend)
-                        end
-                        sMatNew.ImageGridAmp(iRows, iFreq) = ScoutComp(:,1);
-                    end
-
                     if ~isempty(sourceStd)
                         tmpScoutStd = [];
                         for iBound = 1:size(sourceStd,4)
@@ -773,15 +688,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         Description = cat(1, Description, scoutDesc);
                     end
                 end
-            end
-            % Save one source file per atlas.
-            if ~isempty(sMatNew)
-                if iScout == 1 % only one scout, use its name
-                    sMatNew.Comment = sprintf('%s | %s_%s_%d-%d', sMatNew.Comment, ScoutFunc, ScoutName, PcaWindow*1000);
-                else
-                    sMatNew.Comment = sprintf('%s | %s_%s_%d-%d', sMatNew.Comment, ScoutFunc, 'scouts', PcaWindow*1000);
-                end
-                db_add(sInputs(iInput).iStudy, sMatNew);
             end
         end
         % If nothing was found
