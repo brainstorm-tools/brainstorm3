@@ -50,8 +50,8 @@ switch (fileType)
         sNew.SubType = FileMat.Type;
         
     case 'timefreq'
+        sNew.SubType   = FileMat.DataType;
         sNew.ExtraStr1 = FileMat.DataFile;
-        sNew.ExtraStr2 = FileMat.DataType;
         
     case 'data'
         % DataType

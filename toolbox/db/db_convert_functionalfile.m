@@ -98,11 +98,11 @@ if all(isfield(inStructs(1), {'Id', 'Type'}))
                     outStructs(iStruct).HeadModelType = inStructs(iStruct).ExtraStr2;                                                          
                 case 'stat'
                     outStructs(iStruct).Type       = inStructs(iStruct).SubType;
-                    outStructs(iStruct).pThreshold = inStructs(iStruct).ExtraStr1;
-                    outStructs(iStruct).DataFile   = inStructs(iStruct).ExtraStr2;                
+                    outStructs(iStruct).DataFile   = inStructs(iStruct).ExtraStr1;
+                    outStructs(iStruct).pThreshold = inStructs(iStruct).ExtraStr2;
                 case 'timefreq'
+                    outStructs(iStruct).DataType = inStructs(iStruct).SubType;
                     outStructs(iStruct).DataFile = inStructs(iStruct).ExtraStr1;
-                    outStructs(iStruct).DataType = inStructs(iStruct).ExtraStr2;
                 case {'image', 'matrix', 'noisecov', 'ndatacov'}
                     % Nothing to add
                 otherwise
@@ -150,11 +150,11 @@ else
                 outStructs(iStruct).ExtraStr2  = inStructs(iStruct).HeadModelType;
             case 'stat'
                 outStructs(iStruct).SubType   = inStructs(iStruct).Type;
-                outStructs(iStruct).ExtraStr1 = inStructs(iStruct).pThreshold;
-                outStructs(iStruct).ExtraStr2 = inStructs(iStruct).DataFile;
+                outStructs(iStruct).ExtraStr1 = inStructs(iStruct).DataFile;
+                outStructs(iStruct).ExtraStr2 = inStructs(iStruct).pThreshold;
             case 'timefreq'
-                outStructs(iStruct).ExtraStr1  = inStructs(iStruct).DataFile;
-                outStructs(iStruct).ExtraStr2  = inStructs(iStruct).DataType;
+                outStructs(iStruct).SubType   = inStructs(iStruct).DataType;
+                outStructs(iStruct).ExtraStr1 = inStructs(iStruct).DataFile;
             case {'image', 'matrix', 'noisecov', 'ndatacov'}
                 % Nothing to add
             otherwise
