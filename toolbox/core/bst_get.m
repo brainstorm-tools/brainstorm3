@@ -1523,28 +1523,29 @@ switch contextName
     % Usage: [iFoundData] = bst_get('DataForDataList', iStudy, DataListName)
     case 'DataForDataList'
         iStudy = varargin{2};
-        DataListName = varargin{3};
-        % Get study structure
-        sStudy = bst_get('Study', iStudy);
-        % Get all the data files held by this datalist
-        listComments = cellfun(@(c)deblank(str_remove_parenth(c)), {sStudy.Data.Comment}, 'UniformOutput', 0);
-        iFoundData = find(strcmp(listComments, DataListName));
+        dataListName = varargin{3};
+        % Get Id of datalist
+        condQuery = struct('Name', dataListName, 'Type', 'datalist', 'Study', iStudy);
+        sFunctFile = db_get('FunctionalFile', condQuery, 'Id');
+        % Get All children of the list
+        condQuery = struct('ParentFile', sFunctFile.Id, 'Type', 'data', 'Study', iStudy);
+        sFunctFiles = db_get('FunctionalFile', condQuery, 'Id');
         % Return found data files
-        argout1 = iFoundData;
+        argout1 = [sFunctFiles.Id];
 
 %% ==== MATRIX FOR MATRIX LIST ====
     % Usage: [iFoundMatrix] = bst_get('MatrixForMatrixList', iStudy, MatrixListName)
     case 'MatrixForMatrixList'
         iStudy = varargin{2};
-        MatrixListName = varargin{3};
-        % Get study structure
-        sStudy = bst_get('Study', iStudy);
-        % Get all the matrix files held by this datalist
-        listComments = cellfun(@(c)deblank(str_remove_parenth(c)), {sStudy.Matrix.Comment}, 'UniformOutput', 0);
-        iFoundMatrix = find(strcmp(listComments, MatrixListName));
+        matrixListName = varargin{3};
+        % Get Id of matrix list
+        condQuery = struct('Name', matrixListName, 'Type', 'matrixlist', 'Study', iStudy);
+        sFunctFile = db_get('FunctionalFile', condQuery, 'Id');
+        % Get All children of the list
+        condQuery = struct('ParentFile', sFunctFile.Id, 'Type', 'matrix', 'Study', iStudy);
+        sFunctFiles = db_get('FunctionalFile', condQuery, 'Id');
         % Return found matrix files
-        argout1 = iFoundMatrix;
-        
+        argout1 = [sFunctFiles.Id];
         
 %% ==== DATA FOR STUDY (INCLUDING SHARED STUDIES) ====
     % Usage: [iStudies, iDatas] = bst_get('DataForStudy', iStudy)
