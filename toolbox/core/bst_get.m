@@ -3912,8 +3912,8 @@ function [sFoundStudy, iFoundStudy, iItem] = findFileInStudies(fieldGroup, field
         if ~isempty(iItem)
             sFoundStudy  = sStudy;
             iFoundStudy  = sStudy.Id;
-            sFuncFile = db_get('FunctionalFile', sStudy.(fieldGroup)(iValidFiles(iItem)), 'Id');
-            iItem = sFuncFile.Id;
+            sFuncFile = db_get('FunctionalFile', {sStudy.(fieldGroup)(iValidFiles(iItem)).FileName}, 'Id');
+            iItem = [sFuncFile.Id];
             return
         end
     end
