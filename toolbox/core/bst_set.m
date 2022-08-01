@@ -385,7 +385,7 @@ switch contextName
                             % Get name of trial groups
                             cleanNames = cellfun(@(x) str_remove_parenth(x), {sFuncFiles.Name}, 'UniformOutput', false);
                             nameGroups = unique(cleanNames, 'stable');
-                            trialGroups = repmat(struct('Name', [], 'Children', [], 'nChildren', []), 1, length(nameGroups));
+                            trialGroups = repmat(struct('Name', [], 'nChildren', []), 1, length(nameGroups));
                             % Find trials for each trial group
                             for ix = 1 : length(nameGroups)
                                 trialGroups(ix).Name = nameGroups{ix};
@@ -399,7 +399,7 @@ switch contextName
                                     listFunctionalFile = db_template('FunctionalFile');
                                     listFunctionalFile.Study = iStudy;
                                     listFunctionalFile.Type = [type 'list'];
-                                    listFunctionalFile.FileName = sFuncFiles{ix}(1).FileName;
+                                    listFunctionalFile.FileName = [sFuncFiles{ix}(1).FileName(1:end-4), '.lst'];
                                     listFunctionalFile.Name = trialGroups(ix).Name;
                                     sFuncFiles{ix} = [listFunctionalFile, sFuncFiles{ix}];
                                 end
