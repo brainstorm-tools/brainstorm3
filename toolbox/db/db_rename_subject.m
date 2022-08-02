@@ -32,8 +32,8 @@ end
 % Get protocol directories
 ProtocolInfo = bst_get('ProtocolInfo');
 % Get subject index
-[sSubject, iSubject] = bst_get('Subject', oldName);
-if isempty(iSubject)
+sSubject = db_get('Subject', oldName, 'Id');
+if isempty(sSubject.Id)
     return;
 end
 % No modification
@@ -95,23 +95,22 @@ end
 
 %% ===== UPDATE DATABASE =====
 % Update subject definition
-[sSubject, iSubject] = bst_get('Subject', oldName, 1);
+sqlConn = sql_connect();
+sSubject = db_get(sqlConn, 'Subject', oldName, {'Id', 'Name', 'FileName'}, 1);
 sSubject.Name = newName;
 % Update subject filename
 [fPath, fBase, fExt] = bst_fileparts(sSubject.FileName);
 sSubject.FileName = bst_fullfile(newName, [fBase, fExt]);
-% Update anatomy
-for i = 1:length(sSubject.Anatomy)
-    [fPath, fBase, fExt] = bst_fileparts(sSubject.Anatomy(i).FileName);
-    sSubject.Anatomy(i).FileName = bst_fullfile(newName, [fBase, fExt]);
+db_set(sqlConn, 'Subject', sSubject, sSubject.Id);
+% Update anatomy and surfaces
+sAnatFiles = db_get(sqlConn, 'FilesWithSubject', sSubject.Id, [], {'Id', 'FileName'});
+for i = 1 : length(sAnatFiles)
+    [fPath, fBase, fExt] = bst_fileparts(sAnatFiles(i).FileName);
+    sAnatFiles(i).FileName = bst_fullfile(newName, [fBase, fExt]);
+    db_set(sqlConn, 'AnatomyFile', sAnatFiles(i), sAnatFiles(i).Id);
 end
-% Update surfaces
-for i = 1:length(sSubject.Surface)
-    [fPath, fBase, fExt] = bst_fileparts(sSubject.Surface(i).FileName);
-    sSubject.Surface(i).FileName = bst_fullfile(newName, [fBase, fExt]);
-end
-% Save new subject definition
-bst_set('Subject', iSubject, sSubject);
+sql_close(sqlConn);
+
 % Close progress bar
 bst_progress('stop');
 % Update tree display

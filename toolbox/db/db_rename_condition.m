@@ -49,7 +49,7 @@ newPath = strrep(newPath, '\', '/');
 %% ===== MULTIPLE RENAMING =====
 if any(oldPath == '*')
     % Get all the studies concerned by the modification
-    [sStudies, iStudies] = bst_get('StudyWithCondition', oldPath);
+    sStudies = db_get('StudyWithCondition', oldPath, 'FileName');
     if isempty(sStudies)
         disp(['RENAME> Condition "' oldPath '" does not exist.']);
         return;
@@ -99,140 +99,132 @@ end
 
 %% ===== UPDATE ALL THE FILES =====
 % Get study structure
-[sStudy, iStudy] = bst_get('StudyWithCondition', oldPath);
+sqlConn = sql_connect();
+sStudy = db_get(sqlConn, 'StudyWithCondition', oldPath);
+
+if isempty(sStudy)
+    sql_close(sqlConn);
+    return
+end
+
 % Update study
 if isUpdateStudyPath
-    sStudy = replaceStruct(sStudy, 'FileName',        oldPath, newPath);
-    sStudy = replaceStruct(sStudy, 'Name',            oldPath, newPath);
-    sStudy = replaceStruct(sStudy, 'BrainStormSubject', oldSubj, newSubj);
-    sStudy.Condition = {newCond};
+    sStudy = replaceStruct(sStudy, 'FileName', oldPath, newPath);
+    %sStudy = replaceStruct(sStudy, 'Name',     oldPath, newPath);
+    sStudy.Name = newCond;
+    sStudy.Condition = newCond;
+    % Update sStudy in database
+    db_set(sqlConn, 'Study', sStudy, sStudy.Id);
 end
 
-% === CHANNEL ===
-for i = 1:length(sStudy.Channel)
-    sStudy.Channel(i) = replaceStruct(sStudy.Channel(i), 'FileName', oldPath, newPath);
-end
-% === DATA ===
-for i = 1:length(sStudy.Data)
-    sStudy.Data(i) = replaceStruct(sStudy.Data(i), 'FileName', oldPath, newPath);
-end
-% === HEADMODEL ===
-for i = 1:length(sStudy.HeadModel)
-    oldFile = sStudy.HeadModel(i).FileName;
-    sStudy.HeadModel(i) = replaceStruct(sStudy.HeadModel(i), 'FileName', oldPath, newPath);
-    % Update file
-    if isMove
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, sStudy.HeadModel(i).FileName);
-    else
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
-    end
-    if file_exist(fileFull)
-        fileMat = load(fileFull);
-        [fileMat, isModified] = replaceStruct(fileMat, 'SurfaceFile', oldSubj, newSubj);
-        if isModified
-            bst_save(fileFull, fileMat, 'v7');
-        end
-    end
-end
-% === RESULT ===
-for i = 1:length(sStudy.Result)
-    oldFile = sStudy.Result(i).FileName;
-    sStudy.Result(i) = replaceStruct(sStudy.Result(i), 'FileName', oldPath, newPath);
-    sStudy.Result(i) = replaceStruct(sStudy.Result(i), 'DataFile', oldPath, newPath);
-    % Regular files
-    if ~sStudy.Result(i).isLink
-        % Update file
-        if isMove
-            fileFull = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Result(i).FileName);
-        else
-            fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
-        end
-        if file_exist(fileFull)
-            fileMat = load(fileFull);
-            [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile',      oldPath, newPath);
-            [fileMat, isModified2] = replaceStruct(fileMat, 'HeadModelFile', oldPath, newPath);
-            [fileMat, isModified3] = replaceStruct(fileMat, 'SurfaceFile',   oldSubj, newSubj);
-            if isModified1 || isModified2 || isModified3
-                bst_save(fileFull, fileMat, 'v6');
+% Update functional files
+sFunctFiles = db_get(sqlConn, 'FilesWithStudy', sStudy.Id);
+for ix = 1 : length(sFunctFiles)
+    sFunctFile = sFunctFiles(ix);
+    switch sFunctFile.Type
+        case {'channel', 'data', 'image', 'noisecov', 'ndatacov', 'matrix', 'datalist', 'matrixlist'}
+            sFunctFile = replaceStruct(sFunctFile, 'FileName', oldPath, newPath);
+
+        case 'headmodel'
+            oldFile = sFunctFile.FileName;
+            sFunctFile = replaceStruct(sFunctFile, 'FileName', oldPath, newPath);
+            % Update file
+            if isMove
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, sFunctFile.FileName);
+            else
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
             end
-        end
-    end
-end
-% === STAT ===
-for i = 1:length(sStudy.Stat)
-    oldFile = sStudy.Stat(i).FileName;
-    sStudy.Stat(i) = replaceStruct(sStudy.Stat(i), 'FileName', oldPath, newPath);
-    % Update file
-    if isMove
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Stat(i).FileName);
-    else
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
-    end
-    if file_exist(fileFull)
-        fileMat = load(fileFull);
-        [fileMat, isModified] = replaceStruct(fileMat, 'SurfaceFile', oldSubj, newSubj);
-        if isModified
-            bst_save(fileFull, fileMat, 'v6');
-        end
-    end
-end
-% === IMAGE ===
-for i = 1:length(sStudy.Image)
-    sStudy.Image(i) = replaceStruct(sStudy.Image(i), 'FileName', oldPath, newPath);
-end
-% === NOISECOV ===
-for i = 1:length(sStudy.NoiseCov)
-    sStudy.NoiseCov(i) = replaceStruct(sStudy.NoiseCov(i), 'FileName', oldPath, newPath);
-end
-% === DIPOLES ===
-for i = 1:length(sStudy.Dipoles)
-    oldFile = sStudy.Dipoles(i).FileName;
-    sStudy.Dipoles(i) = replaceStruct(sStudy.Dipoles(i), 'FileName', oldPath, newPath);
-    sStudy.Dipoles(i) = replaceStruct(sStudy.Dipoles(i), 'DataFile', oldPath, newPath);
-    % Update file
-    if isMove
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Dipoles(i).FileName);
-    else
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
-    end
-    if file_exist(fileFull)
-        fileMat = load(fileFull);
-        [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile', oldPath, newPath);
-        [fileMat, isModified2] = replaceStruct(fileMat, 'SurfaceFile', oldPath, newPath);
-        if isModified1 || isModified2
-            bst_save(fileFull, fileMat, 'v7');
-        end
-    end
-end
-% === TIMEFREQ ===
-for i = 1:length(sStudy.Timefreq)
-    oldFile = sStudy.Timefreq(i).FileName;
-    sStudy.Timefreq(i) = replaceStruct(sStudy.Timefreq(i), 'FileName', oldPath, newPath);
-    sStudy.Timefreq(i) = replaceStruct(sStudy.Timefreq(i), 'DataFile', oldPath, newPath);
-    % Update file
-    if isMove
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, sStudy.Timefreq(i).FileName);
-    else
-        fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
-    end
-    if file_exist(fileFull)
-        fileMat = load(fileFull);
-        [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile', oldPath, newPath);
-        [fileMat, isModified2] = replaceStruct(fileMat, 'SurfaceFile', oldPath, newPath);
-        if isModified1 || isModified2
-            bst_save(fileFull, fileMat, 'v6');
-        end
-    end
-end
-% === MATRIX ===
-for i = 1:length(sStudy.Matrix)
-    sStudy.Matrix(i) = replaceStruct(sStudy.Matrix(i), 'FileName', oldPath, newPath);
-end
+            if file_exist(fileFull)
+                fileMat = load(fileFull);
+                [fileMat, isModified] = replaceStruct(fileMat, 'SurfaceFile', oldSubj, newSubj);
+                if isModified
+                    bst_save(fileFull, fileMat, 'v7');
+                end
+            end
 
+        case 'result'
+            oldFile = sFunctFile.FileName;
+            sFunctFile = replaceStruct(sFunctFile, 'FileName', oldPath, newPath);
+            sFunctFile = replaceStruct(sFunctFile, 'ExtraStr1', oldPath, newPath); % DataFile
+            % Regular files
+            if ~sFunctFile.ExtraNum %isLink
+                % Update file
+                if isMove
+                    fileFull = bst_fullfile(ProtocolInfo.STUDIES, sFunctFile.FileName);
+                else
+                    fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
+                end
+                if file_exist(fileFull)
+                    fileMat = load(fileFull);
+                    [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile',      oldPath, newPath);
+                    [fileMat, isModified2] = replaceStruct(fileMat, 'HeadModelFile', oldPath, newPath);
+                    [fileMat, isModified3] = replaceStruct(fileMat, 'SurfaceFile',   oldSubj, newSubj);
+                    if isModified1 || isModified2 || isModified3
+                        bst_save(fileFull, fileMat, 'v6');
+                    end
+                end
+            end
 
-%% ===== UPDATE DATABASE =====
-% Update condition in database
-bst_set('Study', iStudy, sStudy);
+        case 'stat'
+            oldFile = sFunctFile.FileName;
+            sFunctFile = replaceStruct(sFunctFile, 'FileName', oldPath, newPath);
+            % Update file
+            if isMove
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, sFunctFile.FileName);
+            else
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
+            end
+            if file_exist(fileFull)
+                fileMat = load(fileFull);
+                [fileMat, isModified] = replaceStruct(fileMat, 'SurfaceFile', oldSubj, newSubj);
+                if isModified
+                    bst_save(fileFull, fileMat, 'v6');
+                end
+            end
+
+        case 'dipoles'
+            oldFile = sFunctFile.FileName;
+            sFunctFile = replaceStruct(sFunctFile, 'FileName', oldPath, newPath);
+            sFunctFile = replaceStruct(sFunctFile, 'ExtraStr1', oldPath, newPath); % DataFile
+            % Update file
+            if isMove
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, sFunctFile.FileName);
+            else
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
+            end
+            if file_exist(fileFull)
+                fileMat = load(fileFull);
+                [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile', oldPath, newPath);
+                [fileMat, isModified2] = replaceStruct(fileMat, 'SurfaceFile', oldPath, newPath);
+                if isModified1 || isModified2
+                    bst_save(fileFull, fileMat, 'v7');
+                end
+            end
+
+        case 'timefreq'
+            oldFile = sFunctFile.FileName;
+            sFunctFile = replaceStruct(sFunctFile, 'FileName', oldPath, newPath);
+            sFunctFile = replaceStruct(sFunctFile, 'ExtraStr1', oldPath, newPath); % DataFile
+            % Update file
+            if isMove
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, sFunctFile.FileName);
+            else
+                fileFull = bst_fullfile(ProtocolInfo.STUDIES, oldFile);
+            end
+            if file_exist(fileFull)
+                fileMat = load(fileFull);
+                [fileMat, isModified1] = replaceStruct(fileMat, 'DataFile', oldPath, newPath);
+                [fileMat, isModified2] = replaceStruct(fileMat, 'SurfaceFile', oldPath, newPath);
+                if isModified1 || isModified2
+                    bst_save(fileFull, fileMat, 'v6');
+                end
+            end
+    end
+    % Update functional file in database
+    db_set(sqlConn, 'FunctionalFile', sFunctFile, sFunctFile.Id);
+end
+sql_close(sqlConn);
+
 % Close progress bar
 bst_progress('stop');
 % Not moving, not reloading

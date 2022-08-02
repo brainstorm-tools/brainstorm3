@@ -50,6 +50,7 @@ function varargout = db_get(varargin)
 %    - db_get('Studies')             : Get all studies in current protocol, exclude @inter and global @default_study
 %    - db_get('Studies', 0, Fields)  : Get all studies in current protocol, exclude @inter and global @default_study
 %    - db_get('Studies', 1, Fields)  : Get all studies in current protocol, include @inter and global @default_study
+%    - db_get('StudyWithCondition', ConditionPath, Fields) : Get studies for a given condition path
 %
 % ====== FUNCTIONAL FILES ==============================================================
 %    - db_get('FilesWithStudy', StudyID, FunctionalFileType, Fields) : Get FunctionalFiles for StudyID
@@ -59,6 +60,9 @@ function varargout = db_get(varargin)
 %    - db_get('ChannelFromStudy', StudyID)       : Find current Channel for StudyID
 %    - db_get('ChannelFromStudy', StudyFileName) : Find current Channel for StudyFileName
 %    - db_get('ChannelFromStudy', CondQuery)     : Find current Channel for Query struct
+%    - db_get('FilesInFileList', ListFileID, Fields)   : Get FunctionalFile belonging to a list with ID
+%    - db_get('FilesInFileList', ListFileName, Fields) : Get FunctionalFile belonging to a list with FileName
+%    - db_get('FilesInFileList', CondQuery, Fields)   : Get FunctionalFile belonging to a list with Query
 %
 % ====== ANY FILE ======================================================================
 %    - db_get('AnyFile', FileName)         : Get any file by FileName
@@ -417,6 +421,23 @@ switch contextName
         varargout{1} = sFiles;
 
 
+%% ==== FUNCTIONAL FILES IN FILE LIST ====
+    % sFunctionalFiles = db_get('FilesInFileList', ListFileID,   Fields)
+    %                  = db_get('FilesInFileList', ListFileName, Fields)
+    %                  = db_get('FilesInFileList', CondQuery,    Fields)
+    case 'FilesInFileList'
+        iFileList = args{1};
+        fields = '*';
+        if length(args) > 1
+            fields = args{2};
+        end
+        % Get fileListID and Type
+        sFuncFile = db_get(sqlConn, 'FunctionalFile', iFileList, {'Id', 'Type', 'Study'});
+        % Get all children files of the list
+        condQuery = struct('ParentFile', sFuncFile.Id, 'Type', strrep(sFuncFile.Type, 'list', ''), 'Study', sFuncFile.Study);
+        varargout{1} = db_get(sqlConn, 'FunctionalFile', condQuery, fields);
+
+
 %% ==== SUBJECT FROM STUDY ====
     % sSubject = db_get('SubjectFromStudy', StudyID,       SubjectFields)
     %          = db_get('SubjectFromStudy', StudyFileName, SubjectFields)
@@ -722,6 +743,57 @@ switch contextName
         end
         % Select query
         varargout{1} = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
+
+
+%% ==== STUDY WITH CONDITION PATH ====
+    % sStudies = db_get('StudyWithCondition', ConditionPath, Fields)
+    %
+    % ConditionPath
+    %   - 'SubjectName/conditionName'  : Target condition for the specified subject
+    %   - 'SubjectName/@intra'         : Intra-subject condition for the subject
+    %   - 'SubjectName/@default_study' : Default condition for the subject (where the subject's shared files are stored)
+    %   - '*/conditionName'            : Target condition for all the subjects
+    %   - '@inter'                     : Inter-subject condition
+    %   - '@default_study'             : Protocol's default condition (where the protocol's shared files are stored)
+    case 'StudyWithCondition'
+        fields = '*';
+        conditionPath = args{1};
+        varargout{1} = [];
+        if length(args) > 1
+            fields = args{2};
+        end
+        if ischar(fields), fields = {fields}; end
+        % ConditionPath: @inter or @default_study
+        if ismember(conditionPath, {'@inter', '@default_study'})
+            varargout{1} = db_get(sqlConn, 'Study', conditionPath, fields);
+
+        % ConditionPath = SubjectName/ConditionName
+        else
+            % Get subject and condition names
+            condSplit = str_split(conditionPath);
+            if (length(condSplit) ~= 2)
+                error('Invalid condition path.');
+            end
+            subjectName = condSplit{1};
+            conditionName = condSplit{2};
+            % If first element is '*', search for condition in all the studies
+            if (subjectName(1) == '*')
+                sStudies = db_get(sqlConn, 'Study', struct('Condition', conditionName), fields);
+            % Else : search for condition only in studies that are linked to the subject specified in the ConditionPath
+            else
+                % Prepend 'Subject.' to requested fields
+                if ~strcmp('*', fields{1})
+                    fields = cellfun(@(x) ['Study.' x], fields, 'UniformOutput', 0);
+                end
+                % Join query
+                joinQry  = 'Study LEFT JOIN Subject On Study.Subject = Subject.Id';
+                addQuery = ['AND Subject.Name = "' subjectName '" ' ...
+                            'AND Study.Condition = "' conditionName '"'];
+                sStudies = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
+            end
+            % Return results
+            varargout{1} = sStudies;
+        end
 
 
 %% ==== ANY FILE ====

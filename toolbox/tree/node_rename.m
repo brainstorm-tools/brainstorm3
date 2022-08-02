@@ -23,6 +23,7 @@ function node_rename(bstNode, newComment)
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2015
+%          Raymundo Cassani, 2022
 
 
 %% ===== INITIALIZATION =====
@@ -56,9 +57,9 @@ switch lower(nodeType)
             iSubject = iItem;
         end
         % Get subject
-        sSubject = bst_get('Subject', iSubject, 1);
+        sSubject = db_get('Subject', iSubject, {'Name', 'FileName'}, 1);
         % If subject is not default subject or group subject
-        if (iSubject <= 0) || strcmp(sSubject.Name, bst_get('NormalizedSubjectName'))
+        if strcmp(sSubject.Name, bst_get('DirDefaultSubject')) || strcmp(sSubject.Name, bst_get('NormalizedSubjectName'))
             return
         end
         
@@ -75,27 +76,23 @@ switch lower(nodeType)
         end
         
         
-%% ===== SURFACES (Comment) =====
-    case {'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers', 'fem'}
+%% ===== ANATOMY AND SURFACES (Comment) =====
+    case {'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers', 'fem'}
         iSubject = iItem;
         iSurface = iSubItem;
-        sSubject = bst_get('Subject', iSubject);
         % Get new comment
         if isempty(newComment)
             newComment = GetNewComment(bstNode, 'Comment');
         end
         if isempty(newComment), return, end
         % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.SUBJECTS, fileName), 'Field', 'Comment', newComment)
+        if file_update(bst_fullfile(ProtocolInfo.SUBJECTS, fileName), 'Field', 'Comment', newComment);
             bstNode.setComment(newComment);
             % Update comment
-            sSubject.Surface(iSurface).Comment = newComment;
-            % Update subject in DataBase (needed for surface type update)
-            bst_set('Subject', iSubject, sSubject);
-
+            [iAnatFile, sAnatFile] = db_set('AnatomyFile', struct('Name', newComment), iSurface);
             % If new tess comment contains a keyword (head, cortex, scalp, brain, ...)
             % => update surface type (only if surface type changed)
-            prevType = sSubject.Surface(iSurface).SurfaceType;
+            prevType = sAnatFile.SurfaceType;
             % SCALP
             if ~strcmpi(prevType, 'Scalp') && (~isempty(strfind(lower(newComment), 'head')) || ~isempty(strfind(lower(newComment), 'scalp')) || ~isempty(strfind(lower(newComment), 'skin')))
                 node_set_type(bstNode, 'Scalp');
@@ -112,33 +109,14 @@ switch lower(nodeType)
                 iModifiedSubjects = iSubject;
             end
             nodeSel = bstNode;
-        end             
-
-
-%% ===== ANATOMY (Comment) =====
-    case 'anatomy'
-        iSubject = iItem;
-        iAnatomy = iSubItem;
-        sSubject = bst_get('Subject', iSubject);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.SUBJECTS, fileName), 'Field', 'Comment', newComment)
-            bstNode.setComment(newComment);
-            % Update comment
-            sSubject.Anatomy(iAnatomy).Comment = newComment;
-            iModifiedSubjects = iSubject;
         end
 
 %% ===== STUDY (Name) =====
     case 'study'
         iStudy = iItem;
-        sStudy = bst_get('Study', iStudy);
+        sStudy = db_get('Study', iStudy, 'Name');
         % Check that it is not a default study
-        if isempty(sStudy.Condition) || ismember(sStudy.Condition{1}, {bst_get('DirAnalysisIntra'), bst_get('DirAnalysisInter')})
+        if ismember(sStudy.Name, {bst_get('DirAnalysisIntra'), bst_get('DirAnalysisInter')})
             return 
         end
         % Get new comment
@@ -151,7 +129,7 @@ switch lower(nodeType)
         % Update File, Node display and Database
         if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Name', newComment);
             bstNode.setComment(newComment);
-            sStudy.Name = newComment;
+            db_set('Study', struct('Name', newComment), iStudy);
             iModifiedStudies = iStudy;
         end
 
@@ -159,6 +137,7 @@ switch lower(nodeType)
     % Modify: Directory name + studies definition
     case 'condition'
         % Rename condition
+        fileName = bst_fileparts(fileName);
         [SubjectName, oldCond] = bst_fileparts(fileName, 1);
         newCond = file_standardize(newComment);
         if ~strcmpi(oldCond, newCond)
@@ -167,10 +146,11 @@ switch lower(nodeType)
             db_rename_condition(oldPath, newPath);
         end
 
-%% ===== CHANNEL (Comment) =====
-    case 'channel'
+%% ===== CHANNEL, HEAD MODEL, DATA, RESULTS, STAT, DIPOLES, MATRIX, TIMEFREQ  (Comment) =====
+    case {'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', ...
+          'pdata', 'presults', 'ptimefreq', 'pspectrum', 'pmatrix', ...
+          'dipoles', 'matrix', 'timefreq', 'spectrum'}
         iStudy = iItem;
-        sStudy = bst_get('Study', iStudy);
         % Get new comment
         if isempty(newComment)
             newComment = GetNewComment(bstNode, 'Comment');
@@ -179,36 +159,21 @@ switch lower(nodeType)
         % Update File, Node display and Database
         if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
             bstNode.setComment(newComment);
-            sStudy.Channel.Comment = newComment;
+            db_set('FunctionalFile', struct('Name', newComment), iSubItem);
             iModifiedStudies = iStudy;
+            % If results file is a kernel-only file: Update links
+            isUpdateLinks = strcmpi(nodeType, 'kernel');
             nodeSel = bstNode;
         end    
-        
-%% ===== DATA (Comment) =====
-    case {'data', 'rawdata'}
-        iStudy = iItem;
-        iData = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.Data(iData).Comment = newComment;
-            iModifiedStudies = iStudy;
-            nodeSel = bstNode;
-        end
 
-%% ===== DATA LIST (Comment) =====
-    case 'datalist'
+%% ===== DATA LIST and MATRIX LIST (Comment) =====
+    case {'datalist', 'matrixlist'}
         % Get selected study
         iStudy = iItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get all the data files held by this datalist
-        iFoundData = bst_get('DataForDataList', iStudy, fileName);
+        sqlConn = sql_connect();
+        % Get all the data files held by this list
+        sFuncFiles = db_get(sqlConn, 'FilesInFileList', iSubItem, 'Id');
+        iFoundData = [sFuncFiles.Id];
         % If some data files were found
         if ~isempty(iFoundData)
             % Get new comment
@@ -218,157 +183,23 @@ switch lower(nodeType)
             if isempty(newComment), return, end
             % Remove parenthesis
             newComment = str_remove_parenth(newComment);
-            % Rename all the DataFiles
+            % Update list name in Brainstorm database
+            db_set(sqlConn, 'FunctionalFile', struct('Name', newComment), iSubItem);
+            % Rename all child files
             for i = 1:length(iFoundData)
-                % Build DataFile comment
-                datafileComment = sprintf('%s (#%d)', newComment, i);
+                % Build file comment
+                fileComment = sprintf('%s (#%d)', newComment, i);
+                % Children filename
+                sFuncFile = db_get(sqlConn, 'FunctionalFile', iFoundData(i), 'FileName');
                 % Update File, Node display and Database
-                if file_update(bst_fullfile(ProtocolInfo.STUDIES, sStudy.Data(iFoundData(i)).FileName), 'Field', 'Comment', datafileComment);
+                if file_update(bst_fullfile(ProtocolInfo.STUDIES, sFuncFile.FileName), 'Field', 'Comment', fileComment);
                     % Update Brainstorm database
-                    sStudy.Data(iFoundData(i)).Comment = datafileComment;
+                    db_set('FunctionalFile', struct('Name', fileComment), iFoundData(i));
                 end
             end
             iModifiedStudies = iStudy;
         end
-
-%% ===== RESULTS (Comment) =====
-    case {'results', 'kernel'}
-        iStudy = iItem;
-        iResults = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.Result(iResults).Comment = newComment;
-            iModifiedStudies = iStudy;
-            % If results file is a kernel-only file: Update links
-            isUpdateLinks = strcmpi(nodeType, 'kernel');
-            nodeSel = bstNode;
-        end
-
-%% ===== DATA (Comment) =====
-    case {'pdata', 'presults', 'ptimefreq', 'pspectrum', 'pmatrix'}
-        iStudy = iItem;
-        iStat  = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.Stat(iStat).Comment = newComment;
-            iModifiedStudies = iStudy;
-            nodeSel = bstNode;
-        end
-
-%% ===== HEADMODEL (Comment) =====
-    case 'headmodel'
-        iStudy = iItem;
-        iHeadModel = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.HeadModel(iHeadModel).Comment = newComment;
-            iModifiedStudies = iStudy;
-            nodeSel = bstNode;
-        end
-
-%% ===== DIPOLES =====
-    case 'dipoles'
-        iStudy = iItem;
-        iDipoles = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.Dipoles(iDipoles).Comment = newComment;
-            iModifiedStudies = iStudy;
-            nodeSel = bstNode;
-        end
-        
-%% ===== MATRIX =====
-    case 'matrix'
-        iStudy = iItem;
-        iMatrix = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.Matrix(iMatrix).Comment = newComment;
-            iModifiedStudies = iStudy;
-            nodeSel = bstNode;
-        end
-        
-%% ===== MATRIX LIST (Comment) =====
-    case 'matrixlist'
-        % Get selected study
-        iStudy = iItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get all the matrix files held by this matrixlist
-        iFoundMatrix = bst_get('MatrixForMatrixList', iStudy, fileName);
-        % If some matrix files were found
-        if ~isempty(iFoundMatrix)
-            % Get new comment
-            if isempty(newComment)
-                newComment = GetNewComment(bstNode, 'Comment');
-            end
-            if isempty(newComment), return, end
-            % Remove parenthesis
-            newComment = str_remove_parenth(newComment);
-            % Rename all the DataFiles
-            for i = 1:length(iFoundMatrix)
-                % Build MatrixFile comment
-                matrixfileComment = sprintf('%s (#%d)', newComment, i);
-                % Update File, Node display and Database
-                if file_update(bst_fullfile(ProtocolInfo.STUDIES, sStudy.Matrix(iFoundMatrix(i)).FileName), 'Field', 'Comment', matrixfileComment);
-                    % Update Brainstorm database
-                    sStudy.Matrix(iFoundMatrix(i)).Comment = matrixfileComment;
-                end
-            end
-            iModifiedStudies = iStudy;
-        end
-        
-%% ===== TIMEFREQ =====
-    case {'timefreq', 'spectrum'}
-        iStudy = iItem;
-        iTimefreq = iSubItem;
-        sStudy = bst_get('Study', iStudy);
-        % Get new comment
-        if isempty(newComment)
-            newComment = GetNewComment(bstNode, 'Comment');
-        end
-        if isempty(newComment), return, end
-        % Update File, Node display and Database
-        if file_update(bst_fullfile(ProtocolInfo.STUDIES, fileName), 'Field', 'Comment', newComment);
-            bstNode.setComment(newComment);
-            sStudy.Timefreq(iTimefreq).Comment = newComment;
-            iModifiedStudies = iStudy;
-            nodeSel = bstNode;
-        end
+        sql_close(sqlConn);
         
 %% ===== DATABASE (edit) =====
     case {'subjectdb', 'studydbsubj', 'studydbcond'}
@@ -385,30 +216,28 @@ end
 %% ===== UPDATE ENVIRONMENT =====
 % Progress bar
 bst_progress('start', 'Rename', 'Updating database...');
-% If some studies where modified
+% If some subjects were modified
 if ~isempty(iModifiedSubjects)
-    % Update subjects DataBase
-    bst_set('Subject', iModifiedSubjects, sSubject);
     % Refresh whole tree
     if (iModifiedSubjects(1) < 0)
         panel_protocols('UpdateTree');
-    % Refresh only specific studies
+    % Refresh only specific subjects
     else
         panel_protocols('UpdateNode', 'Subject', iModifiedSubjects);
     end
 end
-% If some studies where modified
+% If some studies were modified
 if ~isempty(iModifiedStudies)
-    bst_set('Study', iStudy, sStudy);
     panel_protocols('UpdateNode', 'Study', iModifiedStudies);
     % Update results links
     if isUpdateLinks
+        sStudy = db('Study', iStudy, {'Name', 'Subject'});
         % Check if default study
         isDefaultStudy = strcmpi(sStudy.Name, bst_get('DirDefaultStudy'));
         % If added to a 'default_study' node: need to update results links 
         if isDefaultStudy
             % Update links to the new results file 
-            db_links('Subject', sStudy.BrainStormSubject);
+            db_links('Subject', sStudy.Subject);
             % Update whole tree display
             panel_protocols('UpdateTree');
         else

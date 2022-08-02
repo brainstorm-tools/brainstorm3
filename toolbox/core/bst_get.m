@@ -820,49 +820,19 @@ switch contextName
         end
         ConditionPath = varargin{2};
         % Get list of current protocol description
-        ProtocolInfo    = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
+        ProtocolInfo = GlobalData.DataBase.ProtocolInfo(GlobalData.DataBase.iProtocol);
         if isempty(ProtocolInfo)
             return;
         end
-
-        % ConditionPath = @inter
-        if strcmpi(ConditionPath, '@inter')
-            [argout1, argout2] = bst_get('Study', -2);
-        % ConditionPath = @default_study
-        elseif strcmpi(ConditionPath, '@default_study')
-            [argout1, argout2] = bst_get('Study', -3);
-        % ConditionPath = SubjectName/ConditionName
-        else 
-            % Get subject and condition names
-            condSplit = str_split(ConditionPath);
-            if (length(condSplit) ~= 2)
-                error('Invalid condition path.');
-            end
-            SubjectName = condSplit{1};
-            ConditionName = condSplit{2};
-
-            iStudies = [];
-            % If first element is '*', search for condition in all the studies
-            if (SubjectName(1) == '*')
-                sStudies = db_get('Study', struct('Condition', ConditionName), 'Id');
-            % Else : search for condition only in studies that are linked to the subject specified in the ConditionPath
-            else
-                % Join query
-                joinQry  = 'Study LEFT JOIN Subject On Study.Subject = Subject.Id';
-                addQuery = ['AND Subject.Name = "' SubjectName '" ' ...
-                            'AND Study.Condition = "' ConditionName '"'];
-                sStudies = sql_query('SELECT', joinQry, [], 'Study.Id', addQuery);
-            end
-            iStudies = [iStudies, [sStudies.Id]];
-            
-            % Return results
-            if ~isempty(iStudies)
-                % Return studies
-                [argout1, argout2] = bst_get('Study', iStudies);
-            else
-                argout1 = repmat(db_template('Study'), 0);
-                argout2 = [];
-            end
+        sStudies = db_get('StudyWithCondition', ConditionPath, 'Id');
+        iStudies = [sStudies.Id];
+        % Return results
+        if ~isempty(iStudies)
+            % Return studies
+            [argout1, argout2] = bst_get('Study', iStudies);
+        else
+            argout1 = repmat(db_template('Study'), 0);
+            argout2 = [];
         end
 
 %% ==== CHANNEL STUDIES WITH SUBJECT ====
@@ -1524,28 +1494,22 @@ switch contextName
     case 'DataForDataList'
         iStudy = varargin{2};
         dataListName = varargin{3};
-        % Get Id of datalist
+        % Get data files of datalist
         condQuery = struct('Name', dataListName, 'Type', 'datalist', 'Study', iStudy);
-        sFunctFile = db_get('FunctionalFile', condQuery, 'Id');
-        % Get All children of the list
-        condQuery = struct('ParentFile', sFunctFile.Id, 'Type', 'data', 'Study', iStudy);
-        sFunctFiles = db_get('FunctionalFile', condQuery, 'Id');
+        sFuncFiles = db_get('FilesInFileList', condQuery, 'Id');
         % Return found data files
-        argout1 = [sFunctFiles.Id];
+        argout1 = [sFuncFiles.Id];
 
 %% ==== MATRIX FOR MATRIX LIST ====
     % Usage: [iFoundMatrix] = bst_get('MatrixForMatrixList', iStudy, MatrixListName)
     case 'MatrixForMatrixList'
         iStudy = varargin{2};
         matrixListName = varargin{3};
-        % Get Id of matrix list
+        % Get matrix files of matrixlist
         condQuery = struct('Name', matrixListName, 'Type', 'matrixlist', 'Study', iStudy);
-        sFunctFile = db_get('FunctionalFile', condQuery, 'Id');
-        % Get All children of the list
-        condQuery = struct('ParentFile', sFunctFile.Id, 'Type', 'matrix', 'Study', iStudy);
-        sFunctFiles = db_get('FunctionalFile', condQuery, 'Id');
-        % Return found matrix files
-        argout1 = [sFunctFiles.Id];
+        sFuncFiles = db_get('FilesInFileList', condQuery, 'Id');
+        % Return found data files
+        argout1 = [sFuncFiles.Id];
         
 %% ==== DATA FOR STUDY (INCLUDING SHARED STUDIES) ====
     % Usage: [iStudies, iDatas] = bst_get('DataForStudy', iStudy)
