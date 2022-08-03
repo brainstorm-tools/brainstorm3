@@ -199,7 +199,7 @@ if isAnatomy
         case 'subjectimage'
             % Nothing to do: file is replaced anyway
         case {'tess', 'cortex', 'scalp', 'outerskull', 'innerskull', 'fibers', 'fem'}
-            sAnatFiles = db_get(sqlConn, 'AnatomyFile', struct('Subject', 0), 'Name');
+            sAnatFiles = db_get(sqlConn, 'AnatomyFile', struct('Subject', iTarget), 'Name');
             sMat.Comment = file_unique(sMat.Comment, {sAnatFiles.Name});
     end
 else
