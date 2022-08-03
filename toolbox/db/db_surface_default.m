@@ -22,6 +22,7 @@ function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdat
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2011
+%          Raymundo Cassani, 2021-2022
 
 % Get protocol description
 ProtocolInfo = bst_get('ProtocolInfo');
@@ -46,43 +47,30 @@ if (nargin < 3) || isempty(iSurface)
     else
         defSurfFile = [];
     end
-
-    % == ANATOMY ==
-    if strcmpi(SurfaceType, 'Anatomy')
-        % Try to find the default surface file
-        if ~isempty(defSurfFile)
-            sAnatFile = db_get(sqlConn, 'AnatomyFile', defSurfFile);
-        end
-        % If default not found: Use the first one
-        if isempty(sAnatFile.Id)
-            iSurface = [];
+    % Try to find the default anatomy / surface file
+    if ~isempty(defSurfFile)
+        sAnatFile = db_get(sqlConn, 'AnatomyFile', defSurfFile);
+        iSurface = sAnatFile.Id;
+    end
+    % If no default file, or it was not found: Use the first one
+    if isempty(iSurface)
+        if strcmpi(SurfaceType, 'Anatomy')
+            % == ANATOMY ==
             condQuery = struct('Subject', sSubject.Id, 'Type', 'anatomy');
-            sAnatFiles = db_get(sqlConn, 'AnatomyFile', condQuery, 'Id');
-            if ~isempty(sAnatFiles)
-                iSurface = sAnatFiles(1).Id;
-            end
-        end
-    % == SURFACE ==
-    else
-        % Try to find the default surface file
-        if ~isempty(defSurfFile)
-            sAnatFile = db_get(sqlConn, 'AnatomyFile', defSurfFile);
-        end
-        % If default not found: Use the first one
-        if isempty(sAnatFile.Id)
-            iSurface = [];
+        else
+            % == SURFACE ==
             condQuery = struct('Subject', sSubject.Id, 'Type', 'surface', 'SurfaceType', SurfaceType);
-            sAnatFiles = db_get(sqlConn, 'AnatomyFile', condQuery, 'Id');
-            if ~isempty(sAnatFiles)
-                iSurface = sAnatFiles(1).Id;
-            end
+        end
+        sAnatFiles = db_get(sqlConn, 'AnatomyFile', condQuery, 'Id');
+        if ~isempty(sAnatFiles)
+            iSurface = sAnatFiles(1).Id;
         end
     end
 end
 
 % Get new default surface
 if ~isempty(iSurface)
-    sAnatFile = db_get(sqlConn, 'AnatomyFile', iSurface);
+    sAnatFile = db_get(sqlConn, 'AnatomyFile', iSurface, 'FileName');
     DefaultFile = sAnatFile.FileName;
 else
     DefaultFile = '';
