@@ -169,13 +169,13 @@ switch action
         condition = args{2};
         fields    = args{3};
         addQuery  = args{4};
-        % Select all columns if not specified
-        if isempty(fields), fields = '*'; end
         % Exist case
         if strcmpi(action, 'exist')
             addQuery = [' ' fields];
             fields = '1';
         end
+        % Select all columns if not specified
+        if isempty(fields), fields = '*'; end
         % String for requested data fields
         if ischar(fields), fields = {fields}; end
         fieldsQry = str_join(fields, ', ');
