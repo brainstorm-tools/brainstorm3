@@ -549,10 +549,10 @@ switch contextName
             addQuery = [addQuery 'Id = ' num2str(args{1})];
         end
         % Complete query with studies ("intra_subject" and "default_study") to exclude
-        if length(args) < 2 || ~ismember('intra_subject', args(2:end))
+        if length(args) < 2 || ~ismember('intra_subject', args(3:end))
             addQuery = [addQuery ' AND Study.Name <> "' bst_get('DirAnalysisIntra') '"'];
         end
-        if length(args) < 2 || ~ismember('default_study', args(2:end))
+        if length(args) < 2 || ~ismember('default_study', args(3:end))
             addQuery = [addQuery ' AND Study.Name <> "' bst_get('DirDefaultStudy') '"'];
         end
         % Select query
