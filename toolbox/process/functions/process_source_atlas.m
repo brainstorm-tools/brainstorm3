@@ -40,6 +40,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    % === WARNING
+    sProcess.options.warning.Comment = ['<FONT color="#707070"><I>Warning: Using this process is not recommended.<BR>'...
+                                        'Prefer the explicit extraction of scouts time series, followed if needed<BR>' ...
+                                        'by the process "Simulate > Full source maps from scouts".</I></FONT><BR><BR>'];
+    sProcess.options.warning.Type    = 'label';
     % === SELECT ATLAS
     sProcess.options.atlas.Comment = 'Select atlas:';
     sProcess.options.atlas.Type    = 'atlas';
