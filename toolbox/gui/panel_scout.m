@@ -3678,7 +3678,7 @@ function JoinScouts(varargin)
     end
 
     % === Remove old scouts ===
-    RemoveScouts(iScouts);
+    %RemoveScouts(iScouts);
     % === Join scouts ===
     % Create new scout
     sNewScout = db_template('Scout');
@@ -5225,20 +5225,31 @@ function SaveScouts(varargin)
     % Get filename where to store the filename
     ScoutFile = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
                              'single', 'files', ...
-                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'}, 1);
+                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
+                              {'_label'}, 'FreeSurfer label (*.label)', 'FS-LABEL' }, 1);
+                         
+                         
     if isempty(ScoutFile)
         return;
     end
+
     % Save last used folder
-    LastUsedDirs.ExportAnat = bst_fileparts(ScoutFile);
+    [LastUsedDirs.ExportAnat,~,ext] = bst_fileparts(ScoutFile);
     bst_set('LastUsedDirs',  LastUsedDirs);
-    % Make sure that filename contains the 'scout' tag
-    if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
-        [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
-        ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
+    
+    switch ext
+        case '.mat'
+            % Make sure that filename contains the 'scout' tag
+            if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
+                [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
+                ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
+            end
+            % Save file
+            bst_save(ScoutFile, sAtlas, 'v7');
+            
+        case '.label'
+            export_label(ScoutFile,sSurf, sScouts);
     end
-    % Save file
-    bst_save(ScoutFile, sAtlas, 'v7');
 end
 
 
