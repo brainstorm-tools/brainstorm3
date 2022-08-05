@@ -5248,7 +5248,14 @@ function SaveScouts(varargin)
             bst_save(ScoutFile, sAtlas, 'v7');
             
         case '.label'
-            export_label(ScoutFile,sSurf, sScouts);
+            
+            LabelMat = struct();
+            LabelMat.comment = sScouts.Label;
+            LabelMat.vertices = sScouts.Vertices - 1;
+            LabelMat.pos = sSurf.Vertices(sScouts.Vertices,:); 
+            LabelMat.values = ones(1, length(sScouts.Vertices));
+
+            mne_write_label_file(ScoutFile,LabelMat);
     end
 end
 
