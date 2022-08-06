@@ -91,6 +91,7 @@ if (length(SphereVertices) ~= length(TessMat.Vertices))
 end
 % Add the sphere vertex information to the surface matrix
 TessMat.Reg.Sphere.Vertices = SphereVertices;
+TessMat.Reg.Sphere.SamplingIdx = 1:length(SphereVertices);
 % Save modifications to input file
 bst_save(file_fullpath(TessFile), TessMat, 'v7');
 

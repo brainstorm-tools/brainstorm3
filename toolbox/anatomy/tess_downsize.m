@@ -498,6 +498,7 @@ if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Sphere') && isfield(TessMat.
     if ~isempty(I)
         newSphVert = TessMat.Reg.Sphere.Vertices(I,:);
         NewTessMat.Reg.Sphere.Vertices = newSphVert;
+        NewTessMat.Reg.Sphere.SamplingIdx = SamplingIdx';
     else
         NewTessMat.Reg.Sphere = [];
     end
