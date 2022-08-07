@@ -477,7 +477,6 @@ function UpdateMenus(sAtlas, sSurf)
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportScoutsFromMatlab));
         jMenuProject = gui_component('Menu', jMenu, [], 'Project to...', IconLoader.ICON_RESULTS_LIST, [], []);
-        gui_component('MenuItem', jMenu, [], 'Project to contolateral hemisphere', IconLoader.ICON_RESULTS_LIST, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
     else
         jMenuProject = [];
     end
@@ -496,6 +495,8 @@ function UpdateMenus(sAtlas, sSurf)
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
         nMenus = 0;
+        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_RESULTS_LIST, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
+
         % Process all the subjects
         for iSubject = 0:nSubjects
             % Get subject 
