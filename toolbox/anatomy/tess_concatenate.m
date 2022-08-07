@@ -196,23 +196,17 @@ for iFile = 1:length(TessFiles)
 %             oldTess.Reg = [];
 %         if (iFile == 1)
         if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Sphere') || ~isfield(NewTess.Reg.Sphere, 'Vertices')
-            NewTess.Reg.Sphere = oldTess.Reg.Sphere;
+            NewTess.Reg.Sphere.Vertices = oldTess.Reg.Sphere.Vertices;
         else
             NewTess.Reg.Sphere.Vertices = [NewTess.Reg.Sphere.Vertices; oldTess.Reg.Sphere.Vertices];
-            if isfield(NewTess.Reg.Sphere, 'SamplingIdx')
-                NewTess.Reg.Sphere.SamplingIdx = [NewTess.Reg.Sphere.SamplingIdx , oldTess.Reg.Sphere.SamplingIdx];
-            end
         end 
     end
 
     if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
         if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'SphereLR') || ~isfield(NewTess.Reg.SphereLR, 'Vertices')
-            NewTess.Reg.SphereLR = oldTess.Reg.SphereLR;
+            NewTess.Reg.SphereLR.Vertices = oldTess.Reg.SphereLR.Vertices;
         else
             NewTess.Reg.SphereLR.Vertices = [NewTess.Reg.SphereLR.Vertices; oldTess.Reg.SphereLR.Vertices];
-            if isfield(NewTess.Reg.SphereLR, 'SamplingIdx')
-                NewTess.Reg.SphereLR.SamplingIdx = [NewTess.Reg.SphereLR.SamplingIdx , oldTess.Reg.SphereLR.SamplingIdx];
-            end
         end 
     end
 

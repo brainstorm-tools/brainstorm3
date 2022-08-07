@@ -79,10 +79,10 @@ for iFile = 1:length(TessFiles)
         NewTess.Faces    = oldTess.Faces;
         NewTess.History  = oldTess.History;
         if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Sphere') && isfield(oldTess.Reg.Sphere, 'Vertices') && ~isempty(oldTess.Reg.Sphere.Vertices)
-            NewTess.Reg.Sphere = oldTess.Reg.Sphere;
+            NewTess.Reg.Sphere.Vertices = oldTess.Reg.Sphere.Vertices;
         end
         if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
-            NewTess.Reg.SphereLR = oldTess.Reg.SphereLR;
+            NewTess.Reg.SphereLR.Vertices = oldTess.Reg.SphereLR.Vertices;
         end
     % Check number of vertices
     elseif (size(NewTess.Vertices,1) ~= size(oldTess.Vertices,1))

@@ -96,11 +96,9 @@ isControlateral = contains(SphereFile,'lh') && contains(SphereFile,'rh');
 if ~isControlateral
     % Add the sphere vertex information to the surface matrix
     TessMat.Reg.Sphere.Vertices = SphereVertices;
-    TessMat.Reg.Sphere.SamplingIdx = 1:length(SphereVertices);
 else
     % Add the sphere vertex information to the surface matrix
     TessMat.Reg.SphereLR.Vertices = SphereVertices;
-    TessMat.Reg.SphereLR.SamplingIdx = 1:length(SphereVertices);
 end
 
 % Save modifications to input file
