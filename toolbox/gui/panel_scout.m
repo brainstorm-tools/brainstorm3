@@ -477,6 +477,7 @@ function UpdateMenus(sAtlas, sSurf)
     if ~isReadOnly
         gui_component('MenuItem', jMenu, [], 'Import from Matlab', IconLoader.ICON_MATLAB_IMPORT, [], @(h,ev)bst_call(@ImportScoutsFromMatlab));
         jMenuProject = gui_component('Menu', jMenu, [], 'Project to...', IconLoader.ICON_RESULTS_LIST, [], []);
+        gui_component('MenuItem', jMenu, [], 'Project to contolateral hemisphere', IconLoader.ICON_RESULTS_LIST, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
     else
         jMenuProject = [];
     end
@@ -4026,7 +4027,32 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, destSurfFile));
 end
 
+%% ===== PROJECT SCOUTS =====
+function ProjectScoutsContralateral(srcSurfFile)
+    [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
+    
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    if isempty(sAtlas) || isempty(sScouts)
+        bst_error('No scouts selected.', 'Project scouts', 0);
+        return;
+    end
+    % Use only the selected scouts
+    sAtlas.Scouts = sScouts;
+    % Progress bar
+    bst_progress('start', 'Project sources', 'Computing interpolation...');
+    % Call function to project scouts
+    nScoutProj = bst_project_scouts_contralateral(srcSurfFile,sAtlas);
+    % Unload destination surface
+    bst_memory('UnloadSurface', srcSurfFile, 1);
+    % Close progress bar
+    bst_progress('stop');
+    % Message
+    java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, srcSurfFile));
 
+
+
+end
 %% ===== EXPORT SCOUTS TO MRI MASK =====
 function ExportScoutsToMri()
     % Get selected scouts
