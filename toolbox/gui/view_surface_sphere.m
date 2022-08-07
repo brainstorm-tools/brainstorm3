@@ -64,8 +64,7 @@ TessMat = in_tess_bst(SurfaceFile);
 
 
 if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Sphere') && isfield(TessMat.Reg.Sphere, 'Vertices') && ~isempty(TessMat.Reg.Sphere.Vertices)
-    sphVertices = double(TessMat.Reg.SphereLR.Vertices);
-    idx_sph = 1:size(sphVertices,1);
+    sphVertices = double(TessMat.Reg.Sphere.Vertices);
     lrOffset = 0.12;
     tdOffset = 0.12;
     surfSmooth = 0.2;
@@ -116,7 +115,7 @@ switch lower(Method)
 
     case 'mollweide'            
         if length(TessMat) == 1
-            TessMat = getMollweide(TessMat,sphVertices, il, ir );
+            [TessMat,sphVertices] = getMollweide(TessMat,sphVertices, il, ir );
         else
             [TessMat(1), sphVertices]  = getMollweide(TessMat(1),sphVertices, il,  ir );
             [TessMat(2), sphLRVertices] = getMollweide(TessMat(2),sphLRVertices, il,ir );
