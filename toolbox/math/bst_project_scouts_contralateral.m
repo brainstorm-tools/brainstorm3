@@ -25,74 +25,77 @@ function nScoutProj = bst_project_scouts_contralateral( srcSurfFile, sAtlas )
 %          Edouard Delaire, 2022
 
 % ===== PARSE INPUTS ======
-if (nargin < 2) || isempty(sAtlas)
-    sAtlas = [];
-end
-nScoutProj = 0;
-% ===== GET INTERPOLATION =====
+    if (nargin < 2) || isempty(sAtlas)
+        sAtlas = []; % We do nothing in this case?
+    end
 
-sSurf = in_tess_bst(srcSurfFile);
-
-
-%% Get Spheres
-
-[rHsrc, lHsrc, isConnected(1)]  = tess_hemisplit(sSurf);
-
-
-
-
-isLeft = ~isempty(intersect(lHsrc,  sAtlas.Scouts.Vertices));
-isRight = ~isempty(intersect(rHsrc,  sAtlas.Scouts.Vertices));
-
-if isRight 
-    vertSphLsrc = sSurf.Reg.SphereLR.Vertices(rHsrc, : );
-    vertSphLdest = sSurf.Reg.Sphere.Vertices(lHsrc, : );
+    nScoutProj = 0;
+    %% Load surfaces 
     
-    nDest = length(lHsrc);
-    nSrc = length(rHsrc);
+    sSurf = in_tess_bst(srcSurfFile);
+    [rHsrc, lHsrc, isConnected(1)]  = tess_hemisplit(sSurf);
 
-    [~, sScout_Vertices] = intersect(rHsrc,sAtlas.Scouts.Vertices );
+    % ===== PROCESS ATLAS/SCOUTS =====
+    for iAtlas = 1:length(sAtlas)
+        for iScout = 1:length(sAtlas(iAtlas).Scouts)
 
+            isLeft = ~isempty(intersect(lHsrc,  sAtlas(iAtlas).Scouts(iScout).Vertices));
+            isRight = ~isempty(intersect(rHsrc, sAtlas(iAtlas).Scouts(iScout).Vertices));
+        
+            if isRight 
+                vertSphLsrc = sSurf.Reg.SphereLR.Vertices(rHsrc, : );
+                vertSphLdest = sSurf.Reg.Sphere.Vertices(lHsrc, : );
+                
+                nSrc = length(rHsrc);
+                [~, sScout_Vertices] = intersect(rHsrc,sAtlas(iAtlas).Scouts(iScout).Vertices );
+            elseif isLeft 
+                vertSphLsrc = sSurf.Reg.SphereLR.Vertices(lHsrc, : );
+                vertSphLdest = sSurf.Reg.Sphere.Vertices(rHsrc, : );
+            
+                nSrc = length(lHsrc);
+                [~, sScout_Vertices] = intersect(lHsrc,sAtlas(iAtlas).Scouts(iScout).Vertices);
+            else
+                bst_error('The scout should contains only left or right vertices');
+                return;
+            end
+            
+            nbNeighbors = 8;
+            Wmat = bst_shepards(vertSphLdest, vertSphLsrc, nbNeighbors, 0);
+            
+            
+            % Project scouts one by one and keep for each vertex only the maximum probability
+            % Vertex map on the original surface
+            vMap                    = zeros(nSrc,1);
+            vMap(sScout_Vertices)   = 1;
+            
+            % Project to destination surface
+            vMapProj = full(Wmat * vMap);
+            NewIndex = find(vMapProj > 0.5);
 
-elseif isLeft 
-    vertSphLsrc = sSurf.Reg.SphereLR.Vertices(lHsrc, : );
-    vertSphLdest = sSurf.Reg.Sphere.Vertices(rHsrc, : );
+            % Get destination atlas
+            iAtlasDest = find(strcmpi({sSurf.Atlas.Name}, sAtlas(iAtlas).Name));
+            ScoutLabel = sAtlas(iAtlas).Scouts(iScout).Label;
 
-    nDest = length(rHsrc);
-    nSrc = length(lHsrc);
-    
-    [~, sScout_Vertices] = intersect(lHsrc,sAtlas.Scouts.Vertices);
+            if isRight 
+                ScoutVertices = lHsrc(NewIndex);
+                ScoutLabel = [ScoutLabel '_left'];
+            else
+                ScoutVertices = rHsrc(NewIndex);
+                ScoutLabel = [ScoutLabel '_right'];
+            end
+            ScoutLabel = file_unique(ScoutLabel, {sSurf.Atlas(iAtlasDest).Scouts.Label});
 
-else
-    bst_error('The scout should contains only left or right vertices');
-    return;
-end
-
-nbNeighbors = 8;
-Wmat = bst_shepards(vertSphLdest, vertSphLsrc, nbNeighbors, 0);
-
-
-% Project scouts one by one and keep for each vertex only the maximum probability
-% Vertex map on the original surface
-vMap = zeros(nSrc,1);
-vMap(sScout_Vertices) = 1;
-
-% Project to destination surface
-vMapProj = full(Wmat * vMap);
-
-NewIndex = find(vMapProj > 0.5);
-
-new_scout = sAtlas.Scouts;
-new_scout.Label = [new_scout.Label 'projection2'];
-
-if isRight 
-    new_scout.Vertices = lHsrc(NewIndex);
-else
-    new_scout.Vertices = rHsrc(NewIndex);
-end
-new_scout.Seed = new_scout.Vertices(1);
-sSurf.Atlas(1).Scouts(end+1) = new_scout;
-bst_save(file_fullpath(srcSurfFile), sSurf, 'v7', 1);
-
-nScoutProj = 1;
+            iScoutDest = length(sSurf.Atlas(iAtlasDest).Scouts) + 1;
+            sSurf.Atlas(iAtlasDest).Scouts(iScoutDest)          = sAtlas(iAtlas).Scouts(iScout);
+            sSurf.Atlas(iAtlasDest).Scouts(iScoutDest).Vertices     = ScoutVertices;
+            sSurf.Atlas(iAtlasDest).Scouts(iScoutDest).Seed     = ScoutVertices(1);
+            sSurf.Atlas(iAtlasDest).Scouts(iScoutDest).Label    = ScoutLabel;
+            nScoutProj = nScoutProj + 1;    
+        end
+    end
+    % Save destination surface (append the atlas to existing file)
+    if (nScoutProj > 0)
+        s.Atlas = sSurf.Atlas;
+        bst_save(file_fullpath(srcSurfFile), s, 'v7', 1);
+    end
 end
