@@ -498,11 +498,24 @@ if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Sphere') && isfield(TessMat.
     if ~isempty(I)
         newSphVert = TessMat.Reg.Sphere.Vertices(I,:);
         NewTessMat.Reg.Sphere.Vertices = newSphVert;
-        NewTessMat.Reg.Sphere.SamplingIdx = SamplingIdx';
+        NewTessMat.Reg.Sphere.SamplingIdx = I';
     else
         NewTessMat.Reg.Sphere = [];
     end
 end
+
+if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'SphereLR') && isfield(TessMat.Reg.SphereLR, 'Vertices') && ~isempty(TessMat.Vertices) && (length(TessMat.Reg.SphereLR.Vertices) == length(TessMat.Vertices))
+    % Keep only the selected indices
+    if ~isempty(I)
+        newSphVert = TessMat.Reg.SphereLR.Vertices(I,:);
+        NewTessMat.Reg.SphereLR.Vertices = newSphVert;
+        NewTessMat.Reg.SphereLR.SamplingIdx = I';
+    else
+        NewTessMat.Reg.SphereLR = [];
+    end
+end
+
+
 % BrainSuite squares
 if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Square') && isfield(TessMat.Reg.Square, 'Vertices') && ~isempty(TessMat.Reg.Square.Vertices) && (length(TessMat.Reg.Square.Vertices) == length(TessMat.Vertices))
     % Keep only the selected indices
@@ -514,6 +527,7 @@ if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Square') && isfield(TessMat.
     end
     NewTessMat.Reg.AtlasSquare=TessMat.Reg.AtlasSquare;
 end
+
 
 
 %% ===== UPDATE DATABASE =====

@@ -175,6 +175,8 @@ TessLwFile = file_find(FsDir, 'lh.white', 2);
 TessRwFile = file_find(FsDir, 'rh.white', 2);
 TessLsphFile = file_find(FsDir, 'lh.sphere.reg', 2);
 TessRsphFile = file_find(FsDir, 'rh.sphere.reg', 2);
+TessLRsphFile = file_find(FsDir, 'lh.rh.sphere.reg', 2);
+TessRLsphFile = file_find(FsDir, 'rh.lh.sphere.reg', 2);
 TessInnerFile = file_find(FsDir, 'inner_skull-*.surf', 2);
 TessOuterFile = file_find(FsDir, 'outer_skull-*.surf', 2);
 % Find volume segmentation
@@ -297,6 +299,14 @@ if ~isempty(TessLhFile)
             errorMsg = [errorMsg err];
         end
     end
+    if ~isempty(TessLRsphFile)
+        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
+        [TessMat, err] = tess_addsphere(BstTessLhFile, TessLRsphFile, 'FS');
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
+    end
+
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left pial...');
     [BstTessLhLowFile, iLhLow, xLhLow] = tess_downsize(BstTessLhFile, nVertHemi, 'reducepatch');
@@ -323,6 +333,17 @@ if ~isempty(TessRhFile)
             errorMsg = [errorMsg err];
         end
     end
+    
+    % Load sphere
+    if ~isempty(TessRLsphFile)
+        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
+        [TessMat, err] = tess_addsphere(BstTessRhFile, TessRLsphFile, 'FS');
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
+    end
+
+
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right pial...');
     [BstTessRhLowFile, iRhLow, xRhLow] = tess_downsize(BstTessRhFile, nVertHemi, 'reducepatch');
@@ -348,6 +369,14 @@ if ~isempty(TessLwFile)
             errorMsg = [errorMsg err];
         end
     end
+    if ~isempty(TessLRsphFile)
+        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: left pial...');
+        [TessMat, err] = tess_addsphere(BstTessLwFile, TessLRsphFile, 'FS');
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
+    end
+
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: left white...');
     [BstTessLwLowFile, iLwLow, xLwLow] = tess_downsize(BstTessLwFile, nVertHemi, 'reducepatch');
@@ -374,6 +403,16 @@ if ~isempty(TessRwFile)
             errorMsg = [errorMsg err];
         end
     end
+    
+    % Load sphere
+    if ~isempty(TessRLsphFile)
+        bst_progress('start', 'Import FreeSurfer folder', 'Loading registered sphere: right pial...');
+        [TessMat, err] = tess_addsphere(BstTessRwFile, TessRLsphFile, 'FS');
+        if ~isempty(err)
+            errorMsg = [errorMsg err];
+        end
+    end
+
     % Downsample
     bst_progress('start', 'Import FreeSurfer folder', 'Downsampling: right white...');
     [BstTessRwLowFile, iRwLow, xRwLow] = tess_downsize(BstTessRwFile, nVertHemi, 'reducepatch');

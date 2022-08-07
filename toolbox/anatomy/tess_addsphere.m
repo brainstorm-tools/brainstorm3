@@ -47,6 +47,7 @@ if (nargin < 3) || isempty(SphereFile) || isempty(FileFormat)
     bst_set('LastUsedDirs', LastUsedDirs);
 end
 
+
 % Progress bar
 isProgressBar = ~bst_progress('isVisible');
 if isProgressBar
@@ -89,9 +90,19 @@ if (length(SphereVertices) ~= length(TessMat.Vertices))
     TessMat = [];
     return;
 end
-% Add the sphere vertex information to the surface matrix
-TessMat.Reg.Sphere.Vertices = SphereVertices;
-TessMat.Reg.Sphere.SamplingIdx = 1:length(SphereVertices);
+
+isControlateral = contains(SphereFile,'lh') && contains(SphereFile,'rh');
+
+if ~isControlateral
+    % Add the sphere vertex information to the surface matrix
+    TessMat.Reg.Sphere.Vertices = SphereVertices;
+    TessMat.Reg.Sphere.SamplingIdx = 1:length(SphereVertices);
+else
+    % Add the sphere vertex information to the surface matrix
+    TessMat.Reg.SphereLR.Vertices = SphereVertices;
+    TessMat.Reg.SphereLR.SamplingIdx = 1:length(SphereVertices);
+end
+
 % Save modifications to input file
 bst_save(file_fullpath(TessFile), TessMat, 'v7');
 

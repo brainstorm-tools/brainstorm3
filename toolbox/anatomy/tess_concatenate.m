@@ -204,6 +204,18 @@ for iFile = 1:length(TessFiles)
             end
         end 
     end
+
+    if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
+        if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'SphereLR') || ~isfield(NewTess.Reg.SphereLR, 'Vertices')
+            NewTess.Reg.SphereLR = oldTess.Reg.SphereLR;
+        else
+            NewTess.Reg.SphereLR.Vertices = [NewTess.Reg.SphereLR.Vertices; oldTess.Reg.SphereLR.Vertices];
+            if isfield(NewTess.Reg.SphereLR, 'SamplingIdx')
+                NewTess.Reg.SphereLR.SamplingIdx = [NewTess.Reg.SphereLR.SamplingIdx , oldTess.Reg.SphereLR.SamplingIdx];
+            end
+        end 
+    end
+
     % Concatenate BrainSuite registration squares    
     if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Square') && isfield(oldTess.Reg.Square, 'Vertices') && ~isempty(oldTess.Reg.Square.Vertices)
 %         if (iFile > 1) && (~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Square') || ~isfield(NewTess.Reg.Square, 'Vertices'))
