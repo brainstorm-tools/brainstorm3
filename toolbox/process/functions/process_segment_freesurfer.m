@@ -233,6 +233,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     else
         T2Nii = [];
     end
+    
+    %% Add extra-Parameter 
+    if ~contains(param,'-contrasurfreg') && ~contains(param,'-nocontrasurfreg') 
+        param = [param ' -contrasurfreg'];
+    end
 
     % ===== RUN FREESURFER =====
     % T1+FLAIR
