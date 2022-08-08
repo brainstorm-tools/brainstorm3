@@ -51,12 +51,12 @@ for iAtlas = 1:length(sAtlas)
         isLeft = ~isempty(intersect(lHsrc,  sAtlas(iAtlas).Scouts(iScout).Vertices));
         isRight = ~isempty(intersect(rHsrc, sAtlas(iAtlas).Scouts(iScout).Vertices));
     
-        if isRight 
+        if isRight && ~isLeft
             Wmat =  Wmat_RL;
             nSrc = length(rHsrc);
 
             [~, sScout_Vertices] = intersect(rHsrc,sAtlas(iAtlas).Scouts(iScout).Vertices );
-        elseif isLeft 
+        elseif isLeft && ~isRight
             Wmat =  Wmat_LR;
             nSrc = length(lHsrc);
 
