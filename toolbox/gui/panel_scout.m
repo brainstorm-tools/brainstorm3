@@ -4004,10 +4004,10 @@ function ImportScoutsFromMatlab()
 end
 
 
-%% ===== PROJECT SCOUTS =====
+%% ===== PROJECT SCOUTS BETWEEN SURFACES =====
 function ProjectScouts(srcSurfFile, destSurfFile)
     % Get current atlas
-    [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
+    sAtlas = GetAtlas();
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4017,7 +4017,7 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     % Use only the selected scouts
     sAtlas.Scouts = sScouts;
     % Progress bar
-    bst_progress('start', 'Project sources', 'Computing interpolation...');
+    bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
     nScoutProj = bst_project_scouts(srcSurfFile, destSurfFile, sAtlas);
     % Unload destination surface
@@ -4028,10 +4028,11 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, destSurfFile));
 end
 
-%% ===== PROJECT SCOUTS =====
+
+%% ===== PROJECT SCOUTS BETWEEN HEMIPSHERES =====
 function ProjectScoutsContralateral(srcSurfFile)
-    [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
-    
+    % Get current atlas
+    sAtlas = GetAtlas();
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4041,19 +4042,18 @@ function ProjectScoutsContralateral(srcSurfFile)
     % Use only the selected scouts
     sAtlas.Scouts = sScouts;
     % Progress bar
-    bst_progress('start', 'Project sources', 'Computing interpolation...');
+    bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
-    nScoutProj = bst_project_scouts_contralateral(srcSurfFile,sAtlas);
+    nScoutProj = bst_project_scouts_contra(srcSurfFile, sAtlas);
     % Unload destination surface
     bst_memory('UnloadSurface', srcSurfFile, 1);
     % Close progress bar
     bst_progress('stop');
     % Message
     java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, srcSurfFile));
-
-
-
 end
+
+
 %% ===== EXPORT SCOUTS TO MRI MASK =====
 function ExportScoutsToMri()
     % Get selected scouts
