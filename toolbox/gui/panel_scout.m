@@ -4035,6 +4035,10 @@ end
 
 %% ===== PROJECT SCOUTS BETWEEN HEMIPSHERES =====
 function ProjectScoutsContralateral(srcSurfFile)
+
+    % Save any modification to the surface
+    SaveModifications();
+
     % Get current atlas
     [sAtlas, iAtlas, sSurf] = GetAtlas();
     % Get selected scouts
