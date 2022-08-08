@@ -1,7 +1,7 @@
-function [TessMat, errMsg] = tess_addsphere(TessFile, SphereFile, FileFormat)
+function [TessMat, errMsg] = tess_addsphere(TessFile, SphereFile, FileFormat, isControlateral)
 % TESS_ADD: Add a FreeSurfer registered sphere to an existing surface.
 %
-% USAGE:  TessMat = tess_addsphere(TessFile, SphereFile=select, FileFormat=select)
+% USAGE:  TessMat = tess_addsphere(TessFile, SphereFile=select, FileFormat=select, isControlateral=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,12 +21,16 @@ function [TessMat, errMsg] = tess_addsphere(TessFile, SphereFile, FileFormat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2019
+% Authors: Francois Tadel, 2013-2022
 
 % Initialize returned variables
 TessMat = [];
 errMsg = [];
 
+% No contralateral by default
+if (nargin < 4) || isempty(isControlateral)
+    isControlateral = 0;
+end
 % Ask for sphere file
 if (nargin < 3) || isempty(SphereFile) || isempty(FileFormat)
     % Get last used directories and formats
@@ -46,7 +50,6 @@ if (nargin < 3) || isempty(SphereFile) || isempty(FileFormat)
     LastUsedDirs.ImportAnat = bst_fileparts(SphereFile);
     bst_set('LastUsedDirs', LastUsedDirs);
 end
-
 
 % Progress bar
 isProgressBar = ~bst_progress('isVisible');
@@ -91,13 +94,11 @@ if (length(SphereVertices) ~= length(TessMat.Vertices))
     return;
 end
 
-isControlateral = contains(SphereFile,'lh') && contains(SphereFile,'rh');
-
 if ~isControlateral
     % Add the sphere vertex information to the surface matrix
     TessMat.Reg.Sphere.Vertices = SphereVertices;
 else
-    % Add the sphere vertex information to the surface matrix
+    % Add the contralateral sphere to the surface matrix (option "-contrasurfreg" from freesurfer recon-all)
     TessMat.Reg.SphereLR.Vertices = SphereVertices;
 end
 
