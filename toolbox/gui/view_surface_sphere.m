@@ -61,19 +61,10 @@ end
 % ===== LOAD REGISTRATION =====
 % Load vertices
 TessMat = in_tess_bst(SurfaceFile);
-
-
 if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Sphere') && isfield(TessMat.Reg.Sphere, 'Vertices') && ~isempty(TessMat.Reg.Sphere.Vertices)
     sphVertices = double(TessMat.Reg.Sphere.Vertices);
     lrOffset = 0.12;
-    tdOffset = 0.12;
     surfSmooth = 0.2;
-
-    if isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'SphereLR') && isfield(TessMat.Reg.SphereLR, 'Vertices') && ~isempty(TessMat.Reg.SphereLR.Vertices)
-        sphLRVertices =  double(TessMat.Reg.SphereLR.Vertices);
-        TessMat = [TessMat , TessMat];
-    end
-
 elseif isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Square') && isfield(TessMat.Reg.Square, 'Vertices') && ~isempty(TessMat.Reg.Square.Vertices)
     if ~strcmpi(Method, 'orig')
         bst_error('The BrainSuite registered squares cannot be projected to a different 2D space.', 'View registered sphere/square', 0);
@@ -82,7 +73,6 @@ elseif isfield(TessMat, 'Reg') && isfield(TessMat.Reg, 'Square') && isfield(Tess
     sphVertices = double(TessMat.Reg.Square.Vertices);
     sphVertices(:,3) = 0;   % Add z coordinate 0 for visualization
     lrOffset = 0.155;
-    tdOffset = 0;
     surfSmooth = 0;
 else
     bst_error('There is no registered sphere or square available for this surface.', 'View registered sphere/square', 0);
@@ -90,7 +80,7 @@ else
 end
 
 % Detect the two hemispheres
-[ir, il, isConnected] = tess_hemisplit(TessMat(1));
+[ir, il, isConnected] = tess_hemisplit(TessMat);
 
 % Get subject MRI file
 sSubject = bst_get('SurfaceFile', SurfaceFile);
@@ -101,30 +91,52 @@ sphVertices = bst_bsxfun(@plus, sphVertices .* 1000, mriSize);
 % Convert: Voxel => SCS
 sphVertices = cs_convert(sMri, 'voxel', 'scs', sphVertices);
 
-if length(TessMat) == 2
-    sphLRVertices = bst_bsxfun(@plus, sphLRVertices .* 1000, mriSize);
-    % Convert: Voxel => SCS
-    sphLRVertices = cs_convert(sMri, 'voxel', 'scs', sphLRVertices);
-end
-
 
 % ===== PROJECTION METHOD ======
 switch lower(Method)
     case 'orig'
         % Using directly the 3D positions available in .Reg
 
-    case 'mollweide'            
-        if length(TessMat) == 1
-            [TessMat,sphVertices] = getMollweide(TessMat,sphVertices, il, ir );
-        else
-            [TessMat(1), sphVertices]  = getMollweide(TessMat(1),sphVertices, il,  ir );
-            [TessMat(2), sphLRVertices] = getMollweide(TessMat(2),sphLRVertices, il,ir );
-        end
-
+    case 'mollweide'
+        % Get the latidude and longitude coordinates of the vertices of each hemisphere
+        [lTheta, lPhi, lRadius] = cart2sph(sphVertices(il, 1), sphVertices(il, 2), sphVertices(il, 3));
+        [rTheta, rPhi, rRadius] = cart2sph(sphVertices(ir, 1), sphVertices(ir, 2), sphVertices(ir, 3));
+        % Rotate by pi/2 to get something similar to the figures in the article: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3445499/
+        lTheta = mod(lTheta + 5*pi/2, 2*pi) - pi;
+        rTheta = mod(rTheta + 3*pi/2, 2*pi) - pi;
+        % Get the 2D projection coordinates using mollweide projection
+        [lMollX, lMollY, lMollTheta, lMollPhi] = mollweide_proj(lPhi, lTheta, mean(lRadius(:)));
+        [rMollX, rMollY, rMollTheta, rMollPhi] = mollweide_proj(rPhi, rTheta, mean(rRadius(:)));
+        % Replace the spherical coordinates with the flattened coordinates
+        sphVertices(il, 1) = lMollY;
+        sphVertices(il, 2) = -lMollX;
+        sphVertices(ir, 1) = rMollY;
+        sphVertices(ir, 2) = -rMollX;
+        sphVertices(ir, 3) = 0;
+        sphVertices(il, 3) = 0;
+        % Recompute triangulation
+        TessMat.Faces = [il(delaunayn(sphVertices(il,1:2))); ir(delaunayn(sphVertices(ir,1:2)))];
+        TessMat.Faces = TessMat.Faces(:, [1,3,2]);
+        
+%         % === REMOVE FACES CONNECTING THE BOUNDARIES ===
+%         % Remove faces that have vertices that are:
+%         %   - on the boundary of the ellipse
+%         %   - far apart along the horizontal axis Y
+%         %   - on both sides of the ellipse (left and right)
+%         lBoundary = il(boundary(lMollX, lMollY, 0.3));
+%         rBoundary = ir(boundary(rMollX, rMollY, 0.3));
+%         isEdge = zeros(size(sphVertices,1),1);
+%         isEdge(union(lBoundary, rBoundary)) = 1;
+%         sphMollY = sphVertices(:,2);
+%         iFacesRemove = find((abs(sum(sign(sphMollY(TessMat.Faces)), 2)) < 3) & ...
+%                             (any(isEdge(TessMat.Faces),2) | (max(abs(diff(sphMollY(TessMat.Faces),[],2)), [], 2) > 0.03)));
+%         TessMat.Faces(iFacesRemove,:) = [];
+        
+        % Recompute vertex connectivity
+        TessMat.VertConn = tess_vertconn(sphVertices, TessMat.Faces);
         % Figure configuration
         surfSmooth = 0;
-        lrOffset = 0.4;
-        tdOffset = 0.3;
+        lrOffset = 0.3;
 end
 
 % If there is a Structures atlas with left and right hemispheres: split in two spheres
@@ -133,32 +145,11 @@ if ~isempty(ir) && ~isempty(il) && ~isConnected
     sphVertices(ir,2) = sphVertices(ir,2) - lrOffset;
 end
 
-if length(TessMat) > 1 && ~isempty(ir) && ~isempty(il) && ~isConnected
-
-    sphVertices(:,1) = sphVertices(:,1)     + tdOffset;
-    sphLRVertices(:,1) = sphLRVertices(:,1)  - tdOffset;
-
-    sphLRVertices(il,2) = sphLRVertices(il,2) + lrOffset;
-    sphLRVertices(ir,2) = sphLRVertices(ir,2) - lrOffset;
-end
-
-
 % ===== DISPLAY SURFACE =====
 % Display surface only
 if isempty(ResultsFile)
-
-    if length(TessMat) == 1
-        TessMat.Vertices = sphVertices;
-        [hFig, iDS, iFig] = view_surface_matrix(TessMat);
-    elseif length(TessMat) == 2
-        TessMat(1).Vertices = sphVertices;
-        [hFig, iDS, iFig] = view_surface_matrix(TessMat(1));
-
-        TessMat(2).Vertices = sphLRVertices;
-        [hFig, iDS, iFig] = view_surface_matrix(TessMat(2),[],0,[],hFig);
-    end
-
-
+    TessMat.Vertices = sphVertices;
+    [hFig, iDS, iFig] = view_surface_matrix(TessMat);
 % Display surface + results
 else
     % Open cortex with results
@@ -192,15 +183,12 @@ else
 end
 
 % ===== CONFIGURE FIGURE =====
-
-for iTess = 1:length(TessMat)
-    % Set transparency
-    panel_surface('SetSurfaceTransparency', hFig, iTess, 0);
-    % Force sulci display
-    panel_surface('SetSurfaceSmooth', hFig, iTess, surfSmooth, 0);
-    panel_surface('SetShowSulci', hFig, iTess, 1);
-end
-
+iTess = 1;
+% Set transparency
+panel_surface('SetSurfaceTransparency', hFig, iTess, 0);
+% Force sulci display
+panel_surface('SetSurfaceSmooth', hFig, iTess, surfSmooth, 0);
+panel_surface('SetShowSulci', hFig, iTess, 1);
 % Set figure as current figure
 bst_figures('SetCurrentFigure', hFig, '3D');
 
@@ -213,49 +201,6 @@ camlight(findobj(hFig, 'Tag', 'FrontLight'), 'headlight');
 set(hFig, 'Visible', 'on');
 if isProgress
     bst_progress('stop');
-end
-end
-
-function [TessMat, sphVertices] = getMollweide(TessMat,sphVertices, il,  ir )
-
-        % Get the latidude and longitude coordinates of the vertices of each hemisphere
-        [lTheta, lPhi, lRadius] = cart2sph(sphVertices(il, 1), sphVertices(il, 2), sphVertices(il, 3));
-        [rTheta, rPhi, rRadius] = cart2sph(sphVertices(ir, 1), sphVertices(ir, 2), sphVertices(ir, 3));
-        
-        % Rotate by pi/2 to get something similar to the figures in the article: https://www.ncbi.nlm.nih.gov/pmc/articles/PMC3445499/
-        lTheta = mod(lTheta + 5*pi/2, 2*pi) - pi;
-        rTheta = mod(rTheta + 3*pi/2, 2*pi) - pi;
-        % Get the 2D projection coordinates using mollweide projection
-        [lMollX, lMollY, lMollTheta, lMollPhi] = mollweide_proj(lPhi, lTheta, mean(lRadius(:)));
-        [rMollX, rMollY, rMollTheta, rMollPhi] = mollweide_proj(rPhi, rTheta, mean(rRadius(:)));
-        % Replace the spherical coordinates with the flattened coordinates
-        sphVertices(il, 1) = lMollY;
-        sphVertices(il, 2) = -lMollX;
-        sphVertices(ir, 1) = rMollY;
-        sphVertices(ir, 2) = -rMollX;
-        sphVertices(ir, 3) = 0;
-        sphVertices(il, 3) = 0;
-
-        % Recompute triangulation
-        TessMat.Faces = [il(delaunayn(sphVertices(il,1:2))); ir(delaunayn(sphVertices(ir,1:2)))];
-        TessMat.Faces = TessMat.Faces(:, [1,3,2]);
-
-%         % === REMOVE FACES CONNECTING THE BOUNDARIES ===
-%         % Remove faces that have vertices that are:
-%         %   - on the boundary of the ellipse
-%         %   - far apart along the horizontal axis Y
-%         %   - on both sides of the ellipse (left and right)
-%         lBoundary = il(boundary(lMollX, lMollY, 0.3));
-%         rBoundary = ir(boundary(rMollX, rMollY, 0.3));
-%         isEdge = zeros(size(sphVertices,1),1);
-%         isEdge(union(lBoundary, rBoundary)) = 1;
-%         sphMollY = sphVertices(:,2);
-%         iFacesRemove = find((abs(sum(sign(sphMollY(TessMat.Faces)), 2)) < 3) & ...
-%                             (any(isEdge(TessMat.Faces),2) | (max(abs(diff(sphMollY(TessMat.Faces),[],2)), [], 2) > 0.03)));
-%         TessMat.Faces(iFacesRemove,:) = [];
-        
-        % Recompute vertex connectivity
-        TessMat.VertConn = tess_vertconn(sphVertices, TessMat.Faces);
 end
 
 
