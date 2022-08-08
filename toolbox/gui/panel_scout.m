@@ -495,8 +495,6 @@ function UpdateMenus(sAtlas, sSurf)
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
         nMenus = 0;
-        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_RESULTS_LIST, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
-
         % Process all the subjects
         for iSubject = 0:nSubjects
             % Get subject 
@@ -528,6 +526,12 @@ function UpdateMenus(sAtlas, sSurf)
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
         end
+        % Project to contralateral hemisphere
+        if (nMenus >= 1)
+            jMenuProject.addSeparator();
+        end
+        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
+        % Add scroller
         if (nMenus > 20)
             darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);
         end
@@ -3699,7 +3703,7 @@ function JoinScouts(varargin)
     % Display new scout
     PlotScouts(iNewScout);
     % Update "Scouts Manager" panel
-    UpdateScoutsList();   
+    UpdateScoutsList();
     % Select last scout in list (new scout)
     SetSelectedScouts(iNewScout);
 end
@@ -4032,7 +4036,7 @@ end
 %% ===== PROJECT SCOUTS BETWEEN HEMIPSHERES =====
 function ProjectScoutsContralateral(srcSurfFile)
     % Get current atlas
-    sAtlas = GetAtlas();
+    [sAtlas, iAtlas, sSurf] = GetAtlas();
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4044,13 +4048,29 @@ function ProjectScoutsContralateral(srcSurfFile)
     % Progress bar
     bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
-    nScoutProj = bst_project_scouts_contra(srcSurfFile, sAtlas);
-    % Unload destination surface
-    bst_memory('UnloadSurface', srcSurfFile, 1);
+    sScoutsNew = bst_project_scouts_contra(srcSurfFile, sAtlas);
+    if isempty(sScoutsNew)
+        return;
+    end
+    
+    % Set default seeds
+    sScoutsNew = SetScoutsSeed(sScoutsNew, sSurf.Vertices);
+    % Set handles structure
+    sTemplate = db_template('scout');
+    for i = 1:length(sScoutsNew)
+        sScoutsNew(i).Handles = sTemplate.Handles;
+    end
+    % Save new scout
+    iNewScouts = SetScouts([], 'Add', sScoutsNew);
+    % Display new scout
+    PlotScouts(iNewScouts);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScouts);
+
     % Close progress bar
     bst_progress('stop');
-    % Message
-    java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, srcSurfFile));
 end
 
 
