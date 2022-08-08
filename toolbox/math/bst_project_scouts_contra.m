@@ -37,6 +37,12 @@ end
 % Identify left and right hemispheres
 [rHsrc, lHsrc, isConnected(1)]  = tess_hemisplit(sSurf);
 
+% Pre-compute WMAT
+nbNeighbors = 8;
+Wmat_RL = bst_shepards(sSurf.Reg.Sphere.Vertices(lHsrc, : ),sSurf.Reg.SphereLR.Vertices(rHsrc, : ),  nbNeighbors, 0);
+Wmat_LR = bst_shepards(sSurf.Reg.Sphere.Vertices(rHsrc, : ),sSurf.Reg.SphereLR.Vertices(lHsrc, : ),  nbNeighbors, 0);
+
+
 % ===== PROCESS ATLAS/SCOUTS =====
 sScoutsNew = repmat(sAtlas(1).Scouts(1), 0);
 for iAtlas = 1:length(sAtlas)
@@ -46,25 +52,20 @@ for iAtlas = 1:length(sAtlas)
         isRight = ~isempty(intersect(rHsrc, sAtlas(iAtlas).Scouts(iScout).Vertices));
     
         if isRight 
-            vertSphLsrc = sSurf.Reg.SphereLR.Vertices(rHsrc, : );
-            vertSphLdest = sSurf.Reg.Sphere.Vertices(lHsrc, : );
-            
+            Wmat =  Wmat_RL;
             nSrc = length(rHsrc);
+
             [~, sScout_Vertices] = intersect(rHsrc,sAtlas(iAtlas).Scouts(iScout).Vertices );
         elseif isLeft 
-            vertSphLsrc = sSurf.Reg.SphereLR.Vertices(lHsrc, : );
-            vertSphLdest = sSurf.Reg.Sphere.Vertices(rHsrc, : );
-        
+            Wmat =  Wmat_LR;
             nSrc = length(lHsrc);
+
             [~, sScout_Vertices] = intersect(lHsrc,sAtlas(iAtlas).Scouts(iScout).Vertices);
         else
             bst_error('The scout should contains only left or right vertices');
             return;
         end
         
-        nbNeighbors = 8;
-        Wmat = bst_shepards(vertSphLdest, vertSphLsrc, nbNeighbors, 0);
-
         % Project scouts one by one and keep for each vertex only the maximum probability
         % Vertex map on the original surface
         vMap                    = zeros(nSrc,1);
