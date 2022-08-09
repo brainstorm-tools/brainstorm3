@@ -176,6 +176,7 @@ else
     nRemove = 0;
 end
 % Current position cannot be optimized
+ChannelMat.HeadPoints.Dist = dist';
 if isempty(R)
     bst_progress('stop');
     isSkip = 1;
