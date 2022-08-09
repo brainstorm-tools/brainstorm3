@@ -1108,7 +1108,7 @@ function destFile = PasteNode( targetNode )
     % Cannot copy anat files to a subject using default anatomy
     if isAnatomy
         sSubjectTarget = bst_get('Subject', iTarget);
-        if sSubjectTarget.UseDefaultAnat
+        if (iTarget > 0) && sSubjectTarget.UseDefaultAnat
             bst_error('Destination subject uses the default anatomy.', 'Clipboard', 0);
             destFile = {};
             return;
