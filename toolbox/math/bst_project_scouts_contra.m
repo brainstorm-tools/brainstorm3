@@ -34,6 +34,11 @@ sSurf = in_tess_bst(srcSurfFile);
 if ~isfield(sSurf, 'Reg') || ~isfield(sSurf.Reg, 'SphereLR') || ~isfield(sSurf.Reg.SphereLR, 'Vertices') || isempty(sSurf.Reg.SphereLR.Vertices)
     error(['No registered contralateral spheres available for this cortex surface.' 10 'Run FreeSurfer with option "-contrasurfreg" in order to use this option.']);
 end
+
+if size(sSurf.Reg.SphereLR.Vertices, 1) ~= size(sSurf.Vertices, 1)
+    error('Contralateral spheres is not available for this cortex surface.');
+end
+
 % Identify left and right hemispheres
 [rHsrc, lHsrc, isConnected(1)]  = tess_hemisplit(sSurf);
 
