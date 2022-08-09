@@ -175,8 +175,9 @@ if ~isempty(dist) && ~isempty(tolerance) && (tolerance > 0)
 else
     nRemove = 0;
 end
-% Current position cannot be optimized
+% Save point-to-scalp distances for display and quality control
 ChannelMat.HeadPoints.Dist = dist';
+% Current position cannot be optimized
 if isempty(R)
     bst_progress('stop');
     isSkip = 1;

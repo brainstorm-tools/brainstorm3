@@ -3814,14 +3814,10 @@ function ViewHeadPoints(hFig, isVisible)
                 'Parent',          hAxes, ...
                 'UserData',        iExtra, ...
                 'Tag',             'HeadPointsMarkers');
-                ColormapType = 'stat1';
                 set(hAxes, 'CLim', [0, 10]);
+                ColormapType = 'stat1';
                 bst_colormaps('AddColormapToFigure', hFig, ColormapType);
                 bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
-%                 hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
-%                 set(hColorbar, 'YTick', 0:64:256, 'YTickLabel', {'0', '2.5', '5', '7.5', '>10'});
-%                 xlabel(hColorbar, 'mm');
-                %sColormap = bst_colormaps('GetColormap', hFig);
                 bst_colormaps('SetColorbarVisible', hFig, 1);
 
             else
