@@ -367,8 +367,8 @@ switch contextName
             if ~isempty(iStudy)
                 % Delete existing functional files for this study
                 db_set(sqlConn, 'FilesWithStudy', 'Delete', iStudy);
-                % Note: Order important here, as potential parent files (Data, Matrix, Result)
-                % should be created before potential child files (Result, Timefreq, dipoles).
+                sFuncFiles = [];
+                % Order is not relevant
                 types = {'Channel', 'HeadModel', 'Data', 'Matrix', 'Result', ...
                          'Stat', 'Image', 'NoiseCov', 'Dipoles', 'Timefreq'};
                 for iType = 1:length(types)
@@ -378,48 +378,16 @@ switch contextName
                         continue
                     end
                     % Convert to FunctionalFile structure
-                    sFuncFiles = db_convert_functionalfile(sFiles, type);
-                    switch type
-                        % Create datalist or matrixlist FunctionalFiles if needed
-                        case {'data', 'matrix'}
-                            % Get name of trial groups
-                            cleanNames = cellfun(@(x) str_remove_parenth(x), {sFuncFiles.Name}, 'UniformOutput', false);
-                            nameGroups = unique(cleanNames, 'stable');
-                            trialGroups = repmat(struct('Name', [], 'nChildren', []), 1, length(nameGroups));
-                            % Find trials for each trial group
-                            for ix = 1 : length(nameGroups)
-                                trialGroups(ix).Name = nameGroups{ix};
-                                trialGroups(ix).nChildren = sum(strcmp(nameGroups{ix}, cleanNames));
-                            end
-                            % Separate FunctionalFiles by trial group
-                            sFuncFiles = mat2cell(sFuncFiles, 1, [trialGroups.nChildren]);
-                            % Create list FunctionalFile and add to sFunctionalFiles if needed
-                            for ix = 1 : length(nameGroups)
-                                if trialGroups(ix).nChildren > 4
-                                    listFunctionalFile = db_template('FunctionalFile');
-                                    listFunctionalFile.Study = iStudy;
-                                    listFunctionalFile.Type = [type 'list'];
-                                    listFunctionalFile.FileName = [sFuncFiles{ix}(1).FileName(1:end-4), '.lst'];
-                                    listFunctionalFile.Name = trialGroups(ix).Name;
-                                    sFuncFiles{ix} = [listFunctionalFile, sFuncFiles{ix}];
-                                end
-                            end
-                            % Concatenate Functional Files
-                            sFuncFiles = [sFuncFiles{:}];
-
-                        % Check for noisecov and ndatacov
-                        case 'noisecov'
-                            if length(sFuncFiles) == 2
-                                sFuncFiles(2).Type = 'ndatacov';
-                            end
-
-                        % Other types
-                        otherwise
-                            % Do nothing
+                    sTypeFuncFiles = db_convert_functionalfile(sFiles, type);
+                    % Check for noisecov and ndatacov
+                    if strcmpi(type, 'noisecov') && length(sTypeFuncFiles) == 2
+                        sTypeFuncFiles(2).Type = 'ndatacov';
                     end
-                    % Insert FunctionalFiles in database
-                    db_set(sqlConn, 'FilesWithStudy', sFuncFiles, iStudy);
+                    sFuncFiles = [sFuncFiles, sTypeFuncFiles];
                 end
+                % Insert FunctionalFiles in database
+                db_set(sqlConn, 'FilesWithStudy', sFuncFiles, iStudy);
+
                 % Set selected Channel and HeadModel files
                 hasSelFiles = 0;
                 selFiles = struct();

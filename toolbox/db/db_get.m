@@ -63,6 +63,8 @@ function varargout = db_get(varargin)
 %    - db_get('FilesInFileList', ListFileID, Fields)   : Get FunctionalFile belonging to a list with ID
 %    - db_get('FilesInFileList', ListFileName, Fields) : Get FunctionalFile belonging to a list with FileName
 %    - db_get('FilesInFileList', CondQuery, Fields)   : Get FunctionalFile belonging to a list with Query
+%    - db_get('ParentFromFunctionalFile', FileId,   ParentFields)   : Find ParentFile for FunctionalFile with FileId
+%    - db_get('ParentFromFunctionalFile', FileName,   ParentFields) : Find ParentFile for FunctionalFile with FileName
 %
 % ====== ANY FILE ======================================================================
 %    - db_get('AnyFile', FileName)         : Get any file by FileName
@@ -794,6 +796,34 @@ switch contextName
             % Return results
             varargout{1} = sStudies;
         end
+
+
+%% ==== PARENT FILE FROM FUNCTIONAL FILE ====
+    % sFunctionalFileParent = db_get('ParentFromFunctionalFile', FileId,   ParentFields)
+    %                       = db_get('ParentFromFunctionalFile', FileName, ParentFields)
+    case 'ParentFromFunctionalFile'
+        fields = '*';
+        varargout{1} = [];
+        if length(args) > 1
+            fields = args{2};
+        end
+        if ischar(fields), fields = {fields}; end
+        % Prepend 'parent.' to requested fields
+        if ~strcmp('*', fields{1})
+            fields = cellfun(@(x) ['parent.' x], fields, 'UniformOutput', 0);
+        end
+        % Join query
+        joinQry = 'FunctionalFile parent INNER JOIN FunctionalFile ON parent.Id = FunctionalFile.ParentFile ';
+        % Add query
+        addQuery = 'AND FunctionalFile.';
+        % Complete query with FileName of FileID
+        if ischar(args{1})
+            addQuery = [addQuery 'FileName = "' file_short(args{1}) '"'];
+        else
+            addQuery = [addQuery 'Id = ' num2str(args{1})];
+        end
+        % Select query
+        varargout{1} = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
 
 
 %% ==== ANY FILE ====
