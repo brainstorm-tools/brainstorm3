@@ -1,4 +1,4 @@
-function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment, bgLevel)
+function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, fillFactor, Comment, bgLevel, isGradient)
 % TESS_GENERATE: Reconstruct a head surface based on the MRI, based on an isosurface
 %
 % USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
@@ -33,6 +33,9 @@ HeadFile = [];
 iSurface = [];
 isSave = true;
 % Parse inputs
+if (nargin < 7) || isempty(isGradient)
+    isGradient = false;
+end
 if (nargin < 6) || isempty(bgLevel)
     bgLevel = [];
 end
@@ -85,7 +88,7 @@ end
 %% ===== ASK PARAMETERS =====
 % Ask user to set the parameters if they are not set
 if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
-    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
+    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'15000', '0', '0', num2str(sMri.Histogram.bgLevel)});
     % If user cancelled: return
     if isempty(res)
         return
@@ -98,7 +101,7 @@ if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
     if isempty(bgLevel)
         bgLevel = sMri.Histogram.bgLevel;
     end
-elseif isempty(bgLevel)
+elseif isempty(bgLevel) && ~isGradient
     bgLevel = sMri.Histogram.bgLevel;
 end
 % Check parameters values
@@ -112,7 +115,39 @@ end
 % Progress bar
 bst_progress('start', 'Generate head surface', 'Creating head mask...', 0, 100);
 % Threshold mri to the level estimated in the histogram
-headmask = sMri.Cube(:,:,:,1) > bgLevel;
+if isGradient
+    isGradLocalMax = false;
+    % Compute gradient
+    % Find appropriate threshold from gradient histogram
+    % TODO: need to find a robust way to do this.  Only verified on one
+    % relatively bad MRI sequence with preprocessing (debias, denoise).
+    [Grad, VectGrad] = NormGradient(sMri.Cube(:,:,:,1));
+    if isempty(bgLevel)
+        Hist = mri_histogram(Grad, [], 'headgrad');
+        bgLevel = Hist.bgLevel;
+    end
+    if isGradLocalMax
+        % Index gymnastics... Is there a simpler way to do this (other than looping)?
+        nVol = [1, cumprod(size(Grad))]';
+        [unused, UpDir] = max(abs(reshape(VectGrad, nVol(4), [])), [], 2); % (nVol, 1)
+        UpDirSign = sign(VectGrad((1:nVol(4))' + (UpDir-1) * nVol(4)));
+        % Get neighboring value of the gradient in the increasing gradiant direction.
+        % Using linear indices shaped as 3d array, which will give back a 3d array.
+        iUpGrad = zeros(size(Grad));
+        iUpGrad(:) = UpDirSign .* nVol(UpDir); % change in index: +-1 along appropriate dimension for each voxel, in linear indices
+        % Removing problematic indices at edges.
+        iUpGrad([1, end], :, :) = 0;
+        iUpGrad(:, [1, end], :) = 0;
+        iUpGrad(:, :, [1, end]) = 0;
+        iUpGrad(:) = iUpGrad(:) + (1:nVol(4))'; % adding change to each element index
+        UpGrad = Grad(iUpGrad); 
+        headmask = Grad > bgLevel & Grad >= UpGrad;
+    else        
+        headmask = Grad > bgLevel;
+    end
+else
+    headmask = sMri.Cube(:,:,:,1) > bgLevel;
+end
 % Closing all the faces of the cube
 headmask(1,:,:)   = 0; %*headmask(1,:,:);
 headmask(end,:,:) = 0; %*headmask(1,:,:);
@@ -343,4 +378,12 @@ while nOut > nPrev
     nPrev = nOut;
     nOut = sum(OutMask(:));
 end
+end
+
+
+function [Vol, Vect]  = NormGradient(Vol)
+% Norm of the spatial gradient vector field in a regular 3D volume.
+[x,y,z] = gradient(Vol);
+Vect = cat(4,x,y,z);
+Vol = sqrt(sum(Vect.^2, 4));
 end

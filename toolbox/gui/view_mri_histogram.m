@@ -27,17 +27,24 @@ function hFig = view_mri_histogram( MriFile )
 %
 % Authors: Francois Tadel, 2006-2020
 
-%% ===== COMPUTE HISTOGRAM =====
+%% ===== LOAD OR COMPUTE HISTOGRAM =====
 % Display progress bar
 bst_progress('start', 'View MRI historgram', 'Computing histogram...');
-% Load full MRI
-MRI = load(MriFile);
-% Compute histogram
-Histogram = mri_histogram(MRI.Cube(:,:,:,1));
-% Save histogram
-s.Histogram = Histogram;
-bst_save(MriFile, s, 'v7', 1);
-
+if isstruct(MriFile) && isfield(MriFile, 'intensityMax')
+    Histogram = MriFile;
+else
+    % Load full MRI
+    MRI = load(MriFile);
+    % Compute histogram if missing
+    if ~isfield(MRI, 'Histogram') || isempty(MRI.Histogram) || ~isfield(MRI.Histogram, 'intensityMax')
+        Histogram = mri_histogram(MRI.Cube(:,:,:,1));
+        % Save histogram
+        s.Histogram = Histogram;
+        bst_save(MriFile, s, 'v7', 1);
+    else
+        Histogram = MRI.Histogram;
+    end
+end
 
 %% ===== DISPLAY HISTOGRAM =====
 % Create figure
