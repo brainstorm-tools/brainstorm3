@@ -5223,22 +5223,29 @@ function SaveScouts(varargin)
         ScoutFile = bst_fullfile(LastUsedDirs.ExportAnat, ['scout_', file_standardize(sAtlas.Name), sprintf('_%d.mat', length(sAtlas.Scouts))]);
     end
     % Get filename where to store the filename
-    ScoutFile = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
+    [ScoutFile, FileFormat] = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
                              'single', 'files', ...
-                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'}, 1);
+                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
+                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'}, 1);
     if isempty(ScoutFile)
         return;
     end
     % Save last used folder
     LastUsedDirs.ExportAnat = bst_fileparts(ScoutFile);
     bst_set('LastUsedDirs',  LastUsedDirs);
-    % Make sure that filename contains the 'scout' tag
-    if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
-        [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
-        ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
+    % Switch file format
+    switch (FileFormat)
+        case 'BST'
+            % Make sure that filename contains the 'scout' tag
+            if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
+                [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
+                ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
+            end
+            % Save file
+            bst_save(ScoutFile, sAtlas, 'v7');
+        case 'FS-LABEL-SINGLE'
+            out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
     end
-    % Save file
-    bst_save(ScoutFile, sAtlas, 'v7');
 end
 
 

@@ -193,6 +193,8 @@ end
 % else
 %     nRemove = 0;
 % end
+% Save point-to-scalp distances for display and quality control
+ChannelMat.HeadPoints.Dist = dist';
 % Current position cannot be optimized
 if isempty(R)
     bst_progress('stop');

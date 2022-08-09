@@ -58,6 +58,7 @@ end
 HeadPoints = channel_get_headpoints(ChannelFile, 1);
 if isempty(HeadPoints)
     bst_error('No digitized head points to display for this file.', 'Add head points', 0);
+    hFig = []; iDS = []; iFig = [];
     return;
 end
 % Load full channel file
@@ -65,6 +66,7 @@ ChannelMat = in_bst_channel(ChannelFile);
 
 % View scalp surface if available
 [hFig, iDS, iFig] = view_surface(ScalpFile, .2);
+figure_3d('SetStandardView', hFig, 'front');
 
 % Extend figure and dataset for this particular channel file
 GlobalData.DataSet(iDS).StudyFile       = sStudy.FileName;

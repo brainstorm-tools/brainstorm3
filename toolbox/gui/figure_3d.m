@@ -3721,9 +3721,9 @@ function ViewHeadPoints(hFig, isVisible)
     % If head points graphic objects already exist: set the "Visible" property
     if ~isempty(hHeadPointsMarkers)
         if isVisible
-            set([hHeadPointsMarkers hHeadPointsLabels], 'Visible', 'on');
+            set([hHeadPointsMarkers(:)' hHeadPointsLabels(:)'], 'Visible', 'on');
         else
-            set([hHeadPointsMarkers hHeadPointsLabels], 'Visible', 'off');
+            set([hHeadPointsMarkers(:)' hHeadPointsLabels(:)'], 'Visible', 'off');
         end
     % If head points objects were not created yet: create them
     elseif isVisible
@@ -3801,6 +3801,27 @@ function ViewHeadPoints(hFig, isVisible)
         end
         % Plot extra head points
         if ~isempty(iExtra)
+            % If distances, color code points.
+            if isfield(HeadPoints, 'Dist')
+                patch(digLoc(iExtra,1), digLoc(iExtra,2), digLoc(iExtra,3), ...
+                HeadPoints.Dist(iExtra)*1000, ... % mm
+                'Marker',          'o', ...
+                'MarkerSize',      6, ...
+                'FaceColor',       'none', ...
+                'EdgeColor',       'none', ...
+                'MarkerFaceColor', 'flat', ...
+                'MarkerEdgeColor', 'flat', ...
+                'Parent',          hAxes, ...
+                'UserData',        iExtra, ...
+                'Tag',             'HeadPointsMarkers');
+                set(hAxes, 'CLim', [0, 10]);
+                ColormapType = 'stat1';
+                bst_colormaps('AddColormapToFigure', hFig, ColormapType);
+                bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
+                bst_colormaps('SetColorbarVisible', hFig, 1);
+
+            else
+               
             % Display markers
             line(digLoc(iExtra,1), digLoc(iExtra,2), digLoc(iExtra,3), ...
                 'Parent',          hAxes, ...
@@ -3812,6 +3833,7 @@ function ViewHeadPoints(hFig, isVisible)
                 'Marker',          'o', ...
                 'UserData',        iExtra, ...
                 'Tag',             'HeadPointsMarkers');
+            end
         end
     end
 end

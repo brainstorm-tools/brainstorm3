@@ -625,9 +625,6 @@ for iFile = 1:length(FilesA)
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
             R = zeros(nA * nB, nTime, nFreqBands);
-            % Replicate nB x HA, and nA x HB
-            iA = repmat(1:nA, 1, nB)';
-            iB = reshape(repmat(1:nB, nA, 1), [], 1);
 
             % ===== VERSION S.BAILLET =====
             % PLV = exp(1i * (angle(HA) - angle(HB)));
@@ -644,9 +641,9 @@ for iFile = 1:length(FilesA)
                     HA = hilbert_fcn(DataAband')';
                     HB = hilbert_fcn(DataBband')';
                 end
-                % Compute the PLV in time for each pair
-                phaseA = HA(iA,:) ./ abs(HA(iA,:));
-                phaseB = HB(iB,:) ./ abs(HB(iB,:));
+                % Compute the (ci)PLV and wPLI in time for each pair
+                phaseA = repmat(HA,[nB 1]) ./ abs(repmat(HA,[nB 1]));
+                phaseB = repelem(HB,nA, 1) ./ abs(repelem(HB,nA, 1));
                 switch (OPTIONS.Method)
                     case 'plvt'
                         % R(:,:,iBand) = exp(1i * angle(HA(iA,:)./HB(iB,:)));  % Sylvain Baillet, slower
