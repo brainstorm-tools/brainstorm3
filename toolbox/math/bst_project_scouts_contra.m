@@ -31,7 +31,7 @@ end
 % Load surface
 sSurf = in_tess_bst(srcSurfFile);
 % Check for contralateral surfaces
-if ~isfield(sSurf, 'Reg') || ~isfield(sSurf.Reg, 'SphereLR') || ~isfield(sSurf.Reg.SphereLR, 'Vertices') || ~isempty(sSurf.Reg.SphereLR.Vertices)
+if ~isfield(sSurf, 'Reg') || ~isfield(sSurf.Reg, 'SphereLR') || ~isfield(sSurf.Reg.SphereLR, 'Vertices') || isempty(sSurf.Reg.SphereLR.Vertices)
     error(['No registered contralateral spheres available for this cortex surface.' 10 'Run FreeSurfer with option "-contrasurfreg" in order to use this option.']);
 end
 % Identify left and right hemispheres
