@@ -33,15 +33,16 @@ function varargout = db_set(varargin)
 %    - db_set('Study', sStudy, StudyId)     : Update Study by ID
 %
 % ====== FUNCTIONAL FILES ==============================================================
-%    - db_set('FunctionalFile', 'Delete')                          : Delete all FunctionalFiles
-%    - db_set('FunctionalFile', 'Delete', FunctionalFileId)        : Delete FunctionalFile by ID
-%    - db_set('FunctionalFile', 'Delete', CondQuery)               : Delete FunctionalFile with Query
-%    - db_set('FunctionalFile', sFunctionalFile)                   : Insert FunctionalFile
-%    - db_set('FunctionalFile', sFunctionalFile, FunctionalFileId) : Update FunctionalFile by ID
-%    - db_set('FilesWithStudy', 'Delete' , StudyID)                : Delete All FunctionalFiles from StudyID
-%    - db_set('FilesWithStudy', sFunctionalFiles, StudyID)         : Insert FunctionalFiles with StudyID
-%    - db_set('FilesWithStudy', sFunctionalFiles)                  : Update FunctionalFiles
-%    - db_set('ParentCount', ParentFileID, modifier, count)        : Update NumChildren field in ParentFileID
+%    - db_set('FunctionalFile', 'Delete')                              : Delete all FunctionalFiles
+%    - db_set('FunctionalFile', 'Delete', FunctionalFileId)            : Delete FunctionalFile by ID
+%    - db_set('FunctionalFile', 'Delete', CondQuery)                   : Delete FunctionalFile with Query
+%    - db_set('FunctionalFile', 'ClearField', FunctionalFileId, Field) : Set to NULL a given Field in FunctionalFileId
+%    - db_set('FunctionalFile', sFunctionalFile)                       : Insert FunctionalFile
+%    - db_set('FunctionalFile', sFunctionalFile, FunctionalFileId)     : Update FunctionalFile by ID
+%    - db_set('FilesWithStudy', 'Delete' , StudyID)                    : Delete All FunctionalFiles from StudyID
+%    - db_set('FilesWithStudy', sFunctionalFiles, StudyID)             : Insert FunctionalFiles with StudyID
+%    - db_set('FilesWithStudy', sFunctionalFiles)                      : Update FunctionalFiles
+%    - db_set('ParentCount', ParentFileID, modifier, count)            : Update NumChildren field in ParentFileID
 %
 % SEE ALSO db_get
 %
@@ -371,6 +372,7 @@ switch contextName
     % Success                           = db_set('FunctionalFile', 'Delete')
     %                                   = db_set('FunctionalFile', 'Delete', FunctionalFileId)
     %                                   = db_set('FunctionalFile', 'Delete', CondQuery)
+    %                                   = db_set('FunctionalFile', 'ClearField', FunctionalFileId, Field)
     % FunctionalFileId, FunctionalFile] = db_set('FunctionalFile', FunctionalFile)
     %                                   = db_set('FunctionalFile', FunctionalFile, FunctionalFileId)
     case 'FunctionalFile'
@@ -416,7 +418,7 @@ switch contextName
                             % Remove ParentFile in former children
                             sChildrenFuncFiles = db_get(sqlConn, 'FunctionalFile', struct('ParentFile', sParentFuncFile.Id), 'Id');
                             for ix = 1 : length(sChildrenFuncFiles)
-                                sql_query(sqlConn, ['UPDATE FunctionalFile Set ParentFile = NULL WHERE Id = ', num2str(sChildrenFuncFiles(ix). Id)]);
+                                db_set(sqlConn, 'FunctionalFile', 'ClearField', sChildrenFuncFiles(ix). Id, 'ParentFile');
                             end
                         end
                     end
@@ -424,6 +426,12 @@ switch contextName
             end
             if delResult > 0
                 varargout{1} = 1;
+            end
+
+        % Set to NULL the specified Field for a FunctionalFileId
+        elseif ischar(sFuncFile) && strcmpi(sFuncFile, 'clearfield')
+            if length(args) > 2 && ~isempty(args{3}) && ischar(args{3})
+                sql_query(sqlConn, ['UPDATE FunctionalFile Set ', args{3}, ' = NULL WHERE Id = ', num2str(iFuncFile)]);
             end
 
         % Insert or Update
