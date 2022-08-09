@@ -41,7 +41,14 @@ if (nargin < 3) || isempty(SphereFile) || isempty(FileFormat)
        LastUsedDirs.ImportAnat, ...   % Default directory
        'single', 'files', ...         % Selection mode
        {{'.reg'}, 'Registered FreeSurfer sphere (*.reg)', 'FS'; ...
+        {'.reg'}, 'Registered FreeSurfer controlateral sphere (*.reg)', 'FS-Controlateral'
         {'.gii'}, 'CAT12 registered spheres (*.gii)',     'GII-CAT'}, 'FS');
+
+    if strcmp(FileFormat,'FS-Controlateral')
+        isControlateral = 1;
+        FileFormat      = 'FS';
+    end
+    
     % If no file was selected: exit
     if isempty(SphereFile)
         return
