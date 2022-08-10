@@ -35,12 +35,14 @@ scale = bst_units_ui(jnirs.nirs.metaDataTags.LengthUnit);
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
     
-    src_pos = jnirs.nirs.probe.sourcePos3D';
-    det_pos = jnirs.nirs.probe.detectorPos3D';
+    src_pos = toColumn(jnirs.nirs.probe.sourcePos3D, jnirs.nirs.probe.sourceLabels);
+    det_pos = toColumn(jnirs.nirs.probe.detectorPos3D, jnirs.nirs.probe.detectorLabels);
+
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
     
-    src_pos = jnirs.nirs.probe.sourcePos;
-    det_pos = jnirs.nirs.probe.detectorPos;
+    src_pos = toColumn(jnirs.nirs.probe.sourcePos, jnirs.nirs.probe.sourceLabels);  
+    det_pos = toColumn(jnirs.nirs.probe.detectorPos, jnirs.nirs.probe.detectorLabels);
+
     % If src and det are 2D pos, then set z to 1 to avoid issue at (x=0,y=0,z=0)
     if ~isempty(src_pos) && all(src_pos(:,3)==0) && all(det_pos(:,3)==0)
         src_pos(:,3) = 1;
@@ -48,8 +50,8 @@ elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(
     end
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
     
-    src_pos = jnirs.nirs.probe.sourcePos2D';
-    det_pos = jnirs.nirs.probe.detectorPos2D';
+    src_pos = toColumn(jnirs.nirs.probe.sourcePos2D, jnirs.nirs.probe.sourceLabels); 
+    det_pos = toColumn(jnirs.nirs.probe.detectorPos2D, jnirs.nirs.probe.detectorLabels);
     
     src_pos(:,3) = 1;
     det_pos(:,3) = 1;
@@ -93,6 +95,7 @@ end
 
 % AUX channels
 k_aux =  1;
+aux_index = false(1,nAux);
 for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
@@ -109,7 +112,8 @@ for iAux = 1:nAux
     channel = jnirs.nirs.aux(iAux);
     ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
     ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(channel.name));
-
+    
+    aux_index(iAux) = true;
     k_aux = k_aux + 1;
 end
 nAux = k_aux - 1;
@@ -131,26 +135,28 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
         jnirs.nirs.probe.landmarkPos3D = jnirs.nirs.probe.landmarkPos;
     end
 
-    for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 2)
+    jnirs.nirs.probe.landmarkPos3D = toColumn(jnirs.nirs.probe.landmarkPos3D, jnirs.nirs.probe.landmarkLabels);
+
+    for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
         name = strtrim(str_remove_spec_chars(jnirs.nirs.probe.landmarkLabels{iLandmark}));
-        coord = scale .* jnirs.nirs.probe.landmarkPos3D(:,iLandmark);
+        coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, :);
 
         % Fiducials NAS/LPA/RPA
         switch lower(name)
             case {'nasion','nas'}
-                ChannelMat.SCS.NAS = coord';
+                ChannelMat.SCS.NAS = coord;
                 ltype = 'CARDINAL';
             case {'leftear', 'lpa'}
-                ChannelMat.SCS.LPA = coord';
+                ChannelMat.SCS.LPA = coord;
                 ltype = 'CARDINAL';
             case {'rightear','rpa'}
-                ChannelMat.SCS.RPA = coord';
+                ChannelMat.SCS.RPA = coord;
                 ltype = 'CARDINAL';
             otherwise
                 ltype = 'EXTRA';
         end
         % Add head point
-        ChannelMat.HeadPoints.Loc(:, end+1) = coord;
+        ChannelMat.HeadPoints.Loc(:, end+1) = coord';
         ChannelMat.HeadPoints.Label{end+1}  = name;
         ChannelMat.HeadPoints.Type{end+1}   = ltype;
     end           
@@ -223,5 +229,10 @@ for iEvt = 1:length(jnirs.nirs.stim)
     DataMat.Events(iEvt).notes      = cell(1, size(evtTime,2));
     DataMat.Events(iEvt).reactTimes = [];
 end   
+end
 
-
+function vect = toColumn(vect, exp_size)
+    if size(vect,1) ~= length(exp_size)
+        vect = vect';
+    end
+end
