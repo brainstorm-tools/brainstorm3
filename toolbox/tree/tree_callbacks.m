@@ -969,6 +969,7 @@ switch (lower(action))
                     jMenuHeadPoints = gui_component('Menu', jPopup, [], 'Digitized head points', IconLoader.ICON_CHANNEL, [], []);
                     % View head points
                     gui_component('MenuItem', jMenuHeadPoints, [], 'View head points', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_headpoints(filenameFull, [], 0));
+                    gui_component('MenuItem', jMenuHeadPoints, [], 'View head points (color=distance)', IconLoader.ICON_SURFACE_SCALP, [], @(h,ev)view_headpoints(filenameFull, [], 0, 1));
                     % Edit head points
                     if ~bst_get('ReadOnly')
                         % Add head points
