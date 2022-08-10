@@ -1,4 +1,4 @@
-function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType, isColorDist )
+function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType )
 % CHANNEL_ALIGN_MANUAL: Align manually an electrodes net on the scalp surface of the subject.
 % 
 % USAGE:  hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType='cortex')
@@ -34,9 +34,6 @@ global GlobalData;
 
 % Parse inputs
 hFig = [];
-if (nargin < 5) || isempty(isColorDist)
-    isColorDist = 1;
-end
 if (nargin < 4) || isempty(SurfaceType)
     if ismember(Modality, {'SEEG'}) 
         SurfaceType = 'cortex';
@@ -193,7 +190,7 @@ end
 
 % ===== DISPLAY HEAD POINTS =====
 % Display head points
-figure_3d('ViewHeadPoints', hFig, 1, isColorDist);
+figure_3d('ViewHeadPoints', hFig, 1);
 % Get patch and vertices
 hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
 hHeadPointsLabels  = findobj(hFig, 'Tag', 'HeadPointsLabels');
@@ -207,10 +204,6 @@ HeadPointsHpiLoc     = [];
 if isHeadPoints
     % More transparency to view points inside.
     panel_surface('SetSurfaceTransparency', hFig, 1, 0.5);
-    % Hide helmet by default to align with points.
-    if ~isempty(hHelmetPatch)
-        set(hHelmetPatch, 'Visible', 'off');
-    end
     % Get markers positions
     HeadPointsMarkersLoc = get(hHeadPointsMarkers, 'Vertices');
     % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints

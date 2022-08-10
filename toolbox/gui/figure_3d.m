@@ -3768,9 +3768,10 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
             Dist = bst_surfdist(get(hHeadPointsMarkers, 'Vertices'), sSurf.Vertices, sSurf.Faces);
             set(hHeadPointsMarkers, 'CData', Dist * 1000, ...
                 'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
-            if ~ismember(ColormapInfo.AllTypes, ColormapType)
+            if ~ismember(ColormapType, ColormapInfo.AllTypes)
                 % Add missing colormap (color was toggled after points were displayed)
                 bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+                ColormapInfo = getappdata(hFig, 'Colormap');
             end
             if strcmpi(ColormapInfo.Type, ColormapType)
                 bst_colormaps('SetColorbarVisible', hFig, 1);
