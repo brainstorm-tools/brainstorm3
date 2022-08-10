@@ -202,10 +202,14 @@ HeadPointsMarkersLoc = [];
 HeadPointsFidLoc     = [];
 HeadPointsHpiLoc     = [];
 if isHeadPoints
+    % More transparency to view points inside.
+    panel_surface('SetSurfaceTransparency', hFig, 1, 0.5);
+    % Hide helmet by default to align with points.
+    if ~isempty(hHelmetPatch)
+        set(hHelmetPatch, 'Visible', 'off');
+    end
     % Get markers positions
-    HeadPointsMarkersLoc = [get(hHeadPointsMarkers, 'XData')', ...
-                            get(hHeadPointsMarkers, 'YData')', ...
-                            get(hHeadPointsMarkers, 'ZData')'];
+    HeadPointsMarkersLoc = get(hHeadPointsMarkers, 'Vertices');
     % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints
     if isEeg && ~isempty(HeadPointsMarkersLoc) && ~isempty(SensorsVertices) && (length(SensorsVertices) == length(HeadPointsMarkersLoc)) && (max(abs(SensorsVertices(:) - HeadPointsMarkersLoc(:))) < 0.001)
         set(hHeadPointsMarkers, 'Visible', 'off');
@@ -343,11 +347,12 @@ gChanAlign.hButtonLabels = [];
 gChanAlign.hButtonEditLabel = [];
 gChanAlign.hButtonHelmet = [];
 if gChanAlign.isMeg
-    gChanAlign.hButtonHelmet = uitoggletool(hToolbar, 'CData', java_geticon('ICON_DISPLAY'), 'TooltipString', 'Show/Hide MEG helmet', 'ClickedCallback', @ToggleHelmet, 'State', 'on');
+    gChanAlign.hButtonHelmet = uitoggletool(hToolbar, 'CData', java_geticon('ICON_DISPLAY'), 'TooltipString', 'Show/Hide MEG helmet', 'ClickedCallback', @ToggleHelmet, 'State', get(hHelmetPatch, 'Visible'));
 elseif gChanAlign.isEeg
     gChanAlign.hButtonLabels    = uitoggletool(hToolbar, 'CData', java_geticon('ICON_LABELS'), 'TooltipString', 'Show/Hide electrodes labels', 'ClickedCallback', @ToggleLabels);
     gChanAlign.hButtonEditLabel = uipushtool(  hToolbar, 'CData', java_geticon('ICON_EDIT'),   'TooltipString', 'Edit selected channel label', 'ClickedCallback', @EditLabel);
 end
+gChanAlign.hButtonColorDist = uitoggletool(hToolbar, 'CData', java_geticon('ICON_CHANNEL'),      'TooltipString', 'Color head points by distance',                            'ClickedCallback', @ToggleColorDist, 'State', 'on');
 gChanAlign.hButtonTransX   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_X'), 'TooltipString', 'Translation/X: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation, 'separator', 'on');
 gChanAlign.hButtonTransY   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Y'), 'TooltipString', 'Translation/Y: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
 gChanAlign.hButtonTransZ   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Z'), 'TooltipString', 'Translation/Z: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
@@ -640,10 +645,13 @@ function UpdatePoints(iSelChan)
     % Update headpoints markers and labels
     if gChanAlign.isHeadPoints
         % Extra head points
-        set(gChanAlign.hHeadPointsMarkers, ...
-            'XData', gChanAlign.HeadPointsMarkersLoc(:,1), ...
-            'YData', gChanAlign.HeadPointsMarkersLoc(:,2), ...
-            'ZData', gChanAlign.HeadPointsMarkersLoc(:,3));
+        set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
+        if strcmpi(get(gChanAlign.hButtonColorDist, 'State'), 'on')
+            % Update distance color
+            Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
+                get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
+            set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
+        end
         % Fiducials
         if ~isempty(gChanAlign.hHeadPointsFid)
             set(gChanAlign.hHeadPointsFid, ...
@@ -986,6 +994,25 @@ function ToggleHelmet(varargin)
 end
 
 
+%% ===== COLOR HEAD POINTS =====
+function ToggleColorDist(varargin)
+    global gChanAlign;
+    % Update button color
+    gui_update_toggle(gChanAlign.hButtonColorDist);
+    if strcmpi(get(gChanAlign.hButtonColorDist, 'State'), 'on')
+        % Color points according to distance to surface
+        Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
+            get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
+        set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000, ...
+            'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
+    else
+        % Conventional fixed point color
+        set(gChanAlign.hHeadPointsMarkers, ...% 'CData', 'w', ...
+            'MarkerFaceColor', [.3 1 .3], 'MarkerEdgeColor', [.4 .7 .4]);
+    end
+end
+
+
 %% ===== EDIT LABEL =====
 function EditLabel(varargin)
     global GlobalData gChanAlign;
@@ -1107,9 +1134,7 @@ function ProjectElectrodesOnSurface(varargin)
     % Copy modification to the head points
     if gChanAlign.isEeg && ~isempty(gChanAlign.SensorsVertices) && ~isempty(gChanAlign.HeadPointsMarkersLoc) && (length(gChanAlign.SensorsVertices) == length(gChanAlign.HeadPointsMarkersLoc))
         gChanAlign.HeadPointsMarkersLoc = gChanAlign.SensorsVertices;
-        set(gChanAlign.hHeadPointsMarkers, 'XData', gChanAlign.HeadPointsMarkersLoc(:,1), ...
-                                           'YData', gChanAlign.HeadPointsMarkersLoc(:,2), ...
-                                           'ZData', gChanAlign.HeadPointsMarkersLoc(:,3));
+        set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
     end
     % Mark current channel file as modified
     gChanAlign.isChanged = 1;
