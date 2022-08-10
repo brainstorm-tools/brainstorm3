@@ -1,7 +1,7 @@
-function [TessMat, errMsg] = tess_addsphere(TessFile, SphereFile, FileFormat)
+function [TessMat, errMsg] = tess_addsphere(TessFile, SphereFile, FileFormat, isControlateral)
 % TESS_ADD: Add a FreeSurfer registered sphere to an existing surface.
 %
-% USAGE:  TessMat = tess_addsphere(TessFile, SphereFile=select, FileFormat=select)
+% USAGE:  TessMat = tess_addsphere(TessFile, SphereFile=select, FileFormat=select, isControlateral=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -21,12 +21,16 @@ function [TessMat, errMsg] = tess_addsphere(TessFile, SphereFile, FileFormat)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2019
+% Authors: Francois Tadel, 2013-2022
 
 % Initialize returned variables
 TessMat = [];
 errMsg = [];
 
+% No contralateral by default
+if (nargin < 4) || isempty(isControlateral)
+    isControlateral = 0;
+end
 % Ask for sphere file
 if (nargin < 3) || isempty(SphereFile) || isempty(FileFormat)
     % Get last used directories and formats
@@ -37,7 +41,14 @@ if (nargin < 3) || isempty(SphereFile) || isempty(FileFormat)
        LastUsedDirs.ImportAnat, ...   % Default directory
        'single', 'files', ...         % Selection mode
        {{'.reg'}, 'Registered FreeSurfer sphere (*.reg)', 'FS'; ...
+        {'.reg'}, 'Registered FreeSurfer controlateral sphere (*.reg)', 'FS-Controlateral' ; ...
         {'.gii'}, 'CAT12 registered spheres (*.gii)',     'GII-CAT'}, 'FS');
+
+    if strcmp(FileFormat,'FS-Controlateral')
+        isControlateral = 1;
+        FileFormat      = 'FS';
+    end
+
     % If no file was selected: exit
     if isempty(SphereFile)
         return
@@ -89,8 +100,15 @@ if (length(SphereVertices) ~= length(TessMat.Vertices))
     TessMat = [];
     return;
 end
-% Add the sphere vertex information to the surface matrix
-TessMat.Reg.Sphere.Vertices = SphereVertices;
+
+if ~isControlateral
+    % Add the sphere vertex information to the surface matrix
+    TessMat.Reg.Sphere.Vertices = SphereVertices;
+else
+    % Add the contralateral sphere to the surface matrix (option "-contrasurfreg" from freesurfer recon-all)
+    TessMat.Reg.SphereLR.Vertices = SphereVertices;
+end
+
 % Save modifications to input file
 bst_save(file_fullpath(TessFile), TessMat, 'v7');
 

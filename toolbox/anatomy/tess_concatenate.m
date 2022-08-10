@@ -191,22 +191,29 @@ for iFile = 1:length(TessFiles)
     
     % Concatenate FreeSurfer registration spheres
     if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Sphere') && isfield(oldTess.Reg.Sphere, 'Vertices') && ~isempty(oldTess.Reg.Sphere.Vertices)
-%         if (iFile > 1) && (~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Sphere') || ~isfield(NewTess.Reg.Sphere, 'Vertices'))
-%             NewTess.Reg = [];
-%             oldTess.Reg = [];
-%         if (iFile == 1)
         if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Sphere') || ~isfield(NewTess.Reg.Sphere, 'Vertices')
             NewTess.Reg.Sphere.Vertices = oldTess.Reg.Sphere.Vertices;
         else
             NewTess.Reg.Sphere.Vertices = [NewTess.Reg.Sphere.Vertices; oldTess.Reg.Sphere.Vertices];
         end
+    % Remove all spheres if they are not available in all the input files (disabled for now because cortex_cereb works well for projections)
+    % elseif isfield(NewTess, 'Reg') &&  isfield(NewTess.Reg, 'Sphere') && isfield(NewTess.Reg.Sphere, 'Vertices') && ~isempty(NewTess.Reg.Sphere.Vertices) 
+    %     NewTess.Reg.Sphere.Vertices = [];
     end
+    
+    if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
+        if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'SphereLR') || ~isfield(NewTess.Reg.SphereLR, 'Vertices')
+            NewTess.Reg.SphereLR.Vertices = oldTess.Reg.SphereLR.Vertices;
+        else
+            NewTess.Reg.SphereLR.Vertices = [NewTess.Reg.SphereLR.Vertices; oldTess.Reg.SphereLR.Vertices];
+        end
+    % Remove all spheres if they are not available in all the input files (disabled for now because cortex_cereb works well for projections)
+    % elseif isfield(NewTess, 'Reg') &&  isfield(NewTess.Reg, 'SphereLR') && isfield(NewTess.Reg.SphereLR, 'Vertices') && ~isempty(NewTess.Reg.SphereLR.Vertices)
+    %         NewTess.Reg.SphereLR.Vertices = [];
+    end
+
     % Concatenate BrainSuite registration squares    
     if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Square') && isfield(oldTess.Reg.Square, 'Vertices') && ~isempty(oldTess.Reg.Square.Vertices)
-%         if (iFile > 1) && (~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Square') || ~isfield(NewTess.Reg.Square, 'Vertices'))
-%             NewTess.Reg = [];
-%             oldTess.Reg = [];
-%         elseif (iFile == 1)
         if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Square') || ~isfield(NewTess.Reg.Square, 'Vertices')
             NewTess.Reg.Square.Vertices      = oldTess.Reg.Square.Vertices;
             NewTess.Reg.AtlasSquare.Vertices = oldTess.Reg.AtlasSquare.Vertices;
@@ -214,8 +221,13 @@ for iFile = 1:length(TessFiles)
             NewTess.Reg.Square.Vertices      = [NewTess.Reg.Square.Vertices;      oldTess.Reg.Square.Vertices];
             NewTess.Reg.AtlasSquare.Vertices = [NewTess.Reg.AtlasSquare.Vertices; oldTess.Reg.AtlasSquare.Vertices];
         end
+    % Remove all spheres if they are not available in all the input files (disabled for now because cortex_cereb works well for projections)
+    % elseif isfield(NewTess, 'Reg') && isfield(NewTess.Reg, 'Square') && isfield(NewTess.Reg.Square, 'Vertices') && ~isempty(NewTess.Reg.Square.Vertices)
+    %     NewTess.Reg.Square.Vertices = [];
+    %     NewTess.Reg.AtlasSquare.Vertices = [];
     end
 end
+
 % Sort scouts by name
 for iAtlas = 1:length(NewTess.Atlas)
     [tmp, iSort] = sort({NewTess.Atlas(iAtlas).Scouts.Label});

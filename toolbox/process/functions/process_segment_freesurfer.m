@@ -23,7 +23,7 @@ function varargout = process_segment_freesurfer( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2021
+% Authors: Francois Tadel, 2021-2022
 
 eval(macro_method);
 end
@@ -60,7 +60,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Extra command-line parameters
     sProcess.options.param.Comment = 'Command-line options:';
     sProcess.options.param.Type    = 'text';
-    sProcess.options.param.Value   = '';
+    sProcess.options.param.Value   = '-contrasurfreg';
     % Option: Delete existing subject
     sProcess.options.delete.Comment = 'Delete FreeSurfer subject if it already exists';
     sProcess.options.delete.Type    = 'checkbox';
@@ -233,7 +233,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, nVertices, isInteractive, par
     else
         T2Nii = [];
     end
-
+    
     % ===== RUN FREESURFER =====
     % T1+FLAIR
     if ~isempty(T2File) && isFlair
