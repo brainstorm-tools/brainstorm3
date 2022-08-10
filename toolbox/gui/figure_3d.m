@@ -3685,8 +3685,12 @@ end
 
 
 %% ===== VIEW HEAD POINTS =====
-function ViewHeadPoints(hFig, isVisible)
+function ViewHeadPoints(hFig, isVisible, isColorDist)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(isColorDist)
+        isColorDist = 0;
+    end
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
     if isempty(iDS)
@@ -3801,10 +3805,22 @@ function ViewHeadPoints(hFig, isVisible)
         end
         % Plot extra head points
         if ~isempty(iExtra)
-            % If distances are available, color-code the points
-            if isfield(HeadPoints, 'Dist') && ~isempty(HeadPoints.Dist)
+            % Color-code the points according to the distance to the displayed surface
+            if isColorDist
+                % Get selected surface
+                [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+                % Compute the distance as in bst_meshfit
+                VertNorm = tess_normals(sSurf.Vertices, sSurf.Faces);
+                iNearest = bst_nearest(sSurf.Vertices, digLoc(iExtra,:), 1, 0, []);
+                dist = abs(sum(VertNorm(iNearest,:) .* (digLoc(iExtra,:) - sSurf.Vertices(iNearest,:)),2));
+                % Compute color array
+                iColor = round((dist - min(dist)) / (max(dist) - min(dist)) * 255) + 1;
+                CMap = jet(512);
+                CData = CMap(iColor+256,:);
+                % Plot colored dots
                 patch(digLoc(iExtra,1), digLoc(iExtra,2), digLoc(iExtra,3), ...
-                    HeadPoints.Dist(iExtra)*1000, ... % mm
+                    dist, ...
+                    'FaceVertexCData', CData, ...
                     'Marker',          'o', ...
                     'MarkerSize',      6, ...
                     'FaceColor',       'none', ...
@@ -3814,11 +3830,6 @@ function ViewHeadPoints(hFig, isVisible)
                     'Parent',          hAxes, ...
                     'UserData',        iExtra, ...
                     'Tag',             'HeadPointsMarkers');
-                set(hAxes, 'CLim', [0, 10]);
-                ColormapType = 'stat1';
-                bst_colormaps('AddColormapToFigure', hFig, ColormapType);
-                bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
-                bst_colormaps('SetColorbarVisible', hFig, 1);
             else   
                 % Display markers
                 line(digLoc(iExtra,1), digLoc(iExtra,2), digLoc(iExtra,3), ...
