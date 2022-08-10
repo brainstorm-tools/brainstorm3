@@ -31,13 +31,12 @@ jnirs = loadsnirf(DataFile);
 
 %% ===== CHANNEL FILE ====
 % Get scaling units
-scale = bst_units_ui(jnirs.nirs.metaDataTags.LengthUnit(:)');
+scale = bst_units_ui(jnirs.nirs.metaDataTags.LengthUnit);
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
     
-    src_pos = jnirs.nirs.probe.sourcePos3D;
-    det_pos = jnirs.nirs.probe.detectorPos3D;
-
+    src_pos = jnirs.nirs.probe.sourcePos3D';
+    det_pos = jnirs.nirs.probe.detectorPos3D';
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(jnirs.nirs.probe.sourcePos) && ~isempty(jnirs.nirs.probe.detectorPos)
     
     src_pos = jnirs.nirs.probe.sourcePos;
@@ -49,13 +48,8 @@ elseif all(isfield(jnirs.nirs.probe, {'sourcePos', 'detectorPos'})) && ~isempty(
     end
 elseif all(isfield(jnirs.nirs.probe, {'sourcePos2D', 'detectorPos2D'})) && ~isempty(jnirs.nirs.probe.sourcePos2D) && ~isempty(jnirs.nirs.probe.detectorPos2D)
     
-    src_pos = jnirs.nirs.probe.sourcePos2D;
-    det_pos = jnirs.nirs.probe.detectorPos2D;
-    
-    if size(src_pos,2) ~= 3
-        src_pos = src_pos';
-        det_pos = det_pos';
-    end
+    src_pos = jnirs.nirs.probe.sourcePos2D';
+    det_pos = jnirs.nirs.probe.detectorPos2D';
     
     src_pos(:,3) = 1;
     det_pos(:,3) = 1;
@@ -67,14 +61,21 @@ end
 % Apply units
 src_pos = scale .* src_pos;
 det_pos = scale .* det_pos;
+
 % Get number of channels
 nChannels = size(jnirs.nirs.data.measurementList, 2);
-nAux = length(jnirs.nirs.aux);
+
+if isfield(jnirs.nirs,'aux')
+    nAux = length(jnirs.nirs.aux);
+else
+    nAux = 0;
+end
 
 % Create channel file structure
 ChannelMat = db_template('channelmat');
 ChannelMat.Comment = 'NIRS-BRS channels';
 ChannelMat.Nirs.Wavelengths = jnirs.nirs.probe.wavelengths;
+
 % NIRS channels
 for iChan = 1:nChannels
     % This assume measure are raw; need to change for Hbo,HbR,HbT
@@ -91,7 +92,7 @@ for iChan = 1:nChannels
 end
 
 % AUX channels
-aux_index = false(1,nAux);
+k_aux =  1;
 for iAux = 1:nAux
     
      if ~isempty(jnirs.nirs.data.dataTimeSeries) && ~isempty(jnirs.nirs.aux(iAux).dataTimeSeries) ...
@@ -105,13 +106,14 @@ for iAux = 1:nAux
         
      end
      
-    aux_index(iAux)=1;
     channel = jnirs.nirs.aux(iAux);
-    ChannelMat.Channel(nChannels+iAux).Type = 'NIRS_AUX';
-    ChannelMat.Channel(nChannels+iAux).Name = strtrim(str_remove_spec_chars(channel.name(:)'));
-end
+    ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
+    ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(channel.name));
 
-nAux = sum(aux_index);
+    k_aux = k_aux + 1;
+end
+nAux = k_aux - 1;
+
 ChannelMat.Channel = ChannelMat.Channel(1:(nChannels+nAux));
 % Check channel names
 for iChan = 1:length(ChannelMat.Channel)
@@ -125,25 +127,30 @@ end
 
 % Anatomical landmarks
 if isfield(jnirs.nirs.probe, 'landmarkLabels')
-    for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos, 1)
-        name = strtrim(str_remove_spec_chars(reshape(jnirs.nirs.probe.landmarkLabels(:,:,iLandmark),1,[])));
-        coord = scale .* jnirs.nirs.probe.landmarkPos(iLandmark,:);
+    if isfield(jnirs.nirs.probe, 'landmarkPos') && ~isfield(jnirs.nirs.probe, 'landmarkPos3D')
+        jnirs.nirs.probe.landmarkPos3D = jnirs.nirs.probe.landmarkPos;
+    end
+
+    for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 2)
+        name = strtrim(str_remove_spec_chars(jnirs.nirs.probe.landmarkLabels{iLandmark}));
+        coord = scale .* jnirs.nirs.probe.landmarkPos3D(:,iLandmark);
+
         % Fiducials NAS/LPA/RPA
-        switch name
-            case 'Nasion'
-                ChannelMat.SCS.NAS = coord;
+        switch lower(name)
+            case {'nasion','nas'}
+                ChannelMat.SCS.NAS = coord';
                 ltype = 'CARDINAL';
-            case 'LeftEar'
-                ChannelMat.SCS.LPA = coord;
+            case {'leftear', 'lpa'}
+                ChannelMat.SCS.LPA = coord';
                 ltype = 'CARDINAL';
-            case 'RightEar'    
-                ChannelMat.SCS.RPA = coord;
+            case {'rightear','rpa'}
+                ChannelMat.SCS.RPA = coord';
                 ltype = 'CARDINAL';
             otherwise
                 ltype = 'EXTRA';
         end
         % Add head point
-        ChannelMat.HeadPoints.Loc(:, end+1) = coord';
+        ChannelMat.HeadPoints.Loc(:, end+1) = coord;
         ChannelMat.HeadPoints.Label{end+1}  = name;
         ChannelMat.HeadPoints.Type{end+1}   = ltype;
     end           
@@ -160,9 +167,8 @@ DataMat.Comment     = fBase;
 DataMat.DataType    = 'recordings';
 DataMat.Device      = 'Unknown';
 
-
 if(size(jnirs.nirs.data.dataTimeSeries,1) == nChannels)
-    DataMat.F           = jnirs.nirs.data.dataTimeSeries;
+    DataMat.F = jnirs.nirs.data.dataTimeSeries;
 else
    DataMat.F  = jnirs.nirs.data.dataTimeSeries'; 
 end   
@@ -191,7 +197,7 @@ DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 
 for iEvt = 1:length(jnirs.nirs.stim)
     
-    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(jnirs.nirs.stim(iEvt).name(:)'));
+    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(jnirs.nirs.stim(iEvt).name));
     if ~isfield(jnirs.nirs.stim(iEvt), 'data')
             % Events structure
         warning(sprintf('No data found for event: %s',jnirs.nirs.stim(iEvt).name))
