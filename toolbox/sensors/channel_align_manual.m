@@ -1,4 +1,4 @@
-function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType )
+function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType, isColorDist )
 % CHANNEL_ALIGN_MANUAL: Align manually an electrodes net on the scalp surface of the subject.
 % 
 % USAGE:  hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType='cortex')
@@ -34,6 +34,9 @@ global GlobalData;
 
 % Parse inputs
 hFig = [];
+if (nargin < 5) || isempty(isColorDist)
+    isColorDist = 1;
+end
 if (nargin < 4) || isempty(SurfaceType)
     if ismember(Modality, {'SEEG'}) 
         SurfaceType = 'cortex';
@@ -190,7 +193,7 @@ end
 
 % ===== DISPLAY HEAD POINTS =====
 % Display head points
-figure_3d('ViewHeadPoints', hFig, 1);
+figure_3d('ViewHeadPoints', hFig, 1, isColorDist);
 % Get patch and vertices
 hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
 hHeadPointsLabels  = findobj(hFig, 'Tag', 'HeadPointsLabels');
@@ -352,7 +355,6 @@ elseif gChanAlign.isEeg
     gChanAlign.hButtonLabels    = uitoggletool(hToolbar, 'CData', java_geticon('ICON_LABELS'), 'TooltipString', 'Show/Hide electrodes labels', 'ClickedCallback', @ToggleLabels);
     gChanAlign.hButtonEditLabel = uipushtool(  hToolbar, 'CData', java_geticon('ICON_EDIT'),   'TooltipString', 'Edit selected channel label', 'ClickedCallback', @EditLabel);
 end
-gChanAlign.hButtonColorDist = uitoggletool(hToolbar, 'CData', java_geticon('ICON_CHANNEL'),      'TooltipString', 'Color head points by distance',                            'ClickedCallback', @ToggleColorDist, 'State', 'on');
 gChanAlign.hButtonTransX   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_X'), 'TooltipString', 'Translation/X: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation, 'separator', 'on');
 gChanAlign.hButtonTransY   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Y'), 'TooltipString', 'Translation/Y: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
 gChanAlign.hButtonTransZ   = uitoggletool(hToolbar, 'CData', java_geticon('ICON_TRANSLATION_Z'), 'TooltipString', 'Translation/Z: Press right button and move mouse up/down', 'ClickedCallback', @SelectOperation);
@@ -646,11 +648,17 @@ function UpdatePoints(iSelChan)
     if gChanAlign.isHeadPoints
         % Extra head points
         set(gChanAlign.hHeadPointsMarkers, 'Vertices', gChanAlign.HeadPointsMarkersLoc);
-        if strcmpi(get(gChanAlign.hButtonColorDist, 'State'), 'on')
+        if strcmpi(get(gChanAlign.hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
             % Update distance color
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
+            % Update colorbar scale
+            ColormapInfo = getappdata(gChanAlign.hFig, 'Colormap');
+            ColormapType = 'stat1';
+            if strcmpi(ColormapInfo.Type, ColormapType)
+                bst_colormaps('ConfigureColorbar', gChanAlign.hFig, ColormapType, 'stat', 'mm');
+            end
         end
         % Fiducials
         if ~isempty(gChanAlign.hHeadPointsFid)
@@ -990,25 +998,6 @@ function ToggleHelmet(varargin)
         set(gChanAlign.hHelmetPatch, 'Visible', 'on');
     else
         set(gChanAlign.hHelmetPatch, 'Visible', 'off');
-    end
-end
-
-
-%% ===== COLOR HEAD POINTS =====
-function ToggleColorDist(varargin)
-    global gChanAlign;
-    % Update button color
-    gui_update_toggle(gChanAlign.hButtonColorDist);
-    if strcmpi(get(gChanAlign.hButtonColorDist, 'State'), 'on')
-        % Color points according to distance to surface
-        Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
-            get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
-        set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000, ...
-            'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
-    else
-        % Conventional fixed point color
-        set(gChanAlign.hHeadPointsMarkers, ...% 'CData', 'w', ...
-            'MarkerFaceColor', [.3 1 .3], 'MarkerEdgeColor', [.4 .7 .4]);
     end
 end
 

@@ -1114,6 +1114,24 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             end
                         end
                     end
+                % CTRL+H : Head points
+                case 'h'
+                    if ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ...
+                            ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc) && ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Topography')
+                        % Are head points visible
+                        hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
+                        isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
+                        % Are head points color coded by distance
+                        isColorDist = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat');
+                        % Cycle between three modes: Hide, Show plain, Show color coded 
+                        if isVisible && isColorDist
+                            ViewHeadPoints(hFig, 0, 0);
+                        elseif isVisible
+                            ViewHeadPoints(hFig, 1, 1);
+                        else
+                            ViewHeadPoints(hFig, 1, 0);
+                        end
+                    end
                 % CTRL+I : Save as image
                 case 'i'
                     if ismember('control', keyEvent.Modifier)
@@ -1953,6 +1971,12 @@ function DisplayFigurePopup(hFig)
             isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
             jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible));
             jItem.setSelected(isVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_MASK));
+            % Are head points color coded by distance
+            isColorDist = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat');
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Color head points by distance', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, isVisible, ~isColorDist));
+            jItem.setSelected(isColorDist);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_MASK));
         end
         jMenuFigure.addSeparator();
         % Change background color
@@ -3689,8 +3713,12 @@ end
 
 
 %% ===== VIEW HEAD POINTS =====
-function ViewHeadPoints(hFig, isVisible)
+function ViewHeadPoints(hFig, isVisible, isColorDist)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(isColorDist)
+        isColorDist = 0;
+    end
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
     if isempty(iDS)
@@ -3728,6 +3756,32 @@ function ViewHeadPoints(hFig, isVisible)
             set([hHeadPointsMarkers(:)' hHeadPointsLabels(:)'], 'Visible', 'on');
         else
             set([hHeadPointsMarkers(:)' hHeadPointsLabels(:)'], 'Visible', 'off');
+        end
+        % Toggle color modes
+        ColormapInfo = getappdata(hFig, 'Colormap');
+        ColormapType = 'stat1';
+        if isColorDist && ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+            % Color points according to distance to surface
+            % Get selected surface
+            [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+            % Compute the distance
+            Dist = bst_surfdist(get(hHeadPointsMarkers, 'Vertices'), sSurf.Vertices, sSurf.Faces);
+            set(hHeadPointsMarkers, 'CData', Dist * 1000, ...
+                'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
+            if ~ismember(ColormapInfo.AllTypes, ColormapType)
+                % Add missing colormap (color was toggled after points were displayed)
+                bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+            end
+            if strcmpi(ColormapInfo.Type, ColormapType)
+                bst_colormaps('SetColorbarVisible', hFig, 1);
+                bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
+            end
+        elseif ~isColorDist && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+            % Conventional fixed color
+            set(hHeadPointsMarkers, 'MarkerFaceColor', [.3 1 .3], 'MarkerEdgeColor', [.4 .7 .4]);
+            if strcmpi(ColormapInfo.Type, ColormapType)
+                bst_colormaps('SetColorbarVisible', hFig, 0);
+            end
         end
     % If head points objects were not created yet: create them
     elseif isVisible
@@ -3805,7 +3859,7 @@ function ViewHeadPoints(hFig, isVisible)
         end
         % Plot extra head points
         if ~isempty(iExtra)
-            % If distances, color code points.
+            % Color code points by distance
             if isColorDist
                 % Get selected surface
                 [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
@@ -3814,12 +3868,6 @@ function ViewHeadPoints(hFig, isVisible)
                 CData = Dist * 1000; % mm
                 MarkerFaceColor = 'flat';
                 MarkerEdgeColor = 'flat';
-                % TBD if we can use colormaps here...
-                ColormapType = 'stat1';
-                bst_colormaps('AddColormapToFigure', hFig, ColormapType);
-                % How can the units be retained when changing colormap through the GUI? 
-                bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
-                bst_colormaps('SetColorbarVisible', hFig, 1);
             else
                 CData = 'w'; % any color, not displayed
                 MarkerFaceColor = [.3 1 .3];
@@ -3836,6 +3884,13 @@ function ViewHeadPoints(hFig, isVisible)
                 'Marker',          'o', ...
                 'UserData',        iExtra, ...
                 'Tag',             'HeadPointsMarkers');
+            if isColorDist
+                % TBD if we should use colormaps or not here.
+                ColormapType = 'stat1';
+                bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+                bst_colormaps('SetColorbarVisible', hFig, 1);
+                bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
+            end
         end
     end
 end
