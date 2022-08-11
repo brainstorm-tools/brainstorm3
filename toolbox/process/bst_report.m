@@ -1005,7 +1005,7 @@ function html = PrintToHtml(Reports, isFullReport)
             jImage.setRGB(0, 0, sz(2), sz(1), imgInt(:), 0, sz(2));
             % Convert image to PNG
             jByteStream = java.io.ByteArrayOutputStream();
-            javax.imageio.ImageIO.write(jImage, 'gif', jByteStream);
+            javax.imageio.ImageIO.write(jImage, 'png', jByteStream);
             % Encode PNG image in Base64
             jStringImage = encoder.encode(jByteStream.toByteArray());
             % Display image in HTML
