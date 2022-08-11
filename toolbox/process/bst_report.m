@@ -1015,7 +1015,7 @@ function html = PrintToHtml(Reports, isFullReport)
             else
                 html = [html, '<BR>'];
             end
-            html = [html, '<IMG src="data:image/gif;base64,' char(jStringImage) '" /><BR><BR>'];
+            html = [html, '<IMG src="data:image/png;base64,' char(jStringImage) '" /><BR><BR>'];
         end
     end
     
