@@ -2458,7 +2458,9 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                             % Single file
                             else
                                 iFile = find(strcmpi(RawFiles, optValue{1}));
-                                optStr = strrep(optStr, ['''' optValue{1} ''''], ['RawFiles{' num2str(iFile) '}']);                                
+                                if ~isempty(iFile)
+                                    optStr = strrep(optStr, ['''' optValue{1} ''''], ['RawFiles{' num2str(iFile) '}']);
+                                end
                             end
                         elseif isfield(opt, 'Type') && strcmpi(opt.Type, 'subjectname')
                             iFile = find(strcmpi(SubjNames, optValue));

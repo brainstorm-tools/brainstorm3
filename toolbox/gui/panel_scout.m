@@ -526,6 +526,12 @@ function UpdateMenus(sAtlas, sSurf)
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
         end
+        % Project to contralateral hemisphere
+        if (nMenus >= 1)
+            jMenuProject.addSeparator();
+        end
+        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
+        % Add scroller
         if (nMenus > 20)
             darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);
         end
@@ -3697,7 +3703,7 @@ function JoinScouts(varargin)
     % Display new scout
     PlotScouts(iNewScout);
     % Update "Scouts Manager" panel
-    UpdateScoutsList();   
+    UpdateScoutsList();
     % Select last scout in list (new scout)
     SetSelectedScouts(iNewScout);
 end
@@ -4002,10 +4008,10 @@ function ImportScoutsFromMatlab()
 end
 
 
-%% ===== PROJECT SCOUTS =====
+%% ===== PROJECT SCOUTS BETWEEN SURFACES =====
 function ProjectScouts(srcSurfFile, destSurfFile)
     % Get current atlas
-    [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
+    sAtlas = GetAtlas();
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4015,7 +4021,7 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     % Use only the selected scouts
     sAtlas.Scouts = sScouts;
     % Progress bar
-    bst_progress('start', 'Project sources', 'Computing interpolation...');
+    bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
     nScoutProj = bst_project_scouts(srcSurfFile, destSurfFile, sAtlas);
     % Unload destination surface
@@ -4024,6 +4030,51 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     bst_progress('stop');
     % Message
     java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, destSurfFile));
+end
+
+
+%% ===== PROJECT SCOUTS BETWEEN HEMIPSHERES =====
+function ProjectScoutsContralateral(srcSurfFile)
+
+    % Save any modification to the surface
+    SaveModifications();
+
+    % Get current atlas
+    [sAtlas, iAtlas, sSurf] = GetAtlas();
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    if isempty(sAtlas) || isempty(sScouts)
+        bst_error('No scouts selected.', 'Project scouts', 0);
+        return;
+    end
+    % Use only the selected scouts
+    sAtlas.Scouts = sScouts;
+    % Progress bar
+    bst_progress('start', 'Project scouts', 'Computing interpolation...');
+    % Call function to project scouts
+    sScoutsNew = bst_project_scouts_contra(srcSurfFile, sAtlas);
+    if isempty(sScoutsNew)
+        return;
+    end
+    
+    % Set default seeds
+    sScoutsNew = SetScoutsSeed(sScoutsNew, sSurf.Vertices);
+    % Set handles structure
+    sTemplate = db_template('scout');
+    for i = 1:length(sScoutsNew)
+        sScoutsNew(i).Handles = sTemplate.Handles;
+    end
+    % Save new scout
+    iNewScouts = SetScouts([], 'Add', sScoutsNew);
+    % Display new scout
+    PlotScouts(iNewScouts);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScouts);
+
+    % Close progress bar
+    bst_progress('stop');
 end
 
 

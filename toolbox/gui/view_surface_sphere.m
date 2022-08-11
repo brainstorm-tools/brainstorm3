@@ -158,7 +158,7 @@ else
     TessInfo = getappdata(hFig, 'Surface');
     % Replace the vertices in the patch
     set(TessInfo.hPatch, 'Vertices', sphVertices);
-    set(TessInfo.hPatch, 'Faces', TessMat.Faces);
+    set(TessInfo.hPatch, 'Faces', TessMat(1).Faces);
     % Replace the vertice in the loaded structure
     [sSurf, iSurf] = bst_memory('GetSurface', SurfaceFile);
     % Copy the existing loaded surface
@@ -166,8 +166,8 @@ else
     GlobalData.Surface(iSurfNew) = GlobalData.Surface(iSurf);
     % Replace the vertice in the loaded structure
     GlobalData.Surface(iSurfNew).Vertices = sphVertices;
-    GlobalData.Surface(iSurfNew).Faces = TessMat.Faces;
-    GlobalData.Surface(iSurfNew).Faces = TessMat.VertConn;
+    GlobalData.Surface(iSurfNew).Faces = TessMat(1).Faces;
+    GlobalData.Surface(iSurfNew).Faces = TessMat(1).VertConn;
     % Change the filename so that it does not overlap with the display of the regular brain
     GlobalData.Surface(iSurfNew).FileName = [GlobalData.Surface(iSurf).FileName, '|reg'];
     % Edit the filename in the TessInfo structure
@@ -178,6 +178,8 @@ else
     GlobalData.DataSet(iDS).StudyFile   = '';
     GlobalData.DataSet(iDS).DataFile    = '';
     GlobalData.DataSet(iDS).ChannelFile = '';
+
+    TessMat = TessMat(1); % Only display template sphere for now
 end
 
 % ===== CONFIGURE FIGURE =====
