@@ -56,7 +56,8 @@ EdgesV(:,:,1) = Vertices(Faces(:,2),:) - Vertices(Faces(:,1),:);
 EdgesV(:,:,2) = Vertices(Faces(:,3),:) - Vertices(Faces(:,2),:);
 EdgesV(:,:,3) = Vertices(Faces(:,1),:) - Vertices(Faces(:,3),:);
 % First edge to second edge: counter clockwise = up
-FaceNormals = normr(cross(EdgesV(:,:,1), EdgesV(:,:,2)));
+m = cross(EdgesV(:,:,1), EdgesV(:,:,2));
+FaceNormals = sqrt(ones./(sum((m.*m)')))'*ones(1,size(m,2)).*m;
 %FaceArea = sqrt(sum(FaceNormalsA.^2, 2));
 % Perpendicular vectors to edges, pointing inside triangular face.
 for e = 3:-1:1
@@ -104,3 +105,4 @@ end
 
 Dist = min([DistVert, DistEdge, DistFace], [], 2);
 end
+
