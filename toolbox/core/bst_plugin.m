@@ -261,6 +261,15 @@ function PlugDesc = GetSupported(SelPlug)
     % PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
 
+    % === I/O: BCI2000 ===
+    PlugDesc(end+1)              = GetStruct('bci2000');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://bci2000.org/downloads/mex.zip';
+    PlugDesc(end).URLinfo        = 'https://www.bci2000.org/mediawiki/index.php/User_Reference:Matlab_MEX_Files';
+    PlugDesc(end).TestFile       = 'load_bcidat.m';
+    PlugDesc(end).CompiledStatus = 0;
+
     % === I/O: BLACKROCK ===
     PlugDesc(end+1)              = GetStruct('blackrock');
     PlugDesc(end).Version        = '5.5.2.0';

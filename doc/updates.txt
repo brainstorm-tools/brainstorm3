@@ -1,5 +1,6 @@
 August 2022
 - Anatomy: Project scouts between hemispheres (FreeSurfer option contrasurfreg)
+- IO: Support for BCI2000 .dat recordings
 --------------------------------------------------------------
 July 2022
 - Doc: Updated SEEG/epileptogenicity tutorial (new BIDS dataset)

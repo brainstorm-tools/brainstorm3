@@ -33,7 +33,7 @@ function [sFile, ChannelMat, errMsg, DataMat, ImportOptions] = in_fopen(DataFile
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2021
+% Authors: Francois Tadel, 2009-2022
 
 if (nargin < 3) || isempty(ImportOptions)
     ImportOptions = db_template('ImportOptions');
@@ -93,6 +93,8 @@ switch (FileFormat)
         [sFile, ChannelMat] = in_fopen_msr(DataFile);
     case 'EEG-AXION'
         [sFile, ChannelMat] = in_fopen_axion(DataFile);
+    case 'EEG-BCI2000'
+        [sFile, ChannelMat] = in_fopen_bci2000(DataFile);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         [sFile, ChannelMat] = in_fopen_blackrock(DataFile);
     case 'EEG-BRAINAMP'
