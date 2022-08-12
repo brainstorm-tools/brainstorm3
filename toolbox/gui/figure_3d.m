@@ -1261,8 +1261,10 @@ function ResetView(hFig)
     hAxes = findobj(hFig, 'Tag', 'Axes3D');
     % Reset zoom
     zoom(hAxes, 'out');
-    % Enforce camera target at (0,0,0)
-    camtarget(hAxes, [0 0 0]);
+    % Enforce camera target at (0,0,0) when the axes are visible
+    if ~isempty(findobj(hAxes, 'Tag', 'AxisXYZ'))
+        camtarget(hAxes, [0 0 0]);
+    end
     % 2D LAYOUT: separate function
     if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
         GlobalData.DataSet(iDS).Figure(iFig).Handles.DisplayFactor = 1;
@@ -1353,8 +1355,10 @@ function SetStandardView(hFig, viewNames)
     end
     % Update camera position
     view(hAxes, newView * R);
-    % view() changes the camera target. Enforce (0,0,0).
-    camtarget(hAxes, [0,0,0]);
+    % Enforce camera target at (0,0,0) when the axes are visible
+    if ~isempty(findobj(hAxes, 'Tag', 'AxisXYZ'))
+        camtarget(hAxes, [0 0 0]);
+    end
     camup(hAxes, double(newCamup * R));
     % Update head light position
     camlight(findobj(hAxes, '-depth', 1, 'Tag', 'FrontLight'), 'headlight');
