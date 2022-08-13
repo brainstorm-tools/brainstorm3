@@ -4095,7 +4095,7 @@ end
 %% ===== FILL MISSING FIELDS =====
 function bstPref = FillMissingFields(PrefName, defPref)
     global GlobalData;
-    if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, PrefName)
+    if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, PrefName) && isstruct(GlobalData.Preferences.(PrefName))
         bstPref = GlobalData.Preferences.(PrefName);
         bstPref = struct_copy_fields(bstPref, defPref, 0);
     else
