@@ -160,7 +160,7 @@ for i = 1:length(sStudies)
         [temp_, Comment] = bst_fileparts(sStudy.FileName);
     end
         
-    nodeStudy = BstNode(nodeType, Comment, sStudy.FileName, 0, sStudy.Id);
+    nodeStudy = BstNode(nodeType, Comment, sStudy.FileName, iSubject, sStudy.Id);
 
     % Expand node if this is the currently selected study
     if ~isempty(ProtocolInfo.iStudy) && ProtocolInfo.iStudy == sStudy.Id
