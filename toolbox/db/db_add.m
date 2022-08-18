@@ -209,12 +209,10 @@ else
     end
     
     % Get names of other files in same folder to ensure it's unique
+    extraQry = '';
     qryCond = struct('Study', iTarget, 'Type', fileType);
-    if isempty(ParentFile)
-        extraQry = 'AND ParentFile IS NULL';
-    else
+    if ~isempty(ParentFile)
         qryCond.ParentFile = ParentFile;
-        extraQry = '';
     end
     % Special case: only check result files with same parent data file
     if strcmpi(fileType, 'results')
@@ -246,13 +244,7 @@ end
 bst_save(OutputFileFull, sMat, matVer);
 % Add to database
 if isAnatomy
-    sFile = db_template('AnatomyFile');
-    sFile.Subject = iTarget;
-    sFile.Type = fileType;
-    sFile.FileName = OutputFile;
-    sFile.Name = sMat.Comment;
-    %TODO: sFile.SurfaceType
-    db_set(sqlConn, 'AnatomyFile', sFile);
+    db_add_anatomyfile(iTarget, OutputFile);
 else
     sFile = db_template('FunctionalFile');
     sFile.Study = iTarget;
@@ -269,8 +261,7 @@ else
     end
     %TODO, get rest of metadata from file (see db_parse_study)
     db_set(sqlConn, 'FunctionalFile', sFile);
-    % Update count of parent file
-    db_set(sqlConn, 'ParentCount', ParentFile, '+', 1);
+    % Update count of parent file is done in db_set('FunctionalFile')
 end
 sql_close(sqlConn);
 

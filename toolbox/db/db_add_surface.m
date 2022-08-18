@@ -31,6 +31,12 @@ function [ iSurface ] = db_add_surface( iSubject, FileName, Comment, SurfaceType
 %
 % Authors: Francois Tadel, 2008-2019
 
+% Find @default_subject Id
+if iSubject == 0
+    sSubject = db_get('Subject', '@default_subject', 'Id');
+    iSubject = sSubject.Id;
+end
+
 % If surface type is not defined : detect it
 if (nargin < 4)
     % Get surface type 
@@ -45,34 +51,17 @@ if (nargin < 4)
         otherwise,          SurfaceType = 'Other';  
     end
 end
-% Get protocol's subjects database
-ProtocolSubjects = bst_get('ProtocolSubjects');
 
-% Fill Surface structure
-newSurface = db_template('Surface');
-newSurface.FileName    = file_short(FileName);
-newSurface.Comment     = Comment;
-newSurface.SurfaceType = SurfaceType;
-
-% Add Surface structure to database
-if (iSubject == 0) % Default subject
-    iSurface = length(ProtocolSubjects.DefaultSubject.Surface) + 1;
-	ProtocolSubjects.DefaultSubject.Surface(iSurface) = newSurface;
-else % Normal subject
-    iSurface = length(ProtocolSubjects.Subject(iSubject).Surface) + 1;
-	ProtocolSubjects.Subject(iSubject).Surface(iSurface) = newSurface;
-end
-% Update database
-bst_set('ProtocolSubjects', ProtocolSubjects);
+% Add surface file to database
+iAnatFile = db_add_anatomyfile(iSubject, FileName, Comment, SurfaceType);
 % Make surface as default (if not 'Other')
 if ~strcmpi(SurfaceType, 'Other')
-    db_surface_default(iSubject, SurfaceType, iSurface);
+    db_surface_default(iSubject, SurfaceType, iAnatFile);
 end
 
 % ===== UPDATE TREE =====
 panel_protocols('UpdateNode', 'Subject', iSubject);
-%panel_protocols('SelectNode', [], 'subject', iSubject, -1 );
-panel_protocols('SelectNode', [], newSurface.FileName);
+panel_protocols('SelectNode', [], FileName);
 % Save database
 db_save();
 

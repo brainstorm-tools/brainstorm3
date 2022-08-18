@@ -65,6 +65,10 @@ function varargout = db_get(varargin)
 %    - db_get('FilesInFileList', CondQuery, Fields)   : Get FunctionalFile belonging to a list with Query
 %    - db_get('ParentFromFunctionalFile', FileId,   ParentFields)   : Find ParentFile for FunctionalFile with FileId
 %    - db_get('ParentFromFunctionalFile', FileName,   ParentFields) : Find ParentFile for FunctionalFile with FileName
+%    - db_get('ChildrenFromFunctionalFile', FileId,   ChildrenType, ChildrenFields, WholeProtocol) : Find ChildrenFiles for FunctionalFile with FileId
+%    - db_get('ChildrenFromFunctionalFile', FileName, ChildrenType, ChildrenFields, WholeProtocol) : Find ChildrenFiles for FunctionalFile with FileName
+%    - db_get('FilesForKernel', KernelFileId,   Type, Fields) : Find FunctionalFiles for Kernel with FileId
+%    - db_get('FilesForKernel', KernelFileName, Type, Fields) : Find FunctionalFiles for Kernel with FileName
 %
 % ====== ANY FILE ======================================================================
 %    - db_get('AnyFile', FileName)         : Get any file by FileName
@@ -824,6 +828,101 @@ switch contextName
         end
         % Select query
         varargout{1} = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
+
+
+%% ==== CHILDREN FILES FROM FUNCTIONAL FILE ====
+    % sFunctionalFiles = db_get('ChildrenFromFunctionalFile', FileId,   ChildrenType, ChildrenFields, WholeProtocol)
+    %                  = db_get('ChildrenFromFunctionalFile', FileName, ChildrenType, ChildrenFields, WholeProtocol)
+    case 'ChildrenFromFunctionalFile'
+        children_type = [];
+        fields = '*';
+        whole_protocol = 0;
+        varargout{1} = [];
+        if length(args) > 1
+            children_type = args{2};
+        end
+        if length(args) > 2
+            fields = args{3};
+        end
+        if ischar(fields), fields = {fields}; end
+        if length(args) > 3
+            whole_protocol = args{4};
+        end
+        % Prepend 'children.' to requested fields
+        if ~strcmp('*', fields{1})
+            fields = cellfun(@(x) ['children.' x], fields, 'UniformOutput', 0);
+        end
+        % Look for children in children. E.g, data > results > timefreq
+        alsoGrandChildren = isempty(children_type) || ismember(children_type, {'timefreq', 'dipoles'});
+
+        % Join query
+        joinQry = 'FunctionalFile children INNER JOIN FunctionalFile parent1 ON children.ParentFile = parent1.Id';
+        if alsoGrandChildren
+            joinQry = [joinQry, ' LEFT JOIN FunctionalFile parent2 ON parent1.ParentFile = parent2.Id '];
+        end
+        % Add query
+        addQuery = 'AND (parent1.';
+        % Complete query with FileName of FileID
+        if ischar(args{1})
+            addQuery = [addQuery 'FileName = "' file_short(args{1}) '"'];
+            if alsoGrandChildren
+                addQuery = [addQuery, ' OR parent2.FileName = "' file_short(args{1}) '"'];
+            end
+        else
+            addQuery = [addQuery 'Id = ' num2str(args{1})];
+            if alsoGrandChildren
+                addQuery = [addQuery, ' OR parent2.Id = "' num2str(args{1}) '"'];
+            end
+        end
+        addQuery = [addQuery , ')'];
+        % If NOT whole protocol complete query to restrict to same study
+        if ~whole_protocol
+            addQuery = [addQuery ' AND (children.Study = parent1.Study'];
+            if alsoGrandChildren
+                addQuery = [addQuery, ' OR children.Study = parent2.Study'];
+            end
+        end
+        addQuery = [addQuery , ')'];
+        % Complete query to filter children type
+        if ~isempty(children_type)
+            addQuery = [addQuery ' AND children.Type = "' children_type '"'];
+        end
+
+        % Select query
+        varargout{1} = sql_query(sqlConn, 'SELECT', joinQry, [], fields, addQuery);
+
+
+%% ==== DEPENDENT FUNCTIONAL FILES FOR KERNEL FILE ====
+    % sFunctionalFiles = db_get('FilesForKernel', KernelFileId,   Type, Fields)
+    %                  = db_get('FilesForKernel', KernelFileName, Type, Fields)
+    case 'FilesForKernel'
+        dep_type = [];
+        dep_fields = '*';
+        varargout{1} = [];
+        if length(args) > 1
+            dep_type = args{2};
+        end
+        if length(args) > 2
+            dep_fields = args{3};
+        end
+        if ischar(dep_fields), dep_fields = {dep_fields}; end
+        % Get KernelFileName
+        kernelFileName = args{1};
+        if ~ischar(kernelFileName)
+            sKernel = db_get(sqlConn, 'FunctionalFile', kernelFileName, 'FileName');
+            kernelFileName = sKernel.FileName;
+        end
+        % Find all the result files in DB that are links related to this kernel and have children
+        condQry = struct('Type', 'result', 'ExtraNum', 1);
+        addQuery = [' AND FileName LIKE "link|', kernelFileName, '%"'];
+        addQuery = [addQuery, ' AND NumChildren > 0'];
+        sResultFiles = sql_query(sqlConn, 'SELECT', 'FunctionalFile', condQry, 'Id', addQuery);
+        % For each of this result files find their children
+        varargout{1} = [];
+        for i = 1 : length(sResultFiles)
+            sChildrenFiles = db_get(sqlConn, 'ChildrenFromFunctionalFile', sResultFiles(i).Id, dep_type, dep_fields);
+            varargout{1} = [varargout{1}, sChildrenFiles];
+        end
 
 
 %% ==== ANY FILE ====

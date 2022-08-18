@@ -80,8 +80,12 @@ DefaultFile = file_win2unix(DefaultFile);
 
 % ===== UPDATE DATABASE =====
 % Save in database selected file
-sSubject.(['i' SurfaceType]) = iSurface;
-db_set(sqlConn, 'Subject', sSubject, iSubject);
+if isempty(iSurface)
+    db_set(sqlConn, 'Subject', 'ClearField', iSubject, ['i' SurfaceType]);
+else
+    sSubject.(['i' SurfaceType]) = iSurface;
+    db_set(sqlConn, 'Subject', sSubject, iSubject);
+end
 % Unlock Subject
 lock_release(sqlConn, LockId);
 sql_close(sqlConn);

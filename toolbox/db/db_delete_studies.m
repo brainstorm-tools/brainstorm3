@@ -25,14 +25,18 @@ function db_delete_studies( iStudies )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2009-2014
+%          Raymundo Cassani, 2022
 
-ProtocolInfo    = bst_get('ProtocolInfo');
-ProtocolStudies = bst_get('ProtocolStudies');
-iRemoved = [];
+sqlConn = sql_connect();
+ProtocolInfo = bst_get('ProtocolInfo');
+save_db = 0;
+
 % For each study
 for iStudy = iStudies
+    % Get filename of study
+    sStudy = db_get(sqlConn, 'Study', iStudy, 'FileName');
     % Delete study directory (and all its subdirectories)
-    dirStudy = bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(ProtocolStudies.Study(iStudy).FileName));
+    dirStudy = bst_fullfile(ProtocolInfo.STUDIES,  bst_fileparts(sStudy.FileName));
     if file_exist(dirStudy)
         result = file_delete(dirStudy, 1, 1);
     else
@@ -40,9 +44,13 @@ for iStudy = iStudies
     end
     % If the study was removed
     if (result == 1)
-        iRemoved(end+1) = iStudy;
+        % TODO: This could be done more efficient with ON DELETE CASCADE
+        % Remove Study from DB
+        db_set(sqlConn, 'Study', 'Delete', iStudy);
+        % Remove FunctionalFiles for Study from DB
+        db_set(sqlConn, 'FilesWithStudy', 'Delete', iStudy);
+        save_db = 1;
     end
-    
 %     % Try to remove all the parents dirs until STUDIES dir, if they are empty
 %     parentDir = bst_fileparts(bst_fileparts(ProtocolStudies.Study(iStudy).FileName), 1);
 %     while isDeleted && ~isempty(parentDir)
@@ -57,13 +65,10 @@ for iStudy = iStudies
 %         parentDir = bst_fileparts(parentDir, 1);
 %     end
 end
+sql_close(sqlConn);
 
-% If something was deleted
-if ~isempty(iRemoved)
-    % Remove associated studies from database
-    ProtocolStudies.Study(iRemoved) = [];
-    bst_set('ProtocolStudies', ProtocolStudies);
-    % Save database
+% If something was deleted, save database
+if save_db
     db_save();
 end
 

@@ -25,24 +25,31 @@ function db_delete_subjects( iSubjects )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012
+%          Raymundo Cassani, 2022
 
-ProtocolInfo     = bst_get('ProtocolInfo');
-ProtocolSubjects = bst_get('ProtocolSubjects');
-% Remove invalid indices and default subject
-iInvalid = find(iSubjects <= 0);
+sqlConn = sql_connect();
+ProtocolInfo = bst_get('ProtocolInfo');
+save_db = 0;
+
+% Get @default_subject Id
+sSubjectDef = db_get(sqlConn, 'Subject', '@defaul_subject', 'Id');
+
+% Cannot delete default subject
+iInvalid = find(iSubjects == sSubjectDef.Id);
 if ~isempty(iInvalid)
     disp('DELETE> Cannot delete default subject.');
     iSubjects(iInvalid) = [];
 end
 
+% TODO: This could be done more efficient with ON DELETE CASCADE
 % For each subject
 for i = 1:length(iSubjects)
-    SubjectFile = ProtocolSubjects.Subject(iSubjects(i)).FileName;
+    sSubject = db_get(sqlConn, 'Subject', iSubjects(i), {'Id','FileName'});
     % === DELETE STUDIES ===
     % Find all the studies that are associated with the current brainstormsubject file
-    [sStudies, iStudies] = bst_get('StudyWithSubject', SubjectFile, 'intra_subject', 'default_study');
+    sStudies = db_get(sqlConn, 'StudiesFromSubject', sSubject.Id, {'Id','FileName'}, 'intra_subject', 'default_study');
     if ~isempty(sStudies)
-        db_delete_studies(iStudies);
+        db_delete_studies([sStudies.Id]);
         % Delete the studies folder for the subject
         if (file_delete(bst_fullfile(ProtocolInfo.STUDIES, bst_fileparts(bst_fileparts(sStudies(1).FileName))), 1, 1) ~= 1)
             return;
@@ -50,17 +57,22 @@ for i = 1:length(iSubjects)
     end    
     % === DELETE SUBJECT ===
     % Remove subject's directory
-    if (file_delete(bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(SubjectFile)), 1, 1) ~= 1)
+    if (file_delete(bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(sSubject.FileName)), 1, 1) ~= 1)
         return;
     end
+    % Remove Subject from DB
+    db_set(sqlConn, 'Subject', 'Delete', sSubject.Id);
+    % Remove AnatomyFiles for Subject from DB
+    db_set(sqlConn, 'FilesWithSubject', 'Delete', sSubject.Id);
+    save_db = 1;
 end
-% Remove subjects from database
-ProtocolSubjects.Subject(iSubjects) = [];
-bst_set('ProtocolSubjects', ProtocolSubjects);
-% Update tree
-panel_protocols('UpdateTree');
-% Save database
-db_save();
+% If something was deleted, save database
+if save_db
+    % Update tree
+    panel_protocols('UpdateTree');
+    % Save database
+    db_save();
+end
 
 
 
