@@ -1093,6 +1093,13 @@ function isModified = NewCustomColormap(ColormapType, Name, CMap)
                       'Position', [-100 -100 1 1], ...
                       'Colormap', CMap);
         drawnow;
+        % For Matlab >= 2020b, force using legacy colormap editor
+        if (bst_get('MatlabVersion') >= 909)
+            s = settings;
+            if hasSetting(s.matlab.graphics, 'showlegacycolormapeditor')
+                s.matlab.graphics.showlegacycolormapeditor.TemporaryValue = 1;
+            end
+        end
         % Display colormap editor
         colormapeditor(hTmp);
         % Hide base figure
