@@ -799,7 +799,7 @@ function DrawTimeSelection(hFig)
                 YData = YData ./ Handles.DisplayFactor;
                 % Get units
                 Fmax = max(abs(Handles.DataMinMax));
-                [tmp, Yfactor, YUnits] = bst_getunits( Fmax, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, TsInfo.FileName );
+                [tmp, Yfactor, YUnits] = bst_getunits( Fmax, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, TsInfo.FileName, TsInfo.DisplayUnits );
                 % Apply the display units
                 YData = YData .* Yfactor;
         end
@@ -3461,7 +3461,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName);
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName, TsInfo.DisplayUnits);
 
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
@@ -3916,7 +3916,7 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     end
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName, TsInfo.DisplayUnits );
     barMeasure = fScaled / TsInfo.DefaultFactor;
     % Get position where to plot the legend
     nChan = length(PlotHandles.hLines);
@@ -4046,7 +4046,7 @@ function SetScaleY(iDS, iFig, newScale)
     drawnow;
     % Get units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName, TsInfo.DisplayUnits );
     strUnits = strrep(fUnits, '\mu', '&mu;');
     
     % Columns
@@ -4189,7 +4189,7 @@ function SetResolution(iDS, iFig, newResX, newResY)
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
      % Get units
     Fmax = max(abs(Figure.Handles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Figure.Id.Modality, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Figure.Id.Modality, TsInfo.FileName, TsInfo.DisplayUnits );
     strUnits = strrep(fUnits, '\mu', '&mu;');
     % Get current time resolution
     XLim = get(hAxes, 'XLim');

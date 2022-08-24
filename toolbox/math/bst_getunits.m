@@ -1,13 +1,14 @@
-function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileName)
+function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileName, DisplayUnits)
 % BST_GETUNITS: Get in which units is expressed a value.
 %
-% USAGE:  [valScaled, valFactor, valUnits] = bst_getunits(val, DataType, FileName=[]);
+% USAGE:  [valScaled, valFactor, valUnits] = bst_getunits(val, DataType, FileName=[], DisplayUnits=[]);
 %
 % INPUT:
 %    - val       : Value to analyze
 %    - DataType  : Type of data in the value "val". Possible strings: 
 %                  'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', '$MEG', '$EEG', '$ECOG', '$SEEG', 'results', 'sources', 'source', 'stat', ...
 %    - fUnits : Units of the file (eg "" if unknown, "cm", "pA", "mml/l")
+%    
 % OUTPUT:
 %    - valScaled : value in the detected units (val * valFactor)
 %    - valFactor : factor to convert val -> valScaled
@@ -31,7 +32,7 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 %          Edouard Delaire, 2021
 
 % Check if there is something special in the filename
@@ -54,117 +55,130 @@ val = abs(val);
 if isempty(DataType)
     DataType = 'none';
 end
-% Units depends on the data modality
-switch lower(DataType)
-    case {'meg', '$meg', 'meg grad', 'meg mag', '$meg grad', '$meg mag', 'meg grad2', 'meg grad3', 'meg gradnorm'}
-        % MEG data in fT
-        if (val < 1e-8)
-            valFactor = 1e15;
-            valUnits  = 'fT';
-        % MEG data without units (zscore, stat...)
-        else
-            valFactor = 1;
-            valUnits  = 'No units';
-        end
-        
-    case {'eeg', '$eeg', 'ecog', '$ecog', 'seeg', '$seeg', 'eog', '$eog', 'ecg', '$ecg', 'emg', '$emg'}
-        % EEG data in Volts, displayed in microVolts
-        if (val < 0.01)
-            valFactor = 1e6;
-            valUnits = '\muV';
-        % EEG data in Volts, displayed in milliVolts
-        elseif (val < 1)
-            valFactor = 1e3;
-            valUnits = 'mV';
-        % EEG data without units (zscore, stat...)
-        else
-            valFactor = 1;
-            valUnits = 'No units';
-        end
-    case  'nirs-src'
-        if ~isempty(strfind(lower(FileName), 'hb')) 
-             [valFactor, valUnits] = GetSIFactor(val, '\mumol.l-1');
-        else
-             [valFactor, valUnits] = GetExponent(val);
-        end     
-    case {'nirs', '$nirs'}
-        % Try reading DisplayUnits field from file
-        fUnits = [];
-        if (nargin >= 3) && ~isempty(FileName)
-            tmp = load(file_fullpath(FileName), 'DisplayUnits');
-            if ~isempty(tmp.DisplayUnits)
-                fUnits = tmp.DisplayUnits;
-            end
-        end
-        if ~isempty(fUnits) && ~isempty(strfind(fUnits, 'mol'))
-            [valFactor, valUnits] = GetSIFactor(val, fUnits);
-        elseif ~isempty(fUnits) && ~isempty(strfind(fUnits, 'cm'))
+
+% If the display unit is already defined
+if ~isempty(DisplayUnits)
+    if ismember(DataType, {'nirs', '$nirs'})
+        if ~isempty(strfind(DisplayUnits, 'mol'))
+            [valFactor, valUnits] = GetSIFactor(val, DisplayUnits);
+        elseif ~isempty(DisplayUnits) && ~isempty(strfind(DisplayUnits, 'cm'))
             valFactor = 1;
             valUnits  = 'cm';
-        elseif ~isempty(fUnits)
+        elseif ~isempty(DisplayUnits)
             [valFactor, valUnits] = GetExponent(val);
-            valUnits = sprintf('%s(%s)',fUnits,valUnits);
-        else    
-            [valFactor, valUnits] = GetExponent(val);
-        end   
-    case {'results', 'sources', 'source'}
-        % Results in Amper.meter (display in picoAmper.meter)
-        if (val < 1e-4)
-            valFactor = 1e12;
-            valUnits  = 'pA.m';
-        % Results without units (zscore, stat...)
-        else
-            valFactor = 1;
-            valUnits  = 'No units';
+            valUnits = sprintf('%s(%s)',DisplayUnits,valUnits);
         end
-        
-    case 'sloreta'
-        if (val < 1e-4)
-            [valFactor, valUnits] = GetExponent(val);
-        else
-            valFactor = 1;
-            valUnits  = 'No units';
+    else
+        valUnits = DisplayUnits;
+        switch (DisplayUnits)
+            case 'fT'
+                valFactor = 1e15;
+            case 'pA.m'
+                valFactor = 1e12;
+            case '\muV'
+                valFactor = 1e6;
+            case {'mV', 'mm'}
+                valFactor = 1e3;
+            otherwise
+                valFactor = 1;
         end
-        
-    case 'stat'
-        if (val < 1e-13)
-            [valFactor, valUnits] = GetExponent(val);
-        elseif (val < 1e-8)
-            valFactor = 1e12;
-            valUnits  = 'pA.m';
-        elseif (val < 1e-3)
-            [valFactor, valUnits] = GetExponent(val);
-        else
-            valFactor = 1;
-            valUnits  = 'No units';
-        end
-        
-    case 'connect'
-        valFactor = 1;
-        valUnits  = 'score';
-        
-    case 'timefreq'
-        [valFactor, valUnits] = GetExponent(val);
-        
-    case 'hlu'
-        valFactor = 1e3;
-        valUnits  = 'mm';
-        
-    case {'ica', 'ssp'}
-        [valFactor, valUnits] = GetExponent(val);
-        if (valFactor == 0)
-            valUnits = 'a.u.';
-        else
-            valUnits = ['x' valUnits ' a.u.'];
-        end
+    end
 
-    otherwise
-        if isempty(val) || ((val < 1000) && (val > 0.1))
+% Otherwise: Units depends= on the data modality
+else
+    switch lower(DataType)
+        case {'meg', '$meg', 'meg grad', 'meg mag', '$meg grad', '$meg mag', 'meg grad2', 'meg grad3', 'meg gradnorm'}
+            % MEG data in fT
+            if (val < 1e-8)
+                valFactor = 1e15;
+                valUnits  = 'fT';
+            % MEG data without units (zscore, stat...)
+            else
+                valFactor = 1;
+                valUnits  = 'No units';
+            end
+            
+        case {'eeg', '$eeg', 'ecog', '$ecog', 'seeg', '$seeg', 'eog', '$eog', 'ecg', '$ecg', 'emg', '$emg'}
+            % EEG data in Volts, displayed in microVolts
+            if (val < 0.01)
+                valFactor = 1e6;
+                valUnits = '\muV';
+            % EEG data in Volts, displayed in milliVolts
+            elseif (val < 1)
+                valFactor = 1e3;
+                valUnits = 'mV';
+            % EEG data without units (zscore, stat...)
+            else
+                valFactor = 1;
+                valUnits = 'No units';
+            end
+        case  'nirs-src'
+            if ~isempty(strfind(lower(FileName), 'hb')) 
+                 [valFactor, valUnits] = GetSIFactor(val, '\mumol.l-1');
+            else
+                 [valFactor, valUnits] = GetExponent(val);
+            end     
+        case {'nirs', '$nirs'}
+             [valFactor, valUnits] = GetExponent(val);
+        case {'results', 'sources', 'source'}
+            % Results in Amper.meter (display in picoAmper.meter)
+            if (val < 1e-4)
+                valFactor = 1e12;
+                valUnits  = 'pA.m';
+            % Results without units (zscore, stat...)
+            else
+                valFactor = 1;
+                valUnits  = 'No units';
+            end
+            
+        case 'sloreta'
+            if (val < 1e-4)
+                [valFactor, valUnits] = GetExponent(val);
+            else
+                valFactor = 1;
+                valUnits  = 'No units';
+            end
+            
+        case 'stat'
+            if (val < 1e-13)
+                [valFactor, valUnits] = GetExponent(val);
+            elseif (val < 1e-8)
+                valFactor = 1e12;
+                valUnits  = 'pA.m';
+            elseif (val < 1e-3)
+                [valFactor, valUnits] = GetExponent(val);
+            else
+                valFactor = 1;
+                valUnits  = 'No units';
+            end
+            
+        case 'connect'
             valFactor = 1;
-            valUnits  = 'No units';
-        else
+            valUnits  = 'score';
+            
+        case 'timefreq'
             [valFactor, valUnits] = GetExponent(val);
-        end
+            
+        case 'hlu'
+            valFactor = 1e3;
+            valUnits  = 'mm';
+            
+        case {'ica', 'ssp'}
+            [valFactor, valUnits] = GetExponent(val);
+            if (valFactor == 0)
+                valUnits = 'a.u.';
+            else
+                valUnits = ['x' valUnits ' a.u.'];
+            end
+    
+        otherwise
+            if isempty(val) || ((val < 1000) && (val > 0.1))
+                valFactor = 1;
+                valUnits  = 'No units';
+            else
+                [valFactor, valUnits] = GetExponent(val);
+            end
+    end
 end
 % Scale input value
 valScaled = val .* valFactor;
