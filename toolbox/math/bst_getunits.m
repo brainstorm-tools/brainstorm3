@@ -35,6 +35,11 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % Authors: Francois Tadel, 2008-2022
 %          Edouard Delaire, 2021
 
+% Parse inputs
+if (nargin <= 4) || isempty(DisplayUnits)
+    DisplayUnits = [];
+end
+
 % Check if there is something special in the filename
 if (nargin >= 3) && ~isempty(FileName)
     % Source files
