@@ -66,17 +66,18 @@ else
     MovieFile = defaultFile;
 end
 
+% == DEFAULT TIME ==
+% Get figure description
+[hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+if isempty(iDS)
+    return
+end
+% Get time vector for this Dataset
+TimeVector = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
+
 % === MOVIE OPTIONS ===
 if (nargin < 4)
     if strcmpi(movieType, 'time') || strcmpi(movieType, 'allfig')
-        % == DEFAULT TIME ==
-        % Get figure description
-        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-        if isempty(iDS)
-            return
-        end
-        % Get time vector for this Dataset
-        TimeVector = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
         % Is there any pre-existing and valid time selection
         if ~isempty(prevTimeSelection) && (prevTimeSelection(1) >= TimeVector(1)) && (prevTimeSelection(1) <= TimeVector(end))
             TimeBounds = prevTimeSelection;
