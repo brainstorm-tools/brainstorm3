@@ -1452,16 +1452,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     fFactor = 1e6;                  
                 elseif strcmp(DisplayUnits,'mV')
                     fFactor = 1e3;                                      
-                elseif ~isempty(strfind(DisplayUnits,'mol'))
+                elseif ~isempty(strfind(DisplayUnits,'mol')) || ~isempty(strfind(DisplayUnits,'OD'))
                      fmax = max(abs(dataBounds));
-                     if round(log10(fmax)) < -3
-                         fFactor = 1e6;
-                     else    
-                        fFactor = 1;  
-                     end   
-                elseif ~isempty(strfind(DisplayUnits,'OD'))
-                    fFactor = 1e3;
-                    DisplayUnits='OD(*10^-3)';
+                    [valScaled, fFactor, DisplayUnits] = bst_getunits( fmax, DataType, 'nirs', DisplayUnits);
                 elseif strcmp(DisplayUnits,'U.A.')
                     fmax = max(abs(dataBounds));
                     if fmax < 1e3
