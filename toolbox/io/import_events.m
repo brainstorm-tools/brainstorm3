@@ -1,7 +1,7 @@
-function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFormat, EventName)
+function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFormat, EventName, isInteractive, isDelete)
 % IMPORT_EVENTS: Reads events from a file/structure and add them to a Brainstorm raw file structure.
 %
-% USAGE:  [sFile, newEvents] = import_events(sFile, ChannelMat=[], EventFile, FileFormat, EventName)
+% USAGE:  [sFile, newEvents] = import_events(sFile, ChannelMat=[], EventFile, FileFormat, EventName, isInteractive=1, isDelete=0)
 %         [sFile, newEvents] = import_events(sFile, ChannelMat=[], EventMat)
 %         [sFile, newEvents] = import_events(sFile, ChannelMat=[])  : Opens a dialog box to select the file
 % 
@@ -11,7 +11,7 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,9 +25,15 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2018
+% Authors: Francois Tadel, 2010-2021
 
 %% ===== PARSE INPUTS =====
+if (nargin < 7) || isempty(isDelete)
+    isDelete = 0;
+end
+if (nargin < 6) || isempty(isInteractive)
+    isInteractive = 1;
+end
 if (nargin < 5) || isempty(EventName)
     EventName = [];
 end
@@ -119,6 +125,8 @@ if isempty(newEvents)
             newEvents = in_events_curry(sFile, EventFile);
         case 'NEUROSCAN'
             newEvents = in_events_neuroscan(sFile, EventFile);
+        case 'OEBIN'
+            newEvents = in_events_oebin(sFile, EventFile);
         case 'GRAPH'
             newEvents = in_events_graph(sFile, EventFile);
         case 'TRL'
@@ -131,6 +139,10 @@ if isempty(newEvents)
             newEvents = in_events_kdf(sFile, EventFile);
         case 'PRESENTATION'
             newEvents = in_events_presentation(sFile, EventFile);
+        case 'NICOLET'
+            newEvents = in_events_nicolet(sFile, EventFile);
+        case 'MICROMED'
+            newEvents = in_events_micromed(sFile, EventFile);
         case 'XLTEK'
             newEvents = in_events_xltek(sFile, EventFile);
         case 'ARRAY-TIMES'
@@ -149,7 +161,7 @@ if isempty(newEvents)
     % Progress bar
     bst_progress('stop');
     % If no new events: return
-    if isempty(newEvents)
+    if isInteractive && isempty(newEvents)
         bst_error('No events found in this file.', 'Import events', 0);
         return
     end
@@ -161,7 +173,10 @@ end
 if ~isempty(sFile.events)
     sFile.events = struct_fix_events(sFile.events);
 end
-
+% Delete existing events if requested
+if isDelete && ~isempty(newEvents) && ~isempty(sFile.events)
+    sFile.events = [];
+end
 
 %% ===== MERGE EVENTS LISTS =====
 % Add each new event

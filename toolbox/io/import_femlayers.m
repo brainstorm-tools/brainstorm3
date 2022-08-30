@@ -19,7 +19,7 @@ function [iNewSurfaces, OutputFiles] = import_femlayers(iSubject, FemFiles, File
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -67,12 +67,10 @@ subjectSubDir = bst_fileparts(sSubject.FileName);
 
 
 %% ===== INSTALL ISO2MESH =====
-% Install iso2mesh if needed
-if ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-    errMsg = process_fem_mesh('InstallIso2mesh', isInteractive);
-    if ~isempty(errMsg) || ~exist('iso2meshver', 'file') || ~isdir(bst_fullfile(bst_fileparts(which('iso2meshver')), 'doc'))
-        warning('Could not find Iso2mesh on your computer... the extracted surface may have some isolated faces.')
-    end
+% Install/load iso2mesh plugin
+[isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', isInteractive);
+if ~isInstalled
+    error(errMsg);
 end
             
 
@@ -105,6 +103,10 @@ for iFile = 1:length(FemFiles)
     FemFile = FemFiles{iFile};
     bst_progress('start', 'Extract surfaces', ['Loading file "' FemFile '"...']);
     FemMat = load(FemFile);
+    % Hexahedral meshes not supported
+    if (size(FemMat.Elements,2) > 4)
+        error('Hexahedral meshes are not supported.');
+    end
 
     % Create one surface per tissue
     Ntissue = max(FemMat.Tissue);

@@ -5,7 +5,7 @@ function varargout = process_test_permutation2( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -252,13 +252,17 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             pmap_tmp(iChannels,:,:) = pmap;
             pmap = pmap_tmp;
             % nA
-            nA_tmp = zeros(size(tmap_tmp));
-            nA_tmp(iChannels,:,:) = nA;
-            nA = nA_tmp;
+            if ~isempty(nA)
+                nA_tmp = zeros(size(tmap_tmp));
+                nA_tmp(iChannels,:,:) = nA;
+                nA = nA_tmp;
+            end
             % nB
-            nB_tmp = zeros(size(tmap_tmp));
-            nB_tmp(iChannels,:,:) = nB;
-            nB = nB_tmp;
+            if ~isempty(nB)
+                nB_tmp = zeros(size(tmap_tmp));
+                nB_tmp(iChannels,:,:) = nB;
+                nB = nB_tmp;
+            end
             % New channel flag
             tmpChannelFlag = -1 .* ones(length(ChannelMat.Channel), 1);
             if ~isempty(ChannelFlag) && (length(ChannelFlag) == length(iChannels))

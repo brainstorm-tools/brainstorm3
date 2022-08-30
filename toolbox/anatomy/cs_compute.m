@@ -5,13 +5,13 @@ function [Transf, sMri] = cs_compute(sMri, csname)
 %
 % INPUT:
 %     - sMri   : Brainstorm MRI structure
-%     - csname : Coordinate system for which we need to evaluate the transformation {'scs','mni','tal'}
+%     - csname : Coordinate system for which we need to evaluate the transformation {'scs','mni','acpc','tal'}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function [Transf, sMri] = cs_compute(sMri, csname)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 
 Transf = [];
 
@@ -74,70 +74,42 @@ switch lower(csname)
         
     % ===== MRI => MNI =====
     case 'mni'
-        error('To estimate the MNI coordinates: right-click on the MRI > Compute MNI coordinates.');
-        
-%         % ====== OLD FUNCTION ======================================================================
-%         % The necessary points are not defined
-%         if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)
-%             disp('BST> Cannot compute MRI=>MNI transformation: Missing fiducial points.');
-%             return;
-%         end
-%         % Check name of the MRI
-%         if (~isempty(strfind(sMri.Comment, 'Colin27')) || ~isempty(strfind(sMri.Comment, 'MNI'))) && isempty(strfind(sMri.Comment, 'warped'))
-%             PC_corr = [0; 0; -1];
-%         elseif ~isempty(strfind(sMri.Comment, 'ICBM152')) && isempty(strfind(sMri.Comment, 'warped'))
-%             PC_corr = [0; 0; -2];
-%         else
-%             return;
-%         end
-%         % Fiducial coordinates in mm
-%         AC = sMri.NCS.AC(:);
-%         PC = sMri.NCS.PC(:);
-%         IH = sMri.NCS.IH(:);
-%         % FIX PC POSITION FOR COLIN27/ICBM
-%         PC = PC + PC_corr;
-% 
-%         % Definition of the referential
-%         % Origin: AC 
-%         % Axis X: left -> right
-%         % Axis Y: posterior -> anterior
-%         % Axis Z: inferior -> superior
-%         Transf.Origin = AC;
-% 
-%         % X: Normal to (AC,PC,IH) plane, towards right
-%         vx = cross(IH-AC, PC-AC);
-%         vx = vx ./ norm(vx);
-%         % Y: PC->AC vector
-%         vy = (AC-PC) ./ norm(AC-PC);
-%         % Z: Cross X,Y
-%         vz = cross(vx, vy); 
-%         vz = vz ./ norm(vz);
-%         % If one of the vector could not be computed
-%         if any(isnan(vx)) || any(isnan(vy)) || any(isnan(vz))
-%             warning('MNI fiducials are not valid.');
-%             return
-%         end
-% 
-%         % Compute MNI transformation
-%         Transf.R = inv([vx,vy,vz]);
-%         % Check that it was possible to compute inverse matrix: If not use pseudo inverse
-%         if any(isinf(Transf.R(:))) || any(isnan(Transf.R(:)))
-%             Transf.R = pinv([vx,vy,vz]);
-%         end
-%         % Translation
-%         Transf.T = - Transf.R * Transf.Origin(:);
-%         % AC position is not (0,0,0) but (0,3.5,-4)
-%         Transf.T = Transf.T - [0; -3.5; 4];
-% 
-%         % Copy to MRI structure
-%         if (nargout >= 2)
-%             sMri.NCS.Origin = Transf.Origin;
-%             sMri.NCS.R      = Transf.R;
-%             sMri.NCS.T      = Transf.T;
-%         end
+        error('To estimate the MNI coordinates: right-click on the MRI > MNI normalization.');
 
+    % ===== MRI => ACPC =====
+    case 'acpc'
+        % The necessary points are not defined
+        if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)
+            disp('BST> Cannot compute MRI=>TAL transformation: Missing fiducial points.');
+            return;
+        end
+        % Get coordinates in meters
+        AC = sMri.NCS.AC / 1000;
+        PC = sMri.NCS.PC / 1000;
+        IH = sMri.NCS.IH / 1000;
+        % Compute axes: Code from FieldTrip (ft_headcoordinates.m)
+        origin = AC;
+        diry   = AC - PC;
+        dirz   = IH - AC;
+        dirx   = cross(diry,dirz);
+        dirz   = cross(dirx,diry);
+        dirx   = dirx/norm(dirx);
+        diry   = diry/norm(diry);
+        dirz   = dirz/norm(dirz);
+        % Compute the rotation matrix
+        rot = eye(4);
+        rot(1:3,1:3) = inv(eye(3) / [dirx; diry; dirz]);
+        % compute the translation matrix
+        tra = eye(4);
+        tra(1:4,4) = [-origin(:); 1];
+        % Combine these to compute the full homogeneous transformation matrix
+        transform = rot * tra;
+        % Return in split format
+        Transf.R = transform(1:3,1:3);
+        Transf.T = transform(1:3,4);
 
-    % ===== MRI => TAL =====
+    % ===== SCS => TAL =====
+    % Not a real TALAIRACH system, used only from tess_envelope.m
     case 'tal'
         % The necessary points are not defined
         if isempty(sMri) || ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'AC') || ~isfield(sMri.NCS, 'PC') || ~isfield(sMri.NCS, 'IH') || (length(sMri.NCS.AC)~=3) || (length(sMri.NCS.PC)~=3) || (length(sMri.NCS.IH)~=3)

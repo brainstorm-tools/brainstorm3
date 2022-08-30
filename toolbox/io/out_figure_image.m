@@ -14,7 +14,7 @@ function varargout = out_figure_image( hFig, imgFile, imgLegend)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -168,7 +168,16 @@ end
 % For time series figures: hide buttons
 if ~isempty(FigureId) && ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Spectrum'})
     % Find existing buttons
-    hButtons = findobj(hFig, 'Type', 'hgjavacomponent');
+    if bst_get('isJavacomponent')
+        hButtons = findobj(hFig, 'Type', 'hgjavacomponent');
+    else
+        hButtons = findobj(hFig, 'Type', 'uicontrol');
+        if (length(hButtons) > 1)
+            hButtons(cellfun(@(c)isempty(strfind(c, 'Button')), get(hButtons, 'Tag'))) = [];
+        elseif (length(hButtons) == 1) && isempty(strfind(get(hButtons, 'Tag'), 'Button'))
+            hButtons = [];
+        end
+    end
     isVisible = get(hButtons, 'Visible');
     % Hide them
     set(hButtons, 'Visible', 'off');
@@ -313,7 +322,7 @@ else
     else
         % frameGfx = getscreen(hFig);
         figPos = get(hFig, 'Position');
-        decoSize = gui_layout('GetDecorationSize');
+        decoSize = bst_get('DecorationSize');
         % Get the screen definition 
         ScreenDef = bst_get('ScreenDef');
         % Single screen (TODO: Handle the cases where the two screens are organized in different ways)
@@ -332,8 +341,6 @@ else
                           -figFix(4) + figPos(4) + decoSize(4), ...
                           figFix(3) - decoSize(3) + 1, ...
                           figFix(4) - decoSize(4)];            
-%             disp([10 'WARNING: The screen capture does not work well with increased font size.' 10 ...
-%                      '         In the graphics properties, try to set the zoom factor to 100%.' 10]);
         else
             capturePos = [decoSize(1), ...
                           decoSize(4), ...

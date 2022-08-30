@@ -11,7 +11,7 @@ function varargout = process_evt_detect( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -197,23 +197,20 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         % ===== BAD SEGMENTS =====
-        % If ignore bad segments
         Fmask = [];
         if isIgnoreBad
-            % Get list of bad segments in file
-            badSeg = panel_record('GetBadSegments', sFile);
-            % Adjust with beginning of file
-            badSeg = badSeg - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
+            badSeg = GetBadSegments(sFile, TimeWindow, DataMat.Time, length(TimeVector));
             if ~isempty(badSeg)
                 % Create file mask
                 Fmask = true(size(F));
                 % Loop on each segment: mark as bad
                 for iSeg = 1:size(badSeg, 2)
-                    Fmask(badSeg(1,iSeg):badSeg(2,iSeg)) = false;
+                    Fmask(:, badSeg(1,iSeg):badSeg(2,iSeg)) = false;
                 end
             end
         end
         
+
         % ===== DETECT PEAKS =====
         % Progress bar
         bst_progress('text', 'Detecting peaks...');
@@ -518,4 +515,27 @@ function [iChannels, iChanWeights] = ParseChannelMontage(strMontage, ChannelName
 end
             
 
+
+%% ===== GET VALID BAD SEGMENTS =====
+function badSeg = GetBadSegments(sFile, TimeWindow, DataMatTime, nReadTimes)
+    % Get list of bad segments in file
+    badSeg = panel_record('GetBadSegments', sFile);
+    if isempty(badSeg)
+        return;
+    end
+    % Adjust with beginning of file
+    badSeg = badSeg - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
+    % Keep bad segments in TimeWindow
+    if ~isempty(TimeWindow)
+        badSeg = badSeg - (bst_closest(TimeWindow(1), DataMatTime) - 1);
+        % badSeg outside of ReadTime: 0=in, 1=half-in 2=out
+        badSeg_status = sum(badSeg < 1, 1) + sum(badSeg > nReadTimes, 1);
+        % Ignore badSeg out of ReadTime
+        badSeg(:,badSeg_status == 2) = [];
+        % Handle badSeg half-in ReadTime
+        badSeg(1, badSeg(1, :) < 1) = 1;
+        badSeg(2, badSeg(2, :) > nReadTimes) = nReadTimes;
+        badSeg(:, badSeg(1, :) == badSeg(2, :)) = [];
+    end
+end
 

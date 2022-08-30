@@ -5,7 +5,7 @@ function varargout = process_average_rows( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -153,7 +153,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                 sScoutsA = repmat(db_template('scout'), 1, length(uniqueNamesA));
                 for iScout = 1:length(uniqueNamesA)
                     sScoutsA(iScout).Label = uniqueNamesA{iScout};
-                    sScoutsA(iScout).Vertices = find(strcmpi(uniqueNamesA{iScout}, scoutNamesA));
+                    sScoutsA(iScout).Vertices = reshape(find(strcmpi(uniqueNamesA{iScout}, scoutNamesA)), 1, []);
                 end
             end
             % Rebuild scouts B
@@ -161,7 +161,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
                 sScoutsB = repmat(db_template('scout'), 1, length(uniqueNamesB));
                 for iScout = 1:length(uniqueNamesB)
                     sScoutsB(iScout).Label = uniqueNamesB{iScout};
-                    sScoutsB(iScout).Vertices = find(strcmpi(uniqueNamesB{iScout}, scoutNamesB));
+                    sScoutsB(iScout).Vertices = reshape(find(strcmpi(uniqueNamesB{iScout}, scoutNamesB)), 1, []);
                 end
             end
         end

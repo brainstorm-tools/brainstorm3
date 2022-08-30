@@ -9,7 +9,7 @@ function varargout = panel_duneuro(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -41,7 +41,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         OPTIONS = sProcess;
         % Check if there is only MEG, for simplified model by default
         isMegOnly = ~ismember('duneuro', {OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod});
-    % PROCESS CALL:  panel_duneuro('CreatePanel', sProcess, sFiles)
+        isMeg = isequal(OPTIONS.MEGMethod, 'duneuro');
+        % PROCESS CALL:  panel_duneuro('CreatePanel', sProcess, sFiles)
     else
         OPTIONS = sProcess.options.duneuro.Value;
         % List of sensors
@@ -52,6 +53,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                 Modalities = setdiff(Modalities, 'MEG');
             end
         end
+        isMeg = any(ismember({'MEG', 'MEG MAG', 'MEG GRAD'}, Modalities));
         isMegOnly = all(ismember(Modalities, {'MEG', 'MEG MAG', 'MEG GRAD'}));
         % Get FEM files
         sSubject = bst_get('Subject', sFiles(1).SubjectFile);
@@ -207,14 +209,43 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     jPanelRight.add(jPanelOptSub, c);
     
     % ==== PANEL RIGHT: INPUT OPTIONS ====
-    jPanelInput = gui_river([1,1], [0,6,6,6], 'Input options');
+    jPanelInput = gui_river([1,1], [0,6,6,6], 'Source space');
         % Shrink source space
         gui_component('label', jPanelInput, '', 'Shrink source space: ', [], '', [], []);
         jTextSrcShrink = gui_component('texttime', jPanelInput, '', '', [], '', [], []);
         gui_validate_text(jTextSrcShrink, [], [], {0,100,100}, '', 0, OPTIONS.SrcShrink, []);
         gui_component('label', jPanelInput, '', '  mm');
-    c.gridy = 3;
-    jPanelRight.add(jPanelInput, c);
+        % Force source space inside grey matter
+        iGM = find(CheckType(OPTIONS.FemNames, 'gray'), 1);
+        if ~isempty(iGM)
+            jCheckSrcForceInGM = gui_component('checkbox', jPanelInput, 'br', ['Force source space inside layer "' OPTIONS.FemNames{iGM} '"'], [], '', [], []);
+        else
+            jCheckSrcForceInGM = [];
+        end
+        c.gridy = 3;
+        jPanelRight.add(jPanelInput, c);    
+    
+        % ==== PANEL RIGHT: MEG COMPUTATIONS OPTIONS ====    
+        jPanelMegComputationOption = gui_river([1,1], [0,6,6,6], 'MEG computation options');
+        if isMeg
+            % Use integration Points, recommended for high mesh density
+            jCheckUseIntegrationPoint = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Use MEG integration points', [], '', [], []);
+            % Enable MEG cache memory for high mesh density if users do not
+            % high memory, or want to use the integration points 
+            jCheckEnableCacheMemory = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Enable cache memory', [], '', [], []);
+            % Enable the MEG Computation per block of sensors
+            ... jCheckMegPerBlockOfSensor = gui_component('checkbox', jPanelMegComputationOption, 'br', 'Compute per block of sensors [Todo]', [], '', [], []);                 
+            % Set jCheckUseIntegrationPoint to 1 as default option
+            if (OPTIONS.UseIntegrationPoint)
+                jCheckUseIntegrationPoint.setSelected(1);
+            end
+            c.gridy = 4;
+            jPanelRight.add(jPanelMegComputationOption, c);    
+        else
+            jCheckUseIntegrationPoint = [];
+            jCheckEnableCacheMemory = [];
+            jCheckMegPerBlockOfSensor = [];
+        end
     
     % ==== PANEL RIGHT: OUTPUT OPTIONS ====
     jPanelOutput = gui_river([1,1], [0,6,6,6], 'Output options');
@@ -223,7 +254,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
         if (OPTIONS.BstSaveTransfer)
             jCheckSaveTransfer.setSelected(1);
         end
-    c.gridy = 4;
+    c.gridy = 5;
     jPanelRight.add(jPanelOutput, c);
     
     % ===== GLUE =====
@@ -250,7 +281,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
     
     % ===== HELP BUTTON =====
     jPanelHelp = gui_river([1,1], [12,6,6,6]);
-    jButtonHelp = gui_component('Button', jPanelHelp, 'right', 'Help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Duneuro', '-browser'), []);
+    jButtonHelp = gui_component('Button', jPanelHelp, 'right', 'Help', [], [], @(h,ev)web('https://neuroimage.usc.edu/brainstorm/Tutorials/Duneuro', '-browser'), []);
     jButtonHelp.setForeground(Color(.7, 0, 0));
     c.gridy = 6;
     c.weighty = 0;
@@ -278,7 +309,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
                   'jTextIntorderadd',      jTextIntorderadd, ...
                   'jTextIntorderadd_lb',   jTextIntorderadd_lb, ...
                   'jTextSrcShrink',        jTextSrcShrink, ...
+                  'jCheckSrcForceInGM',   jCheckSrcForceInGM, ...
                   'jCheckSaveTransfer',    jCheckSaveTransfer, ...
+                  'jCheckUseIntegrationPoint', jCheckUseIntegrationPoint,...
+                  'jCheckEnableCacheMemory', jCheckEnableCacheMemory,...
+                  ...'jCheckMegPerBlockOfSensor', jCheckMegPerBlockOfSensor,...
                   'UseTensor',             OPTIONS.UseTensor);
     ctrl.FemNames = OPTIONS.FemNames;
     % Create the BstPanel object that is returned by the function
@@ -331,6 +366,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles) %#ok<DEFNU>
             jPanelOptSub.setVisible(ExpertMode && jRadioSrcModelSub.isSelected());
             jPanelInput.setVisible(ExpertMode);
             jPanelOutput.setVisible(ExpertMode);
+            jPanelMegComputationOption.setVisible(ExpertMode);
             % Update expert button 
             if ExpertMode
                 jButtonExpert.setText('Hide details');
@@ -413,8 +449,31 @@ function s = GetPanelContents() %#ok<DEFNU>
     end
     % Input options
     s.SrcShrink = str2double(ctrl.jTextSrcShrink.getText());
+    if ~isempty(ctrl.jCheckSrcForceInGM)
+        s.SrcForceInGM = ctrl.jCheckSrcForceInGM.isSelected();
+    else
+        s.SrcForceInGM = 0;
+    end
     % Output options
     s.BstSaveTransfer = ctrl.jCheckSaveTransfer.isSelected();
+    % MEG Computation options
+    if ~isempty(ctrl.jCheckUseIntegrationPoint)
+        s.UseIntegrationPoint = ctrl.jCheckUseIntegrationPoint.isSelected();
+    else
+        s.UseIntegrationPoint = 1;
+    end
+    
+    if ~isempty(ctrl.jCheckEnableCacheMemory)
+        s.EnableCacheMemory = ctrl.jCheckEnableCacheMemory.isSelected();
+    else
+        s.EnableCacheMemory = 0;
+    end
+
+%     if ~isempty(ctrl.jCheckMegPerBlockOfSensor)
+%         s.MegPerBlockOfSensor = ctrl.jCheckMegPerBlockOfSensor.isSelected();
+%     else
+%         s.MegPerBlockOfSensor = 0;
+%     end
 end
 
 
@@ -435,22 +494,40 @@ function FemCond = GetDefaultCondutivity(FemNames, Reference)
     FemCond = conductivity(2) * ones(1, length(FemNames));
     % Detect the conductivity layer by name
     for i = 1:length(FemNames)
-        if ~isempty(strfind(FemNames{i}, 'white')) || ~isempty(strfind(FemNames{i}, 'wm'))
+        if CheckType(FemNames{i}, 'white')
             FemCond(i) = conductivity(1);
-        elseif ~isempty(strfind(FemNames{i}, 'brain')) || ~isempty(strfind(FemNames{i}, 'grey')) || ~isempty(strfind(FemNames{i}, 'gray')) || ~isempty(strfind(FemNames{i}, 'gm')) || ~isempty(strfind(FemNames{i}, 'cortex'))
+        elseif CheckType(FemNames{i}, 'gray')
             FemCond(i) = conductivity(2);
-        elseif ~isempty(strfind(FemNames{i}, 'csf')) || ~isempty(strfind(FemNames{i}, 'inner'))
+        elseif CheckType(FemNames{i}, 'csf')
             FemCond(i) = conductivity(3);
-        elseif ~isempty(strfind(FemNames{i}, 'spong')) % 'Skull spongia'
+        elseif CheckType(FemNames{i}, 'skull')
             FemCond(i) = conductivity(5);
-        elseif ~isempty(strfind(FemNames{i}, 'bone')) || ~isempty(strfind(FemNames{i}, 'skull')) || ~isempty(strfind(FemNames{i}, 'outer'))  % 'Skull compacta'
-            FemCond(i) = conductivity(5);
-        elseif ~isempty(strfind(FemNames{i}, 'skin')) || ~isempty(strfind(FemNames{i}, 'scalp')) || ~isempty(strfind(FemNames{i}, 'head'))
+        elseif CheckType(FemNames{i}, 'scalp')
             FemCond(i) = conductivity(6);
         end
     end
 end
 
 
-
-
+%% ===== DETECTION FUNCTION =====
+% Check the type of a layer based on its name
+function isType = CheckType(strName, strType)
+    if iscell(strName)
+        isType = cellfun(@(c)CheckType(c, strType), strName);
+    else
+        strName = lower(strName);
+        switch strType
+            case 'white'
+                isType = ~isempty(strfind(strName, 'white')) || ~isempty(strfind(strName, 'wm'));
+            case 'gray'
+                isType = ~isempty(strfind(strName, 'brain')) || ~isempty(strfind(strName, 'grey')) || ~isempty(strfind(strName, 'gray')) || ~isempty(strfind(strName, 'gm')) || ~isempty(strfind(strName, 'cortex'));
+            case 'csf'
+                isType = ~isempty(strfind(strName, 'csf')) || ~isempty(strfind(strName, 'inner'));
+            case 'skull'
+                isType = ~isempty(strfind(strName, 'spong')) || ... % 'Skull spongia'
+                         ~isempty(strfind(strName, 'bone')) || ~isempty(strfind(strName, 'skull')) || ~isempty(strfind(strName, 'outer'));  % 'Skull compacta'
+            case 'scalp'
+                isType = ~isempty(strfind(strName, 'skin')) || ~isempty(strfind(strName, 'scalp')) || ~isempty(strfind(strName, 'head'));
+        end
+    end
+end

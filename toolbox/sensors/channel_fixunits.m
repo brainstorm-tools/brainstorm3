@@ -13,7 +13,7 @@ function ChannelMat = channel_fixunits(ChannelMat, FileUnits, isConfirmFix)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,7 +65,7 @@ if (meanNorm > 0.200) || (meanNorm < 0.030)
     % Ask user if we should scale the distances
     if isConfirmFix
         strFactor = java_dialog('question', ...
-            ['Warning: The EEG electrodes locations do not seem to be in the expected units (' FileUnits ').' 10 ...
+            ['Warning: The EEG electrodes locations might not be in the expected units (' FileUnits ').' 10 ...
              'Please select a scaling factor for the units (suggested: ' strFactor '):' 10 10], 'Import channel file', ...
             [], {'0.001', '0.01', '0.1', '1', '10', '100' '1000'}, strFactor);
     end

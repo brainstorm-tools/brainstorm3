@@ -11,7 +11,7 @@ function isUpdated = bst_update(AskConfirm)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function isUpdated = bst_update(AskConfirm)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2022
 
 % Java imports
 import org.brainstorm.icon.*;
@@ -46,7 +46,7 @@ end
 
 % === DOWNLOAD NEW VERSION ===
 % Get update zip file
-urlUpdate  = 'http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09&nobin=1';
+urlUpdate  = 'http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09&src=1';
 installDir = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
 zipFile    = fullfile(installDir, 'brainstorm_update.zip');
 
@@ -55,7 +55,7 @@ if ~file_attrib(installDir, 'w') || ~file_attrib(fullfile(installDir, 'brainstor
     strMsg = 'Error: Installation folder is read-only...';
     if ispc
         strMsg = [strMsg 10 10 ...
-                  'On some Windows 7 or 8 computers, the user folders Documents and Downloads' 10 ...
+                  'On some Windows computers, the user folders Documents and Downloads' 10 ...
                   'and the system folder C:\Programs\ are seen as read-only by Matlab.' 10 ...
                   'Try with admin privileges (right-click on Matlab > Run as Administrator)' 10 ...
                   'and if you still cannot update, move the brainstorm3 folder somewhere else.'];
@@ -161,53 +161,32 @@ jDialog.setVisible(0);
 jDialog.dispose();
 % Display the latest updates
 bst_mutex('create', 'ReleaseNotes');
-jFrame = view_text(fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), 'Release notes', 1);
-java_setcb(jFrame, 'WindowClosingCallback', @CloseFigureCallback);
+jFrame = view_text({fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), ...
+                    fullfile(installDir, 'brainstorm3', 'doc', 'updates_2020.txt')}, 'Release notes', 1);
+java_setcb(jFrame, 'WindowClosingCallback', @(h,ev)bst_mutex('release', 'ReleaseNotes'));
 bst_mutex('waitfor', 'ReleaseNotes');
 
-
 % === RESET ENVIRONMENT ===
-% Clear everything in memory
-warning('off', 'MATLAB:objectStillExists');
-clear global
-clear java
-warning('on', 'MATLAB:objectStillExists');
-% Get last warning
-[warnTxt,warnId] = lastwarn();
-% If not all objects were deleted: need matlab restart
-% if strcmpi(warnId, 'MATLAB:objectStillExists')
-%     disp('BST> Update: You need to restart Matlab before starting Brainstorm.');
-%     isRestart = 1;
-% else
-%     isRestart = 0;
-% end
-isRestart = 1;
-isUpdated = 1;
+% Delete the brainstorm.jar to force downloading a new one when Brainstorm restarts
+jarFile = fullfile(installDir, 'brainstorm3', 'java', 'brainstorm.jar');
+if exist(jarFile, 'file')
+    delete(jarFile);
+    % The brainstorm.jar file could not be deleted because it was still in use: delete it at next startup
+    if exist(jarFile, 'file')
+        % Create file to indicate that brainstorm.jar should be deleted
+        UpdateFile = fullfile(installDir, 'brainstorm3', 'java', 'outdated_jar.txt');
+        fid = fopen(UpdateFile, 'w');
+        fwrite(fid, ['delete(''' jarFile ''');']);
+        fclose(fid);
+    end
+end
+% Update is finished
 disp('BST> Update: Done.');
 
-
-% === RESTART MATLAB/BRAINSTORM ===
-if isRestart
-    h = msgbox(['Brainstorm updated successfully.' 10 10 ...
-                'Matlab will now be closed.' 10 ...
-                'Restart Matlab and run brainstorm.m to finish installation.' 10 10], 'Update');
-    waitfor(h);
-    exit;
-else
-    % Start brainstorm again
-    cd brainstorm3
-    brainstorm
-end
-
-end
-
-
-% === CALLBACK TO CLOSE RELEASE NOTES ===
-function CloseFigureCallback(h,ev)
-    bst_mutex('release', 'ReleaseNotes');
-end
-
-
-
-
+% === RESTART MATLAB ===
+h = msgbox(['Brainstorm was updated successfully.' 10 10 ...
+            'Matlab will now close.' 10 ...
+            'Restart Matlab and run brainstorm.m to finish the installation.' 10 10], 'Update');
+waitfor(h);
+exit;
 

@@ -8,7 +8,7 @@ function [FileName, FileType, isAnatomy] = file_fullpath( FileName )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function [FileName, FileType, isAnatomy] = file_fullpath( FileName )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2012
+% Authors: Francois Tadel, 2011-2022
 
 % Empty input
 if isempty(FileName)
@@ -49,7 +49,7 @@ switch lower(FileType)
             tmpFile = bst_fullfile(ProtocolInfo.SUBJECTS, FileName);
         end
         isAnatomy = 1;
-    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink', 'spikes'}
+    case {'brainstormstudy', 'study', 'studysubject', 'condition', 'rawcondition', 'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', 'pdata', 'presults', 'noisecov', 'ndatacov', 'dipoles', 'timefreq', 'spectrum', 'ptimefreq', 'pspectrum', 'matrix', 'pmatrix', 'proj', 'image', 'video', 'videolink', 'spike'}
         if ~file_exist(FileName)
             tmpFile = bst_fullfile(ProtocolInfo.STUDIES, FileName);
         end

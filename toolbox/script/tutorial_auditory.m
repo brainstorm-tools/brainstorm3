@@ -11,7 +11,7 @@ function tutorial_auditory(tutorial_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -57,6 +57,8 @@ gui_brainstorm('DeleteProtocol', ProtocolName);
 gui_brainstorm('CreateProtocol', ProtocolName, 0, 0);
 % Start a new report
 bst_report('Start');
+% Set the current display mode to 'butterfly'
+bst_set('TSDisplayMode', 'butterfly');
 
 
 % ===== ANATOMY =====

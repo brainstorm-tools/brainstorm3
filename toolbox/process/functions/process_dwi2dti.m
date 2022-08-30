@@ -9,7 +9,7 @@ function varargout = process_dwi2dti( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -51,7 +51,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportAnat', ...                  % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                      % Selection mode: {single,multiple}
         'files', ...                       % Selection mode: {files,dirs,files_and_dirs}
-        {{'.nii'}, 'Raw DWI: NIfTI-1 (*.nii)', 'DWI-NII'}, ... % File formats
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, ... % File formats       
         1};                                % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
     SelectOptionsBval = SelectOptionsNii;
     SelectOptionsBval{8} = {{'.bval'}, 'Raw DWI: b-values (*.bval)', 'DWI-BVAL'};
@@ -133,7 +133,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     
     % ===== COMPUTE DTI =====
     % Compute DTI tensors
-    [DtiFile, errMsg] = Compute(iSubject, DwiFile, BvalFile, BvecFile);
+    [DtiFile, errMsg] = Compute(iSubject, [], DwiFile, BvalFile, BvecFile);
     % Error handling
     if ~isempty(errMsg)
         if isempty(DtiFile)
@@ -155,6 +155,9 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
     % ===== INPUTS =====
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
+    if isequal(fExt, '.gz')
+        [fPath, fBase, fExt] = bst_fileparts(bst_fullfile(fPath, fBase));
+    end
     if isempty(BvalFile) || ~file_exist(BvalFile)
         BvalFile = bst_fullfile(fPath, [fBase, '.bval']);
         if ~file_exist(BvalFile)
@@ -200,11 +203,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         if ~isempty(BsDir) && file_exist(BsBinDir) && file_exist(BsBdpDir)
             disp(['BST> Adding to system path: ' BsBinDir]);
             disp(['BST> Adding to system path: ' BsBdpDir]);
-            if ispc
-                setenv('PATH', [getenv('PATH'), ';', BsBinDir, ';', BsBdpDir]);
-            else
-                setenv('PATH', [getenv('PATH'), ':', BsBinDir, ':', BsBdpDir]);
-            end
+            setenv('PATH', [getenv('PATH'), pathsep, BsBinDir, pathsep, BsBdpDir]);
             % Check again
             status = system('bdp --version');
         end
@@ -239,7 +238,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' --hires "' fullfile(tmpDir, 'bse_detailled_brain.mask.nii.gz"') ...
         ' --cortex "' fullfile(tmpDir, 'bse_cortex_file.nii.gz"')];
     disp(['BST> System call: ' strCall]);
-    status = system(strCall);
+    status = system(strCall)
     % Error handling
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 1/3 (BSE).', 10, 'Check the Matlab command window for more information.'];
@@ -253,14 +252,14 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' -o "' fullfile(tmpDir, 'output_mri.bfc.nii.gz"') ...
         ' -L 0.5 -U 1.5'];
     disp(['BST> System call: ' strCall]);
-    status = system(strCall);
+    status = system(strCall)
     % Error handling
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 2/3 (BFC).', 10, 'Check the Matlab command window for more information.'];
         return
     end
 
-    % ===== 3. BIAS FIELD CORRECTION (BFC) =====
+    % ===== 3. BRAINSUITE DIFFUSION PIPELINE (BDP) =====
     bst_progress('text', '3/3: BrainSuite Diffusion Pipeline...');
     strCall = [...
         'bdp "' fullfile(tmpDir,'output_mri.bfc.nii.gz"') ...
@@ -269,7 +268,7 @@ function [DtiFile, errMsg] = Compute(iSubject, T1BstFile, DwiFile, BvalFile, Bve
         ' -g "' BvecFile '" -b "' BvalFile '"'];
     disp(['BST> System call: ' strCall]);
     % Error handling
-    status = system(strCall);
+    status = system(strCall)
     if (status ~= 0)
         errMsg = ['BrainSuite failed at step 3/3 (BDP).', 10, 'Check the Matlab command window for more information.'];
         return
@@ -295,7 +294,8 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     LastUsedDirs = bst_get('LastUsedDirs');
     % Get MRI file
     DwiFile = java_getfile('open', 'Import DWI', LastUsedDirs.ImportAnat, 'single', 'files', ...
-        {{'.nii'}, 'Raw DWI: NIfTI-1 (*.nii)', 'DWI-NII'}, 1);
+        {{'.nii','.gz'}, 'MRI: NIfTI-1 (*.nii;*.nii.gz)', 'DWI-NII'}, 1);
+
     if isempty(DwiFile)
         return
     end
@@ -304,6 +304,9 @@ function DtiFile = ComputeInteractive(iSubject) %#ok<DEFNU>
     bst_set('LastUsedDirs', LastUsedDirs);
     % Try to find the bval/bvec files in the same folder
     [fPath, fBase, fExt] = bst_fileparts(DwiFile);
+    if strcmp(fExt,'.gz')
+    	[tmp, fBase, fExt] = bst_fileparts(fBase);
+    end
     BvalFile = bst_fullfile(fPath, [fBase, '.bval']);
     BvecFile = bst_fullfile(fPath, [fBase, '.bvec']);
     % Validate or ask bval

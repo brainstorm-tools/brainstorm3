@@ -1,8 +1,8 @@
-function [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector, Modality, AxesLabels, LinesLabels, LinesColor, hFig, Std)
+function [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector, Modality, AxesLabels, LinesLabels, LinesColor, hFig, Std, DisplayUnits)
 % VIEW_TIMESERIES_MATRIX: Display times series matrix in a new figure.
 %
-% USAGE:  [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector=[], Modality=[], AxesLabels=[], LinesLabels=[], LinesColor=[], hFig=[], Std=[])
-%         [hFig, iDS, iFig] = view_timeseries_matrix(iDS,       F, TimeVector=[], Modality=[], AxesLabels=[], LinesLabels=[], LinesColor=[], hFig=[], Std=[])
+% USAGE:  [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector=[], Modality=[], AxesLabels=[], LinesLabels=[], LinesColor=[], hFig=[], Std=[], DisplayUnits=[])
+%         [hFig, iDS, iFig] = view_timeseries_matrix(iDS,       F, TimeVector=[], Modality=[], AxesLabels=[], LinesLabels=[], LinesColor=[], hFig=[], Std=[], DisplayUnits=[])
 %
 % INPUT:
 %   - BaseFiles   : Files that figure will be associated with
@@ -13,6 +13,7 @@ function [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector, Mo
 %   - LinesColor  : Cell array of RGB colors 
 %   - hFig        : Specify the figure to draw in
 %   - Std         : Standard deviation attached to the F matrix (if F is an average)
+%   - DisplayUnits: String, units used to represent the signals in the figures ('mV', 'pA.m', 't', ...)
 %
 % OUTPUT: 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -23,7 +24,7 @@ function [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector, Mo
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -37,12 +38,15 @@ function [hFig, iDS, iFig] = view_timeseries_matrix(BaseFiles, F, TimeVector, Mo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2014
+% Authors: Francois Tadel, 2008-2022
 
 
 %% ===== PARSE INPUTS =====
 global GlobalData;
 % Parse inputs
+if (nargin < 10) || isempty(DisplayUnits)
+    DisplayUnits = [];
+end
 if (nargin < 9) || isempty(Std)
     Std = [];
 end
@@ -65,7 +69,7 @@ if (nargin < 3) || isempty(TimeVector)
     TimeVector = [];
 end
 if (nargin < 2)
-    error('Usage : [hFig, iDS, iFig] = view_timeseries_matrix(BaseFile, F, TimeVector, Modality, AxesLabels, LinesLabels, LinesColor)');
+    error('Usage : [hFig, iDS, iFig] = view_timeseries_matrix(BaseFile, F, TimeVector, Modality, AxesLabels, LinesLabels, LinesColor, hFig, Std, DisplayUnits)');
 end
 % Initialize
 ResultsFile = [];
@@ -179,6 +183,7 @@ TsInfo.LinesLabels   = LinesLabels;
 TsInfo.LinesColor    = LinesColor;
 TsInfo.RowNames      = LinesLabels;
 TsInfo.MontageName   = MontageName;
+TsInfo.DisplayUnits  = DisplayUnits;
 TsInfo.NormalizeAmp  = 0;
 TsInfo.Resolution    = [0 0];
 TsInfo.ShowXGrid     = bst_get('ShowXGrid');
@@ -191,11 +196,17 @@ if ~isNewFig
     TsInfo.FlipYAxis     = oldTsInfo.FlipYAxis;
     TsInfo.AutoScaleY    = oldTsInfo.AutoScaleY;
     TsInfo.DefaultFactor = oldTsInfo.DefaultFactor;
+    TsInfo.DisplayUnits  = oldTsInfo.DisplayUnits;
     TsInfo.ShowLegend    = oldTsInfo.ShowLegend;
 elseif ~isempty(Modality) && ismember(Modality, {'$EEG','$MEG','$MEG GRAD','$MEG MAG','$SEEG','$ECOG'})
     TsInfo.DisplayMode   = bst_get('TSDisplayMode');
     TsInfo.FlipYAxis     = bst_get('FlipYAxis');
     TsInfo.AutoScaleY    = bst_get('AutoScaleY');
+    TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
+elseif ~isempty(BaseFile) && isequal(file_gettype(BaseFile), 'matrix')
+    TsInfo.DisplayMode   = bst_get('TSDisplayMode');
+    TsInfo.FlipYAxis     = 0;
+    TsInfo.AutoScaleY    = 1;
     TsInfo.DefaultFactor = figure_timeseries('GetDefaultFactor', Modality);
 else
     TsInfo.DisplayMode   = 'butterfly';

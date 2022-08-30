@@ -1,7 +1,7 @@
-function [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm)
+function [ChannelMat, R, T, isSkip, isUserCancel, strReport, tolerance] = channel_align_auto(ChannelFile, ChannelMat, isWarning, isConfirm, tolerance)
 % CHANNEL_ALIGN_AUTO: Aligns the channels to the scalp using Polhemus points.
 %
-% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1)
+% USAGE:  [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(ChannelFile, ChannelMat=[], isWarning=1, isConfirm=1, tolerance=0)
 %
 % DESCRIPTION: 
 %     Aligns the channels to the scalp using Polhemus points stored in channel structure.
@@ -17,22 +17,24 @@ function [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFi
 %     - ChannelMat  : If specified, do not read or write any information from/to ChannelFile
 %     - isWarning   : If 1, display warning in case of errors (default = 1)
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding
+%     - tolerance   : Percentage of outliers head points, ignored in the final fit
 %
 % OUTPUTS:
-%   ChannelMat: The same ChannelMat structure input in, except with the
-%               head points and channels rotated and translated based
-%               on the ICP algorithm to match the head points to the scalp.
-%               Returned value is [] if the registration was cancelled
-%   R         : 3x3 rotation matrix from original ChannelMat to new ChannelMat.
-%   T         : 3x1 translate vector to go with R.
-%   isSkip       : If 1, processing was skipped because there was not enough information in the file
-%   isUserCancel : If 1, user cancelled the alignment
+%     - ChannelMat   : The same ChannelMat structure input in, with the head points and sensors rotated and translated to match the head points to the scalp.
+%                      Returned value is [] if the registration was cancelled
+%     - R            : 3x3 rotation matrix from original ChannelMat to new ChannelMat.
+%     - T            : 3x1 translate vector to go with R.
+%     - isSkip       : If 1, processing was skipped because there was not enough information in the file
+%     - isUserCancel : If 1, user cancelled the alignment
+%     - strReport    : Text description of the quality of the alignment (distance between headpoint and scalp surface)
+%     - tolerance    : The same tolerance input if alignment was performed, otherwise empty
+
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -47,9 +49,12 @@ function [ChannelMat, R, T, isSkip, isUserCancel] = channel_align_auto(ChannelFi
 % =============================================================================@
 %
 % Authors: Syed Ashrafulla, 2009
-%          Francois Tadel, 2009-2013
+%          Francois Tadel, 2009-2021
 
 %% ===== PARSE INPUTS =====
+if (nargin < 5) || isempty(tolerance)
+    tolerance = 0;
+end
 if (nargin < 4) || isempty(isConfirm)
     isConfirm = 1;
 end
@@ -66,7 +71,7 @@ R = [];
 T = [];
 isSkip = 0;
 isUserCancel = 0;
-
+strReport = '';
 
 %% ===== LOAD CHANNELS =====
 % Progress bar
@@ -74,7 +79,8 @@ bst_progress('start', 'Automatic EEG-MEG/MRI registration', 'Initialization...')
 % Get head points
 HeadPoints = channel_get_headpoints(ChannelMat, 1, 1);
 % Check number of surface points
-if isempty(HeadPoints) || (length(HeadPoints.Label) < 15)
+MIN_NPOINTS = 15;
+if isempty(HeadPoints) || (length(HeadPoints.Label) < MIN_NPOINTS)
     % Warning
     if isWarning
         bst_error('Not enough digitized head points to perform automatic registration.', 'Automatic EEG-MEG/MRI registration', 0);
@@ -110,9 +116,8 @@ SurfaceMat = in_tess_bst(sSubject.Surface(sSubject.iScalp).FileName);
 if isConfirm
     % Ask for user confirmation
     Align = java_dialog('confirm', ['The current registration sensors/anatomy is based only on' 10 ...
-                                    'the three fiducial points NAS/LPA/RPA, and might be inaccurate.' 10 10 ...
-                                    'Some head points have been digitized and can be used to refine' 10 ...
-                                    'the registration with an iterative closest point algorithm (ICP).' 10 10 ...
+                                    'the three fiducial points NAS/LPA/RPA, and might be inaccurate.' 10 ...
+                                    'Digitized head points can be used to refine this registration.' 10 10 ...
                                     'Refine registration now?' 10], 'Sensors/anatomy registration');
     % If user denied: exit
     if ~Align
@@ -121,17 +126,69 @@ if isConfirm
         return
     end
 end
+% Ask for tolerance value
+if (isConfirm || isWarning)
+    res = java_dialog('input', ['You can choose to ignore the digitized head points that are far ' 10 ...
+                                'away from the scalp in the surface fit.' 10 10 ...
+                                'Percentage of head points to ignore [0-100]:'], ...
+                                'Refine registration', [], num2str(round(tolerance*100)));
+    if isempty(res) || isnan(str2double(res))
+        isUserCancel = 1;
+        tolerance = [];
+        bst_progress('stop');
+        return
+    end
+    tolerance = str2double(res) / 100;
+end
+% Check feasibility
+if ~isempty(tolerance)
+    % Number of points to remove
+    nRemove = ceil(tolerance * size(HP,1));
+    % Invalid tolerance value
+    if (tolerance > 0.99) || (size(HP,1) - nRemove < MIN_NPOINTS)
+        if isWarning
+            bst_error('Invalid tolerance value or not enough head points left.', 'Automatic EEG-MEG/MRI registration', 0);
+        else
+            disp('BST> Invalid tolerance value or not enough head points left.');
+        end
+        % Cancel processing as a user error
+        isUserCancel = 1;
+        tolerance = [];
+        bst_progress('stop');
+        return
+    end
+end
+
 
 %% ===== FIND OPTIMAL FIT =====
 % Find best possible rigid transformation (rotation+translation)
-[R,T] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+[R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+% Remove outliers and fit again
+if ~isempty(dist) && ~isempty(tolerance) && (tolerance > 0)
+    % Sort points by distance to scalp
+    [tmp__, iSort] = sort(dist, 1, 'descend');
+    iRemove = iSort(1:nRemove);
+    % Remove from list of destination points
+    HP(iRemove,:) = [];
+    % Fit again
+    [R,T,tmp,dist] = bst_meshfit(SurfaceMat.Vertices, SurfaceMat.Faces, HP);
+else
+    nRemove = 0;
+end
 % Current position cannot be optimized
 if isempty(R)
     bst_progress('stop');
     isSkip = 1;
+    tolerance = [];
     return;
 end
-
+% Distance between fitted points and reference surface
+strReport = ['Distance between ' num2str(length(dist)) ' head points and head surface:' 10 ...
+    ' |  Mean : ' sprintf('%4.1f', mean(dist) * 1000) ' mm  |  Distance >  3mm: ' sprintf('%3d points (%2d%%)\n', nnz(dist > 0.003), round(100*nnz(dist > 0.003)/length(dist))), ...
+    ' |  Max  : ' sprintf('%4.1f', max(dist) * 1000)  ' mm  |  Distance >  5mm: ' sprintf('%3d points (%2d%%)\n', nnz(dist > 0.005), round(100*nnz(dist > 0.005)/length(dist))), ...
+    ' |  Std  : ' sprintf('%4.1f', std(dist) * 1000)  ' mm  |  Distance > 10mm: ' sprintf('%3d points (%2d%%)\n', nnz(dist > 0.010), round(100*nnz(dist > 0.010)/length(dist))), ...
+    ' |  Number of outlier points removed: ' sprintf('%d (%d%%)', nRemove, round(tolerance*100)), 10 ...
+    ' |  Initial number of head points: ' num2str(size(HeadPoints.Loc,2))];
 
 %% ===== ROTATE SENSORS AND HEADPOINTS =====
 for i = 1:length(ChannelMat.Channel) 
@@ -210,6 +267,11 @@ if isSave && (isWarning || isConfirm)
         channel_align_manual(ChannelFile, modality, 0);
     end
 end
+% Distance between fitted points and reference surface
+if (isWarning || isConfirm)
+    view_text(strReport, 'Sensors/anatomy registration');
+end
+disp(['BST> ' strReport]);
 % Close progress bar
 bst_progress('stop');
 

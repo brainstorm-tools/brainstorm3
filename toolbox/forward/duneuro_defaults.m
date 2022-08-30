@@ -8,7 +8,7 @@ function cfg = duneuro_defaults(cfg)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,6 +31,7 @@ cfgDef.FemSelect        = [];
 cfgDef.UseTensor        = false;
 cfgDef.Isotropic        = true;
 cfgDef.SrcShrink        = 0;
+cfgDef.SrcForceInGM     = false;
 % DUNEuro general settings
 cfgDef.FemType          = 'fitted';                % 'fitted' or 'unfitted'
 cfgDef.SolverType       = 'cg';                    % 'cg' or 'dg'
@@ -75,6 +76,10 @@ cfgDef.BstMegTransferFile = 'meg_transfer.dat';
 cfgDef.BstEegLfFile       = 'eeg_lf.dat';
 cfgDef.BstMegLfFile       = 'meg_lf.dat';
 
+% [MEG computation Options]
+cfgDef.UseIntegrationPoint = 1; 
+cfgDef.EnableCacheMemory = 0;
+cfgDef.MegPerBlockOfSensor = 0; % ToDo
 % Use default values if not set
 if (nargin == 0) || isempty(cfg)
     cfg = cfgDef;

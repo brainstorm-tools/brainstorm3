@@ -11,7 +11,7 @@ function varargout = panel_record(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_record(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -152,7 +152,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         gui_component('MenuItem', jMenu, [], 'Set color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_call(@EventTypeSetColor));
         jItem = gui_component('MenuItem', jMenu, [], 'Show/hide group', IconLoader.ICON_DISPLAY, [], @(h,ev)CallWithAccelerator(@EventTypeToggleVisible));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, 0));
-        gui_component('MenuItem', jMenu, [], 'Mark group as bad', IconLoader.ICON_BAD, [], @(h,ev)bst_call(@EventTypeSetBad));
+        gui_component('MenuItem', jMenu, [], 'Mark group as bad/good', IconLoader.ICON_GOODBAD, [], @(h,ev)bst_call(@EventTypeToggleBad));
         jMenu.addSeparator();
         jMenuSort = gui_component('Menu', jMenu, [], 'Sort groups', IconLoader.ICON_EVT_TYPE, [], []);
             gui_component('MenuItem', jMenuSort, [], 'By name', IconLoader.ICON_EVT_TYPE, [], @(h,ev)bst_call(@(h,ev)EventTypesSort('name')));
@@ -197,7 +197,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         jItemIca     = gui_component('MenuItem', jMenu, [], 'ICA components',  IconLoader.ICON_EMPTY, [], @(h,ev)CallProcessOnRaw('process_ica'));
         jMenu.addSeparator();
         jItemSspSel  = gui_component('MenuItem', jMenu, [], 'Select active projectors', IconLoader.ICON_EMPTY, [], @(h,ev)panel_ssp_selection('OpenRaw'));
-        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj'));
+        jItemSspMontage  = gui_component('MenuItem', jMenu, [], 'Load projectors as montages', IconLoader.ICON_EMPTY, [], @(h,ev)panel_montage('AddAutoMontagesProj', [], 1));
         
         % === EVENTS TYPES ===
         jListEvtType = JList();
@@ -1509,7 +1509,7 @@ function JumpToEvent(iEvent, iOccur)
         % Get current time
         CurrentTime = GlobalData.UserTimeWindow.CurrentTime;
         % Distance to events times
-        distTime = events(iEvent).times(1,:) - CurrentTime;
+        distTime = mean(events(iEvent).times, 1) - CurrentTime;
         % Action: next/previous events
         switch(action)
             case {'leftarrow', 'pagedown', 'epoch-', 'epoch--'}
@@ -1534,7 +1534,7 @@ function JumpToEvent(iEvent, iOccur)
     % Check if event is a "full page" shortcut
     RawViewerOptions = bst_get('RawViewerOptions');
     iShortcut = find(strcmpi(RawViewerOptions.Shortcuts(:,2), events(iEvent).label));
-    isFullPage = ~isempty(iShortcut) && strcmpi(RawViewerOptions.Shortcuts(iShortcut,3), 'page') && (size(events(iEvent).times,1) == 2);
+    isFullPage = ~isempty(iShortcut) && any(strcmpi(RawViewerOptions.Shortcuts(iShortcut,3), 'page')) && (size(events(iEvent).times,1) == 2);
     % If event is outside of the current user time window
     UserTime = GlobalData.UserTimeWindow.Time;
     if (evtTime < UserTime(1)) || (evtTime > UserTime(2))
@@ -1878,8 +1878,8 @@ function EventTypeToggleVisible()
 end
 
 
-%% ===== EVENT TYPE: SET AS BAD =====
-function EventTypeSetBad()
+%% ===== EVENT TYPE: TOGGLE BAD =====
+function EventTypeToggleBad()
     % Get selected events
     iEvents = GetSelectedEvents();
     if isempty(iEvents)
@@ -1887,22 +1887,17 @@ function EventTypeSetBad()
     end
     % Get event (ignore current epoch)
     sEvents = GetEvents(iEvents, 1);
+    % Get all events
+    sEventsAll = GetEvents();
     % Update all the groups
     isModified = 0;
     for i = 1:length(sEvents)
-        % Skip the group "BAD"
-        if strcmpi(sEvents(i).label, 'bad')
-            disp('Cannot change the status of the "BAD" category.');
-            continue;
-        % Switch to good
-        elseif IsEventBad(sEvents(i).label)
-            sEvents(i).label = strrep(sEvents(i).label, 'bad ', '');
-            sEvents(i).label = strrep(sEvents(i).label, 'bad_', '');
-            sEvents(i).label = strrep(sEvents(i).label, ' bad', '');
-            sEvents(i).label = strrep(sEvents(i).label, '_bad', '');
-        % Switch to bad
+        % Switch from bad to good
+        if IsEventBad(sEvents(i).label)
+            sEvents(i) = SetEventGood(sEvents(i), sEventsAll);
+        % Switch from good to bad
         else
-            sEvents(i).label = ['bad_' sEvents(i).label];
+            sEvents(i).label = file_unique(['bad_' sEvents(i).label], {sEventsAll.label});
         end
         % Update dataset
         SetEvents(sEvents(i), iEvents(i));
@@ -1917,6 +1912,33 @@ function EventTypeSetBad()
     UpdateEventsList();
     % Update figures
     ReplotEvents();
+end
+
+
+%% ===== SET EVENT GOOD ====
+function [sEvent, isModified] = SetEventGood(sEvent, sEventsAll)
+    isModified = 0;
+    % Switch "BAD" to good
+    if strcmpi(sEvent.label, 'bad')
+        newLabel = 'undefined';
+        isModified = 1;
+    % Switch other bad events to good
+    elseif IsEventBad(sEvent.label)
+        newLabel = strrep(sEvent.label, 'bad ', '');
+        newLabel = strrep(newLabel, 'bad_', '');
+        newLabel = strrep(newLabel, ' bad', '');
+        newLabel = strrep(newLabel, '_bad', '');
+        isModified = 1;
+    end
+    % Event was modified
+    if isModified
+        % Make new label unique
+        sEvent.label = file_unique(newLabel, {sEventsAll.label});
+        % Change the color from red to orange
+        if isequal(sEvent.color, [1 0 0])
+            sEvent.color = [1 0.65 0];
+        end
+    end
 end
 
 
@@ -3077,7 +3099,3 @@ function JumpToVideoTime(hFig, oldVideoTime, newVideoTime)
     % Close progress bar
     bst_progress('stop');
 end
-
-
-
-

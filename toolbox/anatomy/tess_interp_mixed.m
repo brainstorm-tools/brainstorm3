@@ -7,7 +7,7 @@ function [Wmat, destGridAtlas, destGridLoc, destGridOrient] = tess_interp_mixed(
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -59,6 +59,7 @@ hFig1 = [];
 % Process each region separately
 for iScoutSrc = 1:length(ResultsMat.GridAtlas.Scouts)
     sScoutSrc = ResultsMat.GridAtlas.Scouts(iScoutSrc);
+    sScoutSrc.Vertices = sScoutSrc.Vertices(:)';
     % Check if the source model has been flattened
     if (sScoutSrc.Region(3) ~= 'C')
         error('Source maps must be flattened before being projected with this function.');

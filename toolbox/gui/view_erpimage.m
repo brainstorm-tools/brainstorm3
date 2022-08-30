@@ -18,7 +18,7 @@ function [hFig, iDS, iFig] = view_erpimage( DataFiles, DisplayMode, Modality, hF
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -177,6 +177,38 @@ switch (FileType)
         isStat = strcmpi(FileType, 'ptimefreq');
         TsInfo = [];
         PageName = '$freq';
+    
+    % ===== MATRIX =====
+    case 'matrix'
+        % Load data file
+        [iDS, iMatrix] = bst_memory('LoadMatrixFile', DataFiles{1});
+        if isempty(iDS)
+            return;
+        end 
+        % Get time vector
+        Time = bst_memory('GetTimeVector', iDS);
+        % Row names = channel names
+        RowNames = [GlobalData.DataSet(iDS).Matrix(iMatrix).Description(:)]';
+        % Read matrix file
+        sMat = in_bst_matrix(DataFiles{1}, 'Value');     
+        % Get Value
+        F = sMat.Value; 
+        % Display units
+        DisplayUnits = GlobalData.DataSet(iDS).Measures.DisplayUnits;   
+        % Colormap 
+        ColormapType = [];
+        if isNewFig
+            % New time series appdata structure
+            TsInfo = db_template('TsInfo');
+            TsInfo.FileName    = DataFiles{1};
+            TsInfo.Modality    = Modality;
+            TsInfo.DisplayMode = 'image';
+        else
+            % Get time series appdata structure from existing figure
+            TsInfo = getappdata(hFig, 'TsInfo');
+        end       
+        iChanModality = [];
+        isStat = strcmpi(FileType, 'pmatrix');
 end
 
 
@@ -208,27 +240,46 @@ switch lower(DisplayMode)
         bst_progress('start', 'ERP image', 'Loading data...', 1, length(DataFiles));
         % Load all the other files
         for i = 1:length(DataFiles)
-            % Load file
-            DataMat = in_bst_data(DataFiles{i});
-            % Check the time vector and channels list (all must be of the same length)
-            if (length(DataMat.Time) ~= length(Time))
-                error('All files must have the same number of time samples.');
-            elseif (size(DataMat.F,1) ~= length(GlobalData.DataSet(iDS).Channel))
-                error('All files must have the same number of channels.');
-            end
-            % Get data matrix
-            F = DataMat.F(iChanDisplay,:);
-            % Set bad channels to zero
-            if ~isequal(TsInfo.MontageName, 'Bad channels')
-                F(DataMat.ChannelFlag(iChanDisplay) == -1,:) = 0;
-            end
-            % Apply montage to the data
-            if ~isempty(TsInfo.MontageName) && ~isempty(sMontage)
-                F = panel_montage('ApplyMontage', sMontage, F, GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
-            end
+            switch (FileType)
+                % ===== RECORDINGS =====
+                case {'data','pdata'} 
+                    % Load file
+                    DataMat = in_bst_data(DataFiles{i});
+                    Comment = DataMat.Comment;
+                    % Check the time vector and channels list (all must be of the same length)
+                    if (length(DataMat.Time) ~= length(Time))
+                        error('All files must have the same number of time samples.');
+                    elseif (size(DataMat.F,1) ~= length(GlobalData.DataSet(iDS).Channel))
+                        error('All files must have the same number of channels.');
+                    end
+                    % Get data matrix
+                    F = DataMat.F(iChanDisplay,:);
+                    % Set bad channels to zero
+                    if ~isequal(TsInfo.MontageName, 'Bad channels')
+                        F(DataMat.ChannelFlag(iChanDisplay) == -1,:) = 0;
+                    end
+                    % Apply montage to the data
+                    if ~isempty(TsInfo.MontageName) && ~isempty(sMontage)
+                        F = panel_montage('ApplyMontage', sMontage, F, GlobalData.DataSet(iDS).DataFile, iMatrixDisp, iMatrixChan);
+                    end
+                    
+                % ===== MATRIX =====
+                case 'matrix'
+                    % Read matrix file
+                    sMat = in_bst_matrix(DataFiles{i});     
+                    % Get Value
+                    F = sMat.Value;
+                    Comment = sMat.Comment;
+                    % Check the time vector and row names (all must be of the same length)
+                    if (length(sMat.Time) ~= length(Time))
+                        error('All files must have the same number of time samples.');
+                    elseif (size(sMat.Value,1) ~= length(RowNames))
+                        error('All files must have the same number of rows.');
+                    end
+            end                   
             % Copy recordings
             ERP(i,1,:,:) = F';
-            FileComments{i} = DataMat.Comment;
+            FileComments{i} = Comment;
             % Increment progress bar
             bst_progress('inc', 1);
         end

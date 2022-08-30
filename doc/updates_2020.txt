@@ -1,0 +1,1999 @@
+---------------------------------------------------------------
+December 2020
+- Anatomy: Handling non-linear MNI registrations (deformation fields y/iy)
+- Anatomy: Import and reslices MNI atlases using linear/nonlinear reg
+- Distrib: Updated NIRSTORM installation scripts
+---------------------------------------------------------------
+November 2020
+- Python: New integration with Python and MNE-Python based on CPython
+- Distrib: Compiled version now includes NIRSTORM, Brain2Mesh and Iso2Mesh
+- Anatomy: Updated CAT12 to version r1733
+- Anatomy: Support for volume atlases in the database and the MRI viewer
+- Anatomy: Import all volume atlases from FreeSurfer, CAT, BrainVISA, BrainSuite
+- Anatomy: New automated import (15000 vertices, MNI fiducials)
+- FEM: Add SEEG/ECOG support in DUNEuro & other improvements
+---------------------------------------------------------------
+October 2020
+- Major bug fix: Changed units in PSD computation
+- New process: Simulate recordings from dipoles
+- Anatomy: Standard EEG caps included with infant templates
+- Anatomy: FreeSurfer import now loads all the .annot files in /label
+- ephys: Phase locking circular plots 
+- Process: Apply montage: Include processing of headmodels
+- Python: More generic initialization, using pyenv when available
+---------------------------------------------------------------
+September 2020
+- GUI: Added Y-log scale for spectrum figures
+- IO: Added export to TSV, with optional transposition for CSV/TSV/Excel
+- IO: Import Nicolet exported events (.txt)
+- Simulations: New tutorial and developments
+- MNE-Python: Wrapper for mne.preprocessing.maxwell_filter
+---------------------------------------------------------------
+August 2020
+- Anatomy: Display surfaces/sources as flat 2D maps (Mollweide projection)
+- IO: Support for Spike2 .smrx files
+- IO: Removed NWB support (not stable enough)
+- IO: Support for Open Ephys flat binary file (.dat/.oebin)
+- Connectivity: New envelope correction process (henv - H.Shahabi)
+- FOOF: Fitting Oscillations and One-Over-F
+---------------------------------------------------------------
+July 2020
+- Anatomy: Added 13 infant templates 0.5-25 months (O'Reilly)
+- Anatomy: Use custom background threshold for head surface generation
+---------------------------------------------------------------
+June 2020
+- FEM: Computation and display of tetrahedral conductivity tensors
+- Distrib: New default binary distribution: Matlab 2020a
+- Distrib: Compatibility with Matlab 2020b prerelease
+- IO: Support for The Virtual Brain .h5 EEG recordings (TVB)
+---------------------------------------------------------------
+May 2020
+- FEM: Import and management of tissue segmentations
+- IO: Support for fNIRS format .snirf
+- Anatomy: Updated CAT12 to version 12.7
+- Anatomy: Added CAT12 extra maps (gyrification, sulcal depth)
+- Doc: Updated decoding tutorial with new processes
+---------------------------------------------------------------
+April 2020
+- FEM: Integration of bst-duneuro into Brainstorm
+- FEM: Computation of DTI tensors
+- Anatomy: Improve volume import and display (types other than uint8, negative values)
+- Anatomy: Support for time-varying volumes
+- IO: Anonymize FIF files
+- Doc: New FEM tutorials
+---------------------------------------------------------------
+March 2020
+- Anatomy: Many imporvements in FEM mesh generation and manipulations
+- Anatomy: BEM generation with FieldTrip
+- Anatomy: Fixes in coordinate system conversions for FieldTrip anatomy files
+- Anatomy: Added independent SimNIBS anatomy folder import
+- GUI: View leadfield vectors
+---------------------------------------------------------------
+February 2020
+- IO: Added support for Localite digitizer (.csv)
+- Anatomy: Update FSAverage template (new import functions + braintomme atlas)
+- Anatomy: Full integration with iso2mesh for mesh generation
+- GUI: Upgraded to 2020a (deprecated JavaFrame and javacomponent)
+- GUI: Scaling all figure elements with InterfaceScaling
+---------------------------------------------------------------
+January 2020
+- Database: New search interface
+- Anatomy: 3D mesh generation with iso2mesh, SimNIBS, ROAST and FieldTrip
+- Anatomy: Optimized 3D tetrahedral mesh display
+- Anatomy: Added vox2ras matrix to ICBM152 template (world coordinates)
+- Anatomy: Updated USCBrain and BCI-DNI templates (skull, vox2ras, electrodes)
+- IO: Added support for SimNIBS meshes
+- IO: Added support for EmotivPRO EDF recordings
+---------------------------------------------------------------
+December 2019
+- IO: Added support for Wearable Sensing CSV files
+- IO: Added support for split FIF files (> 2Gb)
+---------------------------------------------------------------
+October 2019
+- IO: Conversion functions from/to MNE-python objects (Raw, Epoched, Evoked)
+- IO: Added support for Curry epoched .dat files
+- Stat: Renamed "p-value threshold" in "significance level alpha"
+- GUI: Montage editor: New option to filter the signals in a frequency band
+- GUI: Automatically unload when loading new file with incompatible time
+- GUI: Zoom on selected windows with shift+click (time series and spectrum)
+- GUI: Display and apply SSP/ICA projectors as montages
+- Database: Support for regular expressions when importing events
+---------------------------------------------------------------
+September 2019
+- Anatomy: Added storage and display for FEM meshes
+- Anatomy: Computation of FEM meshes with ROAST and iso2mesh
+---------------------------------------------------------------
+August 2019
+- GUI: Added support for clusters with STDs
+- GUI: New colormap: Turbo, Google's JET alternative
+- IO: Import volume atlases as scouts without overlap between ROIs
+---------------------------------------------------------------
+July 2019
+- Anatomy: Import MRI segmentation output from SPM12/CAT12
+- Anatomy: Run MRI segmentation output with SPM12/CAT12
+- Anatomy: Improved algorithm for projecting multiple scouts across surfaces
+- API: Major modification in averaging: Using Leff instead of nAvg
+- Inverse: Major modification in dSPM computation: Now saving unscaled values
+- IO: Added support for MNE-FIF epoched files
+- IO: Added support for ANT EEProbe .avr files
+- IO: Neuroscan AVG: Added support for channel names and locations
+---------------------------------------------------------------
+June 2019
+- Anatomy: Added support for MarsAtlas parcellation in BrainVISA
+- IO: Support for Intan RHS+RHD files
+---------------------------------------------------------------
+May 2019
+- IO: Support for NWB ECOG (recordings + surfaces)
+- Database: Improved database updates between versions
+- Database: Add new type of object "fibers"
+- IO: Improved support for discontinuous EDF files (EDF+D)
+- GUI: Time series viewer: New menu to group all the display options
+- GUI: Events: New options for displaying event markers (lines, dots, hide)
+- GUI: New keyboard shortcuts for recordings viewer (F6, Shift+F6, Ctrl+L, Ctrl+H)
+- GUI: New options for custom events shortcuts (full page, extended events)
+---------------------------------------------------------------
+April 2019
+- GUI: New color picker to replace Matlab's buggy uisetcolor
+- GUI: New bipolar and avg ref montages for ECOG+SEEG
+- GUI: New default colormaps: Viridis, Magma, Dory, Royal Gramma, Mandrill
+- GUI: New EEG montage: Scalp Current Density (L->R)
+- Anatomy: Support for new fibers objects
+- Connectivity: View of functionnal connectivity along anatomical fibers
+- Doc: ECOG tutorial
+- API: Removed the field "samples" from events and sFile structures (use "times" instead)
+- API: Added fields "channels" and "notes" to events structures
+---------------------------------------------------------------
+March 2019
+- Anatomy: Deface MRI with FreeSurfer or SPM
+- Anatomy: World coordinates made available in MRI viewer
+- IO: Support for synchronized EEG-video (link raw and import epochs)
+- GUI: Review of synchronized EEG-video with VLC ActiveX plugin
+- GUI: SEEG 2DElectrode topography (and 2DLayout without 3D positions)
+- GUI: EEG Scalp Current Density (SCD) as a default montage
+- Distrib: Updating Brainstorm now downloads only the scripts (skips the compiled version)
+- Distrib: Compiled 2019a
+---------------------------------------------------------------
+February 2019
+- Process: Updated frequency filters in all the processes (Shahabi/Leahy 2019 specifications)
+- New process2: "Standardize > Interpolate time" (+ new option 'nearest' in process_stdtime.m)
+- IO: Added support for York Instruments MEGSCAN recordings (.hdf5)
+- IO: Added support for Tucker Davis Technologies (.tdt)
+- Scripting: Custom scripts can be executed with the compiled version (GUI and command line)
+- Distrib: Compiled Brainstorm now includes all SPM and FieldTrip dependencies
+- Distrib: Compiled 2018a and 2018b versions
+---------------------------------------------------------------
+January 2019
+- IO: BIDS export process supports EEG-BIDS
+- IO: Plexon 2 (.pl2) files can now be read if Plexon SDK installed
+- IO: Export EEG/SEEG electrode positions in MNI or world coordinates
+- Anatomy: Handle better world coordinates (cs_convert, import/export of channel files)
+- Stat: Colormaps adapted to t-value threshold
+- GUI: Added colormap ovun (now default for stat2 files)
+- GUI: Reorganization of the management of multiple screens for Matlab>2015b
+---------------------------------------------------------------
+December 2018
+- IO: BIDS import: Support for EEG and iEEG
+- IO: Export EEG to BrainVision BrainAmp format (.eeg) for iEEG-BIDS
+- Bug fix: Fixed coil orientations when reading CTF .ds folders including a .pos file (MNI only)
+  https://neuroimage.usc.edu/brainstorm/Tutorials/CtfCoilOrientBugFix
+---------------------------------------------------------------
+November 2018
+- New electrophysiology toolbox
+- GUI: 2DLayout: Added new controls, new time window management
+- GUI: 2DLayout: Overlay of multiple conditions
+- GUI: 2DLayout: Overlay of NIRS wavelengths and oxy/deoxy
+---------------------------------------------------------------
+October 2018
+- IO: BIDS export process
+---------------------------------------------------------------
+September 2018
+- IO: Support for EGI-Philips MFF recordings
+- Process: Uniform epoch time: Added option "overwrite" and support for source links
+---------------------------------------------------------------
+August 2018
+- Bug fix: All the issues related with OpenMEEG 2.4 should be fixed now
+- Distrib: Improved download speed
+- Sources: Updated OpenMEEG to 2.4.1 (bug fixes)
+- GUI: Added NIRS colormap type
+- Anatomy: Added labels for FreeSurfer volume atlases: aparc+aseg, aparc.a2009s, aparc.DKTatlas
+---------------------------------------------------------------
+July 2018
+- Inverse 2018: Major modification: dSPM values are no longer scaled by number of trials
+  | https://neuroimage.usc.edu/brainstorm/Tutorials/SourceEstimation#Averaging_normalized_values
+- Inverse: Enforce bst_inverse_linear_2018 as the default option
+- Stat: Added "Minimum duration" threshold in the stat tab
+- GUI: Headless support, for running scripts on computation clusters and distant servers
+- GUI: New montage "Average reference (L -> R)" for 10-20 EEG caps
+- GUI: New menu "Set acquisition date" (for automatic matching with empty-room recordings)
+- Anatomy: BrainSuite: Added subcortical structures
+- Inverse: Switched to OpenMEEG 2.4
+---------------------------------------------------------------
+June 2018
+- Distrib: New electrophysiology toolbox
+- GUI: Custom montage shortcuts
+- GUI: New cluster functions: Mean+Std, Mean+StdErr
+- IO: Updated BIDS import function to follow the most recent changes in the specs
+- Doc: Updated tutorial resting/omega to match the v2 of the BIDS dataset on OpenNeuro
+---------------------------------------------------------------
+May 2018
+- IO: Added support for g.tec HDF5 files
+- Web: Switch to https
+- Process: Updated runica.m function with current EEGLAB version
+---------------------------------------------------------------
+April 2018
+- Bug fix: Reading EEGLAB epoched .set files: Latency of additional events was incorrect
+- IO: Import montage: Added CSV file format
+- Process: ICA: Added option "Sort components based on correlation with" 
+- Process: ICA: Changed reconstruction method: (Winv_good * W_good) => (eye() - Winv_bad * W_bad)
+- IO: Added support for Curry 6-7-8 EEG recordings
+- IO: Added support for Muse .csv
+---------------------------------------------------------------
+March 2018
+- Bug fix: "Filter" processes were replacing the actual data with the "Std" field
+- Bug fix: Exporting vox2ras transformation to .nii when volume was not initially .nii
+- Bug fix: Correct registration of additional .nii files full FreeSurfer anatomy folders
+- GUI: Add numbers to the comments of new files that already exist
+- GUI: Updated tools for ECOG (new display options, many bug fixes)
+- GUI: Allow simultaneous display of SEEG and ECOG
+- GUI: SEEG/ECOG local average reference made available for all the groups of contacts
+- GUI: New option to add the "ASEG" atlas easily to any figure
+- GUI: Added legends to connectivity matrices displayed as images
+- Process: Re-reference EEG: New option "local average", and use of the list of bad channels
+- GUI: 2DLayout made available for SEEG/ECOG
+- Distrib: Switch to Matlab 2018a
+---------------------------------------------------------------
+February 2018
+- GUI: New options "Upsample image" to smooth MRI display in 3D figures
+- Anatomy: Use the vox2ras matrix from the FreeSurfer .mgz MRI files
+- Inverse: Added 2018 version of linear inverse models, made the default (old processes stay available)
+---------------------------------------------------------------
+January 2018
+- IO: Support for new RICOH MEG file format
+- IO: Improved BIDS importer (read acquisition dates from _scans.tsv files)
+- IO: Read acquisition dates from continuous files and save them in study field DateOfStudy
+- Process: Noise covariance: Match automatically noise covariance with subjects by acquisition date
+- Process: Average: Added option "median"
+---------------------------------------------------------------
+December 2017
+- IO: Improved EEGLAB reader: Keep events in epochs, allow epochs with multiple event occurrences
+- IO: Improved BIDS reader, to support correctly the derivatives folder (freesurfer and meg/sss)
+- Doc: Conversion of the Visual/Group tutorial to BIDS
+- Doc: Redaction of Frontier's article "MEG/EEG group analysis with Brainstorm"
+---------------------------------------------------------------
+November 2017
+- Bug fixed: Changes in isosurface in Matlab 2017b caused irregularities in head surfaces
+- GUI: More guided protocol creation to avoid massive deletions of user folders
+- GUI: Add event markers on the signals when the event names match the channel names
+- Anatomy: MRI viewer: Various interface improvements (zoom, shortcuts)
+- Anatomy: Allow volumes of different sizes in the database (register/no reslice)
+- Anatomy: Separating volume coregistration and reslicing (similar to SPM)
+- Anatomy: Allow direct registration of volumes with SPM (without going through the MNI transformation)
+- IO: Added import of channel files in .tsv format (IntrAnat)
+---------------------------------------------------------------
+October 2017
+- Process: PSD process now saves the standard deviation across time
+- Process: Cut stimulation artifact: Extend to support continuous files
+- Process: Uniform epoch time: Reinterpolates epochs with different durations
+- Anatomy: New options for co-registration of various volumes from the same subject
+- GUI: New interface for placing SEEG/ECOG contacts in the MRI Viewer
+- GUI: Various improvements for handling SEEG/ECOG data
+- GUI: Export to Plotly
+- Doc: New tutorial "SEEG epileptogenicity maps"
+---------------------------------------------------------------
+September 2017
+- IO: DICOM converter (SPM-based)
+- IO: Elekta recordings: Default acquisition SSP are not applied by default anymore
+- IO: Export volume grids as .nii
+- New process: Epilepsy > Epileptogenicity maps
+- New process: Undo 4D/CTF noise compensation
+- GUI: MRI viewer and MRI-3D: New menu Jump to maximum (shortcut "M")
+- Distrib: Upgraded to Matlab 2017b
+---------------------------------------------------------------
+August 2017
+- GUI: Raw viewer: Optimized scrolling speed with new option "Downsample recordings"
+- GUI: New menu "Guidelines" for computing epileptogenicity maps
+- GUI: Added colormaps "tpac" and "gin"
+- Process: Added tPAC processes
+- Process: Added Phase transfer entropy
+- Process: Added Multitaper time-frequency decomposition (FieldTrip: ft_mtmconvol)
+- NIRS: Distribution of Nirstorm toolbox and tutorial
+---------------------------------------------------------------
+July 2017
+- GUI: Standalone file viewer ("brainstorm autopilot")
+- GUI: Allow marking bad EEG/SEEG channels in bipolar montages
+- GUI: Raw viewer: Edit current page size by resizing the cursor at the bottom
+- GUI: Raw viewer: Different mouse cursors for different actions
+- GUI: Raw viewer: Added buttons to zoom along channels
+- GUI: Interface scaling option (for adapting to high DPI screens)
+- IO: Support for ERPLab files
+- IO: New menu "Import texture" in the popup menus of the surface files
+- IO: Load .gii files as source maps/textures
+- Anatomy: Added template USCBrain
+- Anatomy: Add computation of SPM canonical surfaces
+- Anatomy: Properly handle the NIfTI sform/qform voxel=>subject transformations
+- Anatomy: Import sensors positions in subject coordinates (NIfTI sform/qform)
+- Anatomy: Added more options for importing multiple registered volumes
+---------------------------------------------------------------
+June 2017
+- IO: Added support for Blackrock .ns6 files
+- IO: Added support for XLTEK event files
+- Workshop: Cambridge
+---------------------------------------------------------------
+May 2017
+- Bug fix: Some Neuroscan .cnt files with low accuracy (int16) were not read correctly
+- Bug fix: Import to database: SSP already applied were not saved in the channel file
+- IO: Support for Nicolet .e files
+- IO: Support for ANT ASA .msm/.msr files
+- IO: Support for CED Spike2 .smr
+- GUI: Added log XScale and XGrid/YGrid buttons to PSD plots
+---------------------------------------------------------------
+April 2017
+- Bug fix: Nihon Kohden reader had many issues channel names and types
+- Bug fix: Micromed .trc channel names were incorrect
+- Bug fix: Fixed SEEG contact positioning in MRI viewer
+- IO: Export to EDF => Now all the file formats can be converted to EDF with Brainstorm
+- IO: Updated ANT EEProbe library to ANTeepimport1.13 (EEGLAB plugin)
+- IO: Support for Ripple Trellis NEV/NSx files
+- GUI: New displays for SEEG/ECOG: Cortex surface, MRI Viewer, 2D Layout
+- GUI: Support for 2D/3D displays of time-frequency/PSD of SEEG/ECOG
+- Anatomy: Compute MNI transformation sets default NAS/LPA/RPA points
+- Doc: New forum software (replaced VBulletin with Discourse)
+- Workshops: Beijing, Montreal
+---------------------------------------------------------------
+March 2017
+- New process: Amplitude envelope correlation (Peter D)
+- GUI: Added option to filter files by the comment of their parents
+- IO: Support for Micromed EEG TRC files
+- IO: Support for Nihon Kohden .EEG files (including newer 1200 systems)
+- IO: Export/import continuous recordings with  SPM (.mat/.dat)
+- IO: Support for Presentation .log files
+- IO: Import SEEG/ECOG contact positions in MNI coordinates
+- Anatomy: Apply manual registration on other datasets in the same subject
+- Distrib: Upgraded to Matlab 2017a
+- Anatomy: Added default positions for BrainProducts ActiCap 128
+---------------------------------------------------------------
+January 2017
+- Bug fix: Computation of time-frequency maps in folders that include the keyword "_trial"
+- Bug fix: Epoch time could not be set in the "Import MEG/EEG" dialog window
+- Database: Improving the robustness of the list of bad trials
+- GUI: Reorganized the montage menus for SEEG contacts
+- IO: Added support for FreeSurfer 6.0 output
+- Doc: HCP tutorial
+- Doc: Changed date to 2017
+---------------------------------------------------------------
+December 2016
+- Bug fix: Between 12-Nov-2016 and 12-Dec-2016: Process "Extract > Scout time series" was not correctly 
+  | flipping the sign of the sources with opposite directions, on constrained source models
+- Process: Simulate recordings: Added noise to the simulated recordings
+---------------------------------------------------------------
+November 2016
+- Bug fix: Large Neuroscan .cnt files were truncated
+- New process: FieldTrip volume segmentation (ft_volumesegment)
+- New process: FieldTrip head models (ft_prepare_headmodel, ft_prepare_leadfield)
+- New process: FieldTrip inverse models (ft_sourceanalysis)
+- Anatomy: New headmodel option for isotropic source grids: cortex/head
+- Anatomy: Import subject volume atlases as scouts for volume source models (eg. ASEG)
+- Anatomy: Import MNI volume atlases as scouts for volume source models (eg. AAL)
+- Anatomy: Import MNI volume atlases as surfaces (eg. AAL)
+- Anatomy: Import MNI-registered volumes with their "MNI transformation"
+- Anatomy: Export volume scouts as MRI masks
+- Anatomy: MRI Viewer: Added the value of the selected voxel in the top-right corner
+- Anatomy: Updated ICBM152 template: MNI transformation set manually instead of computed with SPM
+- Anatomy: Default AC position in MNI space is now [0 3 -4] instead of [0 2 -4]
+- Anatomy: Import FreeSurfer anatomy: Now creates a surface with the cerebellum by default
+- Anatomy: Fixed the co-registration of multiple volumes (faster, less memory, better workflow)
+- Anatomy: MRI Viewer: Added support for indexed colormaps (atlas labels)
+- IO: Import of datasets following the BIDS specifications automatically
+- IO: Import HCP MEG/anatomy folders automatically
+- IO: Import/export FieldTrip MRI volumes
+- IO: Load colormaps from LUT files (color lookup tables)
+- Doc: OMEGA/resting state tutorial
+- GUI: Frequency contact sheets
+- GUI: Added colormaps from MRIcron
+---------------------------------------------------------------
+October 2016
+- Compatibility: The default band-pass/low-pass/high-pass filters use a different implementation
+  | For obtaining the same results as before, select the process option "Use old implementation"
+- API: Replaced "macro_methodcall" with "eval(macro_method)" (changes in Matlab 2016b)
+- Process: Band-pass filter: Main update of the filters used in the interface
+- Process: SSP, Hilbert: Using the new filters (slower but more accurate + documented transients)
+- Process: Extract values: Extracting one freq from a TF files creates a "matrix" or "results" file
+- Process: PSD: Full cross-validation with MNE-Python (removed the zero-padding in bst_psd)
+- New process: Events > Detect cHPI activity (Elekta)
+- GUI: Growing volume scouts can now be constrained to the current data threshold
+- GUI: Redering of the volumes scouts improved
+- Doc: Added full text search on the forum using Google
+- Distrib: Added support for compiled Matlab 2016b
+- Distrib: Transferred the code base from private SVN to public GitHub
+  | https://github.com/brainstorm-tools/brainstorm3
+- Distrib: Work on the BIDS specifications for the tutorials
+---------------------------------------------------------------
+September 2016
+- Bug fix: Downsampling of the surfaces was not working well between Aug 26 and Sept 8 (obvious error)
+- Bug fix: Automatic figure positioning now works on high-DPI screens (zoomed windows)
+- Bug fix: Screen captures now work on high-DPI screens (zoomed windows)
+- IO: Export events in CSV files
+- IO: Eyelink eye tracker support now includes the traces for the two eyes
+----------------------------------------------------------------
+August 2016
+- Bug fix: Mixed head models: The volume regions were not enforced to be "unconstrained"
+- Bug fix: Mixed head models: Interpolate correctly the mixed models on the MRI volume
+- Bug fix: Mixed head models: Various other things that were not working well in the interface
+- Bug fix: Project sources: Flatten source maps before (volume and mixed head models)
+- Bug fix: Export to SPM12 as .gii, files could not be loaded in SPM (bug introduced in May 2016)
+- Bug fix: Downsampling a surface and then using it to project to a template: indices were mixed up
+- Inverse: Project the group source averages back on the subjects (surface and volume grids)
+- Inverse: Project sources from mixed head models between anatomies
+- Inverse: Updated "Sources 2016", new options "median" and "Beamformer:pseudo NAI"
+- Anatomy: Re-wrote completely the computation of the interpolation matrix between surfaces
+- Anatomy: New menu "Resample MRI" to reslice any MRI volumes
+- Anatomy: New menu "Register on default MRI" to co-register multiple MRI volumes of the same subject
+- Anatomy: Compute the MNI transformation for non-FreeSurfer and non-isotropic volumes
+- Anatomy: New template ICBM152_2016b: Inner and outer skull can include the entire cerebellum
+- GUI: New display mode for mixed surfaces: "Struct" button in the Surface tab
+- GUI: Montage editor: Added syntax for separators (":")
+- GUI: Updated "2D Disc" and "2D Sensor Cap" topography 
+- GUI: Improved timestamp display (screen captures and contact sheets)
+- GUI: Update 2DLayout plots (signals and time-frequency)
+- EEG: Added support for BioSemi caps with channels named "A1" instead of "A01"
+- Process: Average: Added option "Exclude the flat signals from the average (zero at all times)"
+- Process: Weighted difference: Changed comment from "A-sqrt(nA/nB)*B" to "A-sqrt(nB/nA)*B"
+- Doc: Updated all the advanced tutorials (Warping, BEM, Volume, Montage editor, PAC, dipoles, DBA, etc)
+- Distrib: Integrated Mathworks fix for Matlab2016b (macro_methodcall was crashing on the prerelease)
+----------------------------------------------------------------
+July 2016
+- Process: Select files: Added an option to select directly files with a specific tag
+- New process: Find maximum in frequency
+- GUI: New menu File > Load protocol > Change database folder
+- GUI: Export reports to HTML (all the snapshots embedded as Base64-encoded PNG images)
+- IO: Added support for Yokogawa/KIT without third party export (Marker1, _HS.txt, _Points.txt)
+- Doc: New tutorial "Scripting"
+- Doc: Re-organized all the tutorials
+- Doc: Group tutorial (SPM 19-subject visual study)
+- Doc: Updated the EEG/Epilepsy tutorial (including a new ICA section)
+- Doc: Updated the Elekta-Neuromag median nerve tutorial
+- Doc: Updated the Yokogawa/KIT median nerve tutorial
+- Doc: Updated the CTF median nerve tutorial (old basic tutorials)
+- Distrib: Added a public FTP server on the Neuroimage server (for sample datasets)
+----------------------------------------------------------------
+June 2016
+- Bug fix: ICA: Option "Use existing projectors" was not used (always applied)
+- EEG: Added support for BioSemi caps with channels named "A1" instead of "A01"
+- EEG: Organized the default channels by manufacturer
+- Process: PLV: Added an option to save the magnitude
+- Process: Resample: Allow to run directly on the continuous files
+- New process: Find maximum in time
+- New proces: Events > Merge events
+- Stat: Allowed all the averaging and statistic tests on the connectivity measures
+- Sources: New menu: Generate source grid (popup menu on "Group analysis")
+- Sources: New option for volume head model: "Use template grid for group analysis"
+- Sources: Enabled the projection of individual volume sources to the template
+- GUI: New menu "File > Batch MRI fiducials"
+- GUI: MRI Viewer: New popup menu "Save fiducial file"
+- GUI: New menu: "File > Export protocol > Copy raw files to database"
+- GUI: New raw file popup > File > Copy to database
+- IO: Removed support for unused LENA format (too many functions needed)
+- Doc: Group tutorial (SPM 19-subject visual study)
+----------------------------------------------------------------
+May 2016
+- Major bug fix: Dipole scanning orientations were wrong for the unconstrained source maps
+- Bug fix: FDR and Bonferroni corrections with averaged time windows: fix number of tests (2x too high)
+- Bug fix: Fixed the coordinates system for the export of surfaces
+- Bug fix: Projection of cortical sources was not working when projecting multiple groups of files at once
+- Major modification: Hilbert transform, option "power" is now the default (instead of "magnitude")
+- Process: Hilbert: Allow both "power" and "magnitude"
+- Process: Snapshot: Added support for time-frequency files
+- Process: Parametric extract values: Add support for bad channels (ignored until then)
+- New process2: Test > Apply statistic threshold
+- New process2: Test > Permutation test: Independent (t-test, Mann-Whitney U test)
+- New process2: Test > Permutation test: Paired (t-test, wilcoxon test, sign test)
+- New process: Test > Parametric test against zero
+- New process: Test > Parametric test against baseline
+- Inverse: New menu "Save whitened recordings"
+- NIRS: Finished implementation and tutorial
+- Doc: Elekta phantom tutorial
+- Doc: Finished the Statistics tutorial
+----------------------------------------------------------------
+April 2016
+- Major bug fix: The gain of the channels in BrainVision files (BrainAmp or V-Amp) was not read correctly
+- Bug fix: Fixed the import of BrainVISA MRI with .nii transformations and anisotropic volumes
+- Inverse: Major modification in the computation of the scouts time series
+  | Sign flipping is now always applied, it does not depend on the outcome based on the data amplitude
+  | There won't be messages like "Sign flipping cancelled because it decreases the signal amplitude" anymore
+  | To disable completely the sign flipping: Use the process "Extract > Extract scouts time series"
+- Inverse: Data covariance computation can use a separate baseline window for DC removal
+- Inverse: Fixed SNR estimation issues
+- Process: "Z-score normalization" replaced with "Baseline normalization" 
+- Process: "Event-related perturbation (ERS/ERD)" replaced with "Baseline normalization" 
+- Process: Z-score of sources are not displayed anymore with a different colormap
+- Process: Moved all the old processes to a folder "deprecated" (can still be called from a script)
+- Process: PSD: Estimation directly from source files attached to a raw link
+- Process: Time-frequency: Now saving the mask of "bad values" (edge effects) in variable TFmask
+- Process: Time-frequency: Added option "Remove evoked response from each trial"
+- GUI: Montage editor: Added support for overlay (same display name) and custom color (NAME|RRGGBB)
+- GUI: Time series window: Selection shows data minimum/maximum
+- GUI: Reviewing CTF files, display/set the "video time" when right-clicking on the figure
+- Database: New popup menu for raw files: File > Copy to database
+- Database: New menu "Export protocol > Copy raw files to database"
+- NIRS: Major imporvements in the handling of NIRS recordings
+- Doc: Rework of the introduction tutorials #10-23
+----------------------------------------------------------------
+March 2016
+- Bug identified: 4D MEG ref gradiometers may not be modeled properly (waiting for tests from a 4D site)
+- Bug fix: Display Elekta-Neuromag gradiometer SSP: show two figures instead of one (grad2 and grad3)
+- Bug fix: Pre-defined Elekta-Neuromag channel setup: removed STI014 channel (need to reset Brainstorm)
+- Inverse: Updated the new inverse interface, renamed functions (2015 > 2016)
+- GUI: Updated dipoles exploration panel, added interactive dipole selection
+- Sources: Projection on the default anatomy is now always done on full source files 
+  | (not carrying the imaging kernels to the group study, risks of manipulation errors are too high)
+- IO: Added support for FieldTrip raw data file (trials)
+- Distrib: Compiled version does not crash anymore when Brainstorm is closed
+- Distrib: Added support for Matlab 2016a
+- Doc: Finalized the content of the tutorials #1-9
+----------------------------------------------------------------
+February 2016
+- Major bug fix: Deficient import of the CTF MEG reference sensors
+  | The forward model of the reference sensors was not computed correctly
+  | To get correct results, the recordings need to be re-imported and the forward model recomputed
+- Bug identified: 4D MEG reference sensors are not modeled properly (waiting for documentation)
+- Bug fix: Manual data plots were by default sent to a hidden figure (Brainstorm mutex)
+- Statistics: New functions for parametric tests (one-sample, two-sample, paired)
+- Process: Updated the default comments of the output files to all the grouping processes
+- Process: Allow "Reload last pipeline" with two inputs (Process2)
+- Process: Compute head model: New option to select the grid options for volume source models
+- Statistics: Allow two-level statistic calls (t-test at the subject level + Z-test group level)
+- GUI: New menu "Display sensors > CTF coils (ALL)" to represent the CTF references
+- New process2: Test > Compute t-statistic (no test)
+- New tutorial: CTF current phantom (new phantom anatomy)
+----------------------------------------------------------------
+January 2016
+- Bug fix: Stat: The t-tests across subjects were computed using weighted averages, now regular avg
+- Bug fix: Interpolation surface-MRI: wrong shift by +1 voxel in the Y axis (tess_tri_interp.m) 
+- Bug fix: Read FreeSurfer surfaces: wrong shift by -1 voxel in the Y axis (in_tess.m)
+- Bug fix: Read BrainSuite surface: wrong shift by -1 voxel in the all the directions axis (in_tess_.m)
+- Bug fix: Updated all the templates based on these bug fixes
+- Bug fix: Channel selection problem in Elekta sensor display (due to spaces in the channel names)
+- Bug fix: Export time-frequency and FFT/PSD files to 4D matrix: Sometimes the menu was not available
+- Bug fix: FieldTrip dipole fitting gives wrong results for versions between 2015-11-20 and 2016-01-15
+  | http://bugzilla.fieldtriptoolbox.org/show_bug.cgi?id=3037
+- Bug fix: Process "Simulate PAC signals" had issues in the phase of the coupled signal
+- Bug fix: Matlab 2016a has different behoviors for zoom/pan in 3D (see setAxes3DPanAndZoomStyle)
+- IO: Import ASCII formats as continuous (converts automatically to Brainstorm binary .bst)
+- IO: Convert imported files to continuous files (right-click > Review as raw)
+- IO: CTF: Removed more efficiently the duplicate markers
+- IO: Removed the options: "Store continuous files in original folder" and "in original format"
+- IO: EDF import: Removed the "-Ref" tag from the channel names automatically
+- IO: BDF import: Added option 'evtmode' in process_import_data_raw to allow reading the events as "bit"
+- SSP: Now always selecting the 1st component (previously using this arbirtary 12% threshold)
+- SSP: Validated that we should always use the existing SSP projectors by default
+- GUI: Bad event categories are now only displayed in red + new menu "Events>Mark group as bad"
+- GUI: Review raw recordings: Saves the amplitude scale when defined manually (FixedScaleY)
+- GUI: Menus "Display as image" now show the channel names and work with montages
+- GUI: Pipeline editor: Processes from Process1 can be applied after a Process2 (new category "Custom2")
+- GUI: New display mode for time-frequency files: "Image [signals x time]"
+- Anatomy: Generating smaller head surfaces (erode 2 additional voxels from head mask)
+- Anatomy: New template BCI-DNI_BrainSuite
+- Anatomy: Replaced the default template Colin27 with ICBM152
+- Sources: Allow the computation of the noise covariance separately for each modality + merge option
+- New process: Extract > Extract values: Select blocks of data and concatenate them across files
+- New process: Standardize > Concatenate signals
+- New process: (Process2) File > Select uniform number of files: Selects the same number of A and B
+- Average: Replaced default option from weighted average to regular average, new option for weighted
+- Average: The signals are now matched by name for time-frequency maps and scout signals
+  | It is not necessary to run "Standardize > Uniform row names" when you have bad channels anymore
+  | Same goes for all the processes that rely on averages: tests and differences of averages
+- Statistic: New implementation for the parametric tests, much more flexible in the input selection
+- Statistic: Histogram plot: Added the result of the Shapiro-Wilk test and a "Q-Q plots" button
+- Process: Interpolate bad channels: Bug fix in channel indices + support for continuous recordings
+- Process: Event detection: Detection on combinations of channels, with the montage syntax ("ch1,-ch2")
+- Process: Connectivity: Removed option "Metric significativity", the p-value was too confusing
+  | The thresholding is still done in the code (p < 0.05)
+- Process: Smooth surfaces: Replaced the existing process with a function from the SurfStat toolbox
+- Distrib: Switched to Matlab 2015b for the binary distribution (smaller and faster)
+- Distrib: Adapted distribution to work with Matlab 2016a (switch to JOGL 2.3)
+----------------------------------------------------------------
+December 2015
+- GUI: Clone TF figures
+- IO: Support for Cartool .mrk events file
+- IO: Support for BESA .evt events file
+- Workshops: Geneva and Grenoble
+----------------------------------------------------------------
+November 2015
+- New external plugin: CENA toolbox (https://hpenlaboratory.uchicago.edu/page/cena)
+- Doc: New tutorials about difference and statistics
+- GUI: Added a new type of sensors "NIRS" (Group=Wavelength)
+- IO: Support for g.tec Matlab exports (.mat)
+- IO: Improved the management of the units when importing EEG positions
+- IO: Support for Brainsight NIRS systems (Homer file format)
+- Doc: Added "Online tutorial" button in the pipeline editor, to document the processes
+----------------------------------------------------------------
+October 2015
+- New process: FieldTrip's scalp current density (ft_scalpcurrentdensity)
+- New process: File > Select uniform number of trials
+- New process: Extract > Extract values (generic process for extracting and concatenating blocks of files)
+- GUI: Display of value histograms for all the files in the database
+- IO: Support for EyeLink eye tracker recordings (.edf)
+- DB: Optimized calls to retreive file names in process loops
+- Workshop: Los Angeles
+----------------------------------------------------------------
+September 2015
+- Process: Absolute values option now always use the norm of three orientations for unconstrained sources
+- Statistics: Added the scouts processing in the parametric t-tests
+- Statistics: Enable calls to FieldTrip functions: ft_freqstatistics
+- Statistics: Display of significant clusters
+- Inverse: Dipole fitting with FieldTrip with function: process_ft_dipolefitting
+- Inverse: Allowing regular isotropic grids for the forward model
+- Anatomy: Added the anatomical registration with BrainSuite
+- New process: Add EEG positions
+- IO: Added support for ITAB MEG file format
+- IO: Added support for MEGA NeurOne file format
+- IO: Added support for Blackrock NeuroPort file format
+- IO: Added support for BrainVision channel files (.bvct .bvef)
+- IO: Import FieldTrip structures saved as .mat files (data_timelocked)
+- IO: Export of FieldTrip structures for recordings, sources, time-frequency maps, headmodels
+- GUI: New options to call Brainstorm for IPython Notebook
+- GUI: Display recordings as images (+ ERP image)
+- Dipoles: Added option to merge multiple dipole files
+- Distribution: Updated to 2015b
+- Doc: New tutorials are now the default landing page
+----------------------------------------------------------------
+August 2015
+- Major bug identified: The head surfaces are 1-2mm too large
+- Statistics: Enable calls to FieldTrip functions: ft_timelockstatistics, ft_sourcestatistics
+- Statistics: Allow stat on matrix files (scouts and clusters)
+- Statistics: Display of significant signals-time clusters
+- Database: Grouping matrix files by comments, similarly to data files
+- Process: Merged the Z-score static and dynamic (only doing dynamic for kernel-based source files)
+- Process: Z-score on unconstrained sources: convert to flat map first (norm of three orientations)
+- Process: Z-score dynamic: no shared kernels anymore (Z-score on single trials make no sense)
+- Process: Average: Added an option to adjust the dSPM/MNp values for increased SNR in the average
+- Anatomy: New anatomy template "Oreilly_1y"
+  | http://neuroimage.usc.edu/forums/showthread.php?2123-Atlas-for-1-year-old-babies
+- GUI: Filter tab: Add a checkbox "Filter full source files"
+- Doc: Redaction of the new introduction tutorials
+----------------------------------------------------------------
+July 2015
+- Inverse: Added a first draft of new inverse functions
+- New process: Detect other artifacts (process_evt_detect_badsegments.m)
+- New process: Decoding processes from MIT, with the attached tutorial
+- New process: Remove head points below a threshold (Z-coordinate)
+- New process: Add head points 
+- New process: Refine registration using head points
+- New process: Set bad channels
+- Anatomy: Removed the iso2mesh functions and now asks to download a full local copy of the toolbox
+- Anatomy: Project scouts between surfaces
+- GUI: New management for custom colormaps, now saved in the user preferences
+- GUI: Added 'backspace' key as an equivalent to 'delete', to make it easier to use on MacOS
+- GUI: Default colormap size changed from 64 to 256
+- GUI: Reviewing EDF files, display the "wall clock time" when right-clicking on the figure
+- GUI: Create a new scout from MNI/SCS/MRI coordinates
+- GUI: Display the volume of a volume scouts in cm3
+- IO: Added the reading of channel names in the BESA exports (.avr, .mul)
+- IO: Added support for FieldTrip trial definition files
+- Doc: Redaction of the new introduction tutorials 
+- Doc: Started processing Rik Henson's for creating a group analysis tutorial
+----------------------------------------------------------------
+June 2015
+- Major bug found: Average(dSPM) give different results than dSPM(Average) 
+  | Results are both correct but dSPM is NOT LINEAR!
+- Bug fix: Export of surfaces for SPM12 in MNI/millimeters coordinates (previously in SCS/meters)
+- Bug fix: Export of Brainstorm MNI templates with fixed centers to match MRICron display
+  | (adjust center of volume by a few voxels)
+- Bug fix: Loose orientation on cortex + DBA mixed headmodel was crashing
+- Bug fix: ICA on one modality was erasing the other modalities, now inverting only the non-zero channels 
+- Bug fix: OpenMEEG implementation now uses the Matlab .mat format instead of .bin (limited in size)
+- Bug fix: Fix 1mm shift in the surface/MRI interpolation in the Y axis (in MRI coordinates)
+- Bug fix: Added support for Yokogawa planar gradiometers
+- Bug fix: Replaced the calls to "matlabpool" with "parpool" in recent versions of Matlab
+- Process: Sources>Compute noise covariance: Added option "No noise modeling"
+- Process: Import recordings>Import MEG/EEG: Use existing epochs: Added option "EEGLAB event types"
+- Process: File>Select files: Added an option to include or not the bad trials
+- Process: Average files: Added an option "Average+StdErr"
+- Database: Added "Std" field in all the basic file types (that can be averaged)
+- IO: Added support for Neuralynx .ncs files
+- IO: CTF: Added the reading of the .hc file (transformation "Dewar=>Native" in the channel file)
+- GUI: Added new type of figure to display videos
+- GUI: Added synchronized videos for continuous files (storage and display)
+- GUI: Added display type for Mean+Std using bounded lines (recordings and scouts)
+- Doc: Redaction of the new introduction tutorials 
+----------------------------------------------------------------
+May 2015
+- Bug fix: Selection of multiple conditions with process "File > Select recordings"
+- Bug fix: Connectivity on unconstrained sources: Group the three orientations by taking the signed maximum instead of the regular maximum
+- Bug fix: EGI epoched .raw with spaces in the .epoc labels were not read correctly
+- New process: Time-resolved coherence (Process2)
+- New process: Import anatomy > Compute MNI transformation
+- Templates: Fixed inner skull and outer skull surfaces in the ICBM152_2015 template
+- Connectivity: Added option "Include bad channels" for all the processes
+- Pipeline editor: Added the option "All file" for the 'baseline' entries
+- IO: When importing epochs, save the corresponding time in the original file in the history
+- Doc: Redaction of the new introduction tutorials 
+----------------------------------------------------------------
+April 2015
+- Major bug fix: Wrong values of dSPM for averages, NoiseCov was not divided by the number of averages
+- Bug fix: Reading wrong nAvg from kernel-based source files with in_bst (wrong weighted average)
+- Bug fix: Graph display for Matlab 2015a
+- New process: Artifacts > ICA components: Support for two methods (EEGLAB/Infomax, JADE)
+- New process: Events > Detect multiple responses
+- New process: Events > Detect movement
+- New process: Test > Student's t-test against zero
+- New process: Standardize > Normalized difference (A-B)/(A+B)
+- New process: Standardize > ERDS with two inputs
+- New process: Standardize > Interpolate bad electrodes
+- New process: FieldTrip > ft_channelrepair
+- Anatomy: Registration of individual MRI on MNI ICBM152 with SPM to get "MNI coordinates"
+- Anatomy: New coordinates conversions: replaced cs_* function with cs_convert and cs_compute
+- EEG: Adding many minor features and fixing many bugs for the processing of EEG recordings
+- ICA/SSP: Merging with SSP process, creating a very flexible function (process_ssp2)
+- ICA/SSP: Display components topographies and time series
+- ICA/SSP: Deeply modified the calculation for EEG (including the re-referencing as a projector)
+- IO: Export MRI overlay to MRI files (allows to export dipoles matrices)
+- IO: Export data files to FieldTrip structures (out_fieldtrip_data)
+- GUI: MRI Viewer: Now clicking on an electrode or a fiducial selects it in the three views
+- GUI: SEEG: New menu "Define group with first and second contacts"
+- GUI: New popup menu "Import data matrix" when right-clicking on a study folder
+- Templates: Updated Infant7w template with new segmentation and atlas
+- Templates: Updated ICBM152/Colin27/FSAverage with the new MNI coordinates
+- Templates: Aligned ICBM152 on Colin27 for reusing the template electrodes positions
+- Distrib: Display release notes when updating
+- Preparation of the EEG-based training in Marseille
+----------------------------------------------------------------
+March 2015
+- Major bug fix: OpenMEEG on SEEG works now, the call to the openmeeg function was just wrong
+- Bug fix: Process PSD: Fixed the estimated file size
+- Bug fix: Processes connectivity AxB was not allowing to set the scout function
+- Bug fix: Simulation of recordings using mixed head models using a limited number of scouts
+- Sources: New inverse interface, new inverse methods 
+- Process: Added ICA cleaning (JADE)
+- Process: PLV: Adding an option to concatenate the input files
+- Montages: Added support for linked EEG references
+- Montages: Allow mix of multiple modalities in one montage (eg. EEG, EOG/ECG, references)
+- GUI: Modified the buggy CTRL+Scroll and SHIFT+Scroll shortcuts
+- Distrib: Compilation and distribution with Matlab 2015a
+- Doc: Redaction of the new introduction tutorials 
+- MEG training at McGill
+----------------------------------------------------------------
+February 2015
+- Bug fix: Option "No noise modeling", adapts diag value to sensor type (MEG:1e-26, EEG:1e-10)
+- SEEG/ECOG: Added a field Group in the channel file => NOT USING THE COMMENT FIELD ANYMORE
+- SEEG/ECOG: Now displaying only the first and last contacts of each group of contacts
+- SEEG/ECOG: Changed the text color for the ECOG/SEEG labels in 3D figures
+- SEEG/ECOG: Create automatically a set of temporary montages when loading a file
+- Process: Simulate from scouts: Add support for mixed/volume head models
+- IO: Added support for Neuromag Graph event files (.evl)
+- GUI: MRI Viewer: Changed the number of slices on which a point is visible from 5 to 3
+- GUI: MRI Viewer: New button "set coordinates"
+- GUI: Change the attribution of colors to event markers to avoid repetitions
+- Doc: New structure for the online tutorials 
+- Doc: Added a menu "Release notes" in the Help menu
+- Report meeting grant MNE-BST year 2 (Los Angeles)
+----------------------------------------------------------------
+January 2015
+- Major bug fix: Error in reading the BDF/EDF channel gains, the signal amplitudes were not scaled correctly
+- Major bug fix: Error in the calculation of the scouts values with process_extract_scouts in the case of 
+  | constrained sources and atlases with non-sorted vertices (older atlases loaded with new code)
+  | http://neuroimage.usc.edu/forums/showthread.php?1855-Extract-Scout-time-series
+- IO: Import EEGLAB: Added support for categories "latency" and "type"
+- IO: Added support for KRISS MEG .kdf file format
+- IO: Added support for BabyMEG system
+- IO: Added support for Compumedics ProFusion Sleep 4 files
+- New process: Convert to simple event
+- New process: Time-resolved correlation and coherence
+- Doc: Updated the web server and wiki engine
+----------------------------------------------------------------
+December 2014
+- Bug fix: Processing CTF recordings with compensation not applied, new file not marked as processed
+- Bug fix: Display of unconstrained sources
+- Bug fix: Wrong scout order in the time-frequency file after the major scout management update
+- New process: Normalize over frequencies (correct for 1/f decrease in power in TF and PSD)
+- New process: ARIMA filter (for spectral flattening)
+- Process PAC: Added option for controlling the number of frequency bins that are used (numfreqs)
+- Process TF: Added option "Spectral flattening: 1/f compensation"
+- GUI: Updated display functions for subcortical atlases (uniform behavior on all Matlab versions)
+- Workshops: Freiburg and Oldenburg
+----------------------------------------------------------------
+November 2014
+- Major modification: The inputs of all the processes using scouts have been modified
+  | Scouts are now defined as a cell array {AtlasName, {'Scout1','Scout2',...}; ...}
+- GUI: New implementation of the MRI viewer, not using GUIDE anymore
+- GUI: Modified the scout selection in the processes, to allow the selection of the atlas
+- GUI: Edit electrodes positions using the MRI Viewer
+- GUI: EEG/ECOG/SEEG: New display mode "3D Electrodes"
+- GUI: Display of SEEG strips, based on the groups defined with the Comment field of the channel file
+- GUI: Detection of the electrodes groups extended to the tags/indices logic
+- GUI: Added simulation of recordings for mixed head models
+- GUI: Pipeline editor: Added function path as the tooltip text
+- GUI: Replaced the calls to function "material" with the corresponding properties of the surfaces
+- GUI: Faster creation of the nodes in the tree
+- Inverse: ECOG/SEEG, use a global average reference instead of an average reference per sub-group
+- Inverse: Robust identification of OpenMEEG crashes and logging system (tmp/openmeeg_log.txt)
+- Database: Use of subject "Group_analysis" instead of "Inter-subject" when mixing multiple subjects
+- Distrib: Switched to Matlab 2014b for the binary distribution
+- Distrib: Added support for proxy in download functions
+- Distrib: Added realtime example functions
+- Bug fix: Error in the calculation of the Canolty maps for scouts on unconstrained sources
+- Bug fix: Fixed calculation and display of source-space results calculated on volume/mixed head models
+- Bug fix: Project electrodes on scalp: Now centers the surface on the center of mass before
+- Bug fix: Source estimation with no noise modeling 
+  | Rounding errors in the noise covariance caused bst_wmne to generate complex output
+----------------------------------------------------------------
+October 2014
+- Anatomy: Added anatomy template Infant7w
+- IO: Export results/timefreq/connectivity/spectrum to ASCII and EXCEL
+- IO: Updated the ANT EEProbe reading functions from FieldTrip (now works from Linux systems)
+- EEG: New channel menu "Add EEG positions"
+- EEG: Importing channel file: Sets to EEG_NO_LOC the type of isolated EEG channels without positions
+- EEG: Added default 10-05 positions and a few other caps (ASA, BrainProducts)
+- EEG: Added support for the ASA channel files
+- Inverse: Added MEM inverse solution
+- Inverse: Major re-organiziation of the inverse model functions (suppression of bst_sourceimaging)
+- Inverse: Created new option panel for calculating inverse models
+- Inverse: Add the support for saving a data covariance matrix
+- GUI: New option to display/hide the legend on time series figures
+- GUI: Apply online filters to matrix files
+- GUI: Updated OpenGL detection at startup, for better compatibility with Matlab 2014b
+- Bug identified: band-pass filter: the high-pass filter should not enforce a Fs/3 low-pass filter
+- Bug fix: Display and processing of mixed source models
+- Bug fix: Import of results from newer versions of BrainSuite 
+- Workshops in Orlando and Miami
+----------------------------------------------------------------
+September 2014
+- IO: Updated the management of the channel files, causing major changes to all the low level functions
+  | that read files (in_fopen*, in_fread*, in_data, import_data, ...)
+- IO: Forbid the use of the process "Apply SSP" to rewrite a clean file when using a shared channel file
+- IO: Added a new in/out file format to save the sFile+ChannelMat structures (Brainstorm binary, .bst)
+- IO: Export data: Fixed the export to Excel .xlsx
+- IO: Export data: Added menu for raw data, to allow direct format conversion
+- IO: Modified out_mri_nii: Aligned the exported volumes to match the default volumes in MRICron and SPM
+- Database: Removed the double storage of the channel file for the raw links (removed sFile.channelmat)
+- Database: Now saving output in Brainstorm database and in Brainstorm-binary format (.bst)
+- GUI: Re-organized general preferences panels (removed useless options and added raw processing options)
+- GUI: Updated channel editor: Double-click to change a value and instant closing if no modifications
+- Bug fix: Time series figure: display of the scale bar on the right, in column mode
+- Bug fix: Lot of minor bug fixes in the stability of the import functions (no change of behavior)
+- Bug fix: Minor bugs with the manual alignment of the surfaces
+- Bug fix: Minor bugs with the figure manager and the user setups
+----------------------------------------------------------------
+August 2014
+- New process: File > Select files
+- Bug fix: Small bugs for the auditory tutorial
+- Bug fix: The weighted difference was not calculated correctly
+- Doc: Exploration of the auditory dataset and redaction of the tutorial
+- Doc: Preparation of the auditory-based workshops
+- Distrib: Matlab 2014b: Painful optimization of the time series figures (too slow in OpenGL)
+----------------------------------------------------------------
+July 2014
+- Stat: Refined the number of multiple comparisons (only MEG/EEG sensors, good channels, no baseline...)
+- Stat: t-test on PSD files
+- Stat: Added the possibility to run test on absolute values of recordings
+- New process: Bandstop filter (better notch than the sinusoid removal for large artifacts)
+- New process: Notch filter (use by default instead of the sinusoid removal)
+- New process: Remove linear trend
+- Process Average: Added an option "by trial groups (condition average)"
+- Pipeline editor: Added option "all time" to set "timewindow" to []
+- Pipeline editor: Re-organized all the processes related with events management in a category "Event"
+- SSP: New default pipeline: 1) Remove simultaneous cardiac/blinks, 2) SSP cardiac, 3) SSP blinks
+- SSP: Added options for calculating projectors from the average and to save the artifact ERP
+- SSP: New option "Compute using existing SSP projectors"
+- GUI: Neuromag: Updatedseparate display of separated gradiometers (more flexible, multiple views)
+- GUI: TF on data files: Allowed the topo/2DLayout displays for multiple sensors in the same file
+- GUI: Added "smooth display" checkbox in the TF display
+- GUI: Snapshots > Open as figure
+- IO: Save figure as Matlab figures (.fig), clean from callbacks and buttons
+- IO: Added support for SUMA/.dset ROIs
+- Bug fix: Granger: Transposed the output (everything was reversed, AR processes were wrong too)
+- Bug fix: MacOS bug with java_getfile (freezing Matlab randomly)
+- Doc: New scripts for all the online tutorials
+- Distrib: Matlab 2014b: More painful debugging
+----------------------------------------------------------------
+June 2014
+- New process: LCMV Beamformer (HL Chan)
+- Process PAC: Added direct support for scouts and scout functions
+- Process TF Morlet: Added the option for log scale of frequencies
+- Database: Import recordings with default anatomy: do not offer "refine registration"
+- Database: file_delete: added some more checks for preventing from removing the entire database
+- Database: db_fix: less automatic than before, asks for confirmation before creating folders
+- GUI: Updated the dipoles management
+- GUI: Display EEG electrodes in the MRI viewer (MIP:Functional = show all)
+- GUI: Changed the way SEEG electrodes were displayed and managed in 3D views
+- GUI: MRI Viewer: Overlay volume on volume
+- IO: EDF: Added support for multiple Annotation channels (for files exported by EGI NetStation)
+- IO: Export TF maps to SPM (volume and surface)
+- Bug fix: Minor bug in process_ssp2: Re-orthogonalization of vectors with SVD was a bit buggy
+- Doc: Resting state tutorial
+- Doc: Updated Neuromag tutorial
+- Distrib: Matlab2014b: Lots of debugging after all these updates in the graphics system
+----------------------------------------------------------------
+May 2014
+- New process: Apply montage
+- GUI: Allowed surface smoothing on timefreq files
+- GUI: Spectrum plot: Display X-axis in log scale
+- SSP: Create from one time point of recordings
+- Bug fix: Major bug in EEG source modeling: Avg reference must be applied on the NoisCov 
+- Bug fix: Fixing errors in default anatomy packages (NCS and SCS transformations were not correct)
+- Workshops in Osaka and Taipei
+----------------------------------------------------------------
+April 2014
+- Bug fix: Major bug in the process "Extract scouts time series" FreeSurfer atlases
+  (the scouts with vertex indices that are not ordered were not correctly flipped)
+- Sources: DBA headmodel and mixed source models
+- Sources: Mixed headmodels: volume/surfaces/dba + constrained/unconstrained/loose
+- GUI: Scouts 3D
+- Distrib: Compiled version for Matlab2014a
+----------------------------------------------------------------
+March 2014
+- New process: Granger spectral
+- New process: Simulate AR signals (Syed)
+- New process: Compute SSP with two-inputs, for more flexibility
+- Process Coherence: New version with test function
+- Connectivity: Completely re-organized the display menus
+- bst_window: Added Tukey and Parzen windows (to make coherence independent from sigproc toolbox)
+- GUI: New figure type "image" to display any type of 4D matrix as 2D cuts (time+frequency scrolling)
+- GUI: Matrix: Updated the "View as table" menu
+- GUI: Topography: added implicit re-interpolation of the bad sensors
+- GUI: Montages: "New re-referencing montage" menu
+- GUI: Extended the channel selection across figure types
+- Pipeline editor: New option "Process entire file at once", to process recordings with SSP
+- Pipeline editor: New option "overwrite" to the TF processes
+- Doc: Yokogawa tutorial
+- Doc: PAC Tutorial
+- Doc: Rat electrophysiology
+----------------------------------------------------------------
+February 2014
+- New process: Project electrodes on scalp
+- New process: Set channels type
+- Sources: BEM: Change default vertex number to 1922 per layer
+- Process Connectivity: Scout accepted as inputs
+- Process Connectivity: Changed the input structure of all the processes (now centralized in process_corr)
+- Process Average rows: Extended to connectivity maps
+- GUI: Scout time series: Recoded the resize callback to manage the position of the axes manually
+- GUI: Distribution of the ACNS standard electrodes montages
+- GUI: Montages: View bad channels as a montage
+- GUI: Set bad channels: Allow selection by channel name or index
+- NIH grant Brainstorm-MNE: Year 1 report
+- Doc: Epilepsy tutorial
+- Doc: Brainstorm-Fieldtrip auditory tutorial
+----------------------------------------------------------------
+January 2014
+- Process Warp: Removed update of SCS fiducials because it was messing up the registration MRI/surfaces
+- Database: Disk full: Added code to check save errors and incomplete brainstorm.mat at startup
+- Database: in_bst and in_bst_data: Removed the average reference
+- GUI: Figure 3D: Click on scout selects the scout in atlas list
+- GUI: Figure 3D: Remove vertex from scout by holding shift key while clicking
+- GUI: Figure timefreq: Synchronize changes of row name between similar figures
+- GUI: OpenMEEG: Help menu to make it easier to install / re-install
+- GUI: Colormap: General update to include the definition of the minimum
+- GUI: Colorbar: Small on 3D and topography figures
+- GUI: Colorbar: Marker to indicate the threshold level
+- GUI: Montages: Replaced channel selections with custom montages
+- GUI: Montages: Selected montage and display mode relative to the figure
+- GUI: Montages: Average reference replaced with montage
+- GUI: Clean surfaces re-implemented and improved to process scouts
+- GUI: Tool tabs: Recoded the management of the tabs
+- GUI: Display modes: Full-screen is made an independent option
+- GUI: User setups: Reload a previous figure configuration
+- GUI: Time series figures: Allow duplication when called from the tree + Cloning
+- GUI: Raw viewer: Shortcut to jump 1/2 page (F4/Shift+F4)
+- GUI: Raw viewer: Optimized the scrolling time (it was adding new buttons continuously)
+- GUI: Setting manually time and amplitude resolution (right-click > Figure > Set axes resolution)
+- IO: NeuroScope file format => http://crcns.org/data-sets/hc/hc-2/about-hc-2
+- Distrib: Version number: 3.2
+- Distrib: Rename panel_event => panel_record
+- Distrib: Rename panel_scouts => panel_scout
+- Distrib: Rename panel_clusters => panel_cluster
+- Distrib: Rename panel_stat_threshold => panel_stat
+----------------------------------------------------------------
+December 2013
+- New process: Signal simulators: custom and auto-regressive
+- New process: Source simulator: transforms matrix files into source files
+- New process: Unconstrained to flat map (pca or norm)
+- New process: Export stat file with a specific static threshold (process_extract_pthresh)
+- Process Add tag: Select either filename or comment
+- Database: Stat: pmap is not saved anymore but recalculated dynamically (process_extract_pthresh)
+- GUI: Search panel for the Process1 and Process2 file lists
+- GUI: Fixed MNI coordinates for Colin27 and ICMB152 brains, disabling for all the others
+- GUI: Synchronized zoom and selection over time series figures (rewrote zoom function)
+- GUI: New button "Flip Y +/-" for EEG/epilepsy display
+- Bug fix: Fixed bug with progress bar on Linux: was not closing properly
+----------------------------------------------------------------
+November 2013
+- New process: DynamicPAC: Integration of Soheila's functions + display
+- GUI: Add menu: Sort event groups by name/by time
+- GUI: Close progress bar: Sends a CTRL+C to the command window (abandoned later)
+- GUI: Command window for compiled mode
+- GUI: Channel selections for butterfly plots
+- GUI: Average reference: Using the selections for calculating the average reference in SEEG
+- IO: Support for Deltamed Coherence-Neurofile binary export
+- Distrib: Updated compiled version to Matlab 2013b
+----------------------------------------------------------------
+October 2013
+- Workshops: Florence and Montreal
+- BIC billing and network
+----------------------------------------------------------------
+September 2013
+- New process: Dipole scanning (John & Beth)
+- MEG/MRI registration: New function for fitting the head points on the head surface (Gauss-Newton)
+- Process "Select files with tag": More options
+- GUI: Dynamic loading of the tree nodes
+- GUI: Fixed bad channels management in the MEG interpolation 
+- IO: Export sources to SPM8 (volume) and SPM12 (sources): code and tutorials
+- Distrib: Fixes for Matlab 2013b: JOGL1 replaced by JOGL2
+----------------------------------------------------------------
+August 2013
+- CIVET import
+- Average and differences across different warped brains
+- Average of pial+white to create mid-gray surface
+- FreeSurfer sphere: display and usage for the re-projection
+- User scouts: automatically detects the region based on the anatomical atlases
+- Re-write tess_hemisplit to use the "Structures" atlas
+- Using by default the FreeSurfer registered spheres when they are available
+- Grouped all the nearest neighbor algorithms in bst_nearest
+- Re-wrote and optimized bst_shepards using bst_nearest
+- Fixed the spatial smoothing process
+- Pipeline editor: Replace hard coded raw filenames with variables defined at the top of the script
+- Pipeline editor: Allow empty time window for all the processes
+- Integration DBA model from Y.Attal
+- Scout menu "UNDO"
+- Displaying only the structures that are selected in "selected mode"
+- Scout menus made dynamic (adapt to selected atlas/scouts)
+- Atlas "Source model": define forward and inverse model properties
+----------------------------------------------------------------
+July 2013
+- User statistics
+- Noise covariance can be reviewed by modality
+- New processes: Concatenate recordings
+- Added button to hide the MEG helmet in the MRI registration figure
+- Export movies: Using the object "VideoWriter" and some JPEG2000 compression
+- Export movies: Added the option "all figures"
+- Merge surfaces: Save the original division in a "Structures" atlas
+- FreeSurfer: Added two new atlases (BA.thresh, Mindboggle)
+- FreeSurfer: Fixed import of all the MRI volumes
+- FreeSurfer: Importing aseg.mgz as a set of surfaces
+- FreeSurfer: Added the support for importing cortical maps as result files
+- FreeSurfer: Added the import of the registration spheres in the surface files (automatic process)
+- FreeSurfer: Added the import of the cortical thickness in the automatic process
+- MRI Viewer: Added zoom buttons + keyboard shortcuts
+- Updated "remove vertices": Now creates a new file (and compatible with Atlases)
+- New output surface formats: FreeSurfer and GiFTI
+- New input MRI format: MINC
+- New input surface format: MNI OBJ (for reading CIVET outputs)
+- Updated SSP ECG defaults: [-40,+40] ms, [13-40] Hz
+- Tested iso2mesh for surface resampling: good surfaces with equal triangle sizes
+  | but no correspondance of vertices in the original surface
+- Reducepatch: Added a subdivision of the large faces
+- Added "fiducials.m" for automatic import
+- MRI import: convert everything to uint8
+- Default anatomy: Handle multiple templates + automatic download from server
+- Default anatomy: Update Colin27, ICBM152, fsaverage
+- New button in Scout tab: Identify regions with color
+- Added OFF format for surface output
+----------------------------------------------------------------
+June 2013
+- Save the database structure in the protocols folders when possible
+- Keep track of modifications in protocols, to save structure only when needed
+- Evaluation of the save/load commands for each MAT format (6,7,7.3) and each type of file
+- Replace save() with bst_save(), and '-v7' by '-v6' for big files
+- Scouts on time-frequency files (control over signals/time/freq)
+- New process+menu "Events: Add time offset"
+- HBM 2013
+- Fixed bugs in the management of continuous EEG
+----------------------------------------------------------------
+May 2013
+- MRI Viewer: Type the fiducials positions directly
+- Update of the PAC: adding options, making work on RAW, more flexibilty in computation
+- Resting state pipeline
+- Rewriting all the PAC and chirplet functions... merging all the versions...
+- Import Neuroscan .ev2 files
+- Support for BrainSuite atlases + anatomy folder + tutorial
+- Parallel processing toolbox: available for PAC computation
+- Investigated the possiblity to manage de computer resources with ulimit/nice
+- Optimized in_fread_ctf, out_fwrite_ctf, bst_sin_remove 
+- Added support for BrainVision ASCII recordings + improveds channel description from the .vhdr files
+- New process: Uniform row names 
+- Process average files: Added the detection of bad rows (all zeros)
+- Process average rows: Added the option "average by row"
+- process_extract_cluster: Added option "Time window"
+- Coherence: Re-coding, implementing many new options
+- Connectivity: Added the concatenation input + many other improvements
+- Allow the display of stat/timefreq
+- Digitizer + acquisition: Allow positioning of the head using real antomical landmarks (easier to define)
+- Allowing bandpass filter + resample of scouts time series on source files
+- Scouts times series or the min norm maps and their zscore can be displayed at the same time
+----------------------------------------------------------------
+April 2013
+- Yokogawa: added support for the "exported" files (includes the digitized points)
+- bst_memory: Loading timefreq files: do not load the parent data or matrix files anymore
+  => will be faster but may cause some bugs (see lines: 1161 1162 1173)
+- Added event support for regular time series
+- Fixed bugs for Matlab 2013a (change in the processing of the for loops with [1x0] empty index matrices)
+- New process: Event related perturbation
+- Prevent the edition of the "official" atlases from BrainVISA/FreeSurfer
+- Fixed scout flip sign: was applied to all the values, now restricted to mixed-sign MNE signals.
+- Online filers: Apply to full sources
+- New process: process_zscore_dynamic
+- Management of dynamic zscores, calculated on the fly when needed
+- View noise covariance as image: normalize independently of each sensor type
+- Noise covariance: added a check for NaN and Inf in the whitener (bst_wmne)
+- Optimized a lot the display time of the time series figures
+- Options: Added OpenGL bug workarounds
+- Options: Added a "Reset brainstorm" button
+----------------------------------------------------------------
+March 2013
+- Import of CTF dipole files
+- Head tracking functions in the Brainstorm distribution
+- Multiple MRI volumes for one subject
+- Added function bst_window: Hann, Hamming, Blackman
+- New process: Simulate PAC signals
+- Process compute sources: return sources input data files instead of the all the sources
+- PAC functions: process, figures, database, tutorials...
+----------------------------------------------------------------
+February 2013
+- Remove DC offset: Allow directly on continuous files (CTF and FIF)
+- New process: Remove DC offset A vs B
+- Brainstorm window: Vertical split bar is enabled again
+- Added function java_create(): better management of awtcreate/javaObjectEDT
+- gui_layout: Fixed all the bugs related to the X11-based systems
+- gui_layout: Added a menu and more layout options
+- Workshop Halifax
+- Updated OpenMEEG to new version 2.2.0, supporting intra-cranial modeling
+  => Requires an update of the database version (3.6)
+- Added support for ECOG and SEEG in the visualization and source modeling
+- Added popup menu figure_3d: Snapshot > Save surface
+- Fixed a few bugs with the channel editor
+- New process: Run Matlab command (process1 and process2)
+- Support for Yokogawa/KIT MEG recordings
+- Read event channel: added a more options (TTL, reverse TTL, accept zeros)
+- Adding forced average reference for SEEG/ECOG source modeling
+- Support for read-only databases
+----------------------------------------------------------------
+January 2013
+- RAW tutorials: now based on the workshop dataset + detailed SSP documentation
+- Process average: added Condition (grand avg), Trial groups (grand avg), Trial groups (subj avg)
+- New processes: Import FreeSurfer, Import BrainVISA, generate head
+- New functions to manage link to raw files (delete)
+- Re-coded the selection of time indices with an auto-snap on a grid of time: panel_time('GetTimeIndices')
+- Pipeline editor: Simplified the access to the times and other ranges and scalars
+- Pipeline editor: Making the window non-modal
+- Added menu: File > Recall last pipeline
+- Process extract time: added definition of time
+- Adapted all the time displays to the available precision
+- Fixed bug with the default anatomy (head and skull surfaces crashing for Colin27)
+- New validating script tutorial_raw (call: brainstorm validate_raw)
+- Pipeline editor: Now keeps track of the modification of time, frequency, number of files...
+- New process: Instantaneous frequency
+- Process RAW files: Support for FIF format
+- Added popup menu "Delete Raw file"
+- Scouts: Added menus to subdivide scouts and atlases
+- Copy NoiseCov to other conditions (Ctrl+C/V): Now fixes the number of channels
+- Refine registration using head points: can be called while editing the registration manually (new button)
+----------------------------------------------------------------
+December 2012
+- Workshop MNI, December 6, 2012
+- Scouts: add import from MRI masks
+- Detect channel type: Better detection, based on a string search (eog, ecg, emg...)
+- Generate head surface from MRI based on isosurface (for FreeSurfer anatomies)
+- Fill holes from head surface (fixing BrainVISA head surfaces)
+- Added function file_short()
+- Import full FreeSurfer folder
+- Import full BrainVISA folder
+- Added "All surface types" to import surface
+- Added support for .gii format
+- Allow edition of multiple lines at once in the channel editor
+- Added support for Curry events file
+----------------------------------------------------------------
+November 2012
+- db_save: Running only every 10 minutes, or on specific operations
+- start/stop: Creating a file is_running, to identify if there is a running session of Brainstorm
+- 2D topography: option to select the number of contour lines
+- Connectivity: Intense debugging
+- Forward model: check for electrodes inside the head
+- OpenMEEG: Add a systematic check of the model against the spherical model
+- Process2: Independent selection of the types for A and B + automatic preselection with first file
+- Process1: Allow re-processing of non-kernel-based TF source files
+- New process: Scale values
+- Timefreq figures: Added export as matrix file
+- Project sources: Allow to project surface-based TF files on a different anatomy
+- Copy/paste: Add support for time-freq and connectivity files
+- New process: process_average_freq
+- Improved the automatic organization of the figures (TiledLayout)
+- Time series display: New menu "Normalize amplitudes"
+- Time series display: Shift+click sets the current time + popup menu
+- Re-writing the interface to change the fiducials with the scalp surface "Edit fiducials on surface"
+- Process "Frequency > Set time frequency" moved to "Extract > Extract measure from complex values"
+- 2D topo: Improved display of contour lines
+- Surface clustering: Automatically assign hemisphere
+- Atlases: Added support for FreeSurfer .label files
+- Delete files: Now unloads all the datasets and closes all the figures involving the deleted files
+- New process: Uniform epoch time
+- Fixed MacOS shortcuts bugs
+- Added scouts menu: "Add scouts to atlas"
+- Added surface popup menu: "Remove interpolations"
+- Added menus and various shortcuts to the interface for the time exploration
+- Fixed all the fonts issues, for all the operating systems
+- Improved the logging system on neuroimage server
+----------------------------------------------------------------
+October 2012
+- Scouts: Redesigned the management of scouts and atlases / added the region information
+- Scouts: New display, new options
+- Scouts calculation for constrained models: flip the sign of vertices with opposite orientations
+- Support for export of 4D matrices from volume source reconstructions
+- Downsample source files to atlases
+- Fixed the import and display of the fiducials for CTF recordings
+- Added the display of the fiducials on the surfaces for the check/edit of the MRI-MEG registration
+- Process: Re-implemented the gradnorm process, adapted to timefreq files
+- BEM: Fixed big bug, Gain matrix was not centered for EEG (average reference)
+- Forward model: Moving the average reference code to bst_sourceimaging
+- Surface display: Using flat transparency rather than interpolated
+- Surface display: Adding a small unzoom to display the cortex surfaces
+- Surface display: Initial orientation for surfaces: AC/PC MNI coordinate system
+- Unconstrained sources: Removed the PCA processing, now keeping all three components everywhere
+- Scouts: Allow the display of the 3 components x,y,z for unconstrained sources
+- BabySQUID: Added a specific type of recordings and channel handling
+- BEM surfaces: Fixed the size of the head envelope, now smaller by one voxel
+----------------------------------------------------------------
+September 2012
+- Fixed terrible bugs with the sLORETA/dSPM calculation and display
+- Fixed reports bug when protocol name has "/" in it
+- Subject names and protocol names cannot contain anymore any non-file characters
+- Fixed bug for displaying Z-scores of TF maps (was losing the negative values on the way)
+- Coherence: Refining the calculation, comparison with mscohere
+- Support for BDF files
+- New process: Events: Group by time
+- Edit channels: set the type for multiple rows using popup menu "Set channel type"
+- Function in_xml to read XML convert and convert them to Matlab structures
+- Added support for GIFTI textures (.gii as surface labels)
+- Update the binaries to Matlab R2012b (version 8.0)
+- Processes import from raw: do not return the bad trials anymore
+- Added support for MANSCAN EEG files
+- Scouts: Redesigned the management of scouts and atlases / added the region information
+----------------------------------------------------------------
+August 2012
+- Digitizer/Polhemus: Final version, documentation, distribution
+- Export channel files: Most of the simple ASCII formats
+- New mixed "Polhemus" format, to store at the same time the EEG and the headshape points
+- Process PSD: Now works in the same framework as the time-frequency (online average, timebands...)
+- Process FFT/PSD: Support for RAW recordings
+- Re-select node after renaming
+- Connectivity: Processes cohere1, cohere1n, cohere2, granger1, granger1n, granger2
+- Removed BadTrial field from the data.mat files
+- Added two colormaps: ns_white, ns_grey
+- Switched all the colormaps from 64 to 128 values
+- Added menu: Copy filename to clipboard
+- Inverse: Now asking the list of bad channels
+- New process + syntax for frequency bands and time bands
+- NoiseCov: New popup menu "No noise modeling (identity matrix)"
+- Process: plv1, plv1n, plv2 (including plvt)
+- Save the topo interpolations in GlobalData
+- Redesigned "Display" tab and frequency slider
+- New management for "Static" and "StaticFreq" figure properties
+- Connectivity figure: Added basic interactivity
+- Allowed movies for MacOS and Linux
+- New colormap types: "connect1" and "connectn"
+- Replace matlab getpref/setpref with GlobalData.Preferences
+----------------------------------------------------------------
+July 2012
+- MEG/Brainstorm Workshop @ UQAM summer school (July 11th)
+- Fixed import of BrainVision/BrainAmp markers and channel names
+- Fixed CTF AUX events import: ignores all the events at the beginning of a DS trial
+- Fixed errors in import of CTF and 4D sensor types
+- Fixed display of sensors in 2D and 3D
+- Fixed co-registration of MEG runs: refined the average between channel files
+- Added menu File > Set database folder
+- Fixed many small interface bugs with the "Review raw file" menu
+- Processes: detect automatically when modifications where made on the files, and reaload accordingly
+- Set up cron job to update brainstorm daily on the MNI BIC network
+- Process combine: Fixed for responses used multiple times, and added the "ignore" option
+- Export to Matlab: support for multiple nodes
+- Get coordinates panel: Shows the value at the selected point
+- Raw viewer: Events dots in the time bar: displayed at different levels (to show more info at once)
+- Process band-pass: Using oc_fir2 function from Octave if the SigProc toolbox is not installed
+- Process FFT: Using the oc_hamming function from Octave if the SigProc toolbox is not installed
+- Import EDF: Fixed support for mixed sampling rates, and added support for annotations
+- Curry BEM surfaces: Partial support (I don't know how to scale or align the surfaces)
+- Polhemus digitizer integrated in Brainstorm
+- Added connectivity figure type + colormap
+- Connectivity display: exporation of the Java3D/JOGL possibilities in Matlab
+- Re-select nodes after renaming
+----------------------------------------------------------------
+June 2012
+- Process: Import events from file
+- Process: Classify events
+- Optimization of "Sinusoid removal": extrapolation of the signal with AR models + filter in both directions
+- Fixed OpenMEEG conductivity bug
+- Import MRI binary masks as surface
+- MNI coordinates in the MRI viewer + Coordinates panel
+- Process report: Existing files represented as links
+- BEM surfaces: Fixed the bumps at the back of the head, and optimized the code
+- Output 4D source matrices to Analyze and Nifti formats
+- 2DLayout timefreq: No overlap option
+- Export SSP to a FIF file
+- Process Uniform list of channels: Added option "use first channel file"
+- Correlation: Process 1xN and NxN + bst_corrn function
+- Process report: automatic update of the current report when something is added
+- Process report: Snapshots: Add comment, and data topographies
+- Tutorials CTF and Neuromag: Updated to integrate all the new processes
+- New process: Set comment
+- Raw viewer: Allow two extend markers to overlap partially
+----------------------------------------------------------------
+May 2012
+- Removing Talairach coordinate system from the interface
+- Completely redesigned the channel/row selection interface
+- Scouts: Display the size of the scouts in cm2
+- Added BioSemi default EEG caps
+- Generalized pipeline interface:
+  - Reports: record the warnings and errors from all the processes, and produce HTML reports
+  - Process: Import raw
+  - Process: Import epochs, import time, import events
+  - Process: Import channel files
+  - Process: Compute headmodel
+  - Process: Compute sources
+  - Process: Compute noisecov (including copy to other conditions)
+  - Process: Import MRI, Import surfaces
+  - Process: Generate BEM surfaces
+  - Process: Project sources on default anatomy
+  - Process: Read events from track
+- Updated PSD and FFT: remove the mean of the signal before computation
+- Converted BrainAmp recordings to fopen/fread interface
+- New version of the tutorial scripts, using the new processes
+- CTF AUX files: Read Stim channel automatically because MarkerFile is not reliable
+- Warp: Include copy of the atlases into the new anatomies
+- Reports: Add images to reports for quality control
+- Video time on CTF systems (review, import/export events)
+----------------------------------------------------------------
+April 2012
+- Timefreq options: Added Kernel option + estimation of the output size
+- Timefreq on sources: Allow support for both full sources and kernel-based
+- Updating binaries to Matlab 2012a (infinte stack of problems with the distribution)
+- Support for ANT EEProbe .cnt files
+- Process: Combine stimulus/response events 
+- Fix broken links for RAW files: offer to change the file
+- Fix broken protocol folders: offer to change the folder
+- Allow selection of different file types in Process2 tab
+- Compiler: Finding the issues with the SigProc Toolbox and the mex-files not working in the .jar 
+- RAW Viewer: Windows that fill the screen
+- New process: Z-score files A vs files B
+- RAW Viewer: Configurable keyboard shortcuts
+- RAW Viewer: Optimization of the events management (update events only, not the time series)
+- Tree: Re-expand nodes after deletion
+- Added colormap: Neurospeed
+- Fixed many of the MacOS display bugs
+- Re-wrote the screen size detection: Now compatible with Win7, MacOS, Linux
+- Optimized overlapping spheres
+- Brainstorm Workshop @ MIT
+----------------------------------------------------------------
+March 2012
+- Continuous tracking of head position in the helmet
+- Panel Event: Select the event type that was processed after a detection/ssp computation
+- Time series figures: Added option "Flip Y Axis"
+- Sources on MRI: Minimum size threshold slider now removes small objects in the slices
+- SSP selection window: Display the topography associated with each component
+- SSP selection window: Save the SSP in proj_* files
+- Time-frequency & Spectrum display: Improved storage, computation and display (2 weeks)
+- Time-frequency process: Made as a real process that can be run through the pipeline scripts
+- Bandpass proces: Added "Mirror" option
+- New processes: FFT and Hilbert
+- Process detect events: Added time window option
+- Added menus "Open as image"
+- Fixed nodes selection after computations
+- Timefreq/spectrum views: Display function is now a property of each window (not a general property)
+----------------------------------------------------------------
+February 2012
+- EDF/EDF+ file support added
+- Time series figures: Default values for gain scale save by type of sensors
+- New process: Uniform number of channels
+- SSP: Storing projectors in a decomposed form, individually selectable (2 weeks)
+- New process: Delete files (process_delete)
+- New process: Selection files with a given tag in the file name (process_select_tag)
+- New process: Add tag to the Comment field (process_add_tag)
+- Processes: Channel name selection based on a combobox instead of a text field
+- Data: Support for EEGLAB datasets as continuous files
+- Fixed display of Neuromag coils
+- Default anatomy: Added FreeSurfer cortex surfaces + altases
+- Added support for Neuroscan .asc 2D-channel files
+- Process Extract scouts time series: Compute online multiplication with kernel only for required vertices
+- Process: Power Density Spectrum
+- Added new figure type "Spectrum"
+- Updated all the default EEG nets for the new fsaverage head
+- Time series display: Allow to change the display factor in "butterfly" display mode too
+- Time series display: Added buttons for time zoom
+- Fixed the new Colin27/FreeSurfer and atlases (previous were flipped L/R)
+----------------------------------------------------------------
+January 2012
+- MRI: Support for gzipped NIfTI files
+- MRI: Fixed import and export of NIfTI and Analyze formats
+- Panel time/event: Updated the time buttons and shortcuts
+- RAW Viewer: Added buttons to control the gain of the channels
+- Import from Matlab: List variables instead of asking to enter the name
+- Standarize font sizes across platforms
+- Surfaces: Import FreeSurfer atlases (label/*.annot files)
+- Surfaces: Import FSL .vtk/.off
+- Data: Import BESA exported ASCII files (.avr, .mul)
+- Channels: Change the way to combine channels => Now force co-registration of the runs
+- Rewriting all the computation/display of magnetically extrapolated topographies
+  => Replacing bst_extrapm and channel_get_extrapm with: channel_extrapm
+- MEG co-registration between runs: process_megreg (mix of Sylvain's and Rey's code)
+  => Requires a deeper evaluation of the parameter "epsilon", to find a way to set automatically
+- Events: Import/export single array of either times or samples
+- Default anat: Ask the user to validate the fiducials at the first head model computation
+- Process: Duplicate subjects / conditions / files
+- Rename condition: Renames the files in the database, instead of reloading the full DB
+- Copy-paste: Add a tag to the comment if it already exists, to be able to distinguish the new file
+----------------------------------------------------------------
+December 2011
+- Matlab compiled to a Java .jar, instead of a native executable
+- Database error: Subject missing => Creates a new subject (instead of deleting the studies)
+- Database error: Ability to reconstruct everything that is missing (db_fix_protocol)
+- Database: Subjects name are now forced to be the folder name (rename subject => move folders)
+- Inverse models: Added BrainEntropy MEM (C Grova & JM Lina)
+- Pipeline editor: Time selection more flexible (to process long files split in small blocks)
+- Kinect acquisition
+- EEG default caps: Fixed + added some Neuroscan Quik-caps
+- EEG net editor: Fixed the "project on scalp" operation
+- NIRS: Added support for MFIP format
+----------------------------------------------------------------
+November 2011
+- NoiseCov: fixed the computation from RAW continuous recordings (now ignoring the BAD segments)
+- SSP: Computation from imported + raw recordings as a process (process_ssp)
+- Changed keyboard shortcut for adding events (CTRL+A => CTRL+E)
+- Update logos to add McGill and the Neuro
+- Fixing bugs in exporting surfaces to BrainVISA/BrainSuite formats
+- Allow update of a pipeline
+- Import RAW: Automatically convert to continuous the _AUX.ds CTF
+- Process: create events based on thresholds
+- Detection of EOG and ECG: Using methods developed by Beth Bock
+- CMC MEG/Brainstorm workshop @ McGill
+- Head shape: Support for MegDraw Polhemus file format
+- Events: Input + output of CTF MarkerFile and brainstorm events_...mat
+- History: When importing a file, save in history the time segments it was taken from in the initial file
+- Automatic alignment of channel files that have some landmarks in them (channel_detect_type)
+- Events detection: setting the noise check and the classification as options
+----------------------------------------------------------------
+October 2011
+- Output CTF MRI
+- Fixed 3D pointing bug (Matlab >= 2011a)
+- EGI raw import: Added support for continuous events
+- Added support to import extended events (more than one time sample)
+- Added support for bad segments in the raw viewer (segments tagged as bad after importing)
+- Fixed the study node selection in the tree
+- Changed the way to test the existence of a file "exist" => "file_exist"
+- CTF raw: converting from epoched to continuous for visualization (+added as a process)
+- Allowed the display of the MEG REF + other types of weird sensors (in expert mode only)
+- CTF raw: optimized the reading functions + added support for multiple MEG4 files
+----------------------------------------------------------------
+September 2011
+- Removed the automatic compilation of mex-files at startup: compile functions when needed.
+- OpenMEEG computation made accessible from scripts
+- Major bug fix: Kernel-only sources based on non-avg ref recordings were read without 
+  | transforming recordings to AVG REF
+- Setting up CMC wiki/website
+----------------------------------------------------------------
+May 2011
+- Added a tolerance for the ICP registration (headpoints / scalp surface)
+- Renamed the "Auto-registration" in "Refine registration using head points"
+- Re-organized the functions for importing channel information
+- Ask automatically to use the head points to refine the registration when importing MEG data
+- Fixed bug in the options of the "spatial smoothing" process (option type "value")
+- User-defined processes in ~user/.brainstorm/process
+- Fixed the MacOS "bug" in Matlab2011a (JMenus that are displayed MacOS-like, at the top of the screen)
+- Fixed a bug in the selection of events in the Import Data options dialog
+- Warp: Completely new version of bst_warp_prepare (including new option "scale")
+- Renamed process "Notch" in "Sinusoid removal"
+- Average: Added option "RMS" and rewrote the averaging function (bst_avg_files)
+- Updated the wiki and the tutorials
+- Changed the CTF tutorial: using 01.nii instead of 01.mri (more standard)
+----------------------------------------------------------------
+April 2011
+- Creation of BEM surfaces based on: scalp, cortex and MRI
+- Default noisecov: full noise covariance matrix
+- Fixed problems of noisecov, simulation, overlapping spheres, and wmne
+- Default source model: Unconstrained
+- Fixed bug in view_contactsheet
+- Updated tutorial scripts / CTF auto-validation, to create less useless files
+- Interface + options for OpenMEEG
+- Removed baseline removal option when importing: selection by sample indices
+- Improved display of the "overlapping spheres": display on top of the innerskull
+- Fixed a bug in file_unique
+- Fixed bug in multiple head model computations: BFS interface was only displayed for the first subject
+- Switched  back to "contrained" source model by default 
+  (not enough time now to fix all the processes and theoretical issues for unconstrained sources)
+- Automatic transparency management when several layers in the same figure
+- Menu to import a structure in a file
+- Extended file manipulation in the tree (new, copy, cut, paste)
+- Project on default anatomy: 
+  => removed the "Absolute/Relative" question for kernel results
+  => now saving the cortex->cortex interpolation matrix for each subject
+- Volume head models: New interface to edit the grid or load it from files or matlab variables
+- Restored egi_split_raw utility to split EGI continuous files in smaller chunks (to process them with EEGLAB)
+- Improved the memory management for surfaces and MRI
+- Fixed bugs in display of source/volume
+- Process: Added the 'Comment' parameter to be set the display name of the output files from scripts
+----------------------------------------------------------------
+March 2011
+- Added support for EGI Metadata (.bci): bad channels + bad trials
+- Added warning before DB update
+- DB update: Setting the inter-subject nodes anatomy to the default anatomy
+- Added labeling of the transformation of the positions of the sensors
+- Display "Check sensor-MRI registration" automatically after importing MEG data
+- Display the "helmet" surface when it is available in the "Check sensor-MRI registration"
+- Save the folder of the last user who accessed the protocol in ProtocolInfo.STUDIES/last_access.mat
+  + display warning if someone else accessed it (tested in SetCurrentProtocol)
+- Added the possibility to select sensors in "filter" processes
+- Bandpass filter: Improved the Milwaukee/Helsinki fft-based filter
+- Bandpass filter: Written an equivalent when signal processing toolbox is not present
+- Integration of Madhusudhan's work: processing of continuous FIF files
+- RAW FIF: remove the time centering (before first sample was forced to be t=0, now: first_samp)
+- Meeting Boston + Montreal
+- OpenMEEG in Brainstorm (+ automatic download)
+- Fixed combination MEG+EEG (Rey+Lucie)
+- Optimized overlapping and single sphere models for MEG
+- Removed all the EEG forward models, except 3sphere-berg and OpenMEEG
+----------------------------------------------------------------
+February 2011
+- Changed the way the absolute values are applied to the sources time series before processing
+- zscore -> absolute values
+- Permanent colormap menus
+- Fixed a weird font bug on some JVM...
+- t-test: added options for testing absolute values
+- t-test: separation of the paired and unpaired tests
+- Added menu "Display clusters time series" recursively in the tree
+- Simplified surface import (no detection after reading, no need to import the head first)
+- Scout function: new default (PCA) + removed isAbsolute (now display option)
+- Handling correctly the unconstrained sources: scouts/TF/stat...
+- Fixing the "Truncated" headmodel case
+- Scout colors in time series windows: making them match the colors of the scouts in the 3D displays
+- MRI orientation (neuro/radio) defined as a general option and applicable to all the MRI displays
+- Online smoothing of the cortical sources interpolated onto the MRI
+- Contact sheet MRI: removing unnecessary background + making available for MRIViewer
+- Added online notch filter in the "Filter" tab
+----------------------------------------------------------------
+January 2011
+- Modifications to CIN Brainstorm manuscript + resubmit
+- Improved robustness of display and forward model to surfaces with strong irregularities
+- Fixing list of supported file formats for saving images
+- Improved the way options are stored
+- Update bst_process to split the data in blocks of both time + rows
+  => Added an application option for setting the max block size manually
+- Fixed colormaps for statistics: RWB in all cases + no absolute values
+- Colormap > Set colormap max: use the maximum computed when loading instead of recomputing the max
+- Added a right-click menu on the data/pdata files to display the clusters values from the tree
+- Save process options
+- Resample: Use John version: decimate(interp(x,Q),P) instead of resample(x,P,Q)
+- Fixed a big bug in the extraction of the scouts/clusters time series (Function = "All")
+- Optimized tree_dependencies + do not select results/timefreq files located in bad trials
+- Testing all the possible methods for resampling
+- Adapted all the functions to FIF time block size (visu RAW, event detector, bst_process)
+- Improved the loading and colormap management for stat/zscore/differences
+----------------------------------------------------------------
+December 2010
+- Finished the t-test functions
+- Added the tab "stat" for the online correction for multiple comparisons
+- Permutation t-test that can split the files in smaller time blocks: takes for ever, but works
+- Interview of Willy Duville
+- Fixing warp bugs (removing interpolation information from the surface files)
+- Fixed many bugs in bst_avg_files and process_ttest
+- Unique progress bar when reloading database
+- Installed brainstorm 3.1 on SVN server
+- Set window icons (Brainstorm "BS" icon)
+----------------------------------------------------------------
+November 2010
+- Homogenization of all the tesselation functions inputs/outputs: (Vertices[N,3], Faces[M,3])
+- Handling changes of convention for get/set java callbacks in Matlab2010b
+- Integrating the computation function in the clusters/scouts instead of having it as a "display option".
+- Fixed many of the display bugs on MacOS
+- Added an option "Compile mex files at startup"
+- Automatic generation of Matlab scripts from the processing pipeline interface
+- Re-wrote all the stats with Dimitrios
+- Changed the algorithm to compute the variance across files (previous led to big rounding errors)
+- Fixed a bug with the size threshold on surfaces
+----------------------------------------------------------------
+October 2010
+- Recoding: the selection of files, the selection of processes, the computation of the processes
+- Renamed ImageGridTime in Time
+- Improved a lot the detection of bad channels/bad trials 
+  => BadTrial information is now stored in the brainstormstudy.mat file instead of the data files
+- Integrated Syed's version of Optical Flow functions + interface
+- Changed the scouts definition: integrating the function in the scouts
+- Massive renaming of the functions to remove all the cAmEl cases in filenames
+- Removed all the unnecessary code (tens of useless functions)
+- Compacted several small functions into bigger ones
+----------------------------------------------------------------
+September 2010
+- Raw file viewer / event marker
+- Changed db_addCondition to work with subject name instead of subject path
+- Changed "filename" for the "condition" nodes in the tree: using subject name instead of subject path
+- Changed bst_get>StudyWithCondition: using subject name instead of subject path
+- Computation of NoiseCov directly from raw files
+- Fixed some bugs in time-frequency computation for scouts time series
+- Exporting events in various file formats
+- Functions to convert list of events into technical tracks
+- Import of events from multiple tracks: binary more or value mode
+- Added File > Add events from file
+- Added options for 2DLayout: time window, time cursor, zero line, background color
+- Started remodeling the Stat/Process/Multivariate panels
+- Fixed the names of the functions (removed camel case)
+- Removed message panel
+- Switching to version 3.1 => change logo
+- New icons for sources
+----------------------------------------------------------------
+August 2010
+- Raw file viewer / event marker
+- Redaction of Brainstorm article for Computational Intelligence and Neuroscience
+(missing info: forgot to update this file regularly)
+----------------------------------------------------------------
+July 2010
+- Computation of headmodel where source space = volumic grid of points
+- Fixed lots of bugs due to database structures updates
+- Removed linkresults files => now links kernel/data are represented by strings like "link|resultsfile|datafile"
+- Fixed simulation of data for volume grids
+- Optimized a lot the speed of the tree update
+- Added definition of bad trials, that are ignored in the Processes/Stat tabs
+- Basic artifact detection based on value thresholds
+- Import of full databases
+- Redesigned the verification of database structure (added a field DbVersion)
+- Improved the database robustness to manual file deletion or renaming
+- 4D recordings: fixed import of EEG channels locations
+- Export/Import protocol and subjects as .zip files
+- Re-wrote the "File" menu
+----------------------------------------------------------------
+June 2010
+- Tutorial + script: Import and process RAW Neuromag .fif recordings
+- Adding default channel selections from MNE + MCW
+- Spatial threshold on the surfaces: hide all the small clusters of activity on the cortex surface
+- Load SSP projectors from .fif files (ex. to apply an ICA computed with Graph)
+- Fixed many bugs in the manual registration of the surfaces
+- Atlas of scouts for Colin27 brain: Brodmann and Tzourio-Mazoyer
+- Fixed bugs + added warnings when computing multiple kernels for individual data files
+- Fixed bugs: projection of sources on another anatomy
+- Fixed bugs + added options to the dipoles display
+- History recording system for all brainstorm files
+- Rename: db_getDataTemplate -> db_template
+- Fixed: Neuromag recordings: Weird topographies for stat at sensor level
+- Fixed: Neuromag recordings: Problems for displaying separately the first and second gradiometers
+- Allow importing series of files without rechecking the import options (might crash if files are different)
+- Removed last bits of BEM code from Brainstorm
+- Detect automatically the size of the imported EEG nets
+----------------------------------------------------------------
+May 2010
+- Time-frequency
+- Recoding all the functions for displaying time series and topographies (now much more modular)
+- Time-frequency tutorial
+- Recoding of a colorbar function (Matlab one is buggy in OpenGL rendering mode)
+- Stabilizing zoom functions
+- Adding new features to 2D Layout views (sensor selection, changing sensor gain...)
+- Store the database in GlobalData instead of getappdata/setappdata
+- Fixed the F3 bug for scouts
+- bst_getContext.m -> bst_get.m
+- bst_setContext.m -> bst_set.m
+- Made all the bst_get/bst_set/db_getDataTemplate support much faster
+- Lots of bug fixes
+----------------------------------------------------------------
+April 2010
+- BIOMAG @ Dubrovnik
+- Visits at CEA/Minatec, CEA/Neurospin, Paris/La Salpetriere
+- Dipoles: added many features to the dipoles selection
+- Fixed bug: Import around events limited to [-5,+5] seconds
+- Improved access to system file explorers (Popup menu File)
+- Time-frequency structure, computation, display (4 weeks)
+----------------------------------------------------------------
+March 2010
+- Meeting in Milwaukee, definition of the guidelines for the next 12 months
+- Default inverse solution: Rey's MNE
+- Disabling the Beamformer until J.Mosher fixes it
+- Saving the number of trials in averaged recordings files (both when computing average and importing files)
+  => Information not found for the follwoing formats: CTF, 4D, EGI
+- Added an option: "brainstorm validation", that tests the software deeply using the CTF tutorials
+- Checked that full noise cov. matrix computed in Brainstorm and MNE are the same
+  => But wMNE results with full noise cov are still much noisier
+- Changed the estimation method of the maximum of sources values in time:
+  => Before: was computing the whole source matrix (sometimes too big to be computed)
+  => Now: Get the time of maximum of the GFP over the recordings, and get the sources for that instant
+  => Not very accurate but SO MUCH FASTER
+- Optimization of Rey's bst_wmne code
+  => Still some work to do on the optimization of bst_Lf_xyz2Lf and bst_removeSSsilentcomponent
+- Moving "Update" menu from "File" to "Help" menu
+- Created an interface to set the options of bst_wmne
+- Updated the display of curvature maps. Makes the brains a little more FreeSurfer-like
+- Choice for FIF STI input lines limited to: STI 014, STI 10x, STI20x, STI30x
+- NoiseCov: divided automatically by number of trials when estimating sources for averaged recordings
+- Average of averages: ask if needed to weight by the number of samples.
+- Compacted Process/stat options window so that it can be displayed on low-res screens
+- sLORETA: values are multiplied by 1e12 when loaded from Brainstorm
+- NoiseCov: Added option "Remove DC Offset file by file"
+- Finished WARP (deformation of default anatomy => individual set of head points)
+- Fixed the Matlab 7.10 bug (interpreted as 7.1)
+- Overlapping spheres: computation based on cortex (convex hull + scale)
+- Dipoles: added support for database + import from BDIP xfit format
+- Dipoles: display as dots+orient in 3D (over cortex or MRI)
+- Fixed a bug of MRI Viewer in old versions of Matlab (Using "Close all" button was crashing Matlab)
+----------------------------------------------------------------
+February 2010
+- Simplified the source estimation call stack.
+- Integration of Rey's function for: wMNE, sLORETA, dSPM
+- Automatic detection of flat channels
+- Redesign of the Inverse computation interface: Expert/normal mode
+- Added a safe version of bsxfun (check Matlab version) => bst_bsxfun
+- Completely changed minnorm.m function again...
+- Redesigned the "Edit best fitting sphere" interface: one window instead of two
+- Imporved a lot the BFS estimations from the scalp, the cortex, the MEG...
+- Changed the way to compute the scouts on stat results: now ignore the non-significant values (0)
+  => A scout will have significant value at a given time if any of the sources it contains is significant
+- Scripts for Processes, contact sheets, MRI with 3D user-defined overlay
+- Updated Rey's MNE function (very similar to Matti's MNE)
+- Including deployment tools with the distribution (bst_deploy)
+- Topography 2D Disc: now use a sphere with equidistant points
+----------------------------------------------------------------
+January 2010
+- Added progress bar for download
+- Save all the "single" values in "double" (precision and computation problems)
+  (ImageGridAmp ang Gain, both in files and GlobalData structure)
+- Fixed bug in t-test: better handling of bad channels
+- Added option in Processes to save the results in a user-defined condition
+- Finished channels selections interface
+- Import/Export MNE selections files
+- Changed copyright year to 2010
+- Finished support for 4D files (user-defined events)
+- Fixed export data from time series figures
+- Added warping default anatomy to a channel file
+- Added spatial smoothing
+- Update MNE version to 2.7
+- Interface to project back and forth sources between surfaces:
+  => hi-res <-> low-res, or individual cortex <-> default anatomy
+----------------------------------------------------------------
+December 2009
+- Improved CNT events selection (detection of multiple responses), and fixed some import bugs
+- Improved menus for time series export
+- Included some Neuroscan EEG caps in default distribution
+- Removed automatic events file selection in FIF import
+- Added time selection for movies and contact sheets
+- Added support for 4D native files
+- Display of channels in columns
+- Advanced tools to select the channels to display in the channels in columns 
+- Website: now all the downloads are stored in the bst_logs table in mysql database
+- Finished automatic update system (detection at startup + update from GUI)
+----------------------------------------------------------------
+November 2009
+- Updated all the IO subsystem: unique interface for all the file formats
+- Added support for 4D file format
+- Ability to deploy a noise covariance matrix over several conditions or subjects
+- Added "Apply threshold to all figures" menu (shortcut: '*')
+- Fixed major bugs in the reading of CTF compensators coefficient
+- Rewrote all the code handling the SSP and CTF compensators matrices
+- Rewrote bst_headmodeler and os_meg to handle SSP and CTF comp.
+- Fixed the whitener for minnorm and magnetic extrapolation
+- Scripting system: ability to launch many bst functions from the command line 
+  without having to display the main GUI (/toolbox/script folder)
+- Overlapping spheres if now the default model for MEG
+- Allow only one MRI per subject
+----------------------------------------------------------------
+October 2009
+- Presentation of Brainstorm at Neurospin (MegLang workshop)
+- Inter-subject registration version G.Dumas
+- Support for new LENA format
+- Many bug fixes
+- Fixed interface for MacOS
+- Adding NoiseCov as an explicit data type in the tree
+- Interface to compute Noise covariance matrix
+- Updated all the IO subsystem: reorganizing the data import
+- Fixed balance gradio/magneto for 2D topography with extrapolated fields
+----------------------------------------------------------------
+September 2009
+- Added some controls to the "Edit BFS window": Use last BFS, Edit BFS
+- Fixed some issues with colormaps and sources in MRI
+- Added tree menus: "Set as default surface" and "Set as default headmodel"
+- Fixed bug: scouts on stat(on sources)
+- Fixed bug: stat(on sources) display on MRI
+- Frequency filtering disabled when Signal Processing Toolbox not installed 
+  => Waiting for good and validated functions to do that...
+- Fixed bug: maximum-function/relative-value scout is now computed this way: sign(F) * max(abs(F))
+  => Instead of simply:  max(F)
+- Time series: Vertical zoom with CTRL+Wheel
+- Changed the way of computing average reference for EEG: now only done on the fly
+- Automatic updates at startup
+- Fixing Linux/Windows interoperability: replacing all the '\' with '/'
+----------------------------------------------------------------
+August 2009
+- Batch source computation: do not ask the baseline for each file
+- "Reload subject" now looks for new conditions
+- Create clusters based on indices of sensors
+- Manual definition of time selection (right-click in TimeSeries figure > Selection > Set selection)
+- Fixed comments for Statistics/Processes
+- Fixed files order in Statistics/Processes panels
+- Updated LCMV beamformer (Syed)
+- Added support for all Neuroscan file formats
+- Updated the import of EEG caps (support for many file formats added)
+- Group all interface options in one unique panel (Menu Options>Set preferences...)
+- Advanced support for epoching stimuli/responses for Neuroscan .CNT files
+- Import Neuroscan recordings .dat format
+- Processes: apply by blocks (much less "Out of memory" errors)
+- Compilation of MEX files in user directory when user does not have write access to the mex-file folders
+- Re-wrote all the MRIViewer (bst_mriviewer.m -> gui_viewMri.m/gui_figureMriViewer)
+  => Added many features: display of results, colorbar, MIP, support for mouse wheel, etc.
+- Centralized loading of surfaces/MRI + kept in memory (bst_dataSetsManager>LoadMri and LoadSurface)
+- Optimized time to show the figures
+- Colorbars: reset with double-click
+- 3D figures popup menu: added Figure > Change background color
+----------------------------------------------------------------
+July 2009
+- Added Neuroscan file support
+- Added "Clusters" panel
+- Recoding Processes panel
+- Added process: "Cut stimulation artifact"
+- Added process: "Bandpass filtering"
+- Added Maximum Intensity Projection (MIP) for source visualization
+- Added process: "Average by subject"
+- Fixed computation of noise variance matrix for MinNorm
+- Added support for images in the tree/database
+- Updated MRI Viewer to make it more physician friendly
+- More options for: "Import ASCII EEG"
+- Compute head model: if BFS is needed, define once per subject instead of one per condition.
+----------------------------------------------------------------
+June 2009
+- Documentation: basic tutorials
+- Creation of one unique default anatomy (fsaverage + brainvisa + old brainstorm BEM)
+- Presentation at HBM
+- Fixed all the Minnorm problems: multi-modal integration, use of noise covariance matrix
+- Split "recordings" colormap in 2: EEG and MEG
+- Added possibility to define "static" datasets, insensitive to time modifications (mostly to display time means)
+- Keep current time when using the Navigator
+----------------------------------------------------------------
+May 2009
+- Understanding and reconfiguration of Neuroimage server
+- Installation Wiki, PHP pages for download
+- Add/remove/view digitized head points in channel files
+- Add time window selection for the beamformer
+- Beamformer GUI bug fix
+- Updated GUI for best fitting sphere estimation
+----------------------------------------------------------------
+April 2009
+- Rewrote all the import functions for FIF format
+- Fixed Navigator to browse small data blocks that were imported from FIF RAW files
+- Updated CTF import functions to integrate coil_def.dat defintions
+- Added tools to align manually the MEG sensors
+- Added display/alignment of digitized head points
+- Added menu "Align > Check alignment with scalp" (for MEG and EEG)
+- Create different bst conditions when importing evoked FIF with multiple conditions
+- Integrating SSP, Noise covariance matrix, etc...
+- Improvements of Brainstorm default anatomies
+----------------------------------------------------------------
+March 2009
+- Added "Use two screens" option
+- Added support for FreeSurfer tesselation files
+- Updated surface importation workflow (now surfaces can be imported in any order)
+- Support for exporting surfaces in BrainSuite DFS format
+- Use getscreen.m instead of getframe.m for screenshots
+- Fixed the import of CTF data stored in FIF files
+- Fixed the CTF / OS_MEG problem (mixed gradio / magneto in the references)
+- Fixed the renaming of the conditions
+- Removed the 3DSphere model
+- Rewrote all the "Topography" display to implement the Rey's "Magnetic extrapolation" feature
+---------------------------------------------------------------
+February 2009
+- Processes: Check not to mix zscore / timemean and initial recordings or sources files
+             => We Samples lists mix different kinf of data, user can select which one to process
+- Data import: allow importing from unformatted Matlab structures (.mat files)
+- Data import: added BrainAmp EEG support
+- Enable scouts display for t-test on sources
+- Scouts: Possible to display power of sources (not only mean and max). Scouts>View>Time series options...>Power
+- Filters: updated panel
+- FIFF: Specific display for VectorView306 sensors.
+- MEG Channels: added the display of the orientations of the sensors
+- I/O: Added support for reading LENA file format
+- Head modeler: added computation using the digitized head points (Polhemus points with Neuromag system)
+- MEG Topography: Extrapolation of the magnetic fields (integration magnetometers / gradiometers)
+- Rewrote all the topography display subsystem...
+- FIFF: handle of FIFF files with no fiducials (NAS,LPA,RPA) and/or no DEVICE->HEAD transformation
+- Topography: now use the existing best fitting spheres from already computed headmodels (if available)
+- Rewrote all the CTF file importation (to process Neuromag data saved in CTF format, for Neurospin MEG)
+- Time selection in time series windows : completely updated
+- Export data: added ASCII and EXCEL export everywhere
+---------------------------------------------------------------
+January 2009
+- Processes: Possibility to compute directly the average of an electrodes cluster
+- Tree: Subjects nodes sorted alphabetically
+- Subject definition: channel files management when changing UseDefaultChannel
+   => Allows to share or average quickly different channel files between one subject
+- Processes: Better handling when mixing data with different channel files
+   => Check that channel files are compatible, and eventually create a new channel file with 
+      averaged sensors locations, to be able to display the newly created data
+- Grouping of different conditions (multiple selection of conditions > right click > Group conditions)
+- Processes: Allow mixing subjects with different anatomies (with a warning)
+- Beamformer: fixed many bugs
+- Channel file editor: fixed many bugs
+- 3D Figures: Added menu "Views" > "Apply view to all figures (=)"
+- Import data: Prevent users from importing data files that are located in the BrainStorm protocol directories.
+- HeadModeler: intercept optimization errors in overlapping_spheres.m
+- "Export" and "Save as" menus: stores the last used path in LastUsedDirs.Export
+- Colormaps: now possible to reset the different colormaps separately
+---------------------------------------------------------------
+November-2008 / December-2008
+- New design of the first start workflow ("BrainStorm database directory")
+- Separation of the two operations "Load protocol" and "Create new protocol"
+- Added "Filters" panel
+- Restructuration of panel "Scouts", with some new functions
+- Scouts : suppression of the "Area" display
+- Scouts : Added possibility to select scout "seed" in the MRI slices
+- Scouts : Display of the scouts values in 3D MRI slices
+- Scouts : Full support of all operations for the 3D MRI slices
+- Scouts : Easier import of scouts files save from other subjects or protocols
+- Fixed many display bugs
+- Zscore : now displayed with the "stat" colormap
+- CTF file import: support for new types of channels
+- Processes: Added "Remove DC Offset" menu
+- T-test on sources: correction of an enormous bug (p-values were used for cortical display, instead of t-values)
+- Stat/Differences for scouts clusters : absolute values bug fixed
+- Processes workflow optimized, functions added, "Absolute values" checkbox added...
+- Projection on default anatomy : many bug fixes
+- Many warnings added, to help non-expert user not to do wrong things
+- Bad channels / inversion kernel bugs fixed 
+  => NOTE: Now, you need to recompute your sources after having changed the recordings ChannelFlag
+- Selection indices bugs fixed (headmodels and surfaces in tree)
+- Closing all the windows : much faster.
+- Bug fix: Paired t-test for recordings
+---------------------------------------------------------------
+October-2008
+- Bug fix: MRI Viewer, flip/rotate/permute buttons callbacks for axial view
+- Bug fix: Colormap contrast and brightness sliders in colormap popup menu
+- Bug fix: Adding surfaces with "Add surface" button in "Surfaces" tab
+- Averaging recordings : take bad channels into account 
+  (final bad channels: only channels that are bad in ALL the input files)
+- Bug fix: bst_getContext('DataFilesForChannelFile')
+- Bug fix: ERP Center import: consider that a channel with only 0-values is BAD
+- Bug fix: Updating results links
+- Bug fix: Uniform amplitude scales
+- Renamed "MEG MAGNETO"/"MEG GRADIO" in: "MEG MAG"/"MEG GRAD" (easier to display in the tree)
+- New tree menus : "View all bad channels", "Clear bad channels", "Clear all bad channels", "Set bad channels"
+- New toolbar button : "Uniformize TS scales"
+- Possibilty to display two (or more) sensors nets at the same time (multiple channel selection in tree > display)
+- Bug fix: Mean(A) in Processes panel
+---------------------------------------------------------------
+September-2008
+- Bug fix: bad locations of the fiducials in default anat Colin27
+- Bug fix: Navigator for kernel results
+- Bug fix: position of popup menus for visualization figures
+- Bug fix: target surface for scouts 3D edition
+- Bug fix: characters 'ç' and 'µ'
+- Bug fix: mouse sensibility for alignment of surfaces, channels and sphere
+- Bug fix: selection of time interval
+- MEG: Import of Neuromag/FIF files at Neurospin
+- MEG: Added two new types of channels : "MEG GRAD", "MEG MAG"
+- EEG: Force all data in average reference, at importation time
+- EEG: Recompute avg ref when changing the ChannelFlag (list of good/bad channels)
+- New mutex system (bst_mutex.m)
+- Tested compiled version : OK for windows XP (R2007b,R2008a), and for Linux Centos 4.4 (R2007b)
+- Panel "Processes" extended : 
+     - extraction of data, 
+     - processing by cluster, 
+     - different output modes (one big matrix, or many files stored in database)
+---------------------------------------------------------------
+August-2008
+- "Coordinates" tab, to get quickly the coordinates of any point in a 3D figure
+- Display of the results (sources) in the MRI
+- New colormaps for anatomy and stats
+- Display of scouts in MRI (MRI Viewer and 3D)
+- Tests of VideoIO  to make movies under linux : échec
+- Updated shepards.m to ignore the vertices that are too far away from the sources
+- Updated default anatomies and EEG nets
+- Contrast/Brightness control over predefined colormaps
+- Contrast/Brightness modifications by clicking directly on the colorbars
+- 3D mask editor (mri_editMask.m)
+- Edition of scouts in 3D
+- Automatic scout expansion with functional criterias: based on the similarity between 
+  the time series of the seed and all the other sources
+- Correction of the surfaces downsized with reducepatch (tess_clean.m)
+- Interactive selection of time interval (mouse drag'n'drop)
+- Operation on time interval : save mean, save time series
+- Display of power spectrum for any time series (scouts, recordings, stats...)
+- Basic time-frequency display
+---------------------------------------------------------------
+July-2008
+- Creation of deployment script bst_make.m
+- Complete redesign of the bst_headmodeler GUI (now force user check of the BFS)
+- Interface to check the spheres after computation (for headmodel files)
+- Correction of numerous bugs in bst_headmodeler
+- At protocol creation : use by default the same path than last created protocol
+- Realignment surface/surface
+- MRI histogram analysis
+- View MRI in 3D (orthogonal slices)
+- Complete recoding of the "resect" panel (hemisphere selection, section computation...)
+- Definitions of brodman areas as scouts : separation between left and right
+

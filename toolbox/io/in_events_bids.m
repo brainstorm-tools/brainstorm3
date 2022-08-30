@@ -11,7 +11,7 @@ function events = in_events_bids(sFile, EventFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,16 +25,40 @@ function events = in_events_bids(sFile, EventFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019
+% Authors: Francois Tadel, 2019-2021
 
 % Read tsv file
-Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel'}, 0);
-if isempty(Markers) || isempty(Markers{1,1}) || isempty(Markers{1,3})
+% https://bids-specification.readthedocs.io/en/stable/04-modality-specific-files/05-task-events.html
+% trial_type would be a subset of possible events that identify trial category.
+% value can be numbers or strings identifying the event.
+% Only 'onset' and 'duration' are required.
+Markers = in_tsv(EventFile, {'onset', 'duration', 'trial_type', 'channel', 'value'}, 0);
+if isempty(Markers) || isempty(Markers{1,1})
     events = [];
     return;
 end
-% List of events
+% Standardize empty/missing values to empty char.
+Markers(cellfun(@(c) (isequal(c,'n/a') || isequal(c,'N/A') || isempty(c)), Markers(:))) = {''};
+% If there is no trial_type and no value information: use the filename as the event name
+if all(cellfun(@isempty, Markers(:,3)) & cellfun(@isempty, Markers(:,5)))
+    [fPath, fbase, fExt] = bst_fileparts(EventFile);
+    Markers(:,3) = repmat({fbase}, size(Markers(:,3)));
+elseif all(cellfun(@isempty, Markers(:,3)))
+    Markers(:,3) = Markers(:,5);
+elseif ~all(cellfun(@isempty, Markers(:,5)))
+    % Both columns contain data
+    for iM = 1:size(Markers, 1)
+        if isempty(Markers{iM,3})
+            Markers{iM,3} = Markers{iM,5};
+        elseif ~isempty(Markers{iM,5})
+            % Merge
+            Markers{iM,3} = [Markers{iM,3} '-' Markers{iM,5}];
+        end
+    end
+end
+% List of events from trial_type and/or value
 uniqueEvt = unique(Markers(:,3)');
+
 % Initialize returned structure
 events = repmat(db_template('event'), [1, length(uniqueEvt)]);
 % Create events list
@@ -69,7 +93,10 @@ for iEvt = 1:length(uniqueEvt)
     if all(~cellfun(@isempty, durations)) && all(~cellfun(@(c)isequal(c,0), durations))
         events(iEvt).times(2,:) = events(iEvt).times + [durations{:}];
     end
-    events(iEvt).times      = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    % Make the function independent of sFile
+    if ~isempty(sFile)
+        events(iEvt).times  = round(events(iEvt).times .* sFile.prop.sfreq) ./ sFile.prop.sfreq;
+    end
     events(iEvt).reactTimes = [];
     events(iEvt).select     = 1;
     events(iEvt).channels   = channels;

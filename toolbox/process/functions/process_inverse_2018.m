@@ -5,7 +5,7 @@ function varargout = process_inverse_2018( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -176,9 +176,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         return;
     end
     % Check noise covariance
-    if any(cellfun(@isempty, {sChanStudies.NoiseCov}))
-        errMessage = 'No noise covariance matrix available.';
-        return;
+    for i = 1:length(sChanStudies)
+        if isempty(sChanStudies(i).NoiseCov) || ~isfield(sChanStudies(i).NoiseCov(1), 'FileName') || isempty(sChanStudies(i).NoiseCov(1).FileName)
+            errMessage = 'No noise covariance matrix available.';
+            return;
+        end
     end
     % Loop through all the channel files to find the available modalities and head model types
     AllMod = {};
@@ -255,6 +257,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             if isShared
                 errMessage = 'Cannot compute shared kernels with this method.';
                 return
+            end
+            % Install/load brainentropy plugin
+            [isInstalled, errMessage] = bst_plugin('Install', 'brainentropy', 1);
+            if ~isInstalled
+                return;
             end
             % Default options
             MethodOptions = be_main();
@@ -368,6 +375,12 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
             for i = 1:length(iRelatedStudies)
                 % Get data file
                 sStudyRel = bst_get('Study', iRelatedStudies(i));
+                % If bad trial: don't take it into consideration
+                if (sStudyRel.Data(iRelatedData(i)).BadTrial)
+                    nAvgAll(i) = Inf;
+                    LeffAll(i) = Inf;
+                    continue;
+                end
                 % Read bad channels and nAvg
                 DataMat = in_bst_data(sStudyRel.Data(iRelatedData(i)).FileName, 'ChannelFlag', 'nAvg', 'Leff');
                 if isfield(DataMat, 'nAvg') && ~isempty(DataMat.nAvg)
@@ -592,7 +605,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                 end
                 % In the case of a surface region, add the match of the vertices in the cortex surface and the GridLoc matrix
                 if strcmpi(sScout.Region(2), 'S')
-                    iVert2Grid = [iVert2Grid; sScout.Vertices', sScout.GridRows'];
+                    iVert2Grid = [iVert2Grid; sScout.Vertices(:), sScout.GridRows(:)];
                 end
                 % Add to the scout definition the indices in the ImageGrid
                 iAllGrid   = [iAllGrid,   reshape(repmat(sScout.GridRows,nComp,1), 1, [])];

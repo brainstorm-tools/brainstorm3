@@ -17,7 +17,7 @@ function [hFig, iDS, iFig] = view_matrix( MatFile, DisplayMode, hFig )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -78,6 +78,12 @@ else
     end
     StatInfo = [];
 end
+% Display units
+if isfield(sMat, 'DisplayUnits') && ~isempty(sMat.DisplayUnits)
+    DisplayUnits = sMat.DisplayUnits;
+else
+    DisplayUnits = [];
+end
 
 % Duplicate time if only one time frame
 if (size(Value,2) == 1)
@@ -98,7 +104,7 @@ switch lower(DisplayMode)
             AxesLabels = sMat.Comment;
             LinesLabels = sMat.Description;
         end
-        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], [], AxesLabels, LinesLabels, [], hFig, Std);
+        [hFig, iDS, iFig] = view_timeseries_matrix(MatFile, Value, [], [], AxesLabels, LinesLabels, [], hFig, Std, DisplayUnits);
         
     case 'image'
         % Load file

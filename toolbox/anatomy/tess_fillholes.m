@@ -7,7 +7,7 @@ function [Vertices, Faces] = tess_fillholes(sMri, Vertices, Faces, fillFactor, e
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function [Vertices, Faces] = tess_fillholes(sMri, Vertices, Faces, fillFactor, e
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 % ===== PARSE INPUTS =====
 if (nargin < 5) || isempty(erodeFinal)
@@ -84,8 +84,10 @@ bst_progress('text', 'Fill: Smoothing surface...');
 VertConn = tess_vertconn(Vertices, Faces);
 Vertices = tess_smooth(Vertices, 1, 10, VertConn, 0);
 % Downsampling isosurface
-bst_progress('text', 'Fill: Downsampling surface...');
-[Faces, Vertices] = reducepatch(Faces, Vertices, nVertices ./ length(Vertices));
+if (length(Vertices) > nVertices)
+    bst_progress('text', 'Fill: Downsampling surface...');
+    [Faces, Vertices] = reducepatch(Faces, Vertices, nVertices ./ length(Vertices));
+end
 % Remove small components
 bst_progress('text', 'Fill: Removing small components...');
 [Vertices, Faces] = tess_remove_small(Vertices, Faces);

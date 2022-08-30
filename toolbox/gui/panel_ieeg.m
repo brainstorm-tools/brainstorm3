@@ -11,7 +11,7 @@ function varargout = panel_ieeg(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_ieeg(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2019
+% Authors: Francois Tadel, 2017-2022
 
 eval(macro_method);
 end
@@ -100,13 +100,16 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
 
         jPanelBottom = gui_river([0,0], [0,0,0,0]);
             % ===== ELECTRODE OPTIONS =====
-            jPanelElecOptions = gui_river([3,3], [0,5,10,3], 'Electrode configuration');
+            jPanelElecOptions = gui_river([0,3], [0,5,10,3], 'Electrode configuration');
                 % Electrode type
                 gui_component('label', jPanelElecOptions, '', 'Type: ');
                 jButtonGroup = ButtonGroup();
                 jRadioSeeg = gui_component('radio', jPanelElecOptions, '', 'SEEG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioEcog = gui_component('radio', jPanelElecOptions, '', 'ECOG', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
                 jRadioEcogMid = gui_component('radio', jPanelElecOptions, '', 'ECOG-mid', jButtonGroup, '', @(h,ev)ValidateOptions('Type', ev.getSource()));
+                jRadioSeeg.setMargin(java.awt.Insets(0,0,0,0));
+                jRadioEcog.setMargin(java.awt.Insets(0,0,0,0));
+                jRadioEcogMid.setMargin(java.awt.Insets(0,0,0,0));
                 % Electrode model
                 jPanelModel = gui_river([0,0], [0,0,0,0]);
                     % Title
@@ -132,23 +135,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                 gui_component('label', jPanelElecOptions, 'br', 'Contact spacing: ');
                 jTextSpacing = gui_component('text', jPanelElecOptions, 'tab', '');
                 jTextSpacing.setHorizontalAlignment(jTextNcontacts.RIGHT);
-                gui_component('label', jPanelElecOptions, '', 'mm');
+                gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts length
                 jLabelContactLength = gui_component('label', jPanelElecOptions, 'br', 'Contact length: ');
                 jTextContactLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                gui_component('label', jPanelElecOptions, '', 'mm');
+                gui_component('label', jPanelElecOptions, '', ' mm');
                 % Contacts diameter
                 gui_component('label', jPanelElecOptions, 'br', 'Contact diameter: ');
                 jTextContactDiam = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                gui_component('label', jPanelElecOptions, '', 'mm');
+                gui_component('label', jPanelElecOptions, '', ' mm');
                 % Electrode diameter
                 jLabelElecDiameter = gui_component('label', jPanelElecOptions, 'br', 'Electrode diameter: ');
                 jTextElecDiameter  = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                jLabelElecDiamUnits = gui_component('label', jPanelElecOptions, '', 'mm');
+                jLabelElecDiamUnits = gui_component('label', jPanelElecOptions, '', ' mm');
                 % Electrode length
                 jLabelElecLength = gui_component('label', jPanelElecOptions, 'br', 'Electrode length: ');
                 jTextElecLength  = gui_component('texttime', jPanelElecOptions, 'tab', '');
-                jLabelElecLengthUnits = gui_component('label', jPanelElecOptions, '', 'mm');
+                jLabelElecLengthUnits = gui_component('label', jPanelElecOptions, '', ' mm');
                 % Set electrode position
                 jPanelButtons = gui_component('panel');
                     jCardLayout = java.awt.CardLayout;
@@ -494,14 +497,14 @@ function UpdateElecProperties(isUpdateModelList)
         ctrl.jTextElecLength.setVisible(1);
         ctrl.jLabelElecLengthUnits.setVisible(1);
         ctrl.jLabelElecDiameter.setText('Electrode diameter: ');
-        ctrl.jLabelElecDiamUnits.setText('mm');
+        ctrl.jLabelElecDiamUnits.setText(' mm');
     else
         ctrl.jLabelContactLength.setText('Contact height: ');
         ctrl.jLabelElecLength.setVisible(0);
         ctrl.jTextElecLength.setVisible(0);
         ctrl.jLabelElecLengthUnits.setVisible(0);
         ctrl.jLabelElecDiameter.setText('Wire width: ');
-        ctrl.jLabelElecDiamUnits.setText('points');
+        ctrl.jLabelElecDiamUnits.setText(' points');
     end
     % Number of contacts
     if (length(sSelElec) == 1) || ((length(sSelElec) > 1) && all(cellfun(@(c)isequal(c,sSelElec(1).ContactNumber), {sSelElec.ContactNumber})))
@@ -716,7 +719,8 @@ function ShowContactsMenu(jButton)
     gui_component('MenuItem', jMenu, [], 'Save modifications', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@bst_memory, 'SaveChannelFile', iDS(1)));
     % Menu: Export positions
     jMenu.addSeparator();
-    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile));            
+    gui_component('MenuItem', jMenu, [], 'Export contacts positions', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@ExportChannelFile, 0));
+    gui_component('MenuItem', jMenu, [], 'Compute atlas labels', IconLoader.ICON_VOLATLAS, [], @(h,ev)bst_call(@ExportChannelFile, 1));
     % Show popup menu
     gui_brainstorm('ShowPopup', jMenu, jButton);
 end
@@ -2035,7 +2039,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
             SurfaceFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
         else
             if isInteractive
-                bst_error(['No inner skull surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+                bst_error(['No inner skull surface for this subject.' 10 'Compute BEM surfaces first.'], 'Compute contact normals', 0);
             end
             return;
         end
@@ -2044,7 +2048,7 @@ function [ChanOrient, ChanLocProj] = GetChannelNormal(sSubject, ChanLoc, Surface
             SurfaceFile = sSubject.Surface(sSubject.iScalp).FileName;
         else
             if isInteractive
-                bst_error(['No head surface for this subject.' 10 'Import full segmented anatomy or compute SPM canonical surfaces.'], 'Compute contact normals', 0);
+                bst_error(['No head surface for this subject.' 10 'Compute head surface first.'], 'Compute contact normals', 0);
             end
             return;
         end
@@ -2461,8 +2465,8 @@ function SetElectrodeLoc(iLoc, jButton)
         % Ask to compute MNI transformation
         isComputeMni = java_dialog('confirm', [...
             'You need to define the NAS/LPA/RPA fiducial points before.' 10 ...
-            'Computing the MNI transformation would also define default fiducials.' 10 10 ...
-            'Compute the MNI transformation now?'], 'Set electrode position');
+            'Computing the MNI normalization would also define default fiducials.' 10 10 ...
+            'Compute the MNI normalization now?'], 'Set electrode position');
         % Run computation
         if isComputeMni
             figure_mri('ComputeMniCoordinates', hFig);
@@ -2532,12 +2536,22 @@ function CenterMriOnElectrode(sElec, hFigTarget)
     if isempty(sElec) || isempty(sElec.Loc) || isequal(sElec.Loc(:,1), [0;0;0])
         return;
     end
-    xyzScs = sElec.Loc(:,1);
     % Get loaded dataset
     [sElectrodes, iDSall, iFigall, hFigall] = GetElectrodes();
     if isempty(iDSall)
         return;
     end
+    % By default: jump to the tip of the electrode
+    xyzScs = sElec.Loc(:,1);
+    % Try to get the position of the first contact of the electrode, as it might be a bit different
+    iChan = find(strcmpi({GlobalData.DataSet(iDSall(1)).Channel.Group}, sElec.Name));
+    if ~isempty(iChan)
+        [~,I] = sort_nat({GlobalData.DataSet(iDSall(1)).Channel(iChan).Name});
+        xyzChan = GlobalData.DataSet(iDSall(1)).Channel(iChan(I(1))).Loc;
+        if ~isempty(xyzChan) && all(size(xyzChan) == size(xyzScs)) && (sqrt(sum(xyzChan - xyzScs).^2) < 5)
+            xyzScs = xyzChan;
+        end
+    end    
     % Update all the figures that share this channel file
     for i = 1:length(iDSall)
         % If there is one target figure to update only:
@@ -2619,7 +2633,7 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
         MriFile = sSubject.Anatomy(iAnatomy).FileName;
     end
     % View MRI
-    [hFig, iDS, iFig] = view_mri(MriFile);
+    [hFig, iDS, iFig] = view_mri(MriFile, [], [], 2);
     if isempty(hFig)
         return;
     end
@@ -2633,7 +2647,7 @@ end
 
 
 %% ===== EXPORT CONTACT POSITIONS =====
-function ExportChannelFile()
+function ExportChannelFile(isAtlas)
     global GlobalData;
     % Get electrodes to save
     [sElec, iElec, iDS] = GetSelectedElectrodes();
@@ -2643,14 +2657,18 @@ function ExportChannelFile()
         return;
     end
     % Get the channels corresponding to these contacts
-    iChannels = find(ismember({GlobalData.DataSet(iDS(1)).Channel.Group}, {sElec.Name}));
-    if isempty(iChannels)s
+    iChannels = find(cellfun(@(c)any(strcmpi(c,{sElec.Name})), {GlobalData.DataSet(iDS(1)).Channel.Group}));
+    if isempty(iChannels)
         bst_error('No contact positions to export.', 'Export contacts', 0);
         return;
     end
     % Force saving the modifications
     bst_memory('SaveChannelFile', iDS(1));
     % Export the file
-    export_channel(GlobalData.DataSet(iDS(1)).ChannelFile);
+    if isAtlas
+        export_channel_atlas(GlobalData.DataSet(iDS(1)).ChannelFile, iChannels);
+    else
+        export_channel(GlobalData.DataSet(iDS(1)).ChannelFile);
+    end
 end
 

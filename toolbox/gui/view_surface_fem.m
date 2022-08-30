@@ -1,10 +1,10 @@
 function [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor, Resect, hFig)
 % VIEW_SURFACE_FEM: Display a FEM mesh in a 3DViz figure.
 %
-% USAGE:  [hFig, iDS, iFig] = view_surface(SurfaceFile)
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, Resect, 'NewFigure')
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, Resect, hFig)
-%         [hFig, iDS, iFig] = view_surface(SurfaceFile, SurfAlpha, SurfColor, Resect, iDS)
+% USAGE:  [hFig, iDS, iFig] = view_surface_fem(SurfaceFile)
+%         [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor, Resect, 'NewFigure')
+%         [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor, Resect, hFig)
+%         [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor, Resect, iDS)
 %
 % INPUT:
 %     - SurfaceFile : full path to the surface file to display 
@@ -25,7 +25,7 @@ function [hFig, iDS, iFig] = view_surface_fem(SurfaceFile, SurfAlpha, SurfColor,
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -177,7 +177,7 @@ end
 if (size(SurfAlpha,2) ~= Ntissue)
     SurfAlpha = zeros(1,Ntissue);
 end
-if (size(Resect,2) ~= Ntissue)
+if (size(Resect,2) ~= 3)
     Resect = [0, 0.01, 0];
 end
 % Plot each tissue as a patch object

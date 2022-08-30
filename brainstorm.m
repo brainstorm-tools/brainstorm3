@@ -19,9 +19,9 @@ function varargout = brainstorm( varargin )
 %        brainstorm tutorial name   : Run the validation script attached to a tutorial (ctf, neuromag, raw, resting, yokogawa
 %        brainstorm tutorial all    : Run all the validation scripts
 %        brainstorm test            : Run a coverage test
-%        brainstorm deploy          : Create a zip file for distribution (see bst_deploy for options)
-%        brainstorm deploy 1        : Compile the current version of Brainstorm with Matlab mcc compiler
-%        brainstorm deploy 2        : Compile including SPM and FieldTrip functions used by Brainstorm
+%        brainstorm deploy          : Cleanup files and copy to git repository
+%        brainstorm compile         : Compile Brainstorm with Matlab mcc compiler, including all plugins
+%        brainstorm compile noplugs : Compile Brainstorm with Matlab mcc compiler, without the plugins
 %        brainstorm workshop        : Download OpenMEEG and the SPM atlases, and run some small tests
 %  res = brainstorm('status')       : Return brainstorm status (1=running, 0=stopped)
 
@@ -29,7 +29,7 @@ function varargout = brainstorm( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -43,15 +43,15 @@ function varargout = brainstorm( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2022
 
 % Make sure that "more" is off
 more off
 
 % Compiled version
-if exist('isdeployed', 'builtin') && isdeployed
+isCompiled = exist('isdeployed', 'builtin') && isdeployed;
+if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
-    %disp(['Running from: ' BrainstormHomeDir]);
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));
@@ -69,119 +69,32 @@ else
     end
 end
 
-% Get JOGL version
-% If JOGL1 is available
-if exist('javax.media.opengl.GLCanvas', 'class') && exist('com.sun.opengl.util.j2d.TextRenderer', 'class')
-    JOGLVersion = 1;
-% If JOGL2 is available
-elseif exist('javax.media.opengl.awt.GLCanvas', 'class')
-    JOGLVersion = 2;
-% If JOGL2.3 is available
-elseif exist('com.jogamp.opengl.awt.GLCanvas', 'class')
-    JOGLVersion = 2.3;
-% No JOGL available
-else
-    JOGLVersion = 0;
-end
-% Define jar file to remove from the Java classpath
-switch (JOGLVersion)
-    case 0,    jarfile = '';  disp('ERROR: JOGL not supported');
-    case 1,    jarfile = 'brainstorm_jogl1.jar'; 
-    case 2,    jarfile = 'brainstorm_jogl2.jar';
-    case 2.3,  jarfile = 'brainstorm_jogl2.3.jar';
-end
-    
 % Set dynamic JAVA CLASS PATH
 if ~exist('org.brainstorm.tree.BstNode', 'class')
+    % Brainstorm jar file
+    BstJar = fullfile(BrainstormHomeDir, 'java', 'brainstorm.jar');
+    UpdateFile = fullfile(BrainstormHomeDir, 'java', 'outdated_jar.txt');
+    % If there is a flag file indicating that brainstorm.jar should be deleted (see bst_update.m)
+    if exist(UpdateFile, 'file')
+        delete(BstJar);
+        delete(UpdateFile);
+        if exist(UpdateFile, 'file') || exist(BstJar, 'file')
+            errordlg(['The following files could not be deleted automatically:' 10 BstJar 10 UpdateFile 10 10 ...
+                      'An error occurred during the Brainstorm update.' 10 ...
+                      'Delete this brainstorm3 folder and download manually' 10 ...
+                      'a new one from the Brainstorm website.']);
+        end
+    end
+    % Download brainstorm.jar if missing
+    if ~exist(BstJar, 'file')
+        disp('BST> Downloading brainstorm.jar...');
+        bst_webread('https://github.com/brainstorm-tools/bst-java/raw/master/brainstorm/dist/brainstorm.jar', BstJar);
+    end
     % Add Brainstorm JARs to classpath
-    javaaddpath([BrainstormHomeDir '/java/RiverLayout.jar']);
-    javaaddpath([BrainstormHomeDir '/java/brainstorm.jar']);
-    javaaddpath([BrainstormHomeDir '/java/vecmath.jar']);
-    % Add JOGL package
-    if ~isempty(jarfile)
-        javaaddpath([BrainstormHomeDir '/java/' jarfile]);
-    end
+    javaaddpath(fullfile(BrainstormHomeDir, 'java', 'RiverLayout.jar'));
     % SQLite JDBC
-    javaaddpath([BrainstormHomeDir '/java/sqlite-jdbc.jar']);
-    
-    % === INITIALIZE MFFMATLABIO LIBRARY ===
-    [mffJarPath, mffJarExists] = bst_get('MffJarFile');
-    mffDirTmp = bst_fullfile(bst_get('BrainstormUserDir'), 'mffmatlabioNew');
-    if isdir(mffDirTmp)
-        % A new library version is available, install it
-        mffDir = fileparts(mffJarPath);
-        if isdir(mffDir)
-            rmdir(mffDir, 's');
-        end
-        mkdir(mffDir);
-        libDir = bst_fullfile(mffDirTmp, 'mffmatlabio', '*');
-        file_move(libDir, mffDir);
-        rmdir(mffDirTmp, 's');
-        mffJarExists = 1;
-    end
-    % Add MFF JAR file if present
-    if mffJarExists
-        javaaddpath(mffJarPath);
-    end
-    
-    % === INITIALIZE NWB LIBRARY ===
-    NWBDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB');        
-    initialization_flag_file = bst_fullfile(NWBDir,'NWB_initialized.mat');
-    if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file);
-        if ~NWB_initialized
-            disp('Installing NWB library...');
-            % The generateCore needs to run from a specific folder
-            current_path = pwd;
-            cd(NWBDir);
-            % Add NWB to Matlab path
-            addpath(genpath(NWBDir));
-            % Generate the NWB Schema (First time run)
-            generateCore(bst_fullfile('schema','core','nwb.namespace.yaml'))
-            % Update Initialization flag
-            NWB_initialized = 1;
-            save(bst_fullfile(NWBDir,'NWB_initialized.mat'), 'NWB_initialized');
-            cd(current_path);
-        end
-    end
-    
-    % === INITIALIZE NWB-ECoG LIBRARY ===
-    NWB_ECoGDir = bst_fullfile(bst_get('BrainstormUserDir'), 'NWB', 'ECoG');        
-    initialization_flag_file = bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat');
-    if exist(initialization_flag_file,'file') == 2
-        load(initialization_flag_file);
-        if ~NWB_ECoGinitialized
-            disp('Installing NWB - ECoG library...');
-            % The generateCore needs to run from a specific folder
-            current_path = pwd;
-            cd(NWB_ECoGDir);
-            % Add NWB to Matlab path
-            addpath(genpath(NWB_ECoGDir));
-            % Generate the NWB Schema (First time run)
-            generateCore(bst_fullfile('ecog.namespace.yaml'))
-            % Update Initialization flag
-            NWB_ECoGinitialized = 1;
-            save(bst_fullfile(NWB_ECoGDir,'NWB_ECoGinitialized.mat'), 'NWB_ECoGinitialized');
-            cd(current_path);
-        end
-    end
-    
-    
-
-end
-% Deployed: Remove one of the two JOGL packages from the Java classpath
-if exist('isdeployed', 'builtin') && isdeployed
-    % Find the entry in the classpath
-    if ~isempty(jarfile)
-        jarfileRemove = setdiff({'brainstorm_jogl1.jar', 'brainstorm_jogl2.jar', 'brainstorm_jogl2.3.jar'}, jarfile);
-        for i = 1:length(jarfileRemove)
-            dynamicPath = javaclasspath('-dynamic');
-            iClass = find(~cellfun(@(c)isempty(strfind(c,jarfileRemove{i})), dynamicPath));
-            if ~isempty(iClass)
-                javarmpath(dynamicPath{iClass(1)});
-            end
-        end
-    end
+    javaaddpath(fullfile(BrainstormHomeDir, 'java', 'sqlite-jdbc.jar'));
+    javaaddpath(BstJar);
 end
 
 % Default action : start
@@ -298,7 +211,7 @@ switch action
         % Message
         java_dialog('msgbox', 'Brainstorm will now download additional files needed for the workshop.', 'Workshop');
         % Downloads OpenMEEG
-        bst_openmeeg('download');
+        bst_plugin('Install', 'openmeeg', 1);
         % Downloads the TMP.nii SPM atlas
         bst_normalize_mni('install');
         % Message
@@ -320,36 +233,38 @@ switch action
         java_dialog('msgbox', 'You computer is ready for the workshop.', 'Workshop');
         
     case 'deploy'
-        % Close Brainstorm
-        if isappdata(0, 'BrainstormRunning')
-            bst_exit();
-        end
-        % Initialize path
+        % Add path to deploy function
         bst_set_path(BrainstormHomeDir);
-        % Get Matlab version
-        ReleaseName = bst_get('MatlabReleaseName');
-        % Add path to java_dialog function
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
+        addpath(fullfile(BrainstormHomeDir, 'deploy'));
         bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        % Remove .brainstorm from the path
-        rmpath(bst_get('UserMexDir'));
-        rmpath(bst_get('UserProcessDir'));
-        % Build the name of the deployment function
-        bst_deploy_java = str2func(['bst_deploy_java_' ReleaseName(2:end)]);
-        % Update
+        % Deploy Braintorm
+        bst_deploy();
+
+    case 'compile'
+        % Add path to deploy function
+        bst_set_path(BrainstormHomeDir);
+        addpath(fullfile(BrainstormHomeDir, 'deploy'));
+        % Options
         if (nargin > 1)
-            bst_deploy_java(varargin{2:end});
+            if strcmpi(varargin{2}, 'noplugs')
+                isPlugs = 0;
+            else
+                error('Usage: brainstorm compile [noplugs]');
+            end
         else
-            bst_deploy_java();
+            isPlugs = 1;
         end
-        
-    case 'packagebin'
-        bst_set_path(BrainstormHomeDir);
-        deployPath = fullfile(BrainstormHomeDir, 'deploy');
-        addpath(deployPath);
-        bst_set('BrainstormHomeDir', BrainstormHomeDir);
-        bst_package_bin(varargin{2:end});
+        % Matlab < 2020a: Old compilation function using deploytool
+        if (bst_get('MatlabVersion') < 908)
+            addpath(fullfile(BrainstormHomeDir, 'deploy', 'deprecated'));
+            if isPlugs
+                bst_deploy_java('2');
+            else
+                bst_deploy_java('1');
+            end
+        else
+            bst_compile(isPlugs);
+        end
         
     otherwise
         % Check if trying to execute a script
@@ -362,13 +277,26 @@ switch action
         end
         % Execute script
         if ~isempty(ScriptFile)
-            % Start brainstorm in server mode
-            brainstorm server;
-            % Execute script
+            % Start brainstorm in server mode (local database or not)
+            % With extra parameters
             if (length(varargin) > 1)
-                panel_command('ExecuteScript', ScriptFile, varargin{2:end});
+                if any(cellfun(@(c)isequal(c,'local'), varargin(2:end)))
+                    brainstorm server local;
+                    params = setdiff(varargin(2:end), 'local');
+                else
+                    brainstorm server;
+                    params = varargin(2:end);
+                end
+            % Without extra parameters
             else
-                panel_command('ExecuteScript', ScriptFile);
+                brainstorm server;
+                params = [];
+            end
+            % Execute script
+            if ~isempty(params)
+                bst_call(@panel_command, 'ExecuteScript', ScriptFile, params{:});
+            else
+                bst_call(@panel_command, 'ExecuteScript', ScriptFile);
             end
             % Quit
             brainstorm stop;
@@ -409,7 +337,7 @@ end
 %% ===== SET PATH =====
 function bst_set_path(BrainstormHomeDir)
     % Cancel add path in case of deployed application
-    if exist('isdeployed', 'builtin') && isdeployed
+    if bst_iscompiled()
         return
     end
     % Brainstorm folder itself

@@ -18,7 +18,7 @@ function [TessMat, TessFile] = in_tess_bst( TessFile, isComputeMissing )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -47,21 +47,35 @@ end
 % Load file
 TessMat = load(TessFile);
 
-% ===== REMOVE ALL CELLS =====
-% Old Brainstorm surface files contained more than one tesselation, now one tesselation = file
-% => Cells are useless
+% ===== REFORMAT =====
+% Convert older structures to new formats:
+% - Remove cells: Old Brainstorm surface files contained more than one tesselation, now one tesselation = file
+% - Check matrix orientations
+% - Convert to double
 UpdateFile = 0;
-if iscell(TessMat.Faces)
-    TessMat.Faces = TessMat.Faces{1};
-    UpdateFile = 1;
+if isfield(TessMat, 'Faces')
+    TessMat.Faces = double(TessMat.Faces);
+    if iscell(TessMat.Faces)
+        TessMat.Faces = TessMat.Faces{1};
+        UpdateFile = 1;
+    end
+    if (size(TessMat.Faces,1) == 3) && (size(TessMat.Faces,2) ~= 3)
+        TessMat.Faces = TessMat.Faces';
+        UpdateFile = 1;
+    end
 end
-TessMat.Faces = double(TessMat.Faces);
-if iscell(TessMat.Vertices)
-    TessMat.Vertices = TessMat.Vertices{1};
-    UpdateFile = 1;
+if isfield(TessMat, 'Vertices')
+    TessMat.Vertices = double(TessMat.Vertices);
+    if iscell(TessMat.Vertices)
+        TessMat.Vertices = TessMat.Vertices{1};
+        UpdateFile = 1;
+    end
+    if (size(TessMat.Vertices,1) == 3) && (size(TessMat.Vertices,2) ~= 3)
+        TessMat.Vertices = TessMat.Vertices';
+        UpdateFile = 1;
+    end
 end
-TessMat.Vertices = double(TessMat.Vertices);
-if iscell(TessMat.Comment)
+if isfield(TessMat, 'Comment') && iscell(TessMat.Comment)
     TessMat.Comment = TessMat.Comment{1};
     UpdateFile = 1;
 end
@@ -74,15 +88,6 @@ if isfield(TessMat, 'Curvature') && iscell(TessMat.Curvature)
     UpdateFile = 1;
 end
 
-% Check matrices orientation
-if (size(TessMat.Vertices,1) == 3) && (size(TessMat.Vertices,2) ~= 3)
-    TessMat.Vertices = TessMat.Vertices';
-    UpdateFile = 1;
-end
-if (size(TessMat.Faces,1) == 3) && (size(TessMat.Faces,2) ~= 3)
-    Faces = TessMat.Faces';
-    UpdateFile = 1;
-end
 
 % ===== ATLASES =====
 if isfield(TessMat, 'Atlas') && ~isempty(TessMat.Atlas)
@@ -115,28 +120,28 @@ end
 
 % ===== VERTEX CONNECTIVITY =====
 % If vertex connectivity field is not available for this surface: Compute it
-if isComputeMissing && (~isfield(TessMat, 'VertConn') || isempty(TessMat.VertConn) || ~issparse(TessMat.VertConn))
+if isComputeMissing && isfield(TessMat, 'Vertices') && (~isfield(TessMat, 'VertConn') || isempty(TessMat.VertConn) || ~issparse(TessMat.VertConn))
     TessMat.VertConn = tess_vertconn(TessMat.Vertices, TessMat.Faces);
     UpdateFile = 1;
 end
 
 % ===== VERTEX NORMALS =====
 % If VertexNormal field is not available for this surface: Compute it
-if isComputeMissing && (~isfield(TessMat, 'VertNormals') || isempty(TessMat.VertNormals) || ((size(TessMat.VertNormals,1) == 3) && (size(TessMat.VertNormals,2) ~= 3)))
+if isComputeMissing && isfield(TessMat, 'Vertices') && (~isfield(TessMat, 'VertNormals') || isempty(TessMat.VertNormals) || ((size(TessMat.VertNormals,1) == 3) && (size(TessMat.VertNormals,2) ~= 3)))
     TessMat.VertNormals = tess_normals(TessMat.Vertices, TessMat.Faces, TessMat.VertConn);
     UpdateFile = 1;
 end
 
 % ===== CURVATURE =====
 % If Curvature field is not available for this surface: Compute it
-if isComputeMissing && (~isfield(TessMat, 'Curvature') || isempty(TessMat.Curvature) || (size(TessMat.Curvature,2) > 1))
+if isComputeMissing && isfield(TessMat, 'Vertices') && (~isfield(TessMat, 'Curvature') || isempty(TessMat.Curvature) || (size(TessMat.Curvature,2) > 1))
     TessMat.Curvature = single(tess_curvature(TessMat.Vertices, TessMat.VertConn, TessMat.VertNormals, .1));
     UpdateFile = 1;
 end
               
 % ===== SULCI MAP =====
 % If Curvature field is not available for this surface: Compute it
-if isComputeMissing && (~isfield(TessMat, 'SulciMap') || isempty(TessMat.SulciMap) || (size(TessMat.SulciMap,2) > 1))
+if isComputeMissing && isfield(TessMat, 'Vertices') && (~isfield(TessMat, 'SulciMap') || isempty(TessMat.SulciMap) || (size(TessMat.SulciMap,2) > 1))
     TessMat.SulciMap = tess_sulcimap(TessMat);
     UpdateFile = 1;
 end

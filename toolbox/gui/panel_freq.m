@@ -11,7 +11,7 @@ function varargout = panel_freq(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -171,8 +171,18 @@ function SetCurrentFreq(value, isFreqIndex)
         return
     end
     % Convert from frequency value to frequency index
-    if ~isFreqIndex && ~isempty(GlobalData.UserFrequencies.Freqs) && ~iscell(GlobalData.UserFrequencies.Freqs)
-        value = bst_closest(value, GlobalData.UserFrequencies.Freqs);
+    if ~isFreqIndex && ~isempty(GlobalData.UserFrequencies.Freqs)
+        % Frequency bands
+        if iscell(GlobalData.UserFrequencies.Freqs)
+            BandBounds = process_tf_bands('GetBounds', GlobalData.UserFrequencies.Freqs);
+            value = find((value >= BandBounds(:,1)) & (value <= BandBounds(:,2)), 1);
+            if isempty(value)
+                value = 1;
+            end
+        % Frequency vector
+        else
+            value = bst_closest(value, GlobalData.UserFrequencies.Freqs);
+        end
     end
     % Save old value for CurrentTime
     iOldCurFreq = GlobalData.UserFrequencies.iCurrentFreq;

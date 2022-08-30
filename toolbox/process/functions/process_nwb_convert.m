@@ -8,7 +8,7 @@ function varargout = process_nwb_convert( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_nwb_convert( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis 2019
+% Authors: Konstantinos Nasiotis 2019-2020
 
 eval(macro_method);
 end
@@ -73,7 +73,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     for i = 1:length(sInputs)
         % Load file
         DataFile = file_fullpath(sInputs(i).FileName);
-        DataMat = in_bst_data(DataFile);
+        DataMat = in_bst_data(DataFile,'F');
         sFile = DataMat.F;
 
         % Convert

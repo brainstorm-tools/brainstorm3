@@ -8,7 +8,7 @@ function varargout = panel_cluster(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -613,33 +613,45 @@ function RemoveAllClusters()
     end
 end
 
-
 %% ===== EDIT CLUSTER LABEL =====
-% Rename one and only one selected cluster
-function EditClusterLabel()
+% Usage : EditClusterLabel()                   : Interactive edition of cluster name
+%         EditClusterLabel(newLabel, iCluster) : Update label of iCluster to newLabel, if newLabel is unique
+function EditClusterLabel(newLabel, iCluster)
     global GlobalData;
-    % Get selected clusters
-    [sCluster, iCluster] = GetSelectedClusters();
-    % Warning message if no cluster selected
-    if isempty(sCluster)
-        java_dialog('warning', 'No cluster selected.', 'Rename selected cluster');
-        return;
-    % If more than one cluster selected: keep only the first one
-    elseif (length(sCluster) > 1)
-        iCluster = iCluster(1);
-        sCluster = sCluster(1);
-        SetSelectedClusters(iCluster);
-    end
-    % Ask user for a new Cluster Label
-    newLabel = java_dialog('input', sprintf('Please enter a new label for cluster "%s":', sCluster.Label), ...
-                             'Rename selected cluster', [], sCluster.Label);
-    if isempty(newLabel) || strcmpi(newLabel, sCluster.Label)
-        return
-    end
-    % Check if if already exists
-    if any(strcmpi({GlobalData.Clusters.Label}, newLabel))
-        java_dialog('warning', 'Cluster name already exists.', 'Rename selected cluster');
-        return;
+    % If newLabel and iCluster are provided
+    if (nargin == 2)
+        % Get input cluster
+        sCluster = GetClusters(iCluster);
+        if isempty(sCluster)
+            error('Invalid cluster index.');
+        elseif strcmpi(newLabel, sCluster.Label)
+            return;
+        elseif any(strcmpi({GlobalData.Clusters.Label}, newLabel))
+            error('Label already exists.');
+        end
+    % Interactive edit
+    else
+        % Get selected clusters
+        [sCluster, iCluster] = GetSelectedClusters();
+        % Warning message if no cluster selected
+        if isempty(sCluster)
+            java_dialog('warning', 'No cluster selected.', 'Rename selected cluster');
+            return;
+        % If more than one cluster selected: keep only the first one
+        elseif (length(sCluster) > 1)
+            iCluster = iCluster(1);
+            sCluster = sCluster(1);
+            SetSelectedClusters(iCluster);
+        end
+        % Ask user for a new Cluster Label
+        newLabel = java_dialog('input', sprintf('Please enter a new label for cluster "%s":', sCluster.Label), ...
+                               'Rename selected cluster', [], sCluster.Label);
+        if isempty(newLabel) || strcmpi(newLabel, sCluster.Label)
+            return
+        elseif any(strcmpi({GlobalData.Clusters.Label}, newLabel))
+            java_dialog('warning', 'Cluster name already exists.', 'Rename selected cluster');
+            return;
+        end
     end
     % Update cluster definition
     GlobalData.Clusters(iCluster).Label = newLabel;
@@ -648,7 +660,6 @@ function EditClusterLabel()
     % Select edited clusters (selection was lost during update)
     SetSelectedClusters(iCluster);
 end
-
 
 
 %% ===== SAVE CLUSTERS =====

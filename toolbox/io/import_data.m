@@ -28,7 +28,7 @@ function NewFiles = import_data(DataFiles, ChannelMat, FileFormat, iStudyInit, i
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -452,11 +452,14 @@ for iFile = 1:length(DataFiles)
         % Remove fiducials only from polhemus and ascii files
         isRemoveFid = ismember(FileFormat, {'MEGDRAW', 'POLHEMUS', 'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'ASCII_XYZ_MNI', 'ASCII_NXYZ_MNI', 'ASCII_XYZN_MNI', 'ASCII_NXY', 'ASCII_XY', 'ASCII_NTP', 'ASCII_TP'});
         % Perform the NAS/LPA/RPA registration for some specific file formats
-        isAlign = ismember(FileFormat, {'NIRS-BRS'});
+        isAlign = ismember(FileFormat, {'NIRS-BRS','NIRS-SNIRF'});
         % Detect auxiliary EEG channels
         ChannelMat = channel_detect_type(ChannelMat, isAlign, isRemoveFid);
         % Do not align data coming from Brainstorm exported files (already aligned)
         if strcmpi(FileFormat, 'BST-BIN')
+            ImportOptions.ChannelAlign = 0;
+        % Do not allow automatic registration with head points when using the default anatomy
+        elseif (sSubject.UseDefaultAnat) || isempty(sSubject.Anatomy) || any(~cellfun(@(c)isempty(strfind(lower(sSubject.Anatomy(sSubject.iAnatomy).Comment), c)), {'icbm152', 'colin27', 'bci-dni', 'uscbrain', 'fsaverage', 'oreilly', 'kabdebon'}))
             ImportOptions.ChannelAlign = 0;
         end
         % Save channel file in all the target studies (need user confirmation for overwrite)

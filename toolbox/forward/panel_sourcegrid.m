@@ -11,7 +11,7 @@ function varargout = panel_sourcegrid(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -25,7 +25,7 @@ function varargout = panel_sourcegrid(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2016
+% Authors: Francois Tadel, 2011-2021
 
 eval(macro_method);
 end
@@ -473,6 +473,8 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
         sSubject = bst_get('SurfaceFile', CortexFile);
         if ~isempty(sSubject.iInnerSkull)
             sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
+        else
+            sInner = sEnvelope;
         end
     end
     % Switch between methods
@@ -540,12 +542,11 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
             if isempty(gridMni)
                 return;
             end
-            % Display warning when transformation is not available
-            if ~isfield(sMriSubject, 'NCS') || isempty(sMriSubject.NCS) || ~isfield(sMriSubject.NCS, 'R') ||  isempty(sMriSubject.NCS.R)
-                disp('PROJECT> Error: The MNI transformation is not available for this subject.');
-            end
             % Convert grid coordinates: MNI => Subject SCS
             grid = cs_convert(sMriSubject, 'mni', 'scs', gridMni);
+            if isempty(grid)
+                disp('PROJECT> Error: The MNI transformation is not available for this subject.');
+            end
     end
     % Close progress bar
     bst_progress('stop');
@@ -651,7 +652,7 @@ function ShowGrid()
     end
     % Create figure if it doesnt exist + show surface
     if isempty(hFig)
-        hFig = view_surface(ctrl.CortexFile, .9, [.6 .6 .6], 'NewFigure');
+        hFig = view_surface(ctrl.CortexFile, .9, [.6 .6 .6], 'NewFigure', 0);
         set(hFig, 'Tag', 'FigCheckGrid');
     % Figure exists: remove previous points
     else

@@ -19,7 +19,7 @@ function varargout = panel_nodelist( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -600,16 +600,10 @@ function AddFiles(nodelistName, Filenames, isTreeUpdate) %#ok<DEFNU>
                 continue;
             end
             % Get study node
-            nodeStudy = [nodeRootExp.findChild('condition', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('rawcondition', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('studysubject', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('study', iStudy, -1, 1), ...
-                         nodeRootExp.findChild('defaultstudy', iStudy, -1, 1)];
+            nodeStudy = panel_protocols('GetStudyNode', nodeRootExp, iStudy);
             if isempty(nodeStudy)
                 bst_error(['File is not displayed in database explorer: ' 10 Filenames{i}], 'Add files', 0);
                 continue;
-            else
-                nodeStudy = nodeStudy(1);
             end
             % Create study node
             panel_protocols('CreateStudyNode', nodeStudy(1));
@@ -875,6 +869,9 @@ function SetListEnabled(isEnabled) %#ok<DEFNU>
     end
     % Get selection buttons
     sControls = bst_get('BstControls');
+    if isempty(sControls)
+        return;
+    end
     sControls.jButtonRecordingsA.setEnabled(isEnabled);
     sControls.jButtonSourcesA.setEnabled(isEnabled);
     sControls.jButtonTimefreqA.setEnabled(isEnabled);

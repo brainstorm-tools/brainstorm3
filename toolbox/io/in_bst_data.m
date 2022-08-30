@@ -13,7 +13,7 @@ function DataMat = in_bst_data( DataFile, varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,20 +27,16 @@ function DataMat = in_bst_data( DataFile, varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2022
 
 
 % ===== PARSE INPUTS =====
-ProtocolInfo = bst_get('ProtocolInfo');
-% Get full filename and relative filename
-if file_exist(DataFile)
-    DataFileFull = DataFile;
-    DataFile = strrep(DataFile, ProtocolInfo.STUDIES, '');
-else
-    DataFileFull = bst_fullfile(ProtocolInfo.STUDIES, DataFile);
+% Full file name
+if ~file_exist(DataFile)
+    DataFile = file_fullpath(DataFile);
 end
-if ~file_exist(DataFileFull)
-    error(['Data file was not found: ' 10 file_short(DataFileFull) 10 'Please reload this protocol (right-click > reload).']);
+if ~file_exist(DataFile)
+    error(['Data file was not found: ' 10 file_short(DataFile) 10 'Please reload this protocol (right-click > reload).']);
 end
 % Get file in database
 isRaw = (length(DataFile) > 9) && ~isempty(strfind(DataFile, 'data_0raw'));
@@ -49,7 +45,7 @@ isRaw = (length(DataFile) > 9) && ~isempty(strfind(DataFile, 'data_0raw'));
 isAddF = 0;
 isAddZScore = 0;
 if isempty(varargin)
-    file_whos = whos('-file', DataFileFull);
+    file_whos = whos('-file', DataFile);
     FieldsToRead = union({file_whos.name}, fieldnames(db_template('datamat')));
 else
     FieldsToRead = varargin;
@@ -81,10 +77,10 @@ end
 % ===== LOAD FILE =====
 try
     warning off
-    DataMat = load(DataFileFull, FieldsToRead{:});
+    DataMat = load(DataFile, FieldsToRead{:});
     warning on
 catch
-    error(['Cannot load recordings file: "' DataFileFull '".' 10 10 lasterr]);
+    error(['Cannot load recordings file: "' DataFile '".' 10 10 lasterr]);
 end
 
 % ===== RAW: TIME VECTOR =====
@@ -129,7 +125,7 @@ end
 % ===== FIX BROKEN RAW LINKS =====
 if isfield(DataMat, 'F') && isstruct(DataMat.F) && ~isempty(DataMat.F.filename) && ~file_exist(DataMat.F.filename)
     % Try to look for the file in the current study folder
-    studyPath = bst_fileparts(DataFileFull);
+    studyPath = bst_fileparts(DataFile);
     [rawPath, rawBase, rawExt] = bst_fileparts(DataMat.F.filename);
     newRaw = bst_fullfile(studyPath, [rawBase, rawExt]);
     % If the corrected file exists
@@ -138,7 +134,7 @@ if isfield(DataMat, 'F') && isstruct(DataMat.F) && ~isempty(DataMat.F.filename) 
         DataMat.F.filename = newRaw;
         % Replace the link in the file
         UpdateMat.F = DataMat.F;
-        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+        bst_save(DataFile, UpdateMat, 'v6', 1);
     end
 end
     
@@ -154,7 +150,7 @@ if isfield(DataMat, 'Events') && ~isempty(DataMat.Events)
     % Update file if it was modified
     if isModified
         UpdateMat.Events = DataMat.Events;
-        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+        bst_save(DataFile, UpdateMat, 'v6', 1);
     end
 end
 % Link to raw file
@@ -163,7 +159,7 @@ if isfield(DataMat, 'F') && ~isempty(DataMat.F) && isstruct(DataMat.F) && isfiel
     % Update file if it was modified
     if isModified
         UpdateMat.F = DataMat.F;
-        bst_save(DataFileFull, UpdateMat, 'v6', 1);
+        bst_save(DataFile, UpdateMat, 'v6', 1);
     end
 end
 

@@ -17,7 +17,7 @@ function numElems = node_create_subject(nodeSubject, nodeRoot, sSubject, iSubjec
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -78,18 +78,23 @@ else
     % Create list of anat files (put the default at the top)
     nAnatomies = length(anatomies);
     iAnatList = 1:nAnatomies;
-    iAnatList = [sSubject.iAnatomy, setdiff(iAnatList,sSubject.iAnatomy)];
+    iAtlas = find(~cellfun(@(c)(isempty(strfind(char(c), '_volatlas')) && isempty(strfind(char(c), '_tissues'))), {anatomies.FileName}));
+    % Default anatomy
+    iAnatomy = find([anatomies.Id] == sSubject.iAnatomy);
+    if nAnatomies > 1
+        iAnatList = [iAnatomy, setdiff(iAnatList,[iAtlas,iAnatomy]), setdiff(iAtlas,iAnatomy)];
+    end
     % Create and add anatomy nodes
     for iAnatomy = iAnatList
-        % Skip invalid anatomies
-        if iAnatomy > nAnatomies
-            continue;
+        if ismember(iAnatomy, iAtlas)
+            nodeType = 'volatlas';
+        else
+            nodeType = 'anatomy';
         end
-        
-        [nodeCreated, nodeAnatomy] = CreateNode('anatomy', ...
+        [nodeCreated, nodeAnatomy] = CreateNode(nodeType, ...
             char(anatomies(iAnatomy).Name), ...
             char(anatomies(iAnatomy).FileName), ...
-            anatomies(iAnatomy).Id, iSubject, iSearch);
+            anatomies(iAnatomy).Id, iSubject, iSearch);    
 
         if nodeCreated
             % If current item is default one

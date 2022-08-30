@@ -14,7 +14,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,7 +28,7 @@ function [sFile, ChannelMat] = in_fopen_eeglab(DataFile, ImportOptions)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2017
+% Authors: Francois Tadel, 2008-2021
 
 % ===== PARSE INPUTS =====
 if (nargin < 2) || isempty(ImportOptions)
@@ -44,8 +44,16 @@ if isstruct(DataFile)
 else
     hdr = load(DataFile, '-mat');
 end
+% If there is no EEG field
+if ~isfield(hdr, 'EEG')
+    if isfield(hdr, 'nbchan') && isfield(hdr, 'pnts') && isfield(hdr, 'trials')
+        hdr = struct('EEG', hdr);
+    else
+        error('Invalid EEGLAB .set file: missing EEG structure.');
+    end
+end
 % Add some information
-hdr.isRaw = isempty(hdr.EEG.epoch) && ~isempty(hdr.EEG.data);
+hdr.isRaw = (~isfield(hdr.EEG, 'epoch') || isempty(hdr.EEG.epoch)) && (isfield(hdr.EEG, 'data') && ~isempty(hdr.EEG.data));
 nChannels = hdr.EEG.nbchan;
 nTime     = hdr.EEG.pnts;
 nEpochs   = hdr.EEG.trials;

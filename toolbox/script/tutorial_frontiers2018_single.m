@@ -14,7 +14,7 @@ function tutorial_frontiers2018_single(bids_dir, reports_dir)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -131,9 +131,8 @@ for iSubj = 1:16
     % Process: Import anatomy folder
     bst_process('CallProcess', 'process_import_anatomy', [], [], ...
         'subjectname', SubjectNames{iSubj}, ...
-        'mrifile',     {AnatDir, 'FreeSurfer'}, ...
-        'nvertices',   15000, ...
-        'aseg',        0);
+        'mrifile',     {AnatDir, 'FreeSurfer-fast'}, ...
+        'nvertices',   15000);
     
     % ===== PROCESS EACH RUN =====
     for iRun = 1:6

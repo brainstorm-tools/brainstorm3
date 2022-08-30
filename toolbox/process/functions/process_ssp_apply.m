@@ -5,7 +5,7 @@ function varargout = process_ssp_apply( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -41,6 +41,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nMinFiles   = 1;
     % Default values for some options
     sProcess.processDim  = 2;    % Process time by time
+    % Description
+    sProcess.options.label1.Comment = ['This process creates an exact copy of the input file, but<BR>' ...
+                                       'with all the selected linear operators applied to the values in the file,<BR>' ...
+                                       'instead of being applied on the fly to the original recordings<BR>' ...
+                                       '(SSP projectors, ICA mixing matrices, EEG re-referencing, CTF compensation).<BR><BR>' ...
+                                       'Before using this process, check the linear operator currently selected:<BR>' ...
+                                       'tab Record > menu Artifacts > Select active projectors.<BR><BR>' ...
+                                       'In the new copy of the file, the projectors cannot be unselected anymore.'];
+    sProcess.options.label1.Type    = 'label';
 end
 
 

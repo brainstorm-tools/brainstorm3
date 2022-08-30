@@ -15,7 +15,7 @@ function [ExportFile, sFileOut] = export_data(DataFile, ChannelMat, ExportFile, 
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -127,9 +127,14 @@ if isempty(ExportFile)
         case 'NIRS-SNIRF',      DefaultExt = '.snirf';
         case 'ASCII-CSV',       DefaultExt = '.csv';
         case 'ASCII-CSV-HDR',   DefaultExt = '.csv';
-        case 'ASCII-SPC',       DefaultExt = '.txt';  
-        case 'ASCII-SPC-HDR',   DefaultExt = '.txt';        
+        case 'ASCII-CSV-HDR-TR',DefaultExt = '.csv';
+        case 'ASCII-TSV',       DefaultExt = '.tsv';
+        case 'ASCII-TSV-HDR',   DefaultExt = '.tsv';
+        case 'ASCII-TSV-HDR-TR',DefaultExt = '.tsv';
+        case 'ASCII-SPC',       DefaultExt = '.txt';
+        case 'ASCII-SPC-HDR',   DefaultExt = '.txt';
         case 'EXCEL',           DefaultExt = '.xlsx';
+        case 'EXCEL-TR',        DefaultExt = '.xlsx';
         case 'BST',             DefaultExt = '_timeseries.mat';
         otherwise,              DefaultExt = '_timeseries.mat';
     end
@@ -179,8 +184,9 @@ elseif isempty(FileFormat)
         case '.raw',   FileFormat = 'EEG-EGI-RAW';
         case '.edf',   FileFormat = 'EEG-EDF';
         case '.snirf', FileFormat = 'NIRS-SNIRF';
-        case '.txt',   FileFormat = 'ASCII-CSV';
-        case '.csv',   FileFormat = 'ASCII-SPC';
+        case '.txt',   FileFormat = 'ASCII-SPC';
+        case '.csv',   FileFormat = 'ASCII-CSV-HDR';
+        case '.tsv',   FileFormat = 'ASCII-TSV-HDR';
         case '.xlsx',  FileFormat = 'EXCEL';
         case '.mat',   FileFormat = 'BST';
         otherwise,     error('Unsupported file extension.');
@@ -319,7 +325,7 @@ else
                 end
                 DataMat.F = F;
                 out_data_snirf(ExportFile, DataMat, ChannelMatOut);
-            case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'EXCEL'}
+            case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR', 'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL', 'EXCEL-TR'}
                 out_matrix_ascii(ExportFile, F, FileFormat, {ChannelMatOut.Channel.Name}, DataMat.Time, []);
             otherwise
                 error('Unsupported format.');

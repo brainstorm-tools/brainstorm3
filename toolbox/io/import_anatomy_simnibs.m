@@ -10,6 +10,7 @@ function [errorMsg, FemFile] = import_anatomy_simnibs(iSubject, SimDir, nVertice
 %    - nVertices    : Number of vertices in the file cortex surface (for the CAT12 import)
 %    - isInteractive: If 0, no input or user interaction
 %    - sFid         : Structure with the fiducials coordinates
+%                     Or full MRI structure with fiducials defined in the SCS structure, to be registered with the FS MRI
 %    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps
 %    - isKeepMri    : 0=Delete all existing anatomy files
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
@@ -22,7 +23,7 @@ function [errorMsg, FemFile] = import_anatomy_simnibs(iSubject, SimDir, nVertice
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,7 +37,7 @@ function [errorMsg, FemFile] = import_anatomy_simnibs(iSubject, SimDir, nVertice
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2020
+% Authors: Francois Tadel, 2022
 
 
 %% ===== PARSE INPUTS =====
@@ -62,6 +63,7 @@ if (nargin < 3) || isempty(nVertices)
 end
 % Initialize returned variable
 errorMsg = [];
+FemFile = [];
 % Ask folder to the user
 if (nargin < 2) || isempty(SimDir)
     % Get default import directory and formats
@@ -143,7 +145,7 @@ MaskNii = file_find(SimDir, '*_final_contr.nii.gz', 2, 1);
 % Find final mesh
 MshFile = file_find(SimDir, '*.msh', 1, 0);
 if isempty(MshFile) || isempty(MshFile{1})
-    errorMsg = [errorMsg 'Mesh file *.msh found in top folder.' 10];
+    errorMsg = [errorMsg 'Mesh file *.msh not found in top folder.' 10];
 elseif (length(MshFile) > 1)
     errorMsg = [errorMsg 'Multiple *.msh found in top folder.' 10];
 else
@@ -158,8 +160,6 @@ if ~isempty(errorMsg)
 end
 % Get subject id from msh file
 [fPath, subjid] = bst_fileparts(MshFile);
-% Find fiducials definitions
-FidFile = file_find(SimDir, 'fiducials.m');
 
 
 %% ===== IMPORT T1 MRI =====
@@ -178,88 +178,13 @@ else
 end
 
 
-%% ===== DEFINE FIDUCIALS =====
-% If fiducials file exist: read it
-isComputeMni = 0;
-if ~isempty(FidFile)
-    % Execute script
-    fid = fopen(FidFile, 'rt');
-    FidScript = fread(fid, [1 Inf], '*char');
-    fclose(fid);
-    % Execute script
-    eval(FidScript);    
-    % If not all the fiducials were loaded: ignore the file
-    if ~exist('NAS', 'var') || ~exist('LPA', 'var') || ~exist('RPA', 'var') || isempty(NAS) || isempty(LPA) || isempty(RPA)
-        FidFile = [];
-    end
-    % If the normalized points were not defined: too bad...
-    if ~exist('AC', 'var')
-        AC = [];
-    end
-    if ~exist('PC', 'var')
-        PC = [];
-    end
-    if ~exist('IH', 'var')
-        IH = [];
-    end
-    % NOTE THAT THIS FIDUCIALS FILE CAN CONTAIN A LINE: "isComputeMni = 1;"
-end
-% Random or predefined points
-if ~isInteractive || ~isempty(FidFile)
-    % Use fiducials from file
-    if ~isempty(FidFile)
-        % Already loaded
-    % Compute them from MNI transformation
-    elseif isempty(sFid)
-        NAS = [];
-        LPA = [];
-        RPA = [];
-        AC  = [];
-        PC  = [];
-        IH  = [];
-        isComputeMni = 1;
-        warning('BST> Import anatomy: Anatomical fiducials were not defined, using standard MNI positions for NAS/LPA/RPA.');
-    % Else: use the defined ones
-    else
-        NAS = sFid.NAS;
-        LPA = sFid.LPA;
-        RPA = sFid.RPA;
-        AC = sFid.AC;
-        PC = sFid.PC;
-        IH = sFid.IH;
-        % If the NAS/LPA/RPA are defined, but not the others: Compute them
-        if ~isempty(NAS) && ~isempty(LPA) && ~isempty(RPA) && isempty(AC) && isempty(PC) && isempty(IH)
-            isComputeMni = 1;
-        end
-    end
-    if ~isempty(NAS) || ~isempty(LPA) || ~isempty(RPA) || ~isempty(AC) || ~isempty(PC) || ~isempty(IH)
-        figure_mri('SetSubjectFiducials', iSubject, NAS, LPA, RPA, AC, PC, IH);
-    end
-% Define with the MRI Viewer
-elseif ~isKeepMri
-    % MRI Visualization and selection of fiducials (in order to align surfaces/MRI)
-    hFig = view_mri(T1File, 'EditFiducials');
-    drawnow;
-    bst_progress('stop');
-    % Wait for the MRI Viewer to be closed
-    waitfor(hFig);
-end
-% Load SCS and NCS field to make sure that all the points were defined
-sMriT1 = in_mri_bst(T1File);
-if ~isComputeMni && (~isfield(sMriT1, 'SCS') || isempty(sMriT1.SCS) || isempty(sMriT1.SCS.NAS) || isempty(sMriT1.SCS.LPA) || isempty(sMriT1.SCS.RPA) || isempty(sMriT1.SCS.R))
-    errorMsg = ['Could not import SimNIBS folder: ' 10 10 'Some fiducial points were not defined properly in the MRI.'];
-    if isInteractive
-        bst_error(errorMsg, 'Import SimNIBS folder', 0);
-    end
-    return;
-end
-
-%% ===== MNI NORMALIZATION =====
-if isComputeMni
-    % Call normalize function
-    [sMriT1, errCall] = bst_normalize_mni(T1File);
-    % Error handling
-    if ~isempty(errCall)
+%% ===== DEFINE FIDUCIALS / MNI NORMALIZATION =====
+% Set fiducials and/or compute linear MNI normalization
+[isComputeMni, errCall] = process_import_anatomy('SetFiducials', iSubject, SimDir, T1File, sFid, isKeepMri, isInteractive);
+% Error handling
+if ~isempty(errCall)
+    errorMsg = [errorMsg, errCall];
+    if isempty(isComputeMni)
         if isInteractive
             bst_error(errorMsg, 'Import SimNIBS folder', 0);
         end
@@ -267,19 +192,22 @@ if isComputeMni
     end
 end
 
+
 %% ===== IMPORT OTHER VOLUMES =====
 % Read T2 MRI
 if ~isKeepMri && ~isempty(T2Nii)
-    [T2File, sMriT2] = import_mri(iSubject, T2Nii, [], 0, 1, 'T2');
+    [T2File, sMriT2] = import_mri(iSubject, T2Nii, 'ALL', 0, 1, 'T2');
 end
 % Read masks
 if ~isempty(MaskNii)
-    MaskFile = import_mri(iSubject, MaskNii, [], 0, 1, 'tissues');
+    MaskFile = import_mri(iSubject, MaskNii, 'ALL-ATLAS', 0, 1, 'tissues');
 end
 
 
 %% ===== IMPORT FEM MESH =====
 bst_progress('start', 'Import SimNIBS folder', 'Importing FEM mesh...');
+% Reload updated T1
+sMriT1 = in_mri_bst(T1File);
 % Import FEM mesh
 FemMat = in_tess(MshFile, 'SIMNIBS', sMriT1); %  this could be loaded to bst as it is
 FemMat.Comment = sprintf('FEM %dV (simnibs, %d layers)', length(FemMat.Vertices), length(FemMat.TissueLabels));
@@ -337,7 +265,7 @@ end
 
 %% ===== IMPORT 10-10 POSITIONS =====
 PosFile = bst_fullfile(SimDir, ['m2m_' subjid], 'eeg_positions', 'EEG10-10_UI_Jurak_2007.csv');
-if file_exist(PosFile)
+if file_exist(PosFile) && (iSubject > 0)
     % Create a condition "eeg_positions"
     iStudy = db_add_condition(iSubject, 'eeg_positions');
     % Import channel file

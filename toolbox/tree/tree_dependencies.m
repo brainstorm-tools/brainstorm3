@@ -9,6 +9,7 @@ function [ iDepStudies, iDepItems, targetNodeType ] = tree_dependencies( bstNode
 %     - bstNodes       : Array of BstNode
 %     - targetNodeType : {'data', 'results', 'pdata', 'presults','ptimefreq','pspectrum', 'pmatrix', 'raw', 'rawcondition', 'matrix', 'any'}
 %     - NodelistOptions: Structure to filter the files by name or comment
+%                        If -1, disable all search filters
 %     - GetBadTrials   : If 1, get all the data files (default)
 %                        If 0, get only the data files that are NOT marked as bad trials 
 %
@@ -21,7 +22,7 @@ function [ iDepStudies, iDepItems, targetNodeType ] = tree_dependencies( bstNode
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -35,7 +36,8 @@ function [ iDepStudies, iDepItems, targetNodeType ] = tree_dependencies( bstNode
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2013
+% Authors: Francois Tadel, 2008-2022
+%          Martin Cousineau, 2019
 
 % Parse inputs
 if (nargin < 3) || isempty(NodelistOptions)
@@ -77,17 +79,23 @@ if strcmpi(targetNodeType, 'any') && (length(bstNodes) >= 1)
     end
 end
 
-iSearch = panel_protocols('GetSelectedSearch');
-
-% Pre-process file filters
-if ~isempty(NodelistOptions)
-    if ~isempty(strtrim(NodelistOptions.String))
-        % Options
-        NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
+% If search filters are disabled
+if isequal(NodelistOptions, -1)
+    iSearch = 0;
+    NodelistOptions = [];
+else
+    % Get current search tab
+    iSearch = panel_protocols('GetSelectedSearch');
+    % Pre-process file filters
+    if ~isempty(NodelistOptions)
+        if ~isempty(strtrim(NodelistOptions.String))
+            % Options
+            NodelistOptions.isSelect  = strcmpi(NodelistOptions.Action, 'Select');
+        end
+    elseif iSearch > 0
+        NodelistOptions = bst_get('NodelistOptions');
+        NodelistOptions.String = '';
     end
-elseif iSearch > 0
-    NodelistOptions = bst_get('NodelistOptions');
-    NodelistOptions.String = '';
 end
 
 sqlConn = sql_connect();
@@ -226,9 +234,12 @@ try
                         if ~isempty(iFoundTf)
                             TimefreqFiles = {sFuncFiles.FileName};
                             TimefreqComments = {sFuncFiles.Name};
+                            TimefreqTypes = {'timefreq', 'spectrum'};
+                            isSpectrum = cellfun(@(c)~isempty(strfind(c, '_psd')), TimefreqFiles);
+                            TimefreqTypes = TimefreqTypes(1 + isSpectrum);
                             % === Check file filters ===
                             if ~isempty(NodelistOptions)
-                                iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
+                                iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, TimefreqTypes));
                             end
                             iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                             iDepItems   = [iDepItems iFoundTf];
@@ -306,11 +317,14 @@ try
                                 iFoundTf = [sFuncFiles.Id];
                                 TimefreqFiles = {sFuncFiles.FileName};
                                 TimefreqComments = {sFuncFiles.Name};
+                                TimefreqTypes = {'timefreq', 'spectrum'};
+                                isSpectrum = cellfun(@(c)~isempty(strfind(c, '_psd')), TimefreqFiles);
+                                TimefreqTypes = TimefreqTypes(1 + isSpectrum);
                                 % The files that were found
                                 if ~isempty(iFoundTf)
                                     % === Check file filters ===
                                     if ~isempty(NodelistOptions)
-                                        iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
+                                        iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, TimefreqTypes));
                                     end
                                     iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                                     iDepItems   = [iDepItems iFoundTf];
@@ -366,9 +380,12 @@ try
                         if ~isempty(iFoundTf)
                             TimefreqFiles = {sFuncFiles.FileName};
                             TimefreqComments = {sFuncFiles.Name};
+                            TimefreqTypes = {'timefreq', 'spectrum'};
+                            isSpectrum = cellfun(@(c)~isempty(strfind(c, '_psd')), TimefreqFiles);
+                            TimefreqTypes = TimefreqTypes(1 + isSpectrum);
                             % === Check file filters ===
                             if ~isempty(NodelistOptions)
-                                iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, targetNodeType));
+                                iFoundTf = iFoundTf(isFileSelected(TimefreqFiles, TimefreqComments, NodelistOptions, TimefreqTypes));
                             end
                             iDepStudies = [iDepStudies, repmat(iStudy, size(iFoundTf))];
                             iDepItems   = [iDepItems iFoundTf];
@@ -398,7 +415,7 @@ try
                 % Get file
                 if strcmpi(targetNodeType, 'timefreq')
                     % Check search options
-                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, targetNodeType)
+                    if ~isempty(NodelistOptions) && ~isFileSelected(nodeFileNames{iNode}, nodeComments{iNode}, NodelistOptions, lower(nodeTypes{iNode}))
                         continue;
                     end
                     iDepStudies = [iDepStudies nodeStudies(iNode)];
@@ -596,7 +613,10 @@ if ~isempty(iTargetStudies)
                     if ~isempty(NodelistOptions)
                         PossibleFiles = {sFuncFiles.FileName};
                         PossibleComments = {sFuncFiles.Name};
-                        iFoundTf = iFoundTf(isFileSelected(PossibleFiles, PossibleComments, NodelistOptions, targetNodeType));
+                        TimefreqTypes = {'timefreq', 'spectrum'};
+                        isSpectrum = cellfun(@(c)~isempty(strfind(c, '_psd')), PossibleFiles);
+                        TimefreqTypes = TimefreqTypes(1 + isSpectrum);
+                        iFoundTf = iFoundTf(isFileSelected(PossibleFiles, PossibleComments, NodelistOptions, TimefreqTypes));                        
                     end
                     % Remove bad trials
                     if ~GetBadTrials

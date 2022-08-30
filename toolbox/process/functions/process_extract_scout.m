@@ -7,7 +7,7 @@ function varargout = process_extract_scout( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -21,7 +21,7 @@ function varargout = process_extract_scout( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2017
+% Authors: Francois Tadel, 2010-2021
 
 eval(macro_method);
 end
@@ -182,6 +182,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if (length(sInputs) > 1)
             bst_progress('text', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)));
         end
+        % Get data filename
+        [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
         
         % === READ FILES ===
         switch (sInputs(iInput).FileType)
@@ -240,9 +242,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     GridOrient = sResults.GridOrient;
                 end
                 % Input filename
-                if isequal(sInputs(iInput).FileName(1:4), 'link')
-                    % Get data filename
-                    [KernelFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
+                if ~isempty(DataFile)
                     condComment = [file_short(DataFile) '/' sInputs(iInput).Comment];
                 else
                     condComment = sInputs(iInput).FileName;
@@ -323,6 +323,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Replicate if no time
         if (length(sMat.Time) == 1)
             sMat.Time = [0,1];
+        elseif isempty(sMat.Time)
+            bst_report('Error', sProcess, sInputs(iInput), 'Invalid time selection.');
+            continue;
         end
         if ~isempty(matValues) && (size(matValues,2) == 1)
             matValues = [matValues, matValues];
@@ -474,7 +477,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Scout was not found: Error
                 if isempty(sScout)
                     bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
-                    return;
+                    continue;
                 end
                 % Get scout function
                 if ~isempty(ScoutFunc)
@@ -494,6 +497,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % === GET ROWS INDICES ===
                 % Sort vertices indices
                 iVertices = sort(unique(sScout.Vertices));
+                % Make sure this is a row vector
+                iVertices = iVertices(:)';
                 % Get the number of components per vertex
                 if strcmpi(sInputs(iInput).FileType, 'results')
                     nComponents = sResults.nComponents;
@@ -522,10 +527,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                     % Do not accept volume atlases with non-volume head models
                     if ~isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
                         return;
                     elseif isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
                         return;
                     end
                     % Set the scout computation properties based on the information in the "Source model" atlas
@@ -605,6 +610,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % === COMPUTE CLUSTER VALUES ===
                 % Process differently the unconstrained sources
                 isUnconstrained = (nComponents ~= 1) && ~strcmpi(XyzFunction, 'norm');
+                % Get meaningful tags in the results file name (without folders)
+                [tmp, TestTags] = bst_fileparts(TestResFile);
                 % If the flip was requested but not a good thing to do on this file
                 wrnMsg = [];
                 if isFlip && isUnconstrained
@@ -613,7 +620,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif isFlip && strcmpi(sInputs(iInput).FileType, 'timefreq') 
                     wrnMsg = 'Sign flip was not performed: not applicable for time-frequency files.';
                     isFlipScout = 0;
-                elseif isFlip && ~isempty(strfind(sInputs(iInput).FileName, '_abs'))
+                elseif isFlip && ~isempty(strfind(TestTags, '_abs'))
                     wrnMsg = 'Sign flip was not performed: an absolute value was already applied to the source maps.';
                     isFlipScout = 0;
                 else
@@ -633,8 +640,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
+                        tmpScoutStd = [];
                         for iBound = 1:size(sourceStd,4)
-                            tmpScoutStd(:,:,:,iBound) = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            if isempty(tmpScoutStd)
+                                tmpScoutStd = tmp;
+                            else
+                                tmpScoutStd = cat(4, tmpScoutStd, tmp);
+                            end
                         end
                         scoutStd = cat(1, scoutStd, tmpScoutStd);
                     end
@@ -676,6 +689,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                 end
             end
+        end
+        % If nothing was found
+        if isempty(scoutValues)
+            return;
         end
         
         % === OUTPUT STRUCTURE ===
@@ -720,7 +737,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Save the atlas in the file
         newMat.Atlas = db_template('atlas');
-        newMat.Atlas.Name = 'process_extract_scout';
+        if (size(AtlasList,1) == 1)
+            newMat.Atlas.Name = AtlasList{1,1};
+        else
+            newMat.Atlas.Name = 'process_extract_scout';
+        end
         newMat.Atlas.Scouts = sScoutsFinal;
 
         % === HISTORY ===

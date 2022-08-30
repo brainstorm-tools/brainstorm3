@@ -1,8 +1,8 @@
-function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
-% MRI_COREGISTER: Compute the MNI transformation on both input volumes, then register the first on the second.
+function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice, isAtlas)
+% MRI_COREGISTER: Compute the linear transformations on both input volumes, then register the first on the second.
 %
-% USAGE:  [MriFileReg, errMsg, fileTag] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
-%            [sMriReg, errMsg, fileTag] = mri_coregister(sMriSrc,    sMriRef, ...)
+% USAGE:  [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, MriFileRef, Method, isReslice)
+%            [sMriReg, errMsg, fileTag, sMriReg] = mri_coregister(sMriSrc,    sMriRef, ...)
 %
 % INPUTS:
 %    - MriFileSrc : Relative path to the Brainstorm MRI file to register
@@ -11,18 +11,19 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 %    - sMriRef    : Brainstorm MRI structure used as a reference
 %    - Method     : Method used for the coregistration of the volume: 'spm', 'mni', 'vox2ras'
 %    - isReslice  : If 1, reslice the output volume to match dimensions of the reference volume
+%    - isAtlas    : If 1, perform only integer/nearest neighbors interpolations (MNI and VOX2RAS registration only)
 %
 % OUTPUTS:
 %    - MriFileReg : Relative path to the new Brainstorm MRI file (containing the structure sMriReg)
-%    - sMriReg    : Brainstorm MRI structure with the registered volume
 %    - errMsg     : Error messages if any
 %    - fileTag    : Tag added to the comment/filename
+%    - sMriReg    : Brainstorm MRI structure with the registered volume
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -36,9 +37,13 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2020
+% Authors: Francois Tadel, 2016-2022
 
 % ===== LOAD INPUTS =====
+% Parse inputs
+if (nargin < 5) || isempty(isAtlas)
+    isAtlas = 0;
+end
 % Initialize returned variables
 MriFileReg = [];
 errMsg = [];
@@ -67,32 +72,31 @@ elseif ischar(MriFileSrc)
 else
     error('Invalid call.');
 end
-% Not available for multiple volumes
-if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
-    errMsg = 'The input files cannot contain multiple volumes.';
-    return;
-end
+% % Not available for multiple volumes
+% if (size(sMriRef.Cube, 4) > 1) || (size(sMriSrc.Cube, 4) > 1)
+%     errMsg = 'The input files cannot contain multiple volumes.';
+%     return;
+% end
 % Inialize various variables
 isUpdateScs = 0;
 isUpdateNcs = 0;
-TransfReg = [];
-TransfRef = [];
 
 % ===== REGISTER VOLUMES =====
 switch lower(Method)
     
     % ===== METHOD: SPM =====
     case 'spm'
-        % === SPM INITIALIZATION ===
-        % Check SPM installation
-        bst_spm_init();
-        % Check if SPM is in the path
-        if ~exist('spm_jobman', 'file')
-            errMsg = 'SPM must be in the Matlab path to use this feature.';
+        % Initialize SPM
+        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalled
             return;
         end
+        bst_plugin('SetProgressLogo', 'spm12');
         
         % === SAVE FILES IN TMP FOLDER ===
+        bst_progress('text', 'Saving temporary files...');
+        % Empty temporary folder
+        gui_brainstorm('EmptyTempFolder');
         % Save source MRI in .nii format
         NiiSrcFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_src.nii');
         out_mri_nii(sMriSrc, NiiSrcFile);
@@ -101,6 +105,7 @@ switch lower(Method)
         out_mri_nii(sMriRef, NiiRefFile);
 
         % === CALL SPM COREGISTRATION ===
+        bst_progress('text', 'Calling SPM batch...');
         % Code initially coming from Olivier David's ImaGIN_anat_spm.m function
         % Initial translation according to centroids
         % Reference volume
@@ -148,9 +153,16 @@ switch lower(Method)
         % spm_jobman('interactive', matlabbatch)
         spm_jobman('run',matlabbatch)
         % Read output volume
-        [sMriReg, vox2ras] = in_mri(NiiRegFile, 'ALL', 0, 0);
+        sMriReg = in_mri(NiiRegFile, 'ALL', 0, 0);
+        % If an error occurred in SPM
+        if isempty(sMriReg)
+            errMsg = 'An unknown error occurred while executing SPM. See the logs in the command window.';
+            return;
+        end
         % Output file tag
         fileTag = '_spm';
+        % Remove logo
+        bst_plugin('SetProgressLogo', []);
         
         % === UPDATE FIDUCIALS ===
         if isReslice
@@ -167,16 +179,28 @@ switch lower(Method)
             isUpdateNcs = 1;
         end
 
+        % ===== COMPUTE TRANSFORMATION MATRIX =====
+        % Get transformations MRI=>WORLD (vox2ras) for original volume
+        vox2ras_src = cs_convert(sMriSrc, 'mri', 'world');
+        vox2ras_reg = cs_convert(sMriReg, 'mri', 'world');
+        % If there are vox2ras transformation matrices available
+        if ~isempty(vox2ras_src) && ~isempty(vox2ras_reg)
+            % Compute the transformation from the original to the registered volume
+            TransfRegSpm = vox2ras_reg * inv(vox2ras_src);
+            % Save in the registered MRI structure (this transformation must be applied on world coordinates)
+            sMriReg.InitTransf(end+1,[1 2]) = {'reg', TransfRegSpm};
+        end
+
     % ===== METHOD: MNI =====
     case 'mni'
         % === COMPUTE MNI TRANSFORMATIONS ===
         % Source MRI
         if ~isfield(sMriSrc, 'NCS') || ~isfield(sMriSrc.NCS, 'R') || ~isfield(sMriSrc.NCS, 'T') || isempty(sMriSrc.NCS.R) || isempty(sMriSrc.NCS.T)
-            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc);
+            [sMriSrc,errMsg] = bst_normalize_mni(sMriSrc, 'maff8');
         end
         % Reference MRI
         if ~isfield(sMriRef, 'NCS') || ~isfield(sMriRef.NCS, 'R') || ~isfield(sMriRef.NCS, 'T') || isempty(sMriRef.NCS.R) || isempty(sMriRef.NCS.T)
-            [sMriRef,errMsg] = bst_normalize_mni(sMriRef);
+            [sMriRef,errMsg] = bst_normalize_mni(sMriRef, 'maff8');
         end
         % Handle errors
         if ~isempty(errMsg)
@@ -189,11 +213,10 @@ switch lower(Method)
         % === RESLICE VOLUME ===
         if isReslice
             % Reslice the volume
-            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, TransfSrc, TransfRef);
+            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, TransfSrc, TransfRef, isAtlas);
         else
             % Save the original input volume
             sMriReg = sMriSrc;
-            TransfReg = TransfSrc;
             isUpdateScs = 1;
             isUpdateNcs = 0;
         end
@@ -205,7 +228,7 @@ switch lower(Method)
         % Nothing to do, just reslice if needed
         if isReslice
             % Reslice the volume
-            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras');
+            [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
         else
             % Save the original input volume
             sMriReg = sMriSrc;
@@ -213,11 +236,7 @@ switch lower(Method)
             isUpdateNcs = 1;
         end
         % Output file tag
-        if ~isempty(strfind(sMriSrc.Comment, '_spm'))
-            fileTag = '';
-        else
-            fileTag = '_vox2ras';
-        end
+        fileTag = '_reg';
 end
 % Handle errors
 if ~isempty(errMsg)
@@ -232,49 +251,53 @@ end
 
 % ===== UPDATE FIDUCIALS =====
 if isUpdateScs || isUpdateNcs
-    % Use vox2ras transformation unless otherwise specified
-    if isempty(TransfReg) || isempty(TransfRef)
-        if ~isfield(sMriReg, 'InitTransf') || isempty(sMriReg.InitTransf) || ~any(ismember(sMriReg.InitTransf(:,1), 'vox2ras'))
-            errMsg = 'No vox2ras transformation available for the registered volume.';
-        elseif ~isfield(sMriRef, 'InitTransf') || isempty(sMriRef.InitTransf) || ~any(ismember(sMriRef.InitTransf(:,1), 'vox2ras'))
-            errMsg = 'No vox2ras transformation available for the reference volume.';
-        % If SCS coordinates are defined
-        elseif isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
-            % Get transformation MRI=>WORLD
-            TransfReg = cs_convert(sMriReg, 'mri', 'world');
-            TransfRef = cs_convert(sMriRef, 'mri', 'world');
-            % Convert to millimeters (to match the fiducials storage)
-            TransfReg(1:3,4) = TransfReg(1:3,4) .* 1000;
-            TransfRef(1:3,4) = TransfRef(1:3,4) .* 1000;
+    % Get vox2ras transformations for all volumes
+    mri2world_reg = cs_convert(sMriReg, 'mri', 'world');
+    mri2world_ref = cs_convert(sMriRef, 'mri', 'world');
+    % Transfer fiducials from reference MRI to registered MRI
+    if ~isempty(mri2world_reg) && ~isempty(mri2world_ref)
+        % Apply transformation: reference MRI => SPM RAS/world => registered MRI
+        Transf = inv(mri2world_reg) * (mri2world_ref);
+        % Convert to millimeters, just like the SCS and NCS transformation matrices
+        Transf(1:3,4) = Transf(1:3,4) .* 1000;
+        % SCS coordinates
+        if isUpdateScs && isfield(sMriRef, 'SCS')
+            SCS = sMriRef.SCS;
+            % Update fiducials coordinates
+            if all(isfield(SCS, {'NAS','LPA','RPA'})) && ~isempty(SCS.NAS) && ~isempty(SCS.LPA) && ~isempty(SCS.RPA)
+                NAS = (Transf * [SCS.NAS, 1]')';
+                LPA = (Transf * [SCS.LPA, 1]')';
+                RPA = (Transf * [SCS.RPA, 1]')';
+                sMriReg.SCS.NAS = NAS(1:3);
+                sMriReg.SCS.LPA = LPA(1:3);
+                sMriReg.SCS.RPA = RPA(1:3);
+            end
+            % Update SCS transformation
+            if all(isfield(SCS, {'T','R'})) && ~isempty(SCS.R) && ~isempty(SCS.T)
+                Tscs = [SCS.R, SCS.T; 0 0 0 1] * inv(Transf);
+                sMriReg.SCS.R = Tscs(1:3,1:3);
+                sMriReg.SCS.T = Tscs(1:3,4);
+            end
         end
-    end
-    % Transform the reference SCS coordinates if possible
-    if isUpdateScs && ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'SCS') && all(isfield(sMriRef.SCS, {'NAS','LPA','RPA','T','R'})) && ~isempty(sMriRef.SCS.NAS) && ~isempty(sMriRef.SCS.LPA) && ~isempty(sMriRef.SCS.RPA) && ~isempty(sMriRef.SCS.R) && ~isempty(sMriRef.SCS.T)
-        % Apply transformation: reference MRI => SPM RAS/world => registered MRI
-        Transf = inv(TransfReg) * (TransfRef);
-        % Update SCS fiducials
-        sMriReg.SCS.NAS = (Transf(1:3,1:3) * sMriRef.SCS.NAS' + Transf(1:3,4))';
-        sMriReg.SCS.LPA = (Transf(1:3,1:3) * sMriRef.SCS.LPA' + Transf(1:3,4))';
-        sMriReg.SCS.RPA = (Transf(1:3,1:3) * sMriRef.SCS.RPA' + Transf(1:3,4))';
-        % Compute new transformation matrices to SCS
-        Tscs = [sMriRef.SCS.R, sMriRef.SCS.T; 0 0 0 1] * inv(Transf);
-        % Report in the new MRI structure
-        sMriReg.SCS.R = Tscs(1:3,1:3);
-        sMriReg.SCS.T = Tscs(1:3,4);
-    end
-    % Transform the reference SCS coordinates if possible
-    if isUpdateNcs && ~isempty(TransfReg) && ~isempty(TransfRef) && isfield(sMriRef, 'NCS') && all(isfield(sMriRef.NCS, {'AC','PC','IH','T','R'})) && ~isempty(sMriRef.NCS.AC) && ~isempty(sMriRef.NCS.PC) && ~isempty(sMriRef.NCS.IH) && ~isempty(sMriRef.NCS.R) && ~isempty(sMriRef.NCS.T)
-        % Apply transformation: reference MRI => SPM RAS/world => registered MRI
-        Transf = inv(TransfReg) * (TransfRef);
-        % Update SCS fiducials
-        sMriReg.NCS.AC = (Transf(1:3,1:3) * sMriRef.NCS.AC' + Transf(1:3,4))';
-        sMriReg.NCS.PC = (Transf(1:3,1:3) * sMriRef.NCS.PC' + Transf(1:3,4))';
-        sMriReg.NCS.IH = (Transf(1:3,1:3) * sMriRef.NCS.IH' + Transf(1:3,4))';
-        % Compute new transformation matrices to SCS
-        Tncs = [sMriRef.NCS.R, sMriRef.NCS.T; 0 0 0 1] * inv(Transf);
-        % Report in the new MRI structure
-        sMriReg.NCS.R = Tncs(1:3,1:3);
-        sMriReg.NCS.T = Tncs(1:3,4);
+        % NCS coordinates
+        if isUpdateNcs && isfield(sMriRef, 'NCS')
+            NCS = sMriRef.NCS;
+            % Update NCS fiducials
+            if all(isfield(NCS, {'AC','PC','IH'})) && ~isempty(NCS.AC) && ~isempty(NCS.PC) && ~isempty(NCS.IH)
+                AC = (Transf * [NCS.AC, 1]')';
+                PC = (Transf * [NCS.PC, 1]')';
+                IH = (Transf * [NCS.IH, 1]')';
+                sMriReg.NCS.AC = AC(1:3);
+                sMriReg.NCS.PC = PC(1:3);
+                sMriReg.NCS.IH = IH(1:3);
+            end
+            % Update NCS transformation
+            if all(isfield(NCS, {'T','R'})) && ~isempty(NCS.R) && ~isempty(NCS.T)
+                Tncs = [NCS.R, NCS.T; 0 0 0 1] * inv(Transf);
+                sMriReg.NCS.R = Tncs(1:3,1:3);
+                sMriReg.NCS.T = Tncs(1:3,4);
+            end
+        end
     end
 end
 
@@ -293,6 +316,7 @@ if ~isempty(MriFileSrc)
     % Update comment
     sMriReg.Comment = file_unique(sMriReg.Comment, {sSubject.Anatomy.Comment});
     % Add history entry
+    sMriReg.History = sMriSrc.History;
     sMriReg = bst_history('add', sMriReg, 'resample', ['MRI co-registered on default file (' Method '): ' MriFileRef]);
     % Save new file
     MriFileRegFull = file_unique(strrep(file_fullpath(MriFileSrc), '.mat', [fileTag '.mat']));

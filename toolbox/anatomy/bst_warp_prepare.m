@@ -19,7 +19,7 @@ function hFig = bst_warp_prepare(ChannelFile, Options)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,7 +33,7 @@ function hFig = bst_warp_prepare(ChannelFile, Options)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2014
+% Authors: Francois Tadel, 2010-2022
 
 %% ===== CHECK PARAMETERS =====
 % Default options
@@ -251,11 +251,12 @@ end
 % Create list of files to process
 SurfaceFiles     = {sDefSubject.Surface.FileName};
 SurfaceFilesFull = cellfun(@(c)file_fullpath(c), SurfaceFiles, 'UniformOutput', 0);
-MriFileFull      = file_fullpath(sDefSubject.Anatomy(sDefSubject.iAnatomy).FileName);
+MriFiles         = {sDefSubject.Anatomy([sDefSubject.iAnatomy, setdiff(1:length(sDefSubject.Anatomy), sDefSubject.iAnatomy)]).FileName};
+MriFilesFull     = cellfun(@(c)file_fullpath(c), MriFiles, 'UniformOutput', 0);
 OutputTag        = '_warped';
 OutputDir        = bst_fileparts(file_fullpath(sSubject.FileName));
 % Main call
-[OutputSurfaces, OutputMri] = bst_warp(destPtsParam, srcPtsParam, SurfaceFilesFull, MriFileFull, OutputTag, OutputDir, Options.isSurfaceOnly);
+bst_warp(destPtsParam, srcPtsParam, SurfaceFilesFull, MriFilesFull, OutputTag, OutputDir, Options.isSurfaceOnly);
            
 
 %% ===== COPY ATLASES =====

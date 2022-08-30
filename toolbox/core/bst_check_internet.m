@@ -5,7 +5,7 @@ function [isOk, onlineRel] = bst_check_internet()
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,23 +19,13 @@ function [isOk, onlineRel] = bst_check_internet()
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2020
 
 % Initialize returned values
 isOk = 0;
 onlineRel = [];
-% Reading function: urlread replaced with webread in Matlab 2014b
-if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @urlread;
-else
-    url_read_fcn = @webread;
-end
-% Read online version.txt
-try
-    str = url_read_fcn('http://neuroimage.usc.edu/bst/getversion.php');
-catch
-    return;
-end
+% Read version from Brainstorm website
+str = bst_webread('http://neuroimage.usc.edu/bst/getversion.php');
 if (length(str) < 20)
     return;
 end

@@ -15,7 +15,7 @@ function [ftData, sInput, VertConn] = out_fieldtrip_results( ResultsFile, ScoutS
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -60,8 +60,10 @@ sInput = bst_process('LoadInputFile', ResultsFile, ScoutSel, TimeWindow, LoadOpt
 if isempty(sInput.Data)
     return;
 end
-% If this is not a source file
-if isempty(sInput.SurfaceFile) || strcmpi(sInput.DataType, 'scout')
+% If this is not a valid source file
+if (sInput.nComponents == 0)
+    error('Mixed head models are not supported yet.');
+elseif strcmpi(file_gettype(ResultsFile), 'timefreq') && (isempty(sInput.SurfaceFile) || strcmpi(sInput.DataType, 'scout'))
     error('The input files do not contain full cortex maps, use function "ft_freqstatistics" instead.');
 end
 
@@ -76,6 +78,14 @@ if ~isempty(ScoutSel)
     GridLoc  = zeros(nSignals, 3);
 else
     [VertConn, GridLoc] = results_vertconn(ResultsFile, isComputeVertConn);
+    % For volume source models: Replicate grid: one location for each source
+    if (sInput.nComponents == 3)
+        GridLoc = reshape(repmat(GridLoc', 3, 1), 3, [])';
+    end
+    % Check dimensions of the grid
+    if (size(GridLoc,1) ~= nSignals)
+        error('SurfaceFile is not documented in the input file, and the default cortex does not have the correct a number of points.');
+    end
 end
 
 % ===== CREATE FIELDTRIP STRUCTURE =====

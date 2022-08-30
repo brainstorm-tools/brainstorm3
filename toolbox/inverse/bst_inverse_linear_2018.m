@@ -122,7 +122,7 @@ function [Results, OPTIONS] = bst_inverse_linear_2018(HeadModel,OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -242,7 +242,7 @@ nChannels = length(Var_noise);
 % Detect if the input noise covariance matrix is or should be diagonal
 if (norm(C_noise,'fro') - norm(Var_noise,'fro')) < eps(single(norm(Var_noise,'fro')))
     % no difference between the full matrix and the diagonal matrix
-    disp(['BST_INVERSE > Detected diagonal noise covariance, ignoring option NoiseMethod="' OPTIONS.NoiseMethod '".']);
+    disp(['BST_INVERSE > Detected diagonal noise covariance, enforcing option NoiseMethod="' OPTIONS.NoiseMethod '".']);
     OPTIONS.NoiseMethod = 'diag';
 end
 

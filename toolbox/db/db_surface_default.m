@@ -7,7 +7,7 @@ function sSubject = db_surface_default( iSubject, SurfaceType, iSurface, isUpdat
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -106,6 +106,25 @@ if isUpdate
         end
     else
         panel_protocols('UpdateNode', 'Subject', iSubject);
+    end
+end
+
+% ===== REMOVE INTERPOLATIONS =====
+% If the default MRI changes, all the surface-MRI interpolations saved in the surface files must be updated
+if strcmpi(SurfaceType, 'Anatomy')
+    for i = 1:length(sSubject.Surface)
+        % Load surface
+        TessFile = file_fullpath(sSubject.Surface(i).FileName);
+        TessMat = in_tess_bst(TessFile, 0);
+        % If there is an interpolation
+        if isfield(TessMat, 'tess2mri_interp') && ~isempty(TessMat.tess2mri_interp)
+            % Remove interpolation
+            TessMat.tess2mri_interp = [];
+            % Save cleaned surface file
+            bst_save(TessFile, TessMat, 'v7');
+            % Unload from memory
+            bst_memory('UnloadSurface', TessFile, 1);
+        end
     end
 end
 

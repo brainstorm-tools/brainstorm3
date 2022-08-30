@@ -5,7 +5,7 @@ function varargout = process_absolute( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -62,7 +62,9 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     sInput.A = abs(sInput.A);
     % Warning if applying this process to raw recordings
     if strcmpi(sInput.FileType, 'raw')
-        bst_report('Warning', sProcess, sInput, 'Applying an absolute value to raw recordigs is not indicated. Check your processing pipeline.');
+        if isempty(sProcess.options.sensortypes.Value) || any(ismember(lower(strtrim(str_split(sProcess.options.sensortypes.Value, ',;'))), {'eeg', 'meg', 'seeg', 'ecog', 'nirs'}))
+            bst_report('Warning', sProcess, sInput, 'Applying an absolute value to raw EEG, MEG, SEEG, ECoG or NIRS recordigs is not indicated. Check your processing pipeline.');
+        end
     % Change DataType
     elseif ~strcmpi(sInput.FileType, 'timefreq')
         sInput.DataType = 'abs';

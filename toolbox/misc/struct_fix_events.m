@@ -5,7 +5,7 @@ function [sEvents, isModified] = struct_fix_events(sEvents)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -43,21 +43,40 @@ if ~isequal(fieldnames(sTemplate), fieldnames(sEvents))
 end
 % Fix the dimensions of all the fields
 for iEvt = 1:length(sEvents)
+    % label
+    if isempty(sEvents(iEvt).label)
+        sEvents(iEvt).label = sprintf('unknown_%02d', iEvt);
+    end
+    % reactTimes
     nOcc = size(sEvents(iEvt).times, 2);
     if ~isempty(sEvents(iEvt).reactTimes) && (length(sEvents(iEvt).reactTimes) ~= nOcc)
         sEvents(iEvt).reactTimes = [];
     end
+    % channels
     if (length(sEvents(iEvt).channels) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).channels))
         sEvents(iEvt).channels = cell(1, nOcc);
         if ~isModified
             disp('BST> Fixed events structure: Wrong number or type of elements in field "channels".');
             isModified = 1;
         end
+    elseif (nOcc > 1) && (size(sEvents(iEvt).channels,1) > 1)
+        sEvents(iEvt).channels = sEvents(iEvt).channels';
+        if ~isModified
+            disp('BST> Fixed events structure: Transposed list of "channels".');
+            isModified = 1;
+        end
     end
+    % notes
     if (length(sEvents(iEvt).notes) ~= nOcc) || ((nOcc >= 1) && ~iscell(sEvents(iEvt).notes))
         sEvents(iEvt).notes = cell(1, nOcc);
         if ~isModified
             disp('BST> Fixed events structure: Wrong number or type of elements in field "notes".');
+            isModified = 1;
+        end
+    elseif (nOcc > 1) && (size(sEvents(iEvt).notes,1) > 1)
+        sEvents(iEvt).notes = sEvents(iEvt).notes';
+        if ~isModified
+            disp('BST> Fixed events structure: Transposed list of "notes".');
             isModified = 1;
         end
     end

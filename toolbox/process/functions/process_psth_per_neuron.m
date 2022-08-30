@@ -1,14 +1,11 @@
 function varargout = process_psth_per_neuron( varargin )
-% PROCESS_RASTERPLOT_PER_NEURON: Computes a rasterplot per electrode.
-% 
-% USAGE:    sProcess = process_rasterplot_per_neuron('GetDescription')
-%        OutputFiles = process_rasterplot_per_neuron('Run', sProcess, sInput)
+% PROCESS_PSTH_PER_NEURON: Computes the PSTH (peristimulus time histogram) per neuron.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,30 +19,27 @@ function varargout = process_psth_per_neuron( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Author: Konstantinos Nasiotis, 2019;
+% Authors: Konstantinos Nasiotis, 2019
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'PSTH Per Neuron';
+    sProcess.Comment     = 'PSTH per neuron';
     sProcess.FileTag     = 'psth';
-    sProcess.Category    = 'custom';
+    sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1507;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/';
+    sProcess.Index       = 1227;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    % Options: Sensor types
-    sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
-    sProcess.options.sensortypes.Type    = 'text';
-    sProcess.options.sensortypes.Value   = 'EEG';
     % Options: Bin size
     sProcess.options.binsize.Comment = 'Bin size: ';
     sProcess.options.binsize.Type    = 'value';
@@ -54,116 +48,82 @@ end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
     % Initialize returned values
     OutputFiles = {};
-    % Extract method name from the process name
-    strProcess = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'data', '');
-    
-    % Add other options
-    tfOPTIONS.Method = strProcess;
-    if isfield(sProcess.options, 'sensortypes')
-        tfOPTIONS.SensorTypes = sProcess.options.sensortypes.Value;
-    else
-        tfOPTIONS.SensorTypes = [];
-    end
-    
-    % Bin size
+    % Get options
     if isfield(sProcess.options, 'binsize') && ~isempty(sProcess.options.binsize) && ~isempty(sProcess.options.binsize.Value) && iscell(sProcess.options.binsize.Value) && sProcess.options.binsize.Value{1} > 0
         bin_size = sProcess.options.binsize.Value{1};
     else
         bst_report('Error', sProcess, sInputs, 'Positive bin size required.');
         return;
     end
-    
-    % If a time window was specified
-    if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value)
-        tfOPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
-    elseif ~isfield(tfOPTIONS, 'TimeWindow')
-        tfOPTIONS.TimeWindow = [];
-    end
-    
-    tfOPTIONS.TimeVector = in_bst(sInputs(1).FileName, 'Time');
 
+    % ===== PROCESS FILES =====
     % Check how many event groups we're processing
     listComments = cellfun(@str_remove_parenth, {sInputs.Comment}, 'UniformOutput', 0);
     [uniqueComments,tmp,iData2List] = unique(listComments);
     nLists = length(uniqueComments);
-    
     % Process each even group seperately
     for iList = 1:nLists
+
+        % === LOAD INPUTS ===
+        % Get trials in this group
         sCurrentInputs = sInputs(iData2List == iList);
-    
-        % === OUTPUT STUDY ===
-        % Get output study
-        [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
-        tfOPTIONS.iTargetStudy = iStudy;
-
-
-        % Get channel file
-        sChannel = bst_get('ChannelForStudy', iStudy);
-        % Load channel file
-        ChannelMat = in_bst_channel(sChannel.FileName);
-
-
-        %% Get only the unique neurons along all of the trials
         nTrials = length(sCurrentInputs);
 
-        % I get the files outside of the parfor so it won't fail.
-        % This loads the information from ALL TRIALS on ALL_TRIALS_files
-        % (Shouldn't create a memory problem).
-        ALL_TRIALS_files = struct();
+        % Get all the neuron labels (each trial might have different number of neurons)
+        DataMats = cell(1, nTrials);
+        labelsNeurons = {};
         for iFile = 1:nTrials
-            DataMat = in_bst(sCurrentInputs(iFile).FileName);
-            ALL_TRIALS_files(iFile).Events = DataMat.Events;
-        end
-
-        % Create a cell that holds all of the labels and one for the unique labels
-        % This will be used to take the averages using the appropriate indices
-        labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
-        for iFile = 1:nTrials
-            for iEvent = 1:length(ALL_TRIALS_files(iFile).Events)
-                if process_spikesorting_supervised('IsSpikeEvent', ALL_TRIALS_files(iFile).Events(iEvent).label)
-                    labelsForDropDownMenu{end+1} = ALL_TRIALS_files(iFile).Events(iEvent).label;
+            % Load file
+            DataMats{iFile} = in_bst_data(sCurrentInputs(iFile).FileName, 'Events');
+            % Save spike events
+            for iEvent = 1:length(DataMats{iFile}.Events)
+                if panel_spikes('IsSpikeEvent', DataMats{iFile}.Events(iEvent).label)
+                    labelsNeurons{end+1} = DataMats{iFile}.Events(iEvent).label;
                 end
             end
         end
-        labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
-        labelsForDropDownMenu = sort_nat(labelsForDropDownMenu);
+        % If no neuron was found
+        if isempty(labelsNeurons)
+            bst_report('Error', sProcess, sCurrentInputs(1), 'No neurons/spiking events detected.');
+            return;
+        end
+        % Sort neurons alphabetically
+        labelsNeurons = unique(labelsNeurons, 'stable');
+        labelsNeurons = sort_nat(labelsNeurons);
         
         
-        %% === START COMPUTATION ===
-        sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
-
-        temp = in_bst(sCurrentInputs(1).FileName);
-        nElectrodes = size(temp.ChannelFlag,1);
-        nBins = floor(length(tfOPTIONS.TimeVector) / (bin_size * sampling_rate));
-        raster = zeros(length(labelsForDropDownMenu), nBins, nTrials);
-        bins = linspace(temp.Time(1), temp.Time(end), nBins+1);
+        % ===== COMPUTE BINNING =====
+        % Get file time
+        DataMat = in_bst_data(sCurrentInputs(1).FileName, 'Time');
+        sampling_rate = round(abs(1. / (DataMat.Time(2) - DataMat.Time(1))));
+        % Define bins
+        nBins = floor(length(DataMat.Time) / (bin_size * sampling_rate));
+        raster = zeros(length(labelsNeurons), nBins, nTrials);
+        bins = linspace(DataMat.Time(1), DataMat.Time(end), nBins+1);
 
         bst_progress('start', 'PSTH per Neuron', 'Binning Spikes...', 0, length(sCurrentInputs));
 
+        for iFile = 1:length(sCurrentInputs)
+            single_file_binning = zeros(length(labelsNeurons), nBins);
+            for iNeuron = 1:length(labelsNeurons)
+                for ievent = 1:size(DataMats{iFile}.Events,2)
+                    evt = DataMats{iFile}.Events(ievent);
+                    if strcmp(evt.label, labelsNeurons{iNeuron})
+                        outside_up = evt.times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
+                        evt.times(outside_up) = bins(end) - 0.001; % I assign those spikes just 1ms inside the bin
+                        outside_down = evt.times <= bins(1);
+                        evt.times(outside_down) = bins(1) + 0.001; % I assign those spikes just 1ms inside the bin
 
-        for ifile = 1:length(sCurrentInputs)
-            trial = in_bst(sCurrentInputs(ifile).FileName);
-            single_file_binning = zeros(length(labelsForDropDownMenu), nBins);
-
-            for iNeuron = 1:length(labelsForDropDownMenu)
-                for ievent = 1:size(trial.Events,2)
-                    if strcmp(trial.Events(ievent).label, labelsForDropDownMenu{iNeuron})
-
-                        outside_up = trial.Events(ievent).times >= bins(end); % This snippet takes care of some spikes that occur outside of the window of Time due to precision incompatibility.
-                        trial.Events(ievent).times(outside_up) = bins(end) - 0.001; % I assign those spikes just 1ms inside the bin
-                        outside_down = trial.Events(ievent).times <= bins(1);
-                        trial.Events(ievent).times(outside_down) = bins(1) + 0.001; % I assign those spikes just 1ms inside the bin
-
-                        [tmp, bin_it_belongs_to] = histc(trial.Events(ievent).times, bins);
+                        [tmp, bin_it_belongs_to] = histc(evt.times, bins);
 
                         unique_bin = unique(bin_it_belongs_to);
                         occurences = [unique_bin; histc(bin_it_belongs_to, unique_bin)];
@@ -173,25 +133,19 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     end
                 end
             end
-
-            raster(:, :, ifile) = single_file_binning;
+            raster(:, :, iFile) = single_file_binning;
             bst_progress('inc', 1);
         end
 
-        
-        %% Compute the 95% confidence intervals
+        % ===== COMPUTE 95% CONFIDENCE INTERVALS =====
         % Initialize the 3 vectors that will be plotted (mean, and 95% confidence intervals)   
-        meanData = zeros(length(labelsForDropDownMenu), nBins);    % nNeurons x nBins
-        CI       = zeros(length(labelsForDropDownMenu), nBins, 1, 2); % nNeurons x nBins x 1 (unused STD dimension) x 2 (upper-lower bound)
+        meanData = zeros(length(labelsNeurons), nBins);    % nNeurons x nBins
+        CI       = zeros(length(labelsNeurons), nBins, 1, 2); % nNeurons x nBins x 1 (unused STD dimension) x 2 (upper-lower bound)
 
-        
-        bst_progress('start', 'PSTH per Neuron', 'Performing permutation test for 95% confidence intervals...', 0, length(labelsForDropDownMenu));
+        bst_progress('start', 'PSTH per Neuron', 'Performing permutation test for 95% confidence intervals...', 0, length(labelsNeurons));
 
         % Assign the confidence intervals values
-        for iNeuron = 1:length(labelsForDropDownMenu)
-            
-            disp([num2str(iNeuron) '/' num2str(length(labelsForDropDownMenu)) ' done'])
-            
+        for iNeuron = 1:length(labelsNeurons)
             for iBin = 1:nBins
                 meanData(iNeuron, iBin) = mean(raster(iNeuron,iBin,:));
 
@@ -203,42 +157,32 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         
-        
-        %% Build the output file
-        tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
-
+        % ===== SAVE RESULTS =====
         % Prepare output file structure
-        FileMat.Value = meanData;
-        FileMat.Std = CI;
-        FileMat.Description  = labelsForDropDownMenu';
-        FileMat.Time         = diff(bins(1:2))/2+bins(1:end-1);
-        FileMat.ChannelFlag  = ones(length(labelsForDropDownMenu),1);
-        FileMat.nAvg         = 1;
-        FileMat.Events       = [];
-        FileMat.SurfaceFile  = [];
-        FileMat.Atlas        = [];
-        FileMat.DisplayUnits = 'Spikes/sec';
+        TfMat = db_template('timefreqmat');
+        TfMat.Value        = meanData;
+        TfMat.Std          = CI;
+        TfMat.Comment      = ['PSTH: ' uniqueComments{iList}];
+        TfMat.Description  = labelsNeurons';
+        TfMat.Time         = diff(bins(1:2))/2+bins(1:end-1);
+        TfMat.ChannelFlag  = ones(length(labelsNeurons),1);
+        TfMat.nAvg         = 1;
+        TfMat.DisplayUnits = 'Spikes/sec';
         
         % Add history field
-        FileMat = bst_history('add', FileMat, 'compute', 'PSTH per neuron');
-        FileMat.Comment = ['PSTH: ' uniqueComments{iList}];
+        TfMat = bst_history('add', TfMat, 'compute', 'PSTH per neuron');
+        for iFile = 1:length(sInputs)
+            TfMat = bst_history('add', TfMat, 'average', [' - ' sInputs(iFile).FileName]);
+        end
 
         % Get output study
-        sTargetStudy = bst_get('Study', iStudy);
+        [tmp, iTargetStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
+        sTargetStudy = bst_get('Study', iTargetStudy);
         % Output filename
         FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'matrix');
         OutputFiles = {FileName};
         % Save output file and add to database
-        bst_save(FileName, FileMat, 'v6');
-        db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
+        bst_save(FileName, TfMat, 'v6');
+        db_add_data(iTargetStudy, FileName, TfMat);
     end
-    
-        
-    % Display report to user
-    bst_report('Info', sProcess, sInputs, 'Success');
-    disp('BST> process_timefreq: Success');
 end
-
-
-
-

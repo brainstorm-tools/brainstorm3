@@ -9,7 +9,7 @@ function varargout = panel_protocol_editor(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -118,7 +118,9 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
         % By default : Individual channel file
         ctrl.jRadioChannelIndividual.setSelected(1);
         % Try to prevent people to share channel files between protocol
+        ctrl.jRadioChannelDefaultSubject.setForeground(Color(.5,.5,.5));
         ctrl.jRadioChannelDefaultGlobal.setForeground(Color(.5,.5,.5));
+        java_setcb(ctrl.jRadioChannelDefaultSubject, 'ActionPerformedCallback', @SharedWarning);
         java_setcb(ctrl.jRadioChannelDefaultGlobal, 'ActionPerformedCallback', @GlobalWarning);
 
         jPanelNew.add('p hfill', jPanelDefaults);
@@ -242,6 +244,23 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
         end
     end
 
+    % WARNING FOR SHARED CHANNEL FILE
+    function SharedWarning(varargin)
+        % Display warning
+        res = java_dialog('question', ['We do not recommend using this option anymore.' 10 10 ...
+                                       'Sharing the same electrodes cap for multiple continuous files may lead to errors.' 10 ...
+                                       'The channel file contains the linear operators (SSP, ICA, re-referencing operator)' 10 ...
+                                       'applied dynamically to the continuous files, which means that applying a spatial filter' 10 ...
+                                       'to one file applies it to all the files in the subject. This constraint is often' 10 ...
+                                       'misunderstood and leads to errors in the manipulation of the files.' 10  ...
+                                       'Use this option only if you clearly understand the meaning of this warning.' 10 10 ...
+                                       'Are you sure you want to select this option ?' 10 10], 'Warning', [], {'Confirm', 'Cancel'}, 'Cancel');
+        % Select the default option "Use one channel file per subject"
+        if (isempty(res) || ~strcmpi(res, 'Confirm'))
+            ctrl.jRadioChannelIndividual.setSelected(1);
+        end
+    end
+
     % WARNING FOR GLOBAL CHANNEL FILE
     function GlobalWarning(varargin)
         % Display warning
@@ -252,13 +271,12 @@ function bstPanelNew = CreatePanel(action) %#ok<DEFNU>
                                        'The problem is that the noise covariance matrix depends on the quality of the' 10 ...
                                        'EEG recordings, which is usually very different from a subject to another.' 10 ...
                                        'Practically, it is impossible to get the same impedences for all the subjects.' 10 10 ...
-                                       'Most users will click on "Cancel", and then select "Use one channel file per subject".' 10 ...
                                        'To set the channel file and compute the headmodels for all the subjects at once:' 10 ...
                                        'right-click on the protocol node instead of each subject individually.' 10 10 ...
                                        'Are you sure you want to select this option ?' 10 10], 'Warning', [], {'Confirm', 'Cancel'}, 'Cancel');
         % Select the default option "Use one channel file per subject"
         if (isempty(res) || ~strcmpi(res, 'Confirm'))
-            ctrl.jRadioChannelDefaultSubject.setSelected(1);
+            ctrl.jRadioChannelIndividual.setSelected(1);
         end
     end
 end
@@ -277,7 +295,7 @@ function [subjectDir, studyDir, protocolName] = SelectProtocolDir(protocolDir)
     studyDir   = [];
     protocolName = [];
     % Select folder
-    protocolDir = java_getfile('open', 'Load protocol...', bst_fileparts(protocolDir, 1), 'single', 'dirs', ...
+    protocolDir = java_getfile('open', 'Load protocol...', protocolDir, 'single', 'dirs', ...
                                {{'*'}, 'Brainstorm protocol (folder)', 'protocol'}, 1);
     % Show again main frame
     jBstFrame = bst_get('BstFrame');

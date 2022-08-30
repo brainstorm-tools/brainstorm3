@@ -13,7 +13,7 @@ function [VertConn, GridLoc] = results_vertconn(ResultsFile, isComputeVertConn)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -27,7 +27,8 @@ function [VertConn, GridLoc] = results_vertconn(ResultsFile, isComputeVertConn)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2015-2022
+%          Martin Cousineau, 2017
 
 % Parse inputs
 if (nargin < 2) || isempty(isComputeVertConn)
@@ -49,12 +50,24 @@ switch (file_gettype(ResultsFile))
             HeadModelType = 'surface';
         end
 end
-
+% Get surface file for surface source models
+if ismember(lower(HeadModelType), {'surface','mixed'})
+    % Surface file is accessible
+    if ~isempty(ResultsMat.SurfaceFile) && file_exist(file_fullpath(ResultsMat.SurfaceFile))
+        CortexMat = in_tess_bst(ResultsMat.SurfaceFile);
+    % Surface file is not documented in the file: try to use the default surface
+    else
+        % Get subject
+        sStudy = bst_get('AnyFile', ResultsFile);
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        % Try to load default cortex
+        CortexMat = in_tess_bst(sSubject.Surface(sSubject.iCortex).FileName);
+    end
+end
 % Get grid points and vertex-vertex connectivity matrix
 switch lower(HeadModelType)
     case 'surface'
-        % Load vertex connectivity
-        CortexMat = in_tess_bst(ResultsMat.SurfaceFile);
+        % Use load vertex connectivity
         VertConn  = CortexMat.VertConn;
         GridLoc   = CortexMat.Vertices;
     case 'volume'
@@ -67,8 +80,6 @@ switch lower(HeadModelType)
             VertConn = [];
         end
     case 'mixed'
-        % Load surface vertex connectivity
-        CortexMat = in_tess_bst(ResultsMat.SurfaceFile);
         % Use the positions of the grid points from the headmodel
         GridLoc = ResultsMat.GridLoc;
         % If we explicitely need the vertex connectivity: Compute from the grid points with Delaunay triangulations

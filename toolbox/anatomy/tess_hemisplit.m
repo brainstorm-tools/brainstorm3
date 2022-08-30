@@ -16,7 +16,7 @@ function [rH, lH, isConnected, iStruct, iRightScout, iLeftScout] = tess_hemispli
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -50,8 +50,8 @@ if ~isempty(iStruct)
     iLeftScout  = [find(strcmpi({sSurf.Atlas(iStruct).Scouts.Label}, 'lh')), find(strcmpi({sSurf.Atlas(iStruct).Scouts.Label}, 'Cortex') & strcmpi({sSurf.Atlas(iStruct).Scouts.Region}, 'LU'))];
     % If both hemispheres are described here: get the indices
     if ~isempty(iRightScout) && ~isempty(iLeftScout)
-        rH = sSurf.Atlas(iStruct).Scouts(iRightScout).Vertices;
-        lH = sSurf.Atlas(iStruct).Scouts(iLeftScout).Vertices;
+        rH = sSurf.Atlas(iStruct).Scouts(iRightScout).Vertices(:)';
+        lH = sSurf.Atlas(iStruct).Scouts(iLeftScout).Vertices(:)';
         return;
     end
     % === Method 2: Sum all the L/R scouts ===
@@ -63,6 +63,9 @@ if ~isempty(iStruct)
     if ~isempty(iRightScouts) && ~isempty(iLeftScouts)
         rH = unique([sSurf.Atlas(iStruct).Scouts(iRightScouts).Vertices]);
         lH = unique([sSurf.Atlas(iStruct).Scouts(iLeftScouts).Vertices]);
+        % Make sure these are row vectors
+        rH = rH(:)';
+        lH = lH(:)';
         return;
     end
 end

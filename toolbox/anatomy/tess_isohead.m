@@ -3,12 +3,15 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 %
 % USAGE:  [HeadFile, iSurface] = tess_isohead(iSubject, nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
 %         [HeadFile, iSurface] = tess_isohead(MriFile,  nVertices=10000, erodeFactor=0, fillFactor=2, Comment)
+%         [Vertices, Faces]    = tess_isohead(sMri,     nVertices=10000, erodeFactor=0, fillFactor=2)
+%
+% If input is loaded MRI structure, no surface file is created and the surface vertices and faces are returned instead.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,31 +25,43 @@ function [HeadFile, iSurface] = tess_isohead(iSubject, nVertices, erodeFactor, f
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2020
+% Authors: Francois Tadel, 2012-2022
 
 %% ===== PARSE INPUTS =====
 % Initialize returned variables
 HeadFile = [];
 iSurface = [];
+isSave = true;
 % Parse inputs
 if (nargin < 5) || isempty(Comment)
     Comment = [];
 end
 % MriFile instead of subject index
+sMri = [];
 if ischar(iSubject)
     MriFile = iSubject;
     [sSubject, iSubject] = bst_get('MriFile', MriFile);
-else
+elseif isnumeric(iSubject)
     % Get subject
     sSubject = bst_get('Subject', iSubject);
     MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+elseif isstruct(iSubject)
+    sMri = iSubject;
+    MriFile = sMri.FileName;
+    [sSubject, iSubject] = bst_get('MriFile', MriFile);
+    % Don't save a surface file, instead return surface directly.
+    isSave = false;  
+else
+    error('Wrong input type.');
 end
 
 %% ===== LOAD MRI =====
-% Load MRI 
-bst_progress('start', 'Generate head surface', 'Loading MRI...');
-sMri = bst_memory('LoadMri', MriFile);
-bst_progress('stop');
+if isempty(sMri)
+    % Load MRI
+    bst_progress('start', 'Generate head surface', 'Loading MRI...');
+    sMri = bst_memory('LoadMri', MriFile);
+    bst_progress('stop');
+end
 % Save current scouts modifications
 panel_scout('SaveModifications');
 % If subject is using the default anatomy: use the default subject instead
@@ -67,7 +82,7 @@ end
 %% ===== ASK PARAMETERS =====
 % Ask user to set the parameters if they are not set
 if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
-    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', 'Background intensity threshold:'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
+    res = java_dialog('input', {'Number of vertices [integer]:', 'Erode factor [0,1,2,3]:', 'Fill holes factor [0,1,2,3]:', '<HTML>Background threshold:<BR>(guessed from MRI histogram)'}, 'Generate head surface', [], {'10000', '0', '2', num2str(sMri.Histogram.bgLevel)});
     % If user cancelled: return
     if isempty(res)
         return
@@ -77,6 +92,9 @@ if (nargin < 4) || isempty(erodeFactor) || isempty(nVertices)
     erodeFactor = str2num(res{2});
     fillFactor  = str2num(res{3});
     bgLevel     = str2num(res{4});
+    if isempty(bgLevel)
+        bgLevel = sMri.Histogram.bgLevel;
+    end
 else
     bgLevel = sMri.Histogram.bgLevel;
 end
@@ -131,9 +149,11 @@ bst_progress('text', 'Removing small patches...');
 bst_progress('inc', 10);
 
 % Downsampling isosurface
-bst_progress('text', 'Downsampling surface...');
-[sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
-bst_progress('inc', 10);
+if (length(sHead.Vertices) > nVertices)
+    bst_progress('text', 'Downsampling surface...');
+    [sHead.Faces, sHead.Vertices] = reducepatch(sHead.Faces, sHead.Vertices, nVertices./length(sHead.Vertices));
+    bst_progress('inc', 10);
+end
 % Convert to millimeters
 sHead.Vertices = sHead.Vertices(:,[2,1,3]);
 sHead.Faces    = sHead.Faces(:,[2,1,3]);
@@ -152,20 +172,26 @@ erodeFinal = 3;
 
 
 %% ===== SAVE FILES =====
-bst_progress('text', 'Saving new file...');
-% Create output filenames
-ProtocolInfo = bst_get('ProtocolInfo');
-SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
-HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
-% Save head
-if ~isempty(Comment)
-    sHead.Comment = Comment;
+if isSave
+    bst_progress('text', 'Saving new file...');
+    % Create output filenames
+    ProtocolInfo = bst_get('ProtocolInfo');
+    SurfaceDir   = bst_fullfile(ProtocolInfo.SUBJECTS, bst_fileparts(MriFile));
+    HeadFile  = file_unique(bst_fullfile(SurfaceDir, 'tess_head_mask.mat'));
+    % Save head
+    if ~isempty(Comment)
+        sHead.Comment = Comment;
+    else
+        sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, round(bgLevel));
+    end
+    sHead = bst_history('add', sHead, 'bem', 'Head surface generated with Brainstorm');
+    bst_save(HeadFile, sHead, 'v7');
+    iSurface = db_add_surface( iSubject, HeadFile, sHead.Comment);
 else
-    sHead.Comment = sprintf('head mask (%d,%d,%d,%d)', nVertices, erodeFactor, fillFactor, bgLevel);
+    % Return surface
+    HeadFile = sHead.Vertices;
+    iSurface = sHead.Faces;
 end
-sHead = bst_history('add', sHead, 'bem', 'Head surface generated with Brainstorm');
-bst_save(HeadFile, sHead, 'v7');
-iSurface = db_add_surface( iSubject, HeadFile, sHead.Comment);
 
 % Close, success
 bst_progress('stop');

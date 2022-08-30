@@ -7,7 +7,7 @@ function varargout = process_evt_detect_badsegment( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -92,6 +92,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Time window to process
     RefTimeWindow = 1; %seconds
    
+    % Ignore bad segments? (not in the options: always enforced)
+    isIgnoreBad = 1;
+
     % Option structure for function in_fread()
     ImportOptions = db_template('ImportOptions');
     ImportOptions.ImportMode = 'Time';
@@ -197,23 +200,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             cleanRMS = min(refRMS);
 
             % ===== BAD SEGMENTS =====
-            % If ignore bad segments
-            isIgnoreBad = 1;
+            % Create file mask
+            Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
             if isIgnoreBad
-                % Get list of bad segments in file
-                badSeg = panel_record('GetBadSegments', sFile);
-                % Adjust with beginning of file
-                badSeg = badSeg - fileSamples(1) + 1;
-                % Create file mask
-                Fmask = false(1, fileSamples(2) - fileSamples(1) + 1);
+                badSeg = process_evt_detect('GetBadSegments', sFile, TimeWindow, DataMat.Time, diff(TimeSamples) + 1);
                 if ~isempty(badSeg) 
                     % Loop on each segment: mark as bad
                     for iSeg = 1:size(badSeg, 2)
                         Fmask(badSeg(1,iSeg):badSeg(2,iSeg)) = true;
                     end
                 end
-            else
-                Fmask = [];
             end
         
             % ===== DETECT ARTIFACTS =====

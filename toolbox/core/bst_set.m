@@ -9,10 +9,9 @@ function argout1 = bst_set( varargin )
 %    - bst_set('BrainstormTmpDir',  BrainstormTmpDir)
 %    - bst_set('BrainstormDbDir',   BrainstormDbDir)
 %    - bst_set('LastUsedDirs',      sDirectories)
-%    - bst_set('FieldTripDir',      FieldTripDir)
-%    - bst_set('SpmDir',            SpmDir)
 %    - bst_set('BrainSuiteDir',     BrainSuiteDir)
-%    - bst_set('PythonConfig',      PythonConfig)
+%    - bst_set('PythonExe',         PythonExe)
+%    - bst_set('PluginCustomPath',  PluginCustomPath)
 %
 % ====== PROTOCOLS ====================================================================
 %    - bst_set('iProtocol',         iProtocol)
@@ -64,6 +63,7 @@ function argout1 = bst_set( varargin )
 %    - bst_set('AutoScaleY',            isAutoScaleY)
 %    - bst_set('FixedScaleY',           Modality,  Value)
 %    - bst_set('XScale',                XScale)
+%    - bst_set('YScale',                YScale)
 %    - bst_set('ShowXGrid',             isShowXGrid)
 %    - bst_set('ShowYGrid',             isShowYGrid)
 %    - bst_set('ShowZeroLines',         isShowZeroLines)
@@ -90,7 +90,7 @@ function argout1 = bst_set( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -104,7 +104,8 @@ function argout1 = bst_set( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2008-2021
+%          Martin Cousineau, 2017
 
 global GlobalData;
 
@@ -464,14 +465,14 @@ switch contextName
         end
         GlobalData.Preferences.(contextName).(Modality) = ElectrodeConf;
         
-    case {'UniformizeTimeSeriesScales', 'XScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
+    case {'UniformizeTimeSeriesScales', 'XScale', 'YScale', 'FlipYAxis', 'AutoScaleY', 'ShowXGrid', 'ShowYGrid', 'ShowZeroLines', 'ShowEventsMode', ...
           'Resolution', 'AutoUpdates', 'ExpertMode', 'DisplayGFP', 'ForceMatCompression', 'GraphicsSmoothing', 'DownsampleTimeSeries', ...
           'DisableOpenGL', 'InterfaceScaling', 'TSDisplayMode', 'UseSigProcToolbox', 'LastUsedDirs', 'DefaultFormats', ...
           'BFSProperties', 'ImportDataOptions', 'ImportEegRawOptions', 'RawViewerOptions', 'MontageOptions', 'TopoLayoutOptions', ...
           'StatThreshOptions', 'ContactSheetOptions', 'ProcessOptions', 'BugReportOptions', 'DefaultSurfaceDisplay', ...
-          'MagneticExtrapOptions', 'MriOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
+          'MagneticExtrapOptions', 'MriOptions', 'ConnectGraphOptions', 'NodelistOptions', 'IgnoreMemoryWarnings', 'SystemCopy', ...
           'TimefreqOptions_morlet', 'TimefreqOptions_hilbert', 'TimefreqOptions_fft', 'TimefreqOptions_psd', 'TimefreqOptions_plv', ...
-          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'FieldTripDir', 'SpmDir', 'BrainSuiteDir', 'PythonConfig', ...
+          'OpenMEEGOptions', 'DuneuroOptions', 'DigitizeOptions', 'CustomColormaps', 'PluginCustomPath', 'BrainSuiteDir', 'PythonExe', ...
           'GridOptions_headmodel', 'GridOptions_dipfit', 'LastPsdDisplayFunction', 'KlustersExecutable', 'ExportBidsOptions'}
         GlobalData.Preferences.(contextName) = contextValue;
 
@@ -483,12 +484,10 @@ switch contextName
             error('Invalid call to bst_set.');
         end
         [username, apiKey, domain] = varargin{2:4};
-        
+        % Default domain: plot.ly
         if isempty(domain)
-            % Default Plot.ly server
-            domain = 'http://plot.ly';
+            domain = 'https://plot.ly';
         end
-        
         % Plotly needs a URL with HTTP and no trailing slash.
         if strfind(domain, 'https://')
             domain = strrep(domain, 'https://', 'http://');
@@ -498,7 +497,7 @@ switch contextName
         if domain(end) == '/'
             domain = domain(1:end-1);
         end
-        
+        % Save credentials
         saveplotlycredentials(username, apiKey);
         saveplotlyconfig(domain);
         

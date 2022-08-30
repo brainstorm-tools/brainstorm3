@@ -20,7 +20,7 @@ function varargout = panel_surface(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function varargout = panel_surface(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2019
 
 eval(macro_method);
@@ -186,7 +186,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             jToggleResectLeft   = gui_component('toggle', jPanelSurfaceResect, 'br center', 'Left',   {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectLeftToggle_Callback);           
             jToggleResectRight  = gui_component('toggle', jPanelSurfaceResect, '',          'Right',  {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectRightToggle_Callback);           
             jToggleResectStruct = gui_component('toggle', jPanelSurfaceResect, '',          'Struct', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectStruct_Callback);           
-            gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
+            jButtonResectReset  = gui_component('button', jPanelSurfaceResect, '',          'Reset', {Insets(0,0,0,0), Dimension(BUTTON_WIDTH-3, DEFAULT_HEIGHT)}, '', @ButtonResectResetCallback);
         jPanelOptions.add(jPanelSurfaceResect);
  
         % ===== SURFACE LABELS =====
@@ -221,6 +221,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
                                   'jToggleResectLeft',      jToggleResectLeft, ...
                                   'jToggleResectRight',     jToggleResectRight, ...
                                   'jToggleResectStruct',    jToggleResectStruct, ...
+                                  'jButtonResectReset',     jButtonResectReset, ...
                                   'jLabelAlphaTitle',       jLabelAlphaTitle, ...
                                   'jLabelDataAlphaTitle',   jLabelDataAlphaTitle, ...
                                   'jSliderDataAlpha',       jSliderDataAlpha, ...
@@ -271,19 +272,23 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             return
         end
         % Get current surface
-        iSurface = getappdata(hFig, 'iSurface');
+        iSurf = getappdata(hFig, 'iSurface');
         TessInfo = getappdata(hFig, 'Surface');
-        if isempty(iSurface) || isempty(TessInfo)
+        if isempty(iSurf) || isempty(TessInfo)
             return;
         end
         % MRI: Redraw 3 orientations
-        if strcmpi(TessInfo(iSurface).Name, 'Anatomy')
+        if strcmpi(TessInfo(iSurf).Name, 'Anatomy')
             SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
             SliderCallback([], MouseEvent(jSliderResectY, 0, 0, 0, 0, 0, 1, 0), 'ResectY');
             SliderCallback([], MouseEvent(jSliderResectZ, 0, 0, 0, 0, 0, 1, 0), 'ResectZ');
         % Surface: Call the update function only once
         else
-            TessInfo(iSurface).Resect = 'none';
+            % If updating FEM mesh, update all layers
+            if strcmpi(TessInfo(iSurf).Name, 'FEM')
+                iSurf = find(strcmpi({TessInfo.Name}, 'FEM'));
+            end
+            [TessInfo(iSurf).Resect] = deal('none');
             setappdata(hFig, 'Surface', TessInfo);
             SliderCallback([], MouseEvent(jSliderResectX, 0, 0, 0, 0, 0, 1, 0), 'ResectX');
         end
@@ -746,10 +751,13 @@ function ButtonAddSurfaceCallback(surfaceType)
             typesList{end+1} = 'Anatomy';
         end
         
-        % ASEG atlas
-        iAseg = find(~cellfun(@(c)isempty(strfind(lower(c),'aseg')), {sSubject.Surface.Comment}), 1);
-        if ~isempty(iAseg)
-            typesList{end+1} = 'ASEG';
+        % Subcortical atlas
+        iSubCortical = find(~cellfun(@(c)isempty(strfind(lower(c),'subcortical')), {sSubject.Surface.Comment}), 1);
+        if isempty(iSubCortical)
+            iSubCortical = find(~cellfun(@(c)isempty(strfind(lower(c),'aseg')), {sSubject.Surface.Comment}), 1);
+        end
+        if ~isempty(iSubCortical)
+            typesList{end+1} = 'Subcortical';
         end
         % Remove surfaces that are already displayed
         if ~isempty(TessInfo)
@@ -782,8 +790,8 @@ function ButtonAddSurfaceCallback(surfaceType)
             SurfaceFile = sSubject.Surface(sSubject.iFibers).FileName;
         case 'FEM'
             SurfaceFile = sSubject.Surface(sSubject.iFEM).FileName;
-        case 'ASEG'
-            SurfaceFile = sSubject.Surface(iAseg).FileName;
+        case 'Subcortical'
+            SurfaceFile = sSubject.Surface(iSubCortical).FileName;
         case 'White'
             SurfaceFile = sSubject.Surface(iWhite).FileName;
         otherwise
@@ -1056,8 +1064,12 @@ function UpdateSurfaceProperties()
     % Ignore for MRI slices
     if isAnatomy
         sMri = bst_memory('GetMri', TessInfo(iSurface).SurfaceFile);
-        mriSize = size(sMri.Cube(:,:,:,1));
-        ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
+        if ~isempty(sMri)
+            mriSize = size(sMri.Cube(:,:,:,1));
+            ResectXYZ = double(TessInfo(iSurface).CutsPosition) ./ mriSize * 200 - 100;
+        else
+            ResectXYZ = [0,0,0];
+        end
         radioSelected = 'none';
     elseif ischar(TessInfo(iSurface).Resect)
         ResectXYZ = [0,0,0];
@@ -1095,9 +1107,10 @@ function UpdateSurfaceProperties()
     % Enable/disable controls
     isOverlay = ~isempty(TessInfo(iSurface).DataSource.FileName);
     isOverlayStat = isOverlay && ismember(file_gettype(TessInfo(iSurface).DataSource.FileName), {'presults', 'pdata', 'ptimefreq'});
-    gui_enable([ctrl.jLabelDataAlphaTitle, ctrl.jSliderDataAlpha, ctrl.jLabelDataAlpha, ...
-                ctrl.jLabelSizeTitle, ctrl.jLabelSize, ctrl.jSliderSize], isOverlay, 0);
-    gui_enable([ctrl.jLabelThreshTitle, ctrl.jSliderDataThresh, ctrl.jLabelDataThresh], isOverlay && ~isOverlayStat, 0);
+    isOverlayLabel = isOverlay && TessInfo(iSurface).isOverlayAtlas;
+    gui_enable([ctrl.jLabelDataAlphaTitle, ctrl.jSliderDataAlpha, ctrl.jLabelDataAlpha], isOverlay, 0);
+    gui_enable([ctrl.jLabelSizeTitle, ctrl.jLabelSize, ctrl.jSliderSize], isOverlay && ~isOverlayLabel, 0);
+    gui_enable([ctrl.jLabelThreshTitle, ctrl.jSliderDataThresh, ctrl.jLabelDataThresh], isOverlay && ~isOverlayStat && ~isOverlayLabel, 0);
     % Data threshold
     ctrl.jSliderDataThresh.setValue(100 * TessInfo(iSurface).DataThreshold);
     ctrl.jLabelDataThresh.setText(sprintf('%d%%', round(100 * TessInfo(iSurface).DataThreshold)));
@@ -1114,9 +1127,9 @@ end
 
 %% ===== ADD A SURFACE =====
 % Add a surface to a given 3DViz figure
-% USAGE : iTess = panel_surface('AddSurface', hFig, surfaceFile)
+% USAGE : [iTess, TessInfo] = panel_surface('AddSurface', hFig, surfaceFile)
 % OUTPUT: Indice of the surface in the figure's surface array
-function iTess = AddSurface(hFig, surfaceFile)
+function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     % ===== CHECK EXISTENCE =====
     % Check whether filename is an absolute or relative path
     surfaceFile = file_short(surfaceFile);
@@ -1243,7 +1256,7 @@ function iTess = AddSurface(hFig, surfaceFile)
 
         % === PLOT MRI ===
         switch (FigureId.Type)
-            case 'MriViewer'
+            case 'MriViewer'             
                 % Configure MRIViewer
                 figure_mri('SetupMri', hFig);
             case '3DViz'
@@ -1304,7 +1317,7 @@ end
 %     - dataType     : type of data to overlay on the surface {'Source', 'Data', ...}
 %     - dataFile     : filename of the data to display over the surface
 %     - isStat       : 1, if results is a statistical result; 0, else
-function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEFNU>
+function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEFNU>
     global GlobalData;
     % Get figure index in DataSet figures list
     [tmp__, iFig, iDS] = bst_figures('GetFigure', hFig);
@@ -1463,8 +1476,24 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
             DisplayUnits = [];
             
         case 'Anatomy'
-            ColormapType = 'source';
+            % Load overlay volume, just to get the type of file (labels vs. intensity)
+            sMriOverlay = bst_memory('LoadMri', TessInfo(iTess).DataSource.FileName);
+            % Labels
+            if ~isempty(sMriOverlay.Labels) && (size(sMriOverlay.Labels,2) >= 3)
+                ColormapType = '';
+                DisplayUnits = [];
+            % Intensity
+            else
+                ColormapType = 'source';
+                DisplayUnits = [];
+            end
+
+        case 'HeadModel'
+            setappdata(hFig, 'HeadModelFile', dataFile);
+            ColormapType = '';
             DisplayUnits = [];
+            TessInfo(iTess).Data = [];
+            TessInfo(iTess).DataWmat = [];
             
         otherwise
             ColormapType = '';
@@ -1488,11 +1517,32 @@ function isOk = SetSurfaceData(hFig, iTess, dataType, dataFile, isStat) %#ok<DEF
     % Update figure appdata
     setappdata(hFig, 'Surface', TessInfo);
     % Plot surface
-    isOk = UpdateSurfaceData(hFig, iTess);
+    if strcmpi(dataType, 'HeadModel')
+        isOk = 1;
+    else
+        [isOk, TessInfo] = UpdateSurfaceData(hFig, iTess);
+    end
     % Update  panel
     UpdatePanel();
 end
 
+
+%% ===== REMOVE DATA SOURCE FOR A SURFACE =====
+function TessInfo = RemoveSurfaceData(hFig, iTess)
+    % Get surfaces list for this figure
+    TessInfo = getappdata(hFig, 'Surface');
+    % Remove overlay
+    TessInfo(iTess).DataSource.Type     = [];
+    TessInfo(iTess).DataSource.FileName = [];
+    TessInfo(iTess).Data        = [];
+    TessInfo(iTess).DataMinMax  = [];
+    TessInfo(iTess).DataWmat    = [];
+    TessInfo(iTess).OverlayCube = [];
+    % Update figure appdata
+    setappdata(hFig, 'Surface', TessInfo);
+    % Update colormap
+    UpdateSurfaceColormap(hFig, iTess);
+end
 
 
 %% ===== UPDATE SURFACE DATA =====
@@ -1504,7 +1554,7 @@ end
 %
 % Usage:  UpdateSurfaceData(hFig, iSurfaces)
 %         UpdateSurfaceData(hFig)
-function isOk = UpdateSurfaceData(hFig, iSurfaces)
+function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
     global GlobalData;
     isOk = 1;
     % Get surfaces list 
@@ -1545,6 +1595,10 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 % Overlay on MRI: Reset Overlay cube
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     TessInfo(iTess).OverlayCube = [];
+                    % Compute min-max, if not calculated yet for the figure
+                    if isempty(TessInfo(iTess).DataMinMax)
+                        TessInfo(iTess).DataMinMax = [min(GlobalData.DataSet(iDS).Measures.F(:)), max(GlobalData.DataSet(iDS).Measures.F(:))];
+                    end
                 % Compute interpolation sensors => surface vertices
                 else
                     TessInfo(iTess) = ComputeScalpInterpolation(iDS, iFig, TessInfo(iTess));
@@ -1647,10 +1701,19 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                 end
                 
                 % === GET CURRENT VALUES ===
-                % Get figure values
+                % Get figure properties
                 TfInfo = getappdata(hFig, 'Timefreq');
+                if isequal(TfInfo.FOOOFDisp,'overlay') || isequal(TfInfo.FOOOFDisp,'spectrum')
+                    FooofDisp = 'spectrum';
+                else 
+                    FooofDisp = TfInfo.FOOOFDisp;
+                end
                 % Get results values
-                TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName);
+                TessInfo(iTess).Data = bst_memory('GetTimefreqValues', iDS, iTimefreq, TfInfo.RowName, TfInfo.iFreqs, 'CurrentTimeIndex', TfInfo.Function, TfInfo.RefRowName, FooofDisp);
+                % Get only the first time point
+                if size(TessInfo(iTess).Data,2) > 1
+                    TessInfo(iTess).Data = TessInfo(iTess).Data(:,1);
+                end
                 % If min/max values for this file were not computed yet
                 if isempty(TessInfo(iTess).DataMinMax)
                     TessInfo(iTess).DataMinMax = bst_memory('GetTimefreqMaximum', iDS, iTimefreq, TfInfo.Function);
@@ -1684,6 +1747,10 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                     % Replace values with clusters
                     if ~isempty(sClusters)
                         mask = 0 * TessInfo(iTess).Data;
+                        % If displaying the second of a replicated time point, which is not available in the clusters mask: ignore the time information
+                        if (length(iTime) == 1) && (iTime == 2) && (size(sClusters(1).mask,2) == 1)
+                            iTime = 1;
+                        end
                         % Plot each cluster
                         for iClust = 1:length(sClusters)
                             mask = mask | sClusters(iClust).mask(:, iTime, GlobalData.UserFrequencies.iCurrentFreq);
@@ -1758,6 +1825,10 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                     bst_error('The dimensions of the two volumes do not match.', 'Data mismatch', 0);
                     isOk = 0;
                     return;
+                elseif all(abs(sMriOverlay.Voxsize - sMri.Voxsize) > 0.1)
+                    bst_error('The resolution of the two volumes do not match. Resample the overlay first.', 'Data mismatch', 0);
+                    isOk = 0;
+                    return;
                 end
                 % Get index for 4th dimension ("time")
                 if ~isempty(GlobalData.UserTimeWindow.NumberOfSamples) && (size(sMriOverlay.Cube, 4) == GlobalData.UserTimeWindow.NumberOfSamples) && (GlobalData.UserTimeWindow.CurrentTime == round(GlobalData.UserTimeWindow.CurrentTime))
@@ -1766,9 +1837,31 @@ function isOk = UpdateSurfaceData(hFig, iSurfaces)
                     % Update "Static" status for this figure
                     setappdata(hFig, 'isStatic', 0);
                 end
-                % Reset Overlay cube
-                TessInfo(iTess).DataMinMax = double([min(sMriOverlay.Cube(:)), max(sMriOverlay.Cube(:))]);
-                TessInfo(iTess).OverlayCube = double(sMriOverlay.Cube);
+                % If labels are available: convert volume to an RGB cube (0-255)
+                if ~isempty(sMriOverlay.Labels) && (size(sMriOverlay.Labels,2) >= 3)
+                    % Labels = {value,name,color}
+                    labelInd = cat(1, sMriOverlay.Labels{:,1});
+                    labelRGB = cat(1, sMriOverlay.Labels{:,3});
+                    % Saturate volume values above the size of the labels table
+                    sMriOverlay.Cube(sMriOverlay.Cube > max(labelInd)) = 0;
+                    % Build a colormap with all the labels
+                    colormapLabels = zeros(max(labelInd) + 1, 3);     % Starting from 1 instead of zero
+                    colormapLabels(labelInd + 1,:) = labelRGB;
+                    % Assemble RGB volume
+                    TessInfo(iTess).OverlayCube = uint8(cat(4, ...
+                        reshape(colormapLabels(sMriOverlay.Cube + 1, 1), size(sMriOverlay.Cube)), ...
+                        reshape(colormapLabels(sMriOverlay.Cube + 1, 2), size(sMriOverlay.Cube)), ...
+                        reshape(colormapLabels(sMriOverlay.Cube + 1, 3), size(sMriOverlay.Cube))));
+                    % Save label information
+                    TessInfo(iTess).OverlayCubeLabels = sMriOverlay.Cube;
+                    TessInfo(iTess).OverlayLabels = sMriOverlay.Labels;
+                    TessInfo(iTess).isOverlayAtlas = 1;
+                    TessInfo(iTess).DataMinMax = [0,255];
+                % Otherwise: the volume contains intensity values, that will be displayed using a colormap
+                else
+                    TessInfo(iTess).DataMinMax = double([min(sMriOverlay.Cube(:)), max(sMriOverlay.Cube(:))]);
+                    TessInfo(iTess).OverlayCube = double(sMriOverlay.Cube);
+                end
                 
             case 'MriTime'
                 % Update MRI volume
@@ -1879,6 +1972,10 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
     % ===== UPDATE SURFACES =====
     for i = 1:length(iSurfaces)
         iTess = iSurfaces(i);
+        % If surface has no colormapped data to update, skip
+        if strcmpi(TessInfo(iTess).DataSource.Type, 'HeadModel')
+            continue;
+        end
         % === COLORMAPPING ===
         % Get colormap
         sColormap = bst_colormaps('GetColormap', TessInfo(iTess).ColormapType);
@@ -1901,9 +1998,11 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
                 set(hAxes, 'CLim', [0 1e-30]);
             end
             DataType = TessInfo(iTess).DataSource.Type;
+            % For Data: use the modality instead
+            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                DataType = upper(ColormapInfo.Type);
             % sLORETA: Do not use regular source scaling (pAm)
-            isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'));
-            if isSLORETA 
+            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                 DataType = 'sLORETA';
             end
         end     

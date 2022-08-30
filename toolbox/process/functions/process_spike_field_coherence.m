@@ -1,29 +1,16 @@
 function varargout = process_spike_field_coherence( varargin )
 % PROCESS_SPIKE_FIELD_COHERENCE: Computes the spike field coherence.
-% 
 
-% There are two different TimeWindow Notations here:
-% 1. Timewindow around the spike (This is the one that is asked as input when the function is called).
-% 2. Timewindow of the trials imported to the function.
-
-% The function selects a TimeWindow around the Spike.
-% Then applies an FFT to each Spike TimeWindow.
-% Then nomralizes by the FFT of the spike triggered average on the averages of
-% the SpikeWindow FFTs.
-
-% If this Spike TimeWindow is outside the TimeWindow of the Trial, the
-% spike is ignored for computation.
-
-
-
-% USAGE:    sProcess = process_spike_field_coherence('GetDescription')
-%        OutputFiles = process_spike_field_coherence('Run', sProcess, sInput)
+% DESCRIPTION: Algorithm
+%    - Selects a time window around the spike
+%    - Applies a FFT to each spike
+%    - Normalizes by the FFT of the spike triggered average on the averages of the spikes FFTs.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -37,161 +24,115 @@ function varargout = process_spike_field_coherence( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Konstantinos Nasiotis, 2018; Martin Cousineau, 2018
+% Authors: Konstantinos Nasiotis, 2018
+%          Martin Cousineau, 2018
+%          Francois Tadel, 2022
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Spike Field Coherence';
+    sProcess.Comment     = 'Spike field coherence';
     sProcess.FileTag     = 'SFC';
-    sProcess.Category    = 'custom';
+    sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Electrophysiology';
-    sProcess.Index       = 1607;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Spike_Field_Coherence';
+    sProcess.Index       = 1220;
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/e-phys/functions#Spike_field_coherence';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'data'};
     sProcess.OutputTypes = {'timefreq'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    % Options: Segment around spike
+    sProcess.options.timewindow.Comment  = 'Spike time window: ';
+    sProcess.options.timewindow.Type     = 'range';
+    sProcess.options.timewindow.Value    = {[-0.150, 0.150],'ms',[]};    
     % Options: Sensor types
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
-    sProcess.options.sensortypes.Value   = 'EEG';
-    % Options: Parallel Processing
-    sProcess.options.paral.Comment = 'Parallel processing';
-    sProcess.options.paral.Type    = 'checkbox';
-    sProcess.options.paral.Value   = 1;
-    % Options: Segment around spike
-    sProcess.options.timewindow.Comment  = 'Spike Time window: ';
-    sProcess.options.timewindow.Type     = 'range';
-    sProcess.options.timewindow.Value    = {[-0.150, 0.150],'ms',[]};
-   
+    sProcess.options.sensortypes.Value   = 'EEG, SEEG';
+    % Options: Parallel
+    sProcess.options.parallel.Comment = 'Parallel processing';
+    sProcess.options.parallel.Type    = 'checkbox';
+    sProcess.options.parallel.Value   = 0;
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
     % Initialize returned values
     OutputFiles = {};
-    % Extract method name from the process name
-    strProcess = strrep(strrep(func2str(sProcess.Function), 'process_', ''), 'timefreq', 'morlet');
+    % Get options
+    isParallel = sProcess.options.parallel.Value;
+    TimeWindow = sProcess.options.timewindow.Value{1};
+    SensorTypes = sProcess.options.sensortypes.Value;
     
-    % Add other options
-    tfOPTIONS.Method = strProcess;
-    if isfield(sProcess.options, 'sensortypes')
-        tfOPTIONS.SensorTypes = sProcess.options.sensortypes.Value;
-    else
-        tfOPTIONS.SensorTypes = [];
-    end    
-    
-    % If a time window was specified
-    if isfield(sProcess.options, 'timewindow') && ~isempty(sProcess.options.timewindow) && ~isempty(sProcess.options.timewindow.Value) && iscell(sProcess.options.timewindow.Value)
-        tfOPTIONS.TimeWindow = sProcess.options.timewindow.Value{1};
-    elseif ~isfield(tfOPTIONS, 'TimeWindow')
-        tfOPTIONS.TimeWindow = [];
-    end
-
-    tfOPTIONS.TimeVector = in_bst(sInputs(1).FileName, 'Time');
-
-    if sProcess.options.timewindow.Value{1}(1)>=0 || sProcess.options.timewindow.Value{1}(2)<=0
-        bst_report('Error', sProcess, sInputs, 'The time-selection must be around the spikes.');
-        return;
-    elseif sProcess.options.timewindow.Value{1}(1)==tfOPTIONS.TimeVector(1) && sProcess.options.timewindow.Value{1}(2)==tfOPTIONS.TimeVector(end)
-        bst_report('Error', sProcess, sInputs, 'The spike window has to be smaller than the trial window');
-        return;
-    end
-    
+    % ===== PROCESS FILES =====
     % Check how many event groups we're processing
     listComments = cellfun(@str_remove_parenth, {sInputs.Comment}, 'UniformOutput', 0);
     [uniqueComments,tmp,iData2List] = unique(listComments);
     nLists = length(uniqueComments);
-    
     % Process each even group seperately
     for iList = 1:nLists
+
+        % === LOAD INPUTS ===
+        % Get trials in this group
         sCurrentInputs = sInputs(iData2List == iList);
-    
-        % === OUTPUT STUDY ===
-        % Get output study
-        [tmp, iStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
-        tfOPTIONS.iTargetStudy = iStudy;
-
-        % Get channel file
-        sChannel = bst_get('ChannelForStudy', iStudy);
-        % Load channel file
-        ChannelMat = in_bst_channel(sChannel.FileName);
-
-
-        % === START COMPUTATION ===
-        sampling_rate = round(abs(1. / (tfOPTIONS.TimeVector(2) - tfOPTIONS.TimeVector(1))));
-
-        % Select the appropriate sensors
-        nElectrodes = 0;
-        selectedChannels = [];
-        for iChannel = 1:length(ChannelMat.Channel)
-           if strcmp(ChannelMat.Channel(iChannel).Type, 'EEG') || strcmp(ChannelMat.Channel(iChannel).Type, 'SEEG')
-              nElectrodes = nElectrodes + 1;
-              selectedChannels(end + 1) = iChannel;
-           end
-        end
-
         nTrials = length(sCurrentInputs);
-        time_segmentAroundSpikes = linspace(sProcess.options.timewindow.Value{1}(1), sProcess.options.timewindow.Value{1}(2), abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
 
-        % Prepare parallel pool, if requested
-        if sProcess.options.paral.Value
-            try
-                poolobj = gcp('nocreate');
-                if isempty(poolobj)
-                    parpool;
-                end
-            catch
-                sProcess.options.paral.Value = 0;
-            end
-        else
-            poolobj = [];
-        end
-
-
-        %% Compute the FFTs and collect all the average FFTs and LFPs for each trial.
-        everything = struct(); % This is a struct 1xnTrials
-
-        % I get the files outside of the parfor so it won't fail.
-        % This loads the information from ALL TRIALS on ALL_TRIALS_files
-        % (Shouldn't create a memory problem).
-        ALL_TRIALS_files = struct();
+        % Load all the trials outside of the parfor so it won't fail
+        DataMats = cell(1, nTrials);
         for iFile = 1:nTrials
-            ALL_TRIALS_files(iFile).trial = in_bst(sCurrentInputs(iFile).FileName);
+            DataMats{iFile} = in_bst_data(sCurrentInputs(iFile).FileName);
+        end
+
+        % Check time window
+        if TimeWindow(1)>=0 || TimeWindow(2)<=0
+            bst_report('Error', sProcess, sInputs, 'The time-selection must be around the spikes.');
+            return;
+        elseif (TimeWindow(1) <= DataMats{1}.Time(1)) && (TimeWindow(2) >= DataMats{1}.Time(end))
+            bst_report('Error', sProcess, sInputs, 'The spike window has to be smaller than the trial window.');
+            return;
+        end
+        % Sampling frequency
+        sampling_rate = round(abs(1. / (DataMats{1}.Time(2) - DataMats{1}.Time(1))));
+
+        % Load channel file
+        ChannelMat = in_bst_channel(sCurrentInputs(1).ChannelFile);
+        % Find channel indices
+        iChannels = channel_find(ChannelMat.Channel, SensorTypes);
+        if isempty(iChannels)
+            bst_report('Error', sProcess, sInputs, ['Channels not found: "' SensorTypes '".']);
+            return;
         end
 
 
-        % Start Parallel Pool if requested
-        if ~isempty(poolobj)
+        % === COMPUTE FFT ===
+        % Time around spike
+        time_segmentAroundSpikes = linspace(TimeWindow(1), TimeWindow(2), abs(TimeWindow(2))* sampling_rate + abs(TimeWindow(1))* sampling_rate + 1);
+        % Compute FFTs (in parallel if possible)
+        FFT_trials = cell(1, nTrials);
+        Freqs = cell(1, nTrials);
+        if isParallel
             parfor iFile = 1:nTrials
-                [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
-                everything(iFile).FFTs_single_trial = FFTs_single_trial;
-                everything(iFile).Freqs = Freqs;
+                [FFT_trials{iFile}, Freqs{iFile}] = get_FFTs(DataMats{iFile}, iChannels, TimeWindow, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             end
         else
             for iFile = 1:nTrials
-                [FFTs_single_trial, Freqs] = get_FFTs(ALL_TRIALS_files(iFile).trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat);
-                everything(iFile).FFTs_single_trial = FFTs_single_trial;
-                everything(iFile).Freqs = Freqs;
+                [FFT_trials{iFile}, Freqs{iFile}] = get_FFTs(DataMats{iFile}, iChannels, TimeWindow, time_segmentAroundSpikes, sampling_rate, ChannelMat);
             end
         end
 
-
-
-        %% Calculate the SFC
+        % ===== COMPUTE SFC =====
         % The Spike Field Coherence should be a 3d matrix
         % Number of neurons x Frequencies x Electrodes
         % Ultimately the user will select the NEURON that wants to be displayed,
@@ -199,46 +140,41 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % coherence of the spikes of that neuron with the LFPs on every
         % electrode on all frequencies.
 
-
         % Create a cell that holds all of the labels and one for the unique labels
         % This will be used to take the averages using the appropriate indices
         all_labels = struct;
-        labelsForDropDownMenu = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
+        labelsNeurons = {}; % Unique neuron labels (each trial might have different number of neurons). We need everything that appears.
         for iFile = 1:nTrials
-            for iNeuron = 1:length(everything(iFile).FFTs_single_trial)
-                if ~isempty(everything(iFile).FFTs_single_trial(iNeuron)) % An empty struct here would be caused by no selection of spikes. This would be caused by the combination of large windows around the spiking events, and small trial window
-                    all_labels.labels{iNeuron,iFile} = everything(iFile).FFTs_single_trial(iNeuron).label;
-                    if process_spikesorting_supervised('IsSpikeEvent', everything(iFile).FFTs_single_trial(iNeuron).label)
-                        labelsForDropDownMenu{end+1} = everything(iFile).FFTs_single_trial(iNeuron).label;
+            for iNeuron = 1:length(FFT_trials{iFile})
+                if ~isempty(FFT_trials{iFile}(iNeuron)) % An empty struct here would be caused by no selection of spikes. This would be caused by the combination of large windows around the spiking events, and small trial window
+                    all_labels.labels{iNeuron,iFile} = FFT_trials{iFile}(iNeuron).label;
+                    if panel_spikes('IsSpikeEvent', FFT_trials{iFile}(iNeuron).label)
+                        labelsNeurons{end+1} = FFT_trials{iFile}(iNeuron).label;
                     end
                 end
             end
         end
-        
         % Give an error if there were no spikes on any of the selected trials
-        if isempty(labelsForDropDownMenu)
+        if isempty(labelsNeurons)
             bst_report('Error', sProcess, sInputs, ['No spikes selected for ' uniqueComments{iList} '.' ...
                 'Select a smaller time-window around the spikes, or make sure there are spikes on these trials.']);
             return;
         end
-        
+
         all_labels = all_labels.labels;
-        labelsForDropDownMenu = unique(labelsForDropDownMenu,'stable');
+        labelsNeurons = unique(labelsNeurons,'stable');
 
-
-
-        SFC = zeros(length(labelsForDropDownMenu), length(everything(1).Freqs), nElectrodes); % Number of neurons x Frequencies x Electrodes
+        SFC = zeros(length(labelsNeurons), length(Freqs{iFile}), length(iChannels)); % Number of neurons x Frequencies x Electrodes
         
-        for iNeuron = 1:length(labelsForDropDownMenu)
+        for iNeuron = 1:length(labelsNeurons)
             
-            temp_All_trials_sum_LFP = zeros(1,nElectrodes, length(time_segmentAroundSpikes)); 
-            temp_All_trials_sum_FFT = zeros(length(everything(1).Freqs), nElectrodes);
-            
-            
-            %% For each TRIAL, get the index of the label that corresponds to the appropriate neuron.
+            temp_All_trials_sum_LFP = zeros(1, length(iChannels), length(time_segmentAroundSpikes)); 
+            temp_All_trials_sum_FFT = zeros(length(Freqs{iFile}), length(iChannels));
+
+            % For each TRIAL, get the index of the label that corresponds to the appropriate neuron.
             for ii = 1:size(all_labels,1)
                 for jj = 1:size(all_labels,2)
-                    logicalEvents(ii,jj) = strcmp(all_labels{ii,jj}, labelsForDropDownMenu{iNeuron});
+                    logicalEvents(ii,jj) = strcmp(all_labels{ii,jj}, labelsNeurons{iNeuron});
                 end
             end
 
@@ -253,13 +189,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             end
 
 
-            %% Take the Averages of the appropriate indices
+            % Take the Averages of the appropriate indices
             divideBy = 0;
             for iTrial = 1:size(all_labels,2)
                 if iEvents(iTrial)~=0
-                    temp_All_trials_sum_LFP = temp_All_trials_sum_LFP + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).sumLFP;
-                    temp_All_trials_sum_FFT = temp_All_trials_sum_FFT + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).sumFFT;
-                    divideBy = divideBy + everything(iTrial).FFTs_single_trial(iEvents(iTrial)).nSpikes;
+                    temp_All_trials_sum_LFP = temp_All_trials_sum_LFP + FFT_trials{iTrial}(iEvents(iTrial)).sumLFP;
+                    temp_All_trials_sum_FFT = temp_All_trials_sum_FFT + FFT_trials{iTrial}(iEvents(iTrial)).sumFFT;
+                    divideBy = divideBy + FFT_trials{iTrial}(iEvents(iTrial)).nSpikes;
                 end
             end
 
@@ -267,7 +203,6 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             average_FFT = temp_All_trials_sum_FFT./divideBy;
 
             % Get The FFT of the AverageLFP
-
             FFTofAverageLFP = compute_FFT(average_LFP, time_segmentAroundSpikes);
 
             SFC_singleNeuron = squeeze(FFTofAverageLFP)./average_FFT; % Normalize by the FFT of the average LFP
@@ -275,77 +210,56 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                                                                       % and the division by 0 would give NaN as an output. This line takes care of that.
 
             SFC(iNeuron,:,:) = SFC_singleNeuron;
-
-
         end
 
-        %% Wrap everything into the output file
 
-        tfOPTIONS.ParentFiles = {sCurrentInputs.FileName};
-
+        % ===== SAVE FILE =====
         % Prepare output file structure
-        FileMat = db_template('timefreqmat');
-        FileMat.TF = SFC;
-        FileMat.Time = everything(1).Freqs; % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
-        FileMat.TFmask = [];
-        FileMat.Freqs = 1:nElectrodes;      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
-        FileMat.Comment = ['Spike Field Coherence: ' uniqueComments{iList}];
-        FileMat.DataType = 'data';
-        FileMat.RowNames = labelsForDropDownMenu;
-        FileMat.Measure = 'power';
-        FileMat.Method = 'morlet';
-        FileMat.DataFile = []; % Leave blank because multiple parents
-        FileMat.Options = tfOPTIONS;
+        TfMat = db_template('timefreqmat');
+        TfMat.TF       = SFC;
+        TfMat.Time     = Freqs{iFile}; % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
+        TfMat.Freqs    = 1:length(iChannels);      % These values are in order to trick Brainstorm with the correct values (This needs to be improved. Talk to Martin)
+        TfMat.Comment  = ['Spike Field Coherence: ' uniqueComments{iList}];
+        TfMat.DataType = 'data';
+        TfMat.RowNames = labelsNeurons;
+        TfMat.Measure  = 'power';
+        TfMat.Method   = 'morlet';
+        TfMat.DataFile = []; % Leave blank because multiple parents
+        TfMat.Options  = [];
 
         % Add history field
-        FileMat = bst_history('add', FileMat, 'compute', ...
-            ['Spike Field Coherence: [' num2str(tfOPTIONS.TimeWindow(1)) ', ' num2str(tfOPTIONS.TimeWindow(2)) '] ms']);
+        TfMat = bst_history('add', TfMat, 'compute', ['Spike Field Coherence: [' num2str(TimeWindow(1)) ', ' num2str(TimeWindow(2)) '] ms']);
+        for iFile = 1:length(sInputs)
+            TfMat = bst_history('add', TfMat, 'average', [' - ' sInputs(iFile).FileName]);
+        end
 
         % Get output study
-        sTargetStudy = bst_get('Study', iStudy);
+        [tmp, iTargetStudy] = bst_process('GetOutputStudy', sProcess, sCurrentInputs);
+        sTargetStudy = bst_get('Study', iTargetStudy);
         % Output filename
         FileName = bst_process('GetNewFilename', bst_fileparts(sTargetStudy.FileName), 'timefreq_spike_field_coherence');
         OutputFiles{end + 1} = FileName;
         % Save output file and add to database
-        bst_save(FileName, FileMat, 'v6');
-        db_add_data(tfOPTIONS.iTargetStudy, FileName, FileMat);
-    end
-        
-    % Display report to user
-    bst_report('Info', sProcess, sInputs, 'Success');
-    disp('BST> process_spike_field_coherence: Success');
-    
-    
-    % Close parallel pool
-    if sProcess.options.paral.Value
-        if ~isempty(poolobj)
-            delete(poolobj);
-        end
+        bst_save(FileName, TfMat, 'v6');
+        db_add_data(iTargetStudy, FileName, TfMat);
     end
 end
 
 
-
-
-
-
-function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segmentAroundSpikes, sampling_rate, ChannelMat)
-    %% Get the events that show the NEURONS' activity
-
-    % Important Variable here!
+%% ===== GET FFT =====
+function [all, Freqs] = get_FFTs(trial, iChannels, TimeWindow, time_segmentAroundSpikes, sampling_rate, ChannelMat)
+    %% Get the events that show the NEURONS' activity =====
     spikeEvents = []; % The spikeEvents variable holds the indices of the events that correspond to spikes.
 
-    allChannelEvents = cellfun(@(x) process_spikesorting_supervised('GetChannelOfSpikeEvent', x), ...
+    allChannelEvents = cellfun(@(x) panel_spikes('GetChannelOfSpikeEvent', x), ...
         {trial.Events.label}, 'UniformOutput', 0);
     allChannelEvents = allChannelEvents(~cellfun('isempty', allChannelEvents));
-
     if isempty(allChannelEvents)
-        bst_report('Error', sProcess, sInputs, 'No spike event found in this file.');
-        return;
+        error('No spike event found in this file.');
     end
     
-    for iElec = 1:length(selectedChannels)
-        ielectrode = selectedChannels(iElec);
+    for iElec = 1:length(iChannels)
+        ielectrode = iChannels(iElec);
         iEvents = find(strcmp(allChannelEvents, ChannelMat.Channel(ielectrode).Name)); % Find the index of the spike-events that correspond to that electrode (Exact string match)
         if ~isempty(iEvents)
             spikeEvents(end+1:end+length(iEvents)) = iEvents;
@@ -358,18 +272,18 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
 
         % Check that the entire segment around the spikes i.e. :[-150,150]ms
         % is inside the trial segment and keep only those events
-        iSel = trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(sProcess.options.timewindow.Value{1}(1)) & ...
-               trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(sProcess.options.timewindow.Value{1}(2));
+        iSel = trial.Events(spikeEvents(iNeuron)).times > trial.Time(1)   + abs(TimeWindow(1)) & ...
+               trial.Events(spikeEvents(iNeuron)).times < trial.Time(end) - abs(TimeWindow(2));
         events_within_segment = round(trial.Events(spikeEvents(iNeuron)).times(iSel) .* sampling_rate);
 
         %% Create a matrix that holds all the segments around the spike
         % of that neuron, for all electrodes.
-        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),size(trial.F(selectedChannels,:),1),abs(sProcess.options.timewindow.Value{1}(2))* sampling_rate + abs(sProcess.options.timewindow.Value{1}(1))* sampling_rate + 1);
+        allSpikeSegments_singleNeuron_singleTrial = zeros(length(events_within_segment),size(trial.F(iChannels,:),1),abs(TimeWindow(2))* sampling_rate + abs(TimeWindow(1))* sampling_rate + 1);
 
         for ispike = 1:length(events_within_segment)
-            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(selectedChannels, ...
-                events_within_segment(ispike) - abs(sProcess.options.timewindow.Value{1}(1)) * sampling_rate + round(abs(trial.Time(1)) * sampling_rate) + 1: ...
-                events_within_segment(ispike) + abs(sProcess.options.timewindow.Value{1}(2)) * sampling_rate + round(abs(trial.Time(1)) * sampling_rate) + 1  ...
+            allSpikeSegments_singleNeuron_singleTrial(ispike,:,:) = trial.F(iChannels, ...
+                events_within_segment(ispike) - abs(TimeWindow(1)) * sampling_rate + round(abs(trial.Time(1)) * sampling_rate) + 1: ...
+                events_within_segment(ispike) + abs(TimeWindow(2)) * sampling_rate + round(abs(trial.Time(1)) * sampling_rate) + 1  ...
             );
         end
 
@@ -390,15 +304,13 @@ function [all, Freqs] = get_FFTs(trial, selectedChannels, sProcess, time_segment
     iEventsToRemove = find([all.nSpikes]==0);
     
     all = all(~ismember(1:length(all),iEventsToRemove));
-        
 end
 
 
-
-
+%% ===== COMPUTE FFT =====
 function [TF, Freqs] = compute_FFT(F, time)
 
-    %% This function if made for 3-dimensional F
+    % This function if made for 3-dimensional F
     dim = 3;
 
     % Next power of 2 from length of signal
@@ -408,8 +320,6 @@ function [TF, Freqs] = compute_FFT(F, time)
     sfreq = 1 / (time(2) - time(1));
     % Positive frequency bins spanned by FFT
     Freqs = sfreq / 2 * linspace(0, 1, NFFT / 2 + 1);
-    % Keep only first and last time instants
-    time = time([1, end]);
     % Remove mean of the signal
     F = bst_bsxfun(@minus, F, mean(F,dim));
     
@@ -426,14 +336,12 @@ function [TF, Freqs] = compute_FFT(F, time)
     % (x2 to recover full power from negative frequencies)
     TF = 2 * Ffft(:, :, 1:floor(NFFT / 2) + 1) ./ nTime; % I added floor
     
-    
     %%%%%%%%%%%% This is added. SFC doesn't need the complex values %%%%%%%
     TF = abs(TF) .^ 2;
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     
     % Permute dimensions: time and frequency
     TF = permute(TF, [1 3 2]);
-    
 end
 
 

@@ -5,7 +5,7 @@ function varargout = process_matlab_eval( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -67,6 +67,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Available variables
     Data = sInput.A;
     TimeVector = sInput.TimeVector;
+    Comment = sInput.Comment;
     % Evaluate Matlab code
     try
         eval(sProcess.options.matlab.Value);
@@ -112,6 +113,7 @@ function sInput = Run(sProcess, sInput) %#ok<DEFNU>
     % Report results
     sInput.A = Data;
     sInput.TimeVector = TimeVector;
+    sInput.Comment = Comment;
     % Do not keep the Std field in the output
     if isfield(sInput, 'Std') && ~isempty(sInput.Std)
         sInput.Std = [];

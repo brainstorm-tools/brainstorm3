@@ -13,7 +13,7 @@ function hFig = view_histogram(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -82,7 +82,7 @@ Scaling = bst_get('InterfaceScaling') / 100;
     
 % ===== TOOLBAR =====
 nBins = 9;
-% Older version of Matlab (< 2020a): use java components
+% Older version of Matlab (< 2019b): use java components
 if bst_get('isJavacomponent')
     isJava = 1;
     % Add toolbar to window

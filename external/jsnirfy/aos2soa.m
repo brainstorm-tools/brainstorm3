@@ -18,9 +18,9 @@ function st=aos2soa(starray)
 %        a=struct('a',1,'b','0','c',[1,3]');
 %        st=aos2soa(repmat(a,1,10))
 %
-%    this file is part of JSNIRF specification: https://github.com/fangq/jsnirf
+%    this file is part of JSNIRF specification: https://github.com/NeuroJSON/jsnirf
 %
-%    License: GPLv3 or Apache 2.0, see https://github.com/fangq/jsnirf for details
+%    License: GPLv3 or Apache 2.0, see https://github.com/NeuroJSON/jsnirf for details
 %
 
 

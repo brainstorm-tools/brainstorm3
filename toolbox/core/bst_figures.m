@@ -7,7 +7,6 @@ function varargout = bst_figures( varargin )
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        iDS,      FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        DataFile, FigureId)
 %        [hFigs,iFigs,iDSs] = bst_figures('GetFigure',        hFigure)
-
 %                   [hFigs] = bst_figures('GetAllFigures')
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile)
 % [hFigs,iFigs,iDSs,iSurfs] = bst_figures('GetFigureWithSurface', SurfFile, DataFile, FigType, Modality)
@@ -40,7 +39,7 @@ function varargout = bst_figures( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -54,7 +53,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2021
 %          Martin Cousineau, 2017
 
 eval(macro_method);
@@ -86,7 +85,7 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
         % If at least one valid figure was found
         if ~isempty(hFigures)
             % Refine selection for certain types of figures
-            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'Pac'})
+            if ~isempty(Constrains) && ischar(Constrains) && ismember(FigureId.Type, {'Timefreq', 'Spectrum', 'Connect', 'Pac'}) 
                 for i = 1:length(hFigures)
                     TfInfo = getappdata(hFigures(i), 'Timefreq');
                     if ~isempty(TfInfo) && file_compare(TfInfo.FileName, Constrains)
@@ -218,6 +217,9 @@ function [hFig, iFig, isNewFig] = CreateFigure(iDS, FigureId, CreateMode, Constr
     [selChan,errMsg] = GetChannelsForFigure(iDS, iFig);
     % Error message
     if ~isempty(errMsg)
+        if isNewFig
+            GlobalData.DataSet(iDS).Figure(iFig) = [];
+        end
         error(errMsg);
     end
     % Save selected channels for this figure
@@ -453,6 +455,11 @@ function UpdateFigureName(hFig)
                 else
                     figureName = [figureNameModality  'MriViewer: ' figureName];
                 end
+            end
+            % Add atlas name
+            AnatAtlas = getappdata(hFig, 'AnatAtlas');
+            if ~isempty(AnatAtlas) && ~strcmpi(AnatAtlas, 'none')
+                figureName = [figureName ' (' str_remove_parenth(AnatAtlas) ')'];
             end
         case 'Timefreq'
             figureName = [figureNameModality  'TF: ' figureName];
@@ -884,10 +891,7 @@ function DeleteFigure(hFigure, varargin)
         	panel_dipoles('UpdatePanel');
         end
     end
-    % If figure is an OpenGL connectivty graph: call the destructor
-    if strcmpi(Figure.Id.Type, 'Connect')
-        figure_connect('Dispose', hFigure);
-    end
+
     % Delete graphic object
     if ishandle(hFigure)
         delete(hFigure);
@@ -1695,7 +1699,7 @@ function isValid = isFigureId(FigureId)
             isfield(FigureId, 'Type') && ...
             isfield(FigureId, 'SubType') && ...
             isfield(FigureId, 'Modality') && ...
-            ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Topography', '3DViz', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Connect', 'Image'}));
+            ismember(FigureId.Type, {'DataTimeSeries', 'ResultsTimeSeries', 'Topography', '3DViz', 'MriViewer', 'Timefreq', 'Spectrum', 'Pac', 'Connect', 'Image'}))
         isValid = 1;
     else
         isValid = 0;
@@ -1921,7 +1925,7 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                 case 'Timefreq'
                     figure_timefreq('UpdateFigurePlot', Figure.hFigure, 1);
                 case 'Spectrum'
-                    figure_spectrum('UpdateFigurePlot', Figure.hFigure);
+                    figure_spectrum('UpdateFigurePlot', Figure.hFigure, 1);
                     UpdateFigureName(Figure.hFigure);
                 case 'Pac'
                     figure_pac('UpdateFigurePlot', Figure.hFigure);
@@ -2048,7 +2052,7 @@ function FireSelectedRowChanged()
                 case 'Pac'
                     % Nothing to do
                 case 'Connect'
-                    figure_connect('SelectedRowChangedCallback', iDS, iFig);
+                    % Nothing to do
                 case 'Image'
                     % Nothing to do
                 otherwise

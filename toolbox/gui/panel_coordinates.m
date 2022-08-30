@@ -7,7 +7,7 @@ function varargout = panel_coordinates(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -347,13 +347,18 @@ function vi = SelectPoint(hFig, AcceptMri) %#ok<DEFNU>
                 end
             end
             % Get subject
-            sSubject = bst_get('Subject', getappdata(hFig, 'SubjectFile'));
-            % == GET MRI ==
-            % If subject has a MRI defined
-            if ~isempty(sSubject.iAnatomy)
-                % Load MRI
-                MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-                sMri = bst_memory('LoadMri', MriFile);
+            SubjectFile = getappdata(hFig, 'SubjectFile');
+            if ~isempty(SubjectFile)
+                sSubject = bst_get('Subject', SubjectFile);
+                % == GET MRI ==
+                % If subject has a MRI defined
+                if ~isempty(sSubject.iAnatomy)
+                    % Load MRI
+                    MriFile = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+                    sMri = bst_memory('LoadMri', MriFile);
+                else
+                    sMri = [];
+                end
             else
                 sMri = [];
             end
@@ -499,18 +504,10 @@ function ViewInMriViewer(varargin)
     if isempty(sSubject) || isempty(sSubject.iAnatomy)
         return 
     end
-    % Progress bar
-    bst_progress('start', 'MRI Viewer', 'Opening MRI Viewer...');
-    % Get protocol directories
-    ProtocolInfo = bst_get('ProtocolInfo');
-    % MRI full filename
-    MriFile = bst_fullfile(ProtocolInfo.SUBJECTS, sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Display subject's anatomy in MRI Viewer
-    hFig = view_mri(MriFile);
+    hFig = view_mri(sSubject.Anatomy(sSubject.iAnatomy).FileName);
     % Select the required point
     figure_mri('SetLocation', 'mri', hFig, [], CoordinatesSelector.MRI);
-    % Close progress bar
-    bst_progress('stop');
 end
 
 

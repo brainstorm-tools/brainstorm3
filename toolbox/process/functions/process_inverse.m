@@ -5,7 +5,7 @@ function varargout = process_inverse( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -289,7 +289,7 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         return;
     end
 
-    
+                
     %% ===== SELECT INVERSE METHOD =====
     % Select method
     if OPTIONS.DisplayMessages
@@ -354,6 +354,11 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
                     errMessage = 'Cannot compute shared kernels with this method.';
                     return
                 end
+                % Install/load brainentropy plugin
+                [isInstalled, errMessage] = bst_plugin('Install', 'brainentropy', 1);
+                if ~isInstalled
+                    return;
+                end
                 % Default options
                 MethodOptions = be_main();
                 % Interface to edit options
@@ -393,6 +398,14 @@ function [OutputFiles, errMessage] = Compute(iStudies, iDatas, OPTIONS)
         case 'dspm',    methodTag = 'dSPM';
         case 'sloreta', methodTag = 'sLORETA';
         case 'mem',     methodTag = 'MEM';
+            % MEM incompatible with some options
+            if isShared
+                errMessage = 'Cannot compute shared kernels with this method.';
+                return
+            elseif ismember(HeadModelType, {'volume','mixed'})
+                errMessage = 'Volume and mixed head models are not compatible with this method.';
+                return
+            end
     end
 
     %% ===== COMMENT =====
@@ -862,7 +875,7 @@ function [HeadModel, HeadModelInit, SourceOrient] = SplitHeadModel(HeadModelInit
         end
         % In the case of a surface region, add the match of the vertices in the cortex surface and the GridLoc matrix
         if strcmpi(sScout.Region(2), 'S')
-            iVert2Grid = [iVert2Grid; sScout.Vertices', sScout.GridRows'];
+            iVert2Grid = [iVert2Grid; sScout.Vertices(:), sScout.GridRows(:)];
         end
         % Add to the scout definition the indices in the ImageGrid
         iAllGrid   = [iAllGrid,   reshape(repmat(sScout.GridRows,nComp,1), 1, [])];

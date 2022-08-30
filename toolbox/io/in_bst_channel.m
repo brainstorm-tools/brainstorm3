@@ -14,7 +14,7 @@ function sMat = in_bst_channel(MatFile, varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -28,11 +28,13 @@ function sMat = in_bst_channel(MatFile, varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2022
 
 %% ===== PARSE INPUTS =====
 % Full file name
-MatFile = file_fullpath(MatFile);
+if ~file_exist(MatFile)
+    MatFile = file_fullpath(MatFile);
+end
 if ~file_exist(MatFile)
     error(['Channel file was not found: ' 10 file_short(MatFile) 10 'Please reload this protocol (right-click > reload).']);
 end

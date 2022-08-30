@@ -25,7 +25,7 @@ function [hFig, iDS, iFig] = view_image_reg(Data, Labels, iDims, DimLabels, File
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -150,6 +150,11 @@ else
     else
         PageName = Labels{4}{1};
     end
+end
+% Connectivity matrix: use equal axes
+if ~isempty(FileName) && strcmpi(file_gettype(FileName), 'timefreq') && ~isempty(strfind(FileName, '_connectn'))
+    hAxes = findobj(hFig, '-depth', 1, 'Tag', 'AxesImage');
+    set(hAxes, 'DataAspectRatio', [1 1 1]);
 end
 
 

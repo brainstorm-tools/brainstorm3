@@ -5,7 +5,7 @@ function varargout = process_import_data_time( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -20,6 +20,7 @@ function varargout = process_import_data_time( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2012-2015
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -104,6 +105,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.baseline.Type    = 'baseline';
     sProcess.options.baseline.Value   = [];
     sProcess.options.baseline.Hidden  = 1;
+    % Sensor types to remove DC offset (not displayed)
+    sProcess.options.blsensortypes.Comment = 'Sensor types or names (empty=all): ';
+    sProcess.options.blsensortypes.Type    = 'text';
+    sProcess.options.blsensortypes.Value   = 'MEG, EEG';
+    sProcess.options.blsensortypes.Hidden  = 1;
 end
 
 
@@ -154,6 +160,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     else
         TimeRange = [];
     end
+    % Get split parameter
+    if isfield(sProcess.options, 'split') && isfield(sProcess.options.split, 'Value') && iscell(sProcess.options.split.Value) && ~isempty(sProcess.options.split.Value)
+        Split = sProcess.options.split.Value{1};
+    else
+        Split = 0;
+    end
     % Channel align: only if not import from a link to raw file
     if isfield(sProcess.options, 'channelalign') && ~isempty(sProcess.options.channelalign.Value)
         ChannelReplace = 2;
@@ -168,26 +180,34 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     ImportOptions.UseEvents        = 0;
     ImportOptions.TimeRange        = TimeRange;
     ImportOptions.iEpochs          = 1;
-    ImportOptions.SplitRaw         = (sProcess.options.split.Value{1} > 0);
-    ImportOptions.SplitLength      = sProcess.options.split.Value{1};
+    ImportOptions.SplitRaw         = (Split > 0);
+    ImportOptions.SplitLength      = Split;
     ImportOptions.UseCtfComp       = sProcess.options.usectfcomp.Value;
     ImportOptions.UseSsp           = sProcess.options.usessp.Value;
     ImportOptions.events           = [];
     ImportOptions.CreateConditions = 1;
     ImportOptions.ChannelReplace   = ChannelReplace;
     ImportOptions.ChannelAlign     = ChannelAlign;
-   ImportOptions.IgnoreShortEpochs = 2 * sProcess.options.ignoreshort.Value;
+    ImportOptions.IgnoreShortEpochs = 2 * sProcess.options.ignoreshort.Value;
     ImportOptions.EventsMode       = 'ignore';
     ImportOptions.EventsTrackMode  = 'value';
     ImportOptions.DisplayMessages  = 0;
     % Extra options: Remove DC Offset
     if isfield(sProcess.options, 'baseline') && ~isempty(sProcess.options.baseline.Value)
-        if ~isempty(sProcess.options.baseline.Value{1})
+        % BaselineRange
+        if isequal(sProcess.options.baseline.Value{1}, 'all')
+            ImportOptions.RemoveBaseline = 'all';
+            ImportOptions.BaselineRange  = [];
+        elseif ~isempty(sProcess.options.baseline.Value{1})
             ImportOptions.RemoveBaseline = 'time';
             ImportOptions.BaselineRange  = sProcess.options.baseline.Value{1};
-        else
-            ImportOptions.RemoveBaseline = 'all';
         end
+        % BaselineSensorType
+        if isfield(sProcess.options, 'blsensortypes') && ~isempty(sProcess.options.blsensortypes.Value)           
+            ImportOptions.BaselineSensorType  = sProcess.options.blsensortypes.Value;
+        else
+            ImportOptions.BaselineSensorType = '';
+        end       
     else
         ImportOptions.RemoveBaseline = 'no';
     end

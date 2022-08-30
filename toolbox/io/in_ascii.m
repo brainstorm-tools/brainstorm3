@@ -15,7 +15,7 @@ function F = in_ascii(DataFile, SkipLines, isText)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -29,7 +29,7 @@ function F = in_ascii(DataFile, SkipLines, isText)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2017
+% Authors: Francois Tadel, 2009-2022
 
 % Parse inputs 
 if (nargin < 2) || isempty(SkipLines)
@@ -69,8 +69,13 @@ else
             if (i <= SkipLines) || isempty(strtrim(strLine))
                 continue;
             end
-            % Split line
-            tmp = textscan(strLine, '%s');
+            % If there are more commas than spaces or tabs: this is a CSV file
+            if nnz(strLine == ',') > (nnz(strLine == ' ') + nnz(strLine == sprintf('\t')))
+                tmp{1} = str_split(strLine, ',');
+            % Else: Split line with tabs and spaces
+            else
+                tmp = textscan(strLine, '%s');
+            end
             if isempty(tmp)
                 continue;
             end

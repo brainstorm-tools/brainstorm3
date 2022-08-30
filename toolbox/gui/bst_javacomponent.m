@@ -8,7 +8,7 @@ function hComp = bst_javacomponent(hParent, compType, compPos, compText, compIco
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -58,9 +58,8 @@ if (sum(bgColor) < 0.5)
 end
 
 % ===== OLD: JAVACOMPONENTS ======
-% Older version of Matlab (< 2020a): use java components
+% Older version of Matlab (< 2019b): use java components
 if bst_get('isJavacomponent')
-% if 1
     switch (compType)
         case 'label'
             jComp = java_create('javax.swing.JLabel');
@@ -106,7 +105,7 @@ if bst_get('isJavacomponent')
     set(hComp, 'Units', 'pixels');
     
     
-% ===== NEW >= 2020 =====
+% ===== NEW >= 2019b =====
 % Newer matlab versions: use dedicated functions
 else
     switch (compType)

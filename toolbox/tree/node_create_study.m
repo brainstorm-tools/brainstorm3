@@ -20,7 +20,7 @@ function numElems = node_create_study(nodeParent, nodeRoot, sStudy, iStudy, iFil
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -34,7 +34,7 @@ function numElems = node_create_study(nodeParent, nodeRoot, sStudy, iStudy, iFil
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2015
+% Authors: Francois Tadel, 2008-2022
 %          Martin Cousineau, 2020
 
     
@@ -172,7 +172,9 @@ for i = 1:length(iDatas)
     Modifier = sFiles(iData).ExtraNum;
     DataType = sFiles(iData).SubType;
     % Create node
-    if strcmpi(DataType, 'raw')
+    if ~isempty(strfind(sFiles(iData).FileName, 'data_0ephys'))
+        nodeType = 'spike';
+    elseif strcmpi(DataType, 'raw')
         nodeType = 'rawdata';
     else
         nodeType = 'data';
@@ -341,7 +343,7 @@ end
             end
             
             node = parentNode.add(nodeType, filteredComment, nodeFileName, iItem, iStudy, Modifier);
-            node.setLastModified(dateModified);
+            node.setLastModifiedTime(dateModified);
             numElems = numElems + 1;
             
             if numChildren > 0

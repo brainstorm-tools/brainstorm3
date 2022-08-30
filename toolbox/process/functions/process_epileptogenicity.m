@@ -9,7 +9,7 @@ function varargout = process_epileptogenicity( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function varargout = process_epileptogenicity( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2017-2020
+% Authors: Francois Tadel, 2017-2021
 
 eval(macro_method);
 end
@@ -96,7 +96,11 @@ end
 function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     OutputFiles = {};
     % Initialize SPM
-    bst_spm_init(0);
+    [isInstalled, errMsg, PlugDesc] = bst_plugin('Install', 'spm12');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     % Get all the options
@@ -417,6 +421,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
             % Import and load file
             ImportedDataMat = in_data(groupFiles{i}, ChannelMat, 'EEG-ASCII', ImportOptions);
             fileMat = load(ImportedDataMat.FileName);
+            fileMat.F = fileMat.F(:,1);
             % Concatenate with previous files
             if isempty(DataMat)
                 DataMat = fileMat;

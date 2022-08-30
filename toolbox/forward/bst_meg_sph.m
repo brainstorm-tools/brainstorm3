@@ -17,7 +17,7 @@ function G = bst_meg_sph(L, Channel, Param)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -33,11 +33,27 @@ function G = bst_meg_sph(L, Channel, Param)
 
 %% ===== PARSE INPUTS =====
 % Sources locations should be 3 x m
-if(size(L,1)~=3), 
+if(size(L,1)~=3)
     error('Matrix not given as 3 x n. Correct calling code');
 end
-% Number of coils, assumed same for all channels
-NumCoils = size(Channel(1).Loc, 2); 
+% Check that the number of coils is the same for all the channels
+chanCoils = cellfun(@(c)size(c,2), {Channel.Loc});
+grpCoils = unique(chanCoils);
+% If there are multiple sensor sensor types (different numbres of coils)
+if (length(grpCoils) > 1)
+    % This function can only accept calls to groups of sensors with the same number of coils
+    % => Group the sensors by number of coils and call os_meg as many times as needed
+    G = NaN * zeros(length(Channel), 3 * size(L,2));
+    for iGrp = 1:length(grpCoils)
+        % Get all the sensors with this amount of coils
+        iMegGrp = find(chanCoils == grpCoils(iGrp));
+        % Compute (os_meg)
+        G(iMegGrp,:) = bst_meg_sph(L, Channel(iMegGrp), Param(iMegGrp));
+    end
+    return;
+end
+% Number of coils for this call
+NumCoils = chanCoils(1);
 
 
 %% ===== COMPUTATION ===== 

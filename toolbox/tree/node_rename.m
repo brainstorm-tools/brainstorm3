@@ -8,7 +8,7 @@ function node_rename(bstNode, newComment)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -76,8 +76,8 @@ switch lower(nodeType)
         end
         
         
-%% ===== ANATOMY AND SURFACES (Comment) =====
-    case {'anatomy', 'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers', 'fem'}
+%% ===== ANATOMY, VOLATLAS, AND SURFACES (Comment) =====
+    case {'anatomy', 'volatlas', 'scalp', 'outerskull', 'innerskull', 'cortex', 'other', 'fibers', 'fem'}
         iSubject = iItem;
         iSurface = iSubItem;
         % Get new comment
@@ -146,8 +146,8 @@ switch lower(nodeType)
             db_rename_condition(oldPath, newPath);
         end
 
-%% ===== CHANNEL, HEAD MODEL, DATA, RESULTS, STAT, DIPOLES, MATRIX, TIMEFREQ  (Comment) =====
-    case {'channel', 'headmodel', 'data', 'rawdata', 'results', 'kernel', ...
+%% ===== CHANNEL, HEAD MODEL, DATA, SPIKE, RESULTS, STAT, DIPOLES, MATRIX, TIMEFREQ  (Comment) =====
+    case {'channel', 'headmodel', 'data', 'rawdata', 'spike', 'results', 'kernel', ...
           'pdata', 'presults', 'ptimefreq', 'pspectrum', 'pmatrix', ...
           'dipoles', 'matrix', 'timefreq', 'spectrum'}
         iStudy = iItem;

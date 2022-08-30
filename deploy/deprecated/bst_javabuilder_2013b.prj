@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration target="target.ezdeploy.library" target-name="MATLAB Compiler for Libraries and Classes" name="bst_javabuilder_2013b" location="C:\Work\Dev\brainstorm3_deploy\R2013b" file="C:\Work\Dev\brainstorm3\deploy\bst_javabuilder_2013b.prj">
+    <param.appname>bst_javabuilder</param.appname>
+    <param.authnamewatermark>Francois Tadel</param.authnamewatermark>
+    <param.email>francois.tadel@mcgill.ca</param.email>
+    <param.company>McGill University</param.company>
+    <param.icon></param.icon>
+    <param.summary />
+    <param.description />
+    <param.screenshot></param.screenshot>
+    <param.version>1.0</param.version>
+    <param.namespace>bst_javabuilder</param.namespace>
+    <param.guid />
+    <param.installpath.string>bst_javabuilder</param.installpath.string>
+    <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
+    <param.logo />
+    <param.install.notes />
+    <param.intermediate>C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\src</param.intermediate>
+    <param.output>C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib</param.output>
+    <param.embed.ctf>true</param.embed.ctf>
+    <param.target.type>subtarget.java.package</param.target.type>
+    <param.classorg />
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>BrainstormInstaller</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.user.defined.mcr.options />
+    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.user.only.registration>false</param.user.only.registration>
+    <param.mads.no.java>false</param.mads.no.java>
+    <param.mads.exclusive.mcr>false</param.mads.exclusive.mcr>
+    <param.net.framework>option.net.framework.default</param.net.framework>
+    <param.assembly.type>false</param.assembly.type>
+    <param.encryption.key.file />
+    <param.net.enable.remoting>false</param.net.enable.remoting>
+    <param.net.tsa.enable>false</param.net.tsa.enable>
+    <param.net.tsa.assembly />
+    <param.net.tsa.interface />
+    <param.net.tsa.namespace>bst_javabuilder</param.net.tsa.namespace>
+    <param.net.tsa.superclass>Run</param.net.tsa.superclass>
+    <param.net.tsa.metadata />
+    <param.net.tsa.metadata.assembly>C:\Work\Dev\brainstorm3</param.net.tsa.metadata.assembly>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <unset>
+      <param.summary />
+      <param.description />
+      <param.version />
+      <param.namespace />
+      <param.guid />
+      <param.logo />
+      <param.install.notes />
+      <param.intermediate />
+      <param.output />
+      <param.embed.ctf />
+      <param.classorg />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.user.defined.mcr.options />
+      <param.windows.command.prompt />
+      <param.user.only.registration />
+      <param.mads.no.java />
+      <param.mads.exclusive.mcr />
+      <param.net.framework />
+      <param.assembly.type />
+      <param.encryption.key.file />
+      <param.net.enable.remoting />
+      <param.net.tsa.enable />
+      <param.net.tsa.assembly />
+      <param.net.tsa.interface />
+      <param.net.tsa.namespace />
+      <param.net.tsa.metadata />
+      <param.net.tsa.metadata.assembly />
+      <param.create.log />
+      <param.log.file />
+    </unset>
+    <fileset.exports>
+      <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
+    </fileset.exports>
+    <fileset.classes>
+      <entity.package name="">
+        <entity.class name="Run">
+          <file>C:\Work\Dev\brainstorm3\brainstorm.m</file>
+        </entity.class>
+      </entity.package>
+    </fileset.classes>
+    <fileset.resources>
+      <file>C:\Work\Dev\brainstorm3\defaults</file>
+      <file>C:\Work\Dev\brainstorm3\deploy</file>
+      <file>C:\Work\Dev\brainstorm3\doc</file>
+      <file>C:\Work\Dev\brainstorm3\external</file>
+      <file>C:\Work\Dev\brainstorm3\java</file>
+      <file>C:\Work\Dev\brainstorm3\toolbox</file>
+      <file>C:\Work\Dev\brainstorm3_deploy\R2013b\sigproc</file>
+    </fileset.resources>
+    <fileset.package />
+    <build-deliverables>
+      <file name="readme.txt" location="C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib" optional="true">C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib\readme.txt</file>
+      <file name="bst_javabuilder.jar" location="C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib" optional="false">C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib\bst_javabuilder.jar</file>
+      <file name="doc" location="C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib" optional="false">C:\Work\Dev\brainstorm3_deploy\R2013b\bst_javabuilder\distrib\doc</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2013b</root>
+      <toolboxes />
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>6.1</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>
+

@@ -5,7 +5,7 @@ function varargout = process_source_atlas( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,6 +40,11 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 0;
+    % === WARNING
+    sProcess.options.warning.Comment = ['<FONT color="#707070"><I>Warning: Using this process is not recommended.<BR>'...
+                                        'Prefer the explicit extraction of scouts time series, followed if needed<BR>' ...
+                                        'by the process "Simulate > Full source maps from scouts".</I></FONT><BR><BR>'];
+    sProcess.options.warning.Type    = 'label';
     % === SELECT ATLAS
     sProcess.options.atlas.Comment = 'Select atlas:';
     sProcess.options.atlas.Type    = 'atlas';
@@ -151,6 +156,8 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         % === GET VERTEX INDICES ===
         % Get all the row indices involved in this scout
         iVertices = sort(unique(sScouts(iScout).Vertices));
+        % Make sure this is a row vector
+        iVertices = iVertices(:)';
         % Get scout orientation
         ScoutOrient = SurfaceMat.VertNormals(iVertices,:);
         % List of rows to read depends on the number of componentns per vertex
@@ -182,7 +189,15 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         
         % === COMPUTE SCOUT VALUES ===
         if (ResultsMat.nComponents == 1)
-            isFlipSign = strcmpi(sInput.FileType, 'results') && isempty(strfind(sInput.FileName, '_abs_zscore'));
+            % Get meaningful tags in the results file name (without folders)
+            TestResFile = file_resolve_link(sInput.FileName);
+            [tmp, TestTags] = bst_fileparts(TestResFile);
+            % Do not flip sign for statistics, norms or NIRS source maps
+            isFlipSign = strcmpi(sInput.FileType, 'results') && ...
+                         isempty(strfind(TestTags, '_abs')) && ...
+                         isempty(strfind(TestTags, '_norm')) && ...
+                         isempty(strfind(TestTags, 'NIRS'))  && ...
+                         isempty(strfind(TestTags, 'Summed_sensitivities'));
             ImageGridAmp(iScout,:) = bst_scout_value(Fscout, sScouts(iScout).Function, ScoutOrient, ResultsMat.nComponents, [], isFlipSign);
         elseif isNorm
             ImageGridAmp(iScout,:) = bst_scout_value(Fscout, sScouts(iScout).Function, ScoutOrient, ResultsMat.nComponents, 'norm');

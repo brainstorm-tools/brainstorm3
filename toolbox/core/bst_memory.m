@@ -8,7 +8,7 @@ function [ varargout ] = bst_memory( varargin )
 %      [iDS, iResult] = bst_memory('LoadResultsFileFull',  ResultsFile)
 %      [iDS, iDipole] = bst_memory('LoadDipolesFile',      DipolesFile)
 %       [iDS, iTimef] = bst_memory('LoadTimefreqFile',     TimefreqFile)
-%                       bst_memory('LoadMri',              iDS, MriFile);
+%        [sMri, iMri] = bst_memory('LoadMri',              iDS, MriFile);
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          iSubject, SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          MriFile,  SurfaceType)
 %      [sSurf, iSurf] = bst_memory('LoadSurface',          SurfaceFile)
@@ -53,7 +53,7 @@ function [ varargout ] = bst_memory( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -67,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -148,6 +148,21 @@ function [sMri,iMri] = LoadMri(MriFile)
             end
         end
         
+        % === REFERENCE VOLUME ===
+        % Copy SCS and NCS fields from reference volume
+        if ~isempty(sSubject.iAnatomy) && ~file_compare(MriFile, sSubject.Anatomy(sSubject.iAnatomy).FileName) && ...
+            (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS) || ~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC))
+            % Load reference volume for this subject
+            sMriRef = bst_memory('LoadMri', sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            % Copy SCS field
+            if (~isfield(sMri, 'SCS') || isempty(sMri.SCS) || isempty(sMri.SCS.NAS)) && isfield(sMriRef, 'SCS') && ~isempty(sMriRef.SCS) && ~isempty(sMriRef.SCS.NAS)
+                sMri.SCS = sMriRef.SCS;
+            end
+            % Copy NCS field
+            if (~isfield(sMri, 'NCS') || isempty(sMri.NCS) || isempty(sMri.NCS.AC)) && isfield(sMriRef, 'NCS') && ~isempty(sMriRef.NCS) && ~isempty(sMriRef.NCS.AC)
+                sMri.NCS = sMriRef.NCS;
+            end
+        end
         % === REGISTER NEW MRI ===
         % Add MRI to loaded MRIs in this protocol
         iMri = length(GlobalData.Mri) + 1;
@@ -205,7 +220,7 @@ function [sFib,iFib] = LoadFibers(FibFile)
         % Create default structure
         sFib = db_template('LoadedFibers');
         % Load fibers matrix
-        FibMat = in_fibers(FibFile);
+        FibMat = load(file_fullpath(FibFile));
         % Build fibers structure
         for field = fieldnames(sFib)'
             if isfield(FibMat, field{1})
@@ -1429,7 +1444,7 @@ function [iDS, iDipoles] = LoadDipolesFile(DipolesFile, isTimeCheck) %#ok<DEFNU>
     if isempty(iDipoles) && isempty(iResults)
         GlobalData.DataSet(iDS).StudyFile   = file_short(sStudy.FileName);
         if ~isempty(ChannelFile)
-            GlobalData.DataSet(iDS).ChannelFile = file_short(ChannelFile);
+            LoadChannelFile(iDS, ChannelFile);
         end
         GlobalData.DataSet(iDS).DataFile    = '';
     end
@@ -1768,7 +1783,7 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     if (length(Timefreq.RowNames) == length(Timefreq.RefRowNames)) && (size(Timefreq.TF,1) < length(Timefreq.RowNames)^2)
         Timefreq.TF = process_compress_sym('Expand', Timefreq.TF, length(Timefreq.RowNames));
     end
-    % Store new Results structure in GlobalData
+    % Store new Timefreq structure in GlobalData
     if isempty(iTimefreq)
         iTimefreq = length(GlobalData.DataSet(iDS).Timefreq) + 1;
     end
@@ -2229,16 +2244,24 @@ end
 
 
 %% ===== GET TIME-FREQ VALUES =====
-% USAGE:  [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime,              Function, RefRowName)
+% USAGE:  [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime,              Function, RefRowName, FooofDisp)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, 'UserTimeWindow')
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, 'CurrentTimeIndex')
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, 'firstrow', ...)
 %         [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq)
-function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime, Function, RefRowName)
+function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimefreq, RowNames, iFreqs, iTime, Function, RefRowName, FooofDisp)
     global GlobalData;
     % ===== PARSE INPUTS =====
+    if (nargin < 8) || isempty(FooofDisp)
+        FooofDisp = [];
+        isFooof = false;
+        isSPRiNT = false;
+    else
+        isFooof = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'FOOOF') && all(ismember({'options', 'freqs', 'data', 'peaks', 'aperiodics', 'stats'}, fieldnames(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.FOOOF)));
+        isSPRiNT = isfield(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options, 'SPRiNT') && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT);
+    end
     % Default RefRowName: all
     if (nargin < 7) || isempty(RefRowName)
         RefRowName = [];
@@ -2345,9 +2368,35 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     
     % ===== GET VALUES =====
     % Extract values
-    if isequal(Function, 'maxpac')
-        Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
-        isApplyFunction = 0;
+    % FOOOF: Swap TF data for relevant FOOOF data
+    if isFooof && ~isequal(FooofDisp, 'spectrum')
+        Values = process_extract_fooof('Compute', GlobalData.DataSet(iDS).Timefreq(iTimefreq), FooofDisp, iRow);
+        if ~isequal(FooofDisp,'exponent') && ~isequal(FooofDisp,'offset')
+            Values = Values(:,:,iFreqs); % Do not touch aperiodic parameters
+            if (nnz(isnan(Values)) > 0) && length(iFreqs) == 1 % If freqslice full of NaNs (e.g., 0Hz)
+                Values(isnan(Values)) = 1;
+            end
+        end
+        isApplyFunction = ~isempty(Function);
+    elseif isSPRiNT && ~isequal(FooofDisp,'spectrum')
+         % Get requested FOOOF measure
+        switch FooofDisp
+            case 'model'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.SPRiNT_models(iRow, iTime, iFreqs);
+            case 'aperiodic'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.aperiodic_models(iRow, iTime, iFreqs);
+            case 'peaks'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.peak_models(iRow, iTime, iFreqs);
+            case 'error'
+                Values = 10.^(log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs)) - log10(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.SPRiNT_models(iRow, iTime, iFreqs)));
+            case 'exponent'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.topography.exponent(iRow, iTime);
+            case 'offset'
+                Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.SPRiNT.topography.offset(iRow, iTime);
+            otherwise
+                error('Unknown SPRiNT display option.');
+        end
+        isApplyFunction = ~isempty(Function);
     elseif isequal(Function, 'pacflow')
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestingFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
@@ -2355,6 +2404,7 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).sPAC.NestedFreq(iRow, iTime, iFreqs);
         isApplyFunction = 0;
     elseif isempty(Function) || ~ismember(Function, {'power', 'magnitude', 'log', 'phase', 'none'}) || ~ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, {'power', 'magnitude', 'log', 'phase', 'none'})
+        % includes 'maxpac'
         Values = GlobalData.DataSet(iDS).Timefreq(iTimefreq).TF(iRow, iTime, iFreqs);
         isApplyFunction = 0;
     else
@@ -2409,14 +2459,18 @@ function [Values, iTimeBands, iRow, nComponents] = GetTimefreqValues(iDS, iTimef
     % If a measure is asked, different from what is saved in the file
     if isApplyFunction
         % Convert
-        [Values, isError] = process_tf_measure('Compute', Values, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, Function);
+        if isFooof
+            isKeepNan = true;
+        else
+            isKeepNan = false;
+        end
+        [Values, isError] = process_tf_measure('Compute', Values, GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, Function, isKeepNan);
         % If conversion is impossible
         if isError
             error(['Invalid measure conversion: ' GlobalData.DataSet(iDS).Timefreq(iTimefreq).Measure, ' => ' Function]);
         end
     end
 end
-
 
 %% ===== GET PAC VALUES =====
 % Calculate an average on the fly if there are several rows
@@ -2517,6 +2571,11 @@ function DataMinMax = GetTimefreqMaximum(iDS, iTimefreq, Function) %#ok<DEFNU>
     end
     % Store minimum and maximum of displayed data
     DataMinMax = [min(values(:)), max(values(:))];
+    % Ignore infinite values, possible due to log.
+    if any(isinf(DataMinMax))
+        isNotInf = ~isinf(values(:));
+        DataMinMax = [min(values(isNotInf)), max(values(isNotInf))];
+    end
     % Display warning message if analysis time was more than 3s
     t = toc;
     if (t > 3)
@@ -3169,7 +3228,7 @@ function isCancel = UnloadAll(varargin)
             delete(hFigHist);
         end
         % Close spike sorting figure
-        process_spikesorting_supervised('CloseFigure');
+        panel_spikes('CloseFigure');
         % Restore default window manager
         if ~ismember(bst_get('Layout', 'WindowManager'), {'TileWindows', 'WeightWindows', 'FullArea', 'FullScreen', 'None'})
             bst_set('Layout', 'WindowManager', 'TileWindows');
@@ -3207,7 +3266,7 @@ function isCancel = UnloadDataSets(iDataSets)
         if (iDS > length(GlobalData.DataSet))
             continue;
         end
-        isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
+        isRaw = ~isempty(GlobalData.DataSet(iDS).Measures) && strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
         % Raw files: save events and close files
         if ~isempty(GlobalData.DataSet(iDS).Measures) && ~isempty(GlobalData.DataSet(iDS).Measures.sFile) %  && ~isempty(GlobalData.DataSet(iDS).Measures.DataType)
             % If file was modified: ask the user to save it or not
@@ -3268,8 +3327,10 @@ function isCancel = UnloadDataSets(iDataSets)
         end
         % Close all the figures
         for iFig = length(GlobalData.DataSet(iDS).Figure):-1:1
-            bst_figures('DeleteFigure', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'NoUnload', 'NoLayout');
-            drawnow
+            if isfield(GlobalData.DataSet(iDS).Figure(iFig), 'hFigure') && ~isempty(GlobalData.DataSet(iDS).Figure(iFig).hFigure)
+                bst_figures('DeleteFigure', GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'NoUnload', 'NoLayout');
+                drawnow
+            end
         end
     end
     % Check that dataset still exists
@@ -3403,10 +3464,11 @@ function UnloadMri(MriFile) %#ok<DEFNU>
     MriFile = file_short(MriFile);
     % Check if MRI is already loaded
     iMri = find(file_compare({GlobalData.Mri.FileName}, MriFile));
-    % If it is: unload it
-    if ~isempty(iMri)
-        GlobalData.Mri(iMri) = [];
+    if isempty(iMri)
+        return;
     end
+    % Unload MRI
+    GlobalData.Mri(iMri) = [];
     % Get subject
     sSubject = bst_get('MriFile', MriFile);
     % Unload subject

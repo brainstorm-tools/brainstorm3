@@ -5,7 +5,7 @@ function varargout = process_ft_sourceanalysis( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -45,8 +45,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Inverse method
     sProcess.options.method.Comment = 'Inverse method:';
     sProcess.options.method.Type    = 'combobox_label';
-    sProcess.options.method.Value   = {'mne', {'LCMV beamformer', 'SAM beamformer', 'DICS beamformer', 'MNE', 'sLORETA', 'eLORETA', 'MUSIC', 'PCC', 'Residual variance'; ...
-                                               'lcmv',            'sam',            'dics',            'mne', 'sloreta', 'eloreta', 'music', 'pcc', 'rv'}};
+    sProcess.options.method.Value   = {'mne', {'LCMV beamformer', 'SAM beamformer', 'MNE', 'sLORETA', 'eLORETA', 'MUSIC', 'Residual variance'; ...
+                                               'lcmv',            'sam',            'mne', 'sloreta', 'eloreta', 'music', 'rv'}};
     % Option: Sensors selection
     sProcess.options.sensortype.Comment = 'Sensor type:';
     sProcess.options.sensortype.Type    = 'combobox_label';
@@ -64,8 +64,12 @@ end
 %% ===== RUN =====
 function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
-    % Initialize fieldtrip
-    bst_ft_init();
+    % Initialize FieldTrip
+    [isInstalled, errMsg] = bst_plugin('Install', 'fieldtrip');
+    if ~isInstalled
+        bst_report('Error', sProcess, [], errMsg);
+        return;
+    end
     
     % ===== GET OPTIONS =====
     % Inverse options
@@ -75,6 +79,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     AllChannelFiles = unique({sInputs.ChannelFile});
     % Progress bar
     bst_progress('start', 'ft_sourceanalysis', 'Loading input files...', 0, 2*length(sInputs));
+    bst_plugin('SetProgressLogo', 'fieldtrip');
    
     % ===== LOOP ON FOLDERS =====
     for iChanFile = 1:length(AllChannelFiles)
@@ -94,7 +99,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Get selected sensors
         iChannels = channel_find(ChannelMat.Channel, Modality);
         if isempty(iChannels)
-            bst_report('Error', sProcess, sInput, ['Channels "' Modality '" not found in channel file.']);
+            bst_report('Error', sProcess, sInputs, ['Channels "' Modality '" not found in channel file.']);
             return;
         end
         % Load head model
@@ -121,7 +126,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             iChannelsData = setdiff(iChannels, iBadChan);
             % Error: All channels tagged as bad
             if isempty(iChannelsData)
-                bst_report('Error', sProcess, sInput, 'All the selected channels are tagged as bad.');
+                bst_report('Error', sProcess, sInputs, 'All the selected channels are tagged as bad.');
                 return;
             end
             % Convert data file to FieldTrip format
@@ -145,70 +150,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     cfg.mne.lambda    = 3;
                     cfg.mne.scalesourcecov = 'yes';
                     Time = DataMat.Time;
-                    
                 case 'lcmv'
                     Time = [DataMat.Time(1), DataMat.Time(2)];
-                    
-                case 'dics'
-                    % EXAMPLE 1
-                    % cfg                = [];
-                    % cfg.grid           = grid;
-                    % cfg.frequency      = 10;
-                    % cfg.vol            = hdm;
-                    % cfg.gradfile       = 'grad.mat';
-                    % cfg.projectnoise   = 'yes';
-                    % cfg.keeptrials     = 'no';
-                    % cfg.keepfilter     = 'yes';
-                    % cfg.keepcsd        = 'yes';
-                    % cfg.keepmom        = 'yes';
-                    % cfg.lambda         = 0.1 * mean(f.powspctrm(:,nearest(cfg.frequency)),1);
-                    % cfg.method         = 'dics';
-                    % cfg.feedback       = 'textbar';
-                    % source             = ft_sourceanalysis(cfg,f);
-                    
-                    % EXAMPLE 2
-                    % % freqanalysis %
-                    % cfg=[];
-                    % cfg.method      = 'mtmfft';
-                    % cfg.output      = 'powandcsd';  % gives power and cross-spectral density matrices
-                    % cfg.foilim      = [60 60];      % analyse 40-80 Hz (60 Hz +/- 20 Hz smoothing)
-                    % cfg.taper       = 'dpss';
-                    % cfg.tapsmofrq   = 20;
-                    % cfg.keeptrials  = 'yes';        % in order to separate the conditions again afterwards, we need to keep the trials. This is not otherwise necessary to compute the common filter
-                    % cfg.keeptapers  = 'no';
-                    % 
-                    % freq = ft_freqanalysis(cfg, data);
-                    % 
-                    % % compute common spatial filter %
-                    % cfg=[];
-                    % cfg.method      = 'dics';
-                    % cfg.grid        = grid;         % previously computed grid
-                    % cfg.headmodel   = vol;          % previously computed volume conduction model
-                    % cfg.frequency   = 60;
-                    % cfg.dics.keepfilter  = 'yes';        % remember the filter
-                    % 
-                    % source = ft_sourceanalysis(cfg, freq);
-
-                case 'pcc'
-                    % % ft_freqanalysis %
-                    % cfg=[];
-                    % cfg.method      = 'mtmfft';
-                    % cfg.output      = 'fourier';  % gives the complex Fourier spectra
-                    % cfg.foilim      = [60 60];    % analyse 40-80 Hz (60 Hz +/- 20 Hz smoothing)
-                    % cfg.taper       = 'dpss';
-                    % cfg.tapsmofrq   = 20;
-                    % cfg.keeptrials  = 'yes';      % in order to separate the conditions again afterwards, we need to keep the trials. This is not otherwise necessary to compute the common filter
-                    % cfg.keeptapers  = 'yes';
-                    % freq = ft_freqanalysis(cfg, data);
-                    % 
-                    % % compute common spatial filter AND project all trials through it %
-                    % cfg=[]; 
-                    % cfg.method      = 'pcc';
-                    % cfg.grid        = grid;       % previously computed grid
-                    % cfg.headmodel   = vol;        % previously computed volume conduction model
-                    % cfg.frequency   = 60;
-                    % cfg.keeptrials  = 'yes';      % keep single trials. Only necessary if you are interested in reconstructing single trial data
-                    % source = ft_sourceanalysis(cfg, freq); 
+                case {'sloreta', 'eloreta', 'sam',  'rv', 'music'}
+                    bst_report('Error', sProcess, sInputs, ['Method "' Method ' " is not supported yet, please post a request on the user forum.']);
+                    return;
             end
             % Call FieldTrip function
             ftSource = ft_sourceanalysis(cfg, ftData);
@@ -278,6 +224,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Save database
     db_save();
     % Hide progress bar
+    bst_plugin('SetProgressLogo', []);
     bst_progress('stop');
 end
 

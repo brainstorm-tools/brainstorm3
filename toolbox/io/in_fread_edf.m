@@ -9,7 +9,7 @@ function F = in_fread_edf(sFile, sfid, SamplesBounds, ChannelsRange)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -38,7 +38,7 @@ end
 if (nargin < 3) || isempty(SamplesBounds)
     SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
 end
-nTimes = sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq;
+nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
 iTimes = SamplesBounds(1):SamplesBounds(2);
 % Block of times/channels to extract
 nReadChannels = double(ChannelsRange(2) - ChannelsRange(1) + 1);
@@ -201,14 +201,14 @@ function F = edf_read_epoch(sFile, sfid, iEpoch, iTimes, ChannelsRange, isAnnotO
 
     % Processing for BDF status file
     if isBdfStatus
-        % Mask to keep only the first 15 bits (Triggers bits)
+        % Mask to keep only the first 16 bits (Triggers bits)
         % Bit 16    : High when new Epoch is started
         % Bit 17-19 : Speed bits 0 1 2
         % Bit 20 	: High when CMS is within range
         % Bit 21 	: Speed bit 3
         % Bit 22 	: High when battery is low
         % Bit 23    : High if ActiveTwo MK2
-        F = bitand(F, bin2dec('000000000111111111111111'));
+        F = bitand(F, hex2dec('00FFFF'));
     % Processing for real data
     elseif ~isAnnotOnly
         % Convert to double

@@ -17,7 +17,7 @@ function [sFile, ChannelMat] = in_fopen_intan(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -70,9 +70,9 @@ hdr.chan_files = {};
 % Read the header
 switch (hdr.FileExt)
     case '.rhd'
-        newHeader = read_Intan_RHD2000_file(DataFile,1,1,1,100);
+        newHeader = read_Intan_RHD2000_bst_2022(DataFile,1,1,1,100);
     case '.rhs'
-        newHeader = read_Intan_RHS2000_file(DataFile,1,1,1,100);
+        newHeader = read_Intan_RHS2000_bst_2018(DataFile,1,1,1,100);
 end
 newHeader.AcqType = AcqType; % This will be used later in in_fread_intan.m
 

@@ -9,7 +9,7 @@ function OutputFile = db_add(iTarget, InputFile, isReload, ParentFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -23,7 +23,7 @@ function OutputFile = db_add(iTarget, InputFile, isReload, ParentFile)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2019
+% Authors: Francois Tadel, 2011-2022
 
 %% ===== GET INPUT FILE =====
 if (nargin < 3) || isempty(isReload)
@@ -51,14 +51,8 @@ if isstruct(InputFile)
     % Add sub-category for timefreq files
     fileSubType = '';
     if ismember(fileType, {'timefreq', 'ptimefreq'})
-        if ismember(lower(sMat.Method), {'corr', 'cohere', 'granger', 'spgranger', 'plv', 'plvt', 'aec', 'pte'})
-            if isfield(sMat,'Options') && isfield(sMat.Options, 'ProcessName') && ~isempty(sMat.Options.ProcessName)
-                if ismember(sMat.Options.ProcessName, {'process_corr1n', 'process_cohere1n', 'process_granger1n', 'process_spgranger1n', 'process_plv1n', 'process_aec1n', 'process_pte1n'})
-                    fileSubType = ['connectn_', lower(sMat.Method), '_'];
-                else
-                    fileSubType = ['connect1_', lower(sMat.Method), '_'];
-                end
-            elseif (length(sMat.RefRowNames) > 1) && (isequal(sMat.RowNames, sMat.RefRowNames) || isequal(sMat.RowNames, sMat.RefRowNames'))
+        if ismember(lower(sMat.Method), {'corr', 'cohere', 'granger', 'spgranger', 'plv', 'plvt', 'aec', 'pte','henv'})
+            if (length(sMat.RefRowNames) > 1) && (isequal(sMat.RowNames, sMat.RefRowNames) || isequal(sMat.RowNames, sMat.RefRowNames'))
                 fileSubType = ['connectn_', lower(sMat.Method), '_'];
                 if (size(sMat.TF,1) == length(sMat.RefRowNames)*length(sMat.RowNames))
                     sMat.Options.isSymmetric = 0;
@@ -100,10 +94,15 @@ if isstruct(InputFile)
     end
     % Surfaces subtypes
     if ismember(fileType, {'fibers', 'fem'})
-        fileSubType = fileType;
         fileType = 'tess';
+        fileSubType = [fileType, '_'];
     end
     isAnatomy = ismember(fileType, {'subjectimage', 'tess'});
+    % Spikes: file tag is data
+    if strcmp(fileType, 'spike')
+        fileType = 'data';
+        fileSubType = '0ephys_';
+    end
     % Create a new output filename
     c = clock;
     strTime = sprintf('%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));

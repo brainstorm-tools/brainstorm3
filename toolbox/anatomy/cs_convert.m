@@ -6,8 +6,8 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 %
 % INPUT: 
 %     - sMri  : Brainstorm MRI structure
-%     - src   : Current coordinate system {'voxel','mri','scs','mni','world'}
-%     - dest  : Target coordinate system {'voxel','mri','scs','mni','world'}
+%     - src   : Current coordinate system {'voxel','mri','scs','mni','acpc','world'}
+%     - dest  : Target coordinate system {'voxel','mri','scs','mni','acpc','world'}
 %     - P     : a Nx3 matrix of point coordinates to convert
 %
 % DESCRIPTION:   https://neuroimage.usc.edu/brainstorm/CoordinateSystems
@@ -19,14 +19,19 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 %               Axis X: From the origin towards the Nasion (exactly through)
 %               Axis Y: From the origin towards LPA in the plane defined by (NAS,LPA,RPA), and orthogonal to X axis
 %               Axiz Z: From the origin towards the top of the head 
-%     - mni   : MNI coordinates based on SPM affine registration
+%     - mni   : MNI coordinates based on SPM affine or non-linear registration
+%     - acpc  : Based on: Anterior commissure (AC), Posterior commissure (PC) and an interhemisperic point (IH)
+%               Origin: AC
+%               Axis X: From the origin towards the right
+%               Axis Y: Negative y-axis is passing from AC through PC
+%               Axis Z: Passing through a mid-hemispheric point in the superior direction
 %     - world : Transformation available in the initial file loaded as the default MRI (vox2ras/qform/world transformation)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -40,7 +45,7 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
@@ -60,7 +65,7 @@ if ~isempty(P)
 end
 
 % ===== GET MRI=>WORLD TRANSFORMATION =====
-if strcmpi(src, 'world') || strcmpi(dest, 'world')
+if strcmpi(src, 'world') || strcmpi(dest, 'world') || (strcmpi(src, 'mni') && isfield(sMri,'NCS') && isfield(sMri.NCS,'y') && ~isempty(sMri.NCS.y))
     % Get the vox2ras transformation
     if isempty(sMri) || isempty(sMri.InitTransf)
         P = [];
@@ -82,6 +87,16 @@ if strcmpi(src, 'world') || strcmpi(dest, 'world')
     world2mri = inv(mri2world);
 end
 
+% ===== COMPUTE ACPC TRANSFORMATION =====
+if strcmpi(src, 'acpc') || strcmpi(dest, 'acpc')
+    tACPC = cs_compute(sMri, 'acpc');
+    if isempty(tACPC) || isempty(tACPC.R)
+        P = [];
+        return;
+    end
+    scs2acpc = [tACPC.R, tACPC.T; 0 0 0 1];
+end
+
 % ===== CONVERT SRC => MRI =====
 % Evaluate the transformation to apply
 switch lower(src)
@@ -96,11 +111,31 @@ switch lower(src)
         end
         RT1 = inv([sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1]);
     case 'mni'
-        if ~isfield(sMri,'NCS') || ~isfield(sMri.NCS,'R') || isempty(sMri.NCS.R) || ~isfield(sMri.NCS,'T') || isempty(sMri.NCS.T)
+        % Transformation of each point by indirection in the deformation field y
+        if ~isempty(P) && isfield(sMri,'NCS') && isfield(sMri.NCS,'y') && ~isempty(sMri.NCS.y)
+            % Convert MNI => voxel space of the registration matrix
+            P_reg = inv(sMri.NCS.y_vox2ras) * (P .* [1000;1000;1000;1]);
+            % Convert from 0-based to 1-based??
+            % => This solution was obtained empirically by minimizing: 
+            %    sqrt(sum((cs_convert(sMri, 'mri', 'mni', cs_convert(sMri, 'mni', 'mri', P)) - P).^2)).*1000 => around 0.003 with this adjustment
+            P_reg = P_reg + [1;1;1;0];
+            % Convert Voxel => World
+            P_world = [...
+                interp3(sMri.NCS.y(:,:,:,1), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
+                interp3(sMri.NCS.y(:,:,:,2), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
+                interp3(sMri.NCS.y(:,:,:,3), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN)] ./ 1000;
+            % Convert World => MRI
+            P = world2mri * [double(P_world); 1];
+            RT1 = eye(4);
+        elseif isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
+            RT1 = inv([sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1]);
+        else
             P = [];
             return;
         end
-        RT1 = inv([sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1]);
+    case 'acpc'
+        % ACPC => SCS => MRI
+        RT1 = inv(scs2acpc);
     case 'world'
         RT1 = world2mri;
     otherwise
@@ -121,19 +156,35 @@ switch lower(dest)
         end
         RT2 = [sMri.SCS.R, sMri.SCS.T./1000; 0 0 0 1];
     case 'mni'
-        if ~isfield(sMri,'NCS') || ~isfield(sMri.NCS,'R') || isempty(sMri.NCS.R) || ~isfield(sMri.NCS,'T') || isempty(sMri.NCS.T)
+        % Using non-linear MNI normalization: Transformation of each point by indirection in the deformation field iy
+        if ~isempty(P) && isfield(sMri,'NCS') && isfield(sMri.NCS,'iy') && ~isempty(sMri.NCS.iy)
+            % Convert: src => MRI => voxel
+            P_vox = diag([1000 ./ sMri.Voxsize(:); 1]) * RT1 * P;
+            % Get values from the iy volumes
+            P = [interp3(sMri.NCS.iy(:,:,:,1), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
+                 interp3(sMri.NCS.iy(:,:,:,2), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
+                 interp3(sMri.NCS.iy(:,:,:,3), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN)] ./ 1000;
+            % Transpose the matrix back
+            P = double(P');
+            Transf = [];
+            return;
+        elseif isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
+            RT2 = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
+        else
             P = [];
             return;
         end
-        RT2 = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
+    case 'acpc'
+        % MRI => SCS => ACPC
+        RT2 = scs2acpc;
     case 'world'
         RT2 = mri2world;
     otherwise
         error(['Invalid coordinate system: ' dest]);
 end
+
 % Compute the final transformation matrix
 Transf = RT2 * RT1;
-
 % Apply the transformation matrix to the points
 if ~isempty(P)
     % Apply rotation-translation
@@ -143,5 +194,4 @@ if ~isempty(P)
 else
     P = Transf;
 end
-
 

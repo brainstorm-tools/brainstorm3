@@ -23,7 +23,7 @@ function [iSourceRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -45,6 +45,8 @@ if (nargin ~= 4) || isempty(iVertices) || isempty(nComponents) || ((nComponents 
 end
 iRegionScouts = [];
 
+% Make sure iVertices is a row vector
+iVertices = iVertices(:)';
 % Get row numbers corresponding to the selected vertices
 switch (nComponents)
     case 0

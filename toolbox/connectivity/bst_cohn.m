@@ -61,7 +61,7 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -75,9 +75,9 @@ function [Gxy, pValues, freq, nWin, nFFT, Messages] = bst_cohn(X, Y, Fs, MaxFreq
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Hossein Shahabi, 2019
-% Sergul Aydore, Syed Ashrafulla, Francois Tadel, Guiomar Niso, 2013-2014
-
+% Authors: Sergul Aydore, Syed Ashrafulla, Guiomar Niso, 2013-2014
+%          Francois Tadel, 2013-2019
+%          Hossein Shahabi, 2019
 
 %% ===== INITIALIZATIONS =====
 % Default options
@@ -355,7 +355,7 @@ else
             else % Lagged Coherence
                 Gxy = abs(imag(Gxy))./sqrt(1-real(Gxy).^2) ;
             end
-            pValues = max(0, 1 - abs(Gxy).^2) .^ floor(nSamples / nFFT);
+            % pValues = max(0, 1 - abs(Gxy)) .^ floor(nSamples / nFFT);
             
         % Imaginary Coherence ( before 2019)
         case 'icohere'  % (We only have Imaginary coherence)
@@ -377,8 +377,10 @@ else
 %     % Set the diagonals to zero
 %     Gxy(indDiag,:) = 0;
     % Reshape to have the frequencies in third dimension
-    Gxy     = reshape(Gxy,     length(indSym), 1, length(freq));
-    pValues = reshape(pValues, length(indSym), 1, length(freq));
+    Gxy = reshape(Gxy,     length(indSym), 1, length(freq));
+    if ~isempty(pValues)
+        pValues = reshape(pValues, length(indSym), 1, length(freq));
+    end
 end
 
 % Make sure that there are no residual imaginary parts due to numerical errors

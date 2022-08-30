@@ -9,7 +9,7 @@ function varargout = panel_realtime(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -720,8 +720,8 @@ function InitializeRealtimeMeasurement(ReComputeHeadModel)
         sSurf = in_tess_bst(ResultsMat.SurfaceFile);
         verts=[];
         for ii = 1:length(RTConfig.scoutName)
-            iScout = find(strcmpi({sSurf.Atlas(sSurf.iAtlas).Scouts.Label},RTConfig.scoutName{ii}));
-            verts = [verts sSurf.Atlas(sSurf.iAtlas).Scouts(iScout).Vertices];
+            iScout = find(strcmpi({sSurf.Atlas(sSurf.iAtlas).Scouts.Label}, RTConfig.scoutName{ii}));
+            verts = [verts, sSurf.Atlas(sSurf.iAtlas).Scouts(iScout).Vertices(:)'];
         end
         RTConfig.ScoutVertices = verts; % group all scouts together
     end

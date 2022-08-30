@@ -9,7 +9,7 @@ function varargout = process_timefreq( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -65,12 +65,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = [];
     % Options: Normalize
-    sProcess.options.labelnorm.Comment = '<BR>Spectral flattening:';
-    sProcess.options.labelnorm.Type    = 'label';
+    sProcess.options.normalize2020.Comment = 'Spectral flattening: Multiply output power values by frequency';
+    sProcess.options.normalize2020.Type    = 'checkbox';
+    sProcess.options.normalize2020.Value   = 0;    
+    % Old normalize option, for backwards compatibility.
     sProcess.options.normalize.Comment = {'<B>None</B>: Save non-standardized time-frequency maps', '<B>1/f compensation</B>: Multiply output values by frequency'; ...
                                           'none', 'multiply'};
     sProcess.options.normalize.Type    = 'radio_label';
     sProcess.options.normalize.Value   = 'none';
+    sProcess.options.normalize.Hidden  = 1;
 end
 
 
@@ -90,6 +93,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         case 'process_hilbert',       strProcess = 'hilbert';
         case 'process_fft',           strProcess = 'fft';
         case 'process_psd',           strProcess = 'psd';
+        case 'process_sprint',        strProcess = 'sprint';
         case 'process_ft_mtmconvol',  strProcess = 'mtmconvol';
         otherwise,                    error('Unsupported process.');
     end
@@ -111,6 +115,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         switch tfOPTIONS.Method
             case 'fft',       tfOPTIONS.Comment = 'FFT';
             case 'psd',       tfOPTIONS.Comment = 'PSD';
+            case 'sprint',    tfOPTIONS.Comment = 'SPRiNT';
             case 'morlet',    tfOPTIONS.Comment = 'Wavelet';
             case 'hilbert',   tfOPTIONS.Comment = 'Hilbert';
             case 'mtmconvol', tfOPTIONS.Comment = 'Multitaper';
@@ -164,6 +169,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             tfOPTIONS.Comment = [tfOPTIONS.Comment ' std'];
         end
     end
+    % If units specified (PSD)
+    if isfield(sProcess.options, 'units') && ~isempty(sProcess.options.units) && ~isempty(sProcess.options.units.Value)
+        tfOPTIONS.PowerUnits = sProcess.options.units.Value;
+    end    
     % Multitaper options
     if isfield(sProcess.options, 'mt_taper') && ~isempty(sProcess.options.mt_taper) && ~isempty(sProcess.options.mt_taper.Value)
         if iscell(sProcess.options.mt_taper.Value)
@@ -196,7 +205,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         tfOPTIONS.Comment = [tfOPTIONS.Comment, ' ', strMeasure];
     end
-    
+    % if process is SPRiNT
+    if isfield(sProcess.options, 'fooof')
+       tfOPTIONS.SPRiNTopts = sProcess.options;
+    end
     % Output
     if isfield(sProcess.options, 'avgoutput') && ~isempty(sProcess.options.avgoutput) && ~isempty(sProcess.options.avgoutput.Value)
         if sProcess.options.avgoutput.Value
@@ -206,10 +218,18 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
     % Frequency normalization
-    if isfield(sProcess.options, 'normalize') && ~isempty(sProcess.options.normalize) && isequal(sProcess.options.normalize.Value, 1)
-        tfOPTIONS.NormalizeFunc = 'multiply';
-    elseif isfield(sProcess.options, 'normalize') && ~isempty(sProcess.options.normalize) && ischar(sProcess.options.normalize.Value)
-        tfOPTIONS.NormalizeFunc = sProcess.options.normalize.Value;
+    if isfield(sProcess.options, 'normalize2020') && ~isempty(sProcess.options.normalize2020) 
+        if isequal(sProcess.options.normalize2020.Value, 1)
+            tfOPTIONS.NormalizeFunc = 'multiply2020';
+        elseif ischar(sProcess.options.normalize2020.Value)
+            tfOPTIONS.NormalizeFunc = sProcess.options.normalize2020.Value;
+        end
+    elseif isfield(sProcess.options, 'normalize') && ~isempty(sProcess.options.normalize) 
+        if isequal(sProcess.options.normalize.Value, 1)
+            tfOPTIONS.NormalizeFunc = 'multiply';
+        elseif ischar(sProcess.options.normalize.Value)
+            tfOPTIONS.NormalizeFunc = sProcess.options.normalize.Value;
+        end
     else
         tfOPTIONS.NormalizeFunc = 'none';
     end

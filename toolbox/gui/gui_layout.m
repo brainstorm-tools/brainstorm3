@@ -14,7 +14,7 @@ function varargout = gui_layout(varargin)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -58,7 +58,13 @@ end
 
 
 %% ===== GET DECORATION SIZE =====
+% Get decorations size for a window: [left, top, right, bottom, menubarHeight, toolbarHeight]
 function decorationSize = GetDecorationSize(jBstWindow)
+    % Do not try to get it when running in server or nogui mode
+    if (bst_get('GuiLevel') <= 0)
+        decorationSize = [0 0 0 0 0 0];
+        return;
+    end
     % Get brainstorm window if needed
     if (nargin < 1) || isempty(jBstWindow)
         jBstWindow = bst_get('BstFrame');
@@ -72,7 +78,7 @@ function decorationSize = GetDecorationSize(jBstWindow)
         20, ...% jBstWindow.getJMenuBar.getSize.getHeight(), ...
         28]; % TOOLBAR HEIGHT
     % For windows 10 and macos, remove the borders of the figures (they are transparent)
-    if ~isempty(strfind(system_dependent('getos'), 'Windows 10'))
+    if ispc && ~isempty(strfind(system_dependent('getos'), '10'))
         decorationSize(1) = 0;
         decorationSize(2) = 31;
         decorationSize(3) = 2;
@@ -175,6 +181,10 @@ function ScreenDef = GetScreenClientArea()
     % Matlab monitor positions
     MonitorPositions = get(0, 'MonitorPositions');
     isOldPositions = (bst_get('MatlabVersion') < 804);
+    % Fix discrepancies (reported in: https://neuroimage.usc.edu/forums/t/using-brainstorm-on-two-screens-under-linux/28418)
+    if length(jScreens) > size(MonitorPositions,1)
+        jScreens = jScreens(1:size(MonitorPositions,1));
+    end
     % Find default screen
     % iDefaultScreen = ge.getDefaultScreenDevice().getScreen() + 1;   %%% CRASHES ON JAVA 7/Matlab2013 ON MACOSX
     jDefScreen = ge.getDefaultScreenDevice();
@@ -502,7 +512,7 @@ function TileWindows(UseWeights)
         FigArea = [1, FigArea(2), jBstArea.getWidth() + FigArea(3), FigArea(4)];
     end
     % Get decoration dimensions on the current operating system (left, top, right, bottom, menubarHeight)
-    decorationSize = GetDecorationSize(jBstWindow);
+    decorationSize = bst_get('DecorationSize');
     
     % For each Figures block
     nbBlocks = length(Figures);
@@ -641,12 +651,10 @@ end
 %% ===== FIXED LAYOUT =====
 % Set the same size/position for all the figures
 function FixedSizeWindows(figArea)
-    % Get Brainstorm window
-    jBstWindow = bst_get('BstFrame');
     % Get the figures
     Figures = GetFigureGroups();
     % Get decoration dimensions on the current operating system (left, top, right, bottom, menubarHeight)
-    decorationSize = GetDecorationSize(jBstWindow);
+    decorationSize = bst_get('DecorationSize');
     % Process each block of figures
     for iBlock = 1:length(Figures)
         % Get all the figures
@@ -783,6 +791,7 @@ function CreateNewSetup()
         'FigureId', [], ...
         'AppData',  [], ...
         'Position', [], ...
+        'Color',    [], ...
         'Camera',   []), 0);
     DataFile = [];
     nWarningSkip = 0;
@@ -818,6 +827,7 @@ function CreateNewSetup()
             sSetup.Figures(iSaveFig).FigureId = Figure.Id;
             sSetup.Figures(iSaveFig).AppData  = AppData;
             sSetup.Figures(iSaveFig).Position = get(Figure.hFigure, 'Position');
+            sSetup.Figures(iSaveFig).Color    = get(Figure.hFigure, 'Color');
             % 3D figures: Get camera
             hAxes = findobj(Figure.hFigure, '-depth', 1, 'Tag', 'Axes3D');
             if strcmpi(Figure.Id.Type, '3DViz') && ~isempty(hAxes)
@@ -925,9 +935,11 @@ function LoadSetup(iSetup)
         end
         if isfield(AppData, 'TsInfo') && isfield(AppData.TsInfo, 'FileName') && ~isempty(AppData.TsInfo.FileName)
             AppData.TsInfo.FileName = DataFile;
-        end
-        if isfield(AppData, 'TsInfo') && ~isempty(AppData.TsInfo)
             AppData.TsInfo = struct_copy_fields(AppData.TsInfo, db_template('TsInfo'), 0);
+        end
+        if isfield(AppData, 'TopoInfo') && isfield(AppData.TopoInfo, 'FileName') && ~isempty(AppData.TopoInfo.FileName)
+            AppData.TopoInfo.FileName = DataFile;
+            AppData.TopoInfo = struct_copy_fields(AppData.TopoInfo, db_template('TopoInfo'), 0);
         end
         if isfield(AppData, 'Surface') && ~isempty(AppData.Surface)
             % Save old surfaces
@@ -941,7 +953,12 @@ function LoadSetup(iSetup)
         else
             Surface = [];
         end
-        AppData.DataFile = DataFile;
+        if isfield(AppData, 'StudyFile') && ~isempty(AppData.StudyFile)
+            sStudy = bst_get('AnyFile', DataFile);
+            AppData.StudyFile = sStudy.FileName;
+            sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+            AppData.SubjectFile = sSubject.FileName;
+        end
         % Set AppData
         for field = fieldnames(AppData)'
             setappdata(hFig, field{1}, AppData.(field{1}));
@@ -1021,6 +1038,10 @@ function LoadSetup(iSetup)
                 
             otherwise
                 bst_figures('ReloadFigures', hFig);
+        end
+        % Set background
+        if isfield(sSetup.Figures(i), 'Color') && ~isempty(sSetup.Figures(i).Color)
+            set(hFig, 'Color', sSetup.Figures(i).Color);
         end
     end
     % Close all the figures that haven't been updated

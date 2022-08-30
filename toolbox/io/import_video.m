@@ -11,7 +11,7 @@ function iNewFiles = import_video(iStudy, VideoFiles)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -47,7 +47,7 @@ if isempty(VideoFiles)
             'Import dipoles...', ...   % Window title
             LastUsedDirs.ImportData, ...    % Last used directory
             'multiple', 'files', ...        % Selection mode
-            {{'.avi','.mpg','.mpeg','.mp4','.mp2','.mkv','.wmv','.divx','.mov'}, 'Video files (*.avi;*.mpg;*.mpeg;*.mp4;*.mp2;*.mkv;*.wmv;*.divx;*.mov)', 'VIDEO'}, []);
+            {{'.avi','.mpg','.mpeg','.mp4','.mp2','.mkv','.wmv','.divx','.mov','.asf'}, 'Video files (*.avi;*.mpg;*.mpeg;*.mp4;*.mp2;*.mkv;*.wmv;*.divx;*.mov;.asf)', 'VIDEO'}, []);
     % If no file was selected: exit
     if isempty(VideoFiles)
         return

@@ -22,8 +22,8 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 %     .EEGMethod:  Method used to compute the forward model for EEG sensors.
 %         - 'eeg_3sphereberg' : EEG forward modeling with a set of 3 concentric spheres (Scalp, Skull, Brain/CSF) 
 %         - 'openmeeg'        : OpenMEEG forward model
-%     .SEEGMethod:    'openmeeg' only 
-%     .ECOGMethod:    'openmeeg' only
+%     .SEEGMethod:    'openmeeg' and 'duneuro'  
+%     .ECOGMethod:    'openmeeg' and 'duneuro' 
 %
 %     ======= METHODS OPTIONS =============================================
 %     OpenMEEG: see bst_openmeeg
@@ -54,7 +54,7 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -71,8 +71,6 @@ function [OPTIONS, errMessage] = bst_headmodeler(OPTIONS)
 % Authors: Sylvain Baillet, March 2002
 %          Francois Tadel, 2009-2019
 
-global nfv
-nfv = [];
 errMessage = [];
 
 %% ===== DEFAULTS ==================================================================================
@@ -126,7 +124,7 @@ if isempty(OPTIONS.Channel)
     return;
 end
 % No sources locations specified
-if strcmpi(OPTIONS.HeadModelType, 'surface') && ~isempty(OPTIONS.GridLoc) && (size(OPTIONS.GridOrient,2) == size(OPTIONS.GridLoc,2))
+if strcmpi(OPTIONS.HeadModelType, 'surface') && ~isempty(OPTIONS.GridLoc) && (size(OPTIONS.GridOrient,1) ~= size(OPTIONS.GridLoc,1))
     errMessage = 'Size of GridOrient and GridLoc do not match.';
     OPTIONS = [];
     return;
@@ -327,7 +325,7 @@ switch (OPTIONS.HeadModelType)
             % Progress bar
             bst_progress('text', ['Computing mixed models...   [' sAtlas.Scouts(is).Label ']']);
             % Get the indices for the current scout
-            iVert = sAtlas.Scouts(is).Vertices;
+            iVert = sAtlas.Scouts(is).Vertices(:)';
             % Switch
             switch (sAtlas.Scouts(is).Region(2))
                 % Surface
@@ -349,8 +347,8 @@ switch (OPTIONS.HeadModelType)
                     [SrcLoc, SrcOri, sAtlas.Scouts(is), iVertModif] = dba_get_model( sAtlas.Scouts(is), sCortex );
                     % If modifications where done on the cortex atlases: we have to update them
                     if ~isempty(iVertModif)
-                        sAtlas.Scouts(is).Vertices = iVertModif;
-                        sCortex.Atlas(iAtlas).Scouts(is).Vertices = iVertModif;
+                        sAtlas.Scouts(is).Vertices = iVertModif(:)';
+                        sCortex.Atlas(iAtlas).Scouts(is).Vertices = iVertModif(:)';
                         isCortexModif = 1;
                     end
                 % Exclude
@@ -499,9 +497,17 @@ end
 if ismember('duneuro', {OPTIONS.MEGMethod, OPTIONS.EEGMethod, OPTIONS.ECOGMethod, OPTIONS.SEEGMethod})
     % Start progress bar
     bst_progress('start', 'Head modeler', 'Starting Duneuro...');
-    bst_progress('setimage', 'logo_duneuro.png');
+    bst_progress('setimage', 'plugins/duneuro_logo.png');
     % Run duneuro FEM computation
     [Gain_dn, errMessage] = bst_duneuro(OPTIONS);
+    % Comment in history field
+    strHistory = [strHistory, ' | ', sprintf('Fem head file: %s, |  Cortex file: %s, ', OPTIONS.FemFile, OPTIONS.CortexFile) ];
+    if ~OPTIONS.UseTensor
+        strHistory = [strHistory, ' | ', sprintf('FemCond: isotropic, %s', num2str(OPTIONS.FemCond))];
+    else
+        strHistory = [strHistory, ' | ', sprintf('FemCond: anisotropic, %s', 'check the tensor field within the Fem head file')];
+    end
+    strHistory = [strHistory, ' | ', sprintf('Fem source model: %s, type : %s, %s ', OPTIONS.SrcModel, OPTIONS.FemType, OPTIONS.SolverType) ];
     % Remove logo from progress bar
     bst_progress('removeimage');
     % If process crashed
@@ -565,17 +571,7 @@ if (~isempty(OPTIONS.MEGMethod) && ~ismember(OPTIONS.MEGMethod, {'openmeeg', 'du
         iSrcGain = (3 * (iSrc(1)-1) + 1) : 3*iSrc(end);
         % ===== MEG =====
         if ismember(OPTIONS.MEGMethod, {'meg_sphere', 'os_meg'})
-            % Function os_meg can only accept calls to groups of sensors with the same number of coils
-            % => Group the sensors by number of coils and call os_meg as many times as needed
-            grpCoils = unique(nCoilsPerSensor(iAllMeg));
-            % Loop on each group of sensors
-            for iGrp = 1:length(grpCoils)
-                % Get all the sensors with this amount of coils
-                nCoils = grpCoils(iGrp);
-                iMegGrp = iAllMeg(nCoilsPerSensor(iAllMeg) == nCoils);
-                % Compute (os_meg)
-                Gain(iMegGrp,iSrcGain) = bst_meg_sph(OPTIONS.GridLoc(iSrc,:)', OPTIONS.Channel(iMegGrp), Param(iMegGrp));
-            end
+            Gain(iAllMeg,iSrcGain) = bst_meg_sph(OPTIONS.GridLoc(iSrc,:)', OPTIONS.Channel(iAllMeg), Param(iAllMeg));
         end
         % ===== EEG =====
         if strcmpi(OPTIONS.EEGMethod, 'eeg_3sphereberg')

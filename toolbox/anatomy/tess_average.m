@@ -16,7 +16,7 @@ function [NewTessFile, iSurface, errMsg] = tess_average( TessFiles, NewComment)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -80,6 +80,9 @@ for iFile = 1:length(TessFiles)
         NewTess.History  = oldTess.History;
         if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Sphere') && isfield(oldTess.Reg.Sphere, 'Vertices') && ~isempty(oldTess.Reg.Sphere.Vertices)
             NewTess.Reg.Sphere.Vertices = oldTess.Reg.Sphere.Vertices;
+        end
+        if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
+            NewTess.Reg.SphereLR.Vertices = oldTess.Reg.SphereLR.Vertices;
         end
     % Check number of vertices
     elseif (size(NewTess.Vertices,1) ~= size(oldTess.Vertices,1))

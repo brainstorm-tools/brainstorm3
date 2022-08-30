@@ -23,7 +23,7 @@ function [sEnvelope, sSurface] = tess_envelope(SurfaceFile, method, nvert, scale
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -167,7 +167,7 @@ end
 head_center = mean(env_vert);
 % Center head on (0,0,0)
 env_vert = bst_bsxfun(@minus, env_vert, head_center);
-% Orient in Talairach coordinate system (just the axes, not the coordinates
+% Orient in Talairach coordinate system
 Transf = cs_compute(sMri, 'tal');
 if isempty(Transf)
     error('Could not compute the MRI=>TAL transformation.');

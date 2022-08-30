@@ -7,7 +7,7 @@ function [sFile, ChannelMat] = in_fopen_mne(pyObj, ImportOptions)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -39,21 +39,22 @@ sFile = db_template('sfile');
 % Fill this structure
 sFile.filename = pyObj;
 sFile.format   = 'MNE-PYTHON';
-sFile.comment  = char(pyObj.info{'description'});
-sFile.prop.sfreq = double(pyObj.info{'sfreq'});
-sFile.prop.times = [double(pyObj.first_samp), double(pyObj.last_samp)] ./ sFile.prop.sfreq;
+sFile.comment  = bst_py2mat(pyObj.info{'description'});
+sFile.prop.sfreq = bst_py2mat(pyObj.info{'sfreq'});
+sFile.prop.times = [bst_py2mat(pyObj.first_samp), bst_py2mat(pyObj.last_samp)] ./ sFile.prop.sfreq;
 % Acquisition date
-if ~isa(pyObj.info{'meas_date'}, 'py.NoneType')
-    sFile.acq_date = str_date(char(pyObj.info{'meas_date'}), 'posix');
+meas_date = bst_py2mat(pyObj.info{'meas_date'});
+if ~isempty(meas_date)
+    sFile.acq_date = str_date(meas_date, 'posix');
 end
 
 
 %% ===== EVENTS =====
 disp('TODO: Read info{''events''}');
 % Annotations
-evtOnset = double(pyObj.annotations.onset);
+evtOnset = bst_py2mat(pyObj.annotations.onset);
 if ~isempty(evtOnset)
-    evtDuration = double(pyObj.annotations.duration);
+    evtDuration = bst_py2mat(pyObj.annotations.duration);
     evtLabel = cellfun(@(c)char(c), cell(py.list(pyObj.annotations.description)), 'UniformOutput', false);
     % Group by label
     uniqueEvt = unique(evtLabel);

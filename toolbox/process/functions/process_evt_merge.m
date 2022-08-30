@@ -5,7 +5,7 @@ function varargout = process_evt_merge( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -19,16 +19,16 @@ function varargout = process_evt_merge( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016
+% Authors: Francois Tadel, 2016-2022
 
 eval(macro_method);
 end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription()
     % Description the process
-    sProcess.Comment     = 'Merge events';
+    sProcess.Comment     = 'Duplicate / merge events';
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Events';
     sProcess.Index       = 54;
@@ -38,39 +38,49 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
+    % Explanations
+    sProcess.options.desc.Comment  = [...
+        '<FONT COLOR="#707070"><I>Combine the input events and save them as a new event group.<BR>' ... 
+        'To duplicate an event: select it in input and uncheck "delete".</I></FONT><BR><BR>'];
+    sProcess.options.desc.Type     = 'label';
     % Event name
-    sProcess.options.evtnames.Comment  = 'Events to merge (separated with commas): ';
+    sProcess.options.evtnames.Comment  = 'Events to copy (separated with commas): ';
     sProcess.options.evtnames.Type     = 'text';
     sProcess.options.evtnames.Value    = '';
     % New name
     sProcess.options.newname.Comment = 'New event name: ';
     sProcess.options.newname.Type    = 'text';
     sProcess.options.newname.Value   = '';
+    % Delete original events
+    sProcess.options.delete.Comment = 'Delete the original events';
+    sProcess.options.delete.Type    = 'checkbox';
+    sProcess.options.delete.Value   = 1; 
 end
 
 
 %% ===== FORMAT COMMENT =====
-function Comment = FormatComment(sProcess) %#ok<DEFNU>
+function Comment = FormatComment(sProcess)
     Comment = sProcess.Comment;
 end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs)
     % Return all the input files
     OutputFiles = {};
     
     % Get options
     EvtNames = strtrim(sProcess.options.evtnames.Value);
     NewName  = strtrim(sProcess.options.newname.Value);
+    isDelete = sProcess.options.delete.Value;
     if isempty(EvtNames) || isempty(NewName)
         bst_report('Error', sProcess, [], 'You must enter a list of events to merge and a destination name.');
         return;
     end
     % Split names
     EvtNames = strtrim(str_split(EvtNames, ',;'));
-    if (length(EvtNames) < 2) || isempty(EvtNames{1})
-        bst_report('Error', sProcess, [], 'You must enter at least to event names to merge.');
+    if (length(EvtNames) < 1) || isempty(EvtNames{1})
+        bst_report('Error', sProcess, [], 'You must enter at least one event name to copy.');
         return;
     end
 
@@ -91,7 +101,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         % Call the renaming function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, EvtNames, NewName);
+        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, EvtNames, NewName, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
@@ -111,8 +121,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
 end
 
 
-%% ===== RENAME EVENTS =====
-function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
+%% ===== MERGE EVENTS =====
+function [events, isModified] = Compute(sInput, events, EvtNames, NewName, isDelete)
     % No modification
     isModified = 0;
 
@@ -134,8 +144,8 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
         end
     end
     % Make sure there are at least two events to merge
-    if (length(iEvents) < 2)
-        bst_report('Error', 'process_evt_merge', sInput, 'You must enter at least to valid event names to merge.');
+    if (length(iEvents) < 1)
+        bst_report('Error', 'process_evt_merge', sInput, 'You must enter at least one event name to copy.');
         return;
     end
 
@@ -163,7 +173,12 @@ function [events, isModified] = Compute(sInput, events, EvtNames, NewName)
     end
     
     % Remove merged events
-    events(iEvents) = [];
+    if isDelete
+        events(iEvents) = [];
+    % If creating new events without deleting the existing: use a new color
+    else
+        newEvent.color = panel_record('GetNewEventColor', length(events) + 1, events);
+    end
     % Add new event
     events(end + 1) = newEvent;
 

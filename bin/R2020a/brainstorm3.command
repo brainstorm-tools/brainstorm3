@@ -71,6 +71,7 @@ fi
 if [ -z "$MATLABROOT" ]; then
     echo " "
     echo "USAGE: brainstorm3.command <MATLABROOT>"
+	echo "       brainstorm3.command <MATLABROOT> <script.m> <arguments>"
     echo " "
     echo "MATLABROOT is the installation folder of the MCR $VER_NUMBER (R$VER_NAME)"
     echo "The Matlab Runtime $VER_NUMBER is the library needed to"
@@ -98,6 +99,7 @@ else
         echo "Not a valid MATLAB root path."
 		echo " "
 		echo "USAGE: brainstorm3.command <MATLABROOT>"
+		echo "       brainstorm3.command <MATLABROOT> <script.m> <arguments>"
 		echo " "
         exit 1
     fi

@@ -5,7 +5,7 @@ function [sFile, ChannelMat] = in_fopen_spm(DataFile)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -113,7 +113,7 @@ if isfield(D, 'fiducials') && isfield(D.fiducials, 'pnt') && isfield(D.fiducials
     for i = 1:length(D.fiducials.label)
         ChannelMat.HeadPoints.Label = D.fiducials.label(:)';
         ChannelMat.HeadPoints.Type  = repmat({'EXTRA'}, size(ChannelMat.HeadPoints.Label));
-        ChannelMat.HeadPoints.Loc   = scale_unit(D.fiducials.pnt', D.fiducials.unit);
+        ChannelMat.HeadPoints.Loc   = bst_units_ui(D.fiducials.unit, D.fiducials.pnt');
     end
 end
 % Convert fiducials
@@ -121,11 +121,11 @@ if isfield(D, 'fiducials') && isfield(D.fiducials, 'fid') && isfield(D.fiducials
     for i = 1:length(D.fiducials.fid.label)
         switch lower(D.fiducials.fid.label{i})
             case {'nas', 'nasion', 'nz', 'fidnas', 'fidnz'}  % NASION
-                ChannelMat.SCS.NAS = scale_unit(D.fiducials.fid.pnt(i,:), D.fiducials.unit);
+                ChannelMat.SCS.NAS = bst_units_ui(D.fiducials.unit, D.fiducials.fid.pnt(i,:));
             case {'lpa', 'pal', 'og', 'left', 'fidt9', 'leftear'} % LEFT EAR
-                ChannelMat.SCS.LPA = scale_unit(D.fiducials.fid.pnt(i,:), D.fiducials.unit);
+                ChannelMat.SCS.LPA = bst_units_ui(D.fiducials.unit, D.fiducials.fid.pnt(i,:));
             case {'rpa', 'par', 'od', 'right', 'fidt10', 'rightear'} % RIGHT EAR
-                ChannelMat.SCS.RPA = scale_unit(D.fiducials.fid.pnt(i,:), D.fiducials.unit);
+                ChannelMat.SCS.RPA = bst_units_ui(D.fiducials.unit, D.fiducials.fid.pnt(i,:));
         end
     end
     % Force re-alignment on the new set of NAS/LPA/RPA
@@ -165,16 +165,5 @@ if isfield(D, 'trials') && isfield(D.trials, 'events') && isfield(D.trials.event
     end
 end
 
-end
-
-
-
-%% ===== HELPER FUNCTIONS =====
-function pt = scale_unit(pt, unit)
-    if isequal(unit, 'cm')
-        pt = pt ./ 100;
-    elseif isequal(unit, 'mm')
-        pt = pt ./ 1000;
-    end
 end
 

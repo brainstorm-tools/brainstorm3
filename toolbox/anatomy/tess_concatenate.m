@@ -1,8 +1,8 @@
-function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, fileType )
+function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, fileType, Labels)
 % TESS_CONCATENATE: Concatenate various surface files into one new file.
 %
-% USAGE:  [NewTessFile, iSurface] = tess_concatenate(TessFiles, NewComment='New surface', fileType='Other')
-%          [NewTessMat, iSurface] = tess_concatenate(TessMats,  NewComment='New surface', fileType='Other')
+% USAGE:  [NewTessFile, iSurface] = tess_concatenate(TessFiles, NewComment='New surface', fileType='Other', Labels)
+%          [NewTessMat, iSurface] = tess_concatenate(TessMats,  NewComment='New surface', fileType='Other', Labels)
 % 
 % INPUT: 
 %    - TessFiles   : Cell-array of paths to surfaces files to concatenate
@@ -17,7 +17,7 @@ function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, file
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,9 +31,12 @@ function [NewTessFile, iSurface] = tess_concatenate( TessFiles, NewComment, file
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2022
 
 % Parse inputs
+if (nargin < 4) || isempty(Labels)
+    Labels = [];
+end
 if (nargin < 3) || isempty(fileType)
     fileType = [];
 end
@@ -48,7 +51,7 @@ isLeft = 0;
 isRight = 0;
 isWhite = 0;
 isCortex = 0;
-isAseg = 0;
+isVolAtlas = 0;
 isSave = 1;
 
 % Progress bar
@@ -107,8 +110,8 @@ for iFile = 1:length(TessFiles)
     if ~isempty(strfind(oldTess.Comment, 'cortex_'))
         isCortex = 1;
     end
-    if ~isempty(strfind(oldTess.Comment, 'aseg'))
-        isAseg = 1;
+    if ~isempty(strfind(oldTess.Comment, 'aseg')) || ~isempty(strfind(oldTess.Comment, 'subcortical'))
+        isVolAtlas = 1;
     end
     % Concatenate current sub-tess to final tesselation structure
     offsetVertices   = size(NewTess.Vertices,1);
@@ -135,8 +138,17 @@ for iFile = 1:length(TessFiles)
         oldTess.Atlas(iAtlasStruct).Scouts(1).Label    = scoutComment;
         oldTess.Atlas(iAtlasStruct).Scouts(1).Function = 'Mean';
         oldTess.Atlas(iAtlasStruct).Scouts(1).Region   = [scoutHemi 'U'];
+        % If there are labels in inputs, try to get a color for the scout
+        if ~isempty(Labels) && (size(Labels,2) == 3)
+            iLabel = find(strcmpi(Labels(:,2), scoutComment));
+            if ~isempty(iLabel)
+                oldTess.Atlas(iAtlasStruct).Scouts(1).Color = Labels{iLabel,3} ./ 255;
+            end
+        end
         % Set scout color
-        oldTess.Atlas(iAtlasStruct).Scouts(1) = panel_scout('SetColorAuto', oldTess.Atlas(iAtlasStruct).Scouts(1));
+        if isempty(oldTess.Atlas(iAtlasStruct).Scouts(1).Color)
+            oldTess.Atlas(iAtlasStruct).Scouts(1) = panel_scout('SetColorAuto', oldTess.Atlas(iAtlasStruct).Scouts(1));
+        end
     end
     
     % Concatenate atlases/scouts
@@ -179,22 +191,29 @@ for iFile = 1:length(TessFiles)
     
     % Concatenate FreeSurfer registration spheres
     if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Sphere') && isfield(oldTess.Reg.Sphere, 'Vertices') && ~isempty(oldTess.Reg.Sphere.Vertices)
-%         if (iFile > 1) && (~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Sphere') || ~isfield(NewTess.Reg.Sphere, 'Vertices'))
-%             NewTess.Reg = [];
-%             oldTess.Reg = [];
-%         if (iFile == 1)
         if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Sphere') || ~isfield(NewTess.Reg.Sphere, 'Vertices')
             NewTess.Reg.Sphere.Vertices = oldTess.Reg.Sphere.Vertices;
         else
             NewTess.Reg.Sphere.Vertices = [NewTess.Reg.Sphere.Vertices; oldTess.Reg.Sphere.Vertices];
         end
+    % Remove all spheres if they are not available in all the input files (disabled for now because cortex_cereb works well for projections)
+    % elseif isfield(NewTess, 'Reg') &&  isfield(NewTess.Reg, 'Sphere') && isfield(NewTess.Reg.Sphere, 'Vertices') && ~isempty(NewTess.Reg.Sphere.Vertices) 
+    %     NewTess.Reg.Sphere.Vertices = [];
     end
+    
+    if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'SphereLR') && isfield(oldTess.Reg.SphereLR, 'Vertices') && ~isempty(oldTess.Reg.SphereLR.Vertices)
+        if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'SphereLR') || ~isfield(NewTess.Reg.SphereLR, 'Vertices')
+            NewTess.Reg.SphereLR.Vertices = oldTess.Reg.SphereLR.Vertices;
+        else
+            NewTess.Reg.SphereLR.Vertices = [NewTess.Reg.SphereLR.Vertices; oldTess.Reg.SphereLR.Vertices];
+        end
+    % Remove all spheres if they are not available in all the input files (disabled for now because cortex_cereb works well for projections)
+    % elseif isfield(NewTess, 'Reg') &&  isfield(NewTess.Reg, 'SphereLR') && isfield(NewTess.Reg.SphereLR, 'Vertices') && ~isempty(NewTess.Reg.SphereLR.Vertices)
+    %         NewTess.Reg.SphereLR.Vertices = [];
+    end
+
     % Concatenate BrainSuite registration squares    
     if isfield(oldTess, 'Reg') && isfield(oldTess.Reg, 'Square') && isfield(oldTess.Reg.Square, 'Vertices') && ~isempty(oldTess.Reg.Square.Vertices)
-%         if (iFile > 1) && (~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Square') || ~isfield(NewTess.Reg.Square, 'Vertices'))
-%             NewTess.Reg = [];
-%             oldTess.Reg = [];
-%         elseif (iFile == 1)
         if ~isfield(NewTess, 'Reg') || ~isfield(NewTess.Reg, 'Square') || ~isfield(NewTess.Reg.Square, 'Vertices')
             NewTess.Reg.Square.Vertices      = oldTess.Reg.Square.Vertices;
             NewTess.Reg.AtlasSquare.Vertices = oldTess.Reg.AtlasSquare.Vertices;
@@ -202,8 +221,13 @@ for iFile = 1:length(TessFiles)
             NewTess.Reg.Square.Vertices      = [NewTess.Reg.Square.Vertices;      oldTess.Reg.Square.Vertices];
             NewTess.Reg.AtlasSquare.Vertices = [NewTess.Reg.AtlasSquare.Vertices; oldTess.Reg.AtlasSquare.Vertices];
         end
+    % Remove all spheres if they are not available in all the input files (disabled for now because cortex_cereb works well for projections)
+    % elseif isfield(NewTess, 'Reg') && isfield(NewTess.Reg, 'Square') && isfield(NewTess.Reg.Square, 'Vertices') && ~isempty(NewTess.Reg.Square.Vertices)
+    %     NewTess.Reg.Square.Vertices = [];
+    %     NewTess.Reg.AtlasSquare.Vertices = [];
     end
 end
+
 % Sort scouts by name
 for iAtlas = 1:length(NewTess.Atlas)
     [tmp, iSort] = sort({NewTess.Atlas(iAtlas).Scouts.Label});
@@ -229,7 +253,7 @@ if isLeft && isRight
             NewComment = sprintf('cortex_%dV', length(NewTess.Vertices));
         end
     end
-elseif isCortex && isAseg
+elseif isCortex && isVolAtlas
     fileTag = 'cortex_mixed';
     if isempty(fileType)
         fileType = 'Cortex';

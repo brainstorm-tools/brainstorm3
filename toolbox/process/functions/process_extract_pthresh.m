@@ -1,14 +1,14 @@
 function varargout = process_extract_pthresh( varargin )
 % PROCESS_EXTRACT_PTHRESH Apply a statistical threshold to a stat file.
 %
-% USAGE:  OutputFiles = process_extract_pthresh('Run', sProcess, sInput)
-%           threshmap = process_extract_pthresh('Compute', StatMat, StatThreshOptions)
+% USAGE:                                     OutputFiles = process_extract_pthresh('Run', sProcess, sInput)
+%        [threshmap, tThreshUnder, tThreshOver, pthresh] = process_extract_pthresh('Compute', StatMat, StatThreshOptions)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -22,7 +22,7 @@ function varargout = process_extract_pthresh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2019
+% Authors: Francois Tadel, 2013-2022
 %          Thomas Vincent, 2019
 
 eval(macro_method);
@@ -136,11 +136,11 @@ end
 function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     % Get options
     [StatThreshOptions, strCorrect] = GetOptions(sProcess);
-    % Process separately the three types of files
+    % Process separately the types of files
     switch (sInput.FileType)
         case 'pdata'
             % Load input stat file
-            StatMat = in_bst_data(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType');
+            StatMat = in_bst_data(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'DisplayUnits');
             sizeF = size(StatMat.tmap);
             % Load channel file
             ChannelMat = in_bst_channel(sInput.ChannelFile);
@@ -164,10 +164,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.Events       = [];
             DataMat.History      = StatMat.History;
             DataMat.ColormapType = StatMat.ColormapType;
+            DataMat.DisplayUnits = StatMat.DisplayUnits;
             
         case 'presults'
             % Load input stat file
-            StatMat = in_bst_results(sInput.FileName, 0, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'SPM');
+            StatMat = in_bst_results(sInput.FileName, 0, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'SPM', 'DisplayUnits');
             % New results structure
             DataMat = db_template('resultsmat');
             DataMat.ImageGridAmp  = Compute(StatMat, StatThreshOptions);
@@ -186,10 +187,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.ChannelFlag   = StatMat.ChannelFlag;
             DataMat.History       = StatMat.History;
             DataMat.ColormapType  = StatMat.ColormapType;
+            DataMat.DisplayUnits  = StatMat.DisplayUnits;
             
         case 'ptimefreq'
             % Load input stat file
-            StatMat = in_bst_timefreq(sInput.FileName, 0,  'pmap', 'tmap', 'df', 'Type', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'DataType', 'TimeBands', 'Freqs', 'RefRowNames', 'RowNames', 'Measure', 'Method', 'Options');
+            StatMat = in_bst_timefreq(sInput.FileName, 0,  'pmap', 'tmap', 'df', 'Type', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'DataType', 'TimeBands', 'Freqs', 'RefRowNames', 'RowNames', 'Measure', 'Method', 'Options', 'DisplayUnits');
             % New results structure
             DataMat = db_template('timefreqmat');
             DataMat.TF            = Compute(StatMat, StatThreshOptions);
@@ -214,10 +216,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.Measure       = StatMat.Measure;
             DataMat.Method        = StatMat.Method;
             DataMat.Options       = StatMat.Options;
+            DataMat.DisplayUnits  = StatMat.DisplayUnits;
             
         case 'pmatrix'
             % Load input stat file
-            StatMat = in_bst_matrix(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'Description', 'Time', 'History');
+            StatMat = in_bst_matrix(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'Description', 'Time', 'History', 'DisplayUnits');
             % Create a new data file structure
             DataMat = db_template('matrixmat');
             DataMat.Value       = Compute(StatMat, StatThreshOptions);
@@ -227,6 +230,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.ChannelFlag = [];
             DataMat.Events      = [];
             DataMat.Atlas       = [];
+            DataMat.DisplayUnits= StatMat.DisplayUnits;
             DataMat.History     = StatMat.History;
     end
     
@@ -248,7 +252,7 @@ end
 
             
 %% ===== APPLY THRESHOLD =====
-function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOptions)
+ function [threshmap, tThreshUnder, tThreshOver, pthresh] = Compute(StatMat, StatThreshOptions)
     % If options not provided, read them from the interface
     if (nargin < 2) || isempty(StatThreshOptions)
         StatThreshOptions = bst_get('StatThreshOptions');
@@ -260,6 +264,7 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
     end
     tThreshOver = [];
     tThreshUnder = [];
+    pthresh = [];
     testSide = '';
     % Connectivity matrices: remove diagonal
     if isfield(StatMat, 'RefRowNames') && (length(StatMat.RefRowNames) > 1)
@@ -282,7 +287,10 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
         [pmask, pthresh] = bst_stat_thresh(pmap, StatThreshOptions);
     elseif isfield(StatMat, 'SPM') && ~isempty(StatMat.SPM)
         % Initialize SPM
-        bst_spm_init();
+        [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
+        if ~isInstalled
+            error(errMsg);
+        end
         % SPM must be installed
         if ~exist('spm_uc', 'file')
             warning('SPM must be in the Matlab path to compute the statistical thresold for this file.');
@@ -331,8 +339,7 @@ function [threshmap, tThreshUnder, tThreshOver] = Compute(StatMat, StatThreshOpt
             % Use lowest and highest non-zero t_values as thresholds
             tThreshUnder = getMaxNonZeroNegative(allTval);
             tThreshOver = getMinNonZeroPositive(allTval);
-        elseif isempty(tThreshUnder) && isempty(tThreshUnder) 
-
+        elseif isempty(tThreshUnder) && isempty(tThreshOver) 
             df = max(StatMat.df(:));
             [t_tmp, i_t_tmp] = getMinNonZeroPositive(abs(allTval)); %#ok<ASGLU>
             t_tmp = allTval(i_t_tmp);

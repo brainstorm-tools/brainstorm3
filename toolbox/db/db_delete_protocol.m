@@ -13,7 +13,7 @@ function isRemoved = db_delete_protocol(isUserConfirm, isRemoveFiles)
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -66,6 +66,7 @@ end
 
 %% ===== REMOVE FILES =====
 if isRemoveFiles
+    bst_progress('start', 'Delete Protocol', 'Removing all files...');
     % Remove all the contents of STUDIES and SUBJECTS folders
     file_delete( {sProtocolsListInfo(iProtocol).STUDIES, sProtocolsListInfo(iProtocol).SUBJECTS}, 1, 2);
     % If the parent folder (protocol folder) is empty: remove it
@@ -80,6 +81,7 @@ if isRemoveFiles
 end
     
 %% ===== REMOVE PROTOCOL =====
+bst_progress('start', 'Delete Protocol', 'Removing protocol...');
 sProtocolsListInfo(iProtocol) = [];
 % Update database
 GlobalData.DataBase.ProtocolInfo  = sProtocolsListInfo;
@@ -101,6 +103,8 @@ gui_brainstorm('SetCurrentProtocol', iProtocol);
 % Save database
 % db_save();
 isRemoved = 1;
+
+bst_progress('stop');
 
 
 

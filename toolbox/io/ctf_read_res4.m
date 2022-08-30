@@ -13,7 +13,7 @@ function [header, ChannelMat] = ctf_read_res4( res4_file )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -432,8 +432,8 @@ for chan = 1:nchan
     end
     % ===== EEG =====
     if ismember(chan, ieegsens)
-        % Remove EEG sensors with no positions
-        if isempty(Channel(chan).Loc)
+        % Remove EEG sensors with no positions, when there are other EEG sensors with locations
+        if isempty(Channel(chan).Loc) && any(~cellfun(@isempty, {Channel(ieegsens).Loc}))
             Channel(chan).Type = 'Misc';
         else
             Channel(chan).Type = 'EEG';

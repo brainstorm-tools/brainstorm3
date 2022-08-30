@@ -13,7 +13,7 @@ function [Vertices, Faces, Atlas] = tess_remove_vert(Vertices, Faces, iRemoveVer
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -60,6 +60,8 @@ for iAtlas = 1:length(Atlas)
         Atlas(iAtlas).Scouts(iScout).Seed     = setdiff(Atlas(iAtlas).Scouts(iScout).Seed, iRemoveVert);
         % Renumber remaining vertices
         Atlas(iAtlas).Scouts(iScout).Vertices = iVertMap(Atlas(iAtlas).Scouts(iScout).Vertices);
+        % Make sure this is a row vector
+        Atlas(iAtlas).Scouts(iScout).Vertices = Atlas(iAtlas).Scouts(iScout).Vertices(:)';
         % Remove scout if there are no vertices left
         if isempty(Atlas(iAtlas).Scouts(iScout).Vertices)
             iScoutRm = [iScoutRm, iScout];

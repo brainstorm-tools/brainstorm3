@@ -3,7 +3,7 @@ function varargout = bst_colormaps( varargin )
 % 
 % USAGE:
 %  sColormaps = bst_colormaps('Initialize')
-%               bst_colormaps('RestoreDefaults')
+%               bst_colormaps('RestoreDefaults', ColormapType)
 %   sColormap = bst_colormaps('GetColormap', ColormapType)
 %   sColormap = bst_colormaps('GetColormap', hFig)
 %               bst_colormaps('SetColormap', ColormapType, sColormap)
@@ -54,7 +54,7 @@ function varargout = bst_colormaps( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -736,55 +736,55 @@ function CreateColormapMenu(jMenu, ColormapType, DisplayUnits)
     end
     
     % ===== CONTRAST / BRIGHTNESS PANEL =====
-    strTooltip = ['<HTML><BLOCKQUOTE><B>Contrast and brightness</B>: <BR><BR>' ...
-      'These values can be directly modified from any figure<BR>' ...
-      'by clicking on the colorbar and moving the mouse.<BR><BR>' ...
-      '- Horizontal moves : increase/decrease contrast<BR>' ...
-      '- Vertical moves : increase/decrease brightness<BR>' ...
-      '</BLOCKQUOTE></HTML>' ];
-    % == CONTRAST ==
-    % Create base menu entry
-    jPanel = gui_component('Panel');
-    jPanel.setOpaque(0);
-    jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
-    jMenu.add(jPanel);
-    % Title
-    jLabel = gui_component('label', [], '', 'Contrast:  ');
-    jPanel.add(jLabel, BorderLayout.CENTER);
-    % Spin button
-    val = round(sColormap.Contrast * 100);
-    spinmodel = SpinnerNumberModel(val, -100, 100, 2);
-    jSpinner = JSpinner(spinmodel);
-    jSpinner.setPreferredSize(Dimension(55,23));
-    jSpinner.setToolTipText(strTooltip);
-    java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Contrast'));
-    jPanel.add(jSpinner, BorderLayout.EAST);
+    if isempty(strfind(sColormap.Name, 'custom_'))
+        strTooltip = ['<HTML><BLOCKQUOTE><B>Contrast and brightness</B>: <BR><BR>' ...
+          'These values can be directly modified from any figure<BR>' ...
+          'by clicking on the colorbar and moving the mouse.<BR><BR>' ...
+          '- Horizontal moves : increase/decrease contrast<BR>' ...
+          '- Vertical moves : increase/decrease brightness<BR>' ...
+          '</BLOCKQUOTE></HTML>' ];
+        % == CONTRAST ==
+        % Create base menu entry
+        jPanel = gui_component('Panel');
+        jPanel.setOpaque(0);
+        jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
+        jMenu.add(jPanel);
+        % Title
+        jLabel = gui_component('label', [], '', 'Contrast:  ');
+        jPanel.add(jLabel, BorderLayout.CENTER);
+        % Spin button
+        val = round(sColormap.Contrast * 100);
+        spinmodel = SpinnerNumberModel(val, -100, 100, 2);
+        jSpinner = JSpinner(spinmodel);
+        jSpinner.setPreferredSize(Dimension(55,23));
+        jSpinner.setToolTipText(strTooltip);
+        java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Contrast'));
+        jPanel.add(jSpinner, BorderLayout.EAST);
 
-    % == BRIGHTNESS ==
-    % Create base menu entry
-    jPanel = gui_component('Panel');
-    jPanel.setOpaque(0);
-    jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
-    jMenu.add(jPanel);
-    % Title
-    jLabel = gui_component('label', [], '', 'Brightness:  ');
-    jPanel.add(jLabel, BorderLayout.WEST);
-    % Spin button
-    val = -round(sColormap.Brightness * 100);
-    spinmodel = SpinnerNumberModel(val, -100, 100, 2);
-    jSpinner = JSpinner(spinmodel);
-    jSpinner.setPreferredSize(Dimension(55,23));
-    jSpinner.setToolTipText(strTooltip);
-    java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Brightness'));
-    jPanel.add(jSpinner, BorderLayout.EAST);
+        % == BRIGHTNESS ==
+        % Create base menu entry
+        jPanel = gui_component('Panel');
+        jPanel.setOpaque(0);
+        jPanel.setBorder(BorderFactory.createEmptyBorder(0,30,0,0));
+        jMenu.add(jPanel);
+        % Title
+        jLabel = gui_component('label', [], '', 'Brightness:  ');
+        jPanel.add(jLabel, BorderLayout.WEST);
+        % Spin button
+        val = -round(sColormap.Brightness * 100);
+        spinmodel = SpinnerNumberModel(val, -100, 100, 2);
+        jSpinner = JSpinner(spinmodel);
+        jSpinner.setPreferredSize(Dimension(55,23));
+        jSpinner.setToolTipText(strTooltip);
+        java_setcb(spinmodel, 'StateChangedCallback', @(h,ev)SpinnerCallback(ev, ColormapType, 'Brightness'));
+        jPanel.add(jSpinner, BorderLayout.EAST);
+        CreateSeparator(jMenu, isPermanent);
+    end
 
     % Display/hide colorbar
-    CreateSeparator(jMenu, isPermanent);
     jCheckDisp = gui_component('CheckBoxMenuItem', jMenu, [], 'Display colorbar', [], [], @(h,ev)SetDisplayColorbar(ColormapType, ev.getSource.isSelected()));
     jCheckDisp.setSelected(sColormap.DisplayColorbar);
-    
 
-    
     % Open menu in a new window
     if ~isPermanent
         gui_component('MenuItem', jMenu, [], 'Permanent menu', [], [], @(h,ev)CreatePermanentMenu(ColormapType));
@@ -1093,6 +1093,13 @@ function isModified = NewCustomColormap(ColormapType, Name, CMap)
                       'Position', [-100 -100 1 1], ...
                       'Colormap', CMap);
         drawnow;
+        % For Matlab >= 2020b, force using legacy colormap editor
+        if (bst_get('MatlabVersion') >= 909)
+            s = settings;
+            if hasSetting(s.matlab.graphics, 'showlegacycolormapeditor')
+                s.matlab.graphics.showlegacycolormapeditor.TemporaryValue = 1;
+            end
+        end
         % Display colormap editor
         colormapeditor(hTmp);
         % Hide base figure
@@ -1100,8 +1107,15 @@ function isModified = NewCustomColormap(ColormapType, Name, CMap)
         % Get Colormap figure handle
         cme = getappdata(0, 'CMEditor');
         % Wait for the end of the Colormap Editor execution
-        while ~isempty(cme.getFrame())
-            pause(0.3);
+        if ismethod(cme, 'getFrame')
+            while ~isempty(cme.getFrame())
+                pause(0.3);
+            end
+        else
+            while ~isempty(cme)
+                pause(0.3);
+                cme = getappdata(0, 'CMEditor');
+            end
         end
         CMap = get(hTmp, 'Colormap');
         % Close editor figure
@@ -1139,11 +1153,13 @@ function isModified = LoadColormap(ColormapType, FileName)
         % Get default import directory and formats
         LastUsedDirs = bst_get('LastUsedDirs');
         % Get LUT files
-        FileName = java_getfile( 'open', ...
+        [FileName, FileFormat] = java_getfile( 'open', ...
            'Import colormap...', ...      % Window title
            LastUsedDirs.ImportAnat, ...   % Default directory
            'single', 'files', ...         % Selection mode
-           {{'.lut'}, 'Color lookup table (*.lut)', 'LUT'}, 'LUT');
+           {{'.lut'}, 'Color lookup table (*.lut)', 'LUT'; ...
+            {'.mat'}, 'Matlab colormap matrix [nColor x 3] (*.mat)', 'MAT';...
+           }, 'MAT');
         % If no file was selected: exit
         if isempty(FileName)
             return
@@ -1155,21 +1171,50 @@ function isModified = LoadColormap(ColormapType, FileName)
     else
         isConfirm = 0;
     end
+    % Load colormap as .lut file
+    if strcmp(FileFormat, 'LUT')
+        % Open file
+        fid = fopen(FileName, 'rb');
+        if (fid < 0)
+            error(['Cannot open LUT file:' FileName]);
+        end
+        % Read file
+        CMap = fread(fid, Inf, 'uint8');
+        if (length(CMap) < 6)
+            error('Not a valid LUT file.');
+        end
+        % Close file
+        fclose(fid);
+        % Convert to Matlab format: [Ncolor x 3], values between 0 and 1
+        CMap = reshape(CMap ./ 255, [], 3);
     
-    % Open file
-	fid = fopen(FileName, 'rb');
-    if (fid < 0)
-        error(['Cannot open LUT file:' FileName]);
+    % Load colormap as .mat file
+    else
+        ContentMat = load(FileName);
+        fields = fieldnames(ContentMat);
+        validFields = {};
+        % Loop to find possible colormap matrices in fields
+        for i = 1:length(fields)
+            if ~isempty(ContentMat.(fields{i})) && isnumeric(ContentMat.(fields{i})) && size(ContentMat.(fields{i}), 2) == 3
+                validFields{end+1} = fields{i};
+            end
+        end
+        if isempty(validFields)
+            bst_error(['No valid colormap field in: "' FileName '"'], 'Load colormap', 0);
+            return
+        end
+        CMap = ContentMat.(validFields{1});
+        % If there is more than one possible colormap, ask user which colormap to load
+        if (length(validFields) > 1)
+            res = java_dialog('question', 'Please select the variable that contains your colormap:', ...
+                              'Colormap', [], validFields);
+            % If user did not answer: exit
+            if isempty(res)
+                return
+            end
+            CMap = ContentMat.(res);
+        end
     end
-    % Read file
-    CMap = fread(fid, Inf, 'uint8');
-    if (length(CMap) < 6)
-        error('Not a valid LUT file.');
-    end
-    % Close file 
-    fclose(fid);
-    % Convert to Matlab format: [Ncolor x 3], values between 0 and 1
-    CMap = reshape(CMap ./ 255, [], 3);
 
     % Read as a fixed list of colors
     if isConfirm
@@ -1343,6 +1388,10 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
     hColorbar = findobj(hFig, '-depth', 1, 'Tag', 'Colorbar');
     hAxes     = setdiff(findobj(hFig, '-depth', 1, 'Type', 'axes'), hColorbar);
     hConnect  = getappdata(hFig, 'OpenGLDisplay');
+    if strcmpi(ColormapType, 'connectn') && isempty(hConnect)
+        hConnect = hAxes;
+        hAxes = [];
+    end
     % If a colorbar is defined
     if ~isempty(hColorbar)
         fFactor = [];
@@ -1395,23 +1444,40 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
         if isempty(fFactor)
             % Use imposed units 
             if ~isempty(DisplayUnits)
-                switch(DisplayUnits)
-                    case 't',    fFactor = 1;
-                    case 'mol.l-1', fFactor = 1;
-                    case 'mmol.l-1', fFactor = 1e3;
-                    case 'umol.l-1', fFactor = 1e6;
-                    case 'U.A.'
-                        fmax = max(abs(dataBounds));
-                        if fmax < 1e3
-                            fFactor=1e6;
-                            DisplayUnits='U.A(*10^6)';
-                        elseif fmax < 1
-                            fFactor=1e3;
-                            DisplayUnits='U.A(*10^3)';
-                        else
-                            fFactor=1;
-                        end
-                    otherwise,   fFactor = 1;
+                if strcmp(DisplayUnits,'t')
+                    fFactor = 1;
+                elseif strcmp(DisplayUnits,'fT')
+                    fFactor = 1e15;                  
+                elseif strcmp(DisplayUnits,'\muV')
+                    fFactor = 1e6;                  
+                elseif strcmp(DisplayUnits,'mV')
+                    fFactor = 1e3;                                      
+                elseif ~isempty(strfind(DisplayUnits,'mol'))
+                     fmax = max(abs(dataBounds));
+                     if round(log10(fmax)) < -3
+                         fFactor = 1e6;
+                     else    
+                        fFactor = 1;  
+                     end   
+                elseif ~isempty(strfind(DisplayUnits,'OD'))
+                    fFactor = 1e3;
+                    DisplayUnits='OD(*10^-3)';
+                elseif strcmp(DisplayUnits,'U.A.')
+                    fmax = max(abs(dataBounds));
+                    if fmax < 1e3
+                        fFactor=1e6;
+                        DisplayUnits='U.A(*10^6)';
+                    elseif fmax < 1
+                        fFactor=1e3;
+                        DisplayUnits='U.A(*10^3)';
+                    else
+                        fFactor=1;
+                    end
+                elseif strcmp(DisplayUnits,'a.u.')
+                    fmax = max(abs(dataBounds));
+                    [fScaled, fFactor, fUnits] = bst_getunits(fmax, DisplayUnits);
+                else
+                     fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum
@@ -1482,7 +1548,7 @@ function SetColorbarVisible(hFig, isVisible) %#ok<DEFNU>
         FigureId = getappdata(hFig, 'FigureId');
         % Get color for colorbar text
         switch (FigureId.Type)
-            case {'3DViz', 'Topography', 'MriViewer', 'Connect'}
+            case {'3DViz', 'Topography', 'MriViewer', 'Connect'} 
                 textColor = [.8 .8 .8];
             case {'Timefreq', 'Pac', 'Image'}
                 textColor = [0 0 0];
@@ -1631,7 +1697,7 @@ end
 function sColormap = ApplyColormapModifiers(sColormap)
     DEFAULT_CMAP_SIZE = 256;
     % Cannot modify "Custom" colormaps
-    if ~isempty(sColormap.Name)
+    if ~isempty(sColormap.Name) && isempty(strfind(sColormap.Name, 'custom_'))
         sColormap.CMap = eval(sprintf('%s(%d)', sColormap.Name, DEFAULT_CMAP_SIZE));
         mapSize = size(sColormap.CMap, 1);
         

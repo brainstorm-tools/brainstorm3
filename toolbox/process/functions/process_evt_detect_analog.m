@@ -10,7 +10,7 @@ function varargout = process_evt_detect_analog( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -230,19 +230,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         
         % ===== BAD SEGMENTS =====
-        % If ignore bad segments
         Fmask = [];
         if isIgnoreBad
-            % Get list of bad segments in file
-            badSeg = panel_record('GetBadSegments', sFile);
-            % Adjust with beginning of file
-            badSeg = badSeg - round(sFile.prop.times(1) .* sFile.prop.sfreq) + 1;
+            badSeg = process_evt_detect('GetBadSegments', sFile, TimeWindow, DataMat.Time, length(TimeVector));
             if ~isempty(badSeg)
                 % Create file mask
                 Fmask = true(size(F));
                 % Loop on each segment: mark as bad
                 for iSeg = 1:size(badSeg, 2)
-                    Fmask(badSeg(1,iSeg):badSeg(2,iSeg)) = false;
+                    Fmask(:, badSeg(1,iSeg):badSeg(2,iSeg)) = false;
                 end
             end
         end

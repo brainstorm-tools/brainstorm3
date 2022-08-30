@@ -17,7 +17,7 @@ function varargout = bst_process( varargin )
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
 % 
-% Copyright (c)2000-2020 University of Southern California & McGill University
+% Copyright (c) University of Southern California & McGill University
 % This software is distributed under the terms of the GNU General Public License
 % as published by the Free Software Foundation. Further details on the GPLv3
 % license can be found at http://www.gnu.org/copyleft/gpl.html.
@@ -31,7 +31,9 @@ function varargout = bst_process( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2019; Martin Cousineau, 2017
+% Authors: Francois Tadel, 2010-2022
+%          Martin Cousineau, 2017
+%          Raymundo Cassani, 2022
 
 eval(macro_method);
 end
@@ -97,7 +99,11 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         if isParallel
             try
                 if (bst_get('MatlabVersion') >= 802)
-                    hPool = parpool;
+                    hPool = gcp('nocreate');
+                    if isempty(hPool)
+                        bst_progress('start', 'Process', 'Starting parallel pool...');
+                        hPool = parpool;
+                    end
                 else
                     matlabpool open;
                 end
@@ -494,7 +500,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     end
     % Do not allow Time Bands
     if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ismember(func2str(sProcess.Function), {'process_average_time', 'process_baseline_norm', 'process_extract_time'}) 
-        % && isfield(sMat, 'Measure') && ~strcmpi(sMat.Measure, 'other') && ~strcmpi(sMat.Measure, 'plv')
         bst_report('Error', sProcess, sInput, 'Cannot process values averaged by time bands.');
         return;
     end
@@ -531,6 +536,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         TFmask = sMat.TFmask;
     else
         TFmask = [];
+    end
+    % Get TF options
+    if isfield(sMat, 'Options') && ~isempty(sMat.Options)
+        sInput.Options = sMat.Options;
     end
     
     % Progress bar comment
@@ -571,10 +580,12 @@ function OutputFile = ProcessFilter(sProcess, sInput)
             return;
         end
         % ERROR: Cannot process channel/channel uncompensated CTF files
-        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (sFileIn.prop.currCtfComp ~= 3) && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+        if ismember(1,sProcess.processDim) && ~isReadAll && ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && (sFileIn.prop.currCtfComp ~= sFileIn.prop.destCtfComp)
+                % && (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+                % Sensor check removed on 21-Feb-2021 following the bug discovered in the corticomuscular coherence tutorial: 
+                % Processing only the EMG channels reads+writes the MEG channels but does not apply the correction
             bst_report('Error', sProcess, sInput, [...
-                'This CTF file was not saved with the 3rd order compensation.' 10 ...
+                'This CTF file was not saved with the desired compensation order (', num2str(sFileIn.prop.destCtfComp), ').' 10 ...
                 'To process this file, you have the following options: ' 10 ...
                 '  1) Check the option "Process the entire file at once", only if the entire file fits in memory.' 10 ...
                 '  2) Run the process "Artifacts > Apply SSP & CTF compensation" first to save a compensated file.']);
@@ -582,7 +593,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         end
         % ERROR: SSP cannot be applied for channel/channel processing
         if ismember(1,sProcess.processDim) && ~isReadAll && ~isempty(ChannelMat.Projector) && any([ChannelMat.Projector.Status] == 1)
-            % Verify if any channels that need to be projected are selected.
+            % Verify that all channels that need to be projected are selected.
             % Build projector matrix
             Projector = process_ssp2('BuildProjector', ChannelMat.Projector, 1);
             % Apply projector
@@ -600,7 +611,6 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                     % Channels that are modified by projector.
                     isProjected = sum(Projector ~= 0, 2) > 1;
                     if any(isProjected(iSelRows))
-                        
                         bst_report('Error', sProcess, sInput, [...
                             'This file contains SSP projectors, which require all the channels to be read at the same time.' 10 ...
                             'To process this file, you have the following options: ' 10 ...
@@ -626,7 +636,7 @@ function OutputFile = ProcessFilter(sProcess, sInput)
         ImportOptions.ImportMode      = 'Time';
         ImportOptions.DisplayMessages = 0;
         if ismember(sFileIn.format, {'CTF','CTF-CONTINUOUS'}) && ...
-                (isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
+                (isReadAll || isempty(AllSensorTypes) || any(ismember(AllSensorTypes, {'MEG','MEG REF','MEG GRAD','MEG MAG'})))
             ImportOptions.UseCtfComp  = 1;
         else
             ImportOptions.UseCtfComp  = 0; % otherwise reading raw CTF file without selecting any MEG channels would fail.
@@ -856,7 +866,11 @@ function OutputFile = ProcessFilter(sProcess, sInput)
                 end
             end
             % Set time vector in input
-            sInput.TimeVector = sMat.Time(iCol);
+            if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
+                sInput.TimeVector = mean(process_tf_bands('GetBounds', sMat.TimeBands), 2);
+            else
+                sInput.TimeVector = sMat.Time(iCol);
+            end
 
             % === PROCESS ===
             % Send indices to the process
@@ -1037,14 +1051,20 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % ===== CREATE OUTPUT STRUCTURE =====
     % If there is a DataFile link, and the time definition changed, and results is not static: remove link
     if isfield(sMat, 'DataFile') && ~isempty(sMat.DataFile)
-        if ~isequal(sMat.Time, OutTime) && (length(OutTime) > 2)
+        if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
+            % Time bands: Do not update the file links
+        elseif ~isequal(sMat.Time, OutTime) && (length(OutTime) > 2)
             sMat.DataFile = [];
         else
             sMat.DataFile = file_short(sMat.DataFile);
         end
     end
     % Output time vector
-    sMat.Time = OutTime;
+    if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands)
+        % Time bands: Do not update time vector
+    else
+        sMat.Time = OutTime;
+    end
     % Output measure
     if ~isempty(OutMeasure)
         sMat.Measure = OutMeasure;
@@ -1066,6 +1086,10 @@ function OutputFile = ProcessFilter(sProcess, sInput)
     % TFmask
     if isfield(sMat, 'TFmask')
         sMat.TFmask = OutputTFmask;
+    end
+    % TF options
+    if isfield(sMat, 'Options') && isfield(sInput, 'Options') && ~isempty(sInput.Options)
+        sMat.Options = sInput.Options;
     end
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
@@ -1158,10 +1182,10 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
     % ===== LOAD FILES =====
     fileTag = '';
     % Get data matrix
-    [sMatA, matName] = in_bst(sInputA.FileName);
-    [sMatB, matName] = in_bst(sInputB.FileName);
+    [sMatA, matNameA] = in_bst(sInputA.FileName);
+    [sMatB, matNameB] = in_bst(sInputB.FileName);
     % Absolute values of sources / norm or unconstrained sources
-    isAbsolute = strcmpi(matName, 'ImageGridAmp') && (sProcess.isSourceAbsolute >= 1);
+    isAbsolute = strcmpi(matNameA, 'ImageGridAmp') && (sProcess.isSourceAbsolute >= 1);
     if isAbsolute
         % Unconstrained sources: Norm of the three orientations
         if isfield(sMatA, 'nComponents') && (sMatA.nComponents ~= 1) && isfield(sMatB, 'nComponents') && (sMatB.nComponents ~= 1)
@@ -1175,15 +1199,15 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
             sMatB.Comment = [sMatB.Comment, ' | ', strTag];
         end
         % Enforce absolute values
-        sMatA.(matName) = abs(sMatA.(matName));
-        sMatB.(matName) = abs(sMatB.(matName));
+        sMatA.(matNameA) = abs(sMatA.(matNameA));
+        sMatB.(matNameB) = abs(sMatB.(matNameB));
         % Add tags
         fileTag = [fileTag, '_', strTag];
     end  
     
     % Values
-    sInputA.A = sMatA.(matName);
-    sInputB.A = sMatB.(matName);
+    sInputA.A = sMatA.(matNameA);
+    sInputB.A = sMatB.(matNameB);
     % Check size
     if ~isequal(size(sInputA.A), size(sInputB.A)) && ~ismember(func2str(sProcess.Function), {'process_baseline_ab', 'process_zscore_ab', 'process_zscore_dynamic_ab', 'process_baseline_norm2'})
         bst_report('Error', sProcess, [sInputA, sInputB], 'Files in groups A and B do not have the same size.');
@@ -1196,10 +1220,31 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
         OutputFile = [];
         return;
     end
+    % Check complex values for time-freq measures (FilesA)
+    if isfield(sMatA, 'Measure')
+        sInputA.Measure = sMatA.Measure;
+        if ~ismember(func2str(sProcess.Function), {'process_matlab_eval2'}) && ~isreal(sMatA.(matNameA))
+            bst_report('Error', sProcess, sInputA, 'Cannot process complex values. A measure have to be applied to this data before (power, magnitude, phase...)');
+            OutputFile = [];
+            return;
+        end
+    else
+        sInputA.Measure = [];
+    end
+    % Check complex values for time-freq measures (FilesB)
+    if isfield(sMatB, 'Measure')
+        sInputB.Measure = sMatB.Measure;
+        if ~ismember(func2str(sProcess.Function), {'process_matlab_eval2'}) && ~isreal(sMatB.(matNameB))
+            bst_report('Error', sProcess, sInputB, 'Cannot process complex values. A measure have to be applied to this data before (power, magnitude, phase...)');
+            OutputFile = [];
+            return;
+        end
+    else
+        sInputB.Measure = [];
+    end
     % Do not allow TimeBands
     if ((isfield(sMatA, 'TimeBands') && ~isempty(sMatA.TimeBands)) || (isfield(sMatB, 'TimeBands') && ~isempty(sMatB.TimeBands))) ...
             && ismember(func2str(sProcess.Function), {'process_baseline_ab', 'process_zscore_ab', 'process_baseline_norm2'}) 
-        % && isfield(sMat, 'Measure') && ~strcmpi(sMat.Measure, 'other') && ~strcmpi(sMat.Measure, 'plv')
         bst_report('Error', sProcess, [sInputA, sInputB], 'Cannot process values averaged by time bands.');
         OutputFile = [];
         return;
@@ -1269,7 +1314,7 @@ function OutputFile = ProcessFilter2(sProcess, sInputA, sInputB)
 
     % ===== CREATE OUTPUT STRUCTURE =====
     sMatOut = sMatB;
-    sMatOut.(matName) = sOutput.A;
+    sMatOut.(matNameA) = sOutput.A;
     % Comment: forced in the options
     if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
         sMatOut.Comment = sProcess.options.Comment.Value;
@@ -1607,8 +1652,13 @@ function sInputs = GetInputStruct(FileNames)
             end
 
             % Extract input type
-            if strcmpi(sFuncFile.Type, 'data') && strcmpi(sItem.DataType, 'raw')
-                InputType = 'raw';
+            if strcmpi(sFuncFile.Type, 'data') || strcmpi(sFuncFile.Type, 'spike')                
+                if strcmpi(sItem.DataType, 'raw')
+                    InputType = 'raw';
+                else
+                    InputType = 'data';
+                end
+                
             elseif strcmpi(sFuncFile.Type, 'link')
                 InputType = 'results';
             else
@@ -1827,13 +1877,21 @@ end
 
 
 %% ===== GET NEW FILENAME =====
-function filename = GetNewFilename(fPath, fBase)
+function filename = GetNewFilename(fPath, fBase, isTimestamp)
+    % Parse inputs 
+    if (nargin < 3) || isempty(isTimestamp)
+        isTimestamp = 1;
+    end
     % Folder
     ProtocolInfo = bst_get('ProtocolInfo');
     fPath = strrep(fPath, ProtocolInfo.STUDIES, '');
     % Date and time
-    c = clock;
-    strTime = sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));
+    if isTimestamp
+        c = clock;
+        strTime = sprintf('_%02.0f%02.0f%02.0f_%02.0f%02.0f', c(1)-2000, c(2:5));
+    else
+        strTime = '';
+    end
     % Remove extension
     fBase = strrep(fBase, '.mat', '');
     % Full filename
@@ -1858,8 +1916,8 @@ function FileTag = GetFileTag(FileName)
         case {'timefreq', 'ptimefreq'}
             FileTag = FileType;
             listTags = {'_fft', '_psd', '_hilbert', ...
-                        '_connect1_corr', '_connect1_cohere', '_connect1_granger', '_connect1_spgranger', '_connect1_plv', '_connect1_plvt', '_connect1', ...
-                        '_connectn_corr', '_connectn_cohere', '_connectn_granger', '_connectn_spgranger', '_connectn_plv', '_connectn_plvt', '_connectn', ...
+                        '_connect1_corr', '_connect1_cohere', '_connect1_granger', '_connect1_spgranger', '_connect1_plvt', '_connect1_plv', '_connect1_wplit', '_connect1_wpli', '_connect1_ciplvt', '_connect1_ciplv', '_connect1_henv', '_connect1', ...
+                        '_connectn_corr', '_connectn_cohere', '_connectn_granger', '_connectn_spgranger', '_connectn_plvt', '_connectn_plv', '_connectn_wplit', '_connectn_wpli', '_connectn_ciplvt', '_connectn_ciplv', '_connectn_henv', '_connectn', ...
                         '_pac_fullmaps', '_pac', '_dpac_fullmaps', '_dpac'};
             for i = 1:length(listTags)
                 if ~isempty(strfind(FileName, listTags{i}))
@@ -1931,8 +1989,11 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
     if ~isempty(Target) && (isstruct(Target) || iscell(Target))
         % Add row name only when extracting all the scouts
         AddRowComment = ~isempty(OPTIONS.TargetFunc) && strcmpi(OPTIONS.TargetFunc, 'all');
-        % Flip sign only for results
-        isflip = ismember(sInput.DataType, {'link','results'});
+        % Flip sign only for results    
+        isflip = ismember(sInput.DataType, {'link','results'}) && ...
+                         isempty(strfind(FileName, '_norm')) && ...
+                         isempty(strfind(FileName, 'NIRS'))  && ...
+                         isempty(strfind(FileName, 'Summed_sensitivities'));
         % Call process
         sMat = CallProcess('process_extract_scout', FileName, [], ...
             'timewindow',     TimeWindow, ...
@@ -2296,7 +2357,7 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
             updateVal{1} = newVal;
         elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox','combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else
@@ -2486,19 +2547,17 @@ function sProcesses = OptimizePipeline(sProcesses)
     % Loop on the processes that can be glued to this one
     iRemove = [];
     for iProcess = (iImport+1):length(sProcesses)
+        strWarning = '';
         % List of accepted processes: copy options
         switch (func2str(sProcesses(iProcess).Function))
             case 'process_baseline'
                 sProcesses(iImport).options.baseline = sProcesses(iProcess).options.baseline;
-                % Ignoring sensors selection
-                if isfield(sProcesses(iProcess).options, 'sensortypes') && ~isempty(sProcesses(iProcess).options.sensortypes.Value)
-                    strWarning = [10 ' - Sensor selection is ignored, baseline is removed from all the data channels.'];
-                else
-                    strWarning = '';
+                if isempty(sProcesses(iImport).options.baseline.Value{1})
+                    sProcesses(iImport).options.baseline.Value{1} = 'all';
                 end
+                sProcesses(iImport).options.blsensortypes = sProcesses(iProcess).options.sensortypes;
             case 'process_resample'
                 sProcesses(iImport).options.freq = sProcesses(iProcess).options.freq;
-                strWarning = '';
             otherwise
                 break;
         end
@@ -2540,10 +2599,14 @@ function sProcesses = OptimizePipelineRevert(sProcesses) %#ok<DEFNU>
         sProcAdd(end+1).Function = @process_baseline;
         sProcAdd(end) = struct_copy_fields(sProcAdd(end), process_baseline('GetDescription'), 1);
         % Set options
-        sProcAdd(end).options.sensortypes.Value = '';
         sProcAdd(end).options.baseline.Value = sProcesses(iImport).options.baseline.Value;
+        if isequal(sProcAdd(end).options.baseline.Value{1}, 'all')
+            sProcAdd(end).options.baseline.Value{1} = [];
+        end
+        sProcAdd(end).options.sensortypes.Value = sProcesses(iImport).options.blsensortypes.Value;
         % Remove option from initial process
         sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'baseline');
+        sProcesses(iImport).options = rmfield(sProcesses(iImport).options, 'blsensortypes');
     end
     if isfield(sProcesses(iImport).options, 'freq') && isfield(sProcesses(iImport).options.freq, 'Value') && ~isempty(sProcesses(iImport).options.freq.Value)
         % Get process
