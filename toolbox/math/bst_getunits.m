@@ -36,7 +36,7 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 %          Edouard Delaire, 2021
 
 % Parse inputs
-if (nargin <= 4) || isempty(DisplayUnits)
+if (nargin < 4) || isempty(DisplayUnits)
     DisplayUnits = [];
 end
 
@@ -63,7 +63,7 @@ end
 
 % If the display unit is already defined
 if ~isempty(DisplayUnits)
-    if ismember(DataType, {'nirs', '$nirs'})
+    if ismember(lower(DataType), {'nirs', '$nirs'})
         if ~isempty(strfind(DisplayUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, DisplayUnits);
         elseif ~isempty(DisplayUnits) && ~isempty(strfind(DisplayUnits, 'cm'))
