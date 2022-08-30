@@ -63,7 +63,7 @@ end
 
 % If the display unit is already defined
 if ~isempty(DisplayUnits)
-    if ismember(lower(DataType), {'nirs', '$nirs'})
+    if ismember(lower(DataType), {'nirs', '$nirs','nirs-src'})
         if ~isempty(strfind(DisplayUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, DisplayUnits);
         elseif ~isempty(DisplayUnits) && ~isempty(strfind(DisplayUnits, 'cm'))
@@ -118,8 +118,8 @@ else
                 valUnits = 'No units';
             end
         case  'nirs-src'
-            if ~isempty(strfind(lower(FileName), 'hb')) 
-                 [valFactor, valUnits] = GetSIFactor(val, '\mumol.l-1');
+            if ~isempty(DisplayUnits)
+                 [valFactor, valUnits] = GetSIFactor(val,  DisplayUnits);
             else
                  [valFactor, valUnits] = GetExponent(val);
             end     
@@ -218,7 +218,7 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     
     
     [unit, modifier] = getUnit(originalUnit);
-    if abs(val) < eps
+    if abs(val) > 10^-2
         valFactor = 1;
         valUnits = originalUnit;
         return
@@ -239,7 +239,7 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     idp = find(adj(idx)==vpw);
     
     valFactor = 10^(- vpw(idp));
-    valUnits  = sprintf('%s%s',pfs{idp + modifier}, unit);
+    valUnits  = sprintf('%s%s',pfs{idp-1}, unit);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
 function adj = n2pAdjust(pwr,dPw)
