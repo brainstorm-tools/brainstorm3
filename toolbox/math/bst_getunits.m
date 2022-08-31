@@ -36,7 +36,7 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 %          Edouard Delaire, 2021
 
 % Parse inputs
-if (nargin <= 4) || isempty(DisplayUnits)
+if (nargin < 4) || isempty(DisplayUnits)
     DisplayUnits = [];
 end
 
