@@ -66,10 +66,10 @@ if ~isempty(DisplayUnits)
     if ismember(lower(DataType), {'nirs', '$nirs','nirs-src'})
         if ~isempty(strfind(DisplayUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, DisplayUnits);
-        elseif ~isempty(DisplayUnits) && ~isempty(strfind(DisplayUnits, 'cm'))
+        elseif ~isempty(strfind(DisplayUnits, 'cm'))
             valFactor = 1;
             valUnits  = 'cm';
-        elseif ~isempty(DisplayUnits)
+        else
             [valFactor, valUnits] = GetExponent(val);
             valUnits = sprintf('%s(%s)',DisplayUnits,valUnits);
         end
@@ -117,13 +117,7 @@ else
                 valFactor = 1;
                 valUnits = 'No units';
             end
-        case  'nirs-src'
-            if ~isempty(DisplayUnits)
-                 [valFactor, valUnits] = GetSIFactor(val,  DisplayUnits);
-            else
-                 [valFactor, valUnits] = GetExponent(val);
-            end     
-        case {'nirs', '$nirs'}
+        case {'nirs', '$nirs','nirs-src'}
              [valFactor, valUnits] = GetExponent(val);
         case {'results', 'sources', 'source'}
             % Results in Amper.meter (display in picoAmper.meter)
