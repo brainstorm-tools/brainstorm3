@@ -1888,7 +1888,8 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         'nComponents',   [], ...
         'nAvg',          1, ...
         'Leff',          1, ...
-        'Freqs',         []);
+        'Freqs',         [], ...
+        'DisplayUnits',  []);
     % Find file in database
     [sStudy, sInput.iStudy, iFile, sInput.DataType] = bst_get('AnyFile', FileName);
     
@@ -1926,6 +1927,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.nComponents = sMat.nComponents;
         sInput.nAvg        = sMat.nAvg;
         sInput.Leff        = sMat.Leff;
+        sInput.DisplayUnits= sMat.DisplayUnits;
         % If only non-All scouts: use just the scouts labels, if not use the full description string
         sScouts = sMat.Atlas.Scouts;
         if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
@@ -2149,6 +2151,9 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.Leff = sMat.Leff;
     else
         sInput.Leff = 1;
+    end
+    if isfield(sMat, 'DisplayUnits') && ~isempty(sMat.DisplayUnits)
+        sInput.DisplayUnits = sMat.DisplayUnits;
     end
     % Count output signals
     if ~isempty(sInput.ImagingKernel) 
