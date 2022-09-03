@@ -1114,6 +1114,24 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                             end
                         end
                     end
+                % CTRL+H : Head points
+                case 'h'
+                    if ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ...
+                            ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc) && ~strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Type, 'Topography')
+                        % Are head points visible
+                        hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
+                        isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
+                        % Are head points color coded by distance
+                        isColorDist = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat');
+                        % Cycle between three modes: Hide, Show plain, Show color coded 
+                        if isVisible && isColorDist
+                            ViewHeadPoints(hFig, 0, 0);
+                        elseif isVisible
+                            ViewHeadPoints(hFig, 1, 1);
+                        else
+                            ViewHeadPoints(hFig, 1, 0);
+                        end
+                    end
                 % CTRL+I : Save as image
                 case 'i'
                     if ismember('control', keyEvent.Modifier)
@@ -1242,7 +1260,7 @@ function ResetView(hFig)
     % Get axes
     hAxes = findobj(hFig, 'Tag', 'Axes3D');
     % Reset zoom
-    zoom(hAxes, 'out');    
+    zoom(hAxes, 'out');
     % 2D LAYOUT: separate function
     if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.SubType, '2DLayout')
         GlobalData.DataSet(iDS).Figure(iFig).Handles.DisplayFactor = 1;
@@ -1736,6 +1754,23 @@ function DisplayFigurePopup(hFig)
                 gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
             end
         end
+
+        % Show Head points
+        isHeadPoints = ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc);
+        if isHeadPoints && ~strcmpi(FigureType, 'Topography')
+            jMenuChannels.addSeparator();
+            % Are head points visible
+            hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
+            isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
+            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible));
+            jItem.setSelected(isVisible);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_MASK));
+            % Are head points color coded by distance
+            isColorDist = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat');
+            jItem = gui_component('CheckBoxMenuItem', jMenuChannels, [], 'Color head points by distance', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, isVisible, ~isColorDist));
+            jItem.setSelected(isColorDist);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_MASK));
+        end
     end
     
     % ==== MENU: MONTAGE ====
@@ -1940,16 +1975,7 @@ function DisplayFigurePopup(hFig)
         isAxis = ~isempty(findobj(hFig, 'Tag', 'AxisXYZ'));
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View axis', IconLoader.ICON_AXES, [], @(h,ev)ViewAxis(hFig, ~isAxis));
         jItem.setSelected(isAxis);
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_MASK)); 
-        % Show Head points
-        isHeadPoints = ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc);
-        if isHeadPoints && ~strcmpi(FigureType, 'Topography')
-            % Are head points visible
-            hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
-            isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'View head points', IconLoader.ICON_CHANNEL, [], @(h,ev)ViewHeadPoints(hFig, ~isVisible));
-            jItem.setSelected(isVisible);
-        end
+        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, KeyEvent.CTRL_MASK));
         jMenuFigure.addSeparator();
         % Change background color
         gui_component('MenuItem', jMenuFigure, [], 'Change background color', IconLoader.ICON_COLOR_SELECTION, [], @(h,ev)bst_figures('SetBackgroundColor', hFig));
@@ -3685,8 +3711,12 @@ end
 
 
 %% ===== VIEW HEAD POINTS =====
-function ViewHeadPoints(hFig, isVisible)
+function ViewHeadPoints(hFig, isVisible, isColorDist)
     global GlobalData;
+    % Parse inputs
+    if (nargin < 3) || isempty(isColorDist)
+        isColorDist = 0;
+    end
     % Get figure description
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
     if isempty(iDS)
@@ -3721,9 +3751,39 @@ function ViewHeadPoints(hFig, isVisible)
     % If head points graphic objects already exist: set the "Visible" property
     if ~isempty(hHeadPointsMarkers)
         if isVisible
-            set([hHeadPointsMarkers hHeadPointsLabels], 'Visible', 'on');
+            set([hHeadPointsMarkers(:)' hHeadPointsLabels(:)'], 'Visible', 'on');
         else
-            set([hHeadPointsMarkers hHeadPointsLabels], 'Visible', 'off');
+            set([hHeadPointsMarkers(:)' hHeadPointsLabels(:)'], 'Visible', 'off');
+        end
+        % Toggle color modes
+        ColormapInfo = getappdata(hFig, 'Colormap');
+        ColormapType = 'stat1';
+        if isColorDist && ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+            % Color points according to distance to surface
+            % Get selected surface
+            [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+            if ~isempty(sSurf) && isfield(sSurf, 'Vertices') && ~isempty(sSurf.Vertices)
+                if ~ismember(ColormapType, ColormapInfo.AllTypes)
+                    % Add missing colormap (color was toggled after points were displayed)
+                    bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+                    ColormapInfo = getappdata(hFig, 'Colormap');
+                    ColormapChangedCallback(iDS, iFig);
+                end
+                % Compute the distance
+                Dist = bst_surfdist(get(hHeadPointsMarkers, 'Vertices'), sSurf.Vertices, sSurf.Faces);
+                set(hHeadPointsMarkers, 'CData', Dist * 1000, ...
+                    'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
+                if strcmpi(ColormapInfo.Type, ColormapType)
+                    bst_colormaps('SetColorbarVisible', hFig, 1);
+                    bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
+                end
+            end
+        elseif ~isColorDist && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+            % Conventional fixed color
+            set(hHeadPointsMarkers, 'MarkerFaceColor', [.3 1 .3], 'MarkerEdgeColor', [.4 .7 .4]);
+            if strcmpi(ColormapInfo.Type, ColormapType)
+                bst_colormaps('SetColorbarVisible', hFig, 0);
+            end
         end
     % If head points objects were not created yet: create them
     elseif isVisible
@@ -3801,17 +3861,38 @@ function ViewHeadPoints(hFig, isVisible)
         end
         % Plot extra head points
         if ~isempty(iExtra)
-            % Display markers
-            line(digLoc(iExtra,1), digLoc(iExtra,2), digLoc(iExtra,3), ...
+            % Color code points by distance
+            if isColorDist
+                % Get selected surface
+                [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+                % Compute the distance
+                Dist = bst_surfdist(digLoc(iExtra, :), sSurf.Vertices, sSurf.Faces);
+                CData = Dist * 1000; % mm
+                MarkerFaceColor = 'flat';
+                MarkerEdgeColor = 'flat';
+                ColormapType = 'stat1';
+                bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+            else
+                CData = 'w'; % any color, not displayed
+                MarkerFaceColor = [.3 1 .3];
+                MarkerEdgeColor = [.4 .7 .4];
+            end
+            patch(digLoc(iExtra,1), digLoc(iExtra,2), digLoc(iExtra,3), CData, ... 
                 'Parent',          hAxes, ...
                 'LineWidth',       2, ...
-                'LineStyle',       'none', ...
-                'MarkerFaceColor', [.3 1 .3], ...
-                'MarkerEdgeColor', [.4 .7 .4], ...
+                'FaceColor',       'none', ...
+                'EdgeColor',       'none', ...
+                'MarkerFaceColor', MarkerFaceColor, ...
+                'MarkerEdgeColor', MarkerEdgeColor, ...
                 'MarkerSize',      6, ...
                 'Marker',          'o', ...
                 'UserData',        iExtra, ...
                 'Tag',             'HeadPointsMarkers');
+            if isColorDist
+                ColormapChangedCallback(iDS, iFig);
+%                 bst_colormaps('SetColorbarVisible', hFig, 1);
+%                 bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
+            end
         end
     end
 end
@@ -3837,7 +3918,7 @@ function ViewAxis(hFig, isVisible)
         text(0, d+0.002, 0, 'Y', 'Color', [0 1 0], 'Parent', hAxes, 'Tag', 'AxisXYZ');
         text(0, 0, d+0.002, 'Z', 'Color', [0 0 1], 'Parent', hAxes, 'Tag', 'AxisXYZ');
         % Enforce camera target at (0,0,0)
-        camtarget(hAxes, [0,0,0]);
+        % camtarget(hAxes, [0,0,0]);
     else
         hAxisXYZ = findobj(hAxes, 'Tag', 'AxisXYZ');
         if ~isempty(hAxisXYZ)
