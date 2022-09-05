@@ -185,6 +185,8 @@ switch (FileFormat)
         [DataMat, ChannelMat] = in_data_ascii(DataFile);
     case 'EEG-BESA'
         [DataMat, ChannelMat] = in_data_besa(DataFile);
+    case 'EEG-BIOPAC'
+        [DataMat, ChannelMat] = in_data_biopac(DataFile);
     case 'EEG-BRAINVISION'
         DataMat = in_data_ascii(DataFile);
     case 'EEG-CARTOOL'
