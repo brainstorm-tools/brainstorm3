@@ -63,13 +63,13 @@ end
 
 % If the display unit is already defined
 if ~isempty(DisplayUnits)
-    if ismember(DataType, {'nirs', '$nirs'})
+    if ismember(lower(DataType), {'nirs', '$nirs','nirs-src'})
         if ~isempty(strfind(DisplayUnits, 'mol'))
             [valFactor, valUnits] = GetSIFactor(val, DisplayUnits);
-        elseif ~isempty(DisplayUnits) && ~isempty(strfind(DisplayUnits, 'cm'))
+        elseif ~isempty(strfind(DisplayUnits, 'cm'))
             valFactor = 1;
             valUnits  = 'cm';
-        elseif ~isempty(DisplayUnits)
+        else
             [valFactor, valUnits] = GetExponent(val);
             valUnits = sprintf('%s(%s)',DisplayUnits,valUnits);
         end
@@ -117,13 +117,7 @@ else
                 valFactor = 1;
                 valUnits = 'No units';
             end
-        case  'nirs-src'
-            if ~isempty(strfind(lower(FileName), 'hb')) 
-                 [valFactor, valUnits] = GetSIFactor(val, '\mumol.l-1');
-            else
-                 [valFactor, valUnits] = GetExponent(val);
-            end     
-        case {'nirs', '$nirs'}
+        case {'nirs', '$nirs','nirs-src'}
              [valFactor, valUnits] = GetExponent(val);
         case {'results', 'sources', 'source'}
             % Results in Amper.meter (display in picoAmper.meter)
@@ -218,7 +212,7 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     
     
     [unit, modifier] = getUnit(originalUnit);
-    if abs(val) < eps
+    if abs(val) > 10^-2
         valFactor = 1;
         valUnits = originalUnit;
         return
@@ -239,7 +233,7 @@ function [valFactor, valUnits] = GetSIFactor(val, originalUnit)
     idp = find(adj(idx)==vpw);
     
     valFactor = 10^(- vpw(idp));
-    valUnits  = sprintf('%s%s',pfs{idp + modifier}, unit);
+    valUnits  = sprintf('%s%s',pfs{idp-1}, unit);
 end
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%num2sip
 function adj = n2pAdjust(pwr,dPw)
