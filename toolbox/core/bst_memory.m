@@ -67,7 +67,8 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020; Martin Cousineau, 2019
+% Authors: Francois Tadel, 2008-2022
+%          Martin Cousineau, 2019
 
 eval(macro_method);
 end
@@ -670,6 +671,18 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
                 isRetry = 0;
             end
         end
+
+        % Check version of Nicolet object (after change introduced on 5-Sep-2022)
+        NICOLET_VER = 2;
+        if strcmpi(sFile.format, 'EEG-NICOLET') && (~isfield(sFile.header, 'objversion') || isempty(sFile.header.objversion) || (sFile.header.objversion < NICOLET_VER))
+            disp(['BST> Updating outdated NicoletFile object: ', DataFile]);
+            % Update NicoletFile object
+            sFile.header.obj = NicoletFile(sFile.filename);
+            sFile.header.objversion = NICOLET_VER;
+            % Save modifications in file
+            DataMat.F = sFile;
+            bst_save(file_fullpath(DataFile), DataMat, 'v6', 1);
+        end
     else
         MeasuresMat = in_bst_data(DataFile, 'Time', 'ChannelFlag', 'ColormapType', 'Events', 'DisplayUnits');
         Time = MeasuresMat.Time;
@@ -734,7 +747,6 @@ function [iDS, ChannelFile] = LoadDataFile(DataFile, isReloadForced, isTimeCheck
         else
             GlobalData.DataSet(iDS).Measures.DataType    = Measures.DataType;
             GlobalData.DataSet(iDS).Measures.ChannelFlag = Measures.ChannelFlag;
-            % GlobalData.DataSet(iDS).Measures.sFile       = Measures.sFile;
             if ~isempty(Measures.sFile) && isempty(GlobalData.DataSet(iDS).Measures.sFile)
                 GlobalData.DataSet(iDS).Measures.sFile = Measures.sFile;
             end
