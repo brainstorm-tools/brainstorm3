@@ -366,6 +366,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     
+    % === I/O: XDF ===
+    PlugDesc(end+1)              = GetStruct('xdf');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/xdf-modules/xdf-Matlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/xdf-modules/xdf-Matlab';
+    PlugDesc(end).TestFile       = 'load_xdf.m';
+    PlugDesc(end).ReadmeFile     = 'readme.md';
+    PlugDesc(end).CompiledStatus = 2;
+
     % === SIMULATION: SIMMEEG ===
     PlugDesc(end+1)              = GetStruct('simmeeg');
     PlugDesc(end).Version        = 'github-master';

@@ -2,6 +2,7 @@ September 2022
 - Registration: Color-coding of digitized head points based on distance to scalp
 - IO: Updated Nicolet EEG reader
 - IO: Support for BIOPAC AcqKnowledge .acq recordings
+- IO: Support for XDF EEG recordings
 --------------------------------------------------------------
 August 2022
 - Anatomy: Project scouts between hemispheres (FreeSurfer option contrasurfreg)
