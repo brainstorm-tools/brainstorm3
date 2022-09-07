@@ -1027,7 +1027,7 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                     jCheck.setSelected(isSelected);
                     % If class controller not selected, toggle off class
                     if ~isSelected && isfield(option, 'Controller') && ~isempty(option.Controller)
-                        ClassesToToggleOff{end + 1} = option.Controller;
+                        ClassesToToggleOff{end+1} = option.Controller;
                     end
                 case 'radio'
                     jButtonGroup = javax.swing.ButtonGroup();
@@ -1046,6 +1046,14 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jCheck.setSelected(strcmpi(option.Value, option.Comment{2,iRadio}));
                         jButtonGroup.add(jCheck);
                         constr = 'br';
+                    end
+                    % If class controller not selected, toggle off class
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
+                        for f = fieldnames(option.Controller)'
+                            if ~strcmpi(f{1}, option.Value) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value) && isequal(option.Controller.(option.Value), option.Controller.(f{1})))
+                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                            end
+                        end
                     end
                 case 'radio_line'
                     jButtonGroup = javax.swing.ButtonGroup();
@@ -1068,8 +1076,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
                         jButtonGroup.add(jCheck);
                     end
                     % If class controller not selected, toggle off class
-                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller) && isfield(option.Controller, option.Value) && ~isempty(option.Controller.(option.Value))
-                        ClassesToToggleOff{end + 1} = setdiff(fieldnames(option.Controller), option.Value);
+                    if isfield(option, 'Controller') && ~isempty(option.Controller) && isstruct(option.Controller)
+                        for f = fieldnames(option.Controller)'
+                            if ~strcmpi(f{1}, option.Value) && ~isempty(option.Controller.(f{1})) && ~(isfield(option.Controller, option.Value) && isequal(option.Controller.(option.Value), option.Controller.(f{1})))
+                                ClassesToToggleOff{end+1} = option.Controller.(f{1});
+                            end
+                        end
                     end
                 case 'combobox'
                     gui_component('label', jPanelOpt, [], ['<HTML>', option.Comment, '&nbsp;&nbsp;']);
@@ -2126,8 +2138,12 @@ function [bstPanel, panelName] = CreatePanel(sFiles, sFiles2, FileTimeVector)
             opt = GlobalData.Processes.Current(iProcess).options.(optName);
             if strcmp(optType, 'checkbox') && ~isempty(opt.Controller)
                 ToggleClass(opt.Controller, value);
-            elseif strcmp(optType, 'radio_linelabel') && ~isempty(opt.Controller) && isstruct(opt.Controller) && isfield(opt.Controller, opt.Value) && ~isempty(opt.Controller.(opt.Value))
+            elseif ismember(optType, {'radio_label', 'radio_linelabel'}) && ~isempty(opt.Controller) && isstruct(opt.Controller)
                 for cl = fieldnames(opt.Controller)'
+                    % Ignore a disabled class that is associated with 2 options, one selected and one not selected
+                    if ~strcmp(cl{1}, value) && isfield(opt.Controller, value) && isequal(opt.Controller.(cl{1}), opt.Controller.(value))
+                        continue
+                    end
                     ToggleClass(opt.Controller.(cl{1}), strcmp(cl{1}, value));
                 end
             end
