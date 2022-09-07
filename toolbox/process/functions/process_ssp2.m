@@ -24,7 +24,8 @@ function varargout = process_ssp2( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, Elizabeth Bock, 2011-2018
+% Authors: Francois Tadel, 2011-2022
+%          Elizabeth Bock, 2011-2018
 
 eval(macro_method);
 end
@@ -736,6 +737,34 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
                 proj.CompMask(SelectComp) = 1;
             end
             
+        % === ICA: PICARD ===
+        case 'ICA_picard'
+            bst_progress('text', 'Calling external function: picard()...');
+            % Run decomposition
+            if ~isempty(nIcaComp) && (nIcaComp ~= 0)
+                [Y,W] = picard(F, 'pca', nIcaComp);
+            else
+                [Y,W] = picard(F);
+            end
+            % Error handling
+            if isempty(W)
+                bst_report('Error', sProcess, sInputsA, 'Function "picard" did not return any results.');
+                return;
+            end
+            % Fill with the missing channels with zeros
+            Wall = zeros(length(ChannelMat.Channel), size(W,1));
+            Wall(iChannels,:) = W';
+            % Build projector structure
+            proj = db_template('projector');
+            proj.Components = Wall;
+            proj.CompMask   = zeros(size(Wall,2), 1);   % No component selected by default
+            proj.Status     = 1;
+            proj.SingVal    = 'ICA';
+            % Apply component selection (if set explicetly)
+            if ~isempty(SelectComp)
+                proj.CompMask(SelectComp) = 1;
+            end
+
 %         % === FASTICA ===
 %         case 'ICA_fastica'
 %             bst_progress('text', 'Calling external function: fastica()...');

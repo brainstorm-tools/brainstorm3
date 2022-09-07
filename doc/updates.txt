@@ -3,6 +3,7 @@ September 2022
 - IO: Updated Nicolet EEG reader
 - IO: Support for BIOPAC AcqKnowledge .acq recordings
 - IO: Support for XDF EEG recordings
+- ICA: Integration of Picard algorithm
 --------------------------------------------------------------
 August 2022
 - Anatomy: Project scouts between hemispheres (FreeSurfer option contrasurfreg)
