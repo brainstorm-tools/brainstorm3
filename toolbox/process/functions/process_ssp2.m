@@ -740,6 +740,11 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         % === ICA: PICARD ===
         case 'ICA_picard'
             bst_progress('text', 'Calling external function: picard()...');
+            % Install picard plugin
+            [isInstalled, errMsg] = bst_plugin('Install', 'picard');
+            if ~isInstalled
+                error(errMsg);
+            end
             % Run decomposition
             if ~isempty(nIcaComp) && (nIcaComp ~= 0)
                 [Y,W] = picard(F, 'pca', nIcaComp);
