@@ -80,6 +80,8 @@ function GUI = CreateWindow() %#ok<DEFNU>
     jBstFrame = java_create('javax.swing.JFrame');
     % Set window icon
     jBstFrame.setIconImage(IconLoader.ICON_APP.getImage());
+    % Set windows title
+    jBstFrame.setTitle('Brainstorm');
     % Set closing callback
     jBstFrame.setDefaultCloseOperation(jBstFrame.DO_NOTHING_ON_CLOSE);
     java_setcb(jBstFrame, 'WindowClosingCallback', @closeWindow_Callback);
