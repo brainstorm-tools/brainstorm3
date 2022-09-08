@@ -216,15 +216,15 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.Comment     = ['UltraMegaSort2000 Spike Sorting' commentSuffix];
     DataMat.DataType    = 'raw';
     DataMat.Device      = 'ultramegasort2000';
-    DataMat.Name        = NewBstFile;
-    DataMat.Parent      = outputPath;
+    DataMat.Name        = file_short(NewBstFile);
+    DataMat.Parent      = strrep(outputPath, ProtocolInfo.STUDIES, '');
     DataMat.RawFile     = sInput.FileName;
     DataMat.Spikes      = struct();
     % Build spikes structure
     spikes = dir(bst_fullfile(outputPath, 'times_raw_elec*.mat'));
     spikes = sort_nat({spikes.name});
     for iSpike = 1:length(spikes)
-        DataMat.Spikes(iSpike).Path = outputPath;
+        DataMat.Spikes(iSpike).Path = strrep(outputPath, ProtocolInfo.STUDIES, '');
         DataMat.Spikes(iSpike).File = spikes{iSpike};
         if exist(bst_fullfile(outputPath, DataMat.Spikes(iSpike).File), 'file') ~= 2
             DataMat.Spikes(iSpike).File = '';
@@ -276,12 +276,14 @@ function SaveBrainstormEvents(SpikeMat, outputFile, eventNamePrefix)
         end
     end
     
+    % Get protocol info
+    ProtocolInfo = bst_get('ProtocolInfo');
     for iElectrode = 1:numElectrodes
         newEvents = panel_spikes(...
             'CreateSpikeEvents', ...
             SpikeMat.RawFile, ...
             SpikeMat.Device, ...
-            bst_fullfile(SpikeMat.Parent, SpikeMat.Spikes(iElectrode).File), ...
+            bst_fullfile(ProtocolInfo.STUDIES, SpikeMat.Parent, SpikeMat.Spikes(iElectrode).File), ...
             SpikeMat.Spikes(iElectrode).Name, ...
             1, eventNamePrefix);
         
@@ -295,7 +297,7 @@ function SaveBrainstormEvents(SpikeMat, outputFile, eventNamePrefix)
         end
     end
 
-    save(bst_fullfile(SpikeMat.Parent, outputFile),'events');
+    save(bst_fullfile(ProtocolInfo.STUDIES, SpikeMat.Parent, outputFile),'events');
 end
 
 

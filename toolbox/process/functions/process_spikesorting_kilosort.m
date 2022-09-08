@@ -135,6 +135,8 @@ function OutputFiles = Run(sProcess, sInput)
     end
     
     % ===== LOAD INPUTS =====
+    % Get protocol info
+    ProtocolInfo = bst_get('ProtocolInfo');
     % Load input files
     DataMat = in_bst_data(sInput.FileName, 'F');
     sFile = DataMat.F;
@@ -327,7 +329,7 @@ function OutputFiles = Run(sProcess, sInput)
             continue;
         end
         curStruct = struct();
-        curStruct.Path = outputPath;
+        curStruct.Path = strrep(outputPath, ProtocolInfo.STUDIES, '');
         curStruct.File = fetFile.name;
         curStruct.Name = Montages{iMontage};
         curStruct.Mod  = 0;
@@ -354,10 +356,10 @@ function OutputFiles = Run(sProcess, sInput)
     DataMat_spikesorter.Comment  = ['KiloSort Spike Sorting' commentSuffix];
     DataMat_spikesorter.DataType = 'raw';%'ephys';
     DataMat_spikesorter.Device   = 'KiloSort';
-    DataMat_spikesorter.Parent   = outputPath;
+    DataMat_spikesorter.Parent   = strrep(outputPath, ProtocolInfo.STUDIES, '');
     DataMat_spikesorter.Spikes   = spikes;
     DataMat_spikesorter.RawFile  = sInput.FileName;
-    DataMat_spikesorter.Name     = NewBstFile;
+    DataMat_spikesorter.Name     = file_short(NewBstFile);
     % Add history field
     DataMat_spikesorter = bst_history('add', DataMat_spikesorter, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
     % Save file on hard drive
@@ -517,6 +519,8 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     % Information about the Neuroscope file can be found here:
     % http://neurosuite.sourceforge.net/formats.html
 
+    % Get protocol info
+    ProtocolInfo = bst_get('ProtocolInfo');
     % Load necessary files
     ChannelMat = in_bst_channel(bst_get('ChannelFileForStudy', SpikeSortedMat.RawFile));
     DataMat = in_bst_data(SpikeSortedMat.RawFile, 'F');
@@ -525,8 +529,8 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     [tmp, study] = fileparts(SpikeSortedMat.Spikes(iMontage).File);
     [tmp, study] = fileparts(study);
     sMontage = num2str(iMontage);
-    clu = load(bst_fullfile(SpikeSortedMat.Parent, [study '.clu.' sMontage]));
-    fet = dlmread(bst_fullfile(SpikeSortedMat.Parent, [study '.fet.' sMontage]));
+    clu = load(bst_fullfile(ProtocolInfo.STUDIES, SpikeSortedMat.Parent, [study '.clu.' sMontage]));
+    fet = dlmread(bst_fullfile(ProtocolInfo.STUDIES, SpikeSortedMat.Parent, [study '.fet.' sMontage]));
 
     % Get the channels that belong in the selected montage
     [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);
