@@ -125,7 +125,7 @@ switch lower(src)
                 interp3(sMri.NCS.y(:,:,:,2), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
                 interp3(sMri.NCS.y(:,:,:,3), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN)] ./ 1000;
             % Convert World => MRI
-            P = world2mri * [double(P_world); 1];
+            P = world2mri * [double(P_world); ones(1, size(P_world,2))];
             RT1 = eye(4);
         elseif isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
             RT1 = inv([sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1]);
