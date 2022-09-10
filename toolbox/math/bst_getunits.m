@@ -69,8 +69,15 @@ if ~isempty(DisplayUnits)
         elseif ~isempty(strfind(DisplayUnits, 'cm'))
             valFactor = 1;
             valUnits  = 'cm';
+        elseif ~isempty(strfind(DisplayUnits, 'delta'))
+            [valFactor, valUnits] = GetExponent(val);
+            valUnits = sprintf('%s(%s)',strrep(DisplayUnits,'delta ','\Delta'),valUnits);
         else
             [valFactor, valUnits] = GetExponent(val);
+            startIndex = regexp(DisplayUnits,'\(10\^{-?\d+}\)');
+            if ~isempty(startIndex) 
+                DisplayUnits = DisplayUnits(1:startIndex-1);
+            end
             valUnits = sprintf('%s(%s)',DisplayUnits,valUnits);
         end
     else
