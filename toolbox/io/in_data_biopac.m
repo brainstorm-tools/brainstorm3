@@ -1,12 +1,9 @@
 function [DataMat, ChannelMat] = in_data_biopac(DataFile)
-% IN_DATA_BIOPAC: Read BIOPAC AcqKnowledge .acq files.
-%
-% USAGE:  OutputData = in_data_biopac( DataFile )
-%
-% INPUT:
-%     - DataFile : Full path to a recordings file.
-% OUTPUT: 
-%     - DataMat : Brainstorm data (recordings) structure
+% IN_DATA_BIOPAC: Read BIOPAC AcqKnowledge .acq files (version <= 4.1)
+% 
+% This function uses load_acq.m, which supports only versions of AcqKnowledge <= 4.1.
+% For newer versions of AcqKnowledge, convert the files to .mat with bioread first.
+% https://github.com/uwmadison-chm/bioread
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
