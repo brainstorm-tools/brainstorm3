@@ -23,6 +23,7 @@ function varargout = process_source_flat( varargin )
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2013-2015
+%          Marc Lalancette, 2022
 
 eval(macro_method);
 end
@@ -48,8 +49,9 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA</B>: First mode of svd(x,y,z)<BR>(requires pre-computed data covariance across epochs)'};
-    sProcess.options.method.Type    = 'radio';
+                                       '<B>PCA</B>: First mode of svd(x,y,z)<BR>(requires pre-computed data covariance across epochs)'; ...
+                                       'norm', 'pcag'};
+    sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 1;
 end
 
@@ -65,8 +67,9 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = cell(1, numel(sInputs));
     % Get options
     switch(sProcess.options.method.Value)
-        case 1, Method = 'rms';  fileTag = 'norm';
-        case 2, Method = 'pcag';  fileTag = 'pca';
+        case {1, 'norm'}, Method = 'rms';  fileTag = 'norm';
+        case {2, 'pca'},  Method = 'pca';  fileTag = 'pca';
+        case 'pcag',      Method = 'pcag'; fileTag = 'pcag';
     end
     for iInput = 1:numel(sInputs)
         % ===== PROCESS INPUT =====
@@ -176,16 +179,14 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy)
                         permute(Ker, [1,3,4,2])), 2) ); % (nComp, nComp, nSource)
                 else
                     SourceCov = [];
-                    %SourceCov = ResultsMat.ImagingKernel * DataCov.NoiseCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel) * ResultsMat.ImagingKernel';
                 end
             else
                 SourceCov = [];
             end
-            [ResultsMat.(Field), GridAtlas, RowNames, Comp] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], SourceCov);
+            [ResultsMat.(Field), GridAtlas, RowNames, PcaOrient] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], SourceCov);
             % Resulting kernel
-            if ~isempty(Comp) && ~isempty(Ker)
-                ResultsMat.ImagingKernel = squeeze(sum(bsxfun(@times, Ker, Comp), 1)); % nSource, nChan
-                %ResultsMat.Flattening = Comp'; % nSource, nComp
+            if ~isempty(PcaOrient) && ~isempty(Ker)
+                ResultsMat.ImagingKernel = squeeze(sum(bsxfun(@times, Ker, PcaOrient), 1)); % nSource, nChan
             else
                 ResultsMat.ImagingKernel = [];
             end
@@ -199,7 +200,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy)
     switch(Method)
         case 'rms',  fileTag = 'norm';
         case 'pca',  fileTag = 'pca';
-        case 'pcag',  fileTag = 'pca';
+        case 'pcag',  fileTag = 'pcag';
     end
     % Reset the data file initial path
     if ~isempty(ResultsMat.DataFile)

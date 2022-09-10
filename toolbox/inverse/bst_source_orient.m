@@ -1,7 +1,7 @@
-function [SourceValues, GridAtlas, RowNames, Comp] = bst_source_orient(iVertices, nComponents, GridAtlas, SourceValues, Function, DataType, RowNames, SourceCov)
+function [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVertices, nComponents, GridAtlas, SourceValues, Function, DataType, RowNames, SourceCov)
 % BST_SOURCE_ORIENT: Constrain source orientation for an unconstrained or mixed source model.
 %
-% USAGE:  SourceValues = bst_source_orient(iVertices=[], nComponents, GridAtlas, SourceValues, Function, DataType=[], RowNames=[])
+% USAGE:  [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVertices=[], nComponents, GridAtlas, SourceValues, Function, DataType=[], RowNames=[], SourceCov=[])
 %
 % INPUT: 
 %    - iVertices    : Array of vertex indices of the source space, to reference to rows in Results.GridLoc (volume) or Surface.Vertices (surface)
@@ -12,14 +12,16 @@ function [SourceValues, GridAtlas, RowNames, Comp] = bst_source_orient(iVertices
 %                     GridAtlas.Scouts(i).Region(2) is the source type (V=volume, S=surface, D=dba, X=exclude)
 %                     GridAtlas.Scouts(i).Region(3) is the orientation constrain (U=unconstrained, C=contrained, L=loose)
 %    - SourceValues : [Nvertices x Nsensors] or [Nvertices x Ntime], source values
-%    - Function     : Name of the function to apply to group multiple components {'sum', 'sum_power', 'rms', 'max', 'pca', 'mean'}
+%    - Function     : Name of the function to apply to group multiple components {'sum', 'sum_power', 'rms', 'max', 'pca', 'pcag', 'mean'}
 %    - DataType     : Type of data being processed {'data', 'results', 'scouts', 'matrix'}
 %    - RowNames     : Description of signals being processed: {empty, array of doubles, array of cells}
+%    - SourceCov    : [Nvertices x Nvertices] Covariance matrix between rows of SourceValues. Used with Function='pcag' only.
 %
 % OUTPUT: 
 %    - SourceValues : Constrained source values
 %    - GridAtlas    : Modified atlas (unconstrained regions transformed into constrained regions)
 %    - RowNames     : Description of the new list of signals
+%    - PcaOrient    : [3 x Nvertices] Direction vector of the first mode of the PCA/PCAg, for each source
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -39,11 +41,12 @@ function [SourceValues, GridAtlas, RowNames, Comp] = bst_source_orient(iVertices
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014
+% Authors: Francois Tadel, 2014-2022
+%          Marc Lalancette, 2022
 
 % Parse inputs
 if (nargin < 8)
-	SourceCov = [];
+    SourceCov = [];
 end
 if (nargin < 7) || isempty(RowNames)
 	RowNames = [];
@@ -63,6 +66,8 @@ end
 if (nargin < 2) || isempty(nComponents)
 	error('Invalid call');
 end
+% Initialize return values
+PcaOrient = [];
 
 % === MIXED SOURCE MODELS ===
 if (nComponents == 0)
@@ -131,14 +136,14 @@ else
             SourceValues = SourceValues(iVertSource,:,:,:);
         case 2
             % Apply grouping function
-            [SourceValues, Comp] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], Function, SourceCov);
+            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], Function, SourceCov);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
                 RowNames = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceValues,1), iVertSource);
             end
         case 3
             % Apply grouping function
-            [SourceValues, Comp] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function, SourceCov);
+            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function, SourceCov);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
                 RowNames = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceValues,1), iVertSource);                
@@ -156,11 +161,8 @@ end
 
 
 %% ====== APPLY FUNCTION =====
-function [Values, Comp] = ApplyFunction(Values, i1, i2, i3, Function, SourceCov)
-    if nargin < 6
-        SourceCov = [];
-    end
-    Comp = [];
+function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, SourceCov)
+    PcaOrient = [];
     switch (Function)
         case 'max'
             if ~isempty(i3)
@@ -206,16 +208,16 @@ function [Values, Comp] = ApplyFunction(Values, i1, i2, i3, Function, SourceCov)
             end
         case 'pca'
             if ~isempty(i3)
-                [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pca', 0);
+                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], 3, 'pca', 0);
             else
-                [Values, Comp] = bst_scout_value(Values, 'none', [], 2, 'pca', 0);
+                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], 2, 'pca', 0);
             end
         case 'pcag'
             % SourceCov is the source covariance matrices, size (nComp,nComp,nSource).
             if ~isempty(i3)
-                [Values, Comp] = bst_scout_value(Values, 'none', [], 3, 'pcag', 0, [], SourceCov);
+                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], 3, 'pcag', 0, [], SourceCov);
             else
-                [Values, Comp] = bst_scout_value(Values, 'none', [], 2, 'pcag', 0, [], SourceCov);
+                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], 2, 'pcag', 0, [], SourceCov);
             end
         case 'none'
             % Nothing to do
