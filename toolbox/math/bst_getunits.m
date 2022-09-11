@@ -74,7 +74,7 @@ if ~isempty(DisplayUnits)
             valUnits = sprintf('%s(%s)',strrep(DisplayUnits,'delta ','\Delta'),valUnits);
         else
             [valFactor, valUnits] = GetExponent(val);
-            startIndex = regexp(DisplayUnits,'\(10\^{-?\d+}\)');
+            startIndex = regexp(DisplayUnits,'\(');
             if ~isempty(startIndex) 
                 DisplayUnits = DisplayUnits(1:startIndex-1);
             end
