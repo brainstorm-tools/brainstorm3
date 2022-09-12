@@ -422,7 +422,7 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).Category       = 'Statistics';
     PlugDesc(end).URLzip         = 'https://github.com/pierreablin/picard/archive/refs/heads/master.zip';
     PlugDesc(end).URLinfo        = 'https://github.com/pierreablin/picard';
-    PlugDesc(end).TestFile       = 'fastica.m';
+    PlugDesc(end).TestFile       = 'picard.m';
     PlugDesc(end).ReadmeFile     = 'Contents.m';
     PlugDesc(end).CompiledStatus = 2;
 
