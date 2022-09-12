@@ -33,7 +33,7 @@ function [valScaled, valFactor, valUnits] = bst_getunits( val, DataType, FileNam
 % =============================================================================@
 %
 % Authors: Francois Tadel, 2008-2022
-%          Edouard Delaire, 2021
+%          Edouard Delaire, 2021-2022
 
 % Parse inputs
 if (nargin < 4) || isempty(DisplayUnits)
@@ -69,8 +69,15 @@ if ~isempty(DisplayUnits)
         elseif ~isempty(strfind(DisplayUnits, 'cm'))
             valFactor = 1;
             valUnits  = 'cm';
+        elseif ~isempty(strfind(DisplayUnits, 'delta'))
+            [valFactor, valUnits] = GetExponent(val);
+            valUnits = sprintf('%s(%s)',strrep(DisplayUnits,'delta ','\Delta'),valUnits);
         else
             [valFactor, valUnits] = GetExponent(val);
+            iParent =  find(DisplayUnits == '(');
+            if ~isempty(iParent) 
+                DisplayUnits = DisplayUnits(1:iParent-1);
+            end
             valUnits = sprintf('%s(%s)',DisplayUnits,valUnits);
         end
     else
