@@ -1,4 +1,3 @@
-
 function varargout = process_spikesorting_kilosort( varargin )
 % PROCESS_SPIKESORTING_KILOSORT:
 % This process separates the initial raw signal to nChannels binary signals
@@ -518,8 +517,6 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     % Information about the Neuroscope file can be found here:
     % http://neurosuite.sourceforge.net/formats.html
 
-    % Get protocol info
-    ProtocolInfo = bst_get('ProtocolInfo');
     % Load necessary files
     ChannelMat = in_bst_channel(bst_get('ChannelFileForStudy', SpikeSortedMat.RawFile));
     DataMat = in_bst_data(SpikeSortedMat.RawFile, 'F');
