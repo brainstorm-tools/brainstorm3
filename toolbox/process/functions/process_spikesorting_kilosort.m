@@ -1,3 +1,4 @@
+
 function varargout = process_spikesorting_kilosort( varargin )
 % PROCESS_SPIKESORTING_KILOSORT:
 % This process separates the initial raw signal to nChannels binary signals
@@ -135,8 +136,6 @@ function OutputFiles = Run(sProcess, sInput)
     end
     
     % ===== LOAD INPUTS =====
-    % Get protocol info
-    ProtocolInfo = bst_get('ProtocolInfo');
     % Load input files
     DataMat = in_bst_data(sInput.FileName, 'F');
     sFile = DataMat.F;
@@ -329,7 +328,7 @@ function OutputFiles = Run(sProcess, sInput)
             continue;
         end
         curStruct = struct();
-        curStruct.Path = strrep(outputPath, ProtocolInfo.STUDIES, '');
+        curStruct.Path = file_short(outputPath);
         curStruct.File = fetFile.name;
         curStruct.Name = Montages{iMontage};
         curStruct.Mod  = 0;
@@ -356,7 +355,7 @@ function OutputFiles = Run(sProcess, sInput)
     DataMat_spikesorter.Comment  = ['KiloSort Spike Sorting' commentSuffix];
     DataMat_spikesorter.DataType = 'raw';%'ephys';
     DataMat_spikesorter.Device   = 'KiloSort';
-    DataMat_spikesorter.Parent   = strrep(outputPath, ProtocolInfo.STUDIES, '');
+    DataMat_spikesorter.Parent   = file_short(outputPath);
     DataMat_spikesorter.Spikes   = spikes;
     DataMat_spikesorter.RawFile  = sInput.FileName;
     DataMat_spikesorter.Name     = file_short(NewBstFile);
@@ -529,8 +528,8 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     [tmp, study] = fileparts(SpikeSortedMat.Spikes(iMontage).File);
     [tmp, study] = fileparts(study);
     sMontage = num2str(iMontage);
-    clu = load(bst_fullfile(ProtocolInfo.STUDIES, SpikeSortedMat.Parent, [study '.clu.' sMontage]));
-    fet = dlmread(bst_fullfile(ProtocolInfo.STUDIES, SpikeSortedMat.Parent, [study '.fet.' sMontage]));
+    clu = load(bst_fullfile(file_fullpath(SpikeSortedMat.Parent), [study '.clu.' sMontage]));
+    fet = dlmread(bst_fullfile(file_fullpath(SpikeSortedMat.Parent), [study '.fet.' sMontage]));
 
     % Get the channels that belong in the selected montage
     [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);

@@ -216,7 +216,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.DataType    = 'raw';
     DataMat.Device      = 'waveclus';
     DataMat.Name        = file_short(NewBstFile);
-    DataMat.Parent      = strrep(outputPath, ProtocolInfo.STUDIES, '');
+    DataMat.Parent      = file_short(outputPath);
     DataMat.RawFile     = sInput.FileName;
     DataMat.Spikes      = struct();
     % New channelNames - Without any special characters.
@@ -278,7 +278,7 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
             'CreateSpikeEvents', ...
             sFile.RawFile, ...
             sFile.Device, ...
-            bst_fullfile(ProtocolInfo.STUDIES, sFile.Parent, sFile.Spikes(iElectrode).File), ...
+            bst_fullfile(file_fullpath(sFile.Parent), sFile.Spikes(iElectrode).File), ...
             sFile.Spikes(iElectrode).Name, ...
             1, eventNamePrefix); % Design choice: 0 means the unsupervised spiking events will not be automatically loaded to the link to raw file. They will start appearing only after the users manually spike-sort
                                  %                1 would link them automatically. The problem with that, is that if the users don't finish manual spike-sorting, there is a mix of both.
@@ -292,5 +292,5 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
         end
     end
 
-    save(bst_fullfile(ProtocolInfo.STUDIES, sFile.Parent, outputFile),'events');
+    save(bst_fullfile(file_fullpath(sFile.Parent), outputFile),'events');
 end
