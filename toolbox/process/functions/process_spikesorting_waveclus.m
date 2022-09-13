@@ -215,14 +215,14 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     DataMat.Comment     = ['WaveClus Spike Sorting' commentSuffix];
     DataMat.DataType    = 'raw';
     DataMat.Device      = 'waveclus';
-    DataMat.Name        = NewBstFile;
-    DataMat.Parent      = outputPath;
+    DataMat.Name        = file_short(NewBstFile);
+    DataMat.Parent      = file_short(outputPath);
     DataMat.RawFile     = sInput.FileName;
     DataMat.Spikes      = struct();
     % New channelNames - Without any special characters.
     cleanChannelNames = str_remove_spec_chars({ChannelMat.Channel.Name});
     for iChannel = 1:length(cleanChannelNames)
-        DataMat.Spikes(iChannel).Path = outputPath;
+        DataMat.Spikes(iChannel).Path = file_short(outputPath);
         DataMat.Spikes(iChannel).File = ['times_raw_elec_' cleanChannelNames{iChannel} '.mat'];
         if exist(bst_fullfile(outputPath, DataMat.Spikes(iChannel).File), 'file') ~= 2
             DataMat.Spikes(iChannel).File = '';
@@ -278,7 +278,7 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
             'CreateSpikeEvents', ...
             sFile.RawFile, ...
             sFile.Device, ...
-            bst_fullfile(sFile.Parent, sFile.Spikes(iElectrode).File), ...
+            bst_fullfile(file_fullpath(sFile.Parent), sFile.Spikes(iElectrode).File), ...
             sFile.Spikes(iElectrode).Name, ...
             1, eventNamePrefix); % Design choice: 0 means the unsupervised spiking events will not be automatically loaded to the link to raw file. They will start appearing only after the users manually spike-sort
                                  %                1 would link them automatically. The problem with that, is that if the users don't finish manual spike-sorting, there is a mix of both.
@@ -292,5 +292,5 @@ function SaveBrainstormEvents(sFile, outputFile, eventNamePrefix)
         end
     end
 
-    save(bst_fullfile(sFile.Parent, outputFile),'events');
+    save(bst_fullfile(file_fullpath(sFile.Parent), outputFile),'events');
 end
