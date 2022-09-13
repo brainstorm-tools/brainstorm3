@@ -276,8 +276,6 @@ function SaveBrainstormEvents(SpikeMat, outputFile, eventNamePrefix)
         end
     end
     
-    % Get protocol info
-    ProtocolInfo = bst_get('ProtocolInfo');
     for iElectrode = 1:numElectrodes
         newEvents = panel_spikes(...
             'CreateSpikeEvents', ...
