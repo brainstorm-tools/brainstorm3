@@ -1467,7 +1467,7 @@ function UpdateCoordinates(sMri, Handles)
     voxXYZ = GetLocation('voxel', sMri, Handles);
     mriXYZ = cs_convert(sMri, 'voxel', 'mri', voxXYZ);
     scsXYZ = cs_convert(sMri, 'voxel', 'scs', voxXYZ);
-    mniXYZ = cs_convert(sMri, 'voxel', 'mni', voxXYZ);
+    mniXYZ = cs_convert(sMri, 'voxel', 'mni', voxXYZ, 1);
     wrlXYZ = cs_convert(sMri, 'voxel', 'world', voxXYZ);
     % Update title of images
     Handles.jLabelTitleS.setText(sprintf('<HTML>&nbsp;&nbsp;&nbsp;<B>Sagittal</B>:&nbsp;&nbsp;&nbsp;x=%d', voxXYZ(1)));

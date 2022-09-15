@@ -1,14 +1,17 @@
-function [P, Transf] = cs_convert(sMri, src, dest, P)
+function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 % CS_CONVERT: Convert 3D points between coordinates systems.
 %
-% USAGE:       P = cs_convert(sMri, src, dest, P)
+% USAGE:       P = cs_convert(sMri, src, dest, P, isNanAllowed=0)
 %         Transf = cs_convert(sMri, src, dest)
 %
 % INPUT: 
-%     - sMri  : Brainstorm MRI structure
-%     - src   : Current coordinate system {'voxel','mri','scs','mni','acpc','world'}
-%     - dest  : Target coordinate system {'voxel','mri','scs','mni','acpc','world'}
-%     - P     : a Nx3 matrix of point coordinates to convert
+%     - sMri         : Brainstorm MRI structure
+%     - src          : Current coordinate system {'voxel','mri','scs','mni','acpc','world'}
+%     - dest         : Target coordinate system {'voxel','mri','scs','mni','acpc','world'}
+%     - P            : a Nx3 matrix of point coordinates to convert
+%     - isNanAllowed : If 0, throw an error and if the conversion of some points P leads to NaN,
+%                      and if there is no linear MNI registration to be used instead
+%                      (case of non-linear MNI registration with points outside of the defined area)
 %
 % DESCRIPTION:   https://neuroimage.usc.edu/brainstorm/CoordinateSystems
 %     - voxel : X=left>right,  Y=posterior>anterior,   Z=bottom>top
@@ -47,6 +50,14 @@ function [P, Transf] = cs_convert(sMri, src, dest, P)
 %
 % Authors: Francois Tadel, 2008-2022
 
+% Throw errors by default if NaN
+if (nargin < 5) || isempty(isNanAllowed)
+    isNanAllowed = 0;
+end
+% Keep track of points that cannot be transformed
+iMissing = [];
+isApplied = 0;
+Porig = P;
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
     P = [];
@@ -124,6 +135,10 @@ switch lower(src)
                 interp3(sMri.NCS.y(:,:,:,1), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
                 interp3(sMri.NCS.y(:,:,:,2), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN); ...
                 interp3(sMri.NCS.y(:,:,:,3), P_reg(2,:), P_reg(1,:), P_reg(3,:), 'linear', NaN)] ./ 1000;
+            % Check if some points could not be converted
+            if ~isNanAllowed
+                iMissing = find(any(isnan(P_world),1));
+            end
             % Convert World => MRI
             P = world2mri * [double(P_world); ones(1, size(P_world,2))];
             RT1 = eye(4);
@@ -161,13 +176,17 @@ switch lower(dest)
             % Convert: src => MRI => voxel
             P_vox = diag([1000 ./ sMri.Voxsize(:); 1]) * RT1 * P;
             % Get values from the iy volumes
-            P = [interp3(sMri.NCS.iy(:,:,:,1), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
+            Pmni = [interp3(sMri.NCS.iy(:,:,:,1), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
                  interp3(sMri.NCS.iy(:,:,:,2), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN); ...
                  interp3(sMri.NCS.iy(:,:,:,3), P_vox(2,:), P_vox(1,:), P_vox(3,:), 'linear', NaN)] ./ 1000;
+            % Check if some points could not be converted
+            if ~isNanAllowed
+                iMissing = find(any(isnan(Pmni),1));
+            end
             % Transpose the matrix back
-            P = double(P');
+            P = double(Pmni');
             Transf = [];
-            return;
+            isApplied = 1;
         elseif isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
             RT2 = [sMri.NCS.R, sMri.NCS.T./1000; 0 0 0 1];
         else
@@ -183,15 +202,31 @@ switch lower(dest)
         error(['Invalid coordinate system: ' dest]);
 end
 
-% Compute the final transformation matrix
-Transf = RT2 * RT1;
-% Apply the transformation matrix to the points
-if ~isempty(P)
-    % Apply rotation-translation
-    P = Transf * P;
-    % Remove the last coordinate and transpose the matrix back
-    P = P(1:3,:)';
-else
-    P = Transf;
+% If the final transformation is not already applied
+if ~isApplied
+    % Compute the final transformation matrix
+    Transf = RT2 * RT1;
+    % Apply the transformation matrix to the points
+    if ~isempty(P)
+        % Apply rotation-translation
+        P = Transf * P;
+        % Remove the last coordinate and transpose the matrix back
+        P = P(1:3,:)';
+    else
+        P = Transf;
+    end
 end
 
+% If there are NaN points from non-linear MNI: Try to fix them with linear MNI
+if ~isempty(iMissing)
+    % If there is a linear transformation available as well, use it for missing points (same code as below)
+    if isfield(sMri,'NCS') && isfield(sMri.NCS,'R') && ~isempty(sMri.NCS.R) && isfield(sMri.NCS,'T') && ~isempty(sMri.NCS.T)
+        % Remove the non-linear transformation, so that it forces using the linear one
+        sMri.NCS.iy = [];
+        sMri.NCS.y = [];
+        P(iMissing,:) = cs_convert(sMri, src, dest, Porig(iMissing,:), isNanAllowed);
+    % If NaN not allowed and no linear transformation: check for missing values
+    elseif ~isNanAllowed
+        error(['Some points are outside the definition of the non-linear MNI registration.' 10 'Please compute a linear MNI normalization to convert these points.']);
+    end
+end
