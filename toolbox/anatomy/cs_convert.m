@@ -57,7 +57,7 @@ end
 % Keep track of points that cannot be transformed
 iMissing = [];
 isApplied = 0;
-Porig = P;
+
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
     P = [];
@@ -66,6 +66,9 @@ elseif (size(P,2) ~= 3) && (size(P,1) == 3)
 elseif (size(P,2) ~= 3)
     error('P must have 3 columns (X,Y,Z).');
 end
+
+Porig = P;
+
 % If the coordinate system didn't change
 if strcmpi(src, dest)
     return;
