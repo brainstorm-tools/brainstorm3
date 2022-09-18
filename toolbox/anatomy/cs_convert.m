@@ -54,9 +54,7 @@ function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 if (nargin < 5) || isempty(isNanAllowed)
     isNanAllowed = 0;
 end
-% Keep track of points that cannot be transformed
-iMissing = [];
-isApplied = 0;
+
 
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
@@ -67,8 +65,6 @@ elseif (size(P,2) ~= 3)
     error('P must have 3 columns (X,Y,Z).');
 end
 
-Porig = P;
-
 % If the coordinate system didn't change
 if strcmpi(src, dest)
     return;
@@ -77,6 +73,11 @@ end
 if ~isempty(P)
     P = [P'; ones(1,size(P,1))];
 end
+
+% Keep track of points that cannot be transformed
+iMissing = [];
+isApplied = 0;
+Porig = P;
 
 % ===== GET MRI=>WORLD TRANSFORMATION =====
 if strcmpi(src, 'world') || strcmpi(dest, 'world') || (strcmpi(src, 'mni') && isfield(sMri,'NCS') && isfield(sMri.NCS,'y') && ~isempty(sMri.NCS.y))
