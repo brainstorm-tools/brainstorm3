@@ -49,10 +49,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA</B>: First mode of svd(x,y,z)<BR>(requires pre-computed data covariance across epochs)'; ...
-                                       'norm', 'pcag'};
+                                       '<B>PCA</B>: First mode of svd(x,y,z)<BR>(requires pre-computed data covariance)'; ...
+                                       'norm', 'pca'};
     sProcess.options.method.Type    = 'radio_label';
-    sProcess.options.method.Value   = 1;
+    sProcess.options.method.Value   = 'norm';
+    sProcess.options.pcamode.Comment = {'once across epochs', 'separately for each epoch', 'PCA computation:'; ...
+                                       'pcaa', 'pca', 'PCA computation:'};
+    sProcess.options.pcamode.Type    = 'radio_linelabel';
+    sProcess.options.pcamode.Value   = 'pcaa';
+
 end
 
 
@@ -68,20 +73,39 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     switch(sProcess.options.method.Value)
         case {1, 'norm'}, Method = 'rms';  fileTag = 'norm';
-        case {2, 'pca'},  Method = 'pca';  fileTag = 'pca';
-        case 'pcag',      Method = 'pcag'; fileTag = 'pcag';
+        case {2, 'pca'},  Method = sProcess.options.pcamode.Value;  fileTag = sProcess.options.pcamode.Value;
     end
+    % For PCA, we need to group input files by imaging kernel.
+    % Extract kernel file names from result FileName string that have format: 'link|result.mat|data.mat' (is there a better way?)
+    iLinkBars = strfind({sInputs.FileName}, '|');
+    if any(cellfun(@isempty, iLinkBars))
+        bst_report('Error', sProcess, sInputs, 'PCA flattening only available for imaging kernel files.');
+        return;
+    end
+    ProcessedKernelFiles = {};
+    PreviousKernelFile = '';
+    PcaAcross = [];
     for iInput = 1:numel(sInputs)
         % ===== PROCESS INPUT =====
-        % Load the source file
-        ResultsMat = in_bst_results(sInputs(iInput).FileName, 1);
-        % Also get kernel if pca
         if strncmpi(Method, 'pca', 3)
-            ResK = in_bst_results(sInputs(iInput).FileName, 0);
-            if ~isempty(ResK.ImagingKernel)
-                ResultsMat.ImagingKernel = ResK.ImagingKernel;
+            KernelFile = sInputs(iInput).FileName((iLinkBars{iInput}(1)+1):(iLinkBars{iInput}(2)-1));
+            if strcmpi(Method, 'pcaa')
+                % For PCA across epochs, we process and save a shared kernel, once for all data files linked to it.
+                if ismember(KernelFile, ProcessedKernelFiles)
+                    % Already saved a flattened version of this kernel.
+                    % Find new link for this data file.
+                    LinkFiles = db_links('Study', sInputs(iInput).iStudy);
+                    iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInputs(iInput).DataFile]));
+                    OutputFiles{iInput} = LinkFiles{iLink};
+                    continue;
+                else
+                    % Add new kernel to the list and process it.
+                    ProcessedKernelFiles{end+1} = KernelFile; %#ok<AGROW>
+                end
             end
         end
+        % Load the source file
+        ResultsMat = in_bst_results(sInputs(iInput).FileName, 1);
         % Error: Not an unconstrained model
         if (ResultsMat.nComponents == 1) || (ResultsMat.nComponents == 2)
             bst_report('Error', sProcess, sInputs(iInput), 'The input file is not an unconstrained source model.');
@@ -89,9 +113,27 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Get study description
         sStudy = bst_get('Study', sInputs(iInput).iStudy);
+        % Error: PCA requires kernel and data covariance
+        if strncmpi(Method, 'pca', 3) 
+            if numel(sStudy.NoiseCov) < 2
+                bst_report('Error', sProcess, sInputs(iInput), 'PCA flattening requires data covariance matrix to be computed first.');
+                return;
+            end
+            % Load kernel
+            ResK = in_bst_results(sInputs(iInput).FileName, 0);
+            ResultsMat.ImagingKernel = ResK.ImagingKernel;
+        end
+        if strcmpi(Method, 'pca')
+            % For PCA per epoch, we use PCA across epochs for picking consistent sign for each epoch.
+            % Only compute if different kernel than previous file.
+            if ~strcmp(KernelFile, PreviousKernelFile)
+                [unused, PcaAcross] = Compute(ResultsMat, 'pcaa', [], sStudy, []);
+                PreviousKernelFile = KernelFile;
+            end
+        end
 
         % Compute flat map
-        ResultsMat = Compute(ResultsMat, Method, [], sStudy);
+        ResultsMat = Compute(ResultsMat, Method, [], sStudy, PcaAcross);
 
         % ===== SAVE FILE =====
         % Make comment unique
@@ -107,8 +149,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Save as kernel if possible.
         if ~isempty(ResultsMat.ImagingKernel) 
             ResultsMat.ImageGridAmp = [];            
-            % For global PCA method, save a single shared kernel.
-            if strcmpi(Method, 'pcag')
+            % For PCA method, save a single shared kernel.
+            if strcmpi(Method, 'pcaa')
                 ResultsMat.DataFile = '';
                 % db_add doesn't make it a shared kernel.
                 %SharedFile = db_add(sInputs(iInput).iStudy, ResultsMat);
@@ -116,11 +158,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 bst_save(SharedFile, ResultsMat, 'v6');
                 db_add_data(sInputs(iInput).iStudy, SharedFile, ResultsMat);
                 panel_protocols('UpdateNode', 'Study', sInputs(iInput).iStudy); 
-                % Find links to the result kernel that was just created
-                % This includes bad trials (same as process_inverse I think).
-                OutputFiles = db_links('Study', sInputs(iInput).iStudy);
-                OutputFiles(~contains(OutputFiles, file_short(SharedFile))) = [];
-                return;
+                % Find link to the result kernel that was just created for this data file.
+                LinkFiles = db_links('Study', sInputs(iInput).iStudy);
+                iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInputs(iInput).DataFile]));
+                OutputFiles{iInput} = LinkFiles{iLink};
+                continue;
             end
         end
         % Output filename
@@ -134,7 +176,7 @@ end
 
 
 %% ===== COMPUTE =====
-function ResultsMat = Compute(ResultsMat, Method, Field, sStudy)
+function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, sStudy, PcaOrient)
     % Field to process
     if (nargin < 3) || isempty(Field)
         Field = 'ImageGridAmp';
@@ -155,42 +197,34 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy)
         % Unconstrained source models
         case 3
             % Apply source orientations
-            if strncmpi(Method, 'pca', 3) && isfield(ResultsMat, 'ImagingKernel') && ~isempty(ResultsMat.ImagingKernel)
-                Ker = reshape(ResultsMat.ImagingKernel, ResultsMat.nComponents, [], size(ResultsMat.ImagingKernel,2)); % (nComp, nSource, nChan)
-            else
-                Ker = [];
-            end
-            if strncmpi(Method, 'pcag', 4)
+            OrientCov = [];
+            Ker = [];
+            if strcmpi(Method, 'pcaa') 
                 if ~isfield(ResultsMat, 'ImagingKernel') || isempty(ResultsMat.ImagingKernel)
                     error('PCA flattening only available for imaging kernel files.');
                 end
+                Ker = reshape(ResultsMat.ImagingKernel, ResultsMat.nComponents, [], size(ResultsMat.ImagingKernel,2)); % (nComp, nSource, nChan)
                 % Get data covariance matrix for provided data file.
-                % Note that this process is called through bst_process for single
-                % files (looped over elsewhere).  So we can't compute the global
-                % covariance here.
-                % NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
                 if numel(sStudy.NoiseCov) < 2
                     error('PCA flattening requires data covariance matrix to be computed first.');
                 end
                 DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); % size nChanAll
-                if ResultsMat.nComponents > 1
-                    % Maybe more efficient: save 3x3xnSource instead of (3*nSource)^2
-                    SourceCov = squeeze( sum(bsxfun(@times, sum(bsxfun(@times, permute(Ker, [3,4,1,2]), DataCov.NoiseCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel)), 1), ... % (1, nChan, nComp, nSource)
-                        permute(Ker, [1,3,4,2])), 2) ); % (nComp, nComp, nSource)
-                else
-                    SourceCov = [];
-                end
-            else
-                SourceCov = [];
+                % Keep 3x3 covariance per location: 3x3xnSource instead of (3*nSource)^2
+                OrientCov = squeeze( sum(bsxfun(@times, sum(bsxfun(@times, permute(Ker, [3,4,1,2]), DataCov.NoiseCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel)), 1), ... % (1, nChan, nComp, nSource)
+                    permute(Ker, [1,3,4,2])), 2) ); % (nComp, nComp, nSource)
+            elseif strcmpi(Method, 'pca')
+                % Covariance computation is somewhat slow, avoid repeating for PCA per epoch, when using the same kernel.
+                Ker = reshape(ResultsMat.ImagingKernel, ResultsMat.nComponents, [], size(ResultsMat.ImagingKernel,2)); % (nComp, nSource, nChan)
+                OrientCov = PcaOrient;
             end
-            [ResultsMat.(Field), GridAtlas, RowNames, PcaOrient] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], SourceCov);
+            [ResultsMat.(Field), GridAtlas, RowNames, PcaOrient] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], OrientCov);
             % Resulting kernel
             if ~isempty(PcaOrient) && ~isempty(Ker)
                 ResultsMat.ImagingKernel = squeeze(sum(bsxfun(@times, Ker, PcaOrient), 1)); % nSource, nChan
             else
                 ResultsMat.ImagingKernel = [];
             end
-            % Set the number components
+            % Set the number of components
             ResultsMat.nComponents = 1;
     end
     % Save new file function
@@ -200,7 +234,7 @@ function ResultsMat = Compute(ResultsMat, Method, Field, sStudy)
     switch(Method)
         case 'rms',  fileTag = 'norm';
         case 'pca',  fileTag = 'pca';
-        case 'pcag',  fileTag = 'pcag';
+        case 'pcaa',  fileTag = 'pcaa';
     end
     % Reset the data file initial path
     if ~isempty(ResultsMat.DataFile)
