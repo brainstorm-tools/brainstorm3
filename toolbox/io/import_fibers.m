@@ -54,13 +54,16 @@ else
         error('When you pass a FibersFiles argument, FileFormat must be defined too.');
     end
 end
-if nargin < 4
-    nPoints = [];
+if nargin < 5
+    CS = [];
+    if nargin < 4
+        nPoints = [];
+    end
 end
+
 iNewFibers = [];
 OutputFiles = {};
 nFibers = [];
-CS = [];
 % Get subject
 sSubject = bst_get('Subject', iSubject);
 
