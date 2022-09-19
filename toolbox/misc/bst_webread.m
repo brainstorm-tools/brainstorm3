@@ -52,23 +52,14 @@ if (bst_get('MatlabVersion') >= 911) && ~isempty(strfind(url, 'ftp://'))
     return;
 end
 
+% Read online version.txt
 % Reading function: urlread replaced with webread in Matlab 2014b
 if (bst_get('MatlabVersion') <= 803)
-    url_read_fcn = @urlread;
-    url_read_alt = @webread;
+    try str = urlread(url); catch, str = ''; end
 else
-    url_read_fcn = @webread;
-    url_read_alt = @urlread;
-end
-% Read online version.txt
-try
-    str = url_read_fcn(url);
-catch
-    try
-        str = url_read_alt(url);
+    try str = webread(url);
     catch
-        % disp(['BST> ERROR: webread and urlread failed reading URL: ' url]);
-        str = '';
+        try str = urlread(url, 'Timeout', 5); catch, str = ''; end
     end
 end
 
