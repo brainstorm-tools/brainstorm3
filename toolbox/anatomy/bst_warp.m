@@ -55,13 +55,13 @@ bst_progress('start', 'Warp anatomy', 'Warping surfaces...', 0, length(SurfaceFi
 % Loop on all surface files
 for i = 1:length(SurfaceFiles)
     bst_progress('inc', 1);
-    % Read input 
-    sSurf = in_tess_bst(SurfaceFiles{i});
-    % Check if this is really a tesselation (and not a "fibers" file)
-    if ~isfield(sSurf, 'Vertices')
+    % Check if this is a valid tesselation (and not a "fibers" or "fem" file)
+    if ismember(file_gettype(SurfaceFiles{i}), {'fibers', 'fem'})
         disp(['WARP> Skipped invalid surface file: ' SurfaceFiles{i}]);
         continue;
     end
+    % Read input
+    sSurf = in_tess_bst(SurfaceFiles{i});
     % Warp surface
     sSurfNew.Faces    = sSurf.Faces;
     sSurfNew.Vertices = warp_lm(sSurf.Vertices, A, W, srcPts) + sSurf.Vertices;
