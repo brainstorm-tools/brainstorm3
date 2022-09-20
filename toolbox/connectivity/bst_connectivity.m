@@ -599,10 +599,10 @@ for iFile = 1:length(FilesA)
                         %  
                         % Proposed by Daniele Marinazzo
                         % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
-                        num = abs(imag(phaseA*phaseB'));
+                        num = abs(imag(HA*HB'));
                         den = zeros(nA,nB);
                         for t = 1:nT
-                            den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
+                            den = den + abs(imag(HA(:,t) * HB(:,t)'));
                         end
                         R(:,:,iBand) = num./den;
                         Comment = 'wPLI: ';
@@ -610,11 +610,13 @@ for iFile = 1:length(FilesA)
                         % This below would be the debiased version, but better leave it commented until we figure how to implement the time-varying one in Brainstorm-friendly way
                         % Interested users can uncomment this one
                         
-                        %num = imag(phaseA*phaseB');
-                        %den = zeros(nA,nB);sqd = zeros(nA,nB);
+                        %num = zeros(nA,nB);
+                        %den = zeros(nA,nB);
+                        %sqd = zeros(nA,nB);
                         %for t = 1:nT
-                        %    den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
-                        %    sqd = sqd + imag(phaseA(:,t)*phaseB(:,t)').^2;
+                            %num = num + imag(HA(:,t)*HB(:,t)');
+                            %den = den + abs(imag(HA(:,t) * HB(:,t)'));
+                            %sqd = sqd + imag(HA(:,t)*HB(:,t)').^2;
                         %end
                         %R(:,:,iBand) = (num.^2-sqd)./(den.^2-sqd);
                         %Comment = 'wPLI debiased: ';
