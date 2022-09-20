@@ -596,7 +596,7 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        %    The one below is the "debiased" version
+                        %  
                         % Proposed by Daniele Marinazzo
                         % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
                         num = abs(imag(phaseA*phaseB'));
@@ -606,6 +606,18 @@ for iFile = 1:length(FilesA)
                         end
                         R(:,:,iBand) = num./den;
                         Comment = 'wPLI: ';
+                        
+                        % This below would be the debiased version, but better leave it commented until we figure how to implement the time-varying one in Brainstorm-friendly way
+                        % Interested users can uncomment this one
+                        
+                        %num = imag(phaseA*phaseB');
+                        %den = zeros(nA,nB);sqd = zeros(nA,nB);
+                        %for t = 1:nT
+                        %    den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
+                        %    sqd = sqd + imag(phaseA(:,t)*phaseB(:,t)').^2;
+                        %end
+                        %R(:,:,iBand) = (num.^2-sqd)./(den.^2-sqd);
+                        %Comment = 'wPLI debiased: ';
                 end
             end
             % We don't want to compute again the frequency bands
