@@ -54,10 +54,6 @@ function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 if (nargin < 5) || isempty(isNanAllowed)
     isNanAllowed = 0;
 end
-% Keep track of points that cannot be transformed
-iMissing = [];
-isApplied = 0;
-Porig = P;
 % Check matrices orientation
 if (nargin < 4) || isempty(P)
     P = [];
@@ -70,6 +66,10 @@ end
 if strcmpi(src, dest)
     return;
 end
+% Keep track of points that cannot be transformed
+iMissing = [];
+isApplied = 0;
+Porig = P;
 % Transform to homogeneous coordinates
 if ~isempty(P)
     P = [P'; ones(1,size(P,1))];
