@@ -597,16 +597,27 @@ for iFile = 1:length(FilesA)
                         %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
                         %    Neuroimage, Apr 2011
                         %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        %    The one below is the "debiased" version
+                        %    This is the non debiased version, for uniformity with respect to the time-varying one, the debiased one is commented below
+                        %  
                         % Proposed by Daniele Marinazzo
-                        % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
-                        num = abs(imag(phaseA*phaseB'));
+                        
+                        num = imag(HA*HB');
                         den = zeros(nA,nB);
                         for t = 1:nT
-                            den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
+                            den = den + abs(imag(HA(:,t) * HB(:,t)'));
                         end
-                        R(:,:,iBand) = num./den;
+                        R(:,:,iBand) = abs(num./den);
                         Comment = 'wPLI: ';
+                        
+                        % This below is the debiased version
+                        %num = imag(HA*HB');
+                        %den = zeros(nA,nB);sqd = zeros(nA,nB);
+                        %for t = 1:nT
+                        %    den = den + abs(imag(HA(:,t) * HB(:,t)'));
+                        %    sqd = sqd + imag(HA(:,t)*HB(:,t)').^2;
+                        %end
+                        %R(:,:,iBand) = (num.^2-sqd)./(den.^2-sqd);
+                        %Comment = 'wPLI debiased: ';
                 end
             end
             % We don't want to compute again the frequency bands
@@ -659,8 +670,8 @@ for iFile = 1:length(FilesA)
                         R(:,:,iBand) = imag(csd) ./ (real(csd)/nTime) .* conj(real(csd)/nTime);
                         Comment = 'ciPLVt: ';
                     case 'wplit'
-                        % R(:,:,iBand) = abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))'./(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))';    % SLOWER
-                        cdi = imag(phaseA .* conj(phaseB));
+                        % non debiased version
+                        cdi = imag(HA .* conj(HB));
                         R(:,:,iBand) = abs(cdi) .* sign(cdi) ./ abs(cdi);
                         Comment = 'wPLIt: ';
                 end
