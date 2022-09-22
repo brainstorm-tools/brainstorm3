@@ -11,7 +11,7 @@ function [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVer
 %    - GridAtlas    : Set of scouts that defines the properties of the source space regions, when nComponents=0
 %                     GridAtlas.Scouts(i).Region(2) is the source type (V=volume, S=surface, D=dba, X=exclude)
 %                     GridAtlas.Scouts(i).Region(3) is the orientation constrain (U=unconstrained, C=contrained, L=loose)
-%    - SourceValues : [Nvertices x Nsensors] or [Nvertices x Ntime], source values
+%    - SourceValues : [Nvertices*nComponents x Nsensors] or [Nvertices*nComponents x Ntime], source values
 %    - Function     : Name of the function to apply to group multiple components {'sum', 'sum_power', 'rms', 'max', 'pca', 'pcaa', 'mean'}
 %    - DataType     : Type of data being processed {'data', 'results', 'scouts', 'matrix'}
 %    - RowNames     : Description of signals being processed: {empty, array of doubles, array of cells}
@@ -215,11 +215,7 @@ function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, Orien
             end
         case 'pcaa'
             % OrientCov is the source covariance matrices, size (nComp,nComp,nSource).
-            if ~isempty(i3)
-                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], 3, 'pcaa', 0, [], OrientCov);
-            else
-                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], 2, 'pcaa', 0, [], OrientCov);
-            end
+            [Values, PcaOrient] = bst_scout_value(Values, 'none', [], size(OrientCov,1), 'pcaa', 0, [], OrientCov);
         case 'none'
             % Nothing to do
         otherwise

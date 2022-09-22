@@ -49,16 +49,18 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA across epochs</B>: First mode of svd(x,y,z)<BR>Requires kernel linked source file(s) and pre-computed data covariance.<BR>Very fast: saves a flattened shared kernel.'; ...
-                                       '<B>PCA per epoch</B>: First mode of svd(x,y,z), sign corrected with PCA across epochs<BR>Requires kernel linked source file(s) and pre-computed data covariance.<BR>Saves flattened individual files.'; ...
+                                       ['<B>PCA across epochs</B>: First mode of svd(x,y,z), maximizes retained power<BR>' ...
+                                       'Generally recommended, especially for within subject comparisons.<BR>' ...
+                                       'Requires kernel link source file(s) and pre-computed data covariance.<BR>' ...
+                                       'Fast: computed once for each kernel using covariance (not provided data files). <BR>' ...
+                                       'Saves a flattened shared kernel.'], ...
+                                       ['<B>PCA per epoch</B>: First mode of svd(x,y,z), sign aligned with PCA across epochs<BR>' ...
+                                       'Useful for single-epoch analysis, while sign consistency still allows combining epochs.<BR>' ...
+                                       'Requires kernel link source file(s) and pre-computed data covariance.<BR>' ...
+                                       'Slow: computed on each provided file. Saves individual flattened files.']; ...
                                        'norm', 'pcaa', 'pca'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'norm';
-    %sProcess.options.pcamode.Comment = {'once across epochs', 'separately for each epoch', 'PCA computation:'; ...
-    %                                   'pcaa', 'pca', 'PCA computation:'};
-    %sProcess.options.pcamode.Type    = 'radio_linelabel';
-    %sProcess.options.pcamode.Value   = 'pcaa';
-
 end
 
 
@@ -82,11 +84,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     PreviousKernelFile = '';
     DataCov = [];
     PcaAcross = [];
-    for iInput = 1:numel(sInputs)
+
+    nFiles = numel(sInputs);
+    bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, nFiles);
+
+    for iInput = 1:nFiles
         % ===== PROCESS INPUT =====
         if strncmpi(Method, 'pca', 3)
-            if strcmpi(file_gettype(InputFile), 'link')
+            if ~strcmpi(file_gettype(sInputs(iInput).FileName), 'link')
                 bst_report('Error', sProcess, sInputs, 'PCA flattening only available for imaging kernel files.');
+                OutputFiles = {};
                 return;
             end
             KernelFile = file_resolve_link(sInputs(iInput).FileName);
@@ -97,11 +104,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     % Find new link for this data file.
                     LinkFiles = db_links('Study', sInputs(iInput).iStudy);
                     iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInputs(iInput).DataFile]));
-                    OutputFiles{iInput} = LinkFiles{iLink};
+                    OutputFiles{iInput} = LinkFiles{iLink}; %#ok<*AGROW> 
                     continue;
                 else
                     % Add new kernel to the list and process it.
-                    ProcessedKernelFiles{end+1} = KernelFile; %#ok<AGROW>
+                    ProcessedKernelFiles{end+1} = KernelFile;
                 end
             end
         end
@@ -116,6 +123,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Error: PCA across epochs requires kernel and data covariance
             if numel(sStudy.NoiseCov) < 2
                 bst_report('Error', sProcess, sInputs(iInput), 'PCA flattening requires data covariance matrix to be computed first.');
+                OutputFiles = {};
                 return;
             end
             DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName)); 
@@ -138,6 +146,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Error: Not an unconstrained model
             if (ResultsMat.nComponents == 1) || (ResultsMat.nComponents == 2)
                 bst_report('Error', sProcess, sInputs(iInput), 'The input file is not an unconstrained source model.');
+                OutputFiles = {};
                 return;
             end
         end
@@ -145,9 +154,12 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % Compute flat map
         [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, [], DataCov, PcaAcross);
 
+        bst_progress('inc', 1);
+
         % ===== SAVE FILE =====
-        % Make comment unique
-        ResultsMat.Comment = file_unique(ResultsMat.Comment, {sStudy.Result.Comment});
+        % Make comment unique (for this data file)
+        iResults = ~cellfun(@isempty, strfind({sStudy.Result.FileName}, sInputs(iInput).DataFile));
+        ResultsMat.Comment = file_unique(ResultsMat.Comment, {sStudy.Result(iResults).Comment});
         % File tag
         if ~isempty(strfind(sInputs(iInput).FileName, '_abs_zscore'))
             FileType = 'results_abs_zscore';
@@ -165,20 +177,26 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % For PCA across epochs, save a shared kernel.
             elseif strcmpi(Method, 'pcaa')
                 ResultsMat.DataFile = '';
-                [KernelPath, KernelName] = bst_fileparts(KernelFile);
-                SharedFile = fullfile(KernelPath, [KernelName '_' fileTag '.mat']);
+                % Keep original kernel file name, but ensure unique.
+                [~, KernelName] = bst_fileparts(KernelFile);
+                iK = strfind(KernelName, '_KERNEL_');
+                SharedFile = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [KernelName(1:iK) 'KERNEL_' fileTag]);
                 bst_save(SharedFile, ResultsMat, 'v6');
                 db_add_data(sInputs(iInput).iStudy, SharedFile, ResultsMat);
                 panel_protocols('UpdateNode', 'Study', sInputs(iInput).iStudy); 
                 % Find link to the result kernel that was just created for this data file.
                 LinkFiles = db_links('Study', sInputs(iInput).iStudy);
                 iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInputs(iInput).DataFile]));
-                OutputFiles{iInput} = LinkFiles{iLink};
+                if sum(iLink) ~= 1
+                    bst_report('Error', sProcess, sInputs(iInput), 'Problem finding the correct linked file.');
+                    OutputFiles = {};
+                end
+                OutputFiles{iInput} = LinkFiles{iLink}; 
                 continue;
             end
         end
         % Output filename
-        OutputFiles{iInput} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' fileTag]);
+        OutputFiles{iInput} = bst_process('GetNewFilename', bst_fileparts(sStudy.FileName), [FileType '_' fileTag]); 
         % Save on disk
         bst_save(OutputFiles{iInput}, ResultsMat, 'v6');
         % Register in database
