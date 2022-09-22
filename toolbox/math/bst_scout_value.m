@@ -9,7 +9,7 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - Orient         : [Nsources x 3], Orientation of each source - usually the normal at the vertex in the cortex mesh
 %     - nComponents    : {1,2,3}, Number of components per vertex in matrix F 
 %                        If 0, the number varies, the properties of each region are defined in input GridAtlas
-%     - XyzFunction    : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'none'}
+%     - XyzFunction    : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'pcaa', 'none'}
 %     - isSignFlip     : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - scoutName      : Name of the scout or cluster you're extracting
 %     - OrientCov      : For PCA across epochs: [3 x 3 x Nsources] Covariance between 3 rows of F (3 source orientations) at each location, pre-computed across epochs.
@@ -18,6 +18,9 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 % OUTPUTS:
 %     - Fs           : [Nscouts x Ntime] Combined time series
 %     - PcaFirstComp : First mode of the PCA, as column(s). [Nsources * Ncomponents, 1] for ScoutFunction only, [3 x Nsources] for XyzFunction, or [Nsources * Ncomponents, 1] for both.
+%
+% Currently, ScoutFunction is applied before XyzFunction. 
+% When using XyzFunction='pca' or 'pcaa', it is recommended to apply it before extracting scouts, so this should be done in 2 steps.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -41,10 +44,10 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %          Marc Lalancette, 2022
 
 % ===== PARSE INPUTS =====
-if (nargin < 8) 
+if (nargin < 8) || isempty(OrientCov)
     OrientCov = [];
 end
-if (nargin < 7)
+if (nargin < 7) || isempty(scoutName)
     scoutName = [];
 end
 if (nargin < 6) || isempty(isSignFlip)
@@ -224,7 +227,7 @@ end
 
 %% ===== COMBINE ALL ORIENTATIONS =====
 % If there are more than one component in output
-if (nComponents > 1) && (size(Fs,3) > 1)
+if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
     % Start from the scouts time series
     F = Fs;
@@ -254,6 +257,9 @@ if (nComponents > 1) && (size(Fs,3) > 1)
                 error('PCA on orientations after scout function other than PCA, mean, or none is not implemented.')
                 % To deal with other (non linear) scout functions would require 2 steps to load all scout epochs.
             end
+            % Here, F may be empty, if we save the result as a shared kernel.
+            % Get number of sources from covariance.
+            nRow = size(OrientCov, 3);
             PcaFirstComp = zeros(nComponents, nRow);
             % For each vertex: Signal decomposition
             explained = 0;
@@ -267,7 +273,9 @@ if (nComponents > 1) && (size(Fs,3) > 1)
             % Flip sign for consistency if computation repeated.
             CompSign = sign(sum(PcaFirstComp));
             PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
-            Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), F), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
+            if ~isempty(F)
+                Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), F), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
+            end
             
         % Compute the norm across the directions
         case 'norm'
@@ -304,13 +312,15 @@ function [F, explained] = PcaFirstMode(F)
     %S = diag(S);
     explained = S(1).^2 / sum(S.^2);
     U = U(:,1);
-    % Correct sign of the first PC to be consistent across epochs as best we can.
-    % For scouts: choose sign to have positive correlation with orientation-corrected (isSignFlip=true) mean timeseries.
-    %sign_meancorr = sign(mean(F,1) * (U' * F)');
-    % Mathematically equivalent simpler expression, using the definition of the eigen-decomp: 
-    % U*S^2*U' = F*F' => U1' * F * F' * ones = S1^2 sum(U1)
-    %sign_meancorr = sign(sum(U(:,1)));
+    % Correct sign of the first PC to be consistent across epochs as best we can, and project data onto first PCA component.
     F = sign(sum(U)) * U' * F;
+
+    % Explanation of this choice of sign correction for scouts
+    % Here we choose the sign such that the projected PCA timeseries has positive correlation with the 
+    % orientation-corrected (isSignFlip=true) mean timeseries. In other words, we want the following to be positive:
+    %   sign(mean(F,1) * (U' * F)') 
+    % We can simplify this since U is an eigen-vector of the F covariance matrix:
+    %   = sign(ones * F * F' * U) = sign(ones * U) = sign(sum(U))
 end
 
 
