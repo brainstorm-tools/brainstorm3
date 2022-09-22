@@ -50,7 +50,7 @@ Def_OPTIONS.RemoveEvoked  = 0;             % Removed evoked response to each sin
 Def_OPTIONS.isMirror      = 1;             % Option for PLV
 Def_OPTIONS.PlvMeasure    = 'magnitude';   % Option for PLV
 Def_OPTIONS.isSymmetric   = [];            % Optimize processing and storage for simple matrices
-Def_OPTIONS.pThresh       = 0.05;          % Significativity threshold for the metric
+Def_OPTIONS.pThresh       = 0.05;          % Significance threshold for the metric
 Def_OPTIONS.OutputMode    = 'input';       % {'avg','input','concat','avgcoh'}
 Def_OPTIONS.iOutputStudy  = [];
 Def_OPTIONS.isSave        = 1;
@@ -76,7 +76,6 @@ OutputFiles = {};
 AllComments = {};
 Ravg = [];
 nAvg = 0;
-nTime = 1;
 % Initialize progress bar
 if bst_progress('isVisible')
     startValue = bst_progress('get');
@@ -91,6 +90,8 @@ end
 % Frequency bands
 if iscell(OPTIONS.Freqs)
     FreqBands = OPTIONS.Freqs;
+    nFreqBands = size(FreqBands, 1);
+    BandBounds = process_tf_bands('GetBounds', FreqBands);
 else
     FreqBands = [];
 end
@@ -159,7 +160,7 @@ if strcmpi(OPTIONS.OutputMode, 'avgcoh') && ~OPTIONS.RemoveEvoked
     FilesA = FilesA(1);
     % FilesB load calls
     if ~isConnNN
-        % Load first FileA, for getting all the file metadata
+        % Load first FileB, for getting all the file metadata
         sInputB = bst_process('LoadInputFile', FilesB{1}, OPTIONS.TargetB, OPTIONS.TimeWindow, LoadOptionsB);
         if (size(sInputB.Data,2) < 2)
             bst_report('Error', OPTIONS.ProcessName, FilesB{1}, 'Invalid time selection, check the input time window.');
@@ -198,7 +199,7 @@ elseif (isConcat >= 1)
         FilesB = FilesB(1);
         % Some quality check
         if (size(sInputA.Data,2) ~= size(sInputB.Data,2))
-            bst_report('Error', OPTIONS.ProcessName, {FilesA{:}, FilesB{:}}, 'Files A and B must have the same number of time samples.');
+            bst_report('Error', OPTIONS.ProcessName, [FilesA(:)', FilesB(:)'], 'Files A and B must have the same number of time samples.');
             return;
         end
     else
@@ -343,6 +344,44 @@ for iFile = 1:length(FilesA)
     
     %% ===== COMPUTE CONNECTIVITY METRIC =====
     % The sections below must return R matrices with dimensions: [nA x nB x nTime x nFreq]
+    % or R structure with fields that are combined after trial averaging.
+
+    % Pre-compute cross spectrum for spectral measures, and analytical signals for time-resolved measures.
+    % Only for wpli as example for now.
+    switch OPTIONS.Method
+        case {'wpli'} % all spectral measures
+            if isConnNN
+                % Avoid redundant data
+                [S, Freq, Messages] = bst_cross_spectrum([], sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
+            else
+                [S, Freq, Messages] = bst_cross_spectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
+            end
+            % Error processing
+            if isempty(S)
+                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+                return;
+            elseif ~isempty(Messages)
+                bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+            end
+        case {'wplit'} % all that need analytical signals
+            nA = size(sInputA.Data,1);
+            nB = size(sInputB.Data,1);
+            nTime = size(sInputB.Data,2);
+            % Intitialize analytical signals in multiple bands
+            HA = zeros(nA, nTime, nFreqBands);
+            HB = zeros(nB, nTime, nFreqBands);
+            % Loop on each frequency band
+            for iBand = 1:nFreqBands
+                % Band-pass filter in one frequency band + Apply Hilbert transform
+                DataAband = process_bandpass('Compute', sInputA.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                HA(:,:,iBand) = hilbert_fcn(DataAband')';
+                if ~isConnNN
+                    DataBband = process_bandpass('Compute', sInputB.Data, sfreq, BandBounds(iBand,1), BandBounds(iBand,2), 'bst-hfilter-2019', OPTIONS.isMirror);
+                    HB(:,:,iBand) = hilbert_fcn(DataBband')';
+                end
+            end
+    end
+
     switch (OPTIONS.Method)
         % === CORRELATION ===
         case 'corr'
@@ -491,9 +530,6 @@ for iFile = 1:length(FilesA)
         case 'aec'   % DEPRECATED
             bst_progress('text', sprintf('Calculating: AEC [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'AEC: ';
-            % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
-            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
 
             % Initialize returned matrix
             R = zeros(size(sInputA.Data,1), size(sInputB.Data,1), nFreqBands);
@@ -548,14 +584,11 @@ for iFile = 1:length(FilesA)
             R = reshape(R, size(R,1), size(R,2), 1, size(R,3));
             
         % ==== PLV ====
-        case {'plv', 'wpli', 'ciplv'}
+        case {'plv', 'ciplv'}
             bst_progress('text', sprintf('Calculating: %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
-            % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
-            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             nA = size(sInputA.Data,1);
             nB = size(sInputB.Data,1);
-            nT = size(sInputB.Data,2);
+            nTime = size(sInputB.Data,2);
 
             % ===== IMPLEMENTATION G.DUMAS =====
             % Intitialize returned matrix
@@ -601,7 +634,7 @@ for iFile = 1:length(FilesA)
                         % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
                         num = abs(imag(phaseA*phaseB'));
                         den = zeros(nA,nB);
-                        for t = 1:nT
+                        for t = 1:nTime
                             den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
                         end
                         R(:,:,iBand) = num./den;
@@ -613,12 +646,12 @@ for iFile = 1:length(FilesA)
             % Reshape as [nA x nB x nTime x nFreq]
             R = reshape(R, nA, nB, 1, nFreqBands);
             
+        % ==== WPLI ====
+        case 'wpli'
+        
         % ==== PLV-TIME ====
         case {'plvt', 'wplit', 'ciplvt'}
             bst_progress('text', sprintf('Calculating: Time-resolved %s [%dx%d]...', upper(OPTIONS.Method), size(sInputA.Data,1), size(sInputB.Data,1)));
-            % Get frequency bands
-            nFreqBands = size(OPTIONS.Freqs, 1);
-            BandBounds = process_tf_bands('GetBounds', OPTIONS.Freqs);
             % Time: vector of file B
             nTime = length(sInputB.Time);
             % Intitialize returned matrix
@@ -793,6 +826,19 @@ for iFile = 1:length(FilesA)
     end
 end
 
+%% ===== ASSEMBLE CONNECTIVITY METRIC FROM ACCUMULATORS =====
+switch OPTIONS.Method
+    case {'plv','plvt','ciplv','ciplvt'}
+        if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
+            Ravg = abs(Ravg);
+        end
+    case {'wpli','wplit'}
+        if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
+            Ravg = abs(Ravg);
+        end
+end
+
+
 %% ===== SAVE AVERAGE =====
 if strcmpi(OPTIONS.OutputMode, 'avg')
     OutputFiles{1} = SaveFile(Ravg, OPTIONS.iOutputStudy, [], sInputA, sInputB, AllComments, nAvg, OPTIONS, FreqBands);
@@ -858,10 +904,8 @@ function NewFile = SaveFile(R, iOutputStudy, DataFile, sInputA, sInputB, Comment
     end
     % Measure
     if ismember(OPTIONS.Method, {'plv','plvt','ciplv','ciplvt','wpli','wplit'})
-        % Apply measure
         switch (OPTIONS.PlvMeasure)
             case 'magnitude'
-                FileMat.TF = abs(FileMat.TF);
                 FileMat.Measure = 'other';
             otherwise
                 FileMat.Measure = 'none';
