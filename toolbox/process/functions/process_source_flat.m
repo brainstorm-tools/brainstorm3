@@ -49,14 +49,15 @@ function sProcess = GetDescription() %#ok<DEFNU>
                                        'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-                                       '<B>PCA</B>: First mode of svd(x,y,z)<BR>(requires pre-computed data covariance)'; ...
-                                       'norm', 'pca'};
+                                       '<B>PCA across epochs</B>: First mode of svd(x,y,z)<BR>Requires kernel linked source file(s) and pre-computed data covariance.<BR>Very fast: saves a flattened shared kernel.'; ...
+                                       '<B>PCA per epoch</B>: First mode of svd(x,y,z), sign corrected with PCA across epochs<BR>Requires kernel linked source file(s) and pre-computed data covariance.<BR>Saves flattened individual files.'; ...
+                                       'norm', 'pcaa', 'pca'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'norm';
-    sProcess.options.pcamode.Comment = {'once across epochs', 'separately for each epoch', 'PCA computation:'; ...
-                                       'pcaa', 'pca', 'PCA computation:'};
-    sProcess.options.pcamode.Type    = 'radio_linelabel';
-    sProcess.options.pcamode.Value   = 'pcaa';
+    %sProcess.options.pcamode.Comment = {'once across epochs', 'separately for each epoch', 'PCA computation:'; ...
+    %                                   'pcaa', 'pca', 'PCA computation:'};
+    %sProcess.options.pcamode.Type    = 'radio_linelabel';
+    %sProcess.options.pcamode.Value   = 'pcaa';
 
 end
 
@@ -73,7 +74,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     % Get options
     switch(sProcess.options.method.Value)
         case {1, 'norm'}, Method = 'rms';  fileTag = 'norm';
-        case {2, 'pca'},  Method = sProcess.options.pcamode.Value;  fileTag = sProcess.options.pcamode.Value;
+        case {2, 'pca'},  Method = 'pca';  fileTag = 'pca';
+        case 'pcaa',      Method = 'pcaa'; fileTag = 'pcaa';
     end
     % For PCA, we need to group input files by imaging kernel.
     % Extract kernel file names from result FileName string that have format: 'link|result.mat|data.mat' (is there a better way?)
