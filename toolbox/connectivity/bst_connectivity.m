@@ -90,8 +90,6 @@ end
 % Frequency bands
 if iscell(OPTIONS.Freqs)
     FreqBands = OPTIONS.Freqs;
-    nFreqBands = size(FreqBands, 1);
-    BandBounds = process_tf_bands('GetBounds', FreqBands);
 else
     FreqBands = [];
 end
@@ -232,7 +230,8 @@ OPTIONS.isScoutB = ~isempty(OPTIONS.TargetB) && (isstruct(OPTIONS.TargetB) || is
 
 %% ===== CALCULATE CONNECTIVITY =====
 % Loop over input files
-for iFile = 1:length(FilesA)
+nFiles = length(FilesA);
+for iFile = 1:nFiles
     bst_progress('set',  round(startValue + (iFile-1) / length(FilesA) * 100));
     %% ===== LOAD SIGNALS =====
     if ismember(OPTIONS.OutputMode, {'avg','input'})
@@ -346,30 +345,39 @@ for iFile = 1:length(FilesA)
     % The sections below must return R matrices with dimensions: [nA x nB x nTime x nFreq]
     % or R structure with fields that are combined after trial averaging.
 
-    % Pre-compute cross spectrum for spectral measures, and analytical signals for time-resolved measures.
+    % Pre-compute Fourier transforms or cross-spectrum for spectral measures, 
+    % or analytical signals for time-resolved measures.
     % Only for wpli as example for now.
     switch OPTIONS.Method
-        case {'wpli'} % all spectral measures
-            if isConnNN
-                % Avoid redundant data
-                [S, Freq, Messages] = bst_cross_spectrum([], sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
-            else
-                [S, Freq, Messages] = bst_cross_spectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
-            end
-            % Error processing
-            if isempty(S)
-                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-                return;
-            elseif ~isempty(Messages)
-                bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
-            end
+%         case {'wpli'} % all spectral measures
+%             if isConnNN
+%                 % Avoid passing redundant data
+%                 [S, Freq, Messages] = bst_cross_spectrum([], sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
+%             else
+%                 [S, Freq, Messages] = bst_cross_spectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
+%             end
+%             % Error processing
+%             if isempty(S)
+%                 bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+%                 return;
+%             elseif ~isempty(Messages)
+%                 bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+%             end
         case {'wplit'} % all that need analytical signals
+            % Get frequency bands once for methods that need them before.
+            if ~isempty(FreqBands)
+                nFreqBands = size(FreqBands, 1);
+                BandBounds = process_tf_bands('GetBounds', FreqBands);
+                FreqBands = [];
+            end
             nA = size(sInputA.Data,1);
-            nB = size(sInputB.Data,1);
             nTime = size(sInputB.Data,2);
             % Intitialize analytical signals in multiple bands
             HA = zeros(nA, nTime, nFreqBands);
-            HB = zeros(nB, nTime, nFreqBands);
+            if ~isConnNN
+                nB = size(sInputB.Data,1);
+                HB = zeros(nB, nTime, nFreqBands);
+            end
             % Loop on each frequency band
             for iBand = 1:nFreqBands
                 % Band-pass filter in one frequency band + Apply Hilbert transform
@@ -623,22 +631,6 @@ for iFile = 1:length(FilesA)
                         R(:,:,iBand) = (imag(csd)/size(HA,2)) ./ sqrt(1 + eps - (real(csd)/size(HA,2)) .* conj(real(csd)/size(HA,2)));
                         % R(:,:,iBand) = (imag((phaseA*phaseB'))/size(HA,2))./sqrt(1+eps-(real((phaseA*phaseB'))/size(HA,2)).^2);    % SLOWER
                         Comment = 'ciPLV: ';
-                    case 'wpli'
-                        % Implementation proposed by Daniele Marinazzo, based on:
-                        %    Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
-                        %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
-                        %    Neuroimage, Apr 2011
-                        %    https://pubmed.ncbi.nlm.nih.gov/21276857
-                        %    The one below is the "debiased" version
-                        % Proposed by Daniele Marinazzo
-                        % R(:,:,iBand) = reshape(mean(sin(angle(HA(iA,:)')-angle(HB(iB,:)')))' ./ mean(abs(sin(angle(HA(iA,:)')-angle(HB(iB,:)'))))',[],nB);   % Equivalent to lines below
-                        num = abs(imag(phaseA*phaseB'));
-                        den = zeros(nA,nB);
-                        for t = 1:nTime
-                            den = den + abs(imag(phaseA(:,t) * phaseB(:,t)'));
-                        end
-                        R(:,:,iBand) = num./den;
-                        Comment = 'wPLI: ';
                 end
             end
             % We don't want to compute again the frequency bands
@@ -648,6 +640,37 @@ for iFile = 1:length(FilesA)
             
         % ==== WPLI ====
         case 'wpli'
+            % Function of frequency, as defined in:
+            %    Vinck M, Oostenveld R, van Wingerden M, Battaglia F, Pennartz CM
+            %    An improved index of phase-synchronization for electrophysiological data in the presence of volume-conduction, noise and sample-size bias
+            %    Neuroimage, Apr 2011
+            %    https://pubmed.ncbi.nlm.nih.gov/21276857
+            % wPLI = abs(E{imag(Sab)}) / E{abs(imag(Sab))}; E{} is expectation value, i.e. terms we must average. Sab is the cross-spectrum.
+            % Debiased wPLI square, eq. 33 in same publication, after simplifications:
+            % DwPLI = (N * E{imag(Sab)}^2 - E{imag(Sab)^2}) / (N * E{abs(imag(Sab))}^2 - E{imag(Sab)^2})
+
+            if isConnNN
+                % Avoid passing redundant data
+                [S, Freq, Messages] = bst_xspectrum([], sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
+            else
+                [S, Freq, Messages] = bst_xspectrum(sInputA.Data, sInputB.Data, sfreq, OPTIONS.WinLen, OPTIONS.CohOverlap, OPTIONS.MaxFreq, sInputB.ImagingKernel);
+            end
+            % Error processing
+            if isempty(S)
+                bst_report('Error', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+                return;
+            elseif ~isempty(Messages)
+                bst_report('Warning', OPTIONS.ProcessName, unique({FilesA{iFile}, FilesB{iFile}}), Messages);
+            end
+            % Initialize accumulators
+            if iFile == 1
+                R.ImSxy = zeros(size(S.Sxy));
+                R.AbsImSxy = zeros(size(S.Sxy));
+                R.SqImSxy = zeros(size(S.Sxy));
+            end
+            R.ImSxy = R.ImSxy + imag(Sxy);
+            R.AbsImSxy = R.AbsImSxy + abs(imag(Sxy));
+            R.SqImSxy = R.SqImSxy + imag(Sxy).^2;
         
         % ==== PLV-TIME ====
         case {'plvt', 'wplit', 'ciplvt'}
@@ -704,7 +727,7 @@ for iFile = 1:length(FilesA)
             bst_progress('text', sprintf('Calculating: PTE [%dx%d]...', size(sInputA.Data,1), size(sInputB.Data,1)));
             Comment = 'PTE';
             if OPTIONS.isNormalized
-                Comment = [Comment, ' [Normalized]'];
+                Comment = [Comment, ' [Normalized]']; %#ok<*AGROW> 
             end
             Comment = [Comment, ': '];
             % Get frequency bands
@@ -832,7 +855,17 @@ switch OPTIONS.Method
         if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
             Ravg = abs(Ravg);
         end
-    case {'wpli','wplit'}
+    case 'wpli'
+        AllComments = {'wPLI: '};
+        % Original definition
+        %Ravg = abs(R.ImSxy) ./ R.AbsImSxy; % abs() could be optional here.
+        % Debiased square definition
+        Ravg = (R.ImSxy.^2 - 1/nFiles * R.SqImSxy) ./ (R.AbsImSxy.^2 - 1/nFiles * R.SqImSxy); 
+        % Push freq to 4th dim.  Singleton time dim.
+        Ravg = permute(Ravg, [1,2,4,3]);
+    case 'wplit'
+        AllComments = {'wPLI: '};
+        Ravg = 
         if strcmpi(OPTIONS.PlvMeasure, 'magnitude')
             Ravg = abs(Ravg);
         end

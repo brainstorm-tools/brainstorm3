@@ -1,4 +1,4 @@
-function [S, Freq, Messages] = bst_cross_spectrum(X, Y, Fs, WinLen, Overlap, MaxFreq, ImagingKernel)
+function [S, Freq, Messages] = bst_cross_spectrum(X, Y, Fs, WinLen, Overlap, MaxFreq, ImagingKernel, S)
 % BST_CROSS_SPECTRUM : Compute auto-spectra Sxx and Syy and cross-spectrum Sxy
 %                      used to to further compute coherence metrics
 %
@@ -12,6 +12,7 @@ function [S, Freq, Messages] = bst_cross_spectrum(X, Y, Fs, WinLen, Overlap, Max
 %    - Overlap       : [0-1], percentage of time overlap between two consecutive estimation windows
 %    - MaxFreq       : Highest frequency of interest
 %    - ImagingKernel : If not empty, calculate Syy at the source level, but not Sxy (more efficient to do it after averaging epochs).
+%    - S      : Structure containing implicit functions of Sxy, Sxx and Syy
 %
 % OUTPUTS:
 %    - S      : Structure containing Sxx, Syy [nSignals, nFreq] and Sxy [nSignalsX, nSignalsY, nFreq].
@@ -94,22 +95,31 @@ end
 
 % Initialize accumulators
 nSignalsY = size(Y, 1);
+S.Syy = zeros(nSignalsY, length(Freq));
 if isNxN 
-    nSignalsX = nSignalsY;
+    S.Sxy = complex(zeros(nSignalsY, nSignalsY, length(Freq)));
 else
     nSignalsX = size(X, 1);
     S.Sxx = zeros(nSignalsX, length(Freq));
+    S.Sxy = complex(zeros(nSignalsX, nSignalsY, length(Freq)));
 end
-S.Syy = zeros(nSignalsY, length(Freq));
-S.Sxy = complex(zeros(nSignalsX, nSignalsY, length(Freq)));
 
 % Epoch into windows
 [epy, S.nWin] = epoching(Y, nWinLen, nOverlap);
 epy = bst_bsxfun(@times, epy, win);
+if ~isNxN
+    epx = epoching(X, nWinLen, nOverlap);
+    epx = bst_bsxfun(@times, epx, win);
+end
 % Zero padding, FFT, keep only positive frequencies
 epY = fft(epy, nFFT, 2);
 epY = epY(:, 1:nKeep, :);
 clear Y epy;
+if ~isNxN
+    epX = fft(epx, nFFT, 2);
+    epX = epX(:, 1:nKeep, :);
+    clear X epx
+end
 
 % === NxN ===
 if isNxN
@@ -125,6 +135,8 @@ if isNxN
     %S.Sxy = sum(bsxfun(@times, permute(epY, [1,4,2,3]), conj(permute(epY, [4,1,2,3]))), 4);
 
     % Auto-spectrum (PSD) of y
+    %% Must apply kernel before this
+    error()
     for iFreq = 1:length(Freq)
         S.Syy(:, iFreq) = abs(diag(S.Sxy(:,:,iFreq)));
     end
@@ -142,24 +154,19 @@ else
     end
 
     % Auto-spectrum (PSD) of x
-    epx = epoching(X, nWinLen, nOverlap);
-    epx = bst_bsxfun(@times, epx, win);
-    % Zero padding, FFT, keep only positive frequencies
-    epX = fft(epx, nFFT, 2);
-    epX = epX(:, 1:nKeep, :);
-    clear X epx
     % Sum across epochs
     S.Sxx = sum(epX .* conj(epX), 3);
 
-    % Compute Sxy (with loop)
-    %     for ix = 1 : nSignalsX
-    %         for iy = 1 : nSignalsY
-    %             %tmp = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
-    %             S.Sxy(ix, iy, :) = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
-    %         end
-    %     end
-    % Compute Sxy (vectorized)
-    S.Sxy = sum(bsxfun(@times, permute(epX, [1,4,2,3]), conj(permute(epY, [4,1,2,3]))), 4);
+    % Compute Sxy (loop on signals)
+    for ix = 1 : nSignalsX
+        for iy = 1 : nSignalsY
+            S.Sxy(ix, iy, :) = sum(epX(ix, :, :) .* conj(epY(iy, :, :)), 3);
+        end
+    end
+    % Compute Sxy (loop on windows)
+    % TODO
+    % Compute Sxy (vectorized? might use too much memory)
+    % S.Sxy = sum(bsxfun(@times, permute(epX, [1,4,2,3]), conj(permute(epY, [4,1,2,3]))), 4);
 end
 
 % %% ===== Project in source space =====
