@@ -2791,6 +2791,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
         % Add a directory per template block available
         for iDir = 1:length(bstDefaults)
             jMenuDir = gui_component('Menu', jMenu, [], bstDefaults(iDir).name, IconLoader.ICON_FOLDER_CLOSE, [], []);
+            isMni = strcmpi(bstDefaults(iDir).name, 'ICBM152');
             % Create subfolder for cap manufacturer
             jMenuOther = gui_component('Menu', [], [], 'Generic', IconLoader.ICON_FOLDER_CLOSE, [], []);
             jMenuAnt = gui_component('Menu', [], [], 'ANT', IconLoader.ICON_FOLDER_CLOSE, [], []);
@@ -2807,7 +2808,7 @@ function fcnPopupImportChannel(bstNodes, jMenu, isAddLoc)
             for iFile = 1:length(fList)
                 % Define callback function
                 if isAddLoc 
-                    fcnCallback = @(h,ev)channel_add_loc(iAllStudies, fList(iFile).fullpath, 1);
+                    fcnCallback = @(h,ev)channel_add_loc(iAllStudies, fList(iFile).fullpath, 1, isMni);
                 else
                     fcnCallback = @(h,ev)db_set_channel(iAllStudies, fList(iFile).fullpath, 1, 0);
                 end
