@@ -5,6 +5,7 @@ September 2022
 - IO: Support for XDF EEG recordings
 - ICA: Integration of Picard algorithm
 - ICA: Integration of FastICA algorithm
+- EEG templates: Convert MNI to subject space (menu "Add EEG positions")
 --------------------------------------------------------------
 August 2022
 - Anatomy: Project scouts between hemispheres (FreeSurfer option contrasurfreg)

@@ -96,6 +96,8 @@ for is = 1:length(iStudies)
                 sMriMni = in_mri_bst(sSubjectMni.Anatomy(sSubjectMni.iAnatomy).FileName);
                 sMriSubj = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
             end
+        else
+            isMni = 0;
         end
     end
     % Get channel file
