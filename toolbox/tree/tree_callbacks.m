@@ -815,7 +815,7 @@ switch (lower(action))
                 iStudy = bstNodes(1).getStudyIndex();
                 % Get subject structure
                 sStudy = bst_get('Study', iStudy);
-                sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                 % Get avaible modalities for this data file
                 [AllMod, DisplayMod] = bst_get('ChannelModalities', filenameRelative);
                 Device = bst_get('ChannelDevice', filenameRelative);
@@ -991,6 +991,17 @@ switch (lower(action))
                     if ~bst_get('ReadOnly')
                         fcnPopupComputeHeadmodel();
                     end
+
+                    % ===== PROJECT SENSORS =====
+                    if ~bst_get('ReadOnly') && ~any(ismember(DisplayMod, {'MEG', 'MEG MAG', 'MEG GRAD'}))
+                        AddSeparator(jPopup);
+                        if (iSubject == 0) || sSubject.UseDefaultAnat
+                            gui_component('MenuItem', jPopup, [], 'Project to subject...', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, []));
+                        else
+                            gui_component('MenuItem', jPopup, [], 'Project to default anatomy', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_channel(filenameRelative, 0));
+                        end
+                    end
+
                     % === MENU: EXPORT ===
                     % Export menu (added later)
                     jMenuExport = gui_component('MenuItem', [], [], 'Export to file', IconLoader.ICON_SAVE, [], @(h,ev)bst_call(@export_channel, filenameFull));

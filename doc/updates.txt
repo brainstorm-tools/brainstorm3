@@ -1,3 +1,6 @@
+October 2022
+- EEG: Project channel files between subjects
+--------------------------------------------------------------
 September 2022
 - Registration: Color-coding of digitized head points based on distance to scalp
 - IO: Updated Nicolet EEG reader
