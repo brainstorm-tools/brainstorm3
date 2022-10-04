@@ -1837,14 +1837,25 @@ switch (lower(action))
                 
 %% ===== POPUP: DIPOLES =====
             case 'dipoles'
+                % Get subject structure
+                iStudy = bstNodes(1).getStudyIndex();
+                sStudy = bst_get('Study', iStudy);
+                [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
                 % ONE DIPOLES FILE SELECTED
                 if (length(bstNodes) == 1)
                     gui_component('MenuItem', jPopup, [], 'Display on MRI (3D)', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'Mri3D'));
                     gui_component('MenuItem', jPopup, [], 'Display on cortex',   IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'Cortex'));
                     AddSeparator(jPopup);
                     gui_component('MenuItem', jPopup, [], 'Display density in MRI Viewer', IconLoader.ICON_DIPOLES, [], @(h,ev)view_dipoles(filenameRelative, 'MriViewer'));
-                else
+                elseif ~bst_get('ReadOnly')
                     gui_component('MenuItem', jPopup, [], 'Merge dipoles', IconLoader.ICON_DIPOLES, [], @(h,ev)dipoles_merge(GetAllFilenames(bstNodes)));
+                end
+                % PROJECT DIPOLES
+                if ~bst_get('ReadOnly')
+                    AddSeparator(jPopup);
+                    if (iSubject ~= 0) && ~sSubject.UseDefaultAnat
+                        gui_component('MenuItem', jPopup, [], 'Project to default anatomy', IconLoader.ICON_PROJECT_ELECTRODES, [], @(h,ev)bst_project_dipoles(GetAllFilenames(bstNodes), 0));
+                    end
                 end
 
 %% ===== POPUP: SPIKE =====
