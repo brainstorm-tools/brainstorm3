@@ -567,9 +567,9 @@ if ~isempty(nodeListIntra_cond)
     else
         % Get parent node
         nodeParent = nodeListIntra_cond.getParent();
-        nbChild = nodeParent.getChildCount();
         % Remove temporary analysis node
         nodeListIntra_cond.removeFromParent();
+        nbChild = nodeParent.getChildCount();
         % If there are other special nodes (Analysis-Inter, GlobalCommonfiles), put it after them
         if (nbChild >= 2) && (length(nodeParent.getChildAt(1).toString) > 1) && (nodeParent.getChildAt(1).toString.charAt(0) == '(')
             iInsert = 2;
