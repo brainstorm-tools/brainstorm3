@@ -515,7 +515,7 @@ else
         end
     end
     % Read file
-    [tmp, ChannelMatData, errMsg, DataMat] = in_fopen(DataFile, FileFormat);
+    [tmp, ChannelMatData, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions);
     if isempty(DataMat) || ~isempty(errMsg)
         return;
     end

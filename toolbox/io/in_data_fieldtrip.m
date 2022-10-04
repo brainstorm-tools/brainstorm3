@@ -78,13 +78,14 @@ elseif isfield(ftMat, 'trial') && ~isempty(ftMat.trial)
     % Get trial info, if available
     trialId = ones(length(ftMat.trial), 1);
     trialinfoClean = [];
+    % Cleanup trialinfo
     if isfield(ftMat, 'trialinfo') && (size(ftMat.trialinfo,1) == length(ftMat.trial)) && isnumeric(ftMat.trialinfo)
         iGoodCol = find(~any(isnan(ftMat.trialinfo),1) & ~all(bst_bsxfun(@minus, ftMat.trialinfo, ftMat.trialinfo(1,:)) == 0, 1));
         if ~isempty(iGoodCol)
             trialinfoClean = ftMat.trialinfo(:, iGoodCol);
         end
     end
-    % Cleanup trialinfo
+    % Select columns of trial ID
     if ~isempty(trialinfoClean)
         % Ask the user for confirmation
         if isInteractive
