@@ -1,7 +1,7 @@
-function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, scoutName, OrientCov)
+function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, scoutName, OrientCov, PcaReference)
 % BST_SCOUT_VALUE: Combine Ns time series using the given function. Used to get scouts/clusters values.
 %
-% USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0, scoutName=[], OrientCov=[])
+% USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0, scoutName=[], OrientCov=[], PcaReference=[])
 %
 % INPUTS:
 %     - F              : [Nsources * Ncomponents, Ntime] double matrix, source time series
@@ -12,8 +12,8 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - XyzFunction    : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'pcaa', 'none'}
 %     - isSignFlip     : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - scoutName      : Name of the scout or cluster you're extracting
-%     - OrientCov      : [3 x 3 x Nsources] Covariance between 3 rows of F (3 source orientations) at each location, pre-computed for one or more epochs,
-%                        or [3 x Nsources] Reference PCA components (see PcaFirstComp below) computed across epochs, used to pick consistent sign for each epoch.
+%     - OrientCov      : [3 x 3 x Nsources] Covariance between 3 rows of F (3 source orientations) at each location, pre-computed for one or more epochs
+%     - PcaReference   : [3 x Nsources] Reference PCA components (see PcaFirstComp below) pre-computed across epochs, used to pick consistent sign for each epoch
 %
 % OUTPUTS:
 %     - Fs           : [Nscouts x Ntime] Combined time series
@@ -44,6 +44,9 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %          Marc Lalancette, 2022
 
 % ===== PARSE INPUTS =====
+if (nargin < 8) || isempty(PcaReference)
+    PcaReference = [];
+end
 if (nargin < 8) || isempty(OrientCov)
     OrientCov = [];
 end
@@ -67,6 +70,11 @@ PcaFirstComp = [];
 
 
 % ===== ORIENTATION SIGN FLIP =====
+% Force sign flip for pcaa on scout, so that overall component sign fits convention for
+% source orientations pointing in/out, at least when a scout is mostly flat.
+if strcmpi(ScoutFunction, 'pcaa')
+    isSignFlip = true;
+end
 % Flip only if there are mixed signs in F (+ and -)
 if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(ScoutFunction), {'all', 'none'}) && ...
         (size(F,1) > 1) && ~all(F(:) > 0)
@@ -240,16 +248,23 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             explained = 0;
             for i = 1:nRow
                 Fi = permute(F(i,:,:), [3,2,1]); % permute faster than squeeze
-                % Here, we will probably want to remove the offset removal, but keeping as before for now.
-                [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ', 'vector'); % sum faster than mean
+                % Use trial data covariance if provided
+                if ~isempty(OrientCov)
+                    [U, S] = eig((OrientCov(:,:,i) + OrientCov(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
+                    [S, iSort] = sort(S, 'descend');
+                else % use data
+                    % Here, we will probably want to remove the offset removal, but keeping as before for now.
+                    [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ', 'vector'); % sum faster than mean
+                    iSort = 1;
+                end
                 explained = explained + S(1).^2 / sum(S.^2);
-                PcaFirstComp(:,i) = U(:,1);
+                PcaFirstComp(:,i) = U(:, iSort(1));
             end
             explained = explained / nRow;
             %warning('This older PCA implementation suffers from sign flipping between epochs.');
-            if ~isempty(OrientCov)
+            if ~isempty(PcaReference)
                 % Use PCA across epochs (here in OrientCov) to consistently select the component sign for each epoch.
-                CompSign = sign(sum(PcaFirstComp .* OrientCov));
+                CompSign = sign(sum(PcaFirstComp .* PcaReference));
                 PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
             % else we'll have to deal with sign ambiguity elsewhere.
             end
