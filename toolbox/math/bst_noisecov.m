@@ -1,7 +1,8 @@
-function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov)
+function NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options, isDataCov, isSave)
 % BST_NOISECOV: Compute noise covariance matrix for a set of studies.
 %
 % USAGE:  NoiseCovFiles = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options=[ask], isDataCov=0)                      
+%              NoiseCov = bst_noisecov(iTargetStudies, iDataStudies, iDatas, Options=[ask], isDataCov=0, 0)                      
 %               Options = bst_noisecov()
 %
 % INPUT: 
@@ -49,6 +50,9 @@ if (nargin == 0)
 end
 
 %% ===== PARSE INPUTS =====
+if (nargin < 6) || isempty(isSave)
+    isSave = true;
+end
 if (nargin < 5) || isempty(isDataCov)
     isDataCov = [];
 end
@@ -306,6 +310,7 @@ for iFile = 1:nBlocks
     % Compute covariance for this file
     % fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
     % fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
+    % TODO: doesn't make sense to have weights other than 1 here. Check and error instead of using?
     fileCov  = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
     fileCov2 = DataMat.Leff .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
     % Add file covariance to accumulator
@@ -362,7 +367,11 @@ end
 NoiseCovMat = bst_history('add', NoiseCovMat, 'compute', sprintf('Computed based on %d files (%d blocks, %d samples): %s, %s', ...
     nFiles, nBlocks, nSamplesTotal, strTime, Options.RemoveDcOffset));
 % Save in database
-NoiseCovFiles = import_noisecov(iTargetStudies, NoiseCovMat, Options.ReplaceFile, isDataCov);
+if isSave
+    NoiseCovFiles = import_noisecov(iTargetStudies, NoiseCovMat, Options.ReplaceFile, isDataCov);
+else
+    NoiseCovFiles = NoiseCovMat;
+end
 % Close progress bar
 bst_progress('stop');
 

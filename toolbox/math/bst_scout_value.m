@@ -12,8 +12,8 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - XyzFunction    : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'pcaa', 'none'}
 %     - isSignFlip     : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - scoutName      : Name of the scout or cluster you're extracting
-%     - OrientCov      : For PCA across epochs: [3 x 3 x Nsources] Covariance between 3 rows of F (3 source orientations) at each location, pre-computed across epochs.
-%                        For PCA per epoch: [3 x Nsources] PcaFirstComp (see outputs) from PCA across epochs, used to pick consistent sign across epochs.
+%     - OrientCov      : [3 x 3 x Nsources] Covariance between 3 rows of F (3 source orientations) at each location, pre-computed for one or more epochs,
+%                        or [3 x Nsources] Reference PCA components (see PcaFirstComp below) computed across epochs, used to pick consistent sign for each epoch.
 %
 % OUTPUTS:
 %     - Fs           : [Nscouts x Ntime] Combined time series
@@ -247,14 +247,17 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             end
             explained = explained / nRow;
             %warning('This older PCA implementation suffers from sign flipping between epochs.');
-            % Use PCA across epochs (here in OrientCov) to consistently select the component sign for each epoch. 
-            CompSign = sign(sum(PcaFirstComp .* OrientCov));
-            PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
+            if ~isempty(OrientCov)
+                % Use PCA across epochs (here in OrientCov) to consistently select the component sign for each epoch.
+                CompSign = sign(sum(PcaFirstComp .* OrientCov));
+                PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
+            % else we'll have to deal with sign ambiguity elsewhere.
+            end
             Fs = sum(bsxfun(@times, permute(PcaFirstComp, [2,3,1]), F), 3); % dot product of Comp with F on 3rd dim, gives size (nRow, nTime)
 
         case 'pcaa'
             if ~ismember(lower(ScoutFunction), {'all', 'none', 'mean', 'pca'})
-                error('PCA on orientations after scout function other than PCA, mean, or none is not implemented.')
+                error('PCA across epochs on orientations after scout function other than PCA, mean, or none is not implemented.');
                 % To deal with other (non linear) scout functions would require 2 steps to load all scout epochs.
             end
             % Here, F may be empty, if we save the result as a shared kernel.
@@ -264,7 +267,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             % For each vertex: Signal decomposition
             explained = 0;
             for i = 1:nRow
-                [U, S] = eig((OrientCov(:,:,i) + OrientCov(:,:,i)')/2, 'vector');
+                [U, S] = eig((OrientCov(:,:,i) + OrientCov(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
                 [S, iSort] = sort(S, 'descend');
                 explained = explained + S(1) / sum(S);
                 PcaFirstComp(:,i) = U(:, iSort(1));
