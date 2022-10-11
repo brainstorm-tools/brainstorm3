@@ -133,10 +133,11 @@ end
 
 
 %% ===== IMPORT BIDS DATABASE =====
-% USAGE:  [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], OPTIONS=[])
-function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
+% USAGE:  [RawFiles, Messages, OrigFiles] = process_import_bids('ImportBidsDataset', BidsDir=[ask], OPTIONS=[])
+function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
     % Initialize returned values
     RawFiles = {};
+    OrigFiles = {};
     Messages = [];
     
     % ===== PARSE INPUTS =====
@@ -387,6 +388,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
 %     end
     
     % ===== IMPORT FILES =====
+    EmptyRoomMatch = {};
     for iSubj = 1:length(SubjectName)
         errorMsg = [];
         MriMatchOrigImport = {};
@@ -782,6 +784,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % Import files to database
                 newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
                 RawFiles = [RawFiles{:}, newFiles];
+                OrigFiles = [OrigFiles{:}, repmat(allMeegFiles(iFile), length(newFiles), 1)];
                 % Add electrodes positions if available
                 if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
                     % Subject T1 coordinates (space-ScanRAS)
@@ -890,6 +893,73 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                     end                   
                 end
+
+                % === MEG.JSON ===
+                % Get _meg.json next to the recordings file
+                MegFile = [baseName, '_meg.json'];
+                % Get _meg.json in the same folder as the recordings file
+                if ~file_exist(MegFile)
+                    megDir = dir(fullfile(fileparts(allMeegFiles{iFile}), '*_meg.json'));
+                    if (length(megDir) == 1)
+                        MegFile = fullfile(fileparts(allMeegFiles{iFile}), megDir(1).name);
+                    end
+                end
+                % Get _meg.json in the session folder (one folder above)
+                if ~file_exist(MegFile)
+                    megDir = dir(fullfile(fileparts(fileparts(allMeegFiles{iFile})), '*_meg.json'));
+                    if (length(megDir) == 1)
+                        MegFile = fullfile(fileparts(fileparts(allMeegFiles{iFile})), megDir(1).name);
+                    end
+                end
+                % If there is a meg.json file: read it to get the AssociatedEmptyRoom field
+                if file_exist(MegFile)
+                    json = bst_jsondecode(MegFile);
+                    % Save the empty-room associations, and process them later
+                    if isfield(json, 'AssociatedEmptyRoom') && ~isempty(json.AssociatedEmptyRoom) && file_exist(fullfile(BidsDir, json.AssociatedEmptyRoom))
+                        for iRaw = 1:length(newFiles)
+                            EmptyRoomMatch(end+1, 1:2) = {newFiles{iRaw}, json.AssociatedEmptyRoom};
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    % ===== COMPUTE NOISE COVARIANCE =====
+    if ~isempty(EmptyRoomMatch)
+        % Process each empty room file separately 
+        uniqueEmptyRoom = unique(EmptyRoomMatch(:,2));
+        % Compute the noise covariance for each file
+        for iNoise = 1:length(uniqueEmptyRoom)
+            % Find the link imported in the database for this emptyroom recordings
+            origEmptyFile = fullfile(BidsDir, uniqueEmptyRoom{iNoise});
+            iRawEmpty = find(file_compare(origEmptyFile, OrigFiles));
+            if isempty(iRaw)
+                continue;
+            end
+            % Compute the noise covariance
+            sFilesEmpty = bst_process('CallProcess', 'process_noisecov', RawFiles{iRawEmpty}, [], ...
+                'baseline',       [], ...
+                'datatimewindow', [], ...
+                'sensortypes',    '', ...
+                'target',         1, ...  % Noise covariance     (covariance over baseline time window)
+                'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
+                'identity',       0, ...
+                'copycond',       0, ...
+                'copysubj',       0, ...
+                'copymatch',      0, ...
+                'replacefile',    1);  % Replace
+            % Find the studies matched with these noise recordings
+            iOrigDest = find(strcmp(EmptyRoomMatch(:,2), uniqueEmptyRoom{iNoise}));
+            % Copy noisecov to all the matched folders 
+            for iDest = iOrigDest
+                % Find study index where the file was imported
+                [sStudyDest, iStudyDest] = bst_get('DataFile', EmptyRoomMatch{iDest,1});
+                if isempty(iStudyDest)
+                    continue;
+                end
+                % Copy noise covariance to destination study 
+                db_set_noisecov(sFilesEmpty.iStudy, iStudyDest, 0, 1);
             end
         end
     end

@@ -1,6 +1,7 @@
 October 2022
 - EEG: Project channel files between subjects
 - Inverse: Project dipoles files between subjects
+- BIDS import: Added support for AssociatedEmptyRoom + compute noise covariance
 --------------------------------------------------------------
 September 2022
 - Registration: Color-coding of digitized head points based on distance to scalp
