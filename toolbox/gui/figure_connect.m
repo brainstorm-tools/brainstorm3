@@ -1214,10 +1214,6 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
                     Vertices = GlobalData.DataSet(iDS).Timefreq(iTimefreq).GridLoc;
                 end
             end
-            % If there are incompatibilities in the number of labels and the number of locations, ignore locations
-            if ~isempty(RowNames) && ~isempty(Vertices) && (size(Vertices,1) ~= length(RowNames))
-                Vertices = [];
-            end
             % If an atlas is available
             if ~isempty(Atlas) && ~isempty(SurfaceFile) && ~isempty(Vertices)
                 % Create groups using the file atlas
