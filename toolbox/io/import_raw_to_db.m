@@ -56,11 +56,12 @@ if (length(NewFiles) == 1) && ~isempty(sStudy.Image)
 end
 
 % Copy noise covariance, if any
-if ~isempty(sStudy.NoiseCov) && ~isempty(sStudy.NoiseCov(1).FileName)
-    for iStudyCopy = unique(iStudyImport)
-        sStudyCopy = bst_get('Study', iStudyCopy);
+if ~isempty(iStudyImport) && ~isempty(sStudy.NoiseCov) && ~isempty(sStudy.NoiseCov(1).FileName)
+    iStudyCopy = unique(iStudyImport);
+    for i = 1:length(iStudyCopy)
+        sStudyCopy = bst_get('Study', iStudyCopy(i));
         if isempty(sStudyCopy.NoiseCov) || isempty(sStudyCopy.NoiseCov(1).FileName)
-            db_set_noisecov(iStudy, iStudyCopy, 0, 0);
+            db_set_noisecov(iStudy, iStudyCopy(i), 0, 0);
         end
     end
 end
