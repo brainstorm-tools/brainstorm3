@@ -49,22 +49,14 @@ function sProcess = GetDescription()
         'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-        ['<B>PCA across epochs</B>: First mode of svd(x,y,z), maximizes retained power<BR>' ...
-        'Generally recommended, especially for within subject comparisons.<BR>' ...
-        'Requires kernel link source file(s) and pre-computed data covariance.<BR>' ...
-        'Fast: computed once for each kernel using covariance (not provided data files). <BR>' ...
-        'Saves a flattened shared kernel.'], ...
-        ['<B>PCA per epoch</B>: First mode of svd(x,y,z), sign aligned with PCA across epochs<BR>' ...
-        'Useful for single-epoch analysis, while sign consistency still allows combining epochs.<BR>' ...
-        'Requires kernel link source file(s) and pre-computed data covariance.<BR>' ...
-        'Slow: computed on each provided file. Saves individual flattened files.']; ...
-        'norm', 'pcaa', 'pca'};
+        '<B>PCA</B>: First mode of svd(x,y,z), maximizes retained power'; ...
+        'norm', 'pca'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'norm';
     % Options: PCA
-    sProcess.options.edit.Comment = {'panel_pca_options', ' PCA options: '}; % TODO
+    sProcess.options.edit.Comment = {'panel_pca', ' PCA options: '}; % TODO
     sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = bst_get('PcaOptions'); % empty, bst_get or other function that returns defaults.
+    sProcess.options.edit.Value   = bst_get('PcaOptions'); % empty or function that returns defaults.
 end
 
 
@@ -134,6 +126,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
     OutputFiles = {};
     Message = '';
     PrevCond = '';
+    isAllLink = false;
     nInputs = numel(sInputs);
     
     %________________________________________________________
@@ -161,7 +154,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 if isAllLink
                     sStudy = bst_get('Study', sInputs(iInput).iStudy);
                     if numel(sStudy.NoiseCov) < 2
-                        Message = 'Data covariance not found for PCA flattening with pre-computed data covariance matrix to be computed first.';
+                        Message = 'Data covariance not found for PCA flattening with pre-computed data covariance.';
                         return;
                     end
                     DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName));
@@ -314,7 +307,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                     OutputFiles{iInput} = LinkFiles{iLink};
                     continue;
                 else
-                    % Works for kernel or timeseries.
+                    % Data was not passed when computing reference component above, so still need to project. This works for kernel or timeseries.
                     SourceData = permute(reshape(ResultsMat.(Field), nComp, nVert, []), [2, 3, 1]); % [nVert, (nTime or nChan), nComp]
                     ResultsMat.(Field) = sum(bsxfun(@times, SourceData, PcaOrient), 3); % [nSource, (nTime or nChan)]
                 end
@@ -323,8 +316,8 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 if isLink
                     % If we passed Field='ImagingKernel' without a covariance, it would do PCA on
                     % the inverse model instead of the timeseries (valid but not what we want here).
-                    % Instead, we could load full data, compute and apply the component to the kernel,
-                    % or pre-compute the covariance from this file only (like we did above).
+                    % Instead, pre-compute the covariance from this file only (like we did above).
+                    % (We could also instead load full data, compute and apply the component to the kernel.)
                     PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
                     DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput));
                     Kernel = permute(reshape(ResultsMat.(Field), nComp, nVert, []), [2, 3, 1]); % (nVert, nChan, nComp)
@@ -350,7 +343,7 @@ end
 %% ===== COMPUTE =====
 function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov, PcaOrient)
     % Field to process
-    % TODO test: only linear Methods work for ImagingKernel. mean,sum,pca.
+    % TODO check: only linear Methods work for ImagingKernel. mean,sum,pca.
     if (nargin < 5) || isempty(PcaOrient)
         PcaOrient = [];
     end

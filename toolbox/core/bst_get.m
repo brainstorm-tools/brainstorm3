@@ -2025,7 +2025,7 @@ switch contextName
                 if (nargout >= 5) && ~isempty(sStudy)
                     sItem = sStudy.NoiseCov(iItem);
                 end
-            case 'ndatacov'
+            case 'datacov'
                 [sStudy, iStudy, iItem] = bst_get('DataCovFile', FileName);
                 if (nargout >= 5) && ~isempty(sStudy)
                     sItem = sStudy.NoiseCov(iItem);

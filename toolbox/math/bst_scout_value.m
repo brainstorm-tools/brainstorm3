@@ -45,8 +45,6 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %
 % Authors: Sylvain Baillet, Francois Tadel, John Mosher, Marc Lalancette, 2010-2022
 
-TODO: check if/when empty possible for scout
-
 % ===== PARSE INPUTS =====
 if (nargin < 8) || isempty(PcaReference)
     PcaReference = [];
@@ -80,8 +78,8 @@ elseif nComponents > 1 && strncmpi(XyzFunction, 'pca', 3) && ~ismember(ScoutFunc
 end
 
 % ===== ORIENTATION SIGN FLIP =====
-% Force sign flip for pcaa (or pca if no reference component provided) on scout, so that overall
-% component sign fits convention for source orientations pointing in/out, when a scout is mostly flat.
+% PCA & orientation sign flipping: if we flip here, the resulting component sign is as if the activity
+% was coming from a source with the dominant orientation, regardless of where the component weights are strong. 
 if strcmpi(ScoutFunction, 'pcaa') || (strcmpi(ScoutFunction, 'pca') && isempty(PcaReference))
     isSignFlip = true;
 end
@@ -262,10 +260,16 @@ switch (lower(ScoutFunction))
         % Orientation-based sign flipping was previously applied, if orientations available.
         CompSign = nzsign(sum(PcaFirstComp));
         PcaFirstComp = CompSign * PcaFirstComp;
-        Fs = U' * F; % (1, nTime)
-        % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
-        if isSignFlip
-            PcaFirstComp = PcaFirstComp .* FlipMask;
+        % F could be empty here if 
+        if ~isempty(F)
+            Fs = U' * F; % (1, nTime)
+            % Take into account previous sign flip for returned component (so it applies to non sign flipped data).
+            if isSignFlip
+                PcaFirstComp = PcaFirstComp .* FlipMask;
+            end
+        else
+            % DataCov was not sign-flipped if F is empty.
+            Fs = [];
         end
         
     % FAST PCA : Display first mode of PCA of time series within each scout region
@@ -314,7 +318,7 @@ end
 % If there are more than one component in output
 if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     nRow = size(Fs,1); % 1 or nComp if ScoutFunction, otherwise original nRow
-    % Start from the scouts time series
+    % Start from the scouts time series, but they can be empty for pcaa.
     F = Fs;
     % Different options to combine the three orientations
     switch lower(XyzFunction)
