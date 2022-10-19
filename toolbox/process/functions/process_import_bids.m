@@ -337,8 +337,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             % If json file exists
             if file_exist(jsonFile)
                 % Load json file
-                json = bst_jsondecode(jsonFile);
-                sFid = GetFiducials(json, 'voxel');
+                try
+                    json = bst_jsondecode(jsonFile);
+                    sFid = GetFiducials(json, 'voxel');
+                catch
+                    disp(['BIDS> Error: Cannot read json file: ' jsonFile]);
+                    sFid = [];
+                end
                 % If there are fiducials defined: use them as inputs to FreeSurfer import (and other segmentations)
                 if ~isempty(sFid)
                     fidMriFile = SubjectMriFiles{end}{iMri};
@@ -661,49 +666,57 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Read useful metadata from _coordinates.tsv file
                     if (length(coordsystemDir) == 1)
                         % Read json file
-                        sCoordsystem = bst_jsondecode(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name));
-                        % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinatesi in the same units (it would be weird to do otherwise, but it might happen)
-                        if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
-                            posUnits = sCoordsystem.iEEGCoordinateUnits;
-                        elseif isfield(sCoordsystem, 'EEGCoordinateUnits') && ~isempty(sCoordsystem.EEGCoordinateUnits) && ismember(sCoordsystem.EEGCoordinateUnits, {'mm','cm','m'})
-                            posUnits = sCoordsystem.EEGCoordinateUnits;
-                        elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
-                            posUnits = sCoordsystem.MEGCoordinateUnits;
+                        jsonFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name);
+                        try
+                            sCoordsystem = bst_jsondecode(jsonFile);
+                        catch
+                            disp(['BIDS> Error: Cannot read json file: ' jsonFile]);
+                            sCoordsystem = [];
                         end
-                        % Get fiducials structure
-                        sFid = GetFiducials(sCoordsystem, posUnits);
-                        % If there are no fiducials: there is no easy way to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
-                        if isempty(sFid)
-                            if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
-                                electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
-                            elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
-                                electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
-                            elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
-                                electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
-                            elseif ~isempty(coordsystemSpace)
-                                electrodesCoordSystem = coordsystemSpace;
+                        if ~isempty(sCoordsystem)
+                            % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinatesi in the same units (it would be weird to do otherwise, but it might happen)
+                            if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
+                                posUnits = sCoordsystem.iEEGCoordinateUnits;
+                            elseif isfield(sCoordsystem, 'EEGCoordinateUnits') && ~isempty(sCoordsystem.EEGCoordinateUnits) && ismember(sCoordsystem.EEGCoordinateUnits, {'mm','cm','m'})
+                                posUnits = sCoordsystem.EEGCoordinateUnits;
+                            elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
+                                posUnits = sCoordsystem.MEGCoordinateUnits;
                             end
-                        end
-                        % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
-                        if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
-                            if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
-                                % Check whether the IntendedFor files is already imported as a volume
-                                if ~isempty(MriMatchOrigImport)
-                                    iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
-                                else
-                                    iMriImported = [];
+                            % Get fiducials structure
+                            sFid = GetFiducials(sCoordsystem, posUnits);
+                            % If there are no fiducials: there is no easy way to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
+                            if isempty(sFid)
+                                if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
+                                elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
+                                elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                                elseif ~isempty(coordsystemSpace)
+                                    electrodesCoordSystem = coordsystemSpace;
                                 end
-                                if ~isempty(iMriImported)
-                                    electrodesAnatRef = MriMatchOrigImport{iMriImported,2};
+                            end
+                            % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
+                            if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
+                                if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
+                                    % Check whether the IntendedFor files is already imported as a volume
+                                    if ~isempty(MriMatchOrigImport)
+                                        iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
+                                    else
+                                        iMriImported = [];
+                                    end
+                                    if ~isempty(iMriImported)
+                                        electrodesAnatRef = MriMatchOrigImport{iMriImported,2};
+                                    else
+                                        msg = ['The file in coordsystem.json/IntendedFor is not imported to the database: ' sCoordsystem.IntendedFor];
+                                        disp(['BIDS> Warning: ' msg]);
+                                        Messages = [Messages 10 msg];
+                                    end
                                 else
-                                    msg = ['The file in coordsystem.json/IntendedFor is not imported to the database: ' sCoordsystem.IntendedFor];
+                                    msg = ['The file in coordsystem.json/IntendedFor does not exist: ' sCoordsystem.IntendedFor];
                                     disp(['BIDS> Warning: ' msg]);
                                     Messages = [Messages 10 msg];
                                 end
-                            else
-                                msg = ['The file in coordsystem.json/IntendedFor does not exist: ' sCoordsystem.IntendedFor];
-                                disp(['BIDS> Warning: ' msg]);
-                                Messages = [Messages 10 msg];
                             end
                         end
                     end
@@ -913,9 +926,14 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 end
                 % If there is a meg.json file: read it to get the AssociatedEmptyRoom field
                 if file_exist(MegFile)
-                    json = bst_jsondecode(MegFile);
+                    try
+                        json = bst_jsondecode(MegFile);
+                    catch
+                        disp(['BIDS> Error: Cannot read json file: ' MegFile]);
+                        json = [];
+                    end
                     % Save the empty-room associations, and process them later
-                    if isfield(json, 'AssociatedEmptyRoom') && ~isempty(json.AssociatedEmptyRoom) && file_exist(fullfile(BidsDir, json.AssociatedEmptyRoom))
+                    if ~isempty(json) && isfield(json, 'AssociatedEmptyRoom') && ~isempty(json.AssociatedEmptyRoom) && file_exist(fullfile(BidsDir, json.AssociatedEmptyRoom))
                         for iRaw = 1:length(newFiles)
                             EmptyRoomMatch(end+1, 1:2) = {newFiles{iRaw}, json.AssociatedEmptyRoom};
                         end
