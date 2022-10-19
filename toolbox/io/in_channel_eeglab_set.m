@@ -76,7 +76,7 @@ if isfield(SetFileMat.EEG, 'chanlocs') && ~isempty(SetFileMat.EEG.chanlocs)
         if isLoc
             if isempty(SetFileMat.EEG.chanlocs(iChan).X) || isempty(SetFileMat.EEG.chanlocs(iChan).Y) || isempty(SetFileMat.EEG.chanlocs(iChan).Z)
                 ChannelMat.Channel(iChan).Loc = [];
-                if strcmpi(ChannelMat.Channel(iChan).Type, 'EEG')
+                if strcmpi(ChannelMat.Channel(iChan).Type, 'EEG') && ~isempty([SetFileMat.EEG.chanlocs.X])
                     ChannelMat.Channel(iChan).Type = 'Misc';
                 end
             elseif ~isNormalizedCs
