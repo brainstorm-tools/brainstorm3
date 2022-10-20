@@ -126,9 +126,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     jPanelNew = gui_river();
     
     % OPTIONS PANEL
-    jPanelOptions = gui_river([5,2], [0,10,15,0], 'PCA Options');
+    jPanelOptions = gui_river([5,2], [0,10,15,0], 'PCA method');
         % PCA TYPE
-        gui_component('label', jPanelOptions, 'p', 'PCA method:');
+        %gui_component('label', jPanelOptions, 'p', 'PCA method:');
         jButtonGroupMethod = ButtonGroup();
         % Across epochs
         gui_component('label', jPanelOptions, 'br', '    ');
@@ -149,51 +149,60 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         jRadioPca = gui_component('radio', jPanelOptions, '', ...
             ['<HTML><FONT color="#777777"><B>Per individual epoch/file, arbitrary signs</B>: Can be used for single files.<BR>' ...
             'Method used prior to Nov 2022, no longer recommended due to sign inconsistency.<BR>' ...
-            'Options below cannot be modified.</FONT>'], [], [], @RadioPca_Callback);
+            '<I>The covariance options below cannot be modified.</I></FONT>'], [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPca);
+    jPanelNew.add('hfill', jPanelOptions);
         
+    jPanelCov = gui_river([5,2], [0,10,15,0], 'Data covariance options');
+        % This is how it is and used to be (also for covariance computation), but maybe not that
+        % logical... It would make more sense to do the desired baseline/offset removal on the data
+        % directly, even before the inverse model, like we'd do for filtering, and keep it
+        % consistent (no more offset removal options) everywhere after.  Then only the data time
+        % window would be relevant here.
+        gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the PCA component computation only. <BR>' ...
+            'For non-kernel-link files, that component is then applied to the unmodified data (no offset removal).']);
         % Use pre-computed data covariance?
         if ~isempty(CovOptions) 
-            jCheckUseDataCov = gui_component('checkbox', jPanelOptions, 'p', ['<HTML>Use pre-computed data covariance (only applicable to kernel link source files)<BR>' ...
-                '<FONT color="#777777"><I>When selected, the options below are set to those used to compute the covariance.</I></FONT>'], [], [], @CheckUseDataCov_Callback);
+            jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (only applicable to kernel link source files)<BR>' ...
+                '<FONT color="#777777"><I>When selected, the settings used to compute the covariance are shown below.</I></FONT>'], [], [], @CheckUseDataCov_Callback);
             jCheckUseDataCov.setSelected(1);
         else
             jCheckUseDataCov = [];
         end
         % Time window
-        gui_component('label', jPanelOptions, 'p', 'Input files time window: ');
-        gui_component('label', jPanelOptions, 'tab', strTime);
+        gui_component('label', jPanelCov, 'p', 'Input files time window: ');
+        gui_component('label', jPanelCov, 'tab', strTime);
 
         % BASELINE 
         % Time range
-        gui_component('label', jPanelOptions, 'p', 'Baseline: ');
-        jBaselineTimeStart = gui_component('texttime', jPanelOptions, 'tab', ' ', TEXT_DIM);
-        gui_component('label', jPanelOptions, [], ' - ');
-        jBaselineTimeStop = gui_component('texttime', jPanelOptions, [], ' ', TEXT_DIM);
+        gui_component('label', jPanelCov, 'p', 'Baseline: ');
+        jBaselineTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
+        gui_component('label', jPanelCov, [], ' - ');
+        jBaselineTimeStop = gui_component('texttime', jPanelCov, [], ' ', TEXT_DIM);
         % Callbacks
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStart, [], jBaselineTimeStop, ResultsMat.Time, 'time', [], PcaOptions.Baseline(1), []);
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStop, jBaselineTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.Baseline(2), []);
         % Units
-        gui_component('label', jPanelOptions, [], BaselineTimeUnit);
+        gui_component('label', jPanelCov, [], BaselineTimeUnit);
 
         % DATA TIME WINDOW
         % Time range
-        gui_component('label', jPanelOptions, 'br', 'Data: ');
-        jDataTimeStart = gui_component('texttime', jPanelOptions, 'tab', ' ', TEXT_DIM);
-        gui_component('label', jPanelOptions, [], ' - ');
-        jDataTimeStop = gui_component('texttime', jPanelOptions, [], ' ', TEXT_DIM);
+        gui_component('label', jPanelCov, 'br', 'Data: ');
+        jDataTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
+        gui_component('label', jPanelCov, [], ' - ');
+        jDataTimeStop = gui_component('texttime', jPanelCov, [], ' ', TEXT_DIM);
         % Callbacks
         DataTimeUnit = gui_validate_text(jDataTimeStart, [], jDataTimeStop, ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(1), []);
         DataTimeUnit = gui_validate_text(jDataTimeStop, jDataTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(2), []);
         % Units
-        gui_component('label', jPanelOptions, [], DataTimeUnit);
+        gui_component('label', jPanelCov, [], DataTimeUnit);
         
         % Remove DC offset (limited to per-file for now)
-        jRemoveDcFile = gui_component('checkbox', jPanelOptions, 'p', 'Remove DC offset (subtract baseline average) per epoch/file');
+        jRemoveDcFile = gui_component('checkbox', jPanelCov, 'p', 'Remove DC offset (subtract baseline average) per epoch/file');
         if ismember(PcaOptions.RemoveDcOffset, {'file', 'all'})
             jRemoveDcFile.setSelected(1);
         end
-    jPanelNew.add('br hfill', jPanelOptions);
+    jPanelNew.add('br hfill', jPanelCov);
         
     % ===== VALIDATION BUTTONS =====
     % Cancel

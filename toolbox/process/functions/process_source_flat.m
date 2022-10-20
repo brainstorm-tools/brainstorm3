@@ -192,7 +192,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
         if isLink
             if ~isAllLink
                 % Get data covariance for this file only.
-                DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput));
+                DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput).iStudy);
                 nF = 1;
                 %else
                 % If using a pre-computed data covariance, we only get here for the first
@@ -309,11 +309,11 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                     % Instead, pre-compute the covariance from this file only (like we did above).
                     % (We could also instead load full data, compute, and apply the returned component to the kernel.)
                     PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
-                    DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput));
-                    Kernel = permute(reshape(ResultsMat.(Field), nComp, nVert, []), [2, 3, 1]); % (nVert, nChan, nComp)
+                    DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput).iStudy);
+                    Kernel = permute(reshape(ResultsMat.(Field), ResultsMat.nComponents, [], size(ResultsMat.(Field), 2)), [2, 3, 1]); % (nVert, nChan, nComp)
                     % For each source (each [3 x nChan] page of Kernel), get K * Cov * K' -> [3 x 3]
                     % For efficiency, loop on components instead of sources.
-                    FileOrientCov = zeros([1, nComp, size(Kernel,1), size(Kernel,2)]);
+                    FileOrientCov = zeros([1, ResultsMat.nComponents, size(Kernel,1), size(Kernel,2)]);
                     for i = 1:ResultsMat.nComponents
                         FileOrientCov(1,i,:,:) = Kernel(:,:,i) * DataCov(ResultsMat.GoodChannel, ResultsMat.GoodChannel);
                     end
@@ -394,8 +394,10 @@ end
 
 
 %% ===== Get data covariance from one file =====
-function DataCov = GetCovariance(DataFile, Options, sInput)
-    CovMat = bst_noisecov(sInput.iStudy, sInput.iStudy, sInput.iItem, Options, true, false); % isDataCov=true, isSave=false
+function DataCov = GetCovariance(DataFile, Options, iStudy)
+    % Find data file index.
+    [~, ~, iData] = bst_get('DataFile', DataFile, iStudy);
+    CovMat = bst_noisecov(iStudy, iStudy, iData, Options, true, false); % isDataCov=true, isSave=false
     DataCov = CovMat.NoiseCov;
 end
 
