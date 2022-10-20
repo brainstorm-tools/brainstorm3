@@ -80,7 +80,7 @@ end
 % ===== ORIENTATION SIGN FLIP =====
 % PCA & orientation sign flipping: if we flip here, the resulting component sign is as if the activity
 % was coming from a source with the dominant orientation, regardless of where the component weights are strong. 
-if strcmpi(ScoutFunction, 'pcaa') || (strcmpi(ScoutFunction, 'pca') && isempty(PcaReference))
+if strcmpi(ScoutFunction, 'pcaa') || (strncmpi(ScoutFunction, 'pca', 3) && isempty(PcaReference))
     isSignFlip = true;
 end
 % Flip only if there are mixed signs in F (+ and -)
@@ -197,7 +197,7 @@ switch (lower(ScoutFunction))
             Fs = bst_max(F,1);
         else
             % Get the maximum of the norm across orientations, at each time
-            [tmp__, iMax] = max(sum(F.^2, 3), [], 1);
+            [~, iMax] = max(sum(F.^2, 3), [], 1);
             % Build indices of the values to read
             iMaxF = sub2ind(size(F), [iMax,iMax,iMax], ...
                                      [1:nTime,1:nTime,1:nTime], ...
@@ -214,7 +214,7 @@ switch (lower(ScoutFunction))
         end
 
     % PCA : Display first mode of PCA of time series within each scout region
-    case 'pca'
+    case {'pca', 'pcai'}
         % Signal decomposition
         PcaFirstComp = zeros(nRow, nComponents);
         explained = 0;
@@ -224,7 +224,8 @@ switch (lower(ScoutFunction))
                 [U, S] = eig((DataCov + DataCov')/2, 'vector'); % ensure exact symmetry for real results.
                 [S, iSort] = sort(S, 'descend');
             else % use data
-                % Here, we will probably want to remove the offset removal, but keeping as before for now.
+                % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
+                % Keeping offset removal as before for now.
                 [U, S] = svd(bsxfun(@minus, F, sum(F,2)./size(F,2)), 'econ', 'vector'); % sum faster than mean
                 iSort = 1;
             end
@@ -323,7 +324,7 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
     % Different options to combine the three orientations
     switch lower(XyzFunction)
         % Compute the PCA of all the components
-        case 'pca'
+        case {'pca', 'pcai'}
             PcaFirstComp = zeros(nComponents, nRow);
             % For each vertex: Signal decomposition
             explained = 0;
@@ -334,7 +335,8 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
                     [U, S] = eig((DataCov(:,:,i) + DataCov(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
                     [S, iSort] = sort(S, 'descend');
                 else % use data
-                    % Here, we will probably want to remove the offset removal, but keeping as before for now.
+                    % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
+                    % Keeping offset removal as before for now.
                     [U, S] = svd(bsxfun(@minus, Fi, sum(Fi,2)./size(Fi,2)), 'econ', 'vector'); % sum faster than mean
                     iSort = 1;
                 end

@@ -46,8 +46,11 @@ function [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVer
 %          Marc Lalancette, 2022
 
 % Parse inputs
-if (nargin < 8) || isempty(PcaOrient)
+if (nargin < 9) || isempty(PcaOrient)
     PcaOrient = [];
+end
+if (nargin < 8) || isempty(OrientCov)
+    OrientCov = [];
 end
 if (nargin < 7) || isempty(RowNames)
 	RowNames = [];
@@ -207,7 +210,7 @@ function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, Orien
             else
                 Values = abs(Values(i1,:,:,:)).^2 + abs(Values(i2,:,:,:)).^2;
             end
-        case {'pca', 'pcaa'}
+        case {'pca', 'pcaa', 'pcai'}
             % Values could be empty here. 
             if ~isempty(PcaOrient)
                 nComp = size(PcaOrient, 1);

@@ -233,9 +233,6 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
     % Compute reference component. Empty data for speed.
     ResultsMat.ImageGridAmp = [];
     [~, PcaRefOrient] = Compute(ResultsMat, 'pcaa', '', OrientCov);
-    if strcmpi(PcaOptions.Method, 'pcaa')
-        PcaOrient = permute(PcaRefOrient, [2, 3, 1]);
-    end
     end
 
     %________________________________________________________
@@ -244,6 +241,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
     for iInput = 1:nInputs
         % Process by condition (already sorted)
         if ~strcmp(sInputs(iInput).Condition, PrevCond) %&& ~strcmp(sInputs(iInput).SubjectName, PrevSub)
+            % We just changed condition.
             PrevCond = sInputs(iInput).Condition;
             if strcmpi(PcaOptions.Method, 'pcaa')
                 % Check if all files from this condition are kernel links.
@@ -289,31 +287,19 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
         % Compute
         switch PcaOptions.Method
             case 'pcaa'
-                % Apply reference components directly.
+                % Apply reference components to data directly.
+                ResultsMat = Compute(ResultsMat, PcaOptions.Method, Field, [], PcaRefOrient);
                 if isAllLink
                     % Save shared kernel and find link.
-                    ResultsMat.DataFile = '';
-                    % Keep original kernel file name, but ensure unique.
-                    [KernelPath, KernelName] = bst_fileparts(file_resolve_link(sInputs(iInput).FileName));
-                    iK = strfind(KernelName, '_KERNEL_');
-                    SharedFile = bst_process('GetNewFilename', KernelPath, [KernelName(1:iK) 'KERNEL_' PcaOptions.Method]);
-                    bst_save(SharedFile, ResultsMat, 'v6');
-                    db_add_data(sInputs(iInput).iStudy, SharedFile, ResultsMat);
-                    panel_protocols('UpdateNode', 'Study', sInputs(iInput).iStudy);
-                    % Find link to the result kernel that was just created for this data file.
-                    LinkFiles = db_links('Study', sInputs(iInput).iStudy);
-                    iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInputs(iInput).DataFile]));
-                    if sum(iLink) ~= 1
+                    OutputFiles{iInput} = SaveKernelFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
+                    if isempty(OutputFiles{iInput})
                         bst_report('Error', sProcess, sInputs(iInput), 'Problem finding the correct linked file.');
                         OutputFiles = {};
                         return;
                     end
-                    OutputFiles{iInput} = LinkFiles{iLink};
-                    continue;
                 else
-                    % Data was not passed when computing reference component above, so still need to project. This works for kernel or timeseries.
-                    SourceData = permute(reshape(ResultsMat.(Field), nComp, nVert, []), [2, 3, 1]); % [nVert, (nTime or nChan), nComp]
-                    ResultsMat.(Field) = sum(bsxfun(@times, SourceData, PcaOrient), 3); % [nSource, (nTime or nChan)]
+                    % Save individual files as single-file kernel or data result.
+                    OutputFiles{iInput} = SaveResultFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
                 end
             otherwise
                 % Get PCA for this file, with sign matched to reference.
@@ -335,10 +321,10 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 else
                     FileOrientCov = [];
                 end
-                [ResultsMat, PcaOrient] = Compute(ResultsMat, PcaOptions.Method, Field, FileOrientCov, PcaRefOrient);
+                ResultsMat = Compute(ResultsMat, PcaOptions.Method, Field, FileOrientCov, PcaRefOrient);
+                % Save individual files as single-file kernel or data result.
+                OutputFiles{iInput} = SaveResultFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
         end
-        % Save individual files as single-file kernel or data result.
-        OutputFiles{iInput} = SaveResultFile(sInputs(iInput), ResultsMat, fileTag);
         bst_progress('inc', 0.5);
     end % second file loop
 end
@@ -374,7 +360,16 @@ function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov,
             % Unconstrained source models
         case 3
             % Apply source orientations
-            [ResultsMat.(Field), GridAtlas, RowNames, PcaOrient] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], OrientCov, PcaOrient);
+            % Shortcut when pcaa was already computed and we just want to apply it to the data.
+            if strcmpi(Method, 'pcaa') && ~isempty(PcaOrient)
+                % This works for kernel or timeseries.
+                SourceData = permute(reshape(ResultsMat.(Field), ResultsMat.nComponents, size(PcaOrient, 2), []), [2, 3, 1]); % [nSource, (nTime or nChan), nComp]
+                PcaRefOrient = permute(PcaOrient, [2, 3, 1]); % [nSource, 1, nComp]
+                ResultsMat.(Field) = sum(bsxfun(@times, SourceData, PcaRefOrient), 3); % [nSource, (nTime or nChan)]
+            else
+                % Call external "flattening" function
+                [ResultsMat.(Field), ~, ~, PcaOrient] = bst_source_orient([], ResultsMat.nComponents, [], ResultsMat.(Field), Method, [], [], OrientCov, PcaOrient);
+            end
             % Set the number of components
             ResultsMat.nComponents = 1;
     end
@@ -384,8 +379,8 @@ function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov,
     % File tag
     switch(Method)
         case 'rms',  fileTag = 'norm';
-        case 'pca',  fileTag = 'pca';
-        case 'pcaa',  fileTag = 'pcaa';
+        otherwise
+            fileTag = Method;
     end
     % Reset the data file initial path
     if ~isempty(ResultsMat.DataFile)
@@ -427,3 +422,26 @@ function OutputFile = SaveResultFile(sInput, ResultsMat, Method)
     % Register in database
     db_add_data(sInput.iStudy, OutputFile, ResultsMat);
 end
+
+function OutputFile = SaveKernelFile(sInput, ResultsMat, Method)
+    ResultsMat.DataFile = '';
+    % Keep original kernel file name, but ensure unique.
+    [KernelPath, KernelName] = bst_fileparts(file_resolve_link(sInput.FileName));
+    iK = strfind(KernelName, '_KERNEL_');
+    SharedFile = bst_process('GetNewFilename', KernelPath, [KernelName(1:iK) 'KERNEL_' Method]);
+    bst_save(SharedFile, ResultsMat, 'v6');
+    db_add_data(sInput.iStudy, SharedFile, ResultsMat);
+    panel_protocols('UpdateNode', 'Study', sInput.iStudy);
+    % Find link to the result kernel that was just created for this data file.
+    LinkFiles = db_links('Study', sInput.iStudy);
+    iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInput.DataFile]));
+    if sum(iLink) ~= 1
+        OutputFile = '';
+    else
+        OutputFile = LinkFiles{iLink};
+    end
+end
+
+
+
+

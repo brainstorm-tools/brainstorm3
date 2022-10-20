@@ -155,7 +155,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         gui_component('label', jPanelOptions, 'br', '    ');
         jRadioPca = gui_component('radio', jPanelOptions, '', ...
             ['<HTML><FONT color="#777777"><B>Per individual epoch/file, arbitrary signs</B>: Can be used for single files.<BR>' ...
-            'Method used prior to Nov 2022, no longer recommended due to sign inconsistency.</FONT>'], [], [], @RadioPca_Callback);
+            'Method used prior to Nov 2022, no longer recommended due to sign inconsistency.<BR>' ...
+            'Options below cannot be modified.</FONT>'], [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPca);
         
         % Use pre-computed data covariance?
@@ -287,20 +288,31 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 
 %% ===== PCA method choice =====
     function RadioPca_Callback(varargin)
-        % Use pre-computed data covariance is only available for pcaa/pcai.
-        if ~isempty(CovOptions)
-            if ~jRadioPca.isSelected()
-                jCheckUseDataCov.setEnabled(1);
-                % But don't automatically select after changing method.
-            else
+        % For legacy pca, enforce full time windows and offset removal as it used to be done.
+        if jRadioPca.isSelected()
+            if ~isempty(CovOptions) 
                 jCheckUseDataCov.setSelected(0);
                 jCheckUseDataCov.setEnabled(0);
-                jBaselineTimeStart.setEnabled(1);
-                jBaselineTimeStop.setEnabled(1);
-                jDataTimeStart.setEnabled(1);
-                jDataTimeStop.setEnabled(1);
-                jRemoveDcFile.setEnabled(1);
             end
+            SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
+            SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
+            SetValue(jDataTimeStop, TimeWindow(2), DataTimeUnit);
+            jRemoveDcFile.setSelected(1);
+            jBaselineTimeStart.setEnabled(0);
+            jBaselineTimeStop.setEnabled(0);
+            jDataTimeStart.setEnabled(0);
+            jDataTimeStop.setEnabled(0);
+            jRemoveDcFile.setEnabled(0);
+        else
+            if ~isempty(CovOptions)
+                % Use of pre-computed data covariance is available for pcaa/pcai.
+                jCheckUseDataCov.setEnabled(1);
+                % Automatically select after changing method.
+                jCheckUseDataCov.setSelected(1);
+            end
+            % Update covariance options
+            CheckUseDataCov_Callback();
         end
     end
 
