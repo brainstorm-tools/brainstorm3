@@ -33,13 +33,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     panelName = 'PcaOptions';
     bstPanelNew = [];
 
-    % ===== PARSE INPUTS =====
-    % OPTIONS:
-    %    - timeSamples  : Maximum time window over all the files
-    %    - freq         : Sampling frequency for all the files (NaN if differs between files) 
-    %    - isAllLink    : Whether all input files are kernel link source files
-    %    - Cov          : If data cov available, options used to compute it (Baseline, DataTimeWindow, RemoveDcOffset)
-
     PcaOptions = sProcess.options.edit.Value;
     %% TODO: Load user preferences.
     nInputs = numel(sInputs);

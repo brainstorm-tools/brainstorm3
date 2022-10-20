@@ -56,7 +56,7 @@ function sProcess = GetDescription()
     % Options: PCA
     sProcess.options.edit.Comment = {'panel_pca', ' PCA options: '}; 
     sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = bst_get('PcaOptions'); % empty or function that returns defaults.
+    sProcess.options.edit.Value   = bst_get('PcaOptions'); % function that returns defaults.
 end
 
 
