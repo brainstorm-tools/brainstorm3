@@ -54,7 +54,7 @@ function sProcess = GetDescription()
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'norm';
     % Options: PCA
-    sProcess.options.edit.Comment = {'panel_pca', ' PCA options: '}; % TODO
+    sProcess.options.edit.Comment = {'panel_pca', ' PCA options: '}; 
     sProcess.options.edit.Type    = 'editpref';
     sProcess.options.edit.Value   = bst_get('PcaOptions'); % empty or function that returns defaults.
 end
@@ -73,7 +73,7 @@ function OutputFiles = Run(sProcess, sInputs)
     switch(sProcess.options.method.Value)
         case {1, 'norm'}, Method = 'rms';  fileTag = 'norm';
         case {2, 'pca'},  Method = 'pca';  fileTag = 'pca';
-        case 'pcaa',      Method = 'pcaa'; fileTag = 'pcaa';
+        %case 'pcaa',      Method = 'pcaa'; fileTag = 'pcaa';
     end
 
     nFiles = numel(sInputs);
@@ -110,7 +110,7 @@ function OutputFiles = Run(sProcess, sInputs)
                 return;
             end
             % Compute flat map
-            [ResultsMat, PcaOrient] = Compute(ResultsMat, Method);
+            ResultsMat = Compute(ResultsMat, Method);
             bst_progress('inc', 1);
             % Save file
             OutputFiles{iInput} = SaveResultFile(sInputs(iInput), ResultsMat, fileTag);
@@ -128,7 +128,10 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
     PrevCond = '';
     isAllLink = false;
     nInputs = numel(sInputs);
-    
+
+    if strcmpi(PcaOptions.Method, 'pca')
+        PcaRefOrient = [];
+    else
     %________________________________________________________
     % Compute reference component for this group of files.
     for iInput = 1:nInputs
@@ -233,6 +236,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
     if strcmpi(PcaOptions.Method, 'pcaa')
         PcaOrient = permute(PcaRefOrient, [2, 3, 1]);
     end
+    end
 
     %________________________________________________________
     % Compute and save PCA for individual files
@@ -311,13 +315,13 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                     SourceData = permute(reshape(ResultsMat.(Field), nComp, nVert, []), [2, 3, 1]); % [nVert, (nTime or nChan), nComp]
                     ResultsMat.(Field) = sum(bsxfun(@times, SourceData, PcaOrient), 3); % [nSource, (nTime or nChan)]
                 end
-            case 'pca'
+            otherwise
                 % Get PCA for this file, with sign matched to reference.
                 if isLink
                     % If we passed Field='ImagingKernel' without a covariance, it would do PCA on
                     % the inverse model instead of the timeseries (valid but not what we want here).
                     % Instead, pre-compute the covariance from this file only (like we did above).
-                    % (We could also instead load full data, compute and apply the component to the kernel.)
+                    % (We could also instead load full data, compute, and apply the returned component to the kernel.)
                     PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
                     DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput));
                     Kernel = permute(reshape(ResultsMat.(Field), nComp, nVert, []), [2, 3, 1]); % (nVert, nChan, nComp)
