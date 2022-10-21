@@ -42,15 +42,20 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     isAllCov = true;
     TimeWindow = [NaN, NaN];
     SamplingPeriod = [];
+    CovOptions = [];
+    CovLabelText = '';
     for iInput = 1:nInputs
         % Check if inputs are all kernel links and a data covariance is available.
         if isAllLink
             if ~strcmpi(file_gettype(sInputs(iInput).FileName), 'link')
                 isAllLink = false;
+                isAllCov = false;
             elseif isAllCov
                 sStudy = bst_get('Study', sInputs(iInput).iStudy);
                 if numel(sStudy.NoiseCov) < 2
                     isAllCov = false;
+                    CovOptions = [];
+                    CovLabelText = 'Data covariance not found.';
                 end
             end
         end
@@ -63,32 +68,30 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         elseif SamplingPeriod ~= (ResultsMat.Time(2) - ResultsMat.Time(1))
             bst_report('Warning', sProcess, sInputs, 'Selected files have different sampling rates.');
         end
+        % Check consistency of covariance options. 
+        if isAllCov
+            if isempty(CovOptions)
+                CovOptions = GetCovOptions(sStudy);
+            else
+                CovOptionsCompare = GetCovOptions(sStudy);
+                % We allow different time windows if it's the whole file.
+                if ~strcmp(CovOptions.RemoveDcOffset, CovOptionsCompare.RemoveDcOffset) || ...
+                        (~isequal(CovOptions.Baseline, CovOptionsCompare.Baseline) && ~isequal(CovOptions.Baseline, ResultsMat.Time([1,end]))) || ...
+                        (~isequal(CovOptions.DataTimeWindow, CovOptionsCompare.DataTimeWindow) && ~isequal(CovOptions.DataTimeWindow, ResultsMat.Time([1,end])))
+                    isAllCov = false;
+                    CovOptions = [];
+                    CovLabelText = 'Selected studies have different covariance settings.';
+                    bst_report('Warning', sProcess, sInputs, CovLabelText);
+                else
+                    % Extend if it's whole files, so it's consistent with displayed TimeWindow.
+                    CovOptions.Baseline = [min(CovOptions.Baseline(1), CovOptionsCompare.Baseline(1)), max(CovOptions.Baseline(2), CovOptionsCompare.Baseline(2))];
+                    CovOptions.DataTimeWindow = [min(CovOptions.DataTimeWindow(1), CovOptionsCompare.DataTimeWindow(1)), max(CovOptions.DataTimeWindow(2), CovOptionsCompare.DataTimeWindow(2))];
+                end
+            end
+        end
         bst_progress('inc', 1);
     end
     % Get data covariance settings from history. (Would be simpler to save NoiseCovMat.Options.)
-    if isAllLink && isAllCov
-        DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName));
-        % Data=[%1.3f, %1.3f]s, Baseline=[%1.3f, %1.3f]s
-        iHistCov = find(strcmpi(DataCov.History(:,2), 'compute'), 1);
-        if isempty(iHistCov)
-            error('Missing history information in data covariance file.');
-        end
-        TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
-        CovOptions.Baseline = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=)[\[0-9-,. ]*]', 'match', 'once'));
-        if strcmp(TimeUnit, 'ms')
-            % convert to s
-            CovOptions.Baseline = CovOptions.Baseline / 1000; 
-        end
-        TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Data=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
-        CovOptions.DataTimeWindow = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Data=)[\[0-9-,. ]*]', 'match', 'once')); %#ok<*ST2NM> 
-        if strcmp(TimeUnit, 'ms')
-            % convert to s
-            CovOptions.DataTimeWindow = CovOptions.DataTimeWindow / 1000; 
-        end
-        CovOptions.RemoveDcOffset = lower(strtrim(DataCov.History{iHistCov,3}(end-3:end)));
-    else
-        CovOptions = [];
-    end
     bst_progress('stop');
 
     % Time window string
@@ -128,26 +131,24 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     % OPTIONS PANEL
     jPanelOptions = gui_river([5,2], [0,10,15,0], 'PCA method');
         % PCA TYPE
-        %gui_component('label', jPanelOptions, 'p', 'PCA method:');
+        gui_component('label', jPanelOptions, '', 'Compute one component...');
         jButtonGroupMethod = ButtonGroup();
         % Across epochs
-        gui_component('label', jPanelOptions, 'br', '    ');
-        jRadioPcaa = gui_component('radio', jPanelOptions, '', ...
-            ['<HTML><B>Across epochs/files</B>: Generally recommended, especially for within subject comparisons.<BR>' ...
-            'Much faster on kernel link source files and using pre-computed data covariance. Can save shared kernels.'], [], [], @RadioPca_Callback);
+        jRadioPcaa = gui_component('radio', jPanelOptions, 'br', ...
+            ['<HTML><B>across all epochs/files</B>: Generally recommended, especially for within subject comparisons.<BR>' ...
+            'Much faster with kernel link source files and using pre-computed data covariance.<BR>' ...
+            'Can save shared kernels.'], [], [], @RadioPca_Callback);
         jRadioPcaa.setSelected(1);
         jButtonGroupMethod.add(jRadioPcaa);
         % Per epoch, with sign consistency
-        gui_component('label', jPanelOptions, 'br', '    ');
-        jRadioPcai = gui_component('radio', jPanelOptions, '', ...
-            ['<HTML><B>Per individual epoch/file, with consistent sign</B>: Useful for single-trial analysis,<BR>' ...
+        jRadioPcai = gui_component('radio', jPanelOptions, 'br', ...
+            ['<HTML><B>per individual epoch/file, with consistent sign</B>: Useful for single-trial analysis,<BR>' ...
             'while still allowing combining epochs. Sign selected using PCA across epochs as reference.<BR>' ...
             'Slow. Saves individual files.'], [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPcai);
         % Per epoch, without sign consistency
-        gui_component('label', jPanelOptions, 'br', '    ');
-        jRadioPca = gui_component('radio', jPanelOptions, '', ...
-            ['<HTML><FONT color="#777777"><B>Per individual epoch/file, arbitrary signs</B>: Can be used for single files.<BR>' ...
+        jRadioPca = gui_component('radio', jPanelOptions, 'br', ...
+            ['<HTML><FONT color="#777777"><B>per individual epoch/file, arbitrary signs</B>: Can be used for single files.<BR>' ...
             'Method used prior to Nov 2022, no longer recommended due to sign inconsistency.<BR>' ...
             '<I>The covariance options below cannot be modified.</I></FONT>'], [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPca);
@@ -162,12 +163,12 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the PCA component computation only,<BR>' ...
             'which is then applied to the unmodified data (without offset removal).']);
         % Use pre-computed data covariance?
-        if ~isempty(CovOptions) 
-            jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (only applicable to kernel link source files)<BR>' ...
+        if isAllCov
+            jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (requires kernel link source files)<BR>' ...
                 '<FONT color="#777777"><I>When selected, the settings used to compute the covariance are shown below.</I></FONT>'], [], [], @CheckUseDataCov_Callback);
             jCheckUseDataCov.setSelected(1);
         else
-            jCheckUseDataCov = gui_component('label', jPanelCov, 'p', '<HTML><I>Data covariance not found. Using settings below.</I>');
+            jCheckUseDataCov = gui_component('label', jPanelCov, 'p', ['<HTML><I>' CovLabelText ' Specify settings below.</I>']);
         end
         % Time window
         gui_component('label', jPanelCov, 'p', 'Input files time window: ');
@@ -252,7 +253,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 %% ===== Use pre-computed covariance checkbox =====
     function CheckUseDataCov_Callback(varargin)
         % If use, load covariance settings and disable changing them
-        if ~isempty(CovOptions) && jCheckUseDataCov.isSelected()
+        if isAllCov && jCheckUseDataCov.isSelected()
             SetValue(jBaselineTimeStart, CovOptions.Baseline(1), BaselineTimeUnit);
             SetValue(jBaselineTimeStop, CovOptions.Baseline(2), BaselineTimeUnit);
             SetValue(jDataTimeStart, CovOptions.DataTimeWindow(1), DataTimeUnit);
@@ -296,7 +297,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     function RadioPca_Callback(varargin)
         % For legacy pca, enforce full time windows and offset removal as it used to be done.
         if jRadioPca.isSelected()
-            if ~isempty(CovOptions) 
+            if isAllCov 
                 jCheckUseDataCov.setSelected(0);
             end
             jCheckUseDataCov.setEnabled(0);
@@ -316,7 +317,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         else
             % Use of pre-computed data covariance is available for pcaa/pcai.
             jCheckUseDataCov.setEnabled(1);
-            if ~isempty(CovOptions)
+            if isAllCov
                 % Automatically select after changing method.
                 jCheckUseDataCov.setSelected(1);
             end
@@ -336,6 +337,29 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         jText.setText(strVal);
     end
 
+end
+
+%% ===== Read settings used to compute covariance, from history =====
+function CovOptions = GetCovOptions(sStudy)
+    DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName));
+    % Data=[%1.3f, %1.3f]s, Baseline=[%1.3f, %1.3f]s
+    iHistCov = find(strcmpi(DataCov.History(:,2), 'compute'), 1);
+    if isempty(iHistCov)
+        error('Missing history information in data covariance file.');
+    end
+    TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
+    CovOptions.Baseline = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=)[\[0-9-,. ]*]', 'match', 'once'));
+    if strcmp(TimeUnit, 'ms')
+        % convert to s
+        CovOptions.Baseline = CovOptions.Baseline / 1000;
+    end
+    TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Data=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
+    CovOptions.DataTimeWindow = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Data=)[\[0-9-,. ]*]', 'match', 'once')); %#ok<*ST2NM>
+    if strcmp(TimeUnit, 'ms')
+        % convert to s
+        CovOptions.DataTimeWindow = CovOptions.DataTimeWindow / 1000;
+    end
+    CovOptions.RemoveDcOffset = lower(strtrim(DataCov.History{iHistCov,3}(end-3:end)));
 end
 
 %% =================================================================================
