@@ -37,7 +37,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     %% TODO: Load user preferences.
     nInputs = numel(sInputs);
     % Progress bar
-    %bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, nInputs);
+    bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, nInputs);
     isAllLink = true;
     isAllCov = true;
     TimeWindow = [NaN, NaN];
@@ -63,7 +63,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         elseif SamplingPeriod ~= (ResultsMat.Time(2) - ResultsMat.Time(1))
             bst_report('Warning', sProcess, sInputs, 'Selected files have different sampling rates.');
         end
-        %bst_progress('inc', 1);
+        bst_progress('inc', 1);
     end
     % Get data covariance settings from history. (Would be simpler to save NoiseCovMat.Options.)
     if isAllLink && isAllCov
@@ -85,11 +85,11 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             % convert to s
             CovOptions.DataTimeWindow = CovOptions.DataTimeWindow / 1000; 
         end
-        CovOptions.RemoveDcOffset = strtrim(DataCov.History{iHistCov,3}(end-3:end));
+        CovOptions.RemoveDcOffset = lower(strtrim(DataCov.History{iHistCov,3}(end-3:end)));
     else
         CovOptions = [];
     end
-    %bst_progress('stop');
+    bst_progress('stop');
 
     % Time window string
     if (max(abs(TimeWindow)) > 2)
@@ -159,15 +159,15 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         % directly, even before the inverse model, like we'd do for filtering, and keep it
         % consistent (no more offset removal options) everywhere after.  Then only the data time
         % window would be relevant here.
-        gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the PCA component computation only. <BR>' ...
-            'For non-kernel-link files, that component is then applied to the unmodified data (no offset removal).']);
+        gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the PCA component computation only,<BR>' ...
+            'which is then applied to the unmodified data (without offset removal).']);
         % Use pre-computed data covariance?
         if ~isempty(CovOptions) 
             jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (only applicable to kernel link source files)<BR>' ...
                 '<FONT color="#777777"><I>When selected, the settings used to compute the covariance are shown below.</I></FONT>'], [], [], @CheckUseDataCov_Callback);
             jCheckUseDataCov.setSelected(1);
         else
-            jCheckUseDataCov = [];
+            jCheckUseDataCov = gui_component('label', jPanelCov, 'p', '<HTML><I>Data covariance not found. Using settings below.</I>');
         end
         % Time window
         gui_component('label', jPanelCov, 'p', 'Input files time window: ');
@@ -175,27 +175,28 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 
         % BASELINE 
         % Time range
-        gui_component('label', jPanelCov, 'p', 'Baseline: ');
+        jCovLabels = {};
+        jCovLabels{end+1} = gui_component('label', jPanelCov, 'p', 'Baseline: ');
         jBaselineTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
-        gui_component('label', jPanelCov, [], ' - ');
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], ' - ');
         jBaselineTimeStop = gui_component('texttime', jPanelCov, [], ' ', TEXT_DIM);
         % Callbacks
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStart, [], jBaselineTimeStop, ResultsMat.Time, 'time', [], PcaOptions.Baseline(1), []);
         BaselineTimeUnit = gui_validate_text(jBaselineTimeStop, jBaselineTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.Baseline(2), []);
         % Units
-        gui_component('label', jPanelCov, [], BaselineTimeUnit);
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], BaselineTimeUnit);
 
         % DATA TIME WINDOW
         % Time range
-        gui_component('label', jPanelCov, 'br', 'Data: ');
+        jCovLabels{end+1} = gui_component('label', jPanelCov, 'br', 'Data: ');
         jDataTimeStart = gui_component('texttime', jPanelCov, 'tab', ' ', TEXT_DIM);
-        gui_component('label', jPanelCov, [], ' - ');
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], ' - ');
         jDataTimeStop = gui_component('texttime', jPanelCov, [], ' ', TEXT_DIM);
         % Callbacks
         DataTimeUnit = gui_validate_text(jDataTimeStart, [], jDataTimeStop, ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(1), []);
         DataTimeUnit = gui_validate_text(jDataTimeStop, jDataTimeStart, [], ResultsMat.Time, 'time', [], PcaOptions.DataTimeWindow(2), []);
         % Units
-        gui_component('label', jPanelCov, [], DataTimeUnit);
+        jCovLabels{end+1} = gui_component('label', jPanelCov, [], DataTimeUnit);
         
         % Remove DC offset (limited to per-file for now)
         jRemoveDcFile = gui_component('checkbox', jPanelCov, 'p', 'Remove DC offset (subtract baseline average) per epoch/file');
@@ -231,9 +232,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
     
     RadioPca_Callback();
-    if ~isempty(CovOptions)
-        CheckUseDataCov_Callback();
-    end
     
     
 %% =================================================================================
@@ -254,7 +252,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 %% ===== Use pre-computed covariance checkbox =====
     function CheckUseDataCov_Callback(varargin)
         % If use, load covariance settings and disable changing them
-        if jCheckUseDataCov.isSelected()
+        if ~isempty(CovOptions) && jCheckUseDataCov.isSelected()
             SetValue(jBaselineTimeStart, CovOptions.Baseline(1), BaselineTimeUnit);
             SetValue(jBaselineTimeStop, CovOptions.Baseline(2), BaselineTimeUnit);
             SetValue(jDataTimeStart, CovOptions.DataTimeWindow(1), DataTimeUnit);
@@ -269,6 +267,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jDataTimeStart.setEnabled(0);
             jDataTimeStop.setEnabled(0);
             jRemoveDcFile.setEnabled(0);
+            for i = 1:numel(jCovLabels)
+                jCovLabels{i}.setEnabled(0);
+            end
         else
             % Otherwise, load default settings and enable controls
             SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
@@ -285,6 +286,9 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jDataTimeStart.setEnabled(1);
             jDataTimeStop.setEnabled(1);
             jRemoveDcFile.setEnabled(1);
+            for i = 1:numel(jCovLabels)
+                jCovLabels{i}.setEnabled(1);
+            end
         end
     end
 
@@ -294,8 +298,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         if jRadioPca.isSelected()
             if ~isempty(CovOptions) 
                 jCheckUseDataCov.setSelected(0);
-                jCheckUseDataCov.setEnabled(0);
             end
+            jCheckUseDataCov.setEnabled(0);
             SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
             SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
             SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
@@ -306,10 +310,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
             jDataTimeStart.setEnabled(0);
             jDataTimeStop.setEnabled(0);
             jRemoveDcFile.setEnabled(0);
+            for i = 1:numel(jCovLabels)
+                jCovLabels{i}.setEnabled(0);
+            end
         else
+            % Use of pre-computed data covariance is available for pcaa/pcai.
+            jCheckUseDataCov.setEnabled(1);
             if ~isempty(CovOptions)
-                % Use of pre-computed data covariance is available for pcaa/pcai.
-                jCheckUseDataCov.setEnabled(1);
                 % Automatically select after changing method.
                 jCheckUseDataCov.setSelected(1);
             end
@@ -349,7 +356,11 @@ function s = GetPanelContents()
         s.Method = 'pca';
     end
     % Get pre-computed covariance option
-    s.UseDataCov = ctrl.jCheckUseDataCov.isSelected();
+    if isa(ctrl.jCheckUseDataCov, 'javax.swing.JCheckBox')
+        s.UseDataCov = ctrl.jCheckUseDataCov.isSelected();
+    else % it's a label "Data cov not found"
+        s.UseDataCov = false;
+    end
     % Get baseline time window
     s.Baseline = [str2double(char(ctrl.jBaselineTimeStart.getText())), ...
                   str2double(char(ctrl.jBaselineTimeStop.getText()))];

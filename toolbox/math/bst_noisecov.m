@@ -90,6 +90,8 @@ else
     strComment = 'Noise covariance';
 end
 
+% Don't show progress bar if called with 1 file (PCA)
+isProgress = length(DataFiles) > 1;
 
 %% ===== GET DATA CHANNELS =====
 % Get channel studies
@@ -112,7 +114,9 @@ ChannelTypes = unique({ChannelMat.Channel(iChan).Type});
 
 %% ===== READ ALL TIME VECTORS =====
 % Progress bar
-bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, length(DataFiles));
+if isProgress
+    bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, length(DataFiles));
+end
 % Regular list of imported data files
 if ~isRaw
     nFiles = length(DataFiles);
@@ -136,7 +140,9 @@ if ~isRaw
         DataMats(iFile).Time = DataMat.Time;
         DataMats(iFile).nAvg = DataMat.nAvg;
         DataMats(iFile).Leff = DataMat.Leff;
-        bst_progress('inc', 1);
+        if isProgress
+            bst_progress('inc', 1);
+        end
     end
 % Raw file
 else
@@ -206,7 +212,9 @@ end
 % Get number of samples and sampling rates
 nSamples = length([DataMats.Time]) - length([DataMats.iBadTime]);
 % Close progress bar
-bst_progress('stop');
+if isProgress
+    bst_progress('stop');
+end
 % Check number of actual samples available for computation
 if (nSamples == 0)
     error('This selection does not contain any file that can be used for computing the covariance matrix.');
@@ -254,10 +262,14 @@ if strcmpi(Options.RemoveDcOffset, 'all')
     Favg = zeros(nChanAll, 1);
     Ntotal = zeros(nChanAll, 1);
     % Progress bar
-    bst_progress('start', 'Average across time', 'Computing average across time...', 0, nBlocks);
+    if isProgress
+        bst_progress('start', 'Average across time', 'Computing average across time...', 0, nBlocks);
+    end
     % Loop on all the files
     for iFile = 1:nBlocks
-        bst_progress('inc', 1);
+        if isProgress
+            bst_progress('inc', 1);
+        end
         % Load recordings
         [DataMat, iTimeBaseline] = ReadRecordings();
         if isempty(iTimeBaseline)
@@ -284,11 +296,15 @@ Ntotal   = zeros(nChanAll);
 NoiseCov = zeros(nChanAll);
 FourthMoment = zeros(nChanAll);
 % Progress bar
-bst_progress('start', strComment, ['Computing ' lower(strComment) '...'], 0, nBlocks);
+if isProgress
+    bst_progress('start', strComment, ['Computing ' lower(strComment) '...'], 0, nBlocks);
+end
 drawnow
 % Loop on all the files
 for iFile = 1:nBlocks
-    bst_progress('inc', 1);
+    if isProgress
+        bst_progress('inc', 1);
+    end
     % Load recordings
     [DataMat, iTimeBaseline, iTimeCov] = ReadRecordings();
     if isempty(iTimeBaseline)
@@ -373,8 +389,9 @@ else
     NoiseCovFiles = NoiseCovMat;
 end
 % Close progress bar
-bst_progress('stop');
-
+if isProgress
+    bst_progress('stop');
+end
 
 
 
@@ -387,7 +404,9 @@ bst_progress('stop');
         iTimeBaseline = [];
         iTimeCov = [];
         if ~isRaw
-            bst_progress('text', ['File: ' DataFiles{iFile}]);
+            if isProgress
+                bst_progress('text', ['File: ' DataFiles{iFile}]);
+            end
             DataMat = in_bst_data(DataFiles{iFile}, 'F', 'ChannelFlag', 'Time', 'nAvg', 'Leff');
         else
             DataMat = DataMats(iFile);

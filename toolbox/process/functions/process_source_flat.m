@@ -77,7 +77,7 @@ function OutputFiles = Run(sProcess, sInputs)
     end
 
     nFiles = numel(sInputs);
-    bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, nFiles);
+    bst_progress('start', 'Unconstrained to flat map', sprintf('Flattening %d files', nFiles), 0, 2*nFiles);
 
     % ===== PCA =====
     % Sort and group files, then run by group
@@ -111,7 +111,7 @@ function OutputFiles = Run(sProcess, sInputs)
             end
             % Compute flat map
             ResultsMat = Compute(ResultsMat, Method);
-            bst_progress('inc', 1);
+            bst_progress('inc', 2);
             % Save file
             OutputFiles{iInput} = SaveResultFile(sInputs(iInput), ResultsMat, fileTag);
         end
@@ -144,7 +144,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 isAllLink = true;
                 nF = 0;
                 for iF = 0:(nInputs - iInput)
-                    if ~strcmp(sInputs(iInput).Condition, PrevCond)
+                    if ~strcmp(sInputs(iInput + iF).Condition, PrevCond)
                         % Reached end of this condition.
                         break;
                     end
@@ -166,6 +166,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             end
         elseif isAllLink
             % This condition was fully taken into account with a data covariance matrix, nothing to do.
+            bst_progress('inc', 1);
             continue;
         end
 
@@ -182,6 +183,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             Field = 'ImageGridAmp';
         end
         if iInput == 1
+            PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
             % Initialize covariance
             nComp = ResultsMat.nComponents;
             nVert = size(ResultsMat.(Field), 1) / nComp;
@@ -225,7 +227,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             OrientCov = OrientCov + FileOrientCov;
         end
 
-        bst_progress('inc', 0.5);
+        bst_progress('inc', 1);
     end % first file loop
     % Normalize by number of files summed.
     OrientCov = OrientCov / nInputs;
@@ -270,6 +272,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 return;
             end
             OutputFiles{iInput} = LinkFiles{iLink}; %#ok<*AGROW>
+            bst_progress('inc', 1);
             continue;
         end
 
@@ -284,6 +287,9 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             ResultsMat = in_bst_results(sInputs(iInput).FileName, 1);
             Field = 'ImageGridAmp';
         end
+        if iInput == 1 && ~isfield(PcaOptions, 'ChannelTypes') % for pca method, first file loop was skipped.
+            PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
+        end
         % Compute
         switch PcaOptions.Method
             case 'pcaa'
@@ -291,7 +297,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 ResultsMat = Compute(ResultsMat, PcaOptions.Method, Field, [], PcaRefOrient);
                 if isAllLink
                     % Save shared kernel and find link.
-                    OutputFiles{iInput} = SaveKernelFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
+                    [OutputFiles{iInput}, SharedFile] = SaveKernelFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
                     if isempty(OutputFiles{iInput})
                         bst_report('Error', sProcess, sInputs(iInput), 'Problem finding the correct linked file.');
                         OutputFiles = {};
@@ -308,7 +314,6 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                     % the inverse model instead of the timeseries (valid but not what we want here).
                     % Instead, pre-compute the covariance from this file only (like we did above).
                     % (We could also instead load full data, compute, and apply the returned component to the kernel.)
-                    PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
                     DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput).iStudy);
                     Kernel = permute(reshape(ResultsMat.(Field), ResultsMat.nComponents, [], size(ResultsMat.(Field), 2)), [2, 3, 1]); % (nVert, nChan, nComp)
                     % For each source (each [3 x nChan] page of Kernel), get K * Cov * K' -> [3 x 3]
@@ -325,7 +330,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 % Save individual files as single-file kernel or data result.
                 OutputFiles{iInput} = SaveResultFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
         end
-        bst_progress('inc', 0.5);
+        bst_progress('inc', 1);
     end % second file loop
 end
 
@@ -425,7 +430,7 @@ function OutputFile = SaveResultFile(sInput, ResultsMat, Method)
     db_add_data(sInput.iStudy, OutputFile, ResultsMat);
 end
 
-function OutputFile = SaveKernelFile(sInput, ResultsMat, Method)
+function [OutputFile, SharedFile] = SaveKernelFile(sInput, ResultsMat, Method)
     ResultsMat.DataFile = '';
     % Keep original kernel file name, but ensure unique.
     [KernelPath, KernelName] = bst_fileparts(file_resolve_link(sInput.FileName));
