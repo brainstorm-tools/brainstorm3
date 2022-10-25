@@ -401,7 +401,7 @@ tic
                     if (length(OPTIONS.Target{2}) == 1)
                         Comment = [Comment, ': ' OPTIONS.Target{2}{1}];
                     else
-                        Comment = [Comment, ': ' num2str(length(OPTIONS.Target{2}{1})) ' scouts'];
+                        Comment = [Comment, ': ' num2str(length(OPTIONS.Target{2})) ' scouts'];
                     end
                 end
             else
