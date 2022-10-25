@@ -554,6 +554,8 @@ function SetShowSulci(hFig, iSurfaces, status)
     end
     % Update figure's AppData (surfaces configuration)
     setappdata(hFig, 'Surface', TessInfo);
+    % Update panel controls
+    UpdateSurfaceProperties();
     % Update surface display
     figure_callback(hFig, 'UpdateSurfaceColor', hFig, iSurf);
 end
@@ -1667,7 +1669,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % and the number of vertices of the target surface patch (IGNORE TEST FOR MRI)
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     % Nothing to check right now
-                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) 
+                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
                     if (size(TessInfo(iTess).Data, 1) ~= length(TessInfo(iTess).DataSource.Atlas.Scouts))
                         bst_error(sprintf(['Number of sources (%d) is different from number of scouts (%d).\n\n' ...
                                   'Please compute the sources again.'], size(TessInfo(iTess).Data, 1), TessInfo(iTess).DataSource.Atlas.Scouts), 'Data mismatch', 0);
@@ -1764,7 +1766,7 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 % and the number of vertices of the target surface patch (IGNORE TEST FOR MRI)
                 if strcmpi(TessInfo(iTess).Name, 'Anatomy')
                     % Nothing to check right now
-                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) 
+                elseif ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
                     if (size(TessInfo(iTess).Data, 1) ~= length(TessInfo(iTess).DataSource.Atlas.Scouts))
                         bst_error(sprintf(['Number of sources (%d) is different from number of scouts (%d).\n\n' ...
                                   'Please compute the sources again.'], size(TessInfo(iTess).Data, 1), length(TessInfo(iTess).DataSource.Atlas.Scouts)), 'Data mismatch', 0);
@@ -2365,7 +2367,7 @@ function TessInfo = UpdateOverlayCube(hFig, iTess)
             MriInterp = tess2mri_interp;
         end
         % === ATLAS SOURCES ===
-        if ~isempty(TessInfo(iTess).DataSource.Atlas)
+        if ~isempty(TessInfo(iTess).DataSource.Atlas) && ~isempty(TessInfo(iTess).DataSource.Atlas.Scouts)
             % Initialize full cortical map
             DataScout = TessInfo(iTess).Data;
             DataSurf = zeros(size(MriInterp,2),1);

@@ -2766,14 +2766,14 @@ switch contextName
         tpmUser = bst_fullfile(bst_get('BrainstormUserDir'), 'defaults', 'spm', 'TPM.nii');
         if file_exist(tpmUser)
             argout1 = tpmUser;
-            disp(['SPM12 template found: ' tpmUser]);
+            disp(['BST> SPM12 template found: ' tpmUser]);
             return;
         end
         % If it does not exist: check in brainstorm3 folder
         tpmDistrib = bst_fullfile(bst_get('BrainstormHomeDir'), 'defaults', 'spm', 'TPM.nii');
         if file_exist(tpmDistrib)
             argout1 = tpmDistrib;
-            disp(['SPM12 template found: ' tpmDistrib]);
+            disp(['BST> SPM12 template found: ' tpmDistrib]);
             return;
         end
         % If it does not exist: check in spm12 folder
@@ -2782,7 +2782,7 @@ switch contextName
             tpmSpm = bst_fullfile(PlugSpm.Path, PlugSpm.SubFolder, 'tpm', 'TPM.nii');
             if file_exist(tpmSpm)
                 argout1 = tpmSpm;
-                disp(['SPM12 template found: ' tpmSpm]);
+                disp(['BST> SPM12 template found: ' tpmSpm]);
                 return;
             end
         else
