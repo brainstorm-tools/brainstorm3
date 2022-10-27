@@ -4,6 +4,15 @@ function varargout = process_import_bids( varargin )
 % USAGE:           OutputFiles = process_import_bids('Run', sProcess, sInputs)
 %         [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=0)
 %             [sFid, Messages] = process_import_bids('GetFiducials', json, defaultUnits)
+%
+% DISCUSSION:
+%   - Metadata conflicts:
+%     - Channel names are kept from the original data files, and can't be renamed with the BIDS metadata.
+%       This simplifies a lot the implementation, as we can keep on using the original channel file and add the extra info from _channels.tsv and _electrodes.tsv.
+%       This is not aligned with the idea that "In cases of conflict, the BIDS metadata is considered authoritative"
+%       But the channel names are never expected to be different between the data files and the metadata: 
+%       "If BIDS metadata is defined, format-specific metadata MUST NOT conflict to the extent permitted by the format"
+%       (reference: https://github.com/bids-standard/bids-specification/pull/761)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -737,8 +746,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     if ~isempty(electrodesCoordSystem)
                         if strcmpi(electrodesCoordSystem, 'ACPC')
                             electrodesSpace = 'ACPC';
-                        elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM')) 
+                        elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM'))  || ~isempty(strfind(electrodesCoordSystem, 'fs')) 
                             electrodesSpace = 'MNI';
+                        elseif ismember(upper(electrodesCoordSystem), {'CTF', 'EEGLAB', 'EEGLAB-HJ', 'ElektaNeuromag', '4DBti', 'KitYokogawa', 'ChietiItab'})
+                            electrodesSpace = 'ALS';
                         end
                     end
                     % Get full file path to _electrodes.tsv
@@ -810,6 +821,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                         isVox2ras = 0;
                     end
                     % Import electrode positions
+                    % Note: this does not work if channel names different in data and metadata - see note in the function header
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
                         'usedefault',  1, ...
@@ -841,6 +853,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     % Try to add info to the existing Brainstorm channel file
+                    % Note: this does not work if channel names different in data and metadata - see note in the function header
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
                         % For all the loaded files
                         for iRaw = 1:length(newFiles)

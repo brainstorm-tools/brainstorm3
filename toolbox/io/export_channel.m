@@ -58,6 +58,7 @@ if isempty(OutputChannelFile)
         case 'BESA-ELP',       DefaultExt = '.elp';
         case 'BIDS-SCANRAS-MM',DefaultExt = '_electrodes.tsv';
         case 'BIDS-MNI-MM',    DefaultExt = '_electrodes.tsv';
+        case 'BIDS-ALS-MM',    DefaultExt = '_electrodes.tsv';
         case 'CURRY-RES',      DefaultExt = '.res';
         case 'EEGLAB-XYZ',     DefaultExt = '.xyz';
         case 'EGI',            DefaultExt = '.sfp';
@@ -198,6 +199,9 @@ switch FileFormat
     case 'BIDS-MNI-MM'
         % Transf is a MRI structure with the definition of MNI normalization
         out_channel_bids(BstChannelFile, OutputChannelFile, .001, Transf);
+    case 'BIDS-ALS-MM'
+        % No transformation: export unchanged SCS/CTF space
+        out_channel_bids(BstChannelFile, OutputChannelFile, .001, []);        
     case 'CURRY-RES'
         out_channel_ascii(BstChannelFile, OutputChannelFile, {'indice','-Y','X','Z','indice','name'}, 1, 0, 0, .001);
     case 'EEGLAB-XYZ'
