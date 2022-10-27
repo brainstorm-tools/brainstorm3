@@ -79,6 +79,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         bst_report('Start', sInputAll);
     end
     UseProgress = 1;
+    isProgress = ~bst_progress('isVisible');
     % Group some processes together to optimize the pipeline speed
     sProcesses = OptimizePipeline(sProcesses);
     
@@ -334,7 +335,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         end
     end
     % Close progress bar (unless the last process does not use the progress bar)
-    if UseProgress
+    if UseProgress && isProgress
         bst_progress('stop');
     end
     % Report processing
