@@ -654,7 +654,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 for mod = {'meg', 'eeg', 'ieeg'}
                     posUnits = 'mm';
                     electrodesFile = [];
-                    electrodesSpace = 'ScanRAS';
+                    electrodesSpace = 'ALS';
                     electrodesAnatRef = [];
                     electrodesCoordSystem = [];
                     coordsystemSpace = [];
@@ -1183,6 +1183,8 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
             iField = find(~cellfun(@(c)isempty(strfind(c, fid{1})), fields));
             if ~isempty(iField)
                 fidNames = fields(iField);
+            else
+                continue;
             end
         end
         % Get all the coordinates available in this structure
