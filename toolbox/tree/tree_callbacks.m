@@ -1317,7 +1317,19 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Check source grid (surface)', IconLoader.ICON_HEADMODEL, [], @(h,ev)view_gridloc(filenameFull, 'S'));
                 end
                 if isempty(strfind(filenameRelative, 'headmodel_grid_'))
-                    gui_component('MenuItem', jPopup, [], 'View lead field vectors', IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@view_leadfields, GetAllFilenames(bstNodes))); 
+                    AddSeparator(jPopup);
+                    for mod = {'MEG', 'EEG', 'SEEG', 'ECOG'}
+                        if isempty(sStudy.HeadModel(iHeadModel).([mod{1}, 'Method']))
+                            continue;
+                        end
+                        gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield vectors'], IconLoader.ICON_RESULTS, [], @(h,ev)bst_call(@view_leadfield_vectors, GetAllFilenames(bstNodes), mod{1}));
+                        if strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'volume')
+                            gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity (MRI 3D)'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Mri3D'));
+                            gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'MriViewer'));
+                        elseif strcmpi(sStudy.HeadModel(iHeadModel).HeadModelType, 'surface')
+                            gui_component('MenuItem', jPopup, [], ['View ' mod{1} ' leadfield sensitivity'], IconLoader.ICON_ANATOMY, [], @(h,ev)bst_call(@view_leadfield_sensitivity, filenameRelative, mod{1}, 'Surface'));
+                        end
+                    end
                 end
                 % Copy to other conditions/subjects 
                 if ~bst_get('ReadOnly')

@@ -1492,7 +1492,7 @@ function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isSt
 
         case 'HeadModel'
             setappdata(hFig, 'HeadModelFile', dataFile);
-            ColormapType = '';
+            ColormapType = 'source';
             DisplayUnits = [];
             TessInfo(iTess).Data = [];
             TessInfo(iTess).DataWmat = [];
@@ -1614,7 +1614,15 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 iResult = bst_memory('GetResultInDataSet', iDS, TessInfo(iTess).DataSource.FileName);
                 % If Results file is not found in GlobalData structure
                 if isempty(iResult)
-                    isOk = 0;
+                    % Check whether the figure is showing a leadfield
+                    if strcmp(file_gettype(TessInfo(iTess).DataSource.FileName), 'headmodel')
+                        UpdateCallback = getappdata(hFig, 'UpdateCallback');
+                        if ~isempty(UpdateCallback)
+                            UpdateCallback();
+                        end
+                    else
+                        isOk = 0;
+                    end
                     return
                 end
                 % If data matrix is not loaded for this file

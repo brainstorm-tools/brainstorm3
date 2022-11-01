@@ -1,3 +1,6 @@
+November 2022
+- Forward: Display leadfield sensitivity (surface and MRI) 
+--------------------------------------------------------------
 October 2022
 - EEG: Project channel files between subjects
 - Inverse: Project dipoles files between subjects

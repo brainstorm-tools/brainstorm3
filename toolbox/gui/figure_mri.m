@@ -1002,13 +1002,14 @@ function DisplayFigurePopup(hFig)
         jItem2.setSelected(MriOptions.DistanceThresh == 4);
         jItem3.setSelected(MriOptions.DistanceThresh == 6);
         jItem4.setSelected(MriOptions.DistanceThresh == 9);
-        % Interpolated grid resolution
-%         jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 1mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
-%         jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 2mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
-%         jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Grid resolution: 3mm',    [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
-%         jItem1.setSelected(MriOptions.InterpDownsample == 1);
-%         jItem2.setSelected(MriOptions.InterpDownsample == 2);
-%         jItem3.setSelected(MriOptions.InterpDownsample == 3);
+        % Resolution
+        jMenuInterp.addSeparator();
+        jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 1 voxel',  [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 1));
+        jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 2 voxels', [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 2));
+        jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 3 voxels', [], [], @(h,ev)figure_3d('SetMriResolution', hFig, 3));
+        jItem1.setSelected(MriOptions.InterpDownsample == 1);
+        jItem2.setSelected(MriOptions.InterpDownsample == 2);
+        jItem3.setSelected(MriOptions.InterpDownsample == 3);
     end
     
     % === ANATOMICAL ATLASES ===
