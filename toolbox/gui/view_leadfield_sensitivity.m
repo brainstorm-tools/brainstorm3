@@ -29,6 +29,8 @@ function hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode)
 % Authors: Francois Tadel, 2022
 %          Takfarinas Medani, 2022
 
+global GlobalData;
+
 % Parse inputs
 if (nargin < 3) || isempty(DisplayMode)
     DisplayMode = 'Mri3D';
@@ -70,10 +72,10 @@ switch (HeadmodelMat.HeadModelType)
         % Create figure
         switch lower(DisplayMode)
             case 'mri3d'
-                hFig = view_mri_3d(MriFile, HeadmodelFile, [], 'NewFigure');
+                [hFig, iDS, iFig] = view_mri_3d(MriFile, HeadmodelFile, [], 'NewFigure');
                 is3D = 1;
             case 'mriviewer'
-                hFig = view_mri(MriFile, HeadmodelFile, Modality, 1);
+                [hFig, iDS, iFig] = view_mri(MriFile, HeadmodelFile, Modality, 1);
             otherwise
                 error(['Unknown display mode: "' DisplayMode '"']);
         end
@@ -82,7 +84,7 @@ switch (HeadmodelMat.HeadModelType)
 
     % === SURFACE ===
     case 'surface'
-        hFig = view_surface_data(HeadmodelMat.SurfaceFile, HeadmodelFile, Modality, 'NewFigure', 0);
+        [hFig, iDS, iFig] = view_surface_data(HeadmodelMat.SurfaceFile, HeadmodelFile, Modality, 'NewFigure', 0);
         is3D = 1;
 end
 if isempty(hFig)
@@ -97,6 +99,12 @@ iRef = [];
 iChannel = 1;
 % Update figure name
 set(hFig, 'Name', ['Leadfield: ' HeadmodelFile]);
+% Save channel file in dataset
+GlobalData.DataSet(iDS).ChannelFile = ChannelFile;
+GlobalData.DataSet(iDS).Channel = Channels;
+if isfield(ChannelMat, 'IntraElectrodes') && ~isempty(ChannelMat.IntraElectrodes)
+    GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
+end
 % Hack keyboard callback
 KeyPressFcn_bak = get(hFig, 'KeyPressFcn');
 set(hFig, 'KeyPressFcn', @KeyPress_Callback);
@@ -204,42 +212,9 @@ UpdateLeadfield();
                 if SelectTarget()
                     isUpdate = 1;
                 end
-            case 'e'
-                if is3D
-                    if ~ismember('shift', keyEvent.Modifier)
-                        % Plot sensors
-                        if ~isempty(findobj(hAxes, 'Tag', 'allChannel'))
-                            delete(findobj(hAxes, 'Tag', 'allChannel'))
-                        else
-                            if length(Channels) > 10
-                                hSensors = figure_3d('PlotSensorsNet', hAxes, markersLocs, 0, 0);
-                                set(hSensors, 'LineWidth', 1, 'MarkerSize', 5,'Tag','allChannel');
-                            end
-                        end
-                    else
-                        % Plot sensors name
-                        if ~isempty(findobj(hAxes, 'Tag', 'allChannelName'))
-                            delete(findobj(hAxes, 'Tag', 'allChannelName'))
-                        else
-                            if length(Channels) > 10
-                                %hSensors = figure_3d('PlotSensorsNet', hAxes, markersLocs, 0, 0);
-                                %set(hSensors,'Tag','allChannelName');
-                                channelAllName = cell(length(Channels),1);
-                                for iChan = 1 : length(Channels)
-                                    channelAllName{iChan} = Channels(iChan).Name;
-                                end
-                                text(markersLocs(:,1), markersLocs(:,2), markersLocs(:,3),channelAllName,...
-                                    'color','y',...
-                                    'Parent', hAxes, ...
-                                    'Tag', 'allChannelName');
-                            end
-                        end
-                    end
-                end
             case 'h'
                 if is3D
                     strHelp3D = [...
-                        '<TR><TD><B>E</B></TD><TD>Show/hide the sensors</TD></TR>' ...
                         '<TR><TD><B>Shift + E</B></TD><TD>Show/hide the sensors labels</TD></TR>' ...
                         '<TR><TD><B>0 to 9</B></TD><TD>Change view</TD></TR>'];
                 else

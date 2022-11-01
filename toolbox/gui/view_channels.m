@@ -199,6 +199,10 @@ if is3DElectrodes
     if isLabels
         figure_3d('ViewSensors', hFig, 1, 1, 0, Modality);
     end
+    % Open iEEG tab
+    if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
+        gui_brainstorm('ShowToolTab', 'iEEG');
+    end
 elseif ismember(lower(Modality), {'ctf', 'vectorview306', '4d', 'kit', 'kriss', 'babymeg', 'ricoh'})
     figure_3d('PlotCoils', hFig, Modality, isMarkers);
 elseif ismember(lower(Modality), {'nirs','nirs-brs'})
