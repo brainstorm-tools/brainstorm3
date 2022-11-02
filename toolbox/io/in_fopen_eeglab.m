@@ -59,9 +59,9 @@ nTime     = hdr.EEG.pnts;
 nEpochs   = hdr.EEG.trials;
 
 % === GET TIME ===
-if isfield(hdr.EEG, 'times') && ~isempty(hdr.EEG.times)
-    hdr.Time = hdr.EEG.times ./ 1000;
-elseif isfield(hdr.EEG, 'srate') && ~isempty(hdr.EEG.srate)
+% if isfield(hdr.EEG, 'times') && ~isempty(hdr.EEG.times)   % Disabled the use of "times" because it was not always in milliseconds (2-Nov-2022)
+% hdr.Time = hdr.EEG.times ./ 1000;
+if isfield(hdr.EEG, 'srate') && ~isempty(hdr.EEG.srate)
     hdr.Time = hdr.EEG.xmin + (0:nTime-1) ./ hdr.EEG.srate;
 else
     hdr.Time = linspace(hdr.EEG.xmin, hdr.EEG.xmax, nTime);
