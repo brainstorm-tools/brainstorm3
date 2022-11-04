@@ -254,7 +254,7 @@ if ~isempty(fPath)
         json = bst_jsondecode(jsonFile);
         [sFid, msg] = process_import_bids('GetFiducials', json, 'voxel');
         if ~isempty(msg)
-            Messages = [Messages, 10, msg];
+            disp(['BIDS> ' jsonFile ': ' msg]);
         end
         % If there are fiducials defined in the json file
         if ~isempty(sFid)

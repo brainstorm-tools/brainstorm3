@@ -13,6 +13,22 @@ function varargout = process_import_bids( varargin )
 %       But the channel names are never expected to be different between the data files and the metadata: 
 %       "If BIDS metadata is defined, format-specific metadata MUST NOT conflict to the extent permitted by the format"
 %       (reference: https://github.com/bids-standard/bids-specification/pull/761)
+%
+%  - Test datasets:
+%    - EEG  : https://openneuro.org/datasets/ds002578 : OK 
+%    - EEG  : https://openneuro.org/datasets/ds003421 : ERROR: EEG positions not imported because of mismatch of channel names between .vmrk and electrodes.tsv
+%    - EEG  : https://openneuro.org/datasets/ds004024 : OK
+%    - iEEG : https://openneuro.org/datasets/ds003688 : ERROR: Wrong interpretation of ACPC coordinates (easier to see in ECOG for sub-02)
+%    - iEEG : https://openneuro.org/datasets/ds003848 : WARNING: Impossible to interepret correctly the coordinates in electrodes.tsv
+%    - iEEG : https://openneuro.org/datasets/ds004085 : 
+%    - iEEG : https://openneuro.org/datasets/ds004126 : OK (ACPC OK)
+%    - STIM : https://openneuro.org/datasets/ds002799 : WARNING: No channel file imported because there are no SEEG recordings
+%    - MEG  : https://openneuro.org/datasets/ds000117 : 
+%    - MEG  : https://openneuro.org/datasets/ds000247 : 
+%    - MEG  : https://openneuro.org/datasets/ds004107 : 
+%    - Tutorial FEM  : https://neuroimage.usc.edu/brainstorm/Tutorials/FemMedianNerve   :
+%    - Tutorial ECOG : https://neuroimage.usc.edu/brainstorm/Tutorials/ECoG             :
+%    - Tutorial SEEG : https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity : 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -236,7 +252,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
         else
             % Re-order session names: move "ses-preimp" or "ses-pre" at the top, for iEEG (pre-implantation images are usually the reference)
             if (length(sessDir) > 1)
-                iSesPreimp = find(ismember({sessDir.name}, {'ses-preimp', 'ses-pre'}));
+                iSesPreimp = find(ismember({sessDir.name}, {'ses-preimp', 'ses-pre', 'ses-preop'}));
                 if ~isempty(iSesPreimp)
                     iReorder = [iSesPreimp, setdiff(1:length(sessDir), iSesPreimp)];
                     sessDir = sessDir(iReorder);
