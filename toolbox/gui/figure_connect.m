@@ -1200,7 +1200,11 @@ function LoadFigurePlot(hFig) %#ok<DEFNU>
             % Get the file information file
             SurfaceFile = GlobalData.DataSet(iDS).Timefreq(iTimefreq).SurfaceFile;
             Atlas       = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Atlas;
-            isVolumeAtlas = panel_scout('ParseVolumeAtlas', Atlas.Name);
+            if ~isempty(Atlas)
+                isVolumeAtlas = panel_scout('ParseVolumeAtlas', Atlas.Name);
+            else
+                isVolumeAtlas = 0;
+            end
             % Load surface
             if ~isempty(SurfaceFile) && ischar(SurfaceFile)
                 SurfaceMat = in_tess_bst(SurfaceFile);

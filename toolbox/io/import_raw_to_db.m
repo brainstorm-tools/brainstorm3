@@ -21,7 +21,7 @@ function NewFiles = import_raw_to_db( DataFile )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2019
+% Authors: Francois Tadel, 2011-2022
 
 
 % ===== GET FILE INFO =====
@@ -48,12 +48,24 @@ else
     sFile = in_fopen(DataFile, 'BST-DATA');
 end
 % Import file
-NewFiles = import_data(sFile, ChannelMat, sFile.format, [], iSubject, [], sStudy.DateOfStudy);
+[NewFiles, iStudyImport] = import_data(sFile, ChannelMat, sFile.format, [], iSubject, [], sStudy.DateOfStudy);
 
 % If only one file imported: Copy linked videos in destination folder
 if (length(NewFiles) == 1) && ~isempty(sStudy.Image)
     process_import_data_event('CopyVideoLinks', NewFiles{1}, sStudy);
 end
+
+% Copy noise covariance, if any
+if ~isempty(iStudyImport) && ~isempty(sStudy.NoiseCov) && ~isempty(sStudy.NoiseCov(1).FileName)
+    iStudyCopy = unique(iStudyImport);
+    for i = 1:length(iStudyCopy)
+        sStudyCopy = bst_get('Study', iStudyCopy(i));
+        if isempty(sStudyCopy.NoiseCov) || isempty(sStudyCopy.NoiseCov(1).FileName)
+            db_set_noisecov(iStudy, iStudyCopy(i), 0, 0);
+        end
+    end
+end
+
 % Save database
 db_save();
 

@@ -1,8 +1,8 @@
-function channel_add_loc(iStudies, LocChannelFile, isInteractive)
+function channel_add_loc(iStudies, LocChannelFile, isInteractive, isMni)
 % CHANNEL_ADD_LOC: Add the positions of the EEG electrodes from a another channel file.
 % 
-% USAGE:  channel_add_loc(iStudies, LocChannelFile=[ask], isInteractive=0)
-%         channel_add_loc(iStudies, LocChannelMat,        isInteractive=0)
+% USAGE:  channel_add_loc(iStudies, LocChannelFile=[ask], isInteractive=0, isMni=0)
+%         channel_add_loc(iStudies, LocChannelMat,        isInteractive=0, isMni=0)
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,9 +22,12 @@ function channel_add_loc(iStudies, LocChannelFile, isInteractive)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2014-2019
+% Authors: Francois Tadel, 2014-2022
 
 % Parse inputs
+if (nargin < 4) || isempty(isMni)
+    isMni = 0;
+end
 if (nargin < 3) || isempty(isInteractive)
     isInteractive = 0;
 end
@@ -78,6 +81,25 @@ for is = 1:length(iStudies)
         Messages = [Messages, 'No channel file available.', 10];
         continue;
     end
+    % If MNI coordinates in input
+    if isMni
+        % If subject is not using default anatomy: Convert MNI coordinates to subject space
+        [sSubject, iSubject] = bst_get('Subject', sStudy.BrainStormSubject);
+        if ~sSubject.UseDefaultAnat && ~isempty(sSubject.Anatomy) && ~isempty(sSubject.iAnatomy)
+            % Ask confirmation if interactive mode
+            if isInteractive
+                isMni = java_dialog('confirm', 'Convert EEG coordinates from MNI to subject space?', 'MNI template');
+            end
+            % Load subject MRI
+            if isMni
+                sSubjectMni = bst_get('Subject', 0);
+                sMriMni = in_mri_bst(sSubjectMni.Anatomy(sSubjectMni.iAnatomy).FileName);
+                sMriSubj = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+            end
+        else
+            isMni = 0;
+        end
+    end
     % Get channel file
     ChannelFile = sStudy.Channel(1).FileName;
     ChannelMat = in_bst_channel(ChannelFile);
@@ -113,6 +135,17 @@ for is = 1:length(iStudies)
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
             ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
             nUpdated = nUpdated + 1;
+            % Convert from MNI to subject space, if needed
+            if isMni
+                P = ChannelMat.Channel(ic).Loc';
+                P = cs_convert(sMriMni, 'scs', 'mni', P);
+                P = cs_convert(sMriSubj, 'mni', 'scs', P);
+                if isempty(P)
+                    Messages = [Messages, 'Compute the MNI normalization for the subject MRI before importing MNI coordinates.', 10];
+                    continue;
+                end
+                ChannelMat.Channel(ic).Loc = P';
+            end
             % If not a template: add head points
             if ~isTemplate
                 % Initialize list of head points as cell arrays (if not it concatenate as strings)
@@ -169,6 +202,8 @@ for is = 1:length(iStudies)
 end
 % Message: Summary
 if isInteractive
+    % Recommendation to project electrodes on surface
+    Messages = [Messages 10 'Consider projecting the electrodes on the head surface before source estimation.'];
     java_dialog('msgbox', Messages, 'Add EEG positions');
 end
 

@@ -19,7 +19,7 @@ function varargout = process_noisecov( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2018
+% Authors: Francois Tadel, 2012-2022
 
 eval(macro_method);
 end
@@ -126,7 +126,7 @@ function OutputFiles = RunFile(sProcess, sInputs, sInputsOther)
     else
         OPTIONS.Baseline = [];
     end
-    if isfield(sProcess.options, 'datatimewindow') && isfield(sProcess.options.datatimewindow, 'Value') && iscell(sProcess.options.datatimewindow.Value) && ~isempty(sProcess.options.datatimewindow.Value) && ~isempty(sProcess.options.baseline.Value{1})
+    if isfield(sProcess.options, 'datatimewindow') && isfield(sProcess.options.datatimewindow, 'Value') && iscell(sProcess.options.datatimewindow.Value) && ~isempty(sProcess.options.datatimewindow.Value) && ~isempty(sProcess.options.datatimewindow.Value{1})
         OPTIONS.DataTimeWindow = sProcess.options.datatimewindow.Value{1};
     else
         OPTIONS.DataTimeWindow = [];
@@ -240,7 +240,7 @@ function OutputFiles = RunFile(sProcess, sInputs, sInputsOther)
             copyDate = GetStudyDate(iCopyStudies(i));
             % Skip if there are empty study dates
             if isempty(copyDate) || isempty(inputDate) || any(cellfun(@isempty, otherDates))
-                bst_report('Warning', 'process_noiecov', sInputs, 'Date of study missing in at least one folder... Cannot match by dates.');
+                bst_report('Warning', 'process_noisecov', sInputs, 'Date of study missing in at least one folder... Cannot match by dates.');
                 continue;
             end
             % Keep the list only if it the closest to the current input file

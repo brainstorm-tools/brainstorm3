@@ -25,7 +25,7 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2021
+% Authors: Francois Tadel, 2010-2022
 
 %% ===== PARSE INPUTS =====
 if (nargin < 7) || isempty(isDelete)
@@ -92,8 +92,12 @@ end
 
 %% ===== READ FILE =====
 if isempty(newEvents)
-    % Progress bar
-    bst_progress('start', 'Import events', 'Loading file...');
+    % Start progress bar
+    isProgress = ~bst_progress('isVisible');
+    if isProgress
+        bst_progress('start', 'Import events', 'Initializing...');
+    end
+    bst_progress('text', 'Loading events file...');
     % Switch according to file format
     switch (FileFormat)
         case 'ANT'
@@ -159,7 +163,9 @@ if isempty(newEvents)
             error('Unsupported file format.');
     end
     % Progress bar
-    bst_progress('stop');
+    if isProgress
+        bst_progress('stop');
+    end
     % If no new events: return
     if isInteractive && isempty(newEvents)
         bst_error('No events found in this file.', 'Import events', 0);

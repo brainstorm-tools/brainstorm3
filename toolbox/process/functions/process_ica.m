@@ -22,7 +22,7 @@ function varargout = process_ica( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2018
+% Authors: Francois Tadel, 2015-2022
 %          Peter Donhauser, 2017
 
 eval(macro_method);
@@ -36,76 +36,95 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Category    = 'Custom';
     sProcess.SubGroup    = 'Artifacts';
     sProcess.Index       = 113;
-    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/ICA';
+    sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/Epilepsy#Artifact_cleaning_with_ICA';
     % Definition of the input accepted by this process
     sProcess.InputTypes  = {'raw'};
     sProcess.OutputTypes = {'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     sProcess.isSeparator = 1;
-    % Definition of the options
+    % === SELECT INPUT SIGNALS ===
     % Time window
     sProcess.options.timewindow.Comment = 'Time window: ';
     sProcess.options.timewindow.Type    = 'timewindow';
     sProcess.options.timewindow.Value   = [];
+    sProcess.options.timewindow.Group   = 'input';
     % Event name
     sProcess.options.eventname.Comment = 'Event name (empty=continuous): ';
     sProcess.options.eventname.Type    = 'text';
     sProcess.options.eventname.Value   = '';
+    sProcess.options.eventname.Group   = 'input';
     % Event window
     sProcess.options.eventtime.Comment = 'Event window (ignore if no event): ';
     sProcess.options.eventtime.Type    = 'range';
     sProcess.options.eventtime.Value   = {[-.200, .200], 'ms', []};
-    % Resample
-    sProcess.options.resample.Comment = 'Resample input signals (0=disable): ';
-    sProcess.options.resample.Type    = 'value';
-    sProcess.options.resample.Value   = {0, 'Hz', 2};
-    % Band-pass filter
-    sProcess.options.bandpass.Comment = 'Frequency band (0=ignore): ';
-    sProcess.options.bandpass.Type    = 'range';
-    sProcess.options.bandpass.Value   = {[0, 0], 'Hz', 2};
-    % Number of components
-    sProcess.options.nicacomp.Comment = 'Number of ICA components (0=all): ';
-    sProcess.options.nicacomp.Type    = 'value';
-    sProcess.options.nicacomp.Value   = {20, '', 0};
+    sProcess.options.eventtime.Group   = 'input';
     % Sensor types
     sProcess.options.sensortypes.Comment = 'Sensor types or names (empty=all): ';
     sProcess.options.sensortypes.Type    = 'text';
     sProcess.options.sensortypes.Value   = 'EEG';
-    % Select components
-    sProcess.options.icasort.Comment = 'Sort components based on correlation with (empty=none):';
-    sProcess.options.icasort.Type    = 'text';
-    sProcess.options.icasort.Value   = 'EOG, ECG';    
-    % Use existing SSPs
-    sProcess.options.usessp.Comment = 'Compute using existing SSP/ICA projectors';
-    sProcess.options.usessp.Type    = 'checkbox';
-    sProcess.options.usessp.Value   = 1;
+    sProcess.options.sensortypes.Group   = 'input';
     % Ignore bad segments
     sProcess.options.ignorebad.Comment = 'Ignore bad segments';
     sProcess.options.ignorebad.Type    = 'checkbox';
     sProcess.options.ignorebad.Value   = 1;
     sProcess.options.ignorebad.Hidden  = 1;
+
+    % === PREPROCESSING ===
+    % Signal preprocessing
+    sProcess.options.preproc.Comment = '<B>Signal preprocessing</B>: ';
+    sProcess.options.preproc.Type    = 'label';
+    % Band-pass filter
+    sProcess.options.bandpass.Comment = 'Band-pass filter (0=ignore): ';
+    sProcess.options.bandpass.Type    = 'range';
+    sProcess.options.bandpass.Value   = {[0, 0], 'Hz', 2};
+    % Resample
+    sProcess.options.resample.Comment = 'Resample input signals (0=disable): ';
+    sProcess.options.resample.Type    = 'value';
+    sProcess.options.resample.Value   = {0, 'Hz', 2};
+    % Use existing SSPs
+    sProcess.options.usessp.Comment = 'Compute using existing SSP/ICA projectors';
+    sProcess.options.usessp.Type    = 'checkbox';
+    sProcess.options.usessp.Value   = 1;
+    sProcess.options.usessp.Hidden  = 1;
+
+    % === ICA OPTIONS
+    sProcess.options.method_label.Comment = '<BR><B>ICA algorithm</B>: ';
+    sProcess.options.method_label.Type    = 'label';
+    % ICA method
+    sProcess.options.method.Comment = {'<B>Picard</B>: &nbsp;&nbsp;&nbsp;<I>Ablin, Cardoso & Gramfort (IEEE TSP 2018) </I>', ...
+                                       '<B>Infomax</B>: &nbsp;&nbsp;&nbsp;<I>EEGLAB / RunICA</I>', ...
+                                       '<B>FastICA</B>: &nbsp;&nbsp;&nbsp;<I>Gävert, Hurri, Särelä & Hyvärinen @ Aalto Univ</I>', ...
+                                       '<B>JADE</B>: &nbsp;&nbsp;&nbsp;<I>JF Cardoso @ Telecom-ParisTech</I>'; ...
+                                       'picard', 'infomax', 'fastica', 'jade'};
+    sProcess.options.method.Type    = 'radio_label';
+    sProcess.options.method.Value   = 'picard';
+    % Number of components
+    sProcess.options.nicacomp.Comment = 'Number of ICA components (0=all): ';
+    sProcess.options.nicacomp.Type    = 'value';
+    sProcess.options.nicacomp.Value   = {0, '', 0};
+
+    % === OUTPUT
+    % Select components
+    sProcess.options.icasort.Comment = 'Sort components based on correlation with (empty=none):';
+    sProcess.options.icasort.Type    = 'text';
+    sProcess.options.icasort.Value   = 'EOG, ECG';
+    sProcess.options.icasort.Group   = 'output';
     % Save ERP
     sProcess.options.saveerp.Comment = 'Save averaged artifact in the database';
     sProcess.options.saveerp.Type    = 'checkbox';
     sProcess.options.saveerp.Value   = 0;
-    % ICA method
-    sProcess.options.method_label.Comment = '<BR>ICA method: ';
-    sProcess.options.method_label.Type    = 'label';
-    sProcess.options.method.Comment = {'<B>Infomax</B>: &nbsp;&nbsp;&nbsp;<I>EEGLAB / RunICA', ...
-                                       '<B>JADE</B>: &nbsp;&nbsp;&nbsp;<I>JF Cardoso @ Telecom-ParisTech</I>'};
-                                       % '<B>FastICA</B>: &nbsp;&nbsp;&nbsp;<I>http://research.ics.aalto.fi/ica/fastica</I>', ...
-    sProcess.options.method.Type    = 'radio';
-    sProcess.options.method.Value   = 1;
+    sProcess.options.saveerp.Group   = 'output';
 end
 
 
 %% ===== FORMAT COMMENT =====
 function Comment = FormatComment(sProcess) %#ok<DEFNU>
     switch (sProcess.options.method.Value)
-        case 1,     Comment = [sProcess.Comment, ': Infomax'];
-        case 2,     Comment = [sProcess.Comment, ': JADE'];
-        case 3,     Comment = [sProcess.Comment, ': FastICA'];
+        case {1, 'infomax'},  Comment = [sProcess.Comment, ': Infomax'];
+        case {2, 'jade'},     Comment = [sProcess.Comment, ': JADE'];
+        case {3, 'fastica'},  Comment = [sProcess.Comment, ': FastICA'];
+        case 'picard',        Comment = [sProcess.Comment, ': Picard'];
         otherwise,  error('Invalid method.');
     end
 end
@@ -117,9 +136,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     OutputFiles = {};
     % ICA method
     switch (sProcess.options.method.Value)
-        case 1,  sProcess.options.method.Value = 'ICA_infomax';
-        case 2,  sProcess.options.method.Value = 'ICA_jade';
-        case 3,  sProcess.options.method.Value = 'ICA_fastica';
+        case {1, 'infomax'},  sProcess.options.method.Value = 'ICA_infomax';
+        case {2, 'jade'},     sProcess.options.method.Value = 'ICA_jade';
+        case {3, 'fastica'},  sProcess.options.method.Value = 'ICA_fastica';
+        case 'picard',        sProcess.options.method.Value = 'ICA_picard';
         otherwise,  error('Invalid method.');
     end
     

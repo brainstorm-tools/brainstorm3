@@ -1,13 +1,8 @@
-function out_label_fs(LabelFile, Comment, Vertices, Pos, Values)
-% Writes FreeSurfer label file.
+function F = in_fread_bci2000(sFile, SamplesBounds)
+% IN_FREAD_BCI2000: Read a block of recordings from a BCI2000 .dat file
 %
-% INPUTS:
-%    - LabelFile : Output file
-%    - Comment   : Comment for the first line of the label file
-%    - Vertices  : Vertex indices (0 based, column 1)
-%    - Pos       : Locations in meters (columns 2 - 4 divided by 1000)
-%    - Values    : Values at the vertices (column 5)
-%
+% Uses library: https://www.bci2000.org/mediawiki/index.php/User_Reference:Matlab_MEX_Files
+
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -25,17 +20,27 @@ function out_label_fs(LabelFile, Comment, Vertices, Pos, Values)
 %
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
+%
+% Author: Francois Tadel 2022
 
-[fid, message] = fopen(LabelFile, 'w');
-if (fid < 0)
-    error('Cannot open file %s (%s)', LabelFile, message);
+% Parse inputs
+if (nargin < 2) || isempty(SamplesBounds)
+    if ~isempty(sFile.epochs)
+        SamplesBounds = round(sFile.epochs(iEpoch).times .* sFile.prop.sfreq);
+    else
+        SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
+    end
 end
 
-fprintf(fid,'# %s\n', Comment);
-fprintf(fid, '%d\n', length(Vertices));
-for k = 1:length(Vertices)
-   fprintf(fid,'%d %.2f %.2f %.2f %f\n', Vertices(k), 1000*Pos(k,:), Values(k));
+% Install plugin BCI2000
+if ~exist('load_bcidat', 'file')
+    [isInstalled, errMsg] = bst_plugin('Install', 'bci2000');
+    if ~isInstalled
+        error(errMsg); 
+    end
 end
 
-fclose(fid);
+% Read signals
+F = load_bcidat(sFile.filename, SamplesBounds + 1, '-calibrated')';
+
 

@@ -1816,7 +1816,7 @@ function DisplayFigurePopup(hFig)
             % MENU: Interpolation MRI/sources
             % Interpolate values
             jMenuInterp = gui_component('Menu', jMenuMri, [], 'Interpolation sources>MRI', IconLoader.ICON_ANATOMY);
-            jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Grid interpolation', [], [], @(h,ev)SetGridSmooth(hFig, ~TessInfo(1).DataSource.GridSmooth));
+            jCheck = gui_component('checkboxmenuitem', jMenuInterp, [], 'Interpolate values', [], [], @(h,ev)SetGridSmooth(hFig, ~TessInfo(1).DataSource.GridSmooth));
             jCheck.setSelected(TessInfo(1).DataSource.GridSmooth);
             % Distance threshold
             jMenuInterp.addSeparator();
@@ -1828,13 +1828,14 @@ function DisplayFigurePopup(hFig)
             jItem2.setSelected(MriOptions.DistanceThresh == 4);
             jItem3.setSelected(MriOptions.DistanceThresh == 6);
             jItem4.setSelected(MriOptions.DistanceThresh == 9);
-%             jMenuMri = gui_component('Menu', jPopup, [], 'Sources resolution', IconLoader.ICON_ANATOMY);
-%             jItem1 = gui_component('radiomenuitem', jMenuMri, [], '1mm',    [], [], @(h,ev)SetMriResolution(hFig, 1));
-%             jItem2 = gui_component('radiomenuitem', jMenuMri, [], '2mm',    [], [], @(h,ev)SetMriResolution(hFig, 2));
-%             jItem3 = gui_component('radiomenuitem', jMenuMri, [], '3mm',    [], [], @(h,ev)SetMriResolution(hFig, 3));
-%             jItem1.setSelected(MriOptions.InterpDownsample == 1);
-%             jItem2.setSelected(MriOptions.InterpDownsample == 2);
-%             jItem3.setSelected(MriOptions.InterpDownsample == 3);
+            % Resolution
+            jMenuInterp.addSeparator();
+            jItem1 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 1 voxel',  [], [], @(h,ev)SetMriResolution(hFig, 1));
+            jItem2 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 2 voxels', [], [], @(h,ev)SetMriResolution(hFig, 2));
+            jItem3 = gui_component('radiomenuitem', jMenuInterp, [], 'Resolution: 3 voxels', [], [], @(h,ev)SetMriResolution(hFig, 3));
+            jItem1.setSelected(MriOptions.InterpDownsample == 1);
+            jItem2.setSelected(MriOptions.InterpDownsample == 2);
+            jItem3.setSelected(MriOptions.InterpDownsample == 3);
         end
         jMenuMri.addSeparator();
         % Upsample image
@@ -2098,8 +2099,8 @@ function SetDistanceThresh(hFig, DistanceThresh)
         [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
             GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
-            bst_figures('FireCurrentTimeChanged', 1);
         end
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 % RADIO: MRI RESOLUTION
@@ -2115,8 +2116,8 @@ function SetMriResolution(hFig, InterpDownsample)
         [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
             GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
-            bst_figures('FireCurrentTimeChanged', 1);
         end
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 % CHECKBOX: GRID SMOOTH
@@ -2135,8 +2136,8 @@ function SetGridSmooth(hFig, GridSmooth)
         [iDS, iResult] = bst_memory('GetDataSetResult', TessInfo(1).DataSource.FileName);
         if ~isempty(iDS)
             GlobalData.DataSet(iDS).Results(iResult).grid2mri_interp = [];
-            bst_figures('FireCurrentTimeChanged', 1);
         end
+        bst_figures('FireCurrentTimeChanged', 1);
     end
 end
 

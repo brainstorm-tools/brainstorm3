@@ -31,7 +31,7 @@ function out_figure_movie( hFig, defaultFile, movieType, OPTIONS )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 
 global prevTimeSelection;
                           
@@ -66,17 +66,20 @@ else
     MovieFile = defaultFile;
 end
 
+% == DEFAULT TIME ==
+if strcmpi(movieType, 'time') || strcmpi(movieType, 'allfig')
+    % Get figure description
+    [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
+    if isempty(iDS)
+        return
+    end
+    % Get time vector for this Dataset
+    TimeVector = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
+end
+
 % === MOVIE OPTIONS ===
 if (nargin < 4)
     if strcmpi(movieType, 'time') || strcmpi(movieType, 'allfig')
-        % == DEFAULT TIME ==
-        % Get figure description
-        [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-        if isempty(iDS)
-            return
-        end
-        % Get time vector for this Dataset
-        TimeVector = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
         % Is there any pre-existing and valid time selection
         if ~isempty(prevTimeSelection) && (prevTimeSelection(1) >= TimeVector(1)) && (prevTimeSelection(1) <= TimeVector(end))
             TimeBounds = prevTimeSelection;

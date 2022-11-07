@@ -209,7 +209,7 @@ function [bstPanelNew, panelName] = CreatePanel(sFile, ChannelMat) %#ok<DEFNU>
             jTextEventsTimeStop.setFont(jFontText);
             jPanelEvents.add(jTextEventsTimeStop);
             % Set callbacks
-            TimeBoundsEvents = {-500, 500, sFile.prop.sfreq};
+            TimeBoundsEvents = {-10000, 10000, sFile.prop.sfreq};
             gui_validate_text(jTextEventsTimeStart, [], jTextEventsTimeStop, TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(1), @EpochTime_Callback);
             gui_validate_text(jTextEventsTimeStop, jTextEventsTimeStart, [], TimeBoundsEvents, 'ms', [], ImportDataOptions.EventsTimeRange(2), @EpochTime_Callback);
             TimeUnitBl = [];

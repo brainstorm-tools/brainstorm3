@@ -47,11 +47,11 @@ end
 % === DOWNLOAD NEW VERSION ===
 % Get update zip file
 urlUpdate  = 'http://neuroimage.usc.edu/bst/getupdate.php?c=UbsM09&src=1';
-installDir = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
+[installDir, bstDir] = fileparts(fileparts(fileparts(fileparts(mfilename('fullpath')))));
 zipFile    = fullfile(installDir, 'brainstorm_update.zip');
 
 % Check permissions
-if ~file_attrib(installDir, 'w') || ~file_attrib(fullfile(installDir, 'brainstorm3'), 'w')
+if ~file_attrib(installDir, 'w') || ~file_attrib(fullfile(installDir, bstDir), 'w')
     strMsg = 'Error: Installation folder is read-only...';
     if ispc
         strMsg = [strMsg 10 10 ...
@@ -112,34 +112,34 @@ cd(installDir);
 % Try the folders separately
 warning('off', 'MATLAB:RMDIR:RemovedFromPath');
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'toolbox'), 's');
+    rmdir(fullfile(installDir, bstDir, 'toolbox'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'external'), 's');
+    rmdir(fullfile(installDir, bstDir, 'external'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'bin'), 's');
+    rmdir(fullfile(installDir, bstDir, 'bin'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'anatomy', 'ICBM152'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'anatomy', 'ICBM152'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'eeg', 'ICBM152'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'eeg', 'ICBM152'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'anatomy', 'Colin27'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'anatomy', 'Colin27'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'eeg', 'Colin27'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'eeg', 'Colin27'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'anatomy', 'MNI_Colin27'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'anatomy', 'MNI_Colin27'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'eeg', 'MNI_Colin27'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'eeg', 'MNI_Colin27'), 's');
 end
 try
-    rmdir(fullfile(installDir, 'brainstorm3', 'defaults', 'eeg', 'NotAligned'), 's');
+    rmdir(fullfile(installDir, bstDir, 'defaults', 'eeg', 'NotAligned'), 's');
 end
 warning('on', 'MATLAB:RMDIR:RemovedFromPath');
 
@@ -149,11 +149,18 @@ disp('BST> Update: Unzipping...');
 unzip(zipFile);
 % Delete temporary update file
 delete(zipFile);
+% If the current install folder is not named 'brainstorm3': Copy files to destination folder
+if ~strcmp(bstDir, 'brainstorm3')
+    % Replace all old files with new files
+    copyfile(fullfile(installDir, 'brainstorm3'), fullfile(installDir, bstDir), 'f');
+    % Delete downloaded files
+    rmdir(fullfile(installDir, 'brainstorm3'), 's');
+end
 % Add some folders to the path again
-addpath(fullfile(installDir, 'brainstorm3', 'toolbox', 'misc'));
-addpath(fullfile(installDir, 'brainstorm3', 'toolbox', 'core'));
-addpath(fullfile(installDir, 'brainstorm3', 'toolbox', 'io'));
-addpath(fullfile(installDir, 'brainstorm3', 'toolbox', 'gui'));
+addpath(fullfile(installDir, bstDir, 'toolbox', 'misc'));
+addpath(fullfile(installDir, bstDir, 'toolbox', 'core'));
+addpath(fullfile(installDir, bstDir, 'toolbox', 'io'));
+addpath(fullfile(installDir, bstDir, 'toolbox', 'gui'));
 
 % === DISPLAY RELEASE NOTES ===
 % Close waitbar
@@ -161,20 +168,20 @@ jDialog.setVisible(0);
 jDialog.dispose();
 % Display the latest updates
 bst_mutex('create', 'ReleaseNotes');
-jFrame = view_text({fullfile(installDir, 'brainstorm3', 'doc', 'updates.txt'), ...
-                    fullfile(installDir, 'brainstorm3', 'doc', 'updates_2020.txt')}, 'Release notes', 1);
+jFrame = view_text({fullfile(installDir, bstDir, 'doc', 'updates.txt'), ...
+                    fullfile(installDir, bstDir, 'doc', 'updates_2020.txt')}, 'Release notes', 1);
 java_setcb(jFrame, 'WindowClosingCallback', @(h,ev)bst_mutex('release', 'ReleaseNotes'));
 bst_mutex('waitfor', 'ReleaseNotes');
 
 % === RESET ENVIRONMENT ===
 % Delete the brainstorm.jar to force downloading a new one when Brainstorm restarts
-jarFile = fullfile(installDir, 'brainstorm3', 'java', 'brainstorm.jar');
+jarFile = fullfile(installDir, bstDir, 'java', 'brainstorm.jar');
 if exist(jarFile, 'file')
     delete(jarFile);
     % The brainstorm.jar file could not be deleted because it was still in use: delete it at next startup
     if exist(jarFile, 'file')
         % Create file to indicate that brainstorm.jar should be deleted
-        UpdateFile = fullfile(installDir, 'brainstorm3', 'java', 'outdated_jar.txt');
+        UpdateFile = fullfile(installDir, bstDir, 'java', 'outdated_jar.txt');
         fid = fopen(UpdateFile, 'w');
         fwrite(fid, ['delete(''' jarFile ''');']);
         fclose(fid);

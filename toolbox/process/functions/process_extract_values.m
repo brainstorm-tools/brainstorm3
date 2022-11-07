@@ -22,7 +22,7 @@ function varargout = process_extract_values( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2020
+% Authors: Francois Tadel, 2015-2022
 
 eval(macro_method);
 end
@@ -365,6 +365,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
     
     
     % ===== LOOP ON FILES =====
+    DisplayUnits = [];
     for iInput = 1:length(sInputs)
         bst_progress('text', sprintf('Reading input files... [%d/%d]', iInput, length(sInputs)));
         
@@ -407,6 +408,7 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             FileMat.Leff        = sLoaded.Leff;
             FileMat.SurfaceFile = sLoaded.SurfaceFile;
             FileMat.Atlas       = sLoaded.Atlas;
+            FileMat.DisplayUnits= sLoaded.DisplayUnits;
             % Interpret as matrix file in the rest of the function
             inFileType = 'matrix';
             MatValues  = FileMat.Value;
@@ -427,6 +429,14 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
             end
             % Get values to extract
             MatValues = FileMat.(matName);
+        end
+        % Make sure that units are the same for all the files
+        if isfield(FileMat, 'DisplayUnits') && ~isempty(FileMat.DisplayUnits)
+            if isempty(DisplayUnits)
+                DisplayUnits = FileMat.DisplayUnits;
+            elseif ~strcmpi(FileMat.DisplayUnits, DisplayUnits)
+                DisplayUnits = 'Mixed units';
+            end
         end
 
         % Get the signals descriptions
@@ -839,6 +849,8 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
         end
         % Final time vector
         newMat{i}.Time = (0:size(OutValue{i},2)-1) ./ sfreq + tstart;
+        % Add units
+        newMat{i}.DisplayUnits = DisplayUnits;
         % Add common history field
         newMat{i} = bst_history('add', newMat{i}, historyMat.History);
     end

@@ -261,6 +261,15 @@ function PlugDesc = GetSupported(SelPlug)
     % PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).CompiledStatus = 0;
 
+    % === I/O: BCI2000 ===
+    PlugDesc(end+1)              = GetStruct('bci2000');
+    PlugDesc(end).Version        = 'latest';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).URLzip         = 'https://bci2000.org/downloads/mex.zip';
+    PlugDesc(end).URLinfo        = 'https://www.bci2000.org/mediawiki/index.php/User_Reference:Matlab_MEX_Files';
+    PlugDesc(end).TestFile       = 'load_bcidat.m';
+    PlugDesc(end).CompiledStatus = 0;
+
     % === I/O: BLACKROCK ===
     PlugDesc(end+1)              = GetStruct('blackrock');
     PlugDesc(end).Version        = '5.5.2.0';
@@ -334,6 +343,9 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).DownloadedFcn  = ['d = fullfile(PlugDesc.Path, ''OmniPlex and MAP Offline SDK Bundle'');' ...
                                     'unzip(fullfile(d, ''Matlab Offline Files SDK.zip''), PlugDesc.Path);' ...
                                     'file_delete(d,1,3);'];
+    PlugDesc(end).InstalledFcn   = ['if (exist(''mexPlex'', ''file'') ~= 3), d = pwd;'  ...
+                                    'cd(fullfile(fileparts(which(''plx_info'')), ''mexPlex''));', ...
+                                    'build_and_verify_mexPlex; cd(d); end'];
 
     % === I/O: PLOTLY ===
     PlugDesc(end+1)              = GetStruct('plotly');
@@ -357,6 +369,17 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 0;
     PlugDesc(end).LoadFolders    = {'*'};
     
+    % === I/O: XDF ===
+    PlugDesc(end+1)              = GetStruct('xdf');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'I/O';
+    PlugDesc(end).AutoUpdate     = 0;
+    PlugDesc(end).URLzip         = 'https://github.com/xdf-modules/xdf-Matlab/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/xdf-modules/xdf-Matlab';
+    PlugDesc(end).TestFile       = 'load_xdf.m';
+    PlugDesc(end).ReadmeFile     = 'readme.md';
+    PlugDesc(end).CompiledStatus = 2;
+
     % === SIMULATION: SIMMEEG ===
     PlugDesc(end+1)              = GetStruct('simmeeg');
     PlugDesc(end).Version        = 'github-master';
@@ -381,6 +404,27 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).CompiledStatus = 2;
     PlugDesc(end).LoadFolders    = {'*'};
     PlugDesc(end).InstalledFcn   = 'd=pwd; cd(fileparts(which(''make''))); make; cd(d);';
+
+    % === STATISTICS: FASTICA ===
+    PlugDesc(end+1)              = GetStruct('fastica');
+    PlugDesc(end).Version        = '2.5';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://research.ics.aalto.fi/ica/fastica/code/FastICA_2.5.zip';
+    PlugDesc(end).URLinfo        = 'https://research.ics.aalto.fi/ica/fastica/';
+    PlugDesc(end).TestFile       = 'fastica.m';
+    PlugDesc(end).ReadmeFile     = 'Contents.m';
+    PlugDesc(end).CompiledStatus = 2;
+
+    % === STATISTICS: PICARD ===
+    PlugDesc(end+1)              = GetStruct('picard');
+    PlugDesc(end).Version        = 'github-master';
+    PlugDesc(end).Category       = 'Statistics';
+    PlugDesc(end).URLzip         = 'https://github.com/pierreablin/picard/archive/refs/heads/master.zip';
+    PlugDesc(end).URLinfo        = 'https://github.com/pierreablin/picard';
+    PlugDesc(end).TestFile       = 'picard.m';
+    PlugDesc(end).ReadmeFile     = 'README.rst';
+    PlugDesc(end).CompiledStatus = 2;
+    PlugDesc(end).LoadFolders    = {'matlab_octave'};
 
     % === ELECTROPHYSIOLOGY: DERIVELFP ===
     PlugDesc(end+1)              = GetStruct('derivelfp');

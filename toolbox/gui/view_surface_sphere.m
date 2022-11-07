@@ -49,13 +49,18 @@ if isProgress
 end
 % Get file type
 fileType = file_gettype(SurfaceFile);
-% If it is a results file
-if ismember(fileType, {'results','link'})
-    ResultsFile = SurfaceFile;
-    ResultsMat = in_bst_results(ResultsFile, 0, 'SurfaceFile');
-    SurfaceFile = ResultsMat.SurfaceFile;
-else
-    ResultsFile = [];
+% Get surface file
+switch (fileType)
+    case {'results', 'link', 'presults'}
+        ResultsFile = SurfaceFile;
+        ResultsMat = in_bst_results(ResultsFile, 0, 'SurfaceFile');
+        SurfaceFile = ResultsMat.SurfaceFile;
+    case {'timefreq', 'ptimefreq'}
+        ResultsFile = SurfaceFile;
+        ResultsMat = in_bst_timefreq(ResultsFile, 0, 'SurfaceFile');
+        SurfaceFile = ResultsMat.SurfaceFile;
+    otherwise
+        ResultsFile = [];
 end
 
 % ===== LOAD REGISTRATION =====

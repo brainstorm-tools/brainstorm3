@@ -79,6 +79,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         bst_report('Start', sInputAll);
     end
     UseProgress = 1;
+    isProgress = ~bst_progress('isVisible');
     % Group some processes together to optimize the pipeline speed
     sProcesses = OptimizePipeline(sProcesses);
     
@@ -334,7 +335,7 @@ function [sInputs, sInputs2] = Run(sProcesses, sInputs, sInputs2, isReport)
         end
     end
     % Close progress bar (unless the last process does not use the progress bar)
-    if UseProgress
+    if UseProgress && isProgress
         bst_progress('stop');
     end
     % Report processing
@@ -1888,7 +1889,8 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         'nComponents',   [], ...
         'nAvg',          1, ...
         'Leff',          1, ...
-        'Freqs',         []);
+        'Freqs',         [], ...
+        'DisplayUnits',  []);
     % Find file in database
     [sStudy, sInput.iStudy, iFile, sInput.DataType] = bst_get('AnyFile', FileName);
     
@@ -1926,6 +1928,7 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
         sInput.nComponents = sMat.nComponents;
         sInput.nAvg        = sMat.nAvg;
         sInput.Leff        = sMat.Leff;
+        sInput.DisplayUnits= sMat.DisplayUnits;
         % If only non-All scouts: use just the scouts labels, if not use the full description string
         sScouts = sMat.Atlas.Scouts;
         if ~isequal(lower(OPTIONS.TargetFunc), 'all') && ~isempty(sScouts) && all(~strcmpi({sScouts.Function}, 'All'))
@@ -2150,6 +2153,9 @@ function [sInput, nSignals, iRows] = LoadInputFile(FileName, Target, TimeWindow,
     else
         sInput.Leff = 1;
     end
+    if isfield(sMat, 'DisplayUnits') && ~isempty(sMat.DisplayUnits)
+        sInput.DisplayUnits = sMat.DisplayUnits;
+    end
     % Count output signals
     if ~isempty(sInput.ImagingKernel) 
         nSignals = size(sInput.ImagingKernel, 1);
@@ -2265,7 +2271,9 @@ function [OutputFiles, OutputFiles2, sInputs, sInputs2] = CallProcess(sProcess, 
             updateVal{1} = newVal;
         elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static'}) && isempty(defVal) && ~isempty(newVal) && ~iscell(newVal)
             updateVal = {newVal, 's', []};
-        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox','combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+        elseif ismember(lower(defType), {'timewindow','baseline','poststim','value','range','freqrange','freqrange_static','combobox'}) && iscell(defVal) && ~isempty(defVal) && ~iscell(newVal) && ~isempty(newVal)
+            updateVal{1} = newVal;
+        elseif ismember(lower(defType), {'combobox_label'}) && iscell(defVal) && ~isempty(defVal) && ismember(newVal, defVal{2})
             updateVal{1} = newVal;
         % Generic call: just copy the value
         else

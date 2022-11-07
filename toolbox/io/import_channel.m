@@ -136,13 +136,13 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
-    case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM'}
+    case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
         FileUnits = 'mm';
-    case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM'}
+    case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM', 'BIDS-ALS-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
         FileUnits = 'cm';
-    case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M'}
+    case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M', 'BIDS-ALS-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
         
@@ -351,14 +351,15 @@ end
 % Are the SCS coordinates defined for this file?
 isScsDefined = isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3);
 % Use world coordinates by defaults for some specific file formats
-if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
-    isApplyVox2ras = 1;   % Use the current vox2ras matrix in the MRI file
-elseif ismember(FileFormat, {'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN'})
-    isApplyVox2ras = 0;   % Disable vox2ras for ASCII formats that are explicitly in SCS
-elseif ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-SCANRAS-CM', 'BIDS-SCANRAS-M'})
-    isApplyVox2ras = 2;   % Use the vox2ras matrix AND reverts the registration done in Brainstorm, to match the original file
+if isempty(isApplyVox2ras)
+    if ismember(FileFormat, {'ASCII_XYZ_WORLD', 'ASCII_NXYZ_WORLD', 'ASCII_XYZN_WORLD', 'SIMNIBS'})
+        isApplyVox2ras = 1;   % Use the current vox2ras matrix in the MRI file
+    elseif ismember(FileFormat, {'ASCII_XYZ', 'ASCII_NXYZ', 'ASCII_XYZN', 'BIDS-ALS-MM', 'BIDS-ALS-CM', 'BIDS-ALS-M'})
+        isApplyVox2ras = 0;   % Disable vox2ras for ASCII formats that are explicitly in SCS
+    elseif ismember(FileFormat, {'BIDS-SCANRAS-MM', 'BIDS-SCANRAS-CM', 'BIDS-SCANRAS-M'})
+        isApplyVox2ras = 2;   % Use the vox2ras matrix AND reverts the registration done in Brainstorm, to match the original file
+    end
 end
-
 
 
 %% ===== CHECK DISTANCE UNITS =====

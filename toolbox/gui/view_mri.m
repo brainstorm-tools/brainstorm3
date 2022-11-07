@@ -104,6 +104,9 @@ switch lower(FileType)
         % Get subject file
         SubjectFile = GlobalData.DataSet(iDS).SubjectFile;
         OverlayType = 'Timefreq';
+    case 'headmodel'
+        SubjectFile = '';
+        OverlayType = 'HeadModel';
     case {'cortex', 'innerskull', 'outerskull', 'scalp', 'tess'}
         SubjectFile = '';
         OverlayType = 'Surface';

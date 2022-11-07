@@ -823,7 +823,7 @@ function labels = FormatScoutLabel(sScouts, isHtml)
     % Loop on scouts
     for i = 1:length(sScouts)
         % Remove the possible " R" and " L" at the end of the scouts names
-        if (length(labels{i}) > 3) && (strcmp(labels{i}(end-1:end), ' R') || strcmp(labels{i}(end-1:end), ' L'))
+        if (length(labels{i}) >= 3) && (strcmp(labels{i}(end-1:end), ' R') || strcmp(labels{i}(end-1:end), ' L'))
             labels{i} = labels{i}(1:end-2);
         end
         % Label = "RegionCode ScoutName"

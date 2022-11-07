@@ -144,6 +144,14 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
         method = 'fieldtrip_butter';
         FreqWidth = 1.5;
     end
+    % Use the signal processing toolbox?
+    if bst_get('UseSigProcToolbox')
+        filtfilt_fcn = @filtfilt;
+        butter_fcn = @butter;
+    else
+        filtfilt_fcn = @oc_filtfilt;
+        butter_fcn = @oc_butter;
+    end
     % Check list of freq to remove
     if isempty(FreqList) || isequal(FreqList, 0)
         return;
@@ -168,16 +176,12 @@ function [x, FiltSpec, Messages] = Compute(x, sfreq, FreqList, FreqWidth, method
                 % Filter order
                 N = 4;
                 % Butterworth filter
-                if bst_get('UseSigProcToolbox')
-                    [B,A] = butter(N, FreqBand ./ Fnyq, 'stop');
-                else
-                    [B,A] = oc_butter(N, FreqBand ./ Fnyq, 'stop');
-                end
+                [B,A] = butter_fcn(N, FreqBand ./ Fnyq, 'stop');
                 FiltSpec.b(ifreq,:) = B;
                 FiltSpec.a(ifreq,:) = A;
                 % Filter signal
                 if ~isempty(x)
-                    x = filtfilt(B, A, x')';
+                    x = filtfilt_fcn(B, A, x')';
                 end
 
             % Source: FieldTrip toolbox

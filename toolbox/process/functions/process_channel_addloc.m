@@ -175,6 +175,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % If default was found
                 if ~isempty(iDef)
                     ChannelFile = bstDefaults(iGroup).contents(iDef).fullpath;
+                    isMni = strcmpi(bstDefaults(iGroup).name, 'ICBM152');
                 end
             end
         end
@@ -185,12 +186,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         % Load channel file
         ChannelMat = in_bst_channel(ChannelFile);
+    else
+        isMni = 0;
     end
 
     % ===== ADD POSITIONS =====
     % Add channel positions
     if ~isempty(ChannelMat)
-        channel_add_loc(iChanStudies, ChannelMat, 0);
+        channel_add_loc(iChanStudies, ChannelMat, 0, isMni);
     else
         bst_report('Warning', sProcess, [], 'No channel positions added.');
     end

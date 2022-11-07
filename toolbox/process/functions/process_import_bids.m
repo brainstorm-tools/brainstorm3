@@ -4,6 +4,31 @@ function varargout = process_import_bids( varargin )
 % USAGE:           OutputFiles = process_import_bids('Run', sProcess, sInputs)
 %         [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], nVertices=[ask], isInteractive=1, ChannelAlign=0)
 %             [sFid, Messages] = process_import_bids('GetFiducials', json, defaultUnits)
+%
+% DISCUSSION:
+%   - Metadata conflicts:
+%     - Channel names are kept from the original data files, and can't be renamed with the BIDS metadata.
+%       This simplifies a lot the implementation, as we can keep on using the original channel file and add the extra info from _channels.tsv and _electrodes.tsv.
+%       This is not aligned with the idea that "In cases of conflict, the BIDS metadata is considered authoritative"
+%       But the channel names are never expected to be different between the data files and the metadata: 
+%       "If BIDS metadata is defined, format-specific metadata MUST NOT conflict to the extent permitted by the format"
+%       (reference: https://github.com/bids-standard/bids-specification/pull/761)
+%
+%  - Test datasets:
+%    - EEG  : https://openneuro.org/datasets/ds002578 : OK 
+%    - EEG  : https://openneuro.org/datasets/ds003421 : ERROR: EEG positions not imported because of mismatch of channel names between .vmrk and electrodes.tsv
+%    - EEG  : https://openneuro.org/datasets/ds004024 : OK
+%    - iEEG : https://openneuro.org/datasets/ds003688 : ERROR: Wrong interpretation of ACPC coordinates (easier to see in ECOG for sub-02)
+%    - iEEG : https://openneuro.org/datasets/ds003848 : WARNING: Impossible to interepret correctly the coordinates in electrodes.tsv
+%    - iEEG : https://openneuro.org/datasets/ds004085 : 
+%    - iEEG : https://openneuro.org/datasets/ds004126 : OK (ACPC OK)
+%    - STIM : https://openneuro.org/datasets/ds002799 : WARNING: No channel file imported because there are no SEEG recordings
+%    - MEG  : https://openneuro.org/datasets/ds000117 : 
+%    - MEG  : https://openneuro.org/datasets/ds000247 : 
+%    - MEG  : https://openneuro.org/datasets/ds004107 : 
+%    - Tutorial FEM  : https://neuroimage.usc.edu/brainstorm/Tutorials/FemMedianNerve   :
+%    - Tutorial ECOG : https://neuroimage.usc.edu/brainstorm/Tutorials/ECoG             :
+%    - Tutorial SEEG : https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity : 
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -139,10 +164,11 @@ end
 
 
 %% ===== IMPORT BIDS DATABASE =====
-% USAGE:  [RawFiles, Messages] = process_import_bids('ImportBidsDataset', BidsDir=[ask], OPTIONS=[])
-function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
+% USAGE:  [RawFiles, Messages, OrigFiles] = process_import_bids('ImportBidsDataset', BidsDir=[ask], OPTIONS=[])
+function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
     % Initialize returned values
     RawFiles = {};
+    OrigFiles = {};
     Messages = [];
     
     % ===== PARSE INPUTS =====
@@ -232,7 +258,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
         else
             % Re-order session names: move "ses-preimp" or "ses-pre" at the top, for iEEG (pre-implantation images are usually the reference)
             if (length(sessDir) > 1)
-                iSesPreimp = find(ismember({sessDir.name}, {'ses-preimp', 'ses-pre'}));
+                iSesPreimp = find(ismember({sessDir.name}, {'ses-preimp', 'ses-pre', 'ses-preop'}));
                 if ~isempty(iSesPreimp)
                     iReorder = [iSesPreimp, setdiff(1:length(sessDir), iSesPreimp)];
                     sessDir = sessDir(iReorder);
@@ -342,8 +368,13 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
             % If json file exists
             if file_exist(jsonFile)
                 % Load json file
-                json = bst_jsondecode(jsonFile);
-                sFid = GetFiducials(json, 'voxel');
+                try
+                    json = bst_jsondecode(jsonFile);
+                    sFid = GetFiducials(json, 'voxel');
+                catch
+                    disp(['BIDS> Error: Cannot read json file: ' jsonFile]);
+                    sFid = [];
+                end
                 % If there are fiducials defined: use them as inputs to FreeSurfer import (and other segmentations)
                 if ~isempty(sFid)
                     fidMriFile = SubjectMriFiles{end}{iMri};
@@ -393,6 +424,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
 %     end
     
     % ===== IMPORT FILES =====
+    EmptyRoomMatch = {};
     for iSubj = 1:length(SubjectName)
         errorMsg = [];
         MriMatchOrigImport = {};
@@ -665,49 +697,57 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Read useful metadata from _coordinates.tsv file
                     if (length(coordsystemDir) == 1)
                         % Read json file
-                        sCoordsystem = bst_jsondecode(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name));
-                        % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinatesi in the same units (it would be weird to do otherwise, but it might happen)
-                        if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
-                            posUnits = sCoordsystem.iEEGCoordinateUnits;
-                        elseif isfield(sCoordsystem, 'EEGCoordinateUnits') && ~isempty(sCoordsystem.EEGCoordinateUnits) && ismember(sCoordsystem.EEGCoordinateUnits, {'mm','cm','m'})
-                            posUnits = sCoordsystem.EEGCoordinateUnits;
-                        elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
-                            posUnits = sCoordsystem.MEGCoordinateUnits;
+                        jsonFile = bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, coordsystemDir(1).name);
+                        try
+                            sCoordsystem = bst_jsondecode(jsonFile);
+                        catch
+                            disp(['BIDS> Error: Cannot read json file: ' jsonFile]);
+                            sCoordsystem = [];
                         end
-                        % Get fiducials structure
-                        sFid = GetFiducials(sCoordsystem, posUnits);
-                        % If there are no fiducials: there is no easy way to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
-                        if isempty(sFid)
-                            if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
-                                electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
-                            elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
-                                electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
-                            elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
-                                electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
-                            elseif ~isempty(coordsystemSpace)
-                                electrodesCoordSystem = coordsystemSpace;
+                        if ~isempty(sCoordsystem)
+                            % Get units: Assume INAPPROPRIATELY that all the modalities saved their coordinatesi in the same units (it would be weird to do otherwise, but it might happen)
+                            if isfield(sCoordsystem, 'iEEGCoordinateUnits') && ~isempty(sCoordsystem.iEEGCoordinateUnits) && ismember(sCoordsystem.iEEGCoordinateUnits, {'mm','cm','m'})
+                                posUnits = sCoordsystem.iEEGCoordinateUnits;
+                            elseif isfield(sCoordsystem, 'EEGCoordinateUnits') && ~isempty(sCoordsystem.EEGCoordinateUnits) && ismember(sCoordsystem.EEGCoordinateUnits, {'mm','cm','m'})
+                                posUnits = sCoordsystem.EEGCoordinateUnits;
+                            elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
+                                posUnits = sCoordsystem.MEGCoordinateUnits;
                             end
-                        end
-                        % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
-                        if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
-                            if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
-                                % Check whether the IntendedFor files is already imported as a volume
-                                if ~isempty(MriMatchOrigImport)
-                                    iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
-                                else
-                                    iMriImported = [];
+                            % Get fiducials structure
+                            sFid = GetFiducials(sCoordsystem, posUnits);
+                            % If there are no fiducials: there is no easy way to match with the anatomy, and therefore the coordinate system should be interepreted carefully (eg. ACPC for iEEG)
+                            if isempty(sFid)
+                                if isfield(sCoordsystem, 'iEEGCoordinateSystem') && ~isempty(sCoordsystem.iEEGCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.iEEGCoordinateSystem;
+                                elseif isfield(sCoordsystem, 'EEGCoordinateSystem') && ~isempty(sCoordsystem.EEGCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
+                                elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                                elseif ~isempty(coordsystemSpace)
+                                    electrodesCoordSystem = coordsystemSpace;
                                 end
-                                if ~isempty(iMriImported)
-                                    electrodesAnatRef = MriMatchOrigImport{iMriImported,2};
+                            end
+                            % Coordinates can be linked to the scanner/world coordinates of a specific volume in the dataset
+                            if isfield(sCoordsystem, 'IntendedFor') && ~isempty(sCoordsystem.IntendedFor)
+                                if file_exist(bst_fullfile(BidsDir, sCoordsystem.IntendedFor))
+                                    % Check whether the IntendedFor files is already imported as a volume
+                                    if ~isempty(MriMatchOrigImport)
+                                        iMriImported = find(cellfun(@(c)file_compare(c, bst_fullfile(BidsDir, sCoordsystem.IntendedFor)), MriMatchOrigImport(:,1)));
+                                    else
+                                        iMriImported = [];
+                                    end
+                                    if ~isempty(iMriImported)
+                                        electrodesAnatRef = MriMatchOrigImport{iMriImported,2};
+                                    else
+                                        msg = ['The file in coordsystem.json/IntendedFor is not imported to the database: ' sCoordsystem.IntendedFor];
+                                        disp(['BIDS> Warning: ' msg]);
+                                        Messages = [Messages 10 msg];
+                                    end
                                 else
-                                    msg = ['The file in coordsystem.json/IntendedFor is not imported to the database: ' sCoordsystem.IntendedFor];
+                                    msg = ['The file in coordsystem.json/IntendedFor does not exist: ' sCoordsystem.IntendedFor];
                                     disp(['BIDS> Warning: ' msg]);
                                     Messages = [Messages 10 msg];
                                 end
-                            else
-                                msg = ['The file in coordsystem.json/IntendedFor does not exist: ' sCoordsystem.IntendedFor];
-                                disp(['BIDS> Warning: ' msg]);
-                                Messages = [Messages 10 msg];
                             end
                         end
                     end
@@ -728,8 +768,10 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     if ~isempty(electrodesCoordSystem)
                         if strcmpi(electrodesCoordSystem, 'ACPC')
                             electrodesSpace = 'ACPC';
-                        elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM')) 
+                        elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM'))  || ~isempty(strfind(electrodesCoordSystem, 'fs')) 
                             electrodesSpace = 'MNI';
+                        elseif ismember(upper(electrodesCoordSystem), {'CTF', 'EEGLAB', 'EEGLAB-HJ', 'ElektaNeuromag', '4DBti', 'KitYokogawa', 'ChietiItab'})
+                            electrodesSpace = 'ALS';
                         end
                     end
                     % Get full file path to _electrodes.tsv
@@ -788,6 +830,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                 % Import files to database
                 newFiles = import_raw(allMeegFiles{iFile}, FileFormat, iSubject, ImportOptions, DateOfStudy);
                 RawFiles = [RawFiles{:}, newFiles];
+                OrigFiles = [OrigFiles{:}, repmat(allMeegFiles(iFile), length(newFiles), 1)];
                 % Add electrodes positions if available
                 if ~isempty(allMeegElecFiles{iFile}) && ~isempty(allMeegElecFormats{iFile})
                     % Subject T1 coordinates (space-ScanRAS)
@@ -800,6 +843,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         isVox2ras = 0;
                     end
                     % Import electrode positions
+                    % Note: this does not work if channel names different in data and metadata - see note in the function header
                     bst_process('CallProcess', 'process_channel_addloc', newFiles, [], ...
                         'channelfile', {allMeegElecFiles{iFile}, allMeegElecFormats{iFile}}, ...
                         'usedefault',  1, ...
@@ -831,6 +875,7 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
                     % Try to add info to the existing Brainstorm channel file
+                    % Note: this does not work if channel names different in data and metadata - see note in the function header
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
                         % For all the loaded files
                         for iRaw = 1:length(newFiles)
@@ -896,6 +941,78 @@ function [RawFiles, Messages] = ImportBidsDataset(BidsDir, OPTIONS)
                         end
                     end                   
                 end
+
+                % === MEG.JSON ===
+                % Get _meg.json next to the recordings file
+                MegFile = [baseName, '_meg.json'];
+                % Get _meg.json in the same folder as the recordings file
+                if ~file_exist(MegFile)
+                    megDir = dir(fullfile(fileparts(allMeegFiles{iFile}), '*_meg.json'));
+                    if (length(megDir) == 1)
+                        MegFile = fullfile(fileparts(allMeegFiles{iFile}), megDir(1).name);
+                    end
+                end
+                % Get _meg.json in the session folder (one folder above)
+                if ~file_exist(MegFile)
+                    megDir = dir(fullfile(fileparts(fileparts(allMeegFiles{iFile})), '*_meg.json'));
+                    if (length(megDir) == 1)
+                        MegFile = fullfile(fileparts(fileparts(allMeegFiles{iFile})), megDir(1).name);
+                    end
+                end
+                % If there is a meg.json file: read it to get the AssociatedEmptyRoom field
+                if file_exist(MegFile)
+                    try
+                        json = bst_jsondecode(MegFile);
+                    catch
+                        disp(['BIDS> Error: Cannot read json file: ' MegFile]);
+                        json = [];
+                    end
+                    % Save the empty-room associations, and process them later
+                    if ~isempty(json) && isfield(json, 'AssociatedEmptyRoom') && ~isempty(json.AssociatedEmptyRoom) && file_exist(fullfile(BidsDir, json.AssociatedEmptyRoom))
+                        for iRaw = 1:length(newFiles)
+                            EmptyRoomMatch(end+1, 1:2) = {newFiles{iRaw}, json.AssociatedEmptyRoom};
+                        end
+                    end
+                end
+            end
+        end
+    end
+
+    % ===== COMPUTE NOISE COVARIANCE =====
+    if ~isempty(EmptyRoomMatch)
+        % Process each empty room file separately 
+        uniqueEmptyRoom = unique(EmptyRoomMatch(:,2));
+        % Compute the noise covariance for each file
+        for iNoise = 1:length(uniqueEmptyRoom)
+            % Find the link imported in the database for this emptyroom recordings
+            origEmptyFile = fullfile(BidsDir, uniqueEmptyRoom{iNoise});
+            iRawEmpty = find(file_compare(origEmptyFile, OrigFiles));
+            if isempty(iRaw)
+                continue;
+            end
+            % Compute the noise covariance
+            sFilesEmpty = bst_process('CallProcess', 'process_noisecov', RawFiles{iRawEmpty}, [], ...
+                'baseline',       [], ...
+                'datatimewindow', [], ...
+                'sensortypes',    '', ...
+                'target',         1, ...  % Noise covariance     (covariance over baseline time window)
+                'dcoffset',       1, ...  % Block by block, to avoid effects of slow shifts in data
+                'identity',       0, ...
+                'copycond',       0, ...
+                'copysubj',       0, ...
+                'copymatch',      0, ...
+                'replacefile',    1);  % Replace
+            % Find the studies matched with these noise recordings
+            iOrigDest = find(strcmp(EmptyRoomMatch(:,2), uniqueEmptyRoom{iNoise}));
+            % Copy noisecov to all the matched folders 
+            for iDest = iOrigDest
+                % Find study index where the file was imported
+                [sStudyDest, iStudyDest] = bst_get('DataFile', EmptyRoomMatch{iDest,1});
+                if isempty(iStudyDest)
+                    continue;
+                end
+                % Copy noise covariance to destination study 
+                db_set_noisecov(sFilesEmpty.iStudy, iStudyDest, 0, 1);
             end
         end
     end
@@ -1088,6 +1205,8 @@ function [sFid, Messages] = GetFiducials(json, defaultUnits)
             iField = find(~cellfun(@(c)isempty(strfind(c, fid{1})), fields));
             if ~isempty(iField)
                 fidNames = fields(iField);
+            else
+                continue;
             end
         end
         % Get all the coordinates available in this structure

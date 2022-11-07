@@ -23,7 +23,7 @@ function hFig = view_scouts(ResultsFiles, ScoutsArg, hFig)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2022
 
 global GlobalData;  
 %% ===== PARSE INPUTS =====
@@ -156,6 +156,7 @@ axesLabels     = cell(length(ResultsFiles), length(iScouts));
 allComponents  = [];
 TimeVector     = [];
 issloreta      = 0;
+DisplayUnits   = [];
 % Process each Results file
 for iResFile = 1:length(ResultsFiles)
     % Is stat
@@ -167,18 +168,31 @@ for iResFile = 1:length(ResultsFiles)
     % Load results
     if ~isTimefreq
         [iDS, iResult] = bst_memory('LoadResultsFileFull', ResultsFiles{iResFile});
+        if isempty(iDS)
+            disp(['BST> Cannot load file : "', ResultsFiles{iResFile}, '"']);
+            bst_progress('stop');
+            return;
+        end
         if ~isempty(strfind(lower(ResultsFiles{iResFile}), 'sloreta')) || ~isempty(strfind(lower(GlobalData.DataSet(iDS).Results(iResult).Comment), 'sloreta'))
             issloreta = 1;
         end
+        fileUnits = GlobalData.DataSet(iDS).Results(iResult).DisplayUnits;
     else
-        %[iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 1);
         [iDS, iTimefreq, iResult] = bst_memory('LoadTimefreqFile', ResultsFiles{iResFile}, 1, 0);
+        if isempty(iDS)
+            disp(['BST> Cannot load file : "', ResultsFiles{iResFile}, '"']);
+            bst_progress('stop');
+            return;
+        end
+        fileUnits = GlobalData.DataSet(iDS).Timefreq(iTimefreq).DisplayUnits;
     end
-    % If no DataSet is accessible : error
-    if isempty(iDS)
-        disp(['BST> Cannot load file : "', ResultsFiles{iResFile}, '"']);
-        bst_progress('stop');
-        return;
+    % Make sure that units are the same for all the files
+    if ~isempty(fileUnits)
+        if isempty(DisplayUnits)
+            DisplayUnits = fileUnits;
+        elseif ~strcmpi(fileUnits, DisplayUnits)
+            DisplayUnits = 'Mixed units';
+        end
     end
 
     % Get results subjectName/condition/#solInverse (FOR TITLE ONLY)
@@ -626,7 +640,7 @@ switch (file_gettype(ResultsFiles{1}))
         Modality = 'none';
 end
 % Plot time series
-hFig = view_timeseries_matrix(ResultsFiles, scoutsActivity, TimeVector, Modality, axesLabels, scoutsLabels, scoutsColors, hFig, scoutsStd);
+hFig = view_timeseries_matrix(ResultsFiles, scoutsActivity, TimeVector, Modality, axesLabels, scoutsLabels, scoutsColors, hFig, scoutsStd, DisplayUnits);
 % Associate the file with one specific result file 
 setappdata(hFig, 'ResultsFiles', ResultsFiles);
 if (length(ResultsFiles) == 1)

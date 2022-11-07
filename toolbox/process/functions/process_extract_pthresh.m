@@ -22,7 +22,7 @@ function varargout = process_extract_pthresh( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2021
+% Authors: Francois Tadel, 2013-2022
 %          Thomas Vincent, 2019
 
 eval(macro_method);
@@ -140,7 +140,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     switch (sInput.FileType)
         case 'pdata'
             % Load input stat file
-            StatMat = in_bst_data(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType');
+            StatMat = in_bst_data(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'DisplayUnits');
             sizeF = size(StatMat.tmap);
             % Load channel file
             ChannelMat = in_bst_channel(sInput.ChannelFile);
@@ -164,10 +164,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.Events       = [];
             DataMat.History      = StatMat.History;
             DataMat.ColormapType = StatMat.ColormapType;
+            DataMat.DisplayUnits = StatMat.DisplayUnits;
             
         case 'presults'
             % Load input stat file
-            StatMat = in_bst_results(sInput.FileName, 0, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'SPM');
+            StatMat = in_bst_results(sInput.FileName, 0, 'pmap', 'tmap', 'df', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'SPM', 'DisplayUnits');
             % New results structure
             DataMat = db_template('resultsmat');
             DataMat.ImageGridAmp  = Compute(StatMat, StatThreshOptions);
@@ -186,10 +187,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.ChannelFlag   = StatMat.ChannelFlag;
             DataMat.History       = StatMat.History;
             DataMat.ColormapType  = StatMat.ColormapType;
+            DataMat.DisplayUnits  = StatMat.DisplayUnits;
             
         case 'ptimefreq'
             % Load input stat file
-            StatMat = in_bst_timefreq(sInput.FileName, 0,  'pmap', 'tmap', 'df', 'Type', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'DataType', 'TimeBands', 'Freqs', 'RefRowNames', 'RowNames', 'Measure', 'Method', 'Options');
+            StatMat = in_bst_timefreq(sInput.FileName, 0,  'pmap', 'tmap', 'df', 'Type', 'Comment', 'ChannelFlag', 'Time', 'History', 'ColormapType', 'GoodChannel', 'SurfaceFile', 'Atlas', 'GridLoc', 'nComponents', 'HeadModelType', 'DataType', 'TimeBands', 'Freqs', 'RefRowNames', 'RowNames', 'Measure', 'Method', 'Options', 'DisplayUnits');
             % New results structure
             DataMat = db_template('timefreqmat');
             DataMat.TF            = Compute(StatMat, StatThreshOptions);
@@ -214,10 +216,11 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.Measure       = StatMat.Measure;
             DataMat.Method        = StatMat.Method;
             DataMat.Options       = StatMat.Options;
+            DataMat.DisplayUnits  = StatMat.DisplayUnits;
             
         case 'pmatrix'
             % Load input stat file
-            StatMat = in_bst_matrix(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'Description', 'Time', 'History');
+            StatMat = in_bst_matrix(sInput.FileName, 'pmap', 'tmap', 'df', 'Comment', 'Description', 'Time', 'History', 'DisplayUnits');
             % Create a new data file structure
             DataMat = db_template('matrixmat');
             DataMat.Value       = Compute(StatMat, StatThreshOptions);
@@ -227,6 +230,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
             DataMat.ChannelFlag = [];
             DataMat.Events      = [];
             DataMat.Atlas       = [];
+            DataMat.DisplayUnits= StatMat.DisplayUnits;
             DataMat.History     = StatMat.History;
     end
     
