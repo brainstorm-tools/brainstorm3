@@ -2,8 +2,6 @@ function [bstDefaultNode, nodeStudiesDB, numTotalElems] = node_create_db_studies
 % NODE_CREATE_DB_STUDIES: Create a tree to represent the studies registered in current protocol.
 % Populate a tree from its root node.
 %
-% USAGE:  bstDefaultNode = node_create_db_studies(nodeRoot, expandOrder)
-%
 % INPUT: 
 %    - nodeRoot       : BstNode Java object (tree root)
 %    - expandOrder    : {'condition', 'subject'}, type of the first level nodes:
