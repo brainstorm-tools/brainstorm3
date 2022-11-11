@@ -290,8 +290,6 @@ UpdateLeadfield();
         TessInfo(1).DataSource.FileName  = HeadmodelFile;
         TessInfo(1).Data                 = FigData;
         TessInfo(1).OverlayCube          = OverlayCube;
-        TessInfo(1).OverlayThreshold     = 0;
-        TessInfo(1).OverlaySizeThreshold = 1;
         TessInfo(1).DataLimitValue       = [minVol, maxVol];
         TessInfo(1).DataMinMax           = [minVol, maxVol];
         % Update structures
@@ -303,6 +301,8 @@ UpdateLeadfield();
                 figure_mri('UpdateMriDisplay', hFig);
             case {'mri3d', 'surface'}
                 panel_surface('UpdateSurfaceColormap', hFig);
+                panel_surface('SetDataThreshold', hFig, 1, 0);
+                panel_surface('SetSizeThreshold', hFig, 1, 1);
         end
         % Update legend
         UpdateLegend();
