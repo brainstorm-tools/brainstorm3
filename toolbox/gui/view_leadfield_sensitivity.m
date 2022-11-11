@@ -128,7 +128,12 @@ hLabel = uicontrol('Style', 'text', ...
     'Parent',              hFig);
 % Update colormap units
 ColormapInfo = getappdata(hFig, 'Colormap');
-ColormapInfo.DisplayUnits = 'a.u.';
+switch (Modality)
+    case {'MEG', 'MEG MAG', 'MEG GRAD'}
+        ColormapInfo.DisplayUnits = 'fT/nAm';  % ~ 1e-6
+    case {'EEG', 'SEEG', 'ECOG'}
+        ColormapInfo.DisplayUnits = '\muV/nAm';  % ~ 1e3
+end
 setappdata(hFig, 'Colormap', ColormapInfo);
 % Update display
 UpdateLeadfield();

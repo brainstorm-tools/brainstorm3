@@ -1469,8 +1469,12 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                 elseif strcmp(DisplayUnits,'a.u.')
                     fmax = max(abs(dataBounds));
                     [fScaled, fFactor, fUnits] = bst_getunits(fmax, DisplayUnits);
+                elseif strcmp(DisplayUnits,'fT/nAm')    % MEG leadfield sensitivity
+                    fFactor = 1e6;
+                elseif strcmp(DisplayUnits,'\muV/nAm')  % EEG leadfield sensitivity
+                    fFactor = 1e-3;
                 else
-                     fFactor = 1;
+                    fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum
