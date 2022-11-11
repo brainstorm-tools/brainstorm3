@@ -3465,7 +3465,7 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
 
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
-    if isFactorChanged
+    if isFactorChanged && ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
         GlobalData.DataSet(iDS).Measures.DisplayUnits = fUnits;
     end
     % Set display Factor
