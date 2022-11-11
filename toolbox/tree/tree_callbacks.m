@@ -1022,8 +1022,13 @@ switch (lower(action))
                     % MENU : DISPLAY
                     jMenuDisplay = gui_component('Menu', jPopup, [], 'Display', IconLoader.ICON_ANATOMY, [], []);
                         % Display
-                        gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, filenameRelative));
-                        gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative, filenameRelative));
+                        if isAtlas
+                            gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative, filenameRelative));
+                            gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative, filenameRelative));
+                        else
+                            gui_component('MenuItem', jMenuDisplay, [], 'MRI Viewer',           IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri(filenameRelative));
+                            gui_component('MenuItem', jMenuDisplay, [], '3D orthogonal slices', IconLoader.ICON_ANATOMY, [], @(h,ev)view_mri_3d(filenameRelative));
+                        end
                         AddSeparator(jMenuDisplay);
                         % Display as overlay
                         if ~bstNodes(1).isMarked()
