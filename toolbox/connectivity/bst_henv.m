@@ -214,12 +214,25 @@ end
 function [Data3D,blockLen3D,actLen] = dataDimTran(Data2D,tranLen,numBlocks)
 % Total Length of the Data
 [nSig,N] = size(Data2D) ;
-actLen   = (N/numBlocks) ;
+actLen   = floor(N/numBlocks) ;
 tfBlockRem = rem(N,numBlocks) ;
+
+% If transition length is longer than block length, then the block #2 crashes in the for loop below
+% Exclude this case asking the user to use less blocks (FT 11-NOV-2022)
+% Reference: https://neuroimage.usc.edu/forums/t/error-using-envelope-correlation-2022/37624
+if (actLen <= tranLen)
+    error(['When splitting large data in multiple blocks, the function bst_henv.m adds' 10 ...
+           'a hard-coded transition of 5s before and after each block.' 10 ...
+           'Decrease the number of blocks to obtain individual blocks longer than 5s.']);
+end
+
 % Adding zero to the end of the data (few samples)
+% WARNING (FT 11-NOV-2022): If tfBlockRem=1, then it adds a completely empty block. 
+% Shouldn't this last block be discarded instead
 if tfBlockRem ~= 0
     Data2D(:,end:end+(numBlocks-tfBlockRem)) = 0 ;
 end
+
 % Compute the length of each block
 blockLen3D = actLen + 2*tranLen ;
 % Pre-define the data in 3D format (Signals x Samples x Blcoks)
