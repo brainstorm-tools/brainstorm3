@@ -2,9 +2,9 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 % IN_FOPEN_SNIRF Open a fNIRS file based on the SNIRF format
 %
 % DESCRIPTION:
-%     This function is based on the SNIRF specification v.1 
+%     This function is based on the SNIRF specification v.1.1
 %     https://github.com/fNIRS/snirf
-
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -144,7 +144,7 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
     jnirs.nirs.probe.landmarkPos3D = toColumn(jnirs.nirs.probe.landmarkPos3D, jnirs.nirs.probe.landmarkLabels);
 
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
-        name = strtrim(str_remove_spec_chars(jnirs.nirs.probe.landmarkLabels{iLandmark}));
+        name = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.probe.landmarkLabels{iLandmark})));
         coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, :);
 
         % Fiducials NAS/LPA/RPA
@@ -212,7 +212,7 @@ for iEvt = 1:length(jnirs.nirs.stim)
     DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
     if ~isfield(jnirs.nirs.stim(iEvt), 'data')
             % Events structure
-        warning(sprintf('No data found for event: %s',jnirs.nirs.stim(iEvt).name))
+        warning(sprintf('No data found for event: %s',DataMat.Events(iEvt).label))
         continue
     end    
     % Get timing
