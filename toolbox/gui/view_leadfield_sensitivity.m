@@ -157,7 +157,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 if ~isempty(iRef) && (iChannel == iRef)
                     iChannel = iChannel - 1;
                 end
-                if (iChannel < 1)
+                if (iChannel < 0)
                     if ~isempty(iRef) && (iRef == length(Channels))
                         iChannel = length(Channels) - 1;
                     else
@@ -171,11 +171,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                     iChannel = iChannel + 1;
                 end
                 if (iChannel > length(Channels))
-                    if ~isempty(iRef) && (iRef == 1)
-                        iChannel = 2;
-                    else
-                        iChannel = 1;
-                    end
+                    iChannel = 0;   % Sum of all channels
                 end
                 isUpdate = 1;
             case 'downarrow'
@@ -267,13 +263,25 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
     function UpdateLeadfield()
         % Compute sensitivity
         bst_progress('start', 'View leadfields', 'Computing sensitivity...');
-        if isAvgRef
-            LeadField = GainMod(iChannel,:) - mean(GainMod,1);
-        elseif ~isempty(iRef)
-            LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
+        % Sum all the channels
+        if (iChannel == 0)
+            if isAvgRef
+                LeadField = bst_bsxfun(@minus, GainMod, mean(GainMod,1));
+            elseif ~isempty(iRef)
+                LeadField = bst_bsxfun(@minus, GainMod, GainMod(iRef,:));
+            end
+            LeadField = reshape(LeadField, size(LeadField,1), 3, []); % each column is a vector
+            normLF = permute(sum(sqrt(LeadField(:,1,:).^2 + LeadField(:,2,:).^2 + LeadField(:,3,:).^2), 1), [3 2 1]);
+        % Compute the sensitivity for one sensor
+        else
+            if isAvgRef
+                LeadField = GainMod(iChannel,:) - mean(GainMod,1);
+            elseif ~isempty(iRef)
+                LeadField = GainMod(iChannel,:) - GainMod(iRef,:);
+            end
+            LeadField = reshape(LeadField,3,[])'; % each column is a vector
+            normLF = sqrt(LeadField(:,1).^2 + LeadField(:,2).^2 + LeadField(:,3).^2);
         end
-        LeadField = reshape(LeadField,3,[])'; % each column is a vector
-        normLF = sqrt((LeadField(:,1) ).^2 +(LeadField(:,2) ).^2 + (LeadField(:,3)).^2);
         % Surface or volume
         switch lower(DisplayMode)
             case {'mriviewer', 'mri3d'}
@@ -322,12 +330,17 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
 
 %% ===== UPDATE LEGEND =====
     function UpdateLegend()
-        if isMeg
-            strTitle = sprintf('Target channel #%d/%d : %s (red)', iChannel, length(Channels), Channels(iChannel).Name);
-        elseif isAvgRef
-            strTitle = sprintf('Target channel #%d/%d : %s (red)  |  Average reference', iChannel, length(Channels), Channels(iChannel).Name);
+        if (iChannel == 0)
+            strTarget = 'Sum of all channels';
         else
-            strTitle = sprintf('Target channel #%d/%d : %s (red)  |  Reference : %s (green)', iChannel, length(Channels), Channels(iChannel).Name, Channels(iRef).Name);
+            strTarget = sprintf('Target channel #%d/%d : %s (red)', iChannel, length(Channels), Channels(iChannel).Name);
+        end
+        if isMeg
+            strTitle = strTarget;
+        elseif isAvgRef
+            strTitle = [strTarget '  |  Average reference'];
+        else
+            strTitle = [strTarget, '  |  Reference : ', Channels(iRef).Name ' (green)'];
         end
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, 10 '[Press arrows for next/previous channel (or H for help)]'];
@@ -341,15 +354,17 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         % Remove previous selected sensor
         delete(findobj(hAxes, '-depth', 1, 'Tag', 'SelChannel'));
         % Plot selected sensor
-        line(Channels(iChannel).Loc(1,1), Channels(iChannel).Loc(2,1), Channels(iChannel).Loc(3,1), ...
-            'Parent',          hAxes, ...
-            'LineWidth',       2, ...
-            'LineStyle',       'none', ...
-            'Marker',          'o', ...
-            'MarkerFaceColor', [1 0 0], ...
-            'MarkerEdgeColor', [.4 .4 .4], ...
-            'MarkerSize',      8, ...
-            'Tag',             'SelChannel');
+        if (iChannel > 0)
+            line(Channels(iChannel).Loc(1,1), Channels(iChannel).Loc(2,1), Channels(iChannel).Loc(3,1), ...
+                'Parent',          hAxes, ...
+                'LineWidth',       2, ...
+                'LineStyle',       'none', ...
+                'Marker',          'o', ...
+                'MarkerFaceColor', [1 0 0], ...
+                'MarkerEdgeColor', [.4 .4 .4], ...
+                'MarkerSize',      8, ...
+                'Tag',             'SelChannel');
+        end
         % Remove previous selected reference
         delete(findobj(hAxes, '-depth', 1, 'Tag', 'RefChannel'));
         % Plot the reference electrode
@@ -409,3 +424,4 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
     end
 
 end
+
