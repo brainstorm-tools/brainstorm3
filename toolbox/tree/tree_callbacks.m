@@ -896,7 +896,7 @@ switch (lower(action))
                 end
                 
                 % === ADD EEG POSITIONS ===
-                if ismember('EEG', AllMod)
+                if any(ismember({'EEG','NIRS'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 2);
                 elseif ~isempty(AllMod) && any(ismember({'SEEG','ECOG','ECOG+SEEG'}, AllMod))
                     fcnPopupImportChannel(bstNodes, jPopup, 1);

@@ -65,6 +65,8 @@ for iChan = 1:nChan
         ChannelMat.Channel(iChan).Type = 'ECOG';
     elseif ~isempty(strfind(ChannelFile, '/ieeg/')) || ~isempty(strfind(ChannelFile, '\\ieeg\\'))
         ChannelMat.Channel(iChan).Type = 'SEEG';
+    elseif isequal(chType, 'source') || isequal(chType, 'detector')
+        ChannelMat.Channel(iChan).Type = 'NIRS';
     else 
         ChannelMat.Channel(iChan).Type = 'EEG';
     end
