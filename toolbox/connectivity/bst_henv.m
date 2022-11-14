@@ -264,15 +264,21 @@ ConVec = (abs(r1)+abs(r2))/2 ;
 end
 
 function At = HMatCorr(U,V)
-% Number of channels 
-n1 = size(U,2) ; 
-n2 = size(V,2) ; 
-At = zeros(n1,n2) ; 
-    for k = 1:n1
-        for m = 1:n2
-            tmp1    = corrcoef(U(:,k),V(:,m)) ; 
-            At(k,m) = tmp1(1,2) ; 
-        end
-    end
-end
+% Implementation H.Shahabi (2021)
+% % Number of channels 
+% n1 = size(U,2) ; 
+% n2 = size(V,2) ; 
+% At = zeros(n1,n2) ; 
+% for k = 1:n1
+%     for m = 1:n2
+%         tmp1    = corrcoef(U(:,k),V(:,m)) ;
+%         At(k,m) = tmp1(1,2) ; 
+%     end
+% end
 
+% Equivalent implementation F.TADEL (14-11-2022)
+Uc = U - mean(U,1);  % Remove mean
+Vc = V - mean(V,1);  % Remove mean
+At = (Uc' * Vc) ./ sqrt(sum(Uc.*Uc,1) .* sum(Vc.*Vc,1));
+
+end
