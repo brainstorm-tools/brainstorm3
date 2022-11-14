@@ -728,6 +728,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                     electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
                                 elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
                                     electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                               elseif isfield(sCoordsystem, 'NIRSCoordinateSystem') && ~isempty(sCoordsystem.NIRSCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.NIRSCoordinateSystem;
                                 elseif ~isempty(coordsystemSpace)
                                     electrodesCoordSystem = coordsystemSpace;
                                 end
@@ -759,7 +761,11 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     
                     % === ELECTRODES.TSV ===
                     % Get electrodes positions
-                    electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
+                    if strcmp(mod,'nirs')
+                        electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_optodes.tsv'));
+                    else
+                        electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
+                    end
                     % If multiple positions in the same folder: not expected unless multiple coordinate systems are available
                     if (length(electrodesDir) > 1)
                         % Select by order of preference: subject space, MNI space or first in the list
