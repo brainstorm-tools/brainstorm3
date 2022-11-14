@@ -137,6 +137,9 @@ end
 setappdata(hFig, 'Colormap', ColormapInfo);
 % Update display
 UpdateLeadfield();
+% Reset thresholds
+panel_surface('SetDataThreshold', hFig, 1, 0);
+panel_surface('SetSizeThreshold', hFig, 1, 1);
 
 
 
@@ -306,8 +309,6 @@ UpdateLeadfield();
                 figure_mri('UpdateMriDisplay', hFig);
             case {'mri3d', 'surface'}
                 panel_surface('UpdateSurfaceColormap', hFig);
-                panel_surface('SetDataThreshold', hFig, 1, 0);
-                panel_surface('SetSizeThreshold', hFig, 1, 1);
         end
         % Update legend
         UpdateLegend();
