@@ -28,6 +28,11 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 % Load file header with the JSNIRF Toolbox (https://github.com/fangq/jsnirfy)
 jnirs = loadsnirf(DataFile);
 
+if isempty(jnirs) || ~isfield(jnirs, 'nirs')
+    bst_error('The file doesnt seems to be a valid SNIRF file')
+    return;
+end
+
 if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
     warning('SNIRF format doesnt contains source or detector name. Name of the channels might be wrong');
     jnirs.nirs.probe.sourceLabels = {};
