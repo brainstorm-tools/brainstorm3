@@ -120,7 +120,7 @@ for is = 1:length(iStudies)
                 ChannelMat.Channel(ic).Loc(:,1)    = LocChannelMat.Channel(idef).Loc;
                 nUpdated = nUpdated + 1;
             end
-            idef = find(strcmpi(sprintf('D%s', toks{1}{1}) , locChanNames));
+            idef = find(strcmpi(sprintf('D%s', toks{1}{2}) , locChanNames));
             if ~isempty(idef)
                 ChannelMat.Channel(ic).Loc(:,2)    = LocChannelMat.Channel(idef).Loc;
                 nUpdated = nUpdated + 1;
