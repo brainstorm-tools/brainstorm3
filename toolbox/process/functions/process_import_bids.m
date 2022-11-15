@@ -779,6 +779,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     if ~isempty(electrodesCoordSystem)
                         if strcmpi(electrodesCoordSystem, 'ACPC')
                             electrodesSpace = 'ACPC';
+                        elseif strcmpi(electrodesCoordSystem, 'CapTrak')
+                            electrodesSpace = 'ScanRAS';
                         elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM'))  || ~isempty(strfind(electrodesCoordSystem, 'fs')) 
                             electrodesSpace = 'MNI';
                         elseif ismember(upper(electrodesCoordSystem), {'CTF', 'EEGLAB', 'EEGLAB-HJ', 'ElektaNeuromag', '4DBti', 'KitYokogawa', 'ChietiItab'})
@@ -834,7 +836,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 case '.eeg',   FileFormat = 'EEG-BRAINAMP';
                 case '.edf',   FileFormat = 'EEG-EDF';
                 case '.set',   FileFormat = 'EEG-EEGLAB';
-                case '.snirf',   FileFormat = 'NIRS-SNIRF';    
+                case '.snirf', FileFormat = 'NIRS-SNIRF';    
                 otherwise,     FileFormat = [];
             end
             % Import file if file was identified
