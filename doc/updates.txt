@@ -1,5 +1,5 @@
 November 2022
-- Forward: Display leadfield sensitivity (surface and MRI) 
+- Forward: Display leadfield sensitivity (surface, MRI, isosurface)
 --------------------------------------------------------------
 October 2022
 - EEG: Project channel files between subjects
