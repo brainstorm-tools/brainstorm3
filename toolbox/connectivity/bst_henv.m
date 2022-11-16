@@ -214,7 +214,7 @@ end
 function [Data3D,blockLen3D,actLen] = dataDimTran(Data2D,tranLen,numBlocks)
 % Total Length of the Data
 [nSig,N] = size(Data2D) ;
-actLen   = floor(N/numBlocks) ;
+actLen   = ceil(N/numBlocks) ;
 tfBlockRem = rem(N,numBlocks) ;
 
 % If transition length is longer than block length, then the block #2 crashes in the for loop below
@@ -228,9 +228,9 @@ end
 
 % Adding zero to the end of the data (few samples)
 % WARNING (FT 11-NOV-2022): If tfBlockRem=1, then it adds a completely empty block. 
-% Shouldn't this last block be discarded instead
+% Shouldn't this last block be discarded instead?
 if tfBlockRem ~= 0
-    Data2D(:,end:end+(numBlocks-tfBlockRem)) = 0 ;
+    Data2D(:,end:end+(actLen-tfBlockRem)) = 0;
 end
 
 % Compute the length of each block
