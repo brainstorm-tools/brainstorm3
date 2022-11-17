@@ -876,10 +876,10 @@ switch (lower(action))
                             end
                             % MRI Viewer
                             if (length(iVolAnat) == 1)
-                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(1)));
+                                gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer)'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(1), 0));
                             elseif (length(iVolAnat) > 1)
                                 for iAnat = 1:length(iVolAnat)
-                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(iAnat)));
+                                    gui_component('MenuItem', jMenuDisplay, [], [channelTypeDisplay '   (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ANATOMY, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayMod{iType}, iVolAnat(iAnat), 0));
                                 end
                             end
                         elseif ismember('NIRS', DisplayMod{iType})
@@ -952,10 +952,10 @@ switch (lower(action))
                             end
                             % Allow edition in MRI even if there is not location available for any electrode
                             if (length(iVolAnat) == 1)
-                                gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(1)));
+                                gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer)'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(1), 1));
                             elseif (length(iVolAnat) > 1)
                                 for iAnat = 1:length(iVolAnat)
-                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(iAnat)));
+                                    gui_component('MenuItem', jMenuAlign, [], [strType 'Edit...    (MRI Viewer: ' sSubject.Anatomy(iVolAnat(iAnat)).Comment ')'], IconLoader.ICON_ALIGN_CHANNELS, [], @(h,ev)panel_ieeg('DisplayChannelsMri', filenameRelative, DisplayModReg{iMod}, iVolAnat(iAnat), 1));
                                 end
                             end
                             AddSeparator(jMenuAlign);

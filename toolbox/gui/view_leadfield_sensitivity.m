@@ -155,6 +155,16 @@ switch (Modality)
         dispFactor = 1e-3;
 end
 setappdata(hFig, 'Colormap', ColormapInfo);
+% Display SEEG/ECOG electrodes
+if ismember(Modality, {'SEEG', 'ECOG'})
+    switch lower(DisplayMode)
+        case {'isosurface', 'mri3d', 'surface'}
+            view_channels(ChannelFile, Modality, 1, 0, hFig, 1);
+        case 'mriviewer'
+            figure_mri('LoadElectrodes', hFig, ChannelFile, Modality);
+            gui_brainstorm('ShowToolTab', 'iEEG');
+    end
+end
 % Update display
 UpdateLeadfield();
 % Reset thresholds
@@ -489,11 +499,14 @@ end
 
 
 %% ===== PLOT BLOB =====
-% INPUTS: 
 function PlotBlob(hAxes, GridLoc, dt, V, Thresh)
     % Compute isosurface with iso2mesh
     try
-        [P,v,Faces] = qmeshcut(dt.ConnectivityList, GridLoc, V, Thresh);
+        [P,v,fc] = qmeshcut(dt.ConnectivityList, GridLoc, V, Thresh);
+        Faces = [fc(:,[1,2,3]); fc(:,[1,3,4])];             % convert quads into triangles
+        [P,Faces] = meshcheckrepair(P, Faces, 'dup');       % remove duplicate nodes
+        % [P,Faces] = meshcheckrepair(P, Faces, 'meshfix');   % generate a close surface
+        % [no2,el2]=s2m(no1,fc1,1,0.001);    % test if the surface is water-tight
     catch
         Faces = [];
     end
@@ -556,5 +569,13 @@ function PlotBlob(hAxes, GridLoc, dt, V, Thresh)
 %         % Compute VTA
 %         VTA = surfvolume(P, Faces);
 %         strVta = sprintf('VTA=%f', VTA);
+
+%         vtaThreshold = 99;
+%         find(vq>prctile(vq,vtaThreshold))
+%         vtaNode = brainNode(vq>=prctile(vq,vtaThreshold),:);
+%         DT = delaunay(vtaNode); % later we need to sommth this surface and diplay is with better options
+%         [openface,elemid]=volface(DT)
+%         [vtaNode, vtaFace] = removeisolatednode(vtaNode, openface);
+%         volVTA = surfvolume(vtaNode, vtaFace);
     end
 end

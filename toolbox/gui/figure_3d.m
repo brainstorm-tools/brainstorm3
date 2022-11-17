@@ -1142,6 +1142,21 @@ function FigureKeyPressedCallback(hFig, keyEvent)
                     if ismember('control', keyEvent.Modifier)
                         out_figure_image(hFig, 'Viewer');
                     end
+                % CTRL+L : SEEG/ECOG electrodes
+                case 'l'
+                    if ~isAlignFig && ismember('control', keyEvent.Modifier) && ~isempty(GlobalData.DataSet(iDS).ChannelFile)
+                        AllTypes = unique({GlobalData.DataSet(iDS).Channel.Type});
+                        if ~isempty(AllTypes)
+                            ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
+                            if ismember('ECOG', AllTypes) && ismember('SEEG', AllTypes)
+                                view_channels(ChannelFile, 'ECOG+SEEG', 1, 0, hFig, 1);
+                            elseif ismember('ECOG', AllTypes)
+                                view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1);
+                            elseif ismember('SEEG', AllTypes)
+                                view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1);
+                            end
+                        end
+                    end
                 % CTRL+F : Open as figure
                 case 'f'
                     if ismember('control', keyEvent.Modifier)
@@ -1747,11 +1762,13 @@ function DisplayFigurePopup(hFig)
             AllTypes = unique({GlobalData.DataSet(iDS).Channel.Type});
             if ~isempty(AllTypes) && ismember('ECOG', AllTypes)
                 ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-                gui_component('MenuItem', jMenuChannels, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'ECOG', 1, 0, hFig, 1));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
             end
             if ~isempty(AllTypes) && ismember('SEEG', AllTypes)
                 ChannelFile = GlobalData.DataSet(iDS).ChannelFile;
-                gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
+                jItem = gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
+                jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
             end
         end
 

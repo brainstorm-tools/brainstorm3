@@ -2615,9 +2615,13 @@ end
 
 
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
-% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
-%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile)
-function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
+% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0)
+%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile, isEdit=0)
+function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit)
+    % Parse inputs
+    if (nargin < 4) || isempty(isEdit)
+        isEdit = 0;
+    end
     % Get MRI to display
     if ischar(iAnatomy)
         MriFile = iAnatomy;
@@ -2642,6 +2646,10 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
     % SEEG and ECOG: Open tab "iEEG"
     if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
+    end
+    % Make electrodes editable
+    if isEdit
+        figure_mri('SetEditChannels', hFig, isEdit);
     end
 end
 

@@ -44,7 +44,7 @@ function varargout = figure_mri(varargin)
 % =============================================================================@
 %
 % Authors: Sylvain Baillet, 2004
-%          Francois Tadel, 2008-2020
+%          Francois Tadel, 2008-2022
 
 eval(macro_method);
 end
@@ -396,6 +396,7 @@ function [hFig, Handles] = CreateFigure(FigureId) %#ok<DEFNU>
     Handles.HiddenChannels  = [];
     Handles.isEditFiducials = 1;
     Handles.isEditVolume    = 1;
+    Handles.isEditChannels  = 0;
     Handles.isOverlay       = 1;
     Handles.isEeg           = 0;
     Handles.isEegLabels   = 1;
@@ -1047,17 +1048,23 @@ function DisplayFigurePopup(hFig)
     end
 
     % ==== MENU ELECTRODES ====
-    if Handles.isEeg && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).ChannelFile) || ~isempty(GlobalData.DataSet(iDS).Channel)
-        % Add 3D views
-        gui_component('MenuItem', jPopup, [], 'Add 3D view', IconLoader.ICON_AXES, [], @(h,ev)Add3DView(hFig));
-        % Display labels
-        jItem = gui_component('CheckBoxMenuItem', jPopup, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
-        jItem.setSelected(Handles.isEegLabels);
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
-        % Set position
-        jItem = gui_component('MenuItem', jPopup, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
-        jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
-        jPopup.addSeparator();
+    if Handles.isEeg && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).ChannelFile) || ~isempty(GlobalData.DataSet(iDS).Channel) && (~isempty(Handles.hPointEEG) || isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG') || isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'ECOG'))
+        jMenuElec = gui_component('Menu', jPopup, [], 'Electrodes', IconLoader.ICON_CHANNEL);
+        if ~isempty(Handles.hPointEEG)
+            % Add 3D views
+            gui_component('MenuItem', jMenuElec, [], 'Add 3D view', IconLoader.ICON_AXES, [], @(h,ev)Add3DView(hFig));
+            % Display labels
+            jItem = gui_component('CheckBoxMenuItem', jMenuElec, [], 'Display labels',  IconLoader.ICON_CHANNEL_LABEL, [], @(h,ev)SetLabelVisible(hFig, ~Handles.isEegLabels));
+            jItem.setSelected(Handles.isEegLabels);
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_E, KeyEvent.CTRL_MASK));
+            % Set position
+            jItem = gui_component('MenuItem', jMenuElec, [], 'Set electrode position',  IconLoader.ICON_CHANNEL, [], @(h,ev)SetElectrodePosition(hFig));      
+            jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_S, KeyEvent.CTRL_MASK));
+        elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'SEEG')
+            gui_component('MenuItem', jMenuElec, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)LoadElectrodes(hFig, GlobalData.DataSet(iDS).ChannelFile, 'SEEG'));
+        elseif isequal(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'ECOG')
+            gui_component('MenuItem', jMenuElec, [], 'ECOG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)LoadElectrodes(hFig, GlobalData.DataSet(iDS).ChannelFile, 'ECOG'));
+        end
     end
     
     jMenuView = gui_component('Menu', jPopup, [], 'Views', IconLoader.ICON_AXES);
@@ -1585,7 +1592,7 @@ function MouseButtonDownFigure_Callback(hFig, sMri, Handles)
         PointLabel = get(hObj, 'UserData');
         % Get channels displayed in this figure
         [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
-        if ~isempty(PointLabel) && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).Channel) && ismember(PointLabel, {GlobalData.DataSet(iDS).Channel.Name})
+        if ~isempty(PointLabel) && ~isempty(iDS) && ~isempty(GlobalData.DataSet(iDS).Channel) && ismember(PointLabel, {GlobalData.DataSet(iDS).Channel.Name}) && isfield(Handles, 'isEditChannels') && Handles.isEditChannels
             clickAction = 'MovePoint';
             clickSource = hObj;
         end
@@ -2974,6 +2981,22 @@ function SetLabelVisible(hFig, isEegLabels)
     % Update display
     UpdateVisibleLandmarks(sMri, Handles);
     UpdateVisibleSensors3D(hFig);
+end
+
+
+%% ===== SET EDIT CHANNELS =====
+function SetEditChannels(hFig, isEditChannels)
+    % Get MRI and figure handles
+    sMri = panel_surface('GetSurfaceMri', hFig);
+    Handles = bst_figures('GetFigureHandles', hFig);
+    % Set electrodes editable
+    Handles.isEditChannels = isEditChannels;
+    % Save figure handles
+    bst_figures('SetFigureHandles', hFig, Handles);
+    % Update MouseMoved and MouseButtonUp callbacks for current figure
+    set(hFig, 'WindowButtonDownFcn',   @(h,ev)MouseButtonDownFigure_Callback(hFig, sMri, Handles), ...
+              'WindowButtonMotionFcn', @(h,ev)MouseMove_Callback(hFig, sMri, Handles), ...
+              'WindowButtonUpFcn',     @(h,ev)MouseButtonUp_Callback(hFig, sMri, Handles) );
 end
 
 
