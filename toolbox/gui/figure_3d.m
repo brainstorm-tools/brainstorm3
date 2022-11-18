@@ -169,11 +169,6 @@ function ColormapChangedCallback(iDS, iFig) %#ok<DEFNU>
     if ~isempty(getappdata(hFig, 'Dipoles')) && gui_brainstorm('isTabVisible', 'Dipoles')
         panel_dipoles('PlotSelectedDipoles', hFig);
     end
-    % If displaying color-coded head points (see channel_align_manual)
-    HeadpointsDistMax = getappdata(hFig, 'HeadpointsDistMax');
-    if ~isempty(HeadpointsDistMax)
-        UpdateHeadPointsColormap(hFig);
-    end
 end
 
 
@@ -3772,7 +3767,7 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
         [HeadPoints.Loc(1,iDupli), HeadPoints.Loc(2,iDupli), HeadPoints.Loc(3,iDupli)] = sph2cart(th, phi, r - 0.0001);
     end
     
-    % Else, get previous head points
+    % Look for previous head points
     hHeadPointsMarkers = findobj(hAxes, 'Tag', 'HeadPointsMarkers');
     hHeadPointsLabels  = findobj(hAxes, 'Tag', 'HeadPointsLabels');
     % If head points graphic objects already exist: set the "Visible" property
@@ -3787,22 +3782,19 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
         ColormapType = 'stat1';
         if isColorDist && ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
             % Color points according to distance to surface
-            % Get selected surface
-            [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+            % Get scalp surface
+            [~, ~, hFig, sSurf] = panel_surface('GetSurface', hFig, '', 'Scalp');
             if ~isempty(sSurf) && isfield(sSurf, 'Vertices') && ~isempty(sSurf.Vertices)
-                if ~ismember(ColormapType, ColormapInfo.AllTypes)
-                    % Add missing colormap (color was toggled after points were displayed)
-                    bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
-                    ColormapInfo = getappdata(hFig, 'Colormap');
-                end
                 % Compute the distance
                 Dist = bst_surfdist(get(hHeadPointsMarkers, 'Vertices'), sSurf.Vertices, sSurf.Faces);
                 set(hHeadPointsMarkers, 'CData', Dist * 1000, ...
                     'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
-                setappdata(hFig, 'HeadpointsDistMax', max(Dist));
-                if strcmpi(ColormapInfo.Type, ColormapType)
-                    ColormapChangedCallback(iDS, iFig);
-                    bst_colormaps('SetColorbarVisible', hFig, 1);
+                if ~ismember(ColormapType, ColormapInfo.AllTypes)
+                    iTess = panel_surface('GetSurface', hFig, '', 'HeadPoints');
+                    if isempty(iTess)
+                        error('HeadPoints surface not found.');
+                    end
+                    panel_surface('SetSurfaceData', hFig, iTess, 'HeadPointsDistance', '', 1); % isStat=1
                 end
             end
         elseif ~isColorDist && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
@@ -3890,15 +3882,13 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
         if ~isempty(iExtra)
             % Color code points by distance
             if isColorDist
-                % Get selected surface
-                [iTess, TessInfo, hFig, sSurf] = panel_surface('GetSelectedSurface', hFig);
+                % Get scalp surface
+                [~, ~, hFig, sSurf] = panel_surface('GetSurface', hFig, '', 'Scalp');
                 % Compute the distance
                 Dist = bst_surfdist(digLoc(iExtra, :), sSurf.Vertices, sSurf.Faces);
                 CData = Dist * 1000; % mm
-                setappdata(hFig, 'HeadpointsDistMax', max(Dist));
                 MarkerFaceColor = 'flat';
                 MarkerEdgeColor = 'flat';
-                bst_colormaps('AddColormapToFigure', hFig, 'stat1', 'mm');
             else
                 CData = 'w'; % any color, not displayed
                 MarkerFaceColor = [.3 1 .3];
@@ -3915,33 +3905,13 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
                 'Marker',          'o', ...
                 'UserData',        iExtra, ...
                 'Tag',             'HeadPointsMarkers');
+            % Add points patch to figure surfaces so all color bar functionality work.
+            iTess = panel_surface('AddSurface', hFig, '', 'HeadPoints');
             if isColorDist
-                ColormapChangedCallback(iDS, iFig);
+                panel_surface('SetSurfaceData', hFig, iTess, 'HeadPointsDistance', '', 1); % isStat=1
             end
         end
     end
-end
-
-
-%% ===== UPDATE HEADPOINTS COLORMAP =====
-function UpdateHeadPointsColormap(hFig)
-    % If not using color-coded display
-    hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
-    if ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
-        return;
-    end
-    % Get colormap configuration
-    sColormap = bst_colormaps('GetColormap', 'stat1');
-    % Update axes color limits, which will update de colorbar
-    hAxes = get(hHeadPointsMarkers, 'Parent');
-    if strcmpi(sColormap.MaxMode, 'custom')
-        set(hAxes, 'CLim', [sColormap.MinValue, sColormap.MaxValue]);
-    else
-        HeadpointsDistMax = getappdata(hFig, 'HeadpointsDistMax');
-        set(hAxes, 'CLim', [0, HeadpointsDistMax * 1000]);
-    end
-    % Update colorbar
-    bst_colormaps('ConfigureColorbar', hFig, 'stat1', 'stat', 'mm');
 end
 
 
