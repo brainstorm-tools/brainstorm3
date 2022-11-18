@@ -376,12 +376,20 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        DataFig = TessInfo.DataMinMax;
-                        if ~isempty(TessInfo.DataSource.Type)
-                            DataType = TessInfo.DataSource.Type;
-                            isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo.DataSource.FileName), 'sloreta'));
-                            if isSLORETA 
-                                DataType = 'sLORETA';
+                        % Find surface(s) that matches this ColormapType
+                        iSurfaces = find(strcmpi({TessInfo.ColormapType}, ColormapType));
+                        DataFig = [];
+                        for i = 1:length(iSurfaces)
+                            iTess = iSurfaces(i);
+                            DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
+                                max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
+                            if ~isempty(TessInfo(iTess).DataSource.Type)
+                                % We'll keep the last non-empty DataType
+                                DataType = TessInfo(iTess).DataSource.Type;
+                                isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'));
+                                if isSLORETA
+                                    DataType = 'sLORETA';
+                                end
                             end
                         end
                         
@@ -443,10 +451,10 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         if isinf(amplitudeMax)
             fFactor = 1;
             fUnits = 'Inf';
-        elseif isequal(DisplayUnits, '%')
+        elseif isequal(DisplayUnits, '%') || isequal(DisplayUnits, 'mm')
             fFactor = 1;
             fUnits = DisplayUnits;
-        else
+        else 
             % Guess the display units
             [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType);
             % For readability: replace '\sigma' with 'no units'

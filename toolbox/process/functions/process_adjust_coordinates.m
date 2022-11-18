@@ -1,11 +1,10 @@
 function varargout = process_adjust_coordinates(varargin)
 % PROCESS_ADJUST_COORDINATES: Adjust, recompute, or remove various coordinate transformations.
 % 
-% Native coordinates are based on system fiducials (e.g. MEG head coils),
-% whereas Brainstorm's SCS coordinates are based on the anatomical fiducial
-% points. After alignment between MRI and headpoints, the anatomical fiducials
-% on the MRI side define the SCS and the ones in the channel files
-% (ChannelMat.SCS) are ignored.
+% Native coordinates are based on system fiducials (e.g. MEG head coils), whereas Brainstorm's SCS
+% coordinates are based on the anatomical fiducial points. After alignment between MRI and
+% headpoints, the anatomical fiducials on the MRI side define the SCS and the ones in the channel
+% files (ChannelMat.SCS) are ignored.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -125,9 +124,8 @@ function OutputFiles = Run(sProcess, sInputs)
 
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
-    % If resetting, in case the original data moved, and because the same
-    % channel file may appear in many places for processed data, keep track of
-    % user file selections.
+    % If resetting, in case the original data moved, and because the same channel file may appear in
+    % many places for processed data, keep track of user file selections.
     NewChannelFiles = cell(0, 2);
     for iFile = iUniqFiles(:)' % no need to repeat on same channel file.
         
@@ -154,13 +152,11 @@ function OutputFiles = Run(sProcess, sInputs)
         
         % ----------------------------------------------------------------
         if sProcess.options.reset.Value
-            % The main goal of this option is to fix a bug in a previous
-            % version: when importing a channel file, when going to SCS
-            % coordinates based on digitized coils and anatomical fiducials, the
-            % channel orientation was wrong.  We wish to fix this but keep as
-            % much pre-processing that was previously done.  Thus we will
-            % re-import the channel file, and copy the projectors (and history)
-            % from the old one.
+            % The main goal of this option is to fix a bug in a previous version: when importing a
+            % channel file, when going to SCS coordinates based on digitized coils and anatomical
+            % fiducials, the channel orientation was wrong.  We wish to fix this but keep as much
+            % pre-processing that was previously done.  Thus we will re-import the channel file, and
+            % copy the projectors (and history) from the old one.
             
             [ChannelMat, NewChannelFiles, Failed] = ...
                 ResetChannelFile(ChannelMat, NewChannelFiles, sInputs(iFile), sProcess);
@@ -170,13 +166,12 @@ function OutputFiles = Run(sProcess, sInputs)
             
             % ----------------------------------------------------------------
         elseif sProcess.options.remove.Value
-            % Because channel_align_manual does not consistently apply the
-            % manual transformation to all sensors or save it in both TransfMeg
-            % and TransfEeg, it could lead to confusion and errors when playing
-            % with transforms.  Therefore, if we detect a difference between the
-            % MEG and EEG transforms when trying to remove one that applies to
-            % both (currently only refine with head points), we don't proceed
-            % and recommend resetting with the original channel file instead.
+            % Because channel_align_manual does not consistently apply the manual transformation to
+            % all sensors or save it in both TransfMeg and TransfEeg, it could lead to confusion and
+            % errors when playing with transforms.  Therefore, if we detect a difference between the
+            % MEG and EEG transforms when trying to remove one that applies to both (currently only
+            % refine with head points), we don't proceed and recommend resetting with the original
+            % channel file instead.
             
             Which = {};
             if sProcess.options.head.Value
@@ -191,9 +186,8 @@ function OutputFiles = Run(sProcess, sInputs)
                 ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInputs(iFile), sProcess);
             end % TransfLabel loop
 
-            % We cannot change back the MRI fiducials, but in order to be able
-            % to update it again from digitized fids, we must edit the MRI
-            % history.
+            % We cannot change back the MRI fiducials, but in order to be able to update it again
+            % from digitized fids, we must edit the MRI history.
             if sProcess.options.points.Value && sProcess.options.scs.Value
                 % Get subject in database, with subject directory
                 sSubject = bst_get('Subject', sInputs(iFile).SubjectFile);
@@ -231,12 +225,19 @@ function OutputFiles = Run(sProcess, sInputs)
         if ~sProcess.options.remove.Value && sProcess.options.points.Value
             % Redundant, but makes sense to have it here also.
             
-            Tolerance = sProcess.options.tolerance.Value{1} / 100;
             bst_progress('text', 'Fitting head surface to points...');
+            % If called externally without a tolerance value, set isWarning true so it asks.
+            if isempty(sProcess.options.tolerance.Value)
+                isWarning = true;
+                Tolerance = 0;
+            else
+                isWarning = false;
+                Tolerance = sProcess.options.tolerance.Value{1} / 100;
+            end
             [ChannelMat, R, T, isSkip, isUserCancel, strReport] = channel_align_auto(sInputs(iFile).ChannelFile, ...
-                ChannelMat, 0, 0, Tolerance, sProcess.options.scs.Value); % No warning or confirmation
-            % ChannelFile needed to find subject and scalp surface, but not
-            % used otherwise when ChannelMat is provided.
+                ChannelMat, isWarning, 0, Tolerance, sProcess.options.scs.Value); % No confirmation
+            % ChannelFile needed to find subject and scalp surface, but not used otherwise when
+            % ChannelMat is provided.
             if ~isempty(strReport)
                 bst_report('Info', sProcess, sInputs(iFile), strReport);
             elseif isSkip
@@ -260,10 +261,9 @@ function OutputFiles = Run(sProcess, sInputs)
     end % file loop
     bst_progress('stop');
     
-    % Return the input files that were processed properly.  Include those that
-    % were removed due to sharing a channel file, where appropriate. The
-    % complicated indexing picks the first input of those with the same channel
-    % file, i.e. the one that was marked ok.
+    % Return the input files that were processed properly.  Include those that were removed due to
+    % sharing a channel file, where appropriate. The complicated indexing picks the first input of
+    % those with the same channel file, i.e. the one that was marked ok.
     OutputFiles = {sInputs(isFileOk(iUniqInputs(iUniqFiles))).FileName};
 end
 
@@ -504,9 +504,8 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
         return;
     end
     
-    % The data could be changed such that the head position could be readjusted
-    % (e.g. by deleting segments).  This is allowed and the previous adjustment
-    % will be replaced.
+    % The data could be changed such that the head position could be readjusted (e.g. by deleting
+    % segments).  This is allowed and the previous adjustment will be replaced.
     if isfield(ChannelMat, 'TransfMegLabels') && iscell(ChannelMat.TransfMegLabels) && ...
             ismember('AdjustedNative', ChannelMat.TransfMegLabels)
         bst_report('Info', sProcess, sInputs, ...
@@ -579,9 +578,8 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
         return;
     end
     
-    % Extract transformations that are applied before and after the head
-    % position adjustment.  Any previous adjustment will be ignored here and
-    % replaced later.
+    % Extract transformations that are applied before and after the head position adjustment.  Any
+    % previous adjustment will be ignored here and replaced later.
     [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
         GetTransforms(ChannelMat, sInputs);
     if isempty(TransfBefore)
@@ -603,13 +601,11 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
     ChannelMat = channel_apply_transf(ChannelMat, TransfMat, iMeg, false); % Don't apply to head points.
     ChannelMat = ChannelMat{1};
     
-    % After much thought, it was decided to save this adjustment transformation
-    % separately and at its logical place: between 'Dewar=>Native' and
-    % 'Native=>Brainstorm/CTF'.  In particular, this allows us to use it
-    % directly when displaying head motion distance. This however means we must
-    % correctly move the transformation from the end where it was just applied
-    % to its logical place. This "moved" transformation is also computed in
-    % LocationTransform above.
+    % After much thought, it was decided to save this adjustment transformation separately and at
+    % its logical place: between 'Dewar=>Native' and 'Native=>Brainstorm/CTF'.  In particular, this
+    % allows us to use it directly when displaying head motion distance. This however means we must
+    % correctly move the transformation from the end where it was just applied to its logical place.
+    % This "moved" transformation is also computed in LocationTransform above.
     if isempty(iAdjust)
         iAdjust = iDewToNat + 1;
         % Shift transformations to make room for the new
@@ -644,13 +640,12 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
 end % AdjustHeadPosition
 
 
-
 function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
     % Compute initial head location in Dewar coordinates.
     
-    % Here we want to recreate the correct triangle shape from the relative head
-    % coil locations and in the position saved as the reference (initial) head
-    % position according to Brainstorm coordinate transformation matrices.
+    % Here we want to recreate the correct triangle shape from the relative head coil locations and
+    % in the position saved as the reference (initial) head position according to Brainstorm
+    % coordinate transformation matrices.
     
     if nargin < 2
         sInput = [];
@@ -659,9 +654,9 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
     end
     Message = '';
     
-    % These aren't exactly the coil positions in the .hc file, which are not saved
-    % anywhere in Brainstorm, but was verified to give the same transformation.
-    % The SCS coil coordinates are from the digitized coil positions.
+    % These aren't exactly the coil positions in the .hc file, which are not saved anywhere in
+    % Brainstorm, but was verified to give the same transformation. The SCS coil coordinates are
+    % from the digitized coil positions.
     if isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && ...
             (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
         %         % Use the SCS distances from origin, with left and right PA points symmetrical.
@@ -685,11 +680,9 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
     % InitLoc above is in Native coordiates (if pre head loc didn't fail).
     % Bring it back to Dewar coordinates to compare with HLU channels.
     %
-    % Take into account if the initial/reference head position was
-    % "adjusted", i.e. replaced by the median position throughout the
-    % recording.  If so, use all transformations from 'Dewar=>Native' to
-    % this adjustment transformation.  (In practice there shouldn't be any
-    % between them.)
+    % Take into account if the initial/reference head position was "adjusted", i.e. replaced by the
+    % median position throughout the recording.  If so, use all transformations from 'Dewar=>Native'
+    % to this adjustment transformation.  (In practice there shouldn't be any between them.)
     [TransfBefore, TransfAdjust] = GetTransforms(ChannelMat, sInput);
     InitLoc = TransfBefore \ (TransfAdjust \ InitLoc);
     InitLoc(4, :) = [];
@@ -699,23 +692,21 @@ end % ReferenceHeadLocation
 
 function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
         GetTransforms(ChannelMat, sInputs)
-    % Extract transformations that are applied before and after the head
-    % position adjustment we are creating now.  We keep the 'Dewar=>Native'
-    % transformation intact and separate from the adjustment for no deep
-    % reason, but it is the only remaining trace of the initial head coil
+    % Extract transformations that are applied before and after the head position adjustment we are
+    % creating now.  We keep the 'Dewar=>Native' transformation intact and separate from the
+    % adjustment for no deep reason, but it is the only remaining trace of the initial head coil
     % positions in Brainstorm.
     
-    % The reason this function was split from LocationTransform is that it
-    % can be called only once outside the head sample loop in process_sss,
-    % whereas LocationTransform is called many times within the loop.
+    % The reason this function was split from LocationTransform is that it can be called only once
+    % outside the head sample loop in process_sss, whereas LocationTransform is called many times
+    % within the loop.
     
-    % When this is called from process_sss, we are possibly working on a
-    % second head adjustment, this time based on the instantaneous head
-    % position, so we need to keep the global adjustment based on the entire
-    % recording if it is there.
+    % When this is called from process_sss, we are possibly working on a second head adjustment,
+    % this time based on the instantaneous head position, so we need to keep the global adjustment
+    % based on the entire recording if it is there.
     
-    % Check order of transformations.  These situations should not happen
-    % unless there was some manual editing.
+    % Check order of transformations.  These situations should not happen unless there was some
+    % manual editing.
     iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
     iAdjust = find(strcmpi(ChannelMat.TransfMegLabels, 'AdjustedNative'));
     TransfBefore = [];
@@ -766,11 +757,9 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
 end % GetTransforms
 
 
-function [TransfMat, TransfAdjust] = LocationTransform(Loc, ...
-        TransfBefore, TransfAdjust, TransfAfter)
-    % Compute transformation corresponding to head coil positions.
-    % We want this to be as efficient as possible, since used many times by
-    % process_sss.
+function [TransfMat, TransfAdjust] = LocationTransform(Loc, TransfBefore, TransfAdjust, TransfAfter)
+    % Compute transformation corresponding to head coil positions. We want this to be as efficient
+    % as possible, since used many times by process_sss.
     
     % Check for previous version.
     if nargin < 4
@@ -778,10 +767,9 @@ function [TransfMat, TransfAdjust] = LocationTransform(Loc, ...
     end
     
     % Transformation matrices are in m, as are HLU channels.
-    % The HLU channels (here Loc) are in dewar coordinates.  Bring them to
-    % the current system by applying all saved transformations, starting with
-    % 'Dewar=>Native'.  This will save us from having to use inverse
-    % transformations later.
+    % The HLU channels (here Loc) are in dewar coordinates.  Bring them to the current system by
+    % applying all saved transformations, starting with 'Dewar=>Native'.  This will save us from
+    % having to use inverse transformations later.
     Loc = TransfAfter(1:3, :) * TransfAdjust * TransfBefore * [reshape(Loc, 3, 3); 1, 1, 1];
     %   [[Loc(1:3), Loc(4:6), Loc(5:9)]; 1, 1, 1]; % test if efficiency difference.
     
@@ -801,14 +789,12 @@ function [TransfMat, TransfAdjust] = LocationTransform(Loc, ...
     TransfMat(1:3,1:3) = [X, Y, Z]';
     TransfMat(1:3,4) = - [X, Y, Z]' * Origin;
     
-    % TransfMat at this stage is a transformation from the current system
-    % back to the now adjusted Native system.  We thus need to reapply the
-    % following tranformations.
+    % TransfMat at this stage is a transformation from the current system back to the now adjusted
+    % Native system.  We thus need to reapply the following tranformations.
     
     if nargout > 1
-        % Transform from non-adjusted native coordinates to newly adjusted native
-        % coordinates.  To be saved in channel file between "Dewar=>Native" and
-        % "Native=>Brainstorm/CTF".
+        % Transform from non-adjusted native coordinates to newly adjusted native coordinates.  To
+        % be saved in channel file between "Dewar=>Native" and "Native=>Brainstorm/CTF".
         TransfAdjust = TransfMat * TransfAfter * TransfAdjust;
     end
     
@@ -838,34 +824,17 @@ function M = GeoMedian(X, Precision)
     %
     % M = GeoMedian(X, Precision)
     %
-    % Calculate the geometric median: the point that minimizes sum of
-    % Euclidean distances to all points.  size(X) = [n, d, ...], where n is
-    % the number of data points, d is the number of components for each point
-    % and any additional array dimension is treated as independent sets of
-    % data and a median is calculated for each element along those dimensions
-    % sequentially; size(M) = [1, d, ...].  This is an approximate iterative
-    % procedure that stops once the desired precision is achieved.  If
-    % Precision is not provided, 1e-4 of the max distance from the centroid
-    % is used.
+    % Calculate the geometric median: the point that minimizes sum of Euclidean distances to all
+    % points.  size(X) = [n, d, ...], where n is the number of data points, d is the number of
+    % components for each point and any additional array dimension is treated as independent sets of
+    % data and a median is calculated for each element along those dimensions sequentially; size(M)
+    % = [1, d, ...].  This is an approximate iterative procedure that stops once the desired
+    % precision is achieved.  If Precision is not provided, 1e-4 of the max distance from the
+    % centroid is used.
     %
-    % Weiszfeld's algorithm is used, which is a subgradient algorithm; with
-    % (Verdi & Zhang 2001)'s modification to avoid non-optimal fixed points
-    % (if at any iteration the approximation of M equals a data point).
-    %
-    %
-    % (c) Copyright 2018 Marc Lalancette
-    % The Hospital for Sick Children, Toronto, Canada
-    %
-    % This file is part of a free repository of Matlab tools for MEG
-    % data processing and analysis <https://gitlab.com/moo.marc/MMM>.
-    % You can redistribute it and/or modify it under the terms of the GNU
-    % General Public License as published by the Free Software Foundation,
-    % either version 3 of the License, or (at your option) a later version.
-    %
-    % This program is distributed WITHOUT ANY WARRANTY.
-    % See the LICENSE file, or <http://www.gnu.org/licenses/> for details.
-    %
-    % 2012-05
+    % Weiszfeld's algorithm is used, which is a subgradient algorithm; with (Verdi & Zhang 2001)'s
+    % modification to avoid non-optimal fixed points (if at any iteration the approximation of M
+    % equals a data point).
     
     nDims = ndims(X);
     XSize = size(X);
@@ -892,17 +861,15 @@ function M = GeoMedian(X, Precision)
         Precision = bsxfun(@rdivide, Precision, Scale); % Precision ./ Scale; % [1, 1, nSets]
     end
     
-    % Initial estimate: median in each dimension separately.  Though this
-    % gives a chance of picking one of the data points, which requires
-    % special treatment.
+    % Initial estimate: median in each dimension separately.  Though this gives a chance of picking
+    % one of the data points, which requires special treatment.
     M2 = median(X, 1);
     
-    % It might be better to calculate separately each independent set,
-    % otherwise, they are all iterated until the worst case converges.
+    % It might be better to calculate separately each independent set, otherwise, they are all
+    % iterated until the worst case converges.
     for s = 1:nSets
         
-        % For convenience, pick another point far enough so the loop will always
-        % start.
+        % For convenience, pick another point far enough so the loop will always start.
         M = bsxfun(@plus, M2(:, :, s), Precision(:, :, s));
         % Iterate.
         while  sum((M - M2(:, :, s)).^2 , 2) > Precision(s)^2  % any()scalar
@@ -910,8 +877,7 @@ function M = GeoMedian(X, Precision)
             % Distances from M.
             %       R = sqrt(sum( (M(ones(n, 1), :) - X(:, :, s)).^2 , 2 )); % [n, 1]
             R = sqrt(sum( bsxfun(@minus, M, X(:, :, s)).^2 , 2 )); % [n, 1]
-            % Find data points not equal to M, that we use in the computation
-            % below.
+            % Find data points not equal to M, that we use in the computation below.
             Good = logical(R);
             nG = sum(Good);
             if nG % > 0
@@ -925,10 +891,9 @@ function M = GeoMedian(X, Precision)
             end
             
             % New estimate.
-            % Note the possibility of D = 0 and (n - nG) = 0, in which case 0/0
-            % should be 0, but here gives NaN, which the max function ignores,
-            % returning 0 instead of 1. This is fine however since this
-            % multiplies D (=0 in that case).
+            % Note the possibility of D = 0 and (n - nG) = 0, in which case 0/0 should be 0, but
+            % here gives NaN, which the max function ignores, returning 0 instead of 1. This is fine
+            % however since this multiplies D (=0 in that case).
             M2(:, :, s) = M - max(0, 1 - (n - nG)/sqrt(sum( D.^2 , 2 ))) * ...
                 D / sum(1 ./ R, 1);
         end

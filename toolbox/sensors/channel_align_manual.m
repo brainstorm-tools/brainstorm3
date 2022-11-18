@@ -231,7 +231,7 @@ end
     
 % ===== DISPLAY MRI FIDUCIALS =====
 % Get the fiducials positions defined in the MRI volume
-sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS');
+sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS', 'History');
 if ~isempty(sMri.SCS.NAS) && ~isempty(sMri.SCS.LPA) && ~isempty(sMri.SCS.RPA)
     % Convert coordinates MRI => SCS
     MriFidLoc = [cs_convert(sMri, 'mri', 'scs', sMri.SCS.NAS ./ 1000); ...
@@ -364,7 +364,7 @@ elseif gChanAlign.isNirs
     gChanAlign.hButtonRefine   = uipushtool(hToolbar, 'CData', java_geticon('ICON_ALIGN_CHANNELS'), 'TooltipString', 'Refine registration using head points', 'ClickedCallback', @RefineWithHeadPoints, 'separator', 'on');
     gChanAlign.hButtonMoveChan = [];
     gChanAlign.hButtonProject = [];
-else
+else % isEeg
     gChanAlign.hButtonResizeX  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_X'),      'TooltipString', 'Resize/X: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation, 'separator', 'on');
     gChanAlign.hButtonResizeY  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_Y'),      'TooltipString', 'Resize/Y: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation);
     gChanAlign.hButtonResizeZ  = uitoggletool(hToolbar, 'CData', java_geticon('ICON_RESIZE_Z'),      'TooltipString', 'Resize/Z: Press right button and move mouse up/down',      'ClickedCallback', @SelectOperation);
@@ -392,7 +392,8 @@ end
 % else
     gChanAlign.hButtonAlign = [];
 % end
-gChanAlign.hButtonOk = uipushtool(  hToolbar, 'CData', java_geticon( 'ICON_OK'), 'separator', 'on', 'ClickedCallback', @buttonOk_Callback);% Update figure localization
+gChanAlign.hButtonReset = uipushtool( hToolbar, 'CData', java_geticon('ICON_RELOAD'), 'separator', 'on', 'TooltipString', 'Reset: discard all changes', 'ClickedCallback', @buttonReset_Callback);
+gChanAlign.hButtonOk = uipushtool( hToolbar, 'CData', java_geticon('ICON_OK'), 'TooltipString', 'Save & close', 'ClickedCallback', @buttonOk_Callback);% Update figure localization
 gui_layout('Update');
 % Move a bit the figure to refresh it on all systems
 pos = get(gChanAlign.hFig, 'Position');
@@ -404,6 +405,60 @@ if isProgress
     bst_progress('stop');
 end
     
+% Flag if auto or manual registration performed, and if MRI fids updated. Print to command
+% window for now.
+ChannelMat = in_bst_channel(ChannelFile);
+iMriHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'), 1, 'last');
+% Can also be reset, so check for 'import' action and ignore previous alignments.
+iImport = find(strcmpi(ChannelMat.History(:,2), 'import'), 1, 'last');
+iAlign = find(strcmpi(ChannelMat.History(:,2), 'align'));
+iAlign(iAlign < iImport) = [];
+AlignType = 'none';
+while ~isempty(iAlign)
+    % Check which adjustment was done last.
+    switch lower(ChannelMat.History{iAlign(end),3}(1:5))
+        case 'remov'
+            % Removed a previous step. Ignore corresponding adjustment and look again.
+            iAlign(end) = [];
+            if contains(ChannelMat.History{iAlign(end),3}, 'AdjustedNative')
+                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+            elseif contains(ChannelMat.History{iAlign(end),3}, 'refine registration: head points')
+                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+            elseif contains(ChannelMat.History{iAlign(end),3}, 'manual correction')
+                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+            else
+                bst_error('Unrecognized removed transformation in history.');
+            end
+            if isempty(iAlignRemoved)
+                bst_error('Missing removed transformation in history.');
+            else
+                iAlign(iAlignRemoved) = [];
+            end
+        case 'added'
+            % This alignment is between points and functional dataset, ignore here.
+            iAlign(end) = [];
+        case 'refin'
+            % Automatic MRI-points alignment
+            AlignType = 'auto';
+            break;
+        case 'align'
+            % Manual MRI-points alignment
+            AlignType = 'manual';
+            break;
+    end
+end
+disp(['BST> Previous registration adjustment: ' AlignType]);
+if ~isempty(iMriHist)
+    % Compare digitized fids to MRI fids (in MRI coordinates, mm).
+    if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
+            any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
+            any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
+        disp('BST> MRI fiducials updated, but different than digitized fiducials.');
+    else
+        disp('BST> MRI fiducials updated, and match digitized fiducials.');
+    end
+end
+
 end
 
 
@@ -646,12 +701,10 @@ function UpdatePoints(iSelChan)
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
-            % Update colorbar scale
-            ColormapInfo = getappdata(gChanAlign.hFig, 'Colormap');
-            ColormapType = 'stat1';
-            if strcmpi(ColormapInfo.Type, ColormapType)
-                bst_colormaps('ConfigureColorbar', gChanAlign.hFig, ColormapType, 'stat', 'mm');
-            end
+            % Update surface data and colorbar
+            TessInfo = getappdata(gChanAlign.hFig, 'Surface');
+            iTessPoints = find(strcmpi({TessInfo.Name}, 'HeadPoints'));
+            panel_surface('UpdateSurfaceData', gChanAlign.hFig, iTessPoints); 
         end
         % Fiducials
         if ~isempty(gChanAlign.hHeadPointsFid)
@@ -854,17 +907,52 @@ end
 function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
+        isCancel = false;
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
             SaveChanged = 1;
         else
-            SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
-                                           'Would you like to save changes? ' 10 10], 'Align sensors');
+            % If head points present, offer to update MRI anat fids to match digitized ones.
+            if gChanAlign.isHeadPoints
+                [Choice, isCancel] = java_dialog('question', ['The sensors locations changed.' 10 ...
+                    'Would you like to save changes?' 10 10], 'Align sensors', [], {'Yes', 'Update MRI', 'No'}, 'Yes');
+                if strcmpi(Choice, 'Yes')
+                    SaveChanged = 1;
+                else
+                    SaveChanged = 0;
+                end
+                if strcmpi(Choice, 'Update MRI')
+                    % If EEG, warn that only linear transformation would be saved this way.
+                    if gChanAlign.isEeg
+                        [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA will only save' 10 ...
+                            'global rotations and translations. Any other changes to EEG channels will be lost.' 10 10 ...
+                            'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
+                        if ~Proceed || isCancel
+                            isCancel = true;
+                        end
+                    end
+                    if ~isCancel
+                        % Get final transformation matrix
+                        Transform = eye(4);
+                        Transform(1:3,1:3) = gChanAlign.FinalTransf(1:3,1:3);
+                        Transform(1:3,4)   = gChanAlign.FinalTransf(1:3,4);
+                        % Update MRI (and surfaces)
+                        [~, isCancel] = channel_align_scs(gChanAlign.ChannelFile, Transform, 1, 1); % warn & confirm
+                    end
+                end
+            else % no head points
+                [SaveChanged, isCancel] = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
+                    'Would you like to save changes? ' 10 10], 'Align sensors');
+            end
         end
-        % Progress bar
-        bst_progress('start', 'Align sensors', 'Updating channel file...');
-        % Save changes and close figure
+        % Don't close figure if cancelled.
+        if isCancel
+            return;
+        end
+        % Save changes to channel file and close figure
         if SaveChanged
+            % Progress bar
+            bst_progress('start', 'Align sensors', 'Updating channel file...');
             % Restore standard close callback for 3DViz figures
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
@@ -878,14 +966,14 @@ function AlignClose_Callback(varargin)
             [sStudy, iStudy] = bst_get('ChannelFile', gChanAlign.ChannelFile);
             % Reload study file
             db_reload_studies(iStudy);
+            bst_progress('stop');
         end
-        bst_progress('stop');
     else
         SaveChanged = 0;
     end
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
-    % Apply to other recordings in the same subject
+    % Apply to other recordings with same sensor locations in the same subject
     if SaveChanged
         CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
     end
@@ -930,7 +1018,7 @@ function CopyToOtherFolders(ChannelMatSrc, iStudySrc, Transf, iChannels)
         end
         % Check if the positions of the sensors are similar
         distLoc = sqrt((locDest(1,:) - locSrc(1,:)).^2 + (locDest(2,:) - locSrc(2,:)).^2 + (locDest(3,:) - locSrc(3,:)).^2);
-        % If the sensors are more than 5mm apart in average: skip
+        % If any sensors are more than 5mm apart: skip
         if any(distLoc > 0.005) 
             continue;
         end
@@ -1153,13 +1241,21 @@ function RefineWithHeadPoints(varargin)
 end
 
 
-%% ===== VALIDATION BUTTONS =====
+%% ===== VALIDATION BUTTON =====
 function buttonOk_Callback(varargin)
     global gChanAlign;
     % Close 3DViz figure
     close(gChanAlign.hFig);
 end
 
+%% ===== RESET BUTTON =====
+function buttonReset_Callback(varargin)
+    global gChanAlign;
+    % Close figure
+    gChanAlign.Figure3DCloseRequest_Bak(gChanAlign.hFig, []);
+    % Call function again, which resets gChanAlign.
+    channel_align_manual(gChanAlign.ChannelFile, gChanAlign.Modality, 1);
+end
 
 %% ===== REMOVE ELECTRODES =====
 function RemoveElectrodes(varargin)
