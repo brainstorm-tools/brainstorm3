@@ -1302,7 +1302,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile, surfaceType)
     % === NO FILE: HeadPoints ===
     elseif strcmpi(fileType, 'HeadPoints')
         % Points were already displayed; just add the patch to the figure surfaces.
-        TessInfo(iTess).DataSource.Type = 'HeadPointsDistance';
+        %TessInfo(iTess).DataSource.Type = 'HeadPointsDistance';
         TessInfo(iTess).Name = 'HeadPoints';
         TessInfo(iTess).ColormapType = 'stat1';
         TessInfo(iTess).hPatch = findobj(hFig, 'Tag', 'HeadPointsMarkers');

@@ -914,7 +914,6 @@ function AlignClose_Callback(varargin)
         else
             SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
                     'Would you like to save changes? ' 10 10], 'Align sensors');
-            end
         end
         % Don't close figure if cancelled.
         if isCancel

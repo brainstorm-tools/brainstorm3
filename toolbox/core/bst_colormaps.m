@@ -381,13 +381,16 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                         DataFig = [];
                         for i = 1:length(iSurfaces)
                             iTess = iSurfaces(i);
-                            DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
-                                max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
                             if ~isempty(TessInfo(iTess).DataSource.Type)
+                                DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
+                                    max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
                                 % We'll keep the last non-empty DataType
                                 DataType = TessInfo(iTess).DataSource.Type;
-                                isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'));
-                                if isSLORETA
+                                % For Data: use the modality instead
+                                if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                    DataType = upper(ColormapInfo.Type);
+                                % sLORETA: Do not use regular source scaling (pAm)
+                                elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                     DataType = 'sLORETA';
                                 end
                             end
@@ -454,7 +457,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         elseif isequal(DisplayUnits, '%') || isequal(DisplayUnits, 'mm')
             fFactor = 1;
             fUnits = DisplayUnits;
-        else 
+        else
             % Guess the display units
             [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType);
             % For readability: replace '\sigma' with 'no units'
