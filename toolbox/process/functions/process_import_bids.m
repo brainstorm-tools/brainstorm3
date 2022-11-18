@@ -20,12 +20,15 @@ function varargout = process_import_bids( varargin )
 %    - EEG  : https://openneuro.org/datasets/ds004024 : OK
 %    - iEEG : https://openneuro.org/datasets/ds003688 : ERROR: Wrong interpretation of ACPC coordinates (easier to see in ECOG for sub-02)
 %    - iEEG : https://openneuro.org/datasets/ds003848 : WARNING: Impossible to interepret correctly the coordinates in electrodes.tsv
-%    - iEEG : https://openneuro.org/datasets/ds004085 : 
+%    - iEEG : https://openneuro.org/datasets/ds004085 : ERROR: FreeSurfer not imported (not in a "freesurfer" pipeline subfolder)
+%                                                       ERROR: Some subjects (1,2,10,11) have incorrect channel names in the electrodes.tsv => Not imported
+%                                                       ERROR: Inaccurate electrode positioning because AC/PC landmarks are not defined in the MRI
 %    - iEEG : https://openneuro.org/datasets/ds004126 : OK (ACPC OK)
 %    - STIM : https://openneuro.org/datasets/ds002799 : WARNING: No channel file imported because there are no SEEG recordings
 %    - MEG  : https://openneuro.org/datasets/ds000117 : 
+%    - MEG  : https://openneuro.org/datasets/ds000246 : 
 %    - MEG  : https://openneuro.org/datasets/ds000247 : 
-%    - MEG  : https://openneuro.org/datasets/ds004107 : 
+%    - MEG  : https://openneuro.org/datasets/ds004107 : WARNING: Multiple NAS/LPA/RPA in T1w.json, one for each MEG session => Used the average for both sessions
 %    - Tutorial FEM  : https://neuroimage.usc.edu/brainstorm/Tutorials/FemMedianNerve   :
 %    - Tutorial ECOG : https://neuroimage.usc.edu/brainstorm/Tutorials/ECoG             :
 %    - Tutorial SEEG : https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity : 
@@ -768,6 +771,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     if ~isempty(electrodesCoordSystem)
                         if strcmpi(electrodesCoordSystem, 'ACPC')
                             electrodesSpace = 'ACPC';
+                        elseif strcmpi(electrodesCoordSystem, 'CapTrak')
+                            electrodesSpace = 'CapTrak';
                         elseif ~isempty(strfind(electrodesCoordSystem, 'MNI')) || ~isempty(strfind(electrodesCoordSystem, 'IXI')) || ~isempty(strfind(electrodesCoordSystem, 'ICBM'))  || ~isempty(strfind(electrodesCoordSystem, 'fs')) 
                             electrodesSpace = 'MNI';
                         elseif ismember(upper(electrodesCoordSystem), {'CTF', 'EEGLAB', 'EEGLAB-HJ', 'ElektaNeuromag', '4DBti', 'KitYokogawa', 'ChietiItab'})

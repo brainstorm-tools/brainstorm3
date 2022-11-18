@@ -2489,10 +2489,10 @@ function SetDataThreshold(hFig, iSurf, value) %#ok<DEFNU>
     % Get surface info
     TessInfo = getappdata(hFig, 'Surface');
     % Get file in database
-    if isempty(TessInfo.DataSource) || isempty(TessInfo.DataSource.FileName)
+    if isempty(TessInfo(iSurf).DataSource) || isempty(TessInfo.DataSource(iSurf).FileName)
         return;
     end
-    isStat = any(strcmpi(file_gettype(TessInfo.DataSource.FileName), {'pdata', 'presults', 'ptimefreq'}));
+    isStat = any(strcmpi(file_gettype(TessInfo.DataSource(iSurf).FileName), {'pdata', 'presults', 'ptimefreq'}));
     if isStat
         return;
     end

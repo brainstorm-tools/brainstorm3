@@ -111,15 +111,20 @@ if (abs(sFile.prop.times(2) - nirs.t(end)) > 1e-3)
 end
 
 % Reading events 
-if isfield(nirs,'CondNames')
-    n_event = length(nirs.CondNames);
+if isfield(nirs,'s') && size(nirs.s,2) > 0
+    n_event = size(nirs.s,2);
     events = repmat(db_template('event'), 1, length(n_event));
     for iEvt = 1:n_event
         % Assume simple event (non-extended)
         eventSample = find(nirs.s(:,iEvt)) - 1;
         evtTime     =  eventSample ./ sFile.prop.sfreq;
+
         % Events structure
-        events(iEvt).label      = nirs.CondNames{iEvt};
+        if isfield(nirs, 'CondNames')
+            events(iEvt).label      = nirs.CondNames{iEvt};
+        else
+            events(iEvt).label      = sprintf('%d',iEvt);
+        end
         events(iEvt).times      = evtTime(:)';
         events(iEvt).epochs     = ones(1, length(evtTime));
         events(iEvt).notes      = cell(1, length(evtTime));

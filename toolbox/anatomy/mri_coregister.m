@@ -229,14 +229,16 @@ switch lower(Method)
         if isReslice
             % Reslice the volume
             [sMriReg, errMsg] = mri_reslice(sMriSrc, sMriRef, 'vox2ras', 'vox2ras', isAtlas);
+            % Output file tag
+            fileTag = '_reg';
         else
             % Save the original input volume
             sMriReg = sMriSrc;
             isUpdateScs = 1;
             isUpdateNcs = 1;
+            % Output file tag
+            fileTag = '';
         end
-        % Output file tag
-        fileTag = '_reg';
 end
 % Handle errors
 if ~isempty(errMsg)

@@ -2,9 +2,9 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 % IN_FOPEN_SNIRF Open a fNIRS file based on the SNIRF format
 %
 % DESCRIPTION:
-%     This function is based on the SNIRF specification v.1 
+%     This function is based on the SNIRF specification v.1.1
 %     https://github.com/fNIRS/snirf
-
+%
 % @=============================================================================
 % This function is part of the Brainstorm software:
 % https://neuroimage.usc.edu/brainstorm
@@ -28,10 +28,16 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 % Load file header with the JSNIRF Toolbox (https://github.com/fangq/jsnirfy)
 jnirs = loadsnirf(DataFile);
 
+if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
+    warning('SNIRF format doesnt contains source or detector name. Name of the channels might be wrong');
+    jnirs.nirs.probe.sourceLabels = {};
+    jnirs.nirs.probe.detectorLabels = {};
+
+end
 
 %% ===== CHANNEL FILE ====
 % Get scaling units
-scale = bst_units_ui(jnirs.nirs.metaDataTags.LengthUnit);
+scale = bst_units_ui(toLine(jnirs.nirs.metaDataTags.LengthUnit));
 % Get 3D positions
 if all(isfield(jnirs.nirs.probe, {'sourcePos3D', 'detectorPos3D'})) && ~isempty(jnirs.nirs.probe.sourcePos3D) && ~isempty(jnirs.nirs.probe.detectorPos3D)
     
@@ -111,7 +117,7 @@ for iAux = 1:nAux
      
     channel = jnirs.nirs.aux(iAux);
     ChannelMat.Channel(nChannels+k_aux).Type = 'NIRS_AUX';
-    ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(channel.name));
+    ChannelMat.Channel(nChannels+k_aux).Name = strtrim(str_remove_spec_chars(toLine(channel.name)));
     
     aux_index(iAux) = true;
     k_aux = k_aux + 1;
@@ -138,7 +144,7 @@ if isfield(jnirs.nirs.probe, 'landmarkLabels')
     jnirs.nirs.probe.landmarkPos3D = toColumn(jnirs.nirs.probe.landmarkPos3D, jnirs.nirs.probe.landmarkLabels);
 
     for iLandmark = 1:size(jnirs.nirs.probe.landmarkPos3D, 1)
-        name = strtrim(str_remove_spec_chars(jnirs.nirs.probe.landmarkLabels{iLandmark}));
+        name = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.probe.landmarkLabels{iLandmark})));
         coord = scale .* jnirs.nirs.probe.landmarkPos3D(iLandmark, :);
 
         % Fiducials NAS/LPA/RPA
@@ -203,10 +209,10 @@ DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 
 for iEvt = 1:length(jnirs.nirs.stim)
     
-    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(jnirs.nirs.stim(iEvt).name));
+    DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
     if ~isfield(jnirs.nirs.stim(iEvt), 'data')
             % Events structure
-        warning(sprintf('No data found for event: %s',jnirs.nirs.stim(iEvt).name))
+        warning(sprintf('No data found for event: %s',DataMat.Events(iEvt).label))
         continue
     end    
     % Get timing
@@ -232,7 +238,19 @@ end
 end
 
 function vect = toColumn(vect, exp_size)
-    if size(vect,1) ~= length(exp_size)
+    if ~isempty(exp_size)
+        if size(vect,1) ~= length(exp_size)
+            vect = vect';
+        end
+    else
+        if size(vect,2) >= size(vect,1)
+            vect = vect';
+        end
+    end
+end
+
+function vect = toLine(vect)
+    if size(vect,1) >= size(vect,2)
         vect = vect';
     end
 end
