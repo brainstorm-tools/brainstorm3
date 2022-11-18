@@ -169,6 +169,11 @@ function ColormapChangedCallback(iDS, iFig) %#ok<DEFNU>
     if ~isempty(getappdata(hFig, 'Dipoles')) && gui_brainstorm('isTabVisible', 'Dipoles')
         panel_dipoles('PlotSelectedDipoles', hFig);
     end
+    % If displaying color-coded head points (see channel_align_manual)
+    HeadpointsDistMax = getappdata(hFig, 'HeadpointsDistMax');
+    if ~isempty(HeadpointsDistMax)
+        UpdateHeadPointsColormap(hFig);
+    end
 end
 
 
@@ -1771,11 +1776,17 @@ function DisplayFigurePopup(hFig)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
             end
         end
+    end
 
-        % Show Head points
+    % Show Head points
+    if ~isempty(GlobalData.DataSet(iDS).ChannelFile)
         isHeadPoints = ~isempty(GlobalData.DataSet(iDS).HeadPoints) && ~isempty(GlobalData.DataSet(iDS).HeadPoints.Loc);
         if isHeadPoints && ~strcmpi(FigureType, 'Topography')
-            jMenuChannels.addSeparator();
+            if isAlignFig
+                jMenuChannels = gui_component('Menu', jPopup, [], 'Channels', IconLoader.ICON_CHANNEL);
+            else
+                jMenuChannels.addSeparator();
+            end
             % Are head points visible
             hHeadPointsMarkers = findobj(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 'Tag', 'HeadPointsMarkers');
             isVisible = ~isempty(hHeadPointsMarkers) && strcmpi(get(hHeadPointsMarkers, 'Visible'), 'on');
@@ -1789,7 +1800,7 @@ function DisplayFigurePopup(hFig)
             jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_H, KeyEvent.CTRL_MASK));
         end
     end
-    
+
     % ==== MENU: MONTAGE ====
     if strcmpi(FigureType, 'Topography') && ~isempty(Modality) && (Modality(1) ~= '$') && (isempty(TsInfo) || isempty(TsInfo.RowNames))
         jMenuMontage = gui_component('Menu', jPopup, [], 'Montage', IconLoader.ICON_TS_DISPLAY_MODE);
@@ -3785,15 +3796,15 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
                     % Add missing colormap (color was toggled after points were displayed)
                     bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
                     ColormapInfo = getappdata(hFig, 'Colormap');
-                    ColormapChangedCallback(iDS, iFig);
                 end
                 % Compute the distance
                 Dist = bst_surfdist(get(hHeadPointsMarkers, 'Vertices'), sSurf.Vertices, sSurf.Faces);
                 set(hHeadPointsMarkers, 'CData', Dist * 1000, ...
                     'MarkerFaceColor', 'flat', 'MarkerEdgeColor', 'flat');
+                setappdata(hFig, 'HeadpointsDistMax', max(Dist));
                 if strcmpi(ColormapInfo.Type, ColormapType)
+                    ColormapChangedCallback(iDS, iFig);
                     bst_colormaps('SetColorbarVisible', hFig, 1);
-                    bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
                 end
             end
         elseif ~isColorDist && strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
@@ -3886,10 +3897,10 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
                 % Compute the distance
                 Dist = bst_surfdist(digLoc(iExtra, :), sSurf.Vertices, sSurf.Faces);
                 CData = Dist * 1000; % mm
+                setappdata(hFig, 'HeadpointsDistMax', max(Dist));
                 MarkerFaceColor = 'flat';
                 MarkerEdgeColor = 'flat';
-                ColormapType = 'stat1';
-                bst_colormaps('AddColormapToFigure', hFig, ColormapType, 'mm');
+                bst_colormaps('AddColormapToFigure', hFig, 'stat1', 'mm');
             else
                 CData = 'w'; % any color, not displayed
                 MarkerFaceColor = [.3 1 .3];
@@ -3908,11 +3919,31 @@ function ViewHeadPoints(hFig, isVisible, isColorDist)
                 'Tag',             'HeadPointsMarkers');
             if isColorDist
                 ColormapChangedCallback(iDS, iFig);
-%                 bst_colormaps('SetColorbarVisible', hFig, 1);
-%                 bst_colormaps('ConfigureColorbar', hFig, ColormapType, 'stat', 'mm');
             end
         end
     end
+end
+
+
+%% ===== UPDATE HEADPOINTS COLORMAP =====
+function UpdateHeadPointsColormap(hFig)
+    % If not using color-coded display
+    hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
+    if ~strcmpi(get(hHeadPointsMarkers, 'MarkerFaceColor'), 'flat')
+        return;
+    end
+    % Get colormap configuration
+    sColormap = bst_colormaps('GetColormap', 'stat1');
+    % Update axes color limits, which will update de colorbar
+    hAxes = get(hHeadPointsMarkers, 'Parent');
+    if strcmpi(sColormap.MaxMode, 'custom')
+        set(hAxes, 'CLim', [sColormap.MinValue, sColormap.MaxValue]);
+    else
+        HeadpointsDistMax = getappdata(hFig, 'HeadpointsDistMax');
+        set(hAxes, 'CLim', [0, HeadpointsDistMax * 1000]);
+    end
+    % Update colorbar
+    bst_colormaps('ConfigureColorbar', hFig, 'stat1', 'stat', 'mm');
 end
 
 

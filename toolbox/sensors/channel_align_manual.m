@@ -646,6 +646,9 @@ function UpdatePoints(iSelChan)
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
+            % Update axes maximum
+            setappdata(gChanAlign.hFig, 'HeadpointsDistMax', max(Dist));
+            figure_3d('UpdateHeadPointsColormap', gChanAlign.hFig);
             % Update colorbar scale
             ColormapInfo = getappdata(gChanAlign.hFig, 'Colormap');
             ColormapType = 'stat1';

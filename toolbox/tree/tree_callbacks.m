@@ -224,6 +224,8 @@ switch (lower(action))
                         DisplayChannels(bstNodes, DisplayMod{1}, 'anatomy', 1);
                     elseif strcmpi(DisplayMod{1}, 'ECOG')
                         DisplayChannels(bstNodes, DisplayMod{1}, 'cortex', 1);
+                    elseif ismember(DisplayMod{1}, {'MEG','MEG GRAD','MEG MAG'})
+                        channel_align_manual(filenameRelative, DisplayMod{1}, 0)
                     elseif strcmpi(DisplayMod{1}, 'NIRS')
                         DisplayChannels(bstNodes, 'NIRS-BRS', 'scalp', [], 1);
                     else
