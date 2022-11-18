@@ -136,13 +136,13 @@ switch (FileFormat)
         FileUnits = 'm';
         
     % ===== EEG ONLY =====
-    case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM'}
+    case {'BIDS-SCANRAS-MM', 'BIDS-MNI-MM', 'BIDS-ACPC-MM', 'BIDS-ALS-MM', 'BIDS-CAPTRAK-MM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.001);
         FileUnits = 'mm';
-    case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM', 'BIDS-ALS-CM'}
+    case {'BIDS-SCANRAS-CM', 'BIDS-MNI-CM', 'BIDS-ACPC-CM', 'BIDS-ALS-CM', 'BIDS-CAPTRAK-CM'}
         ChannelMat = in_channel_bids(ChannelFile, 0.01);
         FileUnits = 'cm';
-    case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M', 'BIDS-ALS-M'}
+    case {'BIDS-SCANRAS-M', 'BIDS-MNI-M', 'BIDS-ACPC-M', 'BIDS-ALS-M', 'BIDS-CAPTRAK-M'}
         ChannelMat = in_channel_bids(ChannelFile, 1);
         FileUnits = 'm';
         
@@ -410,7 +410,7 @@ elseif ismember(FileFormat, {'BIDS-ACPC-MM', 'BIDS-ACPC-CM', 'BIDS-ACPC-M'})
         warning(['WARNING: When importing ACPC positions for multiple subjects: the ACPC transformation from the first subject is used for all of them.' 10 ...
                  'Please consider importing your subjects seprately.']);
     end
-    % If we know the destination study: convert from MNI to SCS coordinates
+    % If we know the destination study: convert from ACPC to SCS coordinates
     if ~isempty(iStudies)
         % Get the subject for the first study
         sStudy = bst_get('Study', iStudies(1));
@@ -427,6 +427,36 @@ elseif ismember(FileFormat, {'BIDS-ACPC-MM', 'BIDS-ACPC-CM', 'BIDS-ACPC-M'})
         end
         % Convert all the coordinates: ACPC => SCS
         fcnTransf = @(Loc)cs_convert(sMri, 'acpc', 'scs', Loc')';
+        AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
+        ChannelMat = AllChannelMats{1};
+    end
+    % Do not convert the positions to SCS
+    isAlignScs = 0;
+
+%% ===== CAPTRAK TRANSFORMATION =====
+elseif ismember(FileFormat, {'BIDS-CAPTRAK-MM', 'BIDS-CAPTRAK-CM', 'BIDS-CAPTRAK-M'})
+    % Warning for multiple studies
+    if (length(iStudies) > 1)
+        warning(['WARNING: When importing CapTrak positions for multiple subjects: the CapTrak transformation from the first subject is used for all of them.' 10 ...
+                 'Please consider importing your subjects seprately.']);
+    end
+    % If we know the destination study: convert from CapTrak to SCS coordinates
+    if ~isempty(iStudies)
+        % Get the subject for the first study
+        sStudy = bst_get('Study', iStudies(1));
+        sSubject = bst_get('Subject', sStudy.BrainStormSubject);
+        % Get the subject's MRI
+        if isempty(sSubject.Anatomy) || isempty(sSubject.Anatomy(1).FileName)
+            error('You need the subject anatomy in order to load sensor positions in CapTrak coordinates.');
+        end
+        % Load the MRI
+        MriFile = file_fullpath(sSubject.Anatomy(1).FileName);
+        sMri = in_mri_bst(MriFile);
+        if ~isfield(sMri, 'SCS') || ~isfield(sMri.SCS, 'R') || isempty(sMri.SCS.R) || ~isfield(sMri.SCS, 'NAS') || isempty(sMri.SCS.NAS) || ~isfield(sMri.SCS, 'LPA') || isempty(sMri.SCS.LPA) || ~isfield(sMri.SCS, 'RPA') || isempty(sMri.SCS.RPA)
+            error(['All fiducials must be defined for this subject (NAS,LPA,RPA)' 10 'in order to load sensor positions in CapTrak coordinates.']);
+        end
+        % Convert all the coordinates: CapTrak => SCS
+        fcnTransf = @(Loc)cs_convert(sMri, 'captrak', 'scs', Loc')';
         AllChannelMats = channel_apply_transf(ChannelMat, fcnTransf, [], 1);
         ChannelMat = AllChannelMats{1};
     end
