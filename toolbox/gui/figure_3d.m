@@ -494,10 +494,8 @@ function FigureMouseMoveCallback(hFig, varargin)
                                     sign(motionAxes(1,moveAxis)) .* ...
                                     moveDirection(1);
                     % Save the detected movement direction and orientation
-                    if ismember(moveDirection, [1 2 3])
-                        setappdata(hFig, 'moveAxis',      moveAxis);
-                        setappdata(hFig, 'moveDirection', moveDirection);
-                    end
+                    setappdata(hFig, 'moveAxis',      moveAxis);
+                    setappdata(hFig, 'moveDirection', moveDirection);
                 % === MOVE SLICE ===
                 else                
                     % Get saved information about current motion
