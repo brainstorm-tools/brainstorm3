@@ -29,8 +29,7 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 jnirs = loadsnirf(DataFile);
 
 if isempty(jnirs) || ~isfield(jnirs, 'nirs')
-    bst_error('The file doesnt seems to be a valid SNIRF file')
-    return;
+    error('The file doesnt seems to be a valid SNIRF file')
 end
 
 if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')

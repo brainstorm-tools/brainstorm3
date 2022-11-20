@@ -214,7 +214,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
     end
 
     for iSubject = 1:length(OPTIONS.SelectedSubjects)
-        if ~contains(OPTIONS.SelectedSubjects{iSubject},'sub')
+        if (length(OPTIONS.SelectedSubjects{iSubject}) <= 4) || ~strcmpi(OPTIONS.SelectedSubjects{iSubject}(1:4), 'sub-')
             OPTIONS.SelectedSubjects{iSubject} = ['sub-' OPTIONS.SelectedSubjects{iSubject}];
         end
     end
@@ -892,7 +892,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
                     if strcmp(mod,'nirs')
                           ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
-                          ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'wavelength_nominal', 'status'});
+                          ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
+                          ChanInfo(:,2)  = ChanInfo_tmp(:,2);
+                          ChanInfo(:,4)  = ChanInfo_tmp(:,6);
                           for i = 1:size(ChanInfo,1)
                              ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
                              ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
@@ -941,7 +943,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                     isModifiedChan = 1;
                                 end
                                 % Copy group
-                                if ~isempty(ChanInfo{iChanBids,3}) && ~strcmpi(ChanInfo{iChanBids,3},'n/a') 
+                                if ~isempty(ChanInfo{iChanBids,3}) && ~strcmpi(ChanInfo{iChanBids,3},'n/a')
                                     ChannelMat.Channel(iChanBst).Group = ChanInfo{iChanBids,3};
                                     isModifiedChan = 1;
                                 end

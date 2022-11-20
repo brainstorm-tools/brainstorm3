@@ -109,8 +109,6 @@ for is = 1:length(iStudies)
     % For all the channels, look for its definition in the LOC EEG cap
     for ic = 1:length(ChannelMat.Channel)
         chName = ChannelMat.Channel(ic).Name;
-        % Replace "'" with "p"
-        chName = strrep(chName, '''', 'p');
 
         if strcmp(ChannelMat.Channel(ic).Type,'NIRS')
             toks = regexp(chName, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');            
@@ -126,6 +124,8 @@ for is = 1:length(iStudies)
                 nUpdated = nUpdated + 1;
             end
         else
+            % Replace "'" with "p"
+            chName = strrep(chName, '''', 'p');
             % Look for the exact channel name
             idef = find(strcmpi(chName, locChanNames));
         
@@ -139,48 +139,49 @@ for is = 1:length(iStudies)
                     idef = find(strcmpi(sprintf('%s%d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
                 end
             end
-            % If the channel is found has a valid 3D position
-            if ~isempty(idef) && (size(ChannelMat.Channel(ic).Loc,2) <= 1) && ~isequal(LocChannelMat.Channel(idef).Loc, [0;0;0])
-                % If the channel is already considered as EEG, do not change its type, otherwise set it to EEG
-                if ~ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
-                    ChannelMat.Channel(ic).Type = 'EEG';
-                elseif ismember(LocChannelMat.Channel(idef).Type, {'SEEG','ECOG'})
-                    ChannelMat.Channel(ic).Type = LocChannelMat.Channel(idef).Type;
+        end
+        % If the channel is found has a valid 3D position
+        if ~isempty(idef) && (size(ChannelMat.Channel(ic).Loc,2) <= 1) && ~isequal(LocChannelMat.Channel(idef).Loc, [0;0;0])
+            % If the channel is already considered as EEG, do not change its type, otherwise set it to EEG
+            if ~ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
+                ChannelMat.Channel(ic).Type = 'EEG';
+            elseif ismember(LocChannelMat.Channel(idef).Type, {'SEEG','ECOG'})
+                ChannelMat.Channel(ic).Type = LocChannelMat.Channel(idef).Type;
+            end
+            ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
+            ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
+            ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            nUpdated = nUpdated + 1;
+
+            % Convert from MNI to subject space, if needed
+            if isMni
+                P = ChannelMat.Channel(ic).Loc';
+                P = cs_convert(sMriMni, 'scs', 'mni', P);
+                P = cs_convert(sMriSubj, 'mni', 'scs', P);
+                if isempty(P)
+                    Messages = [Messages, 'Compute the MNI normalization for the subject MRI before importing MNI coordinates.', 10];
+                    continue;
                 end
-                ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
-                ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
-                ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
-                nUpdated = nUpdated + 1;
+                ChannelMat.Channel(ic).Loc = P';
             end
-        end
-        % Convert from MNI to subject space, if needed
-        if isMni
-            P = ChannelMat.Channel(ic).Loc';
-            P = cs_convert(sMriMni, 'scs', 'mni', P);
-            P = cs_convert(sMriSubj, 'mni', 'scs', P);
-            if isempty(P)
-                Messages = [Messages, 'Compute the MNI normalization for the subject MRI before importing MNI coordinates.', 10];
-                continue;
+            % If not a template: add head points
+            if ~isTemplate
+                % Initialize list of head points as cell arrays (if not it concatenate as strings)
+                if isempty(ChannelMat.HeadPoints.Label)
+                    ChannelMat.HeadPoints.Label = {};
+                    ChannelMat.HeadPoints.Type = {};
+                end
+                % Add as head points (if doesn't exist yet)
+                if isempty(ChannelMat.HeadPoints.Loc) || ( size(ChannelMat.Channel(ic).Loc,2) == 1 && all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc) .^ 2, 1)) > 0.0001)) ...
+                        || ( size(ChannelMat.Channel(ic).Loc,2) == 2 && (all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,1)) .^ 2, 1)) > 0.0001) ||  all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,2)) .^ 2, 1)) > 0.0001)))
+                    ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
+                    ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
+                    ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
+                end
+            elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
+                ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
+                nNotFound = nNotFound + 1;
             end
-            ChannelMat.Channel(ic).Loc = P';
-        end
-        % If not a template: add head points
-        if ~isTemplate
-            % Initialize list of head points as cell arrays (if not it concatenate as strings)
-            if isempty(ChannelMat.HeadPoints.Label)
-                ChannelMat.HeadPoints.Label = {};
-                ChannelMat.HeadPoints.Type = {};
-            end
-            % Add as head points (if doesn't exist yet)
-            if isempty(ChannelMat.HeadPoints.Loc) || ( size(ChannelMat.Channel(ic).Loc,2) == 1 && all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc) .^ 2, 1)) > 0.0001)) ...
-                    || ( size(ChannelMat.Channel(ic).Loc,2) == 2 && (all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,1)) .^ 2, 1)) > 0.0001) ||  all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,2)) .^ 2, 1)) > 0.0001)))
-                ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
-                ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
-                ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
-            end
-        elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
-            ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
-            nNotFound = nNotFound + 1;
         end
     end
     % No channels were found
