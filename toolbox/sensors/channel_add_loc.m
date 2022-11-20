@@ -178,10 +178,10 @@ for is = 1:length(iStudies)
                     ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
                     ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
                 end
-            elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
+            end
+        elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
                 ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
                 nNotFound = nNotFound + 1;
-            end
         end
     end
     % No channels were found
