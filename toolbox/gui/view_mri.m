@@ -89,6 +89,11 @@ switch lower(FileType)
         if ~isempty(iDSResult)
             bst_memory('LoadResultsMatrix', iDS, iDSResult);
         end
+        % Get modality
+        iResChan = GlobalData.DataSet(iDS).Results(iDSResult).GoodChannel;
+        if ~isempty(iResChan)
+            Modality = GlobalData.DataSet(iDS).Channel().Type;
+        end
         % Get subject file
         SubjectFile = GlobalData.DataSet(iDS).SubjectFile;
         OverlayType = 'Source';

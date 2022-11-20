@@ -68,7 +68,7 @@ function varargout = bst_colormaps( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 %          Thomas Vincent, 2019
 
 eval(macro_method);
@@ -383,6 +383,12 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                             if isSLORETA 
                                 DataType = 'sLORETA';
                             end
+                        elseif isempty(DataFig)
+                            % If displaying color-coded head points (see channel_align_manual)
+                            HeadpointsDistMax = getappdata(sFigure.hFigure, 'HeadpointsDistMax');
+                            if ~isempty(HeadpointsDistMax)
+                                DataFig = [0, HeadpointsDistMax * 1000];
+                            end
                         end
                         
                     case 'Pac'
@@ -443,7 +449,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         if isinf(amplitudeMax)
             fFactor = 1;
             fUnits = 'Inf';
-        elseif isequal(DisplayUnits, '%')
+        elseif isequal(DisplayUnits, '%') || isequal(DisplayUnits, 'mm')
             fFactor = 1;
             fUnits = DisplayUnits;
         else

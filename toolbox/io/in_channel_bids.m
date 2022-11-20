@@ -45,7 +45,7 @@ ChannelMat.Channel = repmat(db_template('channeldesc'), [1, nChan]);
 for iChan = 1:nChan
     % Name
     if ~isempty(tsvValues{iChan,1})
-        ChannelMat.Channel(iChan).Name = tsvValues{iChan,1};
+        ChannelMat.Channel(iChan).Name = strtrim(tsvValues{iChan,1});
     else
         ChannelMat.Channel(iChan).Name = sprintf('E%03d', iChan);
     end

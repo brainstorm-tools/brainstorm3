@@ -505,8 +505,10 @@ function hFig = HDisplayMetrics(A, sfreq)
     
         % Frequency axes
         linkaxes(hAxesMetric,'x');
-        set(hAxesMetric(1), 'XLim', [0, max(Freqs)]);  
-        xlabel(hAxesMetric(end, :), 'Frequency (Hz)');
+        set(hAxesMetric(1), 'XLim', [0, max(Freqs)]);
+        for iAxes = 1:size(hAxesMetric,2)
+            xlabel(hAxesMetric(end, iAxes), 'Frequency (Hz)');
+        end
         % Metric y axes
         linkaxes(hAxesMetric,'y');
         if ~isempty(metric.ylimits)
@@ -514,7 +516,9 @@ function hFig = HDisplayMetrics(A, sfreq)
         else
             set(hAxesMetric(1), 'YLim', [0, yMaxLimit]);
         end
-        ylabel(hAxesMetric(:,1), metric.ylabel);       
+        for iAxes = 1:size(hAxesMetric,1)
+            ylabel(hAxesMetric(iAxes,1), metric.ylabel);
+        end
     end
         
     bst_progress('stop');

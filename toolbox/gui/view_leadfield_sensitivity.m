@@ -6,7 +6,7 @@ function hFig = view_leadfield_sensitivity(HeadmodelFile, Modality, DisplayMode)
 % INPUTS:
 %    - HeadmodelFile : Relative file path to Brainstorm forward model
 %    - Modality      : {'MEG', 'EEG', 'ECOG', 'SEEG'}
-%    - DisplayMode   : {'Mri3D', 'MriViewer', 'Surface'}
+%    - DisplayMode   : {'Mri3D', 'MriViewer', 'Surface', 'Isosurface'}
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -37,8 +37,16 @@ if (nargin < 3) || isempty(DisplayMode)
 end
 hFig = [];
 
+% Isosurface display : Requires ISO2MESH
+if strcmpi(DisplayMode, 'isosurface')
+    [isInstalled, errMsg] = bst_plugin('Install', 'iso2mesh', 1);
+    if ~isInstalled
+        error(errMsg);
+    end
+end
+
 % ===== LOAD DATA =====
-bst_progress('start', 'View leadfields', 'Loading headmodels...');
+bst_progress('start', 'View leadfields', 'Loading headmodel...');
 % Load channel file
 [sStudy, iStudy, iHeadModel] = bst_get('HeadModelFile', HeadmodelFile);
 ChannelFile = sStudy.Channel.FileName;
@@ -66,22 +74,30 @@ grid2mri_interp = [];
 switch (HeadmodelMat.HeadModelType)
     % === VOLUME ===
     case {'volume', 'mixed'}
-        % Compute interpolation
-        sMri.FileName = MriFile;
-        ComputeMriInterp();
-        % Create figure
-        switch lower(DisplayMode)
-            case 'mri3d'
-                [hFig, iDS, iFig] = view_mri_3d(MriFile, HeadmodelFile, [], 'NewFigure');
-                is3D = 1;
-            case 'mriviewer'
-                [hFig, iDS, iFig] = view_mri(MriFile, HeadmodelFile, Modality, 1);
-            otherwise
-                error(['Unknown display mode: "' DisplayMode '"']);
+        % Isosurface
+        if strcmpi(DisplayMode, 'isosurface')
+            % Compute Delaunay tesselation of the grid
+            dt = delaunayTriangulation(HeadmodelMat.GridLoc);
+            % Open 3D MRI view
+            [hFig, iDS, iFig] = view_mri_3d(MriFile, [], [], 'NewFigure');
+            is3D = 1;
+        else
+            % Compute interpolation
+            sMri.FileName = MriFile;
+            ComputeMriInterp();
+            % Create figure
+            switch lower(DisplayMode)
+                case 'mri3d'
+                    [hFig, iDS, iFig] = view_mri_3d(MriFile, HeadmodelFile, [], 'NewFigure');
+                    is3D = 1;
+                case 'mriviewer'
+                    [hFig, iDS, iFig] = view_mri(MriFile, HeadmodelFile, Modality, 1);
+                otherwise
+                    error(['Unknown display mode: "' DisplayMode '"']);
+            end
+            % Save update callback (for external calls, e.g. when changing the interpolation properties)
+            setappdata(hFig, 'UpdateCallback', @UpdateMriInterp);
         end
-        % Save update callback (for external calls, e.g. when changing the interpolation properties)
-        setappdata(hFig, 'UpdateCallback', @UpdateMriInterp);
-
     % === SURFACE ===
     case 'surface'
         [hFig, iDS, iFig] = view_surface_data(HeadmodelMat.SurfaceFile, HeadmodelFile, Modality, 'NewFigure', 0);
@@ -97,6 +113,8 @@ isAvgRef = 1;
 iRef = [];
 % By default: the target is the first channel available
 iChannel = 1;
+% Isosurface threshold
+Thresh = [];
 % Update figure name
 set(hFig, 'Name', ['Leadfield: ' HeadmodelFile]);
 % Save channel file in dataset
@@ -131,10 +149,22 @@ ColormapInfo = getappdata(hFig, 'Colormap');
 switch (Modality)
     case {'MEG', 'MEG MAG', 'MEG GRAD'}
         ColormapInfo.DisplayUnits = 'fT/nAm';  % ~ 1e-6
+        dispFactor = 1e6;
     case {'EEG', 'SEEG', 'ECOG'}
         ColormapInfo.DisplayUnits = '\muV/nAm';  % ~ 1e3
+        dispFactor = 1e-3;
 end
 setappdata(hFig, 'Colormap', ColormapInfo);
+% Display SEEG/ECOG electrodes
+if ismember(Modality, {'SEEG', 'ECOG'})
+    switch lower(DisplayMode)
+        case {'isosurface', 'mri3d', 'surface'}
+            view_channels(ChannelFile, Modality, 1, 0, hFig, 1);
+        case 'mriviewer'
+            figure_mri('LoadElectrodes', hFig, ChannelFile, Modality);
+            gui_brainstorm('ShowToolTab', 'iEEG');
+    end
+end
 % Update display
 UpdateLeadfield();
 % Reset thresholds
@@ -207,7 +237,11 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                         isAvgRef = 0;
                     end
                     isUpdate = 1;
-                end               
+                end
+            case 'i'
+                if strcmpi(DisplayMode, 'isosurface') && SelectThreshold()
+                    isUpdate = 1;
+                end
             case 'r' % not for MEG
                 if SelectReference()
                     isUpdate = 1;
@@ -215,6 +249,12 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             case 't'
                 if SelectTarget()
                     isUpdate = 1;
+                end
+            case 'l'
+                if strcmp(get(hLabel, 'Visible'), 'on')
+                    set (hLabel, 'Visible', 'off');
+                else
+                    set (hLabel, 'Visible', 'on');
                 end
             case 'h'
                 if is3D
@@ -224,11 +264,18 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
                 else
                     strHelp3D = '';
                 end
+                if strcmpi(DisplayMode, 'isosurface')
+                    strIso = '<TR><TD><B>I</B></TD><TD>Select the <B>I</B>sosurface threshold</TD></TR>';
+                else
+                    strIso = [];
+                end
                 java_dialog('msgbox', ['<HTML><TABLE>' ...
                     '<TR><TD><B>Left arrow</B></TD><TD>Previous target channel (red color)</TD></TR>' ...
                     '<TR><TD><B>Right arrow</B></TD><TD>Next target channel (red color)</TD></TR>' ...
                     '<TR><TD><B>Up arrow</B></TD><TD>Previous ref channel (green color)</TD></TR>' ...
                     '<TR><TD><B>Down arrow</B></TD><TD>Next ref channel (green color)</TD></TR>' ...
+                    strIso ...
+                    '<TR><TD><B>L</B></TD><TD>Show/hide legend</TD></TR>' ...
                     '<TR><TD><B>R</B></TD><TD>Select the <B>R</B>eference channel</TD></TR>' ...
                     '<TR><TD><B>T</B></TD><TD>Select the <B>T</B>arget channel</TD></TR>' ...
                     strHelp3D ...
@@ -290,34 +337,43 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
             case 'surface'
                 FigData = normLF;
                 OverlayCube = [];
+            case 'isosurface'
+                FigData = [];
+                if isempty(Thresh)
+                    Thresh = 0.1 * max(normLF);
+                end
+                PlotBlob(hAxes, HeadmodelMat.GridLoc, dt, normLF, Thresh);
         end
 
-        % Compute min/max
-        minVol = min(FigData(:));
-        maxVol = max(FigData(:));
-        if (minVol == maxVol)
-            error('No data to be displayed.');
+        % Update surface or MRI slices
+        if ~isempty(FigData)
+            % Compute min/max
+            minVol = min(FigData(:));
+            maxVol = max(FigData(:));
+            if (minVol == maxVol)
+                error('No data to be displayed.');
+            end
+    
+            % Get displayed objects description
+            TessInfo = getappdata(hFig, 'Surface');
+            % Add overlay cube
+            TessInfo(1).DataSource.Type      = 'Source';
+            TessInfo(1).DataSource.FileName  = HeadmodelFile;
+            TessInfo(1).Data                 = FigData;
+            TessInfo(1).OverlayCube          = OverlayCube;
+            TessInfo(1).DataLimitValue       = [minVol, maxVol];
+            TessInfo(1).DataMinMax           = [minVol, maxVol];
+            % Update structures
+            setappdata(hFig, 'Surface', TessInfo);
+            % Update figure
+            switch lower(DisplayMode)
+                case 'mriviewer'
+                    figure_mri('UpdateMriDisplay', hFig);
+                case {'mri3d', 'surface'}
+                    panel_surface('UpdateSurfaceColormap', hFig);
+            end
         end
 
-        % Get displayed objects description
-        TessInfo = getappdata(hFig, 'Surface');
-        % Add overlay cube
-        TessInfo(1).DataSource.Type      = 'Source';
-        TessInfo(1).DataSource.FileName  = HeadmodelFile;
-        TessInfo(1).Data                 = FigData;
-        TessInfo(1).OverlayCube          = OverlayCube;
-        TessInfo(1).DataLimitValue       = [minVol, maxVol];
-        TessInfo(1).DataMinMax           = [minVol, maxVol];
-        % Update structures
-        setappdata(hFig, 'Surface', TessInfo);
-
-        % Update figure
-        switch lower(DisplayMode)
-            case 'mriviewer'
-                figure_mri('UpdateMriDisplay', hFig);
-            case {'mri3d', 'surface'}
-                panel_surface('UpdateSurfaceColormap', hFig);
-        end
         % Update legend
         UpdateLegend();
         if is3D
@@ -423,5 +479,103 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         isOk = 1;
     end
 
+%% ===== SELECT ISOSURFACE THRESHOLD =====
+    function isOk = SelectThreshold()
+        isOk = 0;
+        % Ask for the target electrode
+        res = java_dialog('input', ['<HTML>Enter the isosurface threshold (' strrep(ColormapInfo.DisplayUnits, '\mu', 'µ') '):<BR><BR>'], 'Isosurface threshold', [], num2str(Thresh * dispFactor));
+        if isempty(res)
+            return;
+        end
+        val = str2num(res);
+        if isempty(val) || (val <= 0)
+            bst_error('Invalid value.', 'Isosurface threshold', 0);
+            return;
+        end
+        Thresh = val ./ dispFactor;
+        isOk = 1;
+    end
 end
 
+
+%% ===== PLOT BLOB =====
+function PlotBlob(hAxes, GridLoc, dt, V, Thresh)
+    % Compute isosurface with iso2mesh
+    try
+        [P,v,fc] = qmeshcut(dt.ConnectivityList, GridLoc, V, Thresh);
+        Faces = [fc(:,[1,2,3]); fc(:,[1,3,4])];             % convert quads into triangles
+        [P,Faces] = meshcheckrepair(P, Faces, 'dup');       % remove duplicate nodes
+        % [P,Faces] = meshcheckrepair(P, Faces, 'meshfix');   % generate a close surface
+        % [no2,el2]=s2m(no1,fc1,1,0.001);    % test if the surface is water-tight
+    catch
+        Faces = [];
+    end
+    % Compute boundaries
+    if isempty(Faces)
+        iSel = find(V >= Thresh);
+        P = GridLoc(iSel,:);
+        if (length(iSel) > 2)
+            Faces = boundary(P, 1);
+        end
+    end
+
+    % Remove previous dots
+    delete(findobj(hAxes, '-depth', 1, 'Tag', 'ptIso'));
+    % Display selected grid points
+    if isempty(Faces)
+        % Plot grid points
+        line(P(:,1), P(:,2), P(:,3), ...
+            'LineStyle',   'none', ...
+            'Color',       [0 1 0], ...
+            'MarkerSize',  2, ...
+            'Marker',      '.', ...
+            'Tag',         'ptIso', ...
+            'Parent',      hAxes);
+    end
+
+    % Display patch
+    if ~isempty(Faces)
+        % Configure patch
+        patchColor = [0, .8, 0];
+        patchAlpha = 0.4;
+        % If patch does not exist yet : create it
+        hPatch = findobj(hAxes, '-depth', 1, 'Tag', 'patchIso');
+        if ~isempty(Faces)
+            if isempty(hPatch)
+                hPatch = patch(...
+                    'Faces',            Faces, ...
+                    'Vertices',         P, ...
+                    'FaceVertexCData',  patchColor, ...
+                    'FaceColor',        patchColor, ...
+                    'EdgeColor',        'none',...
+                    'FaceAlpha',        patchAlpha, ...
+                    'BackFaceLighting', 'lit', ...
+                    'Tag',              'patchIso', ...
+                    'Parent',           hAxes, ...
+                    'AmbientStrength',  0.5, ...
+                    'DiffuseStrength',  0.5, ...
+                    'SpecularStrength', 0.2, ...
+                    'SpecularExponent', 1, ...
+                    'SpecularColorReflectance', 0.5, ...
+                    'FaceLighting',     'none', ...
+                    'EdgeLighting',     'none');
+            % Else : only update vertices and faces
+            else
+                set(hPatch, 'Faces', Faces, 'Vertices', P);
+            end
+        elseif ~isempty(hPatch)
+            delete(hPatch);
+        end
+%         % Compute VTA
+%         VTA = surfvolume(P, Faces);
+%         strVta = sprintf('VTA=%f', VTA);
+
+%         vtaThreshold = 99;
+%         find(vq>prctile(vq,vtaThreshold))
+%         vtaNode = brainNode(vq>=prctile(vq,vtaThreshold),:);
+%         DT = delaunay(vtaNode); % later we need to sommth this surface and diplay is with better options
+%         [openface,elemid]=volface(DT)
+%         [vtaNode, vtaFace] = removeisolatednode(vtaNode, openface);
+%         volVTA = surfvolume(vtaNode, vtaFace);
+    end
+end
