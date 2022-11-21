@@ -213,6 +213,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
         return;
     end
 
+    % Add BIDS subject tag "sub-" if missing
     for iSubject = 1:length(OPTIONS.SelectedSubjects)
         if (length(OPTIONS.SelectedSubjects{iSubject}) <= 4) || ~strcmpi(OPTIONS.SelectedSubjects{iSubject}(1:4), 'sub-')
             OPTIONS.SelectedSubjects{iSubject} = ['sub-' OPTIONS.SelectedSubjects{iSubject}];
