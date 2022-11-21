@@ -109,18 +109,35 @@ for is = 1:length(iStudies)
     % For all the channels, look for its definition in the LOC EEG cap
     for ic = 1:length(ChannelMat.Channel)
         chName = ChannelMat.Channel(ic).Name;
-        % Replace "'" with "p"
-        chName = strrep(chName, '''', 'p');
-        % Look for the exact channel name
-        idef = find(strcmpi(chName, locChanNames));
-        % If not found, look for an alternate version (with or without trailing zeros...)
-        if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
-            [chGroup, chTag, chInd] = panel_montage('ParseSensorNames', ChannelMat.Channel(ic));
-            % Look for "A01"
-            idef = find(strcmpi(sprintf('%s%02d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
-            if isempty(idef)
-                % Look for "A1"
-                idef = find(strcmpi(sprintf('%s%d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+
+        if strcmp(ChannelMat.Channel(ic).Type,'NIRS')
+            toks = regexp(chName, '^S([0-9]+)D([0-9]+)(WL\d+|HbO|HbR|HbT)$', 'tokens');            
+            
+            idef = find(strcmpi(sprintf('S%s', toks{1}{1}) , locChanNames));
+            if ~isempty(idef)
+                ChannelMat.Channel(ic).Loc(:,1)    = LocChannelMat.Channel(idef).Loc;
+                nUpdated = nUpdated + 1;
+            end
+            idef = find(strcmpi(sprintf('D%s', toks{1}{2}) , locChanNames));
+            if ~isempty(idef)
+                ChannelMat.Channel(ic).Loc(:,2)    = LocChannelMat.Channel(idef).Loc;
+                nUpdated = nUpdated + 1;
+            end
+        else
+            % Replace "'" with "p"
+            chName = strrep(chName, '''', 'p');
+            % Look for the exact channel name
+            idef = find(strcmpi(chName, locChanNames));
+        
+            % If not found, look for an alternate version (with or without trailing zeros...)
+            if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
+                [chGroup, chTag, chInd] = panel_montage('ParseSensorNames', ChannelMat.Channel(ic));
+                % Look for "A01"
+                idef = find(strcmpi(sprintf('%s%02d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+                if isempty(idef)
+                    % Look for "A1"
+                    idef = find(strcmpi(sprintf('%s%d', strrep(chTag{1}, '''', 'p'), chInd(1)), locChanNames));
+                end
             end
         end
         % If the channel is found has a valid 3D position
@@ -135,6 +152,7 @@ for is = 1:length(iStudies)
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
             ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
             nUpdated = nUpdated + 1;
+
             % Convert from MNI to subject space, if needed
             if isMni
                 P = ChannelMat.Channel(ic).Loc';
@@ -154,7 +172,7 @@ for is = 1:length(iStudies)
                     ChannelMat.HeadPoints.Type = {};
                 end
                 % Add as head points (if doesn't exist yet)
-                if isempty(ChannelMat.HeadPoints.Loc) || all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc) .^ 2, 1)) > 0.0001)
+                if isempty(ChannelMat.HeadPoints.Loc) || all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,1)) .^ 2, 1)) > 0.0001)
                     ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
                     ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
                     ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
@@ -193,6 +211,7 @@ for is = 1:length(iStudies)
             ChannelMat = panel_ieeg('DetectElectrodes', ChannelMat, Modality{1}, [], 1);
         end
     end
+    
     % History: Added channel locations
     ChannelMat = bst_history('add', ChannelMat, 'addloc', ['Added EEG positions from "' LocChannelMat.Comment '"']);
     % Save modified file
@@ -207,5 +226,5 @@ if isInteractive
     java_dialog('msgbox', Messages, 'Add EEG positions');
 end
 
-
+end
 
