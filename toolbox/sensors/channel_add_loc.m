@@ -172,16 +172,15 @@ for is = 1:length(iStudies)
                     ChannelMat.HeadPoints.Type = {};
                 end
                 % Add as head points (if doesn't exist yet)
-                if isempty(ChannelMat.HeadPoints.Loc) || ( size(ChannelMat.Channel(ic).Loc,2) == 1 && all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc) .^ 2, 1)) > 0.0001)) ...
-                        || ( size(ChannelMat.Channel(ic).Loc,2) == 2 && (all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,1)) .^ 2, 1)) > 0.0001) ||  all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,2)) .^ 2, 1)) > 0.0001)))
+                if isempty(ChannelMat.HeadPoints.Loc) || all(sqrt(sum(bst_bsxfun(@minus, ChannelMat.HeadPoints.Loc, ChannelMat.Channel(ic).Loc(:,1)) .^ 2, 1)) > 0.0001)
                     ChannelMat.HeadPoints.Loc   = [ChannelMat.HeadPoints.Loc,   ChannelMat.Channel(ic).Loc];
                     ChannelMat.HeadPoints.Label = [ChannelMat.HeadPoints.Label, ChannelMat.Channel(ic).Name];
                     ChannelMat.HeadPoints.Type  = [ChannelMat.HeadPoints.Type,  'EXTRA'];
                 end
             end
         elseif ismember(ChannelMat.Channel(ic).Type, {'EEG','SEEG','ECOG'})
-                ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
-                nNotFound = nNotFound + 1;
+            ChannelMat.Channel(ic).Type = [ChannelMat.Channel(ic).Type, '_NO_LOC'];
+            nNotFound = nNotFound + 1;
         end
     end
     % No channels were found
