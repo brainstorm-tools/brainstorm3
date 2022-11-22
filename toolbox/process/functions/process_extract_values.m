@@ -349,6 +349,11 @@ function [newMat, newFileType, matName] = Extract(sProcess, sInputs, OPTIONS)
     % Get the list of common rows (only the files with named signals: matrix and timefreq)
     if OPTIONS.isMatchRows && ismember(inFileType, {'matrix','timefreq','pmatrix','ptimefreq'})
         bst_progress('text', 'Reading the signal names...');
+        % Cannot use this option in combination with connectivity files
+        if ~isempty(strfind(sInputs(1).FileName, '_connect1')) || ~isempty(strfind(sInputs(1).FileName, '_connectn'))
+            bst_report('Error', sProcess, [], 'EXTRACT> Cannot use the option "Match signals" on connectivity files.');
+            return;
+        end
         % Identify the list of all the rows in all the files
         [DestRowNames, AllRowNames, iRowsSrc, iRowsDest, Messages] = process_stdrow('GetUniformRows', {sInputs.FileName}, 'all');
         if ~isempty(Messages)

@@ -32,6 +32,9 @@ function varargout = process_import_bids( varargin )
 %    - Tutorial FEM  : https://neuroimage.usc.edu/brainstorm/Tutorials/FemMedianNerve   :
 %    - Tutorial ECOG : https://neuroimage.usc.edu/brainstorm/Tutorials/ECoG             :
 %    - Tutorial SEEG : https://neuroimage.usc.edu/brainstorm/Tutorials/Epileptogenicity : 
+%    - NIRS : https://github.com/rob-luke/BIDS-NIRS-Tapping/tree/388d2cdc3ae831fc767e06d9b77298e9c5cd307b :
+%   -  NIRS : https://osf.io/b4wck/ : 
+
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -214,6 +217,13 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             bst_error(errorMessage, 'Import BIDS dataset', 0);
         end
         return;
+    end
+
+    % Add BIDS subject tag "sub-" if missing
+    for iSubject = 1:length(OPTIONS.SelectedSubjects)
+        if (length(OPTIONS.SelectedSubjects{iSubject}) <= 4) || ~strcmpi(OPTIONS.SelectedSubjects{iSubject}(1:4), 'sub-')
+            OPTIONS.SelectedSubjects{iSubject} = ['sub-' OPTIONS.SelectedSubjects{iSubject}];
+        end
     end
     OPTIONS.SelectedSubjects = unique([OPTIONS.SelectedSubjects, selSubjects]);
     
@@ -676,7 +686,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     end
                 end
                 % Loop on the supported modalities
-                for mod = {'meg', 'eeg', 'ieeg'}
+                for mod = {'meg', 'eeg', 'ieeg','nirs'}
                     posUnits = 'mm';
                     electrodesFile = [];
                     electrodesSpace = 'ScanRAS';
@@ -715,6 +725,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 posUnits = sCoordsystem.EEGCoordinateUnits;
                             elseif isfield(sCoordsystem, 'MEGCoordinateUnits') && ~isempty(sCoordsystem.MEGCoordinateUnits) && ismember(sCoordsystem.MEGCoordinateUnits, {'mm','cm','m'})
                                 posUnits = sCoordsystem.MEGCoordinateUnits;
+                            elseif isfield(sCoordsystem, 'NIRSCoordinateUnits') && ~isempty(sCoordsystem.NIRSCoordinateUnits) && ismember(sCoordsystem.NIRSCoordinateUnits, {'mm','cm','m'})
+                                 posUnits = sCoordsystem.NIRSCoordinateUnits;
                             end
                             % Get fiducials structure
                             sFid = GetFiducials(sCoordsystem, posUnits);
@@ -726,6 +738,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                     electrodesCoordSystem = sCoordsystem.EEGCoordinateSystem;
                                 elseif isfield(sCoordsystem, 'MEGCoordinateSystem') && ~isempty(sCoordsystem.MEGCoordinateSystem)
                                     electrodesCoordSystem = sCoordsystem.MEGCoordinateSystem;
+                               elseif isfield(sCoordsystem, 'NIRSCoordinateSystem') && ~isempty(sCoordsystem.NIRSCoordinateSystem)
+                                    electrodesCoordSystem = sCoordsystem.NIRSCoordinateSystem;
                                 elseif ~isempty(coordsystemSpace)
                                     electrodesCoordSystem = coordsystemSpace;
                                 end
@@ -757,7 +771,11 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     
                     % === ELECTRODES.TSV ===
                     % Get electrodes positions
-                    electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
+                    if strcmp(mod,'nirs')
+                        electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_optodes.tsv'));
+                    else
+                        electrodesDir = dir(bst_fullfile(SubjectSessDir{iSubj}{isess}, mod{1}, '*_electrodes.tsv'));
+                    end
                     % If multiple positions in the same folder: not expected unless multiple coordinate systems are available
                     if (length(electrodesDir) > 1)
                         % Select by order of preference: subject space, MNI space or first in the list
@@ -828,6 +846,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 case '.eeg',   FileFormat = 'EEG-BRAINAMP';
                 case '.edf',   FileFormat = 'EEG-EDF';
                 case '.set',   FileFormat = 'EEG-EEGLAB';
+                case '.snirf', FileFormat = 'NIRS-SNIRF';    
                 otherwise,     FileFormat = [];
             end
             % Import file if file was identified
@@ -878,7 +897,19 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Read tsv file
                     % For _channels.tsv, 'name', 'type' and 'units' are required.
                     % 'group' and 'status' are fields added by Brainstorm export to BIDS.
-                    ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'}, 0);
+                    if strcmp(mod,'nirs')
+                          ChanInfo_tmp = in_tsv(ChannelsFile, {'name','type','source','detector','wavelength_nominal', 'status'});
+                          ChanInfo = cell(size(ChanInfo_tmp,1), 4); % {'name', 'type', 'group', 'status'}
+                          ChanInfo(:,2)  = ChanInfo_tmp(:,2);
+                          ChanInfo(:,4)  = ChanInfo_tmp(:,6);
+                          for i = 1:size(ChanInfo,1)
+                             ChanInfo{i,1} = sprintf('%s%sWL%d',ChanInfo_tmp{i,3},ChanInfo_tmp{i,4},str2double(ChanInfo_tmp{i,5}));
+                             ChanInfo{i,3} = sprintf('WL%d', str2double(ChanInfo_tmp{i,5}));
+                          end   
+                     else    
+                         ChanInfo = in_tsv(ChannelsFile, {'name', 'type', 'group', 'status'});
+                    end  
+
                     % Try to add info to the existing Brainstorm channel file
                     % Note: this does not work if channel names different in data and metadata - see note in the function header
                     if ~isempty(ChanInfo) || ~isempty(ChanInfo{1,1})
@@ -912,6 +943,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                             chanType = 'MEG';
                                         case {'MEGREFMAG', 'MEGREFGRADAXIAL', 'MEGREFGRADPLANAR'}  % CTF/4D references
                                             chanType = 'MEG REF';
+                                        case {'NIRSCWAMPLITUDE'}
+                                             chanType = 'NIRS';
                                     end
                                     ChannelMat.Channel(iChanBst).Type = chanType;
                                     isModifiedChan = 1;

@@ -28,11 +28,14 @@ function  [DataMat, ChannelMat] = in_data_snirf(DataFile)
 % Load file header with the JSNIRF Toolbox (https://github.com/fangq/jsnirfy)
 jnirs = loadsnirf(DataFile);
 
+if isempty(jnirs) || ~isfield(jnirs, 'nirs')
+    error('The file doesnt seems to be a valid SNIRF file')
+end
+
 if ~isfield(jnirs.nirs.probe,'sourceLabels') || ~isfield(jnirs.nirs.probe,'detectorLabels')
     warning('SNIRF format doesnt contains source or detector name. Name of the channels might be wrong');
     jnirs.nirs.probe.sourceLabels = {};
     jnirs.nirs.probe.detectorLabels = {};
-
 end
 
 %% ===== CHANNEL FILE ====
@@ -205,8 +208,18 @@ DataMat.ChannelFlag = ones(size(DataMat.F,1), 1);
 
 
 %% ===== EVENTS =====
-DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 
+% Read events (SNIRF created by Homer3)
+if ~isfield(jnirs.nirs,'stim') && any(contains(fieldnames(jnirs.nirs),'stim'))
+    nirs_fields = fieldnames(jnirs.nirs);
+    sim_key = nirs_fields(contains(fieldnames(jnirs.nirs),'stim'));
+    jnirs.nirs.stim  = jnirs.nirs.( sim_key{1});
+    for iStim = 2:length(sim_key)
+        jnirs.nirs.stim(iStim)  = jnirs.nirs.( sim_key{iStim});
+    end
+end
+
+DataMat.Events = repmat(db_template('event'), 1, length(jnirs.nirs.stim));
 for iEvt = 1:length(jnirs.nirs.stim)
     
     DataMat.Events(iEvt).label      = strtrim(str_remove_spec_chars(toLine(jnirs.nirs.stim(iEvt).name)));
