@@ -376,7 +376,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        % Find surface(s) that matches this ColormapType
+                        % Find surfaces that match this ColormapType
                         iSurfaces = find(strcmpi({TessInfo.ColormapType}, ColormapType));
                         DataFig = [];
                         for i = 1:length(iSurfaces)
@@ -393,6 +393,13 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                                 elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                     DataType = 'sLORETA';
                                 end
+                            end
+                        end
+                        if isempty(DataFig)
+                            % If displaying color-coded head points (see channel_align_manual)
+                            HeadpointsDistMax = getappdata(sFigure.hFigure, 'HeadpointsDistMax');
+                            if ~isempty(HeadpointsDistMax)
+                                DataFig = [0, HeadpointsDistMax * 1000];
                             end
                         end
                         

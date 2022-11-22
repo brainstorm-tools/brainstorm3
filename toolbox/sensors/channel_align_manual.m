@@ -404,64 +404,10 @@ set(gChanAlign.hFig, 'Position', pos);
 if isProgress
     bst_progress('stop');
 end
-    
-% Flag if auto or manual registration performed, and if MRI fids updated. Print to command
-% window for now.
-ChannelMat = in_bst_channel(ChannelFile);
-iMriHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'), 1, 'last');
-% Can also be reset, so check for 'import' action and ignore previous alignments.
-iImport = find(strcmpi(ChannelMat.History(:,2), 'import'), 1, 'last');
-iAlign = find(strcmpi(ChannelMat.History(:,2), 'align'));
-iAlign(iAlign < iImport) = [];
-AlignType = 'none';
-while ~isempty(iAlign)
-    % Check which adjustment was done last.
-    switch lower(ChannelMat.History{iAlign(end),3}(1:5))
-        case 'remov'
-            % Removed a previous step. Ignore corresponding adjustment and look again.
-            iAlign(end) = [];
-            if contains(ChannelMat.History{iAlign(end),3}, 'AdjustedNative')
-                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-            elseif contains(ChannelMat.History{iAlign(end),3}, 'refine registration: head points')
-                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-            elseif contains(ChannelMat.History{iAlign(end),3}, 'manual correction')
-                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-            else
-                bst_error('Unrecognized removed transformation in history.');
-            end
-            if isempty(iAlignRemoved)
-                bst_error('Missing removed transformation in history.');
-            else
-                iAlign(iAlignRemoved) = [];
-            end
-        case 'added'
-            % This alignment is between points and functional dataset, ignore here.
-            iAlign(end) = [];
-        case 'refin'
-            % Automatic MRI-points alignment
-            AlignType = 'auto';
-            break;
-        case 'align'
-            % Manual MRI-points alignment
-            AlignType = 'manual';
-            break;
-    end
-end
-disp(['BST> Previous registration adjustment: ' AlignType]);
-if ~isempty(iMriHist)
-    % Compare digitized fids to MRI fids (in MRI coordinates, mm).
-    if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
-            any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
-            any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
-        disp('BST> MRI fiducials updated, but different than digitized fiducials.');
-    else
-        disp('BST> MRI fiducials updated, and match digitized fiducials.');
-    end
-end
 
+% Check and print to command window if previously auto/manual registration, and if MRI fids updated.
+process_adjust_coordinates('CheckPrevAdjustments', in_bst_channel(ChannelFile), sMri);
 end
-
-
 
 %% ===== MOUSE CALLBACKS =====  
 %% ===== MOUSE DOWN =====
@@ -701,10 +647,9 @@ function UpdatePoints(iSelChan)
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
-            % Update surface data and colorbar
-            TessInfo = getappdata(gChanAlign.hFig, 'Surface');
-            iTessPoints = find(strcmpi({TessInfo.Name}, 'HeadPoints'));
-            panel_surface('UpdateSurfaceData', gChanAlign.hFig, iTessPoints); 
+            % Update axes maximum
+            setappdata(gChanAlign.hFig, 'HeadpointsDistMax', max(Dist));
+            figure_3d('UpdateHeadPointsColormap', gChanAlign.hFig);
         end
         % Fiducials
         if ~isempty(gChanAlign.hHeadPointsFid)
@@ -907,17 +852,12 @@ end
 function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
-        isCancel = false;
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
             SaveChanged = 1;
         else
             SaveChanged = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
                     'Would you like to save changes? ' 10 10], 'Align sensors');
-        end
-        % Don't close figure if cancelled.
-        if isCancel
-            return;
         end
         % Save changes to channel file and close figure
         if SaveChanged
