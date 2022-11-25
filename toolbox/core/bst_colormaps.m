@@ -376,23 +376,18 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        % Find surfaces that match this ColormapType
-                        iSurfaces = find(strcmpi({TessInfo.ColormapType}, ColormapType));
+                        % Find 1st surface that match this ColormapType
+                        iTess = find(strcmpi({TessInfo.ColormapType}, ColormapType), 1);
                         DataFig = [];
-                        for i = 1:length(iSurfaces)
-                            iTess = iSurfaces(i);
-                            if ~isempty(TessInfo(iTess).DataSource.Type)
-                                DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
-                                    max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
-                                % We'll keep the last non-empty DataType
-                                DataType = TessInfo(iTess).DataSource.Type;
-                                % For Data: use the modality instead
-                                if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
-                                    DataType = upper(ColormapInfo.Type);
-                                % sLORETA: Do not use regular source scaling (pAm)
-                                elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
-                                    DataType = 'sLORETA';
-                                end
+                        if ~isempty(iTess) && ~isempty(TessInfo(iTess).DataSource.Type)
+                            DataFig = TessInfo(iTess).DataMinMax;
+                            DataType = TessInfo(iTess).DataSource.Type;
+                            % For Data: use the modality instead
+                            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                DataType = upper(ColormapInfo.Type);
+                            % sLORETA: Do not use regular source scaling (pAm)
+                            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
+                                DataType = 'sLORETA';
                             end
                         end
                         if isempty(DataFig)
