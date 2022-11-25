@@ -376,20 +376,30 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        % Find surface(s) that matches this ColormapType
+                        % Find surfaces that match this ColormapType
                         iSurfaces = find(strcmpi({TessInfo.ColormapType}, ColormapType));
                         DataFig = [];
                         for i = 1:length(iSurfaces)
                             iTess = iSurfaces(i);
-                            DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
-                                max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
                             if ~isempty(TessInfo(iTess).DataSource.Type)
+                                DataFig = [min([DataFig(:); TessInfo(iTess).DataMinMax(:)]), ...
+                                    max([DataFig(:); TessInfo(iTess).DataMinMax(:)])];
                                 % We'll keep the last non-empty DataType
                                 DataType = TessInfo(iTess).DataSource.Type;
-                                isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'));
-                                if isSLORETA
+                                % For Data: use the modality instead
+                                if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                    DataType = upper(ColormapInfo.Type);
+                                % sLORETA: Do not use regular source scaling (pAm)
+                                elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                     DataType = 'sLORETA';
                                 end
+                            end
+                        end
+                        if isempty(DataFig)
+                            % If displaying color-coded head points (see channel_align_manual)
+                            HeadpointsDistMax = getappdata(sFigure.hFigure, 'HeadpointsDistMax');
+                            if ~isempty(HeadpointsDistMax)
+                                DataFig = [0, HeadpointsDistMax * 1000];
                             end
                         end
                         
@@ -454,7 +464,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         elseif isequal(DisplayUnits, '%') || isequal(DisplayUnits, 'mm')
             fFactor = 1;
             fUnits = DisplayUnits;
-        else 
+        else
             % Guess the display units
             [tmp, fFactor, fUnits ] = bst_getunits(amplitudeMax, DataType);
             % For readability: replace '\sigma' with 'no units'

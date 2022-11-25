@@ -26,8 +26,12 @@ function [Transform, isCancel] = channel_align_scs(ChannelFile, Transform, isWar
 %     - isConfirm   : If 1, ask the user for confirmation before proceeding.
 %
 % OUTPUTS:
-%     - Transform   : If the MRI fiducial points and coordinate system are updated, the transform
-%                     becomes the identity. If not, it is the same as the input Transform.
+%     - Transform   : If the MRI fiducial points and coordinate system are updated, and the channel 
+%                     file is reset, the transform becomes the identity. If the channel file is not
+%                     reset, Transform will be the inverse of all previous manual or automatic
+%                     adjustments. If the MRI was not updated, the input Transform is returned. The
+%                     idea is that the returned Transform applied to the channels would maintain the
+%                     registration.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -70,53 +74,129 @@ if ~all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) || ~(length(ChannelMat.SCS
     return;
 end
 
-% Check if already adjusted.
-    sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
-    % History string is set in figure_mri SaveMri.
-    if isfield(sMriOld, 'History') && ~isempty(sMriOld.History) && any(strcmpi(sMriOld.History(:,3), 'Applied digitized anatomical fiducials'))
-        % Already done previously.
-        if isWarning || isConfirm
-            % Request confirmation.
-            [Proceed, isCancel] = java_dialog('confirm', ['The MRI fiducial points NAS/LPA/RPA were previously updated from a set of' 10 ...
-                'aligned digitized points. Updating them again will break any previous alignment' 10 ...
-                'with other sets of digitized points and associated functional datasets.' 10 10 ...
-                'Proceed and overwrite previous alignment?' 10], 'Head points/anatomy registration');
-            if ~Proceed || isCancel
-                isCancel = true;
-                return;
-            end
-        else
-            % Do not proceed.
-            disp('BST> Digitized nasion and ear points previously applied to this MRI. Not applying again.');
-            return;
-        end
-    elseif isConfirm
+% Check if already adjusted
+sMriOld = in_mri_bst(sSubject.Anatomy(sSubject.iAnatomy).FileName);
+% This Check function also updates ChannelMat.SCS with the saved (possibly previously adjusted) head
+% points. (We don't consider isMriMatch here because we still have to apply the provided
+% Transformation.)
+[~, isMriUpdated, ~, ChannelMat] = process_adjust_coordinates('CheckPrevAdjustments', ChannelMat, sMriOld);
+% Get user confirmation
+if isMriUpdated
+    % Already done previously.
+    if isWarning || isConfirm
         % Request confirmation.
-        [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA will break any' 10 ...
-            'previous alignment with functional datasets.' 10 10 ...
-            'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
+        [Proceed, isCancel] = java_dialog('confirm', ['The MRI fiducial points NAS/LPA/RPA were previously updated from a set of' 10 ...
+            'aligned digitized points. Updating them again will break any previous alignment' 10 ...
+            'with other sets of digitized points and associated functional datasets.' 10 10 ...
+            'Proceed and overwrite previous alignment?' 10], 'Head points/anatomy registration');
         if ~Proceed || isCancel
             isCancel = true;
             return;
         end
+    else
+        % Do not proceed.
+        disp('BST> Digitized nasion and ear points previously applied to this MRI. Not applying again.');
+        return;
     end
-    % Convert to MRI SCS coordinates.
-    % To do this we need to apply the transformation provided.
-    sMri = sMriOld;
-    sMri.SCS.NAS = (Transform(1:3,:) * [ChannelMat.SCS.NAS'; 1])';
-    sMri.SCS.LPA = (Transform(1:3,:) * [ChannelMat.SCS.LPA'; 1])';
-    sMri.SCS.RPA = (Transform(1:3,:) * [ChannelMat.SCS.RPA'; 1])';
-    % Then convert to MRI coordinates (mm), this is how sMri.SCS is saved.
-    sMri.SCS.NAS = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.NAS) .* 1000;
-    sMri.SCS.LPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.LPA) .* 1000;
-    sMri.SCS.RPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.RPA) .* 1000;
-    % Re-compute transformation
-    [unused, sMri] = cs_compute(sMri, 'scs');
+elseif isConfirm
+    % Request confirmation.
+    [Proceed, isCancel] = java_dialog('confirm', ['Updating the MRI fiducial points NAS/LPA/RPA to match a set of' 10 ...
+        'aligned digitized points is mainly used for exporting registration to a BIDS dataset.' 10 ...
+        'It will break any previous alignment of this subject with all other functional datasets!' 10 10 ...
+        'Proceed and update MRI now?' 10], 'Head points/anatomy registration');
+    if ~Proceed || isCancel
+        isCancel = true;
+        return;
+    end
+end
 
-    % Compare with existing MRI fids, replace if changed (> 1um), and update surfaces.
-    sMri.FileName = sSubject.Anatomy(sSubject.iAnatomy).FileName;
-    figure_mri('SaveMri', sMri);
+% Convert to MRI SCS coordinates.
+% To do this we need to apply the transformation provided.
+sMri = sMriOld;
+sMri.SCS.NAS = (Transform(1:3,:) * [ChannelMat.SCS.NAS'; 1])';
+sMri.SCS.LPA = (Transform(1:3,:) * [ChannelMat.SCS.LPA'; 1])';
+sMri.SCS.RPA = (Transform(1:3,:) * [ChannelMat.SCS.RPA'; 1])';
+% Then convert to MRI coordinates (mm), this is how sMri.SCS is saved.
+sMri.SCS.NAS = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.NAS) .* 1000;
+sMri.SCS.LPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.LPA) .* 1000;
+sMri.SCS.RPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.RPA) .* 1000;
+% Re-compute transformation
+[~, sMri] = cs_compute(sMri, 'scs');
 
-    % Adjust transformation. MRI SCS now matches digitized SCS (defined from same points).
+% Compare with existing MRI fids, replace if changed (> 1um), and update surfaces.
+sMri.FileName = sSubject.Anatomy(sSubject.iAnatomy).FileName;
+figure_mri('SaveMri', sMri);
+
+% MRI SCS now matches digitized SCS (defined from same points), but registration is now broken with
+% all channel files! Reset channel file, and optionally all others for this anatomy.
+isError = ResetChannelFiles(ChannelMat, sSubject);
+if isError
+    % Get the equivalent overall registration adjustment transformation previously saved.
+    [~, ~, TransfAfter] = process_adjust_coordinates('GetTransforms', ChannelMat);
+    % Return its inverse as it's now part of the MRI and should be removed from the channel file.
+    Transform = inverse(TransfAfter);
+else
     Transform = eye(4);
 end
+
+end % main function
+
+
+% Modified version of channel_align_manual CopyToOtherFolders, with fewer checks (all channel files,
+% not just "matching" ones) and resetting instead of applying a transform.
+function isError = ResetChannelFiles(ChannelMatSrc, sSubject)
+    % First, always reset the "source" channel file.
+    NewChannelFiles = cell(0,2);
+    [ChannelMatSrc, NewChannelFiles, isError] = ResetChannelFile(ChannelMatSrc, NewChannelFiles);
+    if isError
+        java_dialog('msgbox', sprintf(['Unable to reset channel file for subject: %s\n' ...
+            'Registration for all their datasets should be verified!'], sSubject.Name));
+        return;
+    end
+
+    % Confirmation: ask the first time 
+    isConfirm = [];
+    % If the subject is configured to share its channel files, nothing to do
+    if (sSubject.UseDefaultChannel >= 1)
+        return;
+    end
+    % Get all the dependent studies
+    [sStudies, iStudies] = bst_get('StudyWithSubject', sSubject.FileName);
+    % List of channel files to update
+    ChannelFiles = {};
+    strMsg = '';
+    % Loop on the other folders
+    for i = 1:length(sStudies)
+        % Skip original study
+        if (iStudies(i) == iStudySrc)
+            continue;
+        end
+        % Skip studies without channel files
+        if isempty(sStudies(i).Channel) || isempty(sStudies(i).Channel(1).FileName)
+            continue;
+        end
+        % Load channel file
+        ChannelMatDest = in_bst_channel(sStudies(i).Channel(1).FileName);
+        % Ask confirmation to the user
+        if isempty(isConfirm)
+            isConfirm = java_dialog('confirm', 'Reset all the channel files for this subject?', 'Align sensors');
+            if ~isConfirm
+                return;
+            end
+        end
+        % Add channel file to list of files to process
+        ChannelFiles{end+1} = sStudies(i).Channel(1).FileName;
+        strMsg = [strMsg, sStudies(i).Channel(1).FileName, 10];
+    end
+    % Apply transformation
+    if ~isempty(ChannelFiles)
+        % Progress bar
+        bst_progress('start', 'Align sensors', 'Updating other datasets...');
+        % Update files
+        channel_apply_transf(ChannelFiles, Transf, iChannels, 1);
+        % Give report to the user
+        bst_progress('stop');
+        java_dialog('msgbox', sprintf('Updated %d additional file(s):\n%s', length(ChannelFiles), strMsg));
+    end
+end
+

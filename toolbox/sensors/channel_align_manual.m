@@ -404,64 +404,10 @@ set(gChanAlign.hFig, 'Position', pos);
 if isProgress
     bst_progress('stop');
 end
-    
-% Flag if auto or manual registration performed, and if MRI fids updated. Print to command
-% window for now.
-ChannelMat = in_bst_channel(ChannelFile);
-iMriHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'), 1, 'last');
-% Can also be reset, so check for 'import' action and ignore previous alignments.
-iImport = find(strcmpi(ChannelMat.History(:,2), 'import'), 1, 'last');
-iAlign = find(strcmpi(ChannelMat.History(:,2), 'align'));
-iAlign(iAlign < iImport) = [];
-AlignType = 'none';
-while ~isempty(iAlign)
-    % Check which adjustment was done last.
-    switch lower(ChannelMat.History{iAlign(end),3}(1:5))
-        case 'remov'
-            % Removed a previous step. Ignore corresponding adjustment and look again.
-            iAlign(end) = [];
-            if contains(ChannelMat.History{iAlign(end),3}, 'AdjustedNative')
-                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-            elseif contains(ChannelMat.History{iAlign(end),3}, 'refine registration: head points')
-                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-            elseif contains(ChannelMat.History{iAlign(end),3}, 'manual correction')
-                iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-            else
-                bst_error('Unrecognized removed transformation in history.');
-            end
-            if isempty(iAlignRemoved)
-                bst_error('Missing removed transformation in history.');
-            else
-                iAlign(iAlignRemoved) = [];
-            end
-        case 'added'
-            % This alignment is between points and functional dataset, ignore here.
-            iAlign(end) = [];
-        case 'refin'
-            % Automatic MRI-points alignment
-            AlignType = 'auto';
-            break;
-        case 'align'
-            % Manual MRI-points alignment
-            AlignType = 'manual';
-            break;
-    end
-end
-disp(['BST> Previous registration adjustment: ' AlignType]);
-if ~isempty(iMriHist)
-    % Compare digitized fids to MRI fids (in MRI coordinates, mm).
-    if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
-            any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
-            any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
-        disp('BST> MRI fiducials updated, but different than digitized fiducials.');
-    else
-        disp('BST> MRI fiducials updated, and match digitized fiducials.');
-    end
-end
 
+% Check and print to command window if previously auto/manual registration, and if MRI fids updated.
+process_adjust_coordinates('CheckPrevAdjustments', in_bst_channel(ChannelFile), sMri);
 end
-
-
 
 %% ===== MOUSE CALLBACKS =====  
 %% ===== MOUSE DOWN =====
@@ -701,10 +647,9 @@ function UpdatePoints(iSelChan)
             Dist = bst_surfdist(gChanAlign.HeadPointsMarkersLoc, ...
                 get(gChanAlign.hSurfacePatch, 'Vertices'), get(gChanAlign.hSurfacePatch, 'Faces'));
             set(gChanAlign.hHeadPointsMarkers, 'CData', Dist * 1000);
-            % Update surface data and colorbar
-            TessInfo = getappdata(gChanAlign.hFig, 'Surface');
-            iTessPoints = find(strcmpi({TessInfo.Name}, 'HeadPoints'));
-            panel_surface('UpdateSurfaceData', gChanAlign.hFig, iTessPoints); 
+            % Update axes maximum
+            setappdata(gChanAlign.hFig, 'HeadpointsDistMax', max(Dist));
+            figure_3d('UpdateHeadPointsColormap', gChanAlign.hFig);
         end
         % Fiducials
         if ~isempty(gChanAlign.hHeadPointsFid)
@@ -908,18 +853,25 @@ function AlignClose_Callback(varargin)
     global gChanAlign;
     if gChanAlign.isChanged
         isCancel = false;
+        % Get new positions
+        [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
+        % Load original channel file
+        ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
+        % Report (in command window) max head and sensor displacements from changes.
+        CheckCurrentAdjustments(ChannelMat, ChannelMatOrig);
+
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
-            SaveChanged = 1;
+            SaveChanges = 1;
         else
             % If head points present, offer to update MRI anat fids to match digitized ones.
             if gChanAlign.isHeadPoints
                 [Choice, isCancel] = java_dialog('question', ['The sensors locations changed.' 10 ...
                     'Would you like to save changes?' 10 10], 'Align sensors', [], {'Yes', 'Update MRI', 'No'}, 'Yes');
                 if strcmpi(Choice, 'Yes')
-                    SaveChanged = 1;
+                    SaveChanges = 1;
                 else
-                    SaveChanged = 0;
+                    SaveChanges = 0;
                 end
                 if strcmpi(Choice, 'Update MRI')
                     % If EEG, warn that only linear transformation would be saved this way.
@@ -936,12 +888,13 @@ function AlignClose_Callback(varargin)
                         Transform = eye(4);
                         Transform(1:3,1:3) = gChanAlign.FinalTransf(1:3,1:3);
                         Transform(1:3,4)   = gChanAlign.FinalTransf(1:3,4);
-                        % Update MRI (and surfaces)
+                        % Update MRI (and surfaces), after more warning and confirmation. Also
+                        % offers to reset all associated channel files.
                         [~, isCancel] = channel_align_scs(gChanAlign.ChannelFile, Transform, 1, 1); % warn & confirm
                     end
                 end
             else % no head points
-                [SaveChanged, isCancel] = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
+                [SaveChanges, isCancel] = java_dialog('confirm', ['The sensors locations changed.' 10 10 ...
                     'Would you like to save changes? ' 10 10], 'Align sensors');
             end
         end
@@ -950,16 +903,12 @@ function AlignClose_Callback(varargin)
             return;
         end
         % Save changes to channel file and close figure
-        if SaveChanged
+        if SaveChanges
             % Progress bar
             bst_progress('start', 'Align sensors', 'Updating channel file...');
             % Restore standard close callback for 3DViz figures
             set(gChanAlign.hFig, 'CloseRequestFcn', gChanAlign.Figure3DCloseRequest_Bak);
             drawnow;
-            % Get new positions
-            [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
-            % Load original channel file
-            ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
             % Save new electrodes positions in ChannelFile
             bst_save(gChanAlign.ChannelFile, ChannelMat, 'v7');
             % Get study associated with channel file
@@ -969,12 +918,12 @@ function AlignClose_Callback(varargin)
             bst_progress('stop');
         end
     else
-        SaveChanged = 0;
+        SaveChanges = 0;
     end
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
     % Apply to other recordings with same sensor locations in the same subject
-    if SaveChanged
+    if SaveChanges
         CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
     end
 end

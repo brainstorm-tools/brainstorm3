@@ -30,7 +30,7 @@ eval(macro_method);
 end
 
 
-function sProcess = GetDescription() 
+function sProcess = GetDescription()
     % Description of the process
     sProcess.Comment     = 'Adjust coordinate system';
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/HeadMotion#Adjust_the_reference_head_position';
@@ -42,7 +42,7 @@ function sProcess = GetDescription()
     sProcess.OutputTypes = {'raw', 'data'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
-    % Option [to do: ignore bad segments]
+    % Option
     sProcess.options.reset.Type    = 'checkbox';
     sProcess.options.reset.Comment = 'Reset coordinates using original channel file (removes all adjustments: head, points, manual).';
     sProcess.options.reset.Value   = 0;
@@ -60,7 +60,7 @@ function sProcess = GetDescription()
     sProcess.options.bad.Type    = 'checkbox';
     sProcess.options.bad.Comment = 'For adjust option, exclude bad segments.';
     sProcess.options.bad.Value   = 1;
-    sProcess.options.bad.Class = 'Adjust';
+    sProcess.options.bad.Class   = 'Adjust';
     sProcess.options.points.Type    = 'checkbox';
     sProcess.options.points.Comment = 'Refine MRI coregistration using digitized head points.';
     sProcess.options.points.Value   = 0;
@@ -152,15 +152,13 @@ function OutputFiles = Run(sProcess, sInputs)
         
         % ----------------------------------------------------------------
         if sProcess.options.reset.Value
-            % The main goal of this option is to fix a bug in a previous version: when importing a
-            % channel file, when going to SCS coordinates based on digitized coils and anatomical
-            % fiducials, the channel orientation was wrong.  We wish to fix this but keep as much
-            % pre-processing that was previously done.  Thus we will re-import the channel file, and
-            % copy the projectors (and history) from the old one.
+            % The original goal of this option was to fix data affected by a previous bug while
+            % keeping as much pre-processing that was previously done.  We re-import the channel
+            % file, and copy the projectors (and history) from the old one.
             
-            [ChannelMat, NewChannelFiles, Failed] = ...
-                ResetChannelFile(ChannelMat, NewChannelFiles, sInputs(iFile), sProcess);
-            if Failed
+            [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, ...
+                NewChannelFiles, sInputs(iFile), sProcess);
+            if isError
                 continue;
             end
             
@@ -175,10 +173,10 @@ function OutputFiles = Run(sProcess, sInputs)
             
             Which = {};
             if sProcess.options.head.Value
-                Which{end+1} = 'AdjustedNative'; %#ok<*AGROW> 
+                Which{end+1} = 'AdjustedNative'; %#ok<AGROW> 
             end
             if sProcess.options.points.Value
-                Which{end+1} = 'refine registration: head points';
+                Which{end+1} = 'refine registration: head points'; %#ok<AGROW> 
             end
             
             for TransfLabel = Which
@@ -214,9 +212,9 @@ function OutputFiles = Run(sProcess, sInputs)
         % ----------------------------------------------------------------
         if ~sProcess.options.remove.Value && sProcess.options.head.Value
             % Complex indexing to get all inputs for this same channel file.
-            [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, ...
+            [ChannelMat, isError] = AdjustHeadPosition(ChannelMat, ...
                 sInputs(iUniqInputs == iUniqInputs(iFile)), sProcess);
-            if Failed
+            if isError
                 continue;
             end
         end % adjust head position
@@ -314,21 +312,29 @@ end
 %                 end
 
 
-function [ChannelMat, NewChannelFiles, Failed] = ResetChannelFile(...
-        ChannelMat, NewChannelFiles, sInput, sProcess)
+function [ChannelMat, NewChannelFiles, isError] = ResetChannelFile(ChannelMat, NewChannelFiles, sInput, sProcess)
+    % Reload a channel file, but keep projectors and history. First look for original file from
+    % history, and if it's no longer there, user will be prompted. User selections are noted as
+    % pairs {old, new} in NewChannelFiles for potential reuse (e.g. same original data at multiple
+    % pre-processing steps).
+    % This function does not save the file, but only returns the updated structure.
     if nargin < 4
         sProcess = [];
     end
-    Failed = false;
+    if nargin < 3
+        sInput = [];
+    end
+    if nargin < 2 || isempty(NewChannelFiles)
+        NewChannelFiles = cell(0,2);
+    end
+    isError = false;
     bst_progress('text', 'Importing channel file...');
     % Extract original data file from channel file history.
-    if any(size(ChannelMat.History) < [1, 3]) || ...
-            ~strcmp(ChannelMat.History{1, 2}, 'import')
+    if any(size(ChannelMat.History) < [1, 3]) || ~strcmp(ChannelMat.History{1, 2}, 'import')
         NotFound = true;
         ChannelFile = '';
     else
-        ChannelFile = regexp(ChannelMat.History{1, 3}, ...
-            '(?<=: )(.*)(?= \()', 'match');
+        ChannelFile = regexp(ChannelMat.History{1, 3}, '(?<=: )(.*)(?= \()', 'match');
         if isempty(ChannelFile)
             NotFound = true;
         else
@@ -355,10 +361,9 @@ function [ChannelMat, NewChannelFiles, Failed] = ResetChannelFile(...
     if NotFound
         bst_report('Info', sProcess, sInput, ...
             sprintf('Could not find original channel file: %s.', ChannelFile));
-        % import_channel will prompt the user, but they will not
-        % know which file to pick!  And prompt is modal for Matlab,
-        % so likely can't look at command window (e.g. if
-        % Brainstorm is in front).
+        % import_channel will prompt the user, but they would not know which file to pick!  And
+        % prompt is modal for Matlab, so likely can't look at command window (e.g. if Brainstorm is
+        % in front). So add another pop-up with the needed info.
         [ChanPath, ChanName, ChanExt] = fileparts(ChannelFile);
         MsgFig = msgbox(sprintf('Select the new location of channel file %s %s to reset %s.', ...
             ChanPath, [ChanName, ChanExt], sInput.ChannelFile), ...
@@ -370,13 +375,11 @@ function [ChannelMat, NewChannelFiles, Failed] = ResetChannelFile(...
         DefaultFormats.ChannelIn = FileFormat;
         bst_set('DefaultFormats',  DefaultFormats);
         
-        [NewChannelMat, NewChannelFile] = import_channel(...
-            sInput.iStudy, '', FileFormat, 0, 0, 0, [], []);
+        [NewChannelMat, NewChannelFile] = import_channel(sInput.iStudy, '', FileFormat, 0, 0, 0, [], []);
     else
         
         % Import from original file.
-        [NewChannelMat, NewChannelFile] = import_channel(...
-            sInput.iStudy, ChannelFile, FileFormat, 0, 0, 0, [], []);
+        [NewChannelMat, NewChannelFile] = import_channel(sInput.iStudy, ChannelFile, FileFormat, 0, 0, 0, [], []);
         % iStudies, ChannelFile, FileFormat, ChannelReplace, ChannelAlign, isSave, isFixUnits, isApplyVox2ras)
         % iStudy index is needed to avoid error for noise recordings with missing SCS transform.
         % ChannelReplace is for replacing the file, only if isSave.
@@ -385,31 +388,30 @@ function [ChannelMat, NewChannelFiles, Failed] = ResetChannelFile(...
     
     % See if it worked.
     if isempty(NewChannelFile)
-        bst_report('Error', sProcess, sInput, ...
-            'No file channel file selected.');
-        Failed = true;
+        bst_report('Error', sProcess, sInput, 'No file channel file selected.');
+        isError = true;
         return;
     elseif isempty(NewChannelMat)
-        bst_report('Error', sProcess, sInput, ...
-            sprintf('Unable to import channel file: %s', NewChannelFile));
-        Failed = true;
+        bst_report('Error', sProcess, sInput, sprintf('Unable to import channel file: %s', NewChannelFile));
+        isError = true;
         return;
     elseif numel(NewChannelMat.Channel) ~= numel(ChannelMat.Channel)
         bst_report('Error', sProcess, sInput, ...
             'Original channel file has different channels than current one, aborting.');
-        Failed = true;
+        isError = true;
         return;
     elseif NotFound && ~isempty(ChannelFile)
         % Save the selected new location.
         NewChannelFiles(end+1, :) = {ChannelFile, NewChannelFile};
     end
-    % Copy the new old projectors and history to the new structure.
+    % Copy the old projectors and history to the new structure.
     NewChannelMat.Projector = ChannelMat.Projector;
     NewChannelMat.History = ChannelMat.History;
     ChannelMat = NewChannelMat;
-    %     clear NewChannelMat
+
     % Add number of channels to comment, like in db_set_channel.
     ChannelMat.Comment = [ChannelMat.Comment, sprintf(' (%d)', length(ChannelMat.Channel))];
+    % Add history
     ChannelMat = bst_history('add', ChannelMat, 'import', ...
         ['Reset from: ' NewChannelFile ' (Format: ' FileFormat ')']);
 end % ResetChannelFile
@@ -428,8 +430,8 @@ function ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInput, sPro
         % Need to check for empty, otherwise applies to all channels!
     else
         iChan = []; % All channels.
-        % Note: NIRS doesn't have a separate set of transformations, but
-        % "refine" and "SCS" are applied to NIRS as well.
+        % Note: NIRS doesn't have a separate set of transformations, but "refine" and "SCS" are
+        % applied to NIRS as well.
     end
     while ~isempty(iUndoMeg)
         if isMegOnly && isempty(iChan)
@@ -488,8 +490,8 @@ function ChannelMat = RemoveTransformation(ChannelMat, TransfLabel, sInput, sPro
 end % RemoveTransformation
 
 
-function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess)
-    Failed = false;
+function [ChannelMat, isError] = AdjustHeadPosition(ChannelMat, sInputs, sProcess)
+    isError = false;
     % Check the input is CTF.
     isRaw = (length(sInputs(1).FileName) > 9) && ~isempty(strfind(sInputs(1).FileName, 'data_0raw'));
     if isRaw
@@ -500,7 +502,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
     if ~strcmp(DataMat.Device, 'CTF')
         bst_report('Error', sProcess, sInputs, ...
             'Adjust head position is currently only available for CTF data.');
-        Failed = true;
+        isError = true;
         return;
     end
     
@@ -523,7 +525,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
         [Locs, HeadSamplePeriod] = process_evt_head_motion('LoadHLU', sInputs(iIn), [], false);
         if isempty(Locs)
             % No HLU channels. Error already reported. Skip this file.
-            Failed = true;
+            isError = true;
             return;
         end
         % Exclude all bad segments.
@@ -559,7 +561,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
                 Locs(:, ismember(iHeadSamples, iBad)) = [];
             end
         end
-        Locations = [Locations, Locs];
+        Locations = [Locations, Locs]; %#ok<AGROW> 
     end
     
     % If a collection was aborted, the channels will be filled with zeros. Remove these.
@@ -569,12 +571,11 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
     MedianLoc = MedianLocation(Locations);
     %         disp(MedianLoc);
     
-    % Also get the initial reference position.  We only use it to see
-    % how much the adjustment moves.
+    % Also get the initial reference position.  We only use it to estimate how much the adjustment moves.
     InitRefLoc = ReferenceHeadLocation(ChannelMat, sInputs);
     if isempty(InitRefLoc)
         % There was an error, already reported. Skip this file.
-        Failed = true;
+        isError = true;
         return;
     end
     
@@ -584,18 +585,18 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
         GetTransforms(ChannelMat, sInputs);
     if isempty(TransfBefore)
         % There was an error, already reported. Skip this file.
-        Failed = true;
+        isError = true;
         return;
     end
     % Compute transformation corresponding to coil position.
     [TransfMat, TransfAdjust] = LocationTransform(MedianLoc, ...
         TransfBefore, TransfAdjust, TransfAfter);
-    % This TransfMat would automatically give an identity transformation if the
-    % process is run multiple times, and TransfAdjust would not change.
+    % This TransfMat would automatically give an identity transformation if the process is run
+    % multiple times, and TransfAdjust would not change.
     
-    % Apply this transformation to the current head position. This is a
-    % correction to the 'Dewar=>Native' transformation so it applies to MEG
-    % channels only and not to EEG or head points, which start in Native.
+    % Apply this transformation to the current head position. This is a correction to the
+    % 'Dewar=>Native' transformation so it applies to MEG channels only and not to EEG or head
+    % points, which start in Native.
     iMeg  = sort([good_channel(ChannelMat.Channel, [], 'MEG'), ...
         good_channel(ChannelMat.Channel, [], 'MEG REF')]);
     ChannelMat = channel_apply_transf(ChannelMat, TransfMat, iMeg, false); % Don't apply to head points.
@@ -608,9 +609,8 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
     % This "moved" transformation is also computed in LocationTransform above.
     if isempty(iAdjust)
         iAdjust = iDewToNat + 1;
-        % Shift transformations to make room for the new
-        % adjustment, and reject the last one, that we just
-        % applied.
+        % Shift transformations to make room for the new adjustment, and reject the last one, that
+        % we just applied.
         ChannelMat.TransfMegLabels(iDewToNat+2:end) = ...
             ChannelMat.TransfMegLabels(iDewToNat+1:end-1); % reject last one
         ChannelMat.TransfMeg(iDewToNat+2:end) = ChannelMat.TransfMeg(iDewToNat+1:end-1);
@@ -630,7 +630,7 @@ function [ChannelMat, Failed] = AdjustHeadPosition(ChannelMat, sInputs, sProcess
     AfterRefLoc = ReferenceHeadLocation(ChannelMat, sInputs);
     if isempty(AfterRefLoc)
         % There was an error, already reported. Skip this file.
-        Failed = true;
+        isError = true;
         return;
     end
     DistanceAdjusted = process_evt_head_motion('RigidDistances', AfterRefLoc, InitRefLoc);
@@ -653,23 +653,24 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
         sInput = sInput(1);
     end
     Message = '';
-    
-    % These aren't exactly the coil positions in the .hc file, which are not saved anywhere in
-    % Brainstorm, but was verified to give the same transformation. The SCS coil coordinates are
-    % from the digitized coil positions.
-    if isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && ...
-            (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
-        %         % Use the SCS distances from origin, with left and right PA points symmetrical.
-        %         LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
-        %         NasDist = ChannelMat.SCS.NAS(1);
-        InitLoc = [ChannelMat.SCS.NAS(:), ChannelMat.SCS.LPA(:), ChannelMat.SCS.RPA(:); ones(1, 3)];
-    elseif ~isempty(sInput) && isfield(sInput, 'header') && isfield(sInput.header, 'hc') && isfield(sInput.header.hc, 'SCS') && ...
+
+    % From recent investigations, digitized locations are probably not as robust/accurate as those
+    % measured by the MEG. So use the .hc positions if available.
+    if ~isempty(sInput) && isfield(sInput, 'header') && isfield(sInput.header, 'hc') && isfield(sInput.header.hc, 'SCS') && ...
             all(isfield(sInput.header.hc.SCS, {'NAS','LPA','RPA'})) && length(sInput.header.hc.SCS.NAS) == 3
         % Initial head coil locations from the CTF .hc file, but in dewar coordinates, NOT in SCS coordinates!
         InitLoc = [sInput.header.hc.SCS.NAS(:), sInput.header.hc.SCS.LPA(:), sInput.header.hc.SCS.RPA(:)]; % 3x3 by columns
         InitLoc = InitLoc(:);
         return;
-        %InitLoc = TransfAdjust * TransfBefore * [InitLoc; ones(1, 3)];
+        % ChannelMat.SCS are not the coil positions in the .hc file, which are not saved in Brainstorm,
+        % but the digitized coil positions, if present. However, both are saved in "Native" coordinates
+        % and thus give the same transformation.
+    elseif isfield(ChannelMat, 'SCS') && all(isfield(ChannelMat.SCS, {'NAS','LPA','RPA'})) && ...
+            (length(ChannelMat.SCS.NAS) == 3) && (length(ChannelMat.SCS.LPA) == 3) && (length(ChannelMat.SCS.RPA) == 3)
+        %         % Use the SCS distances from origin, with left and right PA points symmetrical.
+        %         LeftRightDist = sqrt(sum((ChannelMat.SCS.LPA - ChannelMat.SCS.RPA).^2));
+        %         NasDist = ChannelMat.SCS.NAS(1);
+        InitLoc = [ChannelMat.SCS.NAS(:), ChannelMat.SCS.LPA(:), ChannelMat.SCS.RPA(:); ones(1, 3)];
     else
         % Just use some reasonable distances, with a warning.
         Message = 'Exact reference head coil locations not available. Using reasonable (adult) locations according to head position.';
@@ -690,8 +691,7 @@ function [InitLoc, Message] = ReferenceHeadLocation(ChannelMat, sInput)
 end % ReferenceHeadLocation
 
 
-function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
-        GetTransforms(ChannelMat, sInputs)
+function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = GetTransforms(ChannelMat, sInputs)
     % Extract transformations that are applied before and after the head position adjustment we are
     % creating now.  We keep the 'Dewar=>Native' transformation intact and separate from the
     % adjustment for no deep reason, but it is the only remaining trace of the initial head coil
@@ -705,6 +705,9 @@ function [TransfBefore, TransfAdjust, TransfAfter, iAdjust, iDewToNat] = ...
     % this time based on the instantaneous head position, so we need to keep the global adjustment
     % based on the entire recording if it is there.
     
+    if nargin < 2
+        sInputs = [];
+    end
     % Check order of transformations.  These situations should not happen unless there was some
     % manual editing.
     iDewToNat = find(strcmpi(ChannelMat.TransfMegLabels, 'Dewar=>Native'));
@@ -767,6 +770,7 @@ function [TransfMat, TransfAdjust] = LocationTransform(Loc, TransfBefore, Transf
     end
     
     % Transformation matrices are in m, as are HLU channels.
+    %
     % The HLU channels (here Loc) are in dewar coordinates.  Bring them to the current system by
     % applying all saved transformations, starting with 'Dewar=>Native'.  This will save us from
     % having to use inverse transformations later.
@@ -835,6 +839,8 @@ function M = GeoMedian(X, Precision)
     % Weiszfeld's algorithm is used, which is a subgradient algorithm; with (Verdi & Zhang 2001)'s
     % modification to avoid non-optimal fixed points (if at any iteration the approximation of M
     % equals a data point).
+    %
+    % Marc Lalancette 2012-05
     
     nDims = ndims(X);
     XSize = size(X);
@@ -891,6 +897,7 @@ function M = GeoMedian(X, Precision)
             end
             
             % New estimate.
+            %
             % Note the possibility of D = 0 and (n - nG) = 0, in which case 0/0 should be 0, but
             % here gives NaN, which the max function ignores, returning 0 instead of 1. This is fine
             % however since this multiplies D (=0 in that case).
@@ -910,3 +917,141 @@ function M = GeoMedian(X, Precision)
 end % GeoMedian
 
 
+function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustments(ChannelMat, sMri)
+    % Flag if auto or manual registration performed, and if MRI fids updated. Print to command
+    % window for now, if no output arguments.
+    AlignType = [];
+    isMriUpdated = [];
+    isMriMatch = [];
+    isPrint = nargout == 0;
+    if any(~isfield(ChannelMat, {'History', 'HeadPoints'}))
+        % Nothing to check.
+        return;
+    end
+    if nargin < 2 || isempty(sMri) || ~isfield(sMri, 'History')
+        iMriHist = [];
+    else
+        % History string is set in figure_mri SaveMri.
+        iMriHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'), 1, 'last');
+    end
+    % Can also be reset, so check for 'import' action and ignore previous alignments.
+    iImport = find(strcmpi(ChannelMat.History(:,2), 'import'), 1, 'last');
+    iAlign = find(strcmpi(ChannelMat.History(:,2), 'align'));
+    iAlign(iAlign < iImport) = [];
+    AlignType = 'none';
+    while ~isempty(iAlign)
+        % Check which adjustment was done last.
+        switch lower(ChannelMat.History{iAlign(end),3}(1:5))
+            case 'remov'
+                % Removed a previous step. Ignore corresponding adjustment and look again.
+                iAlign(end) = [];
+                if contains(ChannelMat.History{iAlign(end),3}, 'AdjustedNative')
+                    iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+                elseif contains(ChannelMat.History{iAlign(end),3}, 'refine registration: head points')
+                    iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+                elseif contains(ChannelMat.History{iAlign(end),3}, 'manual correction')
+                    iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+                else
+                    bst_error('Unrecognized removed transformation in history.');
+                end
+                if isempty(iAlignRemoved)
+                    bst_error('Missing removed transformation in history.');
+                else
+                    iAlign(iAlignRemoved) = [];
+                end
+            case 'added'
+                % This alignment is between points and functional dataset, ignore here.
+                iAlign(end) = [];
+            case 'refin'
+                % Automatic MRI-points alignment
+                AlignType = 'auto';
+                break;
+            case 'align'
+                % Manual MRI-points alignment
+                AlignType = 'manual';
+                break;
+        end
+    end
+    if isPrint
+        disp(['BST> Previous registration adjustment: ' AlignType]);
+    end
+    if ~isempty(iMriHist)
+        isMriUpdated = true;
+        % Compare digitized fids to MRI fids (in MRI coordinates, mm). ChannelMat.SCS fids are NOT
+        % kept up to date when adjusting registration (manual or auto), so get them from head points
+        % again.
+        % Get the three fiducials in the head points
+        ChannelMat = UpdateChannelMatScs(ChannelMat);
+        if any(abs(sMri.SCS.NAS - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.NAS) .* 1000) > 1e-3) || ...
+                any(abs(sMri.SCS.LPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.LPA) .* 1000) > 1e-3) || ...
+                any(abs(sMri.SCS.RPA - cs_convert(sMri, 'scs', 'mri', ChannelMat.SCS.RPA) .* 1000) > 1e-3)
+            if isPrint
+                disp('BST> MRI fiducials previously updated, but different than current digitized fiducials.');
+            else
+                isMriMatch = false;
+            end
+        else
+            if isPrint
+                disp('BST> MRI fiducials previously updated, and match current digitized fiducials.');
+            else
+                isMriMatch = true;
+            end
+        end
+    end
+
+end
+
+
+function [DistHead, DistSens] = CheckCurrentAdjustments(ChannelMat, ChannelMatRef)
+    % Display max displacement from registration adjustments, in command window.
+    % If second ChannelMat is provided as reference, get displacement between the two.
+    isPrint = nargout == 0;
+    if nargin < 2 || isempty(ChannelMatRef)
+        ChannelMatRef = [];
+    end
+
+    % Update SCS from head points if present.
+    ChannelMat = UpdateChannelMatScs(ChannelMat);
+
+    if ~isempty(ChannelMatRef)
+        ChannelMatRef = UpdateChannelMatScs(ChannelMatRef);
+        % For head displacement, we use the "rigid distance" from the head motion code, basically
+        % the max distance of any point on a simplified spherical head.
+        DistHead = process_evt_head_motion('RigidDistances', ...
+            [ChannelMat.SCS.NAS(:); ChannelMat.SCS.LPA(:); ChannelMat.SCS.RPA(:)], ...
+            [ChannelMatRef.SCS.NAS(:); ChannelMatRef.SCS.LPA(:); ChannelMatRef.SCS.RPA(:)]);
+        DistSens = max(sqrt(sum(([ChannelMat.Channel.Loc] - [ChannelMatRef.Channel.Loc]).^2)));
+    else
+        % Implicitly using actual (MRI) SCS as reference, this includes all adjustments.
+        DistHead = process_evt_head_motion('RigidDistances', ...
+            [ChannelMat.SCS.NAS(:); ChannelMat.SCS.LPA(:); ChannelMat.SCS.RPA(:)]);
+        % Get equivalent transform for all adjustments to "undo" on sensors for comparison.
+        [~, ~, Transf] = process_adjust_coordinates('GetTransforms', ChannelMat);
+        Loc = [ChannelMat.Channel.Loc];
+        % Inverse transf: subtract translation first, then rotate the "other way" (transpose).
+        LocRef = Transf(1:3,1:3)' * bsxfun(@minus, Loc, Transf(1:3,4));
+        DistSens = max(sqrt(sum((Loc - LocRef).^2)));
+    end
+
+    if isPrint
+        fprintf('BST> Max displacement for registration adjustment:\n    head: %1.1f mm\n    sensors: %1.1f mm\n', ...
+            DistHead*1000, DistSens*1000);
+    end
+
+end
+
+
+function ChannelMat = UpdateChannelMatScs(ChannelMat)
+    if ~isfield(ChannelMat, 'HeadPoints')
+        return;
+    end
+    % Get the three fiducials in the head points
+    iNas = find(strcmpi(ChannelMat.HeadPoints.Label, 'Nasion') | strcmpi(ChannelMat.HeadPoints.Label, 'NAS'));
+    iLpa = find(strcmpi(ChannelMat.HeadPoints.Label, 'Left')   | strcmpi(ChannelMat.HeadPoints.Label, 'LPA'));
+    iRpa = find(strcmpi(ChannelMat.HeadPoints.Label, 'Right')  | strcmpi(ChannelMat.HeadPoints.Label, 'RPA'));
+    if ~isempty(iNas) && ~isempty(iLpa) && ~isempty(iRpa)
+        ChannelMat.SCS.NAS = mean(ChannelMat.HeadPoints.Loc(:,iNas)', 1);
+        ChannelMat.SCS.LPA = mean(ChannelMat.HeadPoints.Loc(:,iLpa)', 1);
+        ChannelMat.SCS.RPA = mean(ChannelMat.HeadPoints.Loc(:,iRpa)', 1);
+    end
+end

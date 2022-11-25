@@ -1130,20 +1130,15 @@ end
 %% ===== ADD A SURFACE =====
 % Add a surface to a given 3DViz figure
 % USAGE : [iTess, TessInfo] = panel_surface('AddSurface', hFig, surfaceFile)
-%         [iTess, TessInfo] = panel_surface('AddSurface', hFig, [], surfaceType)
 % OUTPUT: Indice of the surface in the figure's surface array
-function [iTess, TessInfo] = AddSurface(hFig, surfaceFile, surfaceType)
+function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
     % ===== CHECK EXISTENCE =====
+    % Check whether filename is an absolute or relative path
+    surfaceFile = file_short(surfaceFile);
     % Get figure appdata (surfaces configuration)
     TessInfo = getappdata(hFig, 'Surface');
     % Check that this surface is not already displayed in 3DViz figure
-    if isempty(surfaceFile) && nargin > 2
-        iTess = find(file_compare({TessInfo.Name}, surfaceType));
-    else
-        % Check whether filename is an absolute or relative path
-        surfaceFile = file_short(surfaceFile);
-        iTess = find(file_compare({TessInfo.SurfaceFile}, surfaceFile));
-    end
+    iTess = find(file_compare({TessInfo.SurfaceFile}, surfaceFile));
     if ~isempty(iTess)
         disp('BST> This surface is already displayed. Ignoring...');
         return
@@ -1166,9 +1161,6 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile, surfaceType)
     % ===== PLOT OBJECT =====
     % Get file type (tessalation or MRI)
     fileType = file_gettype(surfaceFile);
-    if strcmpi(fileType, 'unknown') && nargin > 2
-        fileType = surfaceType;
-    end
     % === TESSELATION ===
     if any(strcmpi(fileType, {'cortex','scalp','innerskull','outerskull','tess'}))
         % === LOAD SURFACE ===
@@ -1298,16 +1290,6 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile, surfaceType)
             % Update figure's surfaces list and current surface pointer
             setappdata(hFig, 'Surface',  TessInfo);
         end
-        
-    % === NO FILE: HeadPoints ===
-    elseif strcmpi(fileType, 'HeadPoints')
-        % Points were already displayed; just add the patch to the figure surfaces.
-        TessInfo(iTess).DataSource.Type = 'HeadPointsDistance';
-        TessInfo(iTess).Name = 'HeadPoints';
-        TessInfo(iTess).ColormapType = 'stat1';
-        TessInfo(iTess).hPatch = findobj(hFig, 'Tag', 'HeadPointsMarkers');
-        % Update figure's surfaces list and current surface pointer
-        setappdata(hFig, 'Surface',  TessInfo);
         
     % === FEM ===
     else % TODO: Check for FEM fileType explicitly
@@ -1515,11 +1497,6 @@ function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isSt
             TessInfo(iTess).Data = [];
             TessInfo(iTess).DataWmat = [];
 
-        case 'HeadPointsDistance'
-            ColormapType = 'stat1';
-            DisplayUnits = 'mm';
-            % Data is actually added in UpdateSurfaceData below.
-            
         otherwise
             ColormapType = '';
             DisplayUnits = [];
@@ -1901,15 +1878,6 @@ function [isOk, TessInfo] = UpdateSurfaceData(hFig, iSurfaces)
                 figure_callback(hFig, 'UpdateSurfaceColor', hFig, iTess);
                 % Get updated surface definition
                 TessInfo = getappdata(hFig, 'Surface');
-
-            case 'HeadPointsDistance'
-                TessInfo(iTess).Data = get(TessInfo(iTess).hPatch, 'CData');
-                if isempty(TessInfo(iTess).Data) || ~isnumeric(TessInfo(iTess).Data)
-                    isOk = 0;
-                    return;
-                end
-                TessInfo(iTess).DataMinMax = [min(TessInfo(iTess).Data(:)), max(TessInfo(iTess).Data(:))];
-
             otherwise
                 % Nothing to do
         end
@@ -2033,7 +2001,7 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             TessInfo(iTess).Data = abs(TessInfo(iTess).Data);
         end
         % If current colormap is the default colormap for this figure (for colorbar)
-        if strcmpi(ColormapInfo.Type, TessInfo(iTess).ColormapType) && ~isempty(TessInfo(iTess).DataSource.Type)
+        if strcmpi(ColormapInfo.Type, TessInfo(iTess).ColormapType) && ~isempty(TessInfo(iTess).DataSource.FileName)
             if all(~isnan(TessInfo(iTess).DataLimitValue)) && (TessInfo(iTess).DataLimitValue(1) < TessInfo(iTess).DataLimitValue(2))
                 set(hAxes, 'CLim', TessInfo(iTess).DataLimitValue);
             else
@@ -2049,8 +2017,7 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             end
         end     
         % === DISPLAY ON MRI ===
-        if strcmpi(TessInfo(iTess).Name, 'Anatomy') && ~isempty(TessInfo(iTess).DataSource.Type) && ...
-                ~strcmpi(TessInfo(iTess).DataSource.Type, 'MriTime') && isempty(TessInfo(iTess).OverlayCube)
+        if strcmpi(TessInfo(iTess).Name, 'Anatomy') && ~isempty(TessInfo(iTess).DataSource.Type) && ~strcmpi(TessInfo(iTess).DataSource.Type, 'MriTime') && isempty(TessInfo(iTess).OverlayCube)
             % Progress bar
             isProgressBar = bst_progress('isVisible');
             bst_progress('start', 'Display MRI', 'Updating values...');
@@ -2062,10 +2029,6 @@ function UpdateSurfaceColormap(hFig, iSurfaces)
             if ~isProgressBar
                 bst_progress('stop');
             end
-        elseif strcmpi(TessInfo(iTess).Name, 'HeadPoints')
-            % No need to update surface color here, data already updated.
-            % Update figure's appdata (surface list)
-            setappdata(hFig, 'Surface', TessInfo);            
         else
             % Update figure's appdata (surface list)
             setappdata(hFig, 'Surface', TessInfo);
