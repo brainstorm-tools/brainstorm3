@@ -396,7 +396,7 @@ panel_surface('SetSizeThreshold', hFig, 1, 1);
         elseif isAvgRef
             strTitle = [strTarget '  |  Average reference'];
         else
-            strTitle = [strTarget, '  |  Reference : ', Channels(iRef).Name ' (green)'];
+            strTitle = [strTarget, sprintf('  |  Reference #%d/%d : %s (green)', iRef, length(Channels), Channels(iRef).Name)];
         end
         if (iChannel == 1) && (length(Channels) > 1)
             strTitle = [strTitle, 10 '[Press arrows for next/previous channel (or H for help)]'];
@@ -502,12 +502,41 @@ end
 function PlotBlob(hAxes, GridLoc, dt, V, Thresh)
     % Compute isosurface with iso2mesh
     try
+        % Compute isosurface
         [P,v,fc] = qmeshcut(dt.ConnectivityList, GridLoc, V, Thresh);
-        Faces = [fc(:,[1,2,3]); fc(:,[1,3,4])];             % convert quads into triangles
-        [P,Faces] = meshcheckrepair(P, Faces, 'dup');       % remove duplicate nodes
-        % [P,Faces] = meshcheckrepair(P, Faces, 'meshfix');   % generate a close surface
-        % [no2,el2]=s2m(no1,fc1,1,0.001);    % test if the surface is water-tight
+        % Convert quads into triangles
+        Faces = [fc(:,[1,2,3]); fc(:,[1,3,4])];
+        % Remove duplicate nodes
+        [P,Faces] = meshcheckrepair(P, Faces, 'dup');
+
+        % TODO: The surfaces must be closed using the boundaries of the brain
+        % Maybe adding to the displayed patch the convhull of the full grid?
+
+        % The block below computes the VTA: 
+        % - it is quite slow 
+        % - it requires the old TETGEN binaries to be kept in Iso2mesh (+2Mb in the binary package)
+        % => Kept commented until further evaluated
+        % =================================================
+        % % Separate different blobs (possibly one around each active contact)
+        % splitFaces = finddisconnsurf(Faces);
+        % % Process each disconnected element separately
+        % VTA = 0;
+        % nodes = cell(2,length(splitFaces));
+        % for i = 1:length(splitFaces)
+        %     % Generate a closed surface
+        %     [nodes{1,i}, nodes{2,i}] = meshcheckrepair(P, splitFaces{i}, 'meshfix');
+        %     % Test if the surface is water-tight
+        %     % [nodes{1,i}, nodes{2,i}] = s2m(nodes{1,i}, nodes{2,i}, 1, 0.001);
+        %     % Compute its volume
+        %     VTA = VTA + surfvolume(nodes{1,i}, nodes{2,i});
+        % end
+        % % Display VTA
+        % disp(sprintf('BST> VTA = %f cm2', VTA * 1e6));
+        % % Concatenate all the fixed blobs together
+        % [P, Faces] = mergesurf(nodes{:});
+        % ==================================================
     catch
+        disp(['Error trying to compute the isosurface with Iso2mesh: ' lasterr]);
         Faces = [];
     end
     % Compute boundaries
