@@ -930,15 +930,15 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
     while ~isempty(iAlign)
         % Check which adjustment was done last.
         switch lower(ChannelMat.History{iAlign(end),3}(1:5))
-            case 'remov'
+            case 'remov' % ['Removed transform: ' TransfLabel]
                 % Removed a previous step. Ignore corresponding adjustment and look again.
                 iAlign(end) = [];
-                if contains(ChannelMat.History{iAlign(end),3}, 'AdjustedNative')
-                    iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-                elseif contains(ChannelMat.History{iAlign(end),3}, 'refine registration: head points')
-                    iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
-                elseif contains(ChannelMat.History{iAlign(end),3}, 'manual correction')
-                    iAlignRemoved = find(contains(ChannelMat.History(iAlign,3), 'AdjustedNative'), 1, 'last');
+                if strncmpi(ChannelMat.History{iAlign(end),3}(20:24), 'AdjustedNative', 5)
+                    iAlignRemoved = find(cellfun(@(c)strcmpi(c(1:5), 'added'), ChannelMat.History(iAlign,3)), 1, 'last');
+                elseif strncmpi(ChannelMat.History{iAlign(end),3}(20:24), 'refine registration: head points', 5)
+                    iAlignRemoved = find(cellfun(@(c)strcmpi(c(1:5), 'refin'), ChannelMat.History(iAlign,3)), 1, 'last');
+                elseif strncmpi(ChannelMat.History{iAlign(end),3}(20:24), 'manual correction', 5)
+                    iAlignRemoved = find(cellfun(@(c)strcmpi(c(1:5), 'align'), ChannelMat.History(iAlign,3)), 1, 'last');
                 else
                     bst_error('Unrecognized removed transformation in history.');
                 end
@@ -947,16 +947,22 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
                 else
                     iAlign(iAlignRemoved) = [];
                 end
-            case 'added'
+            case 'added' % 'Added adjustment to Native coordinates based on median head position' 
                 % This alignment is between points and functional dataset, ignore here.
                 iAlign(end) = [];
-            case 'refin'
+            case 'refin' % 'Refining the registration using the head points:' 
                 % Automatic MRI-points alignment
                 AlignType = 'auto';
                 break;
-            case 'align'
+            case 'align' % 'Align channels manually:'
                 % Manual MRI-points alignment
                 AlignType = 'manual';
+                break;
+            case 'non-l' % 'Non-linear transformation'
+                AlignType = 'non-linear';
+                break;
+            otherwise
+                AlignType = 'unrecognized';
                 break;
         end
     end
