@@ -405,8 +405,6 @@ if isProgress
     bst_progress('stop');
 end
 
-% Check and print to command window if previously auto/manual registration, and if MRI fids updated.
-process_adjust_coordinates('CheckPrevAdjustments', in_bst_channel(ChannelFile), sMri);
 end
 
 %% ===== MOUSE CALLBACKS =====  
