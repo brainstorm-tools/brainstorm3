@@ -231,7 +231,7 @@ end
     
 % ===== DISPLAY MRI FIDUCIALS =====
 % Get the fiducials positions defined in the MRI volume
-sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS', 'History');
+sMri = load(file_fullpath(sSubject.Anatomy(sSubject.iAnatomy).FileName), 'SCS');
 if ~isempty(sMri.SCS.NAS) && ~isempty(sMri.SCS.LPA) && ~isempty(sMri.SCS.RPA)
     % Convert coordinates MRI => SCS
     MriFidLoc = [cs_convert(sMri, 'mri', 'scs', sMri.SCS.NAS ./ 1000); ...
