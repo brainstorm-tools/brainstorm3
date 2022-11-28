@@ -110,18 +110,6 @@ function OutputFiles = Run(sProcess, sInputs)
         bst_report('Info', sProcess, sInputs, ...
             'Multiple inputs were found for a single channel file. They will be concatenated for adjusting the head position.');
     end
-
-    if ~sProcess.options.remove.Value && sProcess.options.points.Value && sProcess.options.scs.Value
-        % Warning and confirmation dialog.
-        isConfirmed = java_dialog('confirm', 'Ajusting MRI nasion and ear points will break previous alignment with head points for files not included here. Proceed?', ...
-            'Adjust MRI nasion and ear points?');
-        if ~isConfirmed
-            bst_report('User cancelled.');
-            OutputFiles = {};
-            return;
-        end
-    end
-
     bst_progress('start', 'Adjust coordinate system', ...
         ' ', 0, nFiles);
     % If resetting, in case the original data moved, and because the same channel file may appear in
@@ -265,7 +253,7 @@ function OutputFiles = Run(sProcess, sInputs)
     OutputFiles = {sInputs(isFileOk(iUniqInputs(iUniqFiles))).FileName};
 end
 
-%     if ~sProcess.options.remove.Value && sProcess.options.newpoints.Value
+%     if ~sProcess.options.remove.Value && sProcess.options.scs.Value
 %             % This not yet implemented option could apply the Native to SCS
 %             % transformation for head points loaded after the raw data was
 %             % imported.
