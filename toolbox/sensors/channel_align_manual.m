@@ -28,7 +28,8 @@ function hFig = channel_align_manual( ChannelFile, Modality, isEdit, SurfaceType
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2022
+%          Marc Lalancette, 2022
 
 global GlobalData;
 
