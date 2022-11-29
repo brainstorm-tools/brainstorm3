@@ -376,14 +376,21 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        DataFig = TessInfo.DataMinMax;
-                        if ~isempty(TessInfo.DataSource.Type)
-                            DataType = TessInfo.DataSource.Type;
-                            isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo.DataSource.FileName), 'sloreta'));
-                            if isSLORETA 
+                        % Find 1st surface that match this ColormapType
+                        iTess = find(strcmpi({TessInfo.ColormapType}, ColormapType), 1);
+                        DataFig = [];
+                        if ~isempty(iTess) && ~isempty(TessInfo(iTess).DataSource.Type)
+                            DataFig = TessInfo(iTess).DataMinMax;
+                            DataType = TessInfo(iTess).DataSource.Type;
+                            % For Data: use the modality instead
+                            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                DataType = upper(ColormapInfo.Type);
+                            % sLORETA: Do not use regular source scaling (pAm)
+                            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                 DataType = 'sLORETA';
                             end
-                        elseif isempty(DataFig)
+                        end
+                        if isempty(DataFig)
                             % If displaying color-coded head points (see channel_align_manual)
                             HeadpointsDistMax = getappdata(sFigure.hFigure, 'HeadpointsDistMax');
                             if ~isempty(HeadpointsDistMax)

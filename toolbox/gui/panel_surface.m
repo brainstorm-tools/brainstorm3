@@ -1292,7 +1292,7 @@ function [iTess, TessInfo] = AddSurface(hFig, surfaceFile)
         end
         
     % === FEM ===
-    else
+    else % TODO: Check for FEM fileType explicitly
         view_surface_fem(surfaceFile, [], [], [], hFig);
     end
     % Update default surface
@@ -1496,7 +1496,7 @@ function [isOk, TessInfo] = SetSurfaceData(hFig, iTess, dataType, dataFile, isSt
             DisplayUnits = [];
             TessInfo(iTess).Data = [];
             TessInfo(iTess).DataWmat = [];
-            
+
         otherwise
             ColormapType = '';
             DisplayUnits = [];
@@ -2047,13 +2047,39 @@ end
 
 %% ===== GET SURFACE =====
 % Find a surface in a given 3DViz figure
-function iTess = GetSurface(hFig, SurfaceFile)
-    % Check whether filename is an absolute or relative path
-    SurfaceFile = file_short(SurfaceFile);
+% Usage:  [iTess, TessInfo, hFig, sSurf] = GetSurface(hFig, SurfaceFile)
+%         [iTess, TessInfo, hFig, sSurf] = GetSurface(hFig, [], SurfaceType)
+function [iTess, TessInfo, hFig, sSurf] = GetSurface(hFig, SurfaceFile, SurfaceType)
+    iTess = [];
+    sSurf = [];
     % Get figure appdata (surfaces configuration)
     TessInfo = getappdata(hFig, 'Surface');
-    % Find the surface in the 3DViz figure
-    iTess = find(file_compare({TessInfo.SurfaceFile}, SurfaceFile));
+    if nargin < 3 || (isempty(SurfaceType) && isempty(SurfaceFile))
+        return;
+    end
+    if isempty(SurfaceFile)
+        % Search by type.
+        iTess = find(strcmpi({TessInfo.Name}, SurfaceType));
+        if isempty(iTess)
+            return;
+        elseif numel(iTess) > 1
+            % See if selected is one of them, otherwise return last.
+            iTessSel = getappdata(hFig, 'iSurface');
+            if ismember(iTessSel, iTess)
+                iTess = iTessSel;
+            else
+                iTess = iTess(end);
+            end
+        end
+    else
+        % Check whether filename is an absolute or relative path
+        SurfaceFile = file_short(SurfaceFile);
+        % Find the surface in the 3DViz figure
+        iTess = find(file_compare({TessInfo.SurfaceFile}, SurfaceFile));
+    end
+    if (nargout >= 4) && ~isempty(TessInfo) && ~isempty(iTess)
+        sSurf = bst_memory('GetSurface', TessInfo(iTess).SurfaceFile);
+    end
 end
 
 
