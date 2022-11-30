@@ -708,7 +708,7 @@ function AtlasName = GetAtlasName(fBase)
         case {'lh.myaparc_250', 'rh.myaparc_250'}
             AtlasName = 'Lausanne-S250';
         case {'lh.bn_atlas', 'rh.bn_atlas'}
-            AtlasName = 'Braintomme';
+            AtlasName = 'Brainnetome';
         case {'lh.oasis.chubs', 'rh.oasis.chubs'}
             AtlasName = 'OASIS cortical hubs';
         case {'lh.mpm.vpnl', 'rh.mpm.vpnl'}
