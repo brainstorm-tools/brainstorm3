@@ -492,6 +492,8 @@ function UpdateMenus(sAtlas, sSurf)
     % === MENU PROJECT ====
     % Offer these projection menus only for Cortex surfaces
     if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
+        % Project to contralateral hemisphere
+        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
         nMenus = 0;
@@ -525,12 +527,7 @@ function UpdateMenus(sAtlas, sSurf)
                 % Project to this cortex surface
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
-        end
-        % Project to contralateral hemisphere
-        if (nMenus >= 1)
-            jMenuProject.addSeparator();
-        end
-        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
+        end        
         % Add scroller
         if (nMenus > 20)
             darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);

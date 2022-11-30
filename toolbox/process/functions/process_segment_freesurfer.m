@@ -60,7 +60,7 @@ function sProcess = GetDescription() %#ok<DEFNU>
     % Option: Extra command-line parameters
     sProcess.options.param.Comment = 'Command-line options:';
     sProcess.options.param.Type    = 'text';
-    sProcess.options.param.Value   = '-contrasurfreg';
+    sProcess.options.param.Value   = '';
     % Option: Delete existing subject
     sProcess.options.delete.Comment = 'Delete FreeSurfer subject if it already exists';
     sProcess.options.delete.Type    = 'checkbox';

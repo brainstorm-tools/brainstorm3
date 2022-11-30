@@ -32,7 +32,9 @@ end
 sSurf = in_tess_bst(srcSurfFile);
 % Check for contralateral surfaces
 if ~isfield(sSurf, 'Reg') || ~isfield(sSurf.Reg, 'SphereLR') || ~isfield(sSurf.Reg.SphereLR, 'Vertices') || isempty(sSurf.Reg.SphereLR.Vertices)
-    error(['No registered contralateral spheres available for this cortex surface.' 10 'Run FreeSurfer with option "-contrasurfreg" in order to use this option.']);
+    error(['No registered contralateral spheres available for this cortex surface.' 10 ...
+        'See FreeSurfer tutorial for computing contralateral registration: ' 10 ...
+        'https://neuroimage.usc.edu/brainstorm/Tutorials/LabelFreeSurfer']);
 end
 
 if size(sSurf.Reg.SphereLR.Vertices, 1) ~= size(sSurf.Vertices, 1)

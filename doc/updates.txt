@@ -3,6 +3,7 @@ November 2022
 - BIDS import: Added support for ACPC and CapTrak coordinate systems
 - BIDS import: Added support for NIRS
 - Database: References to .bst files without full path, for portability
+- Anatomy: New template ICBM152 2022
 --------------------------------------------------------------
 October 2022
 - EEG: Project channel files between subjects
