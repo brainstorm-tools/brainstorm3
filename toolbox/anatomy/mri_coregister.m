@@ -89,6 +89,9 @@ switch lower(Method)
         % Initialize SPM
         [isInstalled, errMsg] = bst_plugin('Install', 'spm12');
         if ~isInstalled
+            if ~isProgress
+                bst_progress('stop');
+            end
             return;
         end
         bst_plugin('SetProgressLogo', 'spm12');
@@ -157,6 +160,9 @@ switch lower(Method)
         % If an error occurred in SPM
         if isempty(sMriReg)
             errMsg = 'An unknown error occurred while executing SPM. See the logs in the command window.';
+            if ~isProgress
+                bst_progress('stop');
+            end
             return;
         end
         % Output file tag
@@ -204,6 +210,9 @@ switch lower(Method)
         end
         % Handle errors
         if ~isempty(errMsg)
+            if ~isProgress
+                bst_progress('stop');
+            end
             return;
         end
         % Get MNI transformations
@@ -242,6 +251,9 @@ switch lower(Method)
 end
 % Handle errors
 if ~isempty(errMsg)
+    if ~isProgress
+        bst_progress('stop');
+    end
     return;
 end
 
