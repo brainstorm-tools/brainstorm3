@@ -52,6 +52,13 @@ more off
 isCompiled = exist('isdeployed', 'builtin') && isdeployed;
 if isCompiled
     BrainstormHomeDir = fileparts(fileparts(which(mfilename)));
+    % Some versions of the compiler use different subfolders: search for the doc folder
+    if ~exist(bst_fullfile(BrainstormHomeDir, 'doc'), 'file')
+        docDir = file_find(BrainstormHomeDir, 'doc', 4, 1);
+        if ~isempty(docDir)
+            BrainstormHomeDir = fileparts(docDir);
+        end
+    end
 else
     % Assume we are in the Brainstorm folder
     BrainstormHomeDir = fileparts(which(mfilename));

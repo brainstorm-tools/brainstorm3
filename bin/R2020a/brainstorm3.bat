@@ -90,7 +90,9 @@
 @ECHO.
 @ECHO Please wait...
 @ECHO.
-@ECHO (if it takes more than a few minutes, try pressing ENTER)
+@ECHO If it hangs for more than a few minutes: try pressing ENTER.
+@ECHO Alternatively, download Brainstorm for a different version of the Matlab Runtime.
+@ECHO (See the installation instructions on the Brainstorm website)
 @ECHO.
 @%JAVA_EXE% -jar brainstorm3.jar %*
 
