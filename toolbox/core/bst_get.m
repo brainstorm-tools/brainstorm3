@@ -2227,8 +2227,12 @@ switch contextName
         end
         % Get defaults from internet 
         if ~ismember('icbm152', lower({sTemplates.Name}))
-            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
             sTemplates(end).Name = 'ICBM152';
+        end
+        if ~ismember('icbm152_2022', lower({sTemplates.Name}))
+            sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2022';
+            sTemplates(end).Name = 'ICBM152_2022';
         end
         if ~ismember('icbm152_2019', lower({sTemplates.Name}))
             sTemplates(end+1).FilePath = 'http://neuroimage.usc.edu/bst/getupdate.php?t=ICBM152_2019';
