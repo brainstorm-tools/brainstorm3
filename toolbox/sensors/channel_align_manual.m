@@ -190,7 +190,7 @@ end
 
 % ===== DISPLAY HEAD POINTS =====
 % Display head points
-figure_3d('ViewHeadPoints', hFig, 1);
+figure_3d('ViewHeadPoints', hFig, 1, 1); % visible and color-coded
 % Get patch and vertices
 hHeadPointsMarkers = findobj(hFig, 'Tag', 'HeadPointsMarkers');
 hHeadPointsLabels  = findobj(hFig, 'Tag', 'HeadPointsLabels');
@@ -203,7 +203,9 @@ HeadPointsFidLoc     = [];
 HeadPointsHpiLoc     = [];
 if isHeadPoints
     % More transparency to view points inside.
-    panel_surface('SetSurfaceTransparency', hFig, 1, 0.5);
+    panel_surface('SetSurfaceTransparency', hFig, 1, 0.4);
+    % Hide MEG helmet
+    set(hHelmetPatch, 'visible', 'off');
     % Get markers positions
     HeadPointsMarkersLoc = get(hHeadPointsMarkers, 'Vertices');
     % Hide HeadPoints when looking at EEG and number of EEG channels is the same as headpoints
@@ -857,8 +859,6 @@ function AlignClose_Callback(varargin)
         [ChannelMat, Transf, iChannels] = GetCurrentChannelMat();
         % Load original channel file
         ChannelMatOrig = in_bst_channel(gChanAlign.ChannelFile);
-        % Report (in command window) max head and sensor displacements from changes.
-        CheckCurrentAdjustments(ChannelMat, ChannelMatOrig);
 
         % Ask user to save changes (only if called as a callback)
         if (nargin == 3)
@@ -902,6 +902,10 @@ function AlignClose_Callback(varargin)
         if isCancel
             return;
         end
+        % Report (in command window) max head and sensor displacements from changes.
+        if SaveChanges || (gChanAlign.isHeadPoints && ~strcmpi(Choice, 'No'))
+            process_adjust_coordinates('CheckCurrentAdjustments', ChannelMat, ChannelMatOrig);
+        end
         % Save changes to channel file and close figure
         if SaveChanges
             % Progress bar
@@ -915,17 +919,13 @@ function AlignClose_Callback(varargin)
             [sStudy, iStudy] = bst_get('ChannelFile', gChanAlign.ChannelFile);
             % Reload study file
             db_reload_studies(iStudy);
+            % Apply to other recordings with same sensor locations in the same subject
+            CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
             bst_progress('stop');
         end
-    else
-        SaveChanges = 0;
     end
     % Only close figure
     gChanAlign.Figure3DCloseRequest_Bak(varargin{1:2});
-    % Apply to other recordings with same sensor locations in the same subject
-    if SaveChanges
-        CopyToOtherFolders(ChannelMatOrig, iStudy, Transf, iChannels);
-    end
 end
 
 

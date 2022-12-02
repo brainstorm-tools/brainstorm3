@@ -117,6 +117,7 @@ sMri.SCS.NAS = (Transform(1:3,:) * [ChannelMat.SCS.NAS'; 1])';
 sMri.SCS.LPA = (Transform(1:3,:) * [ChannelMat.SCS.LPA'; 1])';
 sMri.SCS.RPA = (Transform(1:3,:) * [ChannelMat.SCS.RPA'; 1])';
 % Then convert to MRI coordinates (mm), this is how sMri.SCS is saved.
+% cs_convert mri is in meters
 sMri.SCS.NAS = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.NAS) .* 1000;
 sMri.SCS.LPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.LPA) .* 1000;
 sMri.SCS.RPA = cs_convert(sMriOld, 'scs', 'mri', sMri.SCS.RPA) .* 1000;

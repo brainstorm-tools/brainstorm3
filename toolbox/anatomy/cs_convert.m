@@ -16,7 +16,7 @@ function [P, Transf] = cs_convert(sMri, src, dest, P, isNanAllowed)
 % DESCRIPTION:   https://neuroimage.usc.edu/brainstorm/CoordinateSystems
 %     - voxel : X=left>right,  Y=posterior>anterior,   Z=bottom>top
 %               Coordinate of the center of the first voxel at the bottom-left-posterior of the MRI volume: (1,1,1)
-%     - mri   : Same as 'voxel' but in millimeters instead of voxels:  mriXYZ = voxelXYZ * Voxsize
+%     - mri   : Same as 'voxel' but in meters (not mm here) instead of voxels:  mriXYZ = voxelXYZ * Voxsize
 %     - scs   : Based on: Nasion, left pre-auricular point (LPA), and right pre-auricular point (RPA).
 %               Origin: Midway on the line joining LPA and RPA
 %               Axis X: From the origin towards the Nasion (exactly through)
@@ -122,7 +122,7 @@ if strcmpi(src, 'captrak') || strcmpi(dest, 'captrak')
     scs2captrak = [tCapTrak.R, tCapTrak.T; 0 0 0 1];
 end
 
-% ===== CONVERT SRC => MRI =====
+% ===== CONVERT SRC => MRI (m) =====
 % Evaluate the transformation to apply
 switch lower(src)
     case 'voxel'
@@ -174,7 +174,7 @@ switch lower(src)
         error(['Invalid coordinate system: ' src]);
 end
 
-% ===== CONVERT MRI => DEST =====
+% ===== CONVERT MRI (m) => DEST =====
 % Evaluate the transformation to apply
 switch lower(dest)
     case 'voxel'

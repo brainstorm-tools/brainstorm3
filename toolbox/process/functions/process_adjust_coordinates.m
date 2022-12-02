@@ -923,10 +923,14 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
         iMriHist = find(strcmpi(sMri.History(:,3), 'Applied digitized anatomical fiducials'), 1, 'last');
     end
     % Can also be reset, so check for 'import' action and ignore previous alignments.
-    iImport = find(strcmpi(ChannelMat.History(:,2), 'import'), 1, 'last');
+    iImport = find(strcmpi(ChannelMat.History(:,2), 'import'));
     iAlign = find(strcmpi(ChannelMat.History(:,2), 'align'));
-    iAlign(iAlign < iImport) = [];
-    AlignType = 'none';
+    iAlign(iAlign < iImport(end)) = [];
+    if numel(iImport) > 1
+        AlignType = 'none/reset';
+    else
+        AlignType = 'none';
+    end
     while ~isempty(iAlign)
         % Check which adjustment was done last.
         switch lower(ChannelMat.History{iAlign(end),3}(1:5))
@@ -1039,13 +1043,28 @@ function ChannelMat = UpdateChannelMatScs(ChannelMat)
     if ~isfield(ChannelMat, 'HeadPoints')
         return;
     end
-    % Get the three fiducials in the head points
+    % Get the three anatomical fiducials in the head points
     iNas = find(strcmpi(ChannelMat.HeadPoints.Label, 'Nasion') | strcmpi(ChannelMat.HeadPoints.Label, 'NAS'));
     iLpa = find(strcmpi(ChannelMat.HeadPoints.Label, 'Left')   | strcmpi(ChannelMat.HeadPoints.Label, 'LPA'));
     iRpa = find(strcmpi(ChannelMat.HeadPoints.Label, 'Right')  | strcmpi(ChannelMat.HeadPoints.Label, 'RPA'));
     if ~isempty(iNas) && ~isempty(iLpa) && ~isempty(iRpa)
-        ChannelMat.SCS.NAS = mean(ChannelMat.HeadPoints.Loc(:,iNas)', 1);
+        ChannelMat.SCS.NAS = mean(ChannelMat.HeadPoints.Loc(:,iNas)', 1); %#ok<*UDIM> 
         ChannelMat.SCS.LPA = mean(ChannelMat.HeadPoints.Loc(:,iLpa)', 1);
         ChannelMat.SCS.RPA = mean(ChannelMat.HeadPoints.Loc(:,iRpa)', 1);
     end
+    % Do the same with head coils, used when exporting coregistration to BIDS
+    iHpiN = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-N'));
+    iHpiL = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-L'));
+    iHpiR = find(strcmpi(ChannelMat.HeadPoints.Label, 'HPI-R'));
+    if ~isempty(iHpiN) && ~isempty(iHpiL) && ~isempty(iHpiR)
+        ChannelMat.Native.NAS = mean(ChannelMat.HeadPoints.Loc(:,iHpiN)', 1);
+        ChannelMat.Native.LPA = mean(ChannelMat.HeadPoints.Loc(:,iHpiL)', 1);
+        ChannelMat.Native.RPA = mean(ChannelMat.HeadPoints.Loc(:,iHpiR)', 1);
+    end
+    % Get "current" SCS to Native transformation.
+    TmpChanMat = ChannelMat;
+    TmpChanMat.SCS = ChannelMat.Native;
+    % cs_compute doesn't change coordinates, only adds the R,T,Origin fields
+    [~, TmpChanMat] = cs_compute(TmpChanMat, 'scs');
+    ChannelMat.Native = TmpChanMat.SCS;
 end
