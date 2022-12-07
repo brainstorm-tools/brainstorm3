@@ -129,7 +129,7 @@ if ~isempty(PlugName)
     url = sprintf('https://neuroimage.usc.edu/bst/pluglog.php?c=K8Yda7B&plugname=%s&action=install&list=1', PlugName);
     str =  bst_webread(url);
     % Process report
-    str = str_split(str, newline);
+    str = str_split(str, char(10));
     nTotal = length(str);
     dates = cellfun(@(x)str_split(x,':'), str, 'UniformOutput', 0);
     year = cellfun(@(x)str2double(x{1}(1:4)), dates);

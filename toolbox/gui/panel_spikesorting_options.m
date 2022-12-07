@@ -91,7 +91,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                     idx = idx + 1;
                 end
                 fclose(fid);
-                header = [char(join(header, newline)) newline];
+                header = [char(join(header, char(10))), char(10)];
             else
                 header = '';
             end
@@ -134,7 +134,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         fclose(fid);
         % Set as panel contents
-        jTextOptions.setText(char(join(optionText, newline)));
+        jTextOptions.setText(char(join(optionText, char(10))));
     end
 end
 
