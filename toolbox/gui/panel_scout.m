@@ -402,7 +402,7 @@ function UpdateMenus(sAtlas, sSurf)
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
     % Create atlas from volumes in subject anatomy
     jMenuAnat = gui_component('Menu', jMenu, [], 'From subject anatomy', IconLoader.ICON_VOLATLAS, [], []);
-    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#')
+    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#') && ~any(sSurf.FileName == '|')
         sSubject = bst_get('SurfaceFile', sSurf.FileName);
         if ~isempty(sSubject.Anatomy)
             iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));

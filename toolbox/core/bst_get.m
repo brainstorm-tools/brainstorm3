@@ -108,7 +108,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('Subject')                         : Get current subject in current protocol
 %    - bst_get('SubjectCount')                    : Get number of studies in the current protocol
 %    - bst_get('NormalizedSubjectName')           : Name of the subject with a normalized anatomy
-%    - bst_get('NormalizedSubject')               : Get groupd analysis subject for the current protocol
+%    - bst_get('NormalizedSubject')               : Get group analysis subject for the current protocol
 %    - bst_get('ConditionsForSubject', SubjectFile)           : Find all conditions for a given subject
 %    - bst_get('SurfaceFile',          SurfaceFile)           : Find a surface in current protocol
 %    - bst_get('SurfaceFileByType',    iSubject,    SurfaceType) : Find surfaces with given type for subject #i (default only)
