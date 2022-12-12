@@ -167,6 +167,11 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels    = DimLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ColormapType = ColormapType;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels   = ShowLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
+% Connectivity matrix: display zero diagonal values
+if ~isempty(strfind(FileName, '_connectn')) || ~isempty(strfind(FileName, '_connect1'))
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = 1;
+end
+
 % By default: link the 4th dimension of the data to the frequency slider
 isFreq = isequal(PageName, '$freq');
 % Configure figure

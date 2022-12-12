@@ -669,13 +669,19 @@ function DisplayFigurePopup(hFig)
         % Show labels
         ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
         ShortLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
+        ZeroDiag = GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag;
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels, ShortLabels));
         jItem.setSelected(ShowLabels);
         % Use short labels
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
         jItem.setEnabled(ShowLabels);
         jItem.setSelected(ShortLabels);
-        jMenuFigure.addSeparator();
+        if isequal(FigId.SubType, 'connect')
+            % Zero diagonal values
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Zero diagonal values', [], [], @(h,ev)SetZeroDiag(iDS, iFig, ~ZeroDiag));
+            jItem.setSelected(ZeroDiag);
+            jMenuFigure.addSeparator();
+        end
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
@@ -699,7 +705,7 @@ end
 %  ===== DISPLAY FUNCTIONS ===================================================
 %  ===========================================================================
 %% ===== GET FIGURE DATA =====
-function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels] = GetFigureData(hFig, isResetMax)
+function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroDiag] = GetFigureData(hFig, isResetMax)
     global GlobalData;
     % Parse inputs
     if (nargin < 2) || isempty(isResetMax)
@@ -722,6 +728,7 @@ function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels
     DimLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels;
     ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
     ShortLabels= GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
+    ZeroDiag   = GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag;
     PageName   = GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName;
     % Get indices for 1st dimension
     if ismember(1, iDims)
@@ -797,7 +804,11 @@ function UpdateFigurePlot(hFig, isResetMax)
     % ===== GET DATA AND COLORMAP =====
     % If forced refresh: reset previous min/max
     % Get figure data
-    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels] = GetFigureData(hFig, isResetMax);
+    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroDiag] = GetFigureData(hFig, isResetMax);
+    % Zero diagonal values
+    if ZeroDiag
+        FigData = tril(FigData,-1) + triu(FigData,1);
+    end
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
     sColormap = bst_colormaps('GetColormap', ColormapInfo.Type);
@@ -1032,3 +1043,13 @@ function SetShowLabels(iDS, iFig, ShowLabels, ShortLabels)
 end
 
 
+%% ===== CONNECTIVITY MATRIX: SHOW/HIDE DIAGONAL VALUES =====
+function SetZeroDiag(iDS, iFig, ZeroDiag)
+    global GlobalData;
+    % Save new value
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = ZeroDiag;
+    % Update figure
+    UpdateFigurePlot(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
+    % Resize to update the size of the margins
+    ResizeCallback(GlobalData.DataSet(iDS).Figure(iFig).hFigure);
+end

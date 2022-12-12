@@ -121,15 +121,6 @@ if strcmpi(DisplayMode, 'Image')
     TF = bst_memory('GetTimefreqValues', iDS, iTimefreq, [], [], [], TfFunction);
     % Get connectivity matrix
     C = bst_memory('ReshapeConnectMatrix', iDS, iTimefreq, TF);
-    % Remove diagonals for NxN
-    if isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) || ...
-       isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames')
-        N = size(C,1);
-        M = size(C,3)*size(C,4);
-        indDiag = (1:N) + N*(0:N-1);
-        indDiag = repmat(indDiag',1,M) + N*N*repmat(0:M-1,N,1);
-        C(indDiag) = 0;
-    end
     % Get time vector
     if (size(TF,3) < 2)
         TimeVector = [];
@@ -148,7 +139,9 @@ if strcmpi(DisplayMode, 'Image')
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames, ...
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
-    hFig = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
+    [hFig, iDS, iFig] = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
+    % Update image figure description
+    GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = 'connect';
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
