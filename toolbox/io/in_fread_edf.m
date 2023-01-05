@@ -35,11 +35,6 @@ iChanSkip      = union(iChanAnnot, iChanWrongRate);
 if (nargin < 4) || isempty(ChannelsRange)
     ChannelsRange = [1, nChannels];
 end
-if (nargin < 3) || isempty(SamplesBounds)
-    SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
-end
-nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
-iTimes = SamplesBounds(1):SamplesBounds(2);
 % Block of times/channels to extract
 nReadChannels = double(ChannelsRange(2) - ChannelsRange(1) + 1);
 % Read annotations instead of real data ?
@@ -73,6 +68,18 @@ if (ChannelsRange(1) ~= ChannelsRange(2))
     end
 end
 
+if (nargin < 3) || isempty(SamplesBounds)
+    SamplesBounds = [0, sFile.header.nrec * sFile.header.signal(ChannelsRange(1)).nsamples - 1];
+end
+% Convert SamplesBounds to the correct sampling frequency
+if sFile.header.signal(ChannelsRange(1)).sfreq ~= sFile.prop.sfreq
+    SamplesBounds(2) = SamplesBounds(2) + 1;
+    TimesBounds = SamplesBounds ./ sFile.prop.sfreq;
+    SamplesBounds = round(TimesBounds * sFile.header.signal(ChannelsRange(1)).sfreq);
+    SamplesBounds(2) = SamplesBounds(2) - 1;
+end
+nTimes = round(sFile.header.reclen * sFile.header.signal(ChannelsRange(1)).sfreq);
+iTimes = SamplesBounds(1):SamplesBounds(2);
 
 %% ===== READ ALL NEEDED EPOCHS =====
 % Detect which epochs are necessary for the range of data selected
