@@ -25,7 +25,7 @@ function [sFile, newEvents] = import_events(sFile, ChannelMat, EventFile, FileFo
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2022
+% Authors: Francois Tadel, 2010-2023
 
 %% ===== PARSE INPUTS =====
 if (nargin < 7) || isempty(isDelete)
@@ -150,9 +150,9 @@ if isempty(newEvents)
         case 'XLTEK'
             newEvents = in_events_xltek(sFile, EventFile);
         case 'ARRAY-TIMES'
-            newEvents = in_events_array(sFile, EventFile, 'times', EventName);
+            newEvents = in_events_array(sFile, EventFile, 'times', EventName, isInteractive);
         case 'ARRAY-SAMPLES'
-            newEvents = in_events_array(sFile, EventFile, 'samples', EventName);
+            newEvents = in_events_array(sFile, EventFile, 'samples', EventName, isInteractive);
         case 'CSV-TIME'
             newEvents = in_events_csv(sFile, EventFile);
         case 'CTFVIDEO'
