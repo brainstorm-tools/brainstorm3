@@ -676,7 +676,7 @@ function DisplayFigurePopup(hFig)
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
         jItem.setEnabled(ShowLabels);
         jItem.setSelected(ShortLabels);
-        if isequal(FigId.SubType, 'connect')
+        if isequal(FigId.SubType, 'connect_nn')
             % Zero diagonal values
             jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Zero diagonal values', [], [], @(h,ev)SetZeroDiag(iDS, iFig, ~ZeroDiag));
             jItem.setSelected(ZeroDiag);

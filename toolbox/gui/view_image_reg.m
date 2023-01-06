@@ -167,8 +167,21 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels    = DimLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ColormapType = ColormapType;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels   = ShowLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
-% Connectivity matrix: display zero diagonal values
-if ~isempty(strfind(FileName, '_connectn')) || ~isempty(strfind(FileName, '_connect1'))
+iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, FileName)
+% Update image figure description
+originProcess = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.ProcessName;
+if ~isempty(regexp(originProcess, '_[a-z]+1n_*', 'once'))
+    connectType = 'connect_nn';
+elseif ~isempty(regexp(originProcess, '_[a-z]+1_*', 'once'))
+    connectType = 'connect_1n';
+elseif ~isempty(regexp(originProcess, '_[a-z]+2_*', 'once'))
+    connectType = 'connect_ab';
+end
+GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = connectType;
+% Connectivity matrix: display diagonal values
+GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = 0;
+% Connectivity matrix: hide diagonal values
+if strcmpi(connectType, 'connect_nn')
     GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = 1;
 end
 

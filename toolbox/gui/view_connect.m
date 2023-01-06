@@ -140,8 +140,6 @@ if strcmpi(DisplayMode, 'Image')
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
     [hFig, iDS, iFig] = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
-    % Update image figure description
-    GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = 'connect';
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
