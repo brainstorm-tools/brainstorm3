@@ -100,10 +100,12 @@ end
 
 % Detect modality
 Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
-% Check that the matrix is square: cannot display [NxM] connectivity matrix where N~=M
-if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) ~= length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)) && ~strcmpi(DisplayMode, 'Image')
-    bst_error(sprintf('The connectivity matrix size is [%dx%d].\nThis graph display can be used only for square matrices (NxN).', ...
-              length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames), length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)), ...
+originProcess = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.ProcessName;
+% Check that the connectivity matrix comes from processes connectivity_1n (NxN)
+% Cannot display connectivity matrix from processes connectivity_1 (1xN) or connectivity_2 (AxB)
+if strcmpi(DisplayMode, 'GraphFull') && isempty(regexp(originProcess, '_[a-z]+1n_*', 'once'))
+    bst_error(['The connectivity matrix was computed with process: ', originProcess, char(10), ...
+              'Graph display can be used only for matrices from processes: connectivity_1n (NxN).'], ...
               'View connectivity matrix', 0);
     return;
 end
