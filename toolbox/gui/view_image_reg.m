@@ -176,6 +176,9 @@ elseif ~isempty(regexp(originProcess, '_[a-z]+1_*', 'once'))
     connectType = 'connect_1n';
 elseif ~isempty(regexp(originProcess, '_[a-z]+2_*', 'once'))
     connectType = 'connect_ab';
+    if isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)
+        connectType = 'connect_nn';
+    end
 end
 GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = connectType;
 % Connectivity matrix: display diagonal values
