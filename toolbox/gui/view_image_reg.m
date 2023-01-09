@@ -167,27 +167,20 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels    = DimLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ColormapType = ColormapType;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels   = ShowLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
-iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, FileName)
+iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, FileName);
 % Update image figure description
-originProcess = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Options.ProcessName;
-if ~isempty(regexp(originProcess, '_[a-z]+1n_*', 'once'))
-    connectType = 'connect_nn';
-elseif ~isempty(regexp(originProcess, '_[a-z]+1_*', 'once'))
-    connectType = 'connect_1n';
-elseif ~isempty(regexp(originProcess, '_[a-z]+2_*', 'once'))
-    connectType = 'connect_ab';
-    if isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)
-        connectType = 'connect_nn';
-    end
+connectType = '';
+% Check common names for RefRowNames (A) and RowNames (B)
+if any(ismember (GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames))
+    connectType = 'auto_connect';
 end
 GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = connectType;
-% Connectivity matrix: display diagonal values
-GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = 0;
-% Connectivity matrix: hide diagonal values
-if strcmpi(connectType, 'connect_nn')
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = 1;
+% Connectivity matrix: display auto-connectivity values
+GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect = 0;
+% Connectivity matrix: hide auto-connectivity values
+if strcmpi(connectType, 'auto_connect')
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect = 1;
 end
-
 % By default: link the 4th dimension of the data to the frequency slider
 isFreq = isequal(PageName, '$freq');
 % Configure figure

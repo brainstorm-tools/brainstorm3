@@ -669,17 +669,17 @@ function DisplayFigurePopup(hFig)
         % Show labels
         ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
         ShortLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
-        ZeroDiag = GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag;
+        ZeroAutoConnect = GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect;
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels, ShortLabels));
         jItem.setSelected(ShowLabels);
         % Use short labels
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
         jItem.setEnabled(ShowLabels);
         jItem.setSelected(ShortLabels);
-        if isequal(FigId.SubType, 'connect_nn')
+        if isequal(FigId.SubType, 'auto_connect')
             % Zero diagonal values
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Zero diagonal values', [], [], @(h,ev)SetZeroDiag(iDS, iFig, ~ZeroDiag));
-            jItem.setSelected(ZeroDiag);
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Zero auto-connectivity values', [], [], @(h,ev)SetZeroAutoConnect(iDS, iFig, ~ZeroAutoConnect));
+            jItem.setSelected(ZeroAutoConnect);
             jMenuFigure.addSeparator();
         end
         % Show Matlab controls
@@ -705,7 +705,7 @@ end
 %  ===== DISPLAY FUNCTIONS ===================================================
 %  ===========================================================================
 %% ===== GET FIGURE DATA =====
-function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroDiag] = GetFigureData(hFig, isResetMax)
+function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroAutoConnect] = GetFigureData(hFig, isResetMax)
     global GlobalData;
     % Parse inputs
     if (nargin < 2) || isempty(isResetMax)
@@ -723,13 +723,13 @@ function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels
         ShortLabels = [];
         return;
     end
-    AllLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.Labels;
-    iDims      = GlobalData.DataSet(iDS).Figure(iFig).Handles.iDims;
-    DimLabels  = GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels;
-    ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
-    ShortLabels= GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
-    ZeroDiag   = GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag;
-    PageName   = GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName;
+    AllLabels      = GlobalData.DataSet(iDS).Figure(iFig).Handles.Labels;
+    iDims          = GlobalData.DataSet(iDS).Figure(iFig).Handles.iDims;
+    DimLabels      = GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels;
+    ShowLabels     = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
+    ShortLabels    = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
+    ZeroAutoConnect= GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect;
+    PageName       = GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName;
     % Get indices for 1st dimension
     if ismember(1, iDims)
         ind{1} = 1:size(GlobalData.DataSet(iDS).Figure(iFig).Handles.Data, 1);
@@ -804,10 +804,13 @@ function UpdateFigurePlot(hFig, isResetMax)
     % ===== GET DATA AND COLORMAP =====
     % If forced refresh: reset previous min/max
     % Get figure data
-    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroDiag] = GetFigureData(hFig, isResetMax);
-    % Zero diagonal values
-    if ZeroDiag
-        FigData = tril(FigData,-1) + triu(FigData,1);
+    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroAutoConnect] = GetFigureData(hFig, isResetMax);
+    % Zero auto connect values
+    if ZeroAutoConnect
+        [c, ia, ib] = intersect(Labels{2}, Labels{1}); % intersect(A,B)
+        for i = 1 : numel(c)
+            FigData(ib(i), ia(i)) = 0;
+        end
     end
     % Get figure colormap
     ColormapInfo = getappdata(hFig, 'Colormap');
@@ -1043,11 +1046,11 @@ function SetShowLabels(iDS, iFig, ShowLabels, ShortLabels)
 end
 
 
-%% ===== CONNECTIVITY MATRIX: SHOW/HIDE DIAGONAL VALUES =====
-function SetZeroDiag(iDS, iFig, ZeroDiag)
+%% ===== CONNECTIVITY MATRIX: SHOW/HIDE AUTO-CONNECTIVITY VALUES =====
+function SetZeroAutoConnect(iDS, iFig, ZeroAutoConnect)
     global GlobalData;
     % Save new value
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroDiag = ZeroDiag;
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect = ZeroAutoConnect;
     % Update figure
     UpdateFigurePlot(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
     % Resize to update the size of the margins
