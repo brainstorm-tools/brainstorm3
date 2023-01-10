@@ -1,3 +1,9 @@
+January 2023
+- Anatomy: New template ICBM152 2022
+- Anatomy: Remove selection of fiducials when setting anatomy template
+- Distrib: Enable compilation on Linux and MacOS
+- IO: Export matrix files as EDF+
+--------------------------------------------------------------
 November 2022
 - Forward: Display leadfield sensitivity (surface, MRI, isosurface)
 - BIDS import: Added support for ACPC and CapTrak coordinate systems

@@ -386,6 +386,9 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 for iAnnot = 1:length(iSeparator)-1
                     % Get annotation
                     strAnnot = char(F(iSeparator(iAnnot)+2:iSeparator(iAnnot+1)-1));
+                    if isempty(strAnnot)
+                        continue;
+                    end
                     % Split in blocks with [20]
                     splitAnnot = str_split(strAnnot, 20, 0);
                     % The first TAL in a record should be indicating the timing of the first sample of the record (empty annotation)
