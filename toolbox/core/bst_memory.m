@@ -1555,6 +1555,11 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
 
     % ===== GET ALL INFORMATION =====
+    % If the input data is derivated dataset
+    LoadedFile = TimefreqFile;
+    if any(TimefreqFile == '$')
+        TimefreqFile = TimefreqFile(1:find(TimefreqFile == '$',1)-1);
+    end
     % Get file information
     [sStudy, iTf, ChannelFile, FileType, sItem] = GetFileInfo(TimefreqFile);
     TimefreqMat = in_bst_timefreq(TimefreqFile, 0, 'DataType');
@@ -1592,9 +1597,9 @@ function [iDS, iTimefreq, iResults] = LoadTimefreqFile(TimefreqFile, isTimeCheck
     end
     % Load timefreq file
     if ~isempty(iDS)
-        iTimefreq = GetTimefreqInDataSet(iDS, TimefreqFile);
+        iTimefreq = GetTimefreqInDataSet(iDS, LoadedFile);
     else
-        [iDS, iTimefreq] = GetDataSetTimefreq(TimefreqFile);
+        [iDS, iTimefreq] = GetDataSetTimefreq(LoadedFile);
     end
     % If dataset for target file already exists, just return its index
     if ~isForceReload && ~isempty(iDS) && ~isempty(iTimefreq)

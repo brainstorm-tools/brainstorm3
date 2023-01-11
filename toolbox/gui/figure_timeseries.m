@@ -2615,7 +2615,7 @@ function DisplayConfigMenu(hFig, jParent)
         if strcmpi(FigureId.Type, 'Spectrum')
             TfInfo = getappdata(hFig, 'Timefreq');
             sOptions = panel_display('GetDisplayOptions');
-            if ismember(TfInfo.Function, {'power', 'magnitude'})
+            if ismember(TfInfo.Function, {'power', 'magnitude', 'log'})
                 jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
                 jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
                 jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
