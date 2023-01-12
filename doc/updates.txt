@@ -3,6 +3,7 @@ January 2023
 - Anatomy: Remove selection of fiducials when setting anatomy template
 - Distrib: Enable compilation on Linux and MacOS
 - IO: Export matrix files as EDF+
+- Inverse: Display scouts on source-level PSD as PSD figures
 --------------------------------------------------------------
 November 2022
 - Forward: Display leadfield sensitivity (surface, MRI, isosurface)

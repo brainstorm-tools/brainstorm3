@@ -1368,10 +1368,6 @@ function PlotHandles = PlotAxes(hFig, X, XLim, TF, TfInfo, TsInfo, DataMinMax, L
             set(hAxes, 'TickLabelInterpreter', 'none');
         end
     else
-        hLegend = legend(hAxes);
-        if ~isempty(hLegend)
-            delete(legend(hAxes));
-        end
         cla(hAxes);
     end
     % Redimension TF according to what we want to display
