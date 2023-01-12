@@ -85,11 +85,11 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     isRaw = strcmpi(sInput.FileType, 'raw');
     % Load the raw file descriptor
     if isRaw
-        DataMat = in_bst_data(sInput.FileName, 'F');
+        DataMat = in_bst_data(sInput.FileName, 'F', 'History');
         sEvents = DataMat.F.events;
         sFreq = DataMat.F.prop.sfreq;
     else
-        DataMat = in_bst_data(sInput.FileName, 'Events', 'Time');
+        DataMat = in_bst_data(sInput.FileName, 'Events', 'Time', 'History');
         sEvents = DataMat.Events;
         sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
     end
@@ -105,7 +105,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         if ~isempty(iEvt)
             iEvtList(end+1) = iEvt;
         else
-            bst_report('Warning', sProcess, sInput, 'This file does not contain any event.');
+            bst_report('Warning', sProcess, sInput, ['This file does not contain any event "' EvtNames{i} '".']);
         end
     end
     % No events to process
@@ -131,6 +131,8 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     else
         DataMat.Events = sEvents;
     end
+    % Add history entry
+    DataMat = bst_history('add', DataMat, 'timeoffset', [sprintf('Added time offset %1.4fs to events: ', OffsetTime), sprintf('%s ', EvtNames{:})]);
     % Only save changes if something was change
     bst_save(file_fullpath(sInput.FileName), DataMat, 'v6', 1);
 end
