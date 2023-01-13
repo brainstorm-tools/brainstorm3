@@ -12,7 +12,9 @@ The best way to learn how to use Brainstorm, like any other academic software, i
 
 Finally, have a look regularly at our [What's new](http://neuroimage.usc.edu/brainstorm/News) page for staying on top of Brainstorm news and updates, [Like us on Facebook](https://www.facebook.com/brainstormsoftware) and [Follow us on Twitter](https://twitter.com/brainstorm2day) to stay in touch. We hope you enjoy using Brainstorm as much as we enjoy developing and sharing these tools with the community!
 
+<center>
 http://neuroimage.usc.edu/brainstorm
+</center>
 
 ## How to cite Brainstorm
 Please cite the following reference in your publications if you have used our software for your data analyses. This citation is available in APA and BibTeX formats in the "*Cite this repository*" at the right menu of this page. In addition, to cite specific Brainstorm features check [this page](https://neuroimage.usc.edu/brainstorm/CiteBrainstorm).
