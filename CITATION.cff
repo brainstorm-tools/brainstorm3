@@ -1,6 +1,8 @@
 cff-version: 1.2.0
 message: "Please cite the following reference in your publications if you have used our software for your data analyses."
 title: "Brainstorm"
+authors:
+  - name: "The Brainstorm team"
 url: "https://neuroimage.usc.edu/brainstorm"
 preferred-citation:
   type: article
