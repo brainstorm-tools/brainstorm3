@@ -940,8 +940,11 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                         case {'NIRSCWAMPLITUDE'}
                                              chanType = 'NIRS';
                                     end
-                                    ChannelMat.Channel(iChanBst).Type = chanType;
-                                    isModifiedChan = 1;
+                                    % Keep the "EEG_NO_LOC" type
+                                    if ~isequal(ChannelMat.Channel(iChanBst).Type, 'EEG_NO_LOC') || (~isempty(ChannelMat.Channel(iChanBst).Loc) && ~all(ChannelMat.Channel(iChanBst).Loc(:) == 0))
+                                        ChannelMat.Channel(iChanBst).Type = chanType;
+                                        isModifiedChan = 1;
+                                    end
                                 end
                                 % Copy group
                                 if ~isempty(ChanInfo{iChanBids,3}) && ~strcmpi(ChanInfo{iChanBids,3},'n/a')

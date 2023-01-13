@@ -150,7 +150,9 @@ for is = 1:length(iStudies)
             end
             ChannelMat.Channel(ic).Loc    = LocChannelMat.Channel(idef).Loc;
             ChannelMat.Channel(ic).Orient = LocChannelMat.Channel(idef).Orient;
-            ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            if ~isempty(LocChannelMat.Channel(idef).Weight)
+                ChannelMat.Channel(ic).Weight = LocChannelMat.Channel(idef).Weight;
+            end
             nUpdated = nUpdated + 1;
 
             % Convert from MNI to subject space, if needed
