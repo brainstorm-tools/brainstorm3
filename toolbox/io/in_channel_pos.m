@@ -53,7 +53,7 @@ while 1
             ChannelMat.HeadPoints.Type{end+1}  = 'EXTRA';
         case {4,7}
             % Name X Y Z ... => Headpoint or fiducial
-            if ~isnan(str2double(ss{1}))
+            if ~isnan(str2double(ss{1})) || strcmpi(ss{1}, 'EXTRA')
                 ChannelMat.HeadPoints.Label{end+1} = 'EXTRA';
                 ChannelMat.HeadPoints.Type{end+1}  = 'EXTRA';
             else
@@ -66,7 +66,7 @@ while 1
             end
             ChannelMat.HeadPoints.Loc(:,end+1) = cellfun(@str2num, ss(2:4))' ./ 100;
         case 5
-            % Indice Name X Y Z => EEG
+            % Index Name X Y Z => EEG
             i = length(ChannelMat.Channel) + 1;
             ChannelMat.Channel(i).Type    = 'EEG';
             ChannelMat.Channel(i).Name    = ss{2};

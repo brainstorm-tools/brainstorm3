@@ -21,7 +21,7 @@ function varargout = process_extract_scout( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010-2021
+% Authors: Francois Tadel, 2010-2022
 
 eval(macro_method);
 end
@@ -167,6 +167,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % ===== LOOP ON THE FILES =====
+    DisplayUnits = [];
     for iInput = 1:length(sInputs)
         ScoutOrient = [];
         SurfOrient  = [];
@@ -178,6 +179,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         GridOrient = [];
         iFileScouts = [];
         nComponents = [];
+        fileUnits = [];
         % Progress bar
         if (length(sInputs) > 1)
             bst_progress('text', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)));
@@ -241,6 +243,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isfield(sResults, 'GridOrient') && ~isempty(sResults.GridOrient)
                     GridOrient = sResults.GridOrient;
                 end
+                % Get units
+                if isfield(sResults, 'DisplayUnits') && ~isempty(sResults.DisplayUnits)
+                    fileUnits = sResults.DisplayUnits;
+                end
                 % Input filename
                 if ~isempty(DataFile)
                     condComment = [file_short(DataFile) '/' sInputs(iInput).Comment];
@@ -255,7 +261,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                     bst_report('Error', sProcess, sInputs(iInput), 'This file does not contain any valid cortical maps.');
                     continue;
                 end
-                % Make sure 
+                % Do not accept complex values
                 if strcmpi(sMat.Measure, 'none')
                     bst_report('Error', sProcess, sInputs(iInput), 'Please apply a measure on these complex values first.');
                     continue;
@@ -296,6 +302,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 if isfield(sMat, 'SurfaceFile') && ~isempty(sMat.SurfaceFile)
                     SurfaceFile = sMat.SurfaceFile;
                 end
+                % Get units
+                if isfield(sResults, 'DisplayUnits') && ~isempty(sResults.DisplayUnits)
+                    fileUnits = sResults.DisplayUnits;
+                end
                 % Input filename
                 condComment = sInputs(iInput).FileName;
                
@@ -319,6 +329,14 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
         if ~isfield(sMat, 'History')
             sMat.History = {};
+        end
+        % Make sure that units are the same for all the files
+        if ~isempty(fileUnits)
+            if isempty(DisplayUnits)
+                DisplayUnits = fileUnits;
+            elseif ~strcmpi(fileUnits, DisplayUnits)
+                DisplayUnits = 'Mixed units';
+            end
         end
         % Replicate if no time
         if (length(sMat.Time) == 1)
@@ -735,6 +753,8 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if ~isempty(SurfaceFile)
             newMat.SurfaceFile = SurfaceFile;
         end
+        % Units
+        newMat.DisplayUnits = DisplayUnits;
         % Save the atlas in the file
         newMat.Atlas = db_template('atlas');
         if (size(AtlasList,1) == 1)

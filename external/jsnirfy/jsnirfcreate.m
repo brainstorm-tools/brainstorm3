@@ -6,7 +6,7 @@ function jsn=jsnirfcreate(varargin)
 %    jsn=jsnirfcreate('Format',format,'Param1',value1, 'Param2',value2,...)
 %
 %    Create an empty JSNIRF data structure defined in the JSNIRF 
-%    specification: https://github.com/fangq/jsnirf or a SNIRF data structure
+%    specification: https://github.com/NeuroJSON/jsnirf or a SNIRF data structure
 %    based on https://github.com/fNIRS/snirf
 %
 %    author: Qianqian Fang (q.fang <at> neu.edu)
@@ -25,21 +25,22 @@ function jsn=jsnirfcreate(varargin)
 %    example:
 %        jsn=jsnirfcreate('data',mydata,'aux',myauxdata,'comment','test');
 %
-%    this file is part of JSNIRF specification: https://github.com/fangq/jsnirf
+%    this file is part of JSNIRF specification: https://github.com/NeuroJSON/jsnirf
 %
-%    License: GPLv3 or Apache 2.0, see https://github.com/fangq/jsnirf for details
+%    License: GPLv3 or Apache 2.0, see https://github.com/NeuroJSON/jsnirf for details
 %
 
 % define empty SNIRF data structure with all required fields
 
 defaultmeta=struct('SubjectID','default','MeasurementDate',datestr(now,29),...
-                'MeasurementTime',datestr(now,'hh:mm:ss'),'LengthUnit','mm', 'TimeUnit','s');
+                'MeasurementTime',datestr(now,'hh:mm:ss'),'LengthUnit','mm', ...
+                'TimeUnit','s', 'FrequencyUnit','Hz');
 defaultsrcmap=struct('sourceIndex',[],'detectorIndex',[],...
               'wavelengthIndex',[],'dataType',1,'dataTypeIndex',1); 
 defaultdata=struct('dataTimeSeries',[],'time',[],'measurementList',defaultsrcmap);
 defaultaux=struct('name','','dataTimeSeries',[],'time',[],'timeOffset',0);
 defaultstim=struct('name','','data',[]);
-defaultprobe=struct('wavelengths',[],'sourcePos',[],'detectorPos',[]);
+defaultprobe=struct('wavelengths',[],'sourcePos2D',[],'detectorPos2D',[]);
 
 nirsdata=struct('metaDataTags',defaultmeta,...
                 'data',defaultdata,...

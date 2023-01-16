@@ -76,7 +76,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sFile.events, sFile.proc.sfreq);
+        [sFile.events, isModified] = Compute(sFile.events, sFile.prop.sfreq);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change

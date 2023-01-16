@@ -115,6 +115,8 @@ switch (sFile.format)
         end
     case 'EEG-AXION'
         F = in_fread_axion(sFile, SamplesBounds, iChannels, precision);
+    case 'EEG-BCI2000'
+        F = in_fread_bci2000(sFile, SamplesBounds);
     case {'EEG-BLACKROCK', 'EEG-RIPPLE'}
         F = in_fread_blackrock(sFile, SamplesBounds, iChannels, precision);
     case 'EEG-BRAINAMP'

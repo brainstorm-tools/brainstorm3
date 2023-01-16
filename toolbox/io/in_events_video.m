@@ -1,7 +1,7 @@
 function events = in_events_video(sFile, ChannelMat, EventFile, format)
 % IN_EVENTS_VIDEO: Read video events information from a text file 
 %
-% USAGE:  events = in_events_array(sFile, ChannelMat, EventFile) 
+% USAGE:  events = in_events_video(sFile, ChannelMat, EventFile) 
 % 
 %   EventFile must be text file in the form hh:mm:ss:ff
 

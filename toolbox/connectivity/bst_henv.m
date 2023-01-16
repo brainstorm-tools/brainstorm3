@@ -214,12 +214,25 @@ end
 function [Data3D,blockLen3D,actLen] = dataDimTran(Data2D,tranLen,numBlocks)
 % Total Length of the Data
 [nSig,N] = size(Data2D) ;
-actLen   = (N/numBlocks) ;
+actLen   = ceil(N/numBlocks) ;
 tfBlockRem = rem(N,numBlocks) ;
-% Adding zero to the end of the data (few samples)
-if tfBlockRem ~= 0
-    Data2D(:,end:end+(numBlocks-tfBlockRem)) = 0 ;
+
+% If transition length is longer than block length, then the block #2 crashes in the for loop below
+% Exclude this case asking the user to use less blocks (FT 11-NOV-2022)
+% Reference: https://neuroimage.usc.edu/forums/t/error-using-envelope-correlation-2022/37624
+if (actLen <= tranLen)
+    error(['When splitting large data in multiple blocks, the function bst_henv.m adds' 10 ...
+           'a hard-coded transition of 5s before and after each block.' 10 ...
+           'Decrease the number of blocks to obtain individual blocks longer than 5s.']);
 end
+
+% Adding zero to the end of the data (few samples)
+% WARNING (FT 11-NOV-2022): If tfBlockRem=1, then it adds a completely empty block. 
+% Shouldn't this last block be discarded instead?
+if tfBlockRem ~= 0
+    Data2D(:,end:end+(actLen-tfBlockRem)) = 0;
+end
+
 % Compute the length of each block
 blockLen3D = actLen + 2*tranLen ;
 % Pre-define the data in 3D format (Signals x Samples x Blcoks)
@@ -251,15 +264,21 @@ ConVec = (abs(r1)+abs(r2))/2 ;
 end
 
 function At = HMatCorr(U,V)
-% Number of channels 
-n1 = size(U,2) ; 
-n2 = size(V,2) ; 
-At = zeros(n1,n2) ; 
-    for k = 1:n1
-        for m = 1:n2
-            tmp1    = corrcoef(U(:,k),V(:,m)) ; 
-            At(k,m) = tmp1(1,2) ; 
-        end
-    end
-end
+% Implementation H.Shahabi (2021)
+% % Number of channels 
+% n1 = size(U,2) ; 
+% n2 = size(V,2) ; 
+% At = zeros(n1,n2) ; 
+% for k = 1:n1
+%     for m = 1:n2
+%         tmp1    = corrcoef(U(:,k),V(:,m)) ;
+%         At(k,m) = tmp1(1,2) ; 
+%     end
+% end
 
+% Equivalent implementation F.TADEL (14-11-2022)
+Uc = U - mean(U,1);  % Remove mean
+Vc = V - mean(V,1);  % Remove mean
+At = (Uc' * Vc) ./ sqrt(sum(Uc.*Uc,1) .* sum(Vc.*Vc,1));
+
+end

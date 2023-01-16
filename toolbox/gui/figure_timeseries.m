@@ -799,7 +799,7 @@ function DrawTimeSelection(hFig)
                 YData = YData ./ Handles.DisplayFactor;
                 % Get units
                 Fmax = max(abs(Handles.DataMinMax));
-                [tmp, Yfactor, YUnits] = bst_getunits( Fmax, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, TsInfo.FileName );
+                [tmp, Yfactor, YUnits] = bst_getunits( Fmax, GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, TsInfo.FileName, TsInfo.DisplayUnits );
                 % Apply the display units
                 YData = YData .* Yfactor;
         end
@@ -2615,7 +2615,7 @@ function DisplayConfigMenu(hFig, jParent)
         if strcmpi(FigureId.Type, 'Spectrum')
             TfInfo = getappdata(hFig, 'Timefreq');
             sOptions = panel_display('GetDisplayOptions');
-            if ismember(TfInfo.Function, {'power', 'magnitude'})
+            if ismember(TfInfo.Function, {'power', 'magnitude', 'log'})
                 jScalePow = gui_component('RadioMenuItem', jMenu, [], 'Power', [], [], @(h,ev)panel_display('SetDisplayFunction', 'power'));
                 jScaleMag = gui_component('RadioMenuItem', jMenu, [], 'Magnitude', [], [], @(h,ev)panel_display('SetDisplayFunction', 'magnitude'));
                 jScaleLog = gui_component('RadioMenuItem', jMenu, [], 'Log(power)', [], [], @(h,ev)panel_display('SetDisplayFunction', 'log'));
@@ -3461,11 +3461,11 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     % ===== YLIM =====
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName);
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, TsInfo.Modality, TsInfo.FileName, TsInfo.DisplayUnits);
 
     % Plot factor has changed
     isFactorChanged = ~isequal(fFactor, PlotHandles.DisplayFactor);
-    if isFactorChanged
+    if isFactorChanged && ~isempty(GlobalData.DataSet(iDS).Measures.DisplayUnits)
         GlobalData.DataSet(iDS).Measures.DisplayUnits = fUnits;
     end
     % Set display Factor
@@ -3636,11 +3636,12 @@ function PlotHandles = PlotAxesButterfly(iDS, hAxes, PlotHandles, TsInfo, TimeVe
     end
     
     % ===== DISPLAY GFP =====
+    % GFP reference: https://link.springer.com/article/10.1007/BF01128870
     % If there are more than 5 channel
     if bst_get('DisplayGFP') && ~strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'stat') ...
                              && (GlobalData.DataSet(iDS).Measures.NumberOfSamples > 2) && (size(F,1) > 5) ...
                              && ~isempty(TsInfo.Modality) && ismember(TsInfo.Modality, {'EEG','MEG','EEG','SEEG'})
-        GFP = sqrt(sum((F * fFactor).^2, 1));
+        GFP = std(F * fFactor, 1);
         PlotGFP(hAxes, TimeVector, GFP, TsInfo.FlipYAxis, isFastUpdate);
     end
 end
@@ -3916,7 +3917,7 @@ function UpdateScaleBar(iDS, iFig, TsInfo)
     end
     % Get data units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName, TsInfo.DisplayUnits );
     barMeasure = fScaled / TsInfo.DefaultFactor;
     % Get position where to plot the legend
     nChan = length(PlotHandles.hLines);
@@ -4046,7 +4047,7 @@ function SetScaleY(iDS, iFig, newScale)
     drawnow;
     % Get units
     Fmax = max(abs(PlotHandles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Modality, TsInfo.FileName, TsInfo.DisplayUnits );
     strUnits = strrep(fUnits, '\mu', '&mu;');
     
     % Columns
@@ -4189,7 +4190,7 @@ function SetResolution(iDS, iFig, newResX, newResY)
     isRaw = strcmpi(GlobalData.DataSet(iDS).Measures.DataType, 'raw');
      % Get units
     Fmax = max(abs(Figure.Handles.DataMinMax));
-    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Figure.Id.Modality, TsInfo.FileName );
+    [fScaled, fFactor, fUnits] = bst_getunits( Fmax, Figure.Id.Modality, TsInfo.FileName, TsInfo.DisplayUnits );
     strUnits = strrep(fUnits, '\mu', '&mu;');
     % Get current time resolution
     XLim = get(hAxes, 'XLim');

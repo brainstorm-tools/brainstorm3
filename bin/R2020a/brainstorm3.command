@@ -132,6 +132,15 @@ fi
 export XAPPLRESDIR=$MATLABROOT/X11/app-defaults
 
 ##########################################################################
+# Start message
+echo " "
+echo "Please wait..."
+echo " "
+echo "If it hangs for more than a few minutes: try pressing ENTER."
+echo "Alternatively, download Brainstorm for a different version of the Matlab Runtime."
+echo "(See the installation instructions on the Brainstorm website)"
+echo " "
+
 # Run Brainstorm
 "$JAVA_EXE" -jar "$JAR_FILE" "${@:2}"
 

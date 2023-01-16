@@ -2711,6 +2711,7 @@ function CallProcessOnRaw(ProcessName)
         GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
         GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
         GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+        GlobalData.DataSet(iDS).Clusters        = ChannelMat.Clusters;
         GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
     else
         DataMat = in_bst_data(DataFile, 'Events');

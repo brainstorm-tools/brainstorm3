@@ -60,7 +60,7 @@ for i = 1:length(listOfReaders)
         frewind(fid);
         events = listOfReaders{i}(fid);
     catch
-        errorMsg = [errorMsg newline lasterr];
+        errorMsg = [errorMsg, char(10), lasterr];
         if (i < length(listOfReaders))
           continue;
         else

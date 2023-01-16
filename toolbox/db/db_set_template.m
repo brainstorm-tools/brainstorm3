@@ -182,11 +182,11 @@ if isDeleteDir
     file_delete(templateDir, 1, 3);
 end
 
-%% ===== CHECK FIDUCIALS =====
-if isInteractive && ~isempty(sSubject.Anatomy)
-    % DEFAULT ANAT: Check if the positions of the fiducials have been validated
-     figure_mri('FiducialsValidation', sSubject.Anatomy(1).FileName);
-end
+% %% ===== CHECK FIDUCIALS =====
+% if isInteractive && ~isempty(sSubject.Anatomy)
+%     % DEFAULT ANAT: Check if the positions of the fiducials have been validated
+%     figure_mri('FiducialsValidation', sSubject.Anatomy(1).FileName);
+% end
 
 
 

@@ -31,7 +31,7 @@ function [foundFiles, iDepth] = file_find( baseDir, filePattern, maxDepth, isSin
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2016
+% Authors: Francois Tadel, 2008-2022
 
 % Parse inputs
 if (nargin < 5) || isempty(iDepth)
@@ -56,15 +56,19 @@ end
 % Base dir not valid
 if isempty(baseDir) || ~isdir(baseDir) || (baseDir(1) == '.')
     return;
+% Pattern is a subfolder of the base dir
+elseif isSingle && ~any(filePattern == '*') && isdir(fullfile(baseDir, filePattern))
+    foundFiles = fullfile(baseDir, filePattern);
+    return;
 else
     % Try to find required file
-    listDir = dir(bst_fullfile(baseDir, filePattern));
+    listDir = dir(fullfile(baseDir, filePattern));
     if ~isempty(listDir)
         if isSingle
-            foundFiles = bst_fullfile(baseDir, listDir(1).name);
+            foundFiles = fullfile(baseDir, listDir(1).name);
         else
             for i = 1:length(listDir)
-                foundFiles = cat(2, foundFiles, {bst_fullfile(baseDir, listDir(i).name)});
+                foundFiles = cat(2, foundFiles, {fullfile(baseDir, listDir(i).name)});
             end
         end
         return
@@ -74,12 +78,12 @@ else
         return
     end
     % Get subdirectories
-    listDir = dir(bst_fullfile(baseDir, '*'));
+    listDir = dir(fullfile(baseDir, '*'));
     listDir([listDir.isdir] == 0) = [];
     % Process each subdirectory
     for i = 1:length(listDir)
         if (listDir(i).name(1) ~= '.')
-            newDir = bst_fullfile(baseDir, listDir(i).name);
+            newDir = fullfile(baseDir, listDir(i).name);
             [foundRec, iFoundDepth] = file_find(newDir, filePattern, maxDepth - 1, isSingle, iDepth + 1);
             if ~isempty(foundRec)
                 iDepth = iFoundDepth;

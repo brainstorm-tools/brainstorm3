@@ -88,7 +88,7 @@ isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICO
     'EEG-EEGLAB', 'EEG-GTEC', 'EEG-MANSCAN', 'EEG-MICROMED', 'EEG-NEURALYNX', 'EEG-BLACKROCK', 'EEG-RIPPLE', 'EEG-NEURONE', ...
     'EEG-NEUROSCOPE', 'EEG-NICOLET', 'EEG-NK', 'EEG-SMR', 'EEG-SMRX', 'SPM-DAT', 'NIRS-BRS', 'BST-DATA', 'BST-BIN', ...
     'EYELINK', 'EEG-EDF', 'EEG-EGI-MFF', 'EEG-INTAN', 'EEG-PLEXON', 'EEG-TDT', 'NWB', 'NWB-CONTINUOUS', 'EEG-CURRY', ...
-    'EEG-OEBIN', 'EEG-ADICHT'});
+    'EEG-OEBIN', 'EEG-ADICHT', 'EEG-BCI2000'});
 
 %% ===== READ RAW FILE =====
 if isRaw
@@ -515,7 +515,7 @@ else
         end
     end
     % Read file
-    [tmp, ChannelMatData, errMsg, DataMat] = in_fopen(DataFile, FileFormat);
+    [tmp, ChannelMatData, errMsg, DataMat] = in_fopen(DataFile, FileFormat, ImportOptions);
     if isempty(DataMat) || ~isempty(errMsg)
         return;
     end

@@ -58,7 +58,7 @@ if (bst_get('MatlabVersion') <= 803)
     url_read_alt = @webread;
 else
     url_read_fcn = @webread;
-    url_read_alt = @urlread;
+    url_read_alt = @(u)urlread(u, 'Timeout', 5);
 end
 % Read online version.txt
 try

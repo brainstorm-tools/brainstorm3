@@ -70,6 +70,10 @@ GlobalData.Program.GuiLevel = GuiLevel;
 GlobalData.DataBase.LastSavedTime = tic();   % Save the current time, to know when to save the database
 % Save the software home directory
 bst_set('BrainstormHomeDir', BrainstormHomeDir);
+% Debugging: show path in compiled application
+if isCompiled
+    disp(['BST> BrainstormHomeDir = ' BrainstormHomeDir]);
+end
 % Test for headless mode
 if (GuiLevel >= 0) && (java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadless() || java.awt.GraphicsEnvironment.getLocalGraphicsEnvironment.isHeadlessInstance())
     disp(' ');

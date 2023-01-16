@@ -1631,9 +1631,9 @@ function [ChannelMat, ChanOrient, ChanLocFix] = DetectElectrodes(ChannelMat, Mod
             ElecLoc = [ChannelMat.Channel(iMod(iGroupChan)).Loc]';
             % Get distance between available contacts (in number of contacts)
             nDist = diff(AllInd(iGroupChan));
-            % Detect average spacing between contacts (round at 1 decimal)
+            % Detect average spacing between adjacent contacts (precision: 0.000001)
             newElec.ContactSpacing = mean(sqrt(sum((ElecLoc(1:end-1,:) - ElecLoc(2:end,:)) .^ 2, 2)) ./ nDist(:), 1);
-            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 1);
+            newElec.ContactSpacing = bst_round(newElec.ContactSpacing, 6);
             
             % Center of the electrodes
             M = mean(ElecLoc);
@@ -2615,9 +2615,13 @@ end
 
 
 %% ===== DISPLAY CHANNELS (MRI VIEWER) =====
-% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
-%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile)
-function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
+% USAGE:  [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit=0)
+%         [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, MriFile, isEdit=0)
+function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy, isEdit)
+    % Parse inputs
+    if (nargin < 4) || isempty(isEdit)
+        isEdit = 0;
+    end
     % Get MRI to display
     if ischar(iAnatomy)
         MriFile = iAnatomy;
@@ -2642,6 +2646,10 @@ function [hFig, iDS, iFig] = DisplayChannelsMri(ChannelFile, Modality, iAnatomy)
     % SEEG and ECOG: Open tab "iEEG"
     if ismember(Modality, {'SEEG', 'ECOG', 'ECOG+SEEG'})
         gui_brainstorm('ShowToolTab', 'iEEG');
+    end
+    % Make electrodes editable
+    if isEdit
+        figure_mri('SetEditChannels', hFig, isEdit);
     end
 end
 

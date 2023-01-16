@@ -1190,6 +1190,8 @@ function ShowToolTab(tabTitle)
             panel_surface('UpdatePanel');
         case 'iEEG'
             panel_ieeg('UpdatePanel');
+        case 'Cluster'
+            panel_cluster('UpdatePanel');
     end
     % Select tab
     SetSelectedTab(tabTitle, 0);

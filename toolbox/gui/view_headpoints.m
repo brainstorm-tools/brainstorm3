@@ -1,8 +1,8 @@
-function [hFig, iDS, iFig] = view_headpoints(ChannelFile, ScalpFile, isInterp)
+function [hFig, iDS, iFig] = view_headpoints(ChannelFile, ScalpFile, isInterp, isColorDist)
 % VIEW_HEADPOINTS: View surface file and head points.
 %
 % USAGE: view_headpoints(ChannelFile)
-%        view_headpoints(ChannelFile, ScalpFile)
+%        view_headpoints(ChannelFile, ScalpFile=[], isInterp=0, isColorDist=0)
 %
 % OUTPUT: 
 %     - hFig : Matlab handle to the 3DViz figure that was created or updated
@@ -28,10 +28,14 @@ function [hFig, iDS, iFig] = view_headpoints(ChannelFile, ScalpFile, isInterp)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2010
+% Authors: Francois Tadel, 2010-2022
 
 global GlobalData;
 
+% Default: no color for the distance between the scalp and the points
+if (nargin < 4) || isempty(isColorDist)
+    isColorDist = 0;
+end
 % Default: no spherical harmonics
 if (nargin < 3) || isempty(isInterp)
     isInterp = 0;
@@ -58,6 +62,7 @@ end
 HeadPoints = channel_get_headpoints(ChannelFile, 1);
 if isempty(HeadPoints)
     bst_error('No digitized head points to display for this file.', 'Add head points', 0);
+    hFig = []; iDS = []; iFig = [];
     return;
 end
 % Load full channel file
@@ -65,6 +70,7 @@ ChannelMat = in_bst_channel(ChannelFile);
 
 % View scalp surface if available
 [hFig, iDS, iFig] = view_surface(ScalpFile, .2);
+figure_3d('SetStandardView', hFig, 'front');
 
 % Extend figure and dataset for this particular channel file
 GlobalData.DataSet(iDS).StudyFile       = sStudy.FileName;
@@ -72,11 +78,12 @@ GlobalData.DataSet(iDS).ChannelFile     = ChannelFile;
 GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
 GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
 GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
+GlobalData.DataSet(iDS).Clusters        = ChannelMat.Clusters;
 GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
 GlobalData.DataSet(iDS).HeadPoints      = ChannelMat.HeadPoints;
 
 % View HeadPoints
-figure_3d('ViewHeadPoints', hFig, 1);
+figure_3d('ViewHeadPoints', hFig, 1, isColorDist);
 
 % Show a spherical harmonic fit to the landmark data
 if isInterp

@@ -93,7 +93,7 @@ for i = 1:length(sSubject.Surface)
     % Copy to new structure
     sTessNew = db_template('surfacemat');
     sTessNew.Comment  = sTess.Comment;
-    sTessNew.Vertices = double(sTess.Vertices);
+    sTessNew.Vertices = double(single(sTess.Vertices));
     % Copy other fields
     for f = {'Faces', 'Atlas', 'Reg', 'Elements', 'Tissue', 'TissueLabels', 'Tensors'}
         if isfield(sTess, f{1}) && ~isempty(sTess.(f{1}))
@@ -109,6 +109,9 @@ for i = 1:length(sSubject.Surface)
         end
     end
     % Compress Reg
+    if isfield(sTessNew, 'Reg') && isfield(sTessNew.Reg, 'Sphere') && isfield(sTessNew.Reg.Sphere, 'Vertices') && ~isempty(sTessNew.Reg.Sphere.Vertices)
+        sTessNew.Reg.Sphere.Vertices = single(sTessNew.Reg.Sphere.Vertices);
+    end
     if isfield(sTessNew, 'Reg') && isfield(sTessNew.Reg, 'Sphere') && isfield(sTessNew.Reg.Sphere, 'Vertices') && ~isempty(sTessNew.Reg.Sphere.Vertices)
         sTessNew.Reg.Sphere.Vertices = single(sTessNew.Reg.Sphere.Vertices);
     end

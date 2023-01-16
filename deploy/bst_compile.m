@@ -28,7 +28,7 @@
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2011-2021
+% Authors: Francois Tadel, 2011-2023
 
       
 %% ===== PARSE INPUTS =====
@@ -42,8 +42,9 @@ end
 JdkDir = getenv('JAVA_HOME');
 if isempty(JdkDir) || ~exist(fullfile(JdkDir, 'bin'), 'file')
     error(['You must install OpenJDK 8 and set the environment variable JAVA_HOME to point at it.' 10 ...
-        'Download: https://adoptopenjdk.net/?variant=openjdk8' 10 ...
-        'Set environment from Matlab: setenv(''JAVA_HOME'', ''C:\Program Files\Eclipse Foundation\jdk-8.0.302.8-hotspot'')']);
+        'Download: https://adoptium.net/temurin/releases/?version=8' 10 ...
+        'Install Ubuntu package: sudo apt install openjdk-8-jdk' 10 ...
+        'Set environment variable from Matlab: setenv(''JAVA_HOME'', ''/path/to/jdk-8.0.../'')']);
 end
 disp([10 'COMPILE> JAVA_HOME=' JdkDir]);
 % Check if compiler is available
@@ -137,24 +138,25 @@ spmtripDir = fullfile(bst_get('BrainstormUserDir'), 'spmtrip');
 if isPlugs && ~exist(fullfile(spmtripDir, 'ft_defaults.m'), 'file')
     disp(['COMPILE> SPMTRIP folder not found: ' spmtripDir]);
     disp('COMPILE> Running bst_spmtrip... (to disable this, call bst_compile with argument "noplugs")');
-    % Windows only
-    if ~ispc
-        error('Preparing the folder spmtrip with bst_spmtrip.m is available only for Windows (for the moment).');
-    end
     % Initialize FieldTrip
     [isInstalled, errMsg, PlugFt] = bst_plugin('Install', 'fieldtrip');
     if ~isInstalled
         error(['Could not install FieldTrip: ' errMsg]);
     end
     FieldTripDir = fullfile(PlugFt.Path, PlugFt.SubFolder);
-    % Install SPM
+    % Initialize SPM
     [isInstalled, errMsg, PlugSpm] = bst_plugin('Install', 'spm12');
     if ~isInstalled
         error(['Could not install SPM12: ' errMsg]);
     end
     SpmDir = fullfile(PlugSpm.Path, PlugSpm.SubFolder);
+    % If CAT12 is installed, it must be unlinked before compiling SPM
+    if ~isempty(bst_plugin('GetInstalled', 'cat12'))
+        bst_plugin('LinkCatSpm', 0);
+    end
     % Extract functions to compile from SPM and Fieldtrip
     bst_spmtrip(SpmDir, FieldTripDir, spmtripDir);
+    % Add to Matlab path
     addpath(spmtripDir);
 end
 

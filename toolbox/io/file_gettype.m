@@ -38,6 +38,11 @@ if ischar(fileName)
         fileType = 'link';
         return;
     end
+    % Detect spikes directory
+    if ~isempty(regexp(fileName, '_\w+_spikes$', 'once'))
+        fileType = 'dirspikes';
+        return;
+    end
     % Initialize possible types and formats to empty lists
     fileType = 'unknown';
 

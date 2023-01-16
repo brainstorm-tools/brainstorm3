@@ -55,16 +55,30 @@ bst_progress('start', 'Warp anatomy', 'Warping surfaces...', 0, length(SurfaceFi
 % Loop on all surface files
 for i = 1:length(SurfaceFiles)
     bst_progress('inc', 1);
-    % Read input 
-    sSurf = in_tess_bst(SurfaceFiles{i});
-    % Check if this is really a tesselation (and not a "fibers" file)
-    if ~isfield(sSurf, 'Vertices')
-        disp(['WARP> Skipped invalid surface file: ' SurfaceFiles{i}]);
-        continue;
-    end
+    % Read input
+    sSurf = load(file_fullpath(SurfaceFiles{i}));
     % Warp surface
-    sSurfNew.Faces    = sSurf.Faces;
-    sSurfNew.Vertices = warp_lm(sSurf.Vertices, A, W, srcPts) + sSurf.Vertices;
+    switch file_gettype(SurfaceFiles{i})
+        case 'fibers'
+            nRows = size(sSurf.Points, 1);
+            Points = permute(reshape(sSurf.Points, [], 1, 3), [1 3 2]);
+            Points = warp_lm(Points, A, W, srcPts) + Points;
+            Points = reshape(permute(Points, [1 3 2]), nRows, [], 3);
+            sSurfNew.Points = Points;
+            sSurfNew.Header = sSurf.Header;
+            sSurfNew.Colors = sSurf.Colors;
+            sSurfNew.Scouts = sSurf.Scouts;
+        case 'fem'
+            sSurfNew.Elements     = sSurf.Elements;
+            sSurfNew.Tissue       = sSurf.Tissue;
+            sSurfNew.TissueLabels = sSurf.TissueLabels;
+            sSurfNew.Tensors      = sSurf.Tensors;
+            sSurfNew.Vertices     = warp_lm(sSurf.Vertices, A, W, srcPts) + sSurf.Vertices;
+        otherwise
+            sSurfNew.Faces    = sSurf.Faces;
+            sSurfNew.Vertices = warp_lm(sSurf.Vertices, A, W, srcPts) + sSurf.Vertices;
+    end
+    % Add tag to comment
     sSurfNew.Comment  = [sSurf.Comment ' warped'];
     % Copy previous field
     if isfield(sSurf, 'Atlas') && ~isempty(sSurf.Atlas)

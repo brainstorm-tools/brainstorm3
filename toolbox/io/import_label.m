@@ -1,8 +1,8 @@
-function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtlas, GridLoc)
+function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtlas, GridLoc, FileFormat)
 % IMPORT_LABEL: Import an atlas segmentation for a given surface
 % 
-% USAGE: import_label(SurfaceFile, LabelFiles, isNewAtlas=1, GridLoc=[]) : Add label information to SurfaceFile
-%        import_label(SurfaceFile)                                       : Ask the user for the label file to import
+% USAGE: import_label(SurfaceFile, LabelFiles, isNewAtlas=1, GridLoc=[], FileFormat=[]) : Add label information to SurfaceFile
+%        import_label(SurfaceFile)                                                      : Ask the user for the label file to import
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -22,7 +22,7 @@ function [sAllAtlas, Messages] = import_label(SurfaceFile, LabelFiles, isNewAtla
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2021
+% Authors: Francois Tadel, 2012-2022
 
 import sun.misc.BASE64Decoder;
 
@@ -31,6 +31,9 @@ import sun.misc.BASE64Decoder;
 sAllAtlas = repmat(db_template('Atlas'), 0);
 Messages = [];
 % Parse inputs
+if (nargin < 5) || isempty(FileFormat)
+    FileFormat = [];
+end
 if (nargin < 4) || isempty(GridLoc)
     GridLoc = [];
 end
@@ -63,27 +66,39 @@ if isempty(LabelFiles)
     % Save default export format
     DefaultFormats.LabelIn = FileFormat;
     bst_set('DefaultFormats',  DefaultFormats);
-% CALL: import_label(SurfaceFile, LabelFiles)
+    % Warning if trying to import volume atlases on surfaces
+    if isempty(GridLoc) && ismember(FileFormat, {'MRI-MASK', 'MRI-MASK-MNI', 'MRI-MASK-NOOVERLAP', 'MRI-MASK-NOOVERLAP-MNI'})
+        isConfirm = java_dialog('confirm', ['You are trying to import a volume parcellation on a cortex surface.' 10 ...
+            'This usually results in very poor results, with incomplete cortex parcels.' 10 ...
+            'Using volume parcellations is only recommended with volume source models.' 10 10 ...
+            'Proceed anyways?'], 'Warning');
+        if ~isConfirm
+            return;
+        end
+    end
+% CALL: import_label(SurfaceFile, LabelFiles, ...)
 else
     % Force cell input
     if ~iscell(LabelFiles)
         LabelFiles = {LabelFiles};
     end
     % Detect file format based on file extension
-    [fPath, fBase, fExt] = bst_fileparts(LabelFiles{1});
-    switch (fExt)
-        case '.annot',  FileFormat = 'FS-ANNOT';
-        case '.label',  FileFormat = 'FS-LABEL-SINGLE';
-        case '.gii',    FileFormat = 'GII-TEX';
-        case '.dfs',    FileFormat = 'DFS';
-        case '.dset',   FileFormat = 'DSET';
-        case '.mat'
-            switch (file_gettype(LabelFiles{1}))
-                case 'scout',        FileFormat = 'BST';
-                case 'subjectimage', FileFormat = 'MRI-MASK-NOOVERLAP';
-                otherwise,           Messages = 'Unsupported Brainstorm file type.'; return;
-            end
-        otherwise,  Messages = 'Unknown file extension.'; return;
+    if isempty(FileFormat)
+        [fPath, fBase, fExt] = bst_fileparts(LabelFiles{1});
+        switch (fExt)
+            case '.annot',  FileFormat = 'FS-ANNOT';
+            case '.label',  FileFormat = 'FS-LABEL-SINGLE';
+            case '.gii',    FileFormat = 'GII-TEX';
+            case '.dfs',    FileFormat = 'DFS';
+            case '.dset',   FileFormat = 'DSET';
+            case '.mat'
+                switch (file_gettype(LabelFiles{1}))
+                    case 'scout',        FileFormat = 'BST';
+                    case 'subjectimage', FileFormat = 'MRI-MASK-NOOVERLAP';
+                    otherwise,           Messages = 'Unsupported Brainstorm file type.'; return;
+                end
+            otherwise,  Messages = 'Unknown file extension.'; return;
+        end
     end
 end
 
@@ -693,7 +708,7 @@ function AtlasName = GetAtlasName(fBase)
         case {'lh.myaparc_250', 'rh.myaparc_250'}
             AtlasName = 'Lausanne-S250';
         case {'lh.bn_atlas', 'rh.bn_atlas'}
-            AtlasName = 'Braintomme';
+            AtlasName = 'Brainnetome';
         case {'lh.oasis.chubs', 'rh.oasis.chubs'}
             AtlasName = 'OASIS cortical hubs';
         case {'lh.mpm.vpnl', 'rh.mpm.vpnl'}

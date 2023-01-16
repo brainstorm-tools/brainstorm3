@@ -100,10 +100,8 @@ end
 function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Initialize returned values
     OutputFiles = {};
-    % Forcing the concatenation of the inputs
-    sProcess.options.outputmode.Comment = {'Save individual results (one file per input file)', 'Concatenate input files before processing (one file)', 'Save average connectivity matrix (one file)'};
-    sProcess.options.outputmode.Type    = 'radio';
-    sProcess.options.outputmode.Value   = 2;
+    % Output mode 2021: Forcing the average cross-spectra of input files (one output file)
+    sProcess.options.outputmode.Value = 'avgcoh';
     % Input options
     OPTIONS = process_corr1n('GetConnectOptions', sProcess, sInputA);
     if isempty(OPTIONS)
@@ -125,6 +123,10 @@ function OutputFiles = Run(sProcess, sInputA) %#ok<DEFNU>
     % Read time information
     TimeVector = in_bst(sInputA(1).FileName, 'Time');
     sfreq      = round(1/(TimeVector(2) - TimeVector(1)));
+    % Get time window of first fileA if none specified in parameters
+    if isempty(OPTIONS.TimeWindow)
+        OPTIONS.TimeWindow = TimeVectorA([1, end]);
+    end
     % Select input time window
     TimeVector = TimeVector((TimeVector >= OPTIONS.TimeWindow(1)) & (TimeVector <= OPTIONS.TimeWindow(2)));
     nTime      = length(TimeVector);

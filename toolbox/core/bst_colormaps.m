@@ -68,7 +68,7 @@ function varargout = bst_colormaps( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2019
+% Authors: Francois Tadel, 2008-2022
 %          Thomas Vincent, 2019
 
 eval(macro_method);
@@ -376,12 +376,25 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
                     case {'3DViz', 'MriViewer'}
                         % Get surfaces defined in this figure
                         TessInfo = getappdata(sFigure.hFigure, 'Surface');
-                        DataFig = TessInfo.DataMinMax;
-                        if ~isempty(TessInfo.DataSource.Type)
-                            DataType = TessInfo.DataSource.Type;
-                            isSLORETA = strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo.DataSource.FileName), 'sloreta'));
-                            if isSLORETA 
+                        % Find 1st surface that match this ColormapType
+                        iTess = find(strcmpi({TessInfo.ColormapType}, ColormapType), 1);
+                        DataFig = [];
+                        if ~isempty(iTess) && ~isempty(TessInfo(iTess).DataSource.Type)
+                            DataFig = TessInfo(iTess).DataMinMax;
+                            DataType = TessInfo(iTess).DataSource.Type;
+                            % For Data: use the modality instead
+                            if strcmpi(DataType, 'Data') && ~isempty(ColormapInfo.Type) && ismember(ColormapInfo.Type, {'eeg', 'meg', 'nirs'})
+                                DataType = upper(ColormapInfo.Type);
+                            % sLORETA: Do not use regular source scaling (pAm)
+                            elseif strcmpi(DataType, 'Source') && ~isempty(strfind(lower(TessInfo(iTess).DataSource.FileName), 'sloreta'))
                                 DataType = 'sLORETA';
+                            end
+                        end
+                        if isempty(DataFig)
+                            % If displaying color-coded head points (see channel_align_manual)
+                            HeadpointsDistMax = getappdata(sFigure.hFigure, 'HeadpointsDistMax');
+                            if ~isempty(HeadpointsDistMax)
+                                DataFig = [0, HeadpointsDistMax * 1000];
                             end
                         end
                         
@@ -443,7 +456,7 @@ function SetMaxCustom(ColormapType, DisplayUnits, newMin, newMax)
         if isinf(amplitudeMax)
             fFactor = 1;
             fUnits = 'Inf';
-        elseif isequal(DisplayUnits, '%')
+        elseif isequal(DisplayUnits, '%') || isequal(DisplayUnits, 'mm')
             fFactor = 1;
             fUnits = DisplayUnits;
         else
@@ -1093,6 +1106,13 @@ function isModified = NewCustomColormap(ColormapType, Name, CMap)
                       'Position', [-100 -100 1 1], ...
                       'Colormap', CMap);
         drawnow;
+        % For Matlab >= 2020b, force using legacy colormap editor
+        if (bst_get('MatlabVersion') >= 909)
+            s = settings;
+            if hasSetting(s.matlab.graphics, 'showlegacycolormapeditor')
+                s.matlab.graphics.showlegacycolormapeditor.TemporaryValue = 1;
+            end
+        end
         % Display colormap editor
         colormapeditor(hTmp);
         % Hide base figure
@@ -1445,16 +1465,9 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                     fFactor = 1e6;                  
                 elseif strcmp(DisplayUnits,'mV')
                     fFactor = 1e3;                                      
-                elseif ~isempty(strfind(DisplayUnits,'mol'))
+                elseif ~isempty(strfind(DisplayUnits,'mol')) || ~isempty(strfind(DisplayUnits,'OD'))
                      fmax = max(abs(dataBounds));
-                     if round(log10(fmax)) < -3
-                         fFactor = 1e6;
-                     else    
-                        fFactor = 1;  
-                     end   
-                elseif ~isempty(strfind(DisplayUnits,'OD'))
-                    fFactor = 1e3;
-                    DisplayUnits='OD(*10^-3)';
+                    [valScaled, fFactor, DisplayUnits] = bst_getunits( fmax, DataType, 'nirs', DisplayUnits);
                 elseif strcmp(DisplayUnits,'U.A.')
                     fmax = max(abs(dataBounds));
                     if fmax < 1e3
@@ -1469,8 +1482,12 @@ function ConfigureColorbar(hFig, ColormapType, DataType, DisplayUnits) %#ok<DEFN
                 elseif strcmp(DisplayUnits,'a.u.')
                     fmax = max(abs(dataBounds));
                     [fScaled, fFactor, fUnits] = bst_getunits(fmax, DisplayUnits);
+                elseif strcmp(DisplayUnits,'fT/nAm')    % MEG leadfield sensitivity
+                    fFactor = 1e6;
+                elseif strcmp(DisplayUnits,'\muV/nAm')  % EEG leadfield sensitivity
+                    fFactor = 1e-3;
                 else
-                     fFactor = 1;
+                    fFactor = 1;
                 end
                 fUnits = DisplayUnits;
             % Get data units from file maximum

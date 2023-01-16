@@ -1,7 +1,7 @@
-function hFig = view_leadfields(HeadmodelFiles)
-% VIEW_LEADFIELDS: Show all the leadfield vectors from a "Gain matrix" of the forward model.
+function hFig = view_leadfield_vectors(HeadmodelFiles, Modality)
+% VIEW_LEADFIELD_VECTORS: Show all the leadfield vectors from a "Gain matrix" of the forward model.
 % 
-% USAGE:  hFig = view_leadfields(HeadmodelFiles)
+% USAGE:  hFig = view_leadfield_vectors(HeadmodelFiles, Modality=[ask])
 %
 % DOCUMENTATION:
 %    - https://www.researchgate.net/publication/260603026_Biomagnetism
@@ -29,6 +29,9 @@ function hFig = view_leadfields(HeadmodelFiles)
 %               Juan Garcia-Prieto : add logarithmic scale for LF vectors  
 
 %% ===== PARSE INPUTS =====
+if (nargin < 2) || isempty(Modality)
+    Modality = [];
+end
 if ischar(HeadmodelFiles)
     HeadmodelFiles = {HeadmodelFiles};
 end
@@ -104,7 +107,7 @@ end
 selectedModality = [];
 isAvgRef = 1; 
 iRef = [];
-if ~SelectModality
+if ~SelectModality(Modality)
     bst_progress('stop');
     return;
 end
@@ -114,10 +117,9 @@ GetLeadField();
 
 %% ===== DISPLAY =====
 % Display cortex surface
-hFig = [];
 SurfAlpha = 0.5;
 SurfColor = [0.5 0.5 0.5] ;
-hFig = view_surface(CortexSurface, SurfAlpha, SurfColor, hFig);
+hFig = view_surface(CortexSurface, SurfAlpha, SurfColor, 'NewFigure');
 if isempty(hFig)
     error('No reference surface available');
 end
@@ -456,9 +458,11 @@ bst_progress('stop');
 
 
 %% ===== SET MODALITY =====
-    function isOk = SelectModality()
+    function isOk = SelectModality(inputMod)
         % Ask modality if there is more than one
-        if (length(allModalities) > 1)
+        if (nargin == 1) && ~isempty(inputMod) && ismember(inputMod, allModalities)
+            selectedModality = inputMod;
+        elseif (length(allModalities) > 1)
             selectedModality = java_dialog('question', 'Select the modality:', ...
                 'Display the Lead Field', [], allModalities, allModalities{1});
             if isempty(selectedModality)

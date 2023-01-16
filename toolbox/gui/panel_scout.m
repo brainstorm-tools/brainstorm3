@@ -402,7 +402,7 @@ function UpdateMenus(sAtlas, sSurf)
         gui_component('MenuItem', jMenuNew, [], 'Volume scouts', IconLoader.ICON_CHANNEL, [], @(h,ev)bst_call(@CreateAtlasVolumeGrid));
     % Create atlas from volumes in subject anatomy
     jMenuAnat = gui_component('Menu', jMenu, [], 'From subject anatomy', IconLoader.ICON_VOLATLAS, [], []);
-    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#')
+    if ~isempty(sSurf) && ~strcmpi(sSurf.Name, 'FEM') && ~isempty(sSurf.FileName) && (sSurf.FileName(1) ~= '#') && ~any(sSurf.FileName == '|')
         sSubject = bst_get('SurfaceFile', sSurf.FileName);
         if ~isempty(sSubject.Anatomy)
             iAnatAtlases = find(~cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
@@ -492,6 +492,8 @@ function UpdateMenus(sAtlas, sSurf)
     % === MENU PROJECT ====
     % Offer these projection menus only for Cortex surfaces
     if ~isempty(sAtlas) && ~isempty(jMenuProject) && strcmpi(sSurf.Name, 'Cortex')
+        % Project to contralateral hemisphere
+        gui_component('MenuItem', jMenuProject, [], 'Contralateral hemisphere', IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScoutsContralateral, sSurf.FileName));
         % Get subjectlist
         nSubjects = bst_get('SubjectCount');
         nMenus = 0;
@@ -525,7 +527,8 @@ function UpdateMenus(sAtlas, sSurf)
                 % Project to this cortex surface
                 gui_component('MenuItem', jMenuSubj, [], sAllCortex(iSurf).Comment, IconLoader.ICON_CORTEX, [], @(h,ev)bst_call(@ProjectScouts, sSurf.FileName, sAllCortex(iSurf).FileName));
             end
-        end
+        end        
+        % Add scroller
         if (nMenus > 20)
             darrylbu.util.MenuScroller.setScrollerFor(jMenuProject, 20);
         end
@@ -817,7 +820,7 @@ function labels = FormatScoutLabel(sScouts, isHtml)
     % Loop on scouts
     for i = 1:length(sScouts)
         % Remove the possible " R" and " L" at the end of the scouts names
-        if (length(labels{i}) > 3) && (strcmp(labels{i}(end-1:end), ' R') || strcmp(labels{i}(end-1:end), ' L'))
+        if (length(labels{i}) >= 3) && (strcmp(labels{i}(end-1:end), ' R') || strcmp(labels{i}(end-1:end), ' L'))
             labels{i} = labels{i}(1:end-2);
         end
         % Label = "RegionCode ScoutName"
@@ -3697,7 +3700,7 @@ function JoinScouts(varargin)
     % Display new scout
     PlotScouts(iNewScout);
     % Update "Scouts Manager" panel
-    UpdateScoutsList();   
+    UpdateScoutsList();
     % Select last scout in list (new scout)
     SetSelectedScouts(iNewScout);
 end
@@ -4002,10 +4005,10 @@ function ImportScoutsFromMatlab()
 end
 
 
-%% ===== PROJECT SCOUTS =====
+%% ===== PROJECT SCOUTS BETWEEN SURFACES =====
 function ProjectScouts(srcSurfFile, destSurfFile)
     % Get current atlas
-    [sAtlas, iAtlas, sSurf, iSurf] = GetAtlas();
+    sAtlas = GetAtlas();
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4015,7 +4018,7 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     % Use only the selected scouts
     sAtlas.Scouts = sScouts;
     % Progress bar
-    bst_progress('start', 'Project sources', 'Computing interpolation...');
+    bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
     nScoutProj = bst_project_scouts(srcSurfFile, destSurfFile, sAtlas);
     % Unload destination surface
@@ -4024,6 +4027,51 @@ function ProjectScouts(srcSurfFile, destSurfFile)
     bst_progress('stop');
     % Message
     java_dialog('msgbox', sprintf('Projected %d scouts to:\n%s', nScoutProj, destSurfFile));
+end
+
+
+%% ===== PROJECT SCOUTS BETWEEN HEMIPSHERES =====
+function ProjectScoutsContralateral(srcSurfFile)
+
+    % Save any modification to the surface
+    SaveModifications();
+
+    % Get current atlas
+    [sAtlas, iAtlas, sSurf] = GetAtlas();
+    % Get selected scouts
+    sScouts = GetSelectedScouts();
+    if isempty(sAtlas) || isempty(sScouts)
+        bst_error('No scouts selected.', 'Project scouts', 0);
+        return;
+    end
+    % Use only the selected scouts
+    sAtlas.Scouts = sScouts;
+    % Progress bar
+    bst_progress('start', 'Project scouts', 'Computing interpolation...');
+    % Call function to project scouts
+    sScoutsNew = bst_project_scouts_contra(srcSurfFile, sAtlas);
+    if isempty(sScoutsNew)
+        return;
+    end
+    
+    % Set default seeds
+    sScoutsNew = SetScoutsSeed(sScoutsNew, sSurf.Vertices);
+    % Set handles structure
+    sTemplate = db_template('scout');
+    for i = 1:length(sScoutsNew)
+        sScoutsNew(i).Handles = sTemplate.Handles;
+    end
+    % Save new scout
+    iNewScouts = SetScouts([], 'Add', sScoutsNew);
+    % Display new scout
+    PlotScouts(iNewScouts);
+    % Update "Scouts Manager" panel
+    UpdateScoutsList();
+    % Select last scout in list (new scout)
+    SetSelectedScouts(iNewScouts);
+
+    % Close progress bar
+    bst_progress('stop');
 end
 
 
@@ -5223,22 +5271,29 @@ function SaveScouts(varargin)
         ScoutFile = bst_fullfile(LastUsedDirs.ExportAnat, ['scout_', file_standardize(sAtlas.Name), sprintf('_%d.mat', length(sAtlas.Scouts))]);
     end
     % Get filename where to store the filename
-    ScoutFile = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
+    [ScoutFile, FileFormat] = java_getfile('save', 'Save selected scouts', ScoutFile, ... 
                              'single', 'files', ...
-                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'}, 1);
+                             {{'_scout'}, 'Brainstorm cortical scouts (*scout*.mat)', 'BST'; ...
+                              {'.label'}, 'FreeSurfer ROI, single scout (*.label)', 'FS-LABEL-SINGLE'}, 1);
     if isempty(ScoutFile)
         return;
     end
     % Save last used folder
     LastUsedDirs.ExportAnat = bst_fileparts(ScoutFile);
     bst_set('LastUsedDirs',  LastUsedDirs);
-    % Make sure that filename contains the 'scout' tag
-    if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
-        [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
-        ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
+    % Switch file format
+    switch (FileFormat)
+        case 'BST'
+            % Make sure that filename contains the 'scout' tag
+            if isempty(strfind(ScoutFile, '_scout')) && isempty(strfind(ScoutFile, 'scout_'))
+                [filePath, fileBase, fileExt] = bst_fileparts(ScoutFile);
+                ScoutFile = bst_fullfile(filePath, ['scout_' fileBase fileExt]);
+            end
+            % Save file
+            bst_save(ScoutFile, sAtlas, 'v7');
+        case 'FS-LABEL-SINGLE'
+            out_label_fs(ScoutFile, sScouts.Label, sScouts.Vertices - 1, sSurf.Vertices(sScouts.Vertices,:), ones(1, length(sScouts.Vertices)));
     end
-    % Save file
-    bst_save(ScoutFile, sAtlas, 'v7');
 end
 
 

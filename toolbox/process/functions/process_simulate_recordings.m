@@ -22,7 +22,7 @@ function varargout = process_simulate_recordings( varargin )
 % =============================================================================@
 %
 % Authors: Guiomar Niso, 2013-2016
-%          Francois Tadel, 2013-2020
+%          Francois Tadel, 2013-2022
 
 eval(macro_method);
 end
@@ -63,6 +63,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     sProcess.options.scouts.Group   = 'input';
+    % === UNITS
+    sProcess.options.units.Comment = {'pAm <FONT COLOR="#777777">(*10<UP>-9</UP>)</FONT>', 'Am', 'Other', 'Input signal units:'; ...
+                                      'pam', 'am', 'other', ''};
+    sProcess.options.units.Type    = 'radio_linelabel';
+    sProcess.options.units.Value   = 'pam';
+    sProcess.options.units.Group   = 'input';
     % === ADD NOISE
     sProcess.options.isnoise.Comment = 'Add noise';
     sProcess.options.isnoise.Type    = 'checkbox';
@@ -121,7 +127,12 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     isNoise = sProcess.options.isnoise.Value;
     NSR1 = sProcess.options.noise1.Value{1};
     NSR2 = sProcess.options.noise2.Value{1};
-    
+    if isfield(sProcess.options, 'units') && isfield(sProcess.options.units, 'Value') && ~isempty(sProcess.options.units.Value)
+        Units = sProcess.options.units.Value;
+    else
+        Units = 'pam';
+    end
+
     % === LOAD CHANNEL FILE ===
     % Get condition
     sStudy = bst_get('Study', sInput.iStudy);
@@ -281,9 +292,20 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
     else
         strNoise = '';
     end
-    % Set unit range to pAm
-    if max(abs(ImageGridAmp(:)) > 1e-3)
-        ImageGridAmp = 1e-9 .* ImageGridAmp;
+    % Set unit range
+    switch Units
+        case 'pam'
+            ImageGridAmp = 1e-9 .* ImageGridAmp;
+            DisplayUnits = '';
+        case 'am'
+            DisplayUnits = '';
+        otherwise
+            % Keeping signals unchanged, using the uits from the input fil
+            if isfield(sMatrix, 'DisplayUnits') && ~isempty(sMatrix.DisplayUnits)
+                DisplayUnits = sMatrix.DisplayUnits;
+            else
+                DisplayUnits = '';
+            end
     end
     
     % === GENERATE DATA MATRIX ===
@@ -358,6 +380,7 @@ function OutputFiles = Run(sProcess, sInput) %#ok<DEFNU>
         ResultsMat.ChannelFlag   = [];
         ResultsMat.GoodChannel   = iChannels;
         ResultsMat.SurfaceFile   = SurfaceFile;
+        ResultsMat.DisplayUnits = DisplayUnits;
         % Add history entry
         ResultsMat = bst_history('add', ResultsMat, 'simulate', ['Simulated from file: ' sInput.FileName]);
         % Output filename

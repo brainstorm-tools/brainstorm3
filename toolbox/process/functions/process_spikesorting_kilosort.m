@@ -327,7 +327,7 @@ function OutputFiles = Run(sProcess, sInput)
             continue;
         end
         curStruct = struct();
-        curStruct.Path = outputPath;
+        curStruct.Path = file_short(outputPath);
         curStruct.File = fetFile.name;
         curStruct.Name = Montages{iMontage};
         curStruct.Mod  = 0;
@@ -354,10 +354,10 @@ function OutputFiles = Run(sProcess, sInput)
     DataMat_spikesorter.Comment  = ['KiloSort Spike Sorting' commentSuffix];
     DataMat_spikesorter.DataType = 'raw';%'ephys';
     DataMat_spikesorter.Device   = 'KiloSort';
-    DataMat_spikesorter.Parent   = outputPath;
+    DataMat_spikesorter.Parent   = file_short(outputPath);
     DataMat_spikesorter.Spikes   = spikes;
     DataMat_spikesorter.RawFile  = sInput.FileName;
-    DataMat_spikesorter.Name     = NewBstFile;
+    DataMat_spikesorter.Name     = file_short(NewBstFile);
     % Add history field
     DataMat_spikesorter = bst_history('add', DataMat_spikesorter, 'import', ['Link to unsupervised electrophysiology files: ' outputPath]);
     % Save file on hard drive
@@ -525,8 +525,8 @@ function [events, Channels] = LoadKlustersEvents(SpikeSortedMat, iMontage)
     [tmp, study] = fileparts(SpikeSortedMat.Spikes(iMontage).File);
     [tmp, study] = fileparts(study);
     sMontage = num2str(iMontage);
-    clu = load(bst_fullfile(SpikeSortedMat.Parent, [study '.clu.' sMontage]));
-    fet = dlmread(bst_fullfile(SpikeSortedMat.Parent, [study '.fet.' sMontage]));
+    clu = load(bst_fullfile(file_fullpath(SpikeSortedMat.Parent), [study '.clu.' sMontage]));
+    fet = dlmread(bst_fullfile(file_fullpath(SpikeSortedMat.Parent), [study '.fet.' sMontage]));
 
     % Get the channels that belong in the selected montage
     [Channels, Montages, channelsMontage,montageOccurences] = ParseMontage(ChannelMat);
