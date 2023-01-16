@@ -180,7 +180,7 @@ if isAtlas && isempty(Comment) && ~iscell(MriFile)
         case 'aseg'
             Comment = 'ASEG';
         case 'aparc+aseg'
-            Comment = 'Deskian-Killiany';
+            Comment = 'Desikan-Killiany';
         case 'aparc.a2009s+aseg'
             Comment = 'Destrieux';
         case {'aparc.DKTatlas+aseg', 'aparc.mapped+aseg'}  % FreeSurfer, FastSurfer
