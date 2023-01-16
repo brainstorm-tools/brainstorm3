@@ -1000,7 +1000,7 @@ function [AlignType, isMriUpdated, isMriMatch, ChannelMat] = CheckPrevAdjustment
 end
 
 
-function [DistHead, DistSens] = CheckCurrentAdjustments(ChannelMat, ChannelMatRef)
+function [DistHead, DistSens, Message] = CheckCurrentAdjustments(ChannelMat, ChannelMatRef)
     % Display max displacement from registration adjustments, in command window.
     % If second ChannelMat is provided as reference, get displacement between the two.
     isPrint = nargout == 0;
@@ -1023,17 +1023,27 @@ function [DistHead, DistSens] = CheckCurrentAdjustments(ChannelMat, ChannelMatRe
         % Implicitly using actual (MRI) SCS as reference, this includes all adjustments.
         DistHead = process_evt_head_motion('RigidDistances', ...
             [ChannelMat.SCS.NAS(:); ChannelMat.SCS.LPA(:); ChannelMat.SCS.RPA(:)]);
-        % Get equivalent transform for all adjustments to "undo" on sensors for comparison.
-        [~, ~, Transf] = process_adjust_coordinates('GetTransforms', ChannelMat);
-        Loc = [ChannelMat.Channel.Loc];
-        % Inverse transf: subtract translation first, then rotate the "other way" (transpose).
-        LocRef = Transf(1:3,1:3)' * bsxfun(@minus, Loc, Transf(1:3,4));
-        DistSens = max(sqrt(sum((Loc - LocRef).^2)));
+        % Get equivalent transform for all adjustments to "undo" on sensors for comparison. The
+        % adjustments we want come after 'Native=>Brainstorm/CTF'
+        iNatToScs = find(strcmpi(ChannelMat.TransfMegLabels, 'Native=>Brainstorm/CTF'));
+        if iNatToScs < numel(ChannelMat.TransfMeg)
+            Transf = eye(4);
+            for t = iNatToScs+1:numel(ChannelMat.TransfMeg)
+                Transf = ChannelMat.TransfMeg{t} * Transf;
+            end
+            Loc = [ChannelMat.Channel.Loc];
+            % Inverse transf: subtract translation first, then rotate the "other way" (transpose).
+            LocRef = Transf(1:3,1:3)' * bsxfun(@minus, Loc, Transf(1:3,4));
+            DistSens = max(sqrt(sum((Loc - LocRef).^2)));
+        else
+            DistSens = 0;
+        end
     end
 
+    Message = sprintf('BST> Max displacement for registration adjustment:\n    head: %1.1f mm\n    sensors: %1.1f cm\n', ...
+            DistHead*1000, DistSens*100);
     if isPrint
-        fprintf('BST> Max displacement for registration adjustment:\n    head: %1.1f mm\n    sensors: %1.1f mm\n', ...
-            DistHead*1000, DistSens*1000);
+        fprintf(Message);
     end
 
 end

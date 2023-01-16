@@ -1334,7 +1334,7 @@ function SetColormapRealMin(ColormapType, status)
     % Fire change notificiation to all figures (3DViz and Topography)
     FireColormapChanged(ColormapType);
 end
-function SetMaxMode(ColormapType, maxmode, DisplayUnits)
+function SetMaxMode(ColormapType, maxmode, DisplayUnits, varargin)
     % Parse inputs
     if (nargin < 3) || isempty(DisplayUnits)
         DisplayUnits = [];
@@ -1345,7 +1345,7 @@ function SetMaxMode(ColormapType, maxmode, DisplayUnits)
     end
     % Custom: ask for custom values
     if strcmpi(maxmode, 'custom')
-        SetMaxCustom(ColormapType, DisplayUnits);
+        SetMaxCustom(ColormapType, DisplayUnits, varargin{:});
     else
         % Update colormap
         sColormap = GetColormap(ColormapType);
