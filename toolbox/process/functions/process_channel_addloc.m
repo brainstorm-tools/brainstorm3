@@ -19,7 +19,7 @@ function varargout = process_channel_addloc( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2015-2022
+% Authors: Francois Tadel, 2015-2023
 
 eval(macro_method);
 end

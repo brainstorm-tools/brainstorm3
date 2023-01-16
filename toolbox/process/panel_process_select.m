@@ -2843,20 +2843,24 @@ function sProcesses = SetDefaultOptions(sProcesses, FileTimeVector, UseDefaults)
                 field = [func2str(sProcesses(iProcess).Function), '__', optNames{iOpt}];
                 % If this field was saved in the user preferences, and if is of the correct type
                 if isfield(ProcessOptions.SavedParam, field) && strcmpi(class(ProcessOptions.SavedParam.(field)), class(option.Value))
+                    savedOpt = ProcessOptions.SavedParam.(field);
                     % Radio button: check the index of the selection
-                    if ismember(option.Type, {'radio','radio_line'}) && (ProcessOptions.SavedParam.(field) > length(option.Comment))
+                    if ismember(option.Type, {'radio','radio_line'}) && (savedOpt > length(option.Comment))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(ProcessOptions.SavedParam.(field), option.Comment(2,:))
+                    elseif strcmpi(option.Type, 'radio_label') && ~ismember(savedOpt, option.Comment(2,:))
                         % Error: ignoring previous option
-                    elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(ProcessOptions.SavedParam.(field), option.Comment(2,1:end-1))
+                    elseif strcmpi(option.Type, 'radio_linelabel') && ~ismember(savedOpt, option.Comment(2,1:end-1))
+                        % Error: ignoring previous option
+                    % Combobox: check the format
+                    elseif strcmpi(option.Type, 'combobox_label') && ((length(savedOpt) ~= 2) || ~ischar(savedOpt{1}) || (size(savedOpt{2},1) ~= 2) || ~ismember(savedOpt{1}, option.Value{2}(2,:)))
                         % Error: ignoring previous option
                     % Value: restore the 'time' units, if it was updated
                     elseif strcmpi(option.Type, 'value') && iscell(option.Value) && strcmpi(option.Value{2}, 'time')
-                        option.Value = ProcessOptions.SavedParam.(field);
+                        option.Value = savedOpt;
                         option.Value{2} = 'time';
                     % Else: use the saved option
                     else
-                        option.Value = ProcessOptions.SavedParam.(field);
+                        option.Value = savedOpt;
                     end
                 end
             end
