@@ -67,7 +67,7 @@ function [ varargout ] = bst_memory( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 %          Martin Cousineau, 2019
 
 eval(macro_method);
@@ -556,6 +556,7 @@ function LoadChannelFile(iDS, ChannelFile)
         % Save in DataSet structure
         GlobalData.DataSet(iDS).ChannelFile     = file_win2unix(ChannelFile);
         GlobalData.DataSet(iDS).Channel         = ChannelMat.Channel;
+        GlobalData.DataSet(iDS).Clusters        = ChannelMat.Clusters;
         GlobalData.DataSet(iDS).IntraElectrodes = ChannelMat.IntraElectrodes;
         GlobalData.DataSet(iDS).MegRefCoef      = ChannelMat.MegRefCoef;
         GlobalData.DataSet(iDS).Projector       = ChannelMat.Projector;
@@ -582,8 +583,9 @@ function LoadChannelFile(iDS, ChannelFile)
             GlobalData.DataSet(iDS).Channel(i).Loc  = [0;0;0];
             GlobalData.DataSet(iDS).Channel(i).Type = 'EEG';
         end
-        GlobalData.DataSet(iDS).MegRefCoef      = []; 
-        GlobalData.DataSet(iDS).Projector       = []; 
+        GlobalData.DataSet(iDS).MegRefCoef      = [];
+        GlobalData.DataSet(iDS).Projector       = [];
+        GlobalData.DataSet(iDS).Clusters        = [];
         GlobalData.DataSet(iDS).IntraElectrodes = [];
     end
 end
@@ -3204,8 +3206,6 @@ function isCancel = UnloadAll(varargin)
             % Get next surface
             panel_scout('SetCurrentSurface', CurrentSurface);
         end
-        % Unload clusters
-        panel_cluster('RemoveAllClusters');
     end
     % Empty the clipboard
     bst_set('Clipboard', []);
@@ -3264,6 +3264,7 @@ function isCancel = UnloadAll(varargin)
         gui_hide('Stat');
         gui_hide('iEEG');
         gui_hide('Spikes');
+        gui_hide('Cluster');
     end
     if isNewProgress
         bst_progress('stop');
@@ -3529,6 +3530,7 @@ function SaveChannelFile(iDS)
     % Get modified fields
     ChannelMat.Channel         = GlobalData.DataSet(iDS).Channel;
     ChannelMat.IntraElectrodes = GlobalData.DataSet(iDS).IntraElectrodes;
+    ChannelMat.Clusters        = GlobalData.DataSet(iDS).Clusters;
     % History: Edit channel file
     ChannelMat = bst_history('add', ChannelMat, 'edit', 'Edited manually');
     % Save file

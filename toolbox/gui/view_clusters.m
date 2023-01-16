@@ -30,7 +30,7 @@ function [hFig, iDS, iFig] = view_clusters(DataFiles, iClusters, hFig, ClustersO
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2009-2019
+% Authors: Francois Tadel, 2009-2023
 
 global GlobalData;  
 
@@ -49,7 +49,8 @@ if (nargin < 2) || isempty(iClusters)
     [sClusters, iClusters] = panel_cluster('GetSelectedClusters');
 else
     % Get clusters
-    sClusters = panel_cluster('GetClusters', iClusters);
+    sClusters = panel_cluster('GetClusters');
+    sClusters = sClusters(iClusters);
 end
 % Warning message if no cluster selected
 if isempty(sClusters)
@@ -103,6 +104,7 @@ end
 clustersActivity = cell(length(DataFiles), length(iClusters));
 clustersStd      = cell(length(DataFiles), length(iClusters));
 clustersLabels   = cell(length(DataFiles), length(iClusters));
+clustersColors   = cell(length(DataFiles), length(iClusters));
 axesLabels       = cell(length(DataFiles), length(iClusters));
 % Process each Data file
 for iFile = 1:length(DataFiles)
@@ -201,8 +203,9 @@ for iFile = 1:length(DataFiles)
         end
         axesLabels{iFile,k} = strAxes;
 
-        % === CLUSTERS LABELS ===
+        % === CLUSTERS LABELS/COLORS ===
         clustersLabels{iFile,k} = sClusters(k).Label;
+        clustersColors{iFile,k} = sClusters(k).Color;
     end
 end
 
@@ -233,8 +236,7 @@ if (~ClustersOptions.overlayClusters && ~ClustersOptions.overlayConditions)
     axesLabels = axesLabels(:)';
     % Clusters labels = cell-array of strings {1, Ngraph}
     clustersLabels = clustersLabels(:)';
-  %  clustersColors = repmat({.2*[1,1,1]}, size(clustersLabels));
-    clustersColors = [];
+    clustersColors = clustersColors(:)';
     
 % === OVERLAY CLUSTERS AND CONDITIONS ===
 elseif (ClustersOptions.overlayClusters && ClustersOptions.overlayConditions)
@@ -273,7 +275,7 @@ elseif ClustersOptions.overlayClusters
     axesLabels   = axesLabels(:,1)';
     % Clusters labels = cell-array of strings {Ncluster, Ncond} 
     clustersLabels = clustersLabels';
-    clustersColors = [];
+    clustersColors = clustersColors';
     
 % === OVERLAY CONDITIONS ONLY ===
 elseif ClustersOptions.overlayConditions

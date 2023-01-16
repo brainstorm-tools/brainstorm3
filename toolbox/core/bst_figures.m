@@ -53,7 +53,7 @@ function varargout = bst_figures( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2021
+% Authors: Francois Tadel, 2008-2023
 %          Martin Cousineau, 2017
 
 eval(macro_method);
@@ -1073,10 +1073,12 @@ function SetCurrentFigure(hFig, Type)
             panel_record('CurrentFigureChanged_Callback', hFig);
             % Update tab: Display (for raster plots/erpimage)
             panel_display('UpdatePanel', hFig);
-%             FigureId = getappdata(hFig, 'FigureId');
-%             if ~isempty(FigureId) && isequal(FigureId.SubType, 'erpimage')
-%                 panel_display('UpdatePanel', hFig);
-%             end
+            % Update list of clusters
+            if ~isempty(hFig) && ~isequal(oldFigType, hFig)
+                if gui_brainstorm('isTabVisible', 'Cluster')
+                    panel_cluster('CurrentFigureChanged_Callback', hFig);
+                end
+            end
         case 'Type3D'
             % Only when figure changed (within the figure type)
             if ~isempty(hFig) && ~isequal(oldFigType, hFig)
@@ -1093,6 +1095,9 @@ function SetCurrentFigure(hFig, Type)
                 end
                 if gui_brainstorm('isTabVisible', 'iEEG')
                     panel_ieeg('CurrentFigureChanged_Callback', hFig);
+                end
+                if gui_brainstorm('isTabVisible', 'Cluster')
+                    panel_cluster('CurrentFigureChanged_Callback', hFig);
                 end
             end
         case 'TypeTF'

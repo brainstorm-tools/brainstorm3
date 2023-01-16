@@ -2772,7 +2772,8 @@ end % END SWITCH( ACTION )
 %% ===== MENU: CLUSTERS TIME SERIES =====
     function fcnPopupClusterTimeSeries()
         import org.brainstorm.icon.*;
-        if ~isempty(GlobalData.Clusters)
+        sClusters = panel_cluster('GetClusters');
+        if ~isempty(sClusters)
             gui_component('MenuItem', jPopup, [], 'Clusters time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)tree_view_clusters(bstNodes));
         end
     end

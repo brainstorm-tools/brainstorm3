@@ -126,7 +126,8 @@ for i = 1:length(ChannelMatSrc.IntraElectrodes)
         ChannelMatDest.IntraElectrodes(i).Loc = proj(ChannelMatSrc.IntraElectrodes(i).Loc);
     end
 end
-
+% Copy clusters
+ChannelMatDest.Clusters = ChannelMatSrc.Clusters;
 
 % ===== SAVE NEW FILE =====
 bst_progress('text', 'Saving results...');

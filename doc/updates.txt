@@ -4,6 +4,7 @@ January 2023
 - Distrib: Enable compilation on Linux and MacOS
 - IO: Export matrix files as EDF+
 - Inverse: Display scouts on source-level PSD as PSD figures
+- Clusters: Save clusters in channel file, load automatically
 --------------------------------------------------------------
 November 2022
 - Forward: Display leadfield sensitivity (surface, MRI, isosurface)
