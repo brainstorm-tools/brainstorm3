@@ -1793,9 +1793,9 @@ function ReloadFigures(FigureTypes, isFastUpdate, isResetAxes)
                         % Nothing to do
                     elseif (Figure.Id.Modality(1) == '$')
                         DataFiles = getappdata(Figure.hFigure, 'DataFiles');
-                        iClusters = getappdata(Figure.hFigure, 'iClusters');
-                        if ~isempty(DataFiles) && ~isempty(iClusters)
-                            view_clusters(DataFiles, iClusters, Figure.hFigure);
+                        ClusterLabels = getappdata(Figure.hFigure, 'ClusterLabels');
+                        if ~isempty(DataFiles) && ~isempty(ClusterLabels)
+                            view_clusters(DataFiles, ClusterLabels, Figure.hFigure);
                         end
                     else
                         % Get original XLim/YLim
