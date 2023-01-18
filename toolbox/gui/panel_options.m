@@ -220,7 +220,7 @@ function [bstPanelNew, panelName] = CreatePanel() %#ok<DEFNU>
         % Python config
         jTextPythonExe.setText(bst_get('PythonExe'));
         % Use signal processing toolbox
-        isToolboxInstalled = (exist('fir2', 'file') > 0);
+        isToolboxInstalled = (exist('kaiserord', 'file') > 0);
         jCheckUseSigProc.setEnabled(isToolboxInstalled);
         jCheckUseSigProc.setSelected(bst_get('UseSigProcToolbox'));
         processOptions = bst_get('ProcessOptions');
