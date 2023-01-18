@@ -28,7 +28,7 @@ function bst_userstat(isSave, PlugName)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2012-2022
+% Authors: Francois Tadel, 2012-2023
 
 % Parse inputs
 if (nargin < 2) || isempty(PlugName)
@@ -113,9 +113,9 @@ end
 % ===== PUBLICATIONS =====
 if isempty(PlugName)
     % Hard coded list of publications
-    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021]; 
-    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  392];
-    nPubliCurYear = 289;
+    year   = [2000 2001 2002 2003 2004 2005 2006 2007 2008 2009 2010 2011 2012 2013 2014 2015 2016 2017 2018 2019 2020 2021 2022]; 
+    nPubli = [   2    2    1    1    3    5    5   11   10   20   20   32   38   55   78   94  133  214  224  290  382  393  476];
+    nPubliCurYear = 15;
     % Plot figure
     hFig(end+1) = fig_report(year, nPubli, 1, ...
                [2000 max(year)], [], ...
