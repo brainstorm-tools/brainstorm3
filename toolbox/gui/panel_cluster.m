@@ -781,46 +781,29 @@ function LoadClusters(varargin)
     % Get default cluster folder
     ClusterDir = GetDefaultClusterDir();
     % Ask user which are the files to be loaded
-    ClusterFiles = java_getfile('open', 'Import clusters', ClusterDir, ... 
-                                'multiple', 'files', ...
-                                {{'_cluster'}, 'Sensor clusters (*cluster*.mat)', 'BST'}, 1);
+    [ClusterFiles, FileFormat] = java_getfile(...
+        'open', 'Import clusters', ClusterDir, ... 
+        'multiple', 'files', ...
+        bst_get('FileFilters', 'clusterin'), 1);
     if isempty(ClusterFiles)
         return
     end
     
     % ==== CREATE AND DISPLAY ====
-    iNewClustersList = [];
+    iNewClusters = [];
     bst_progress('start', 'Load clusters', 'Load cluster file');
     % Load all files selected by user
     for iFile = 1:length(ClusterFiles)
-        % Try to load cluster file
-        ClusterMat = load(ClusterFiles{iFile});
-        if ~isfield(ClusterMat, 'Clusters') || isempty(ClusterMat.Clusters)
-            continue;
-        end
-        % Create standardized structure
-        sClustersNew = repmat(db_template('cluster'), 1, length(ClusterMat.Clusters));
-        % Loop on all the new clusters
-        for i = 1:length(ClusterMat.Clusters)
-            sClustersNew(i).Sensors = ClusterMat.Clusters(i).Sensors;
-            if isfield(ClusterMat.Clusters(i), 'Label') && ~isempty(ClusterMat.Clusters(i).Label)
-                sClustersNew(i).Label = ClusterMat.Clusters(i).Label;
-            end
-            if isfield(ClusterMat.Clusters(i), 'Color') && ~isempty(ClusterMat.Clusters(i).Color)
-                sClustersNew(i).Color = ClusterMat.Clusters(i).Color;
-            end
-            if isfield(ClusterMat.Clusters(i), 'Function') && ~isempty(ClusterMat.Clusters(i).Function)
-                sClustersNew(i).Function = ClusterMat.Clusters(i).Function;
-            end
-        end
+        % Load clusters
+        sClusters = in_clusters(ClusterFiles{iFile}, FileFormat);
         % Add to current clusters
-        iNewClustersList = [iNewClustersList, SetClusters('Add', sClustersNew)];
+        iNewClusters = [iNewClusters, SetClusters('Add', sClusters)];
     end
     % Update cluster list
     UpdateClustersList();
     % Select first cluster
-    if isempty(iNewClustersList)
-        SetSelectedClusters(iNewClustersList(1));
+    if isempty(iNewClusters)
+        SetSelectedClusters(iNewClusters(1));
     end
     bst_progress('stop');
 end
