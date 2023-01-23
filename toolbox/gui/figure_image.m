@@ -669,17 +669,17 @@ function DisplayFigurePopup(hFig)
         % Show labels
         ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
         ShortLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
-        ZeroAutoConnect = GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect;
+        HideSelfConnect = GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect;
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels, ShortLabels));
         jItem.setSelected(ShowLabels);
         % Use short labels
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
         jItem.setEnabled(ShowLabels);
         jItem.setSelected(ShortLabels);
-        if isequal(FigId.SubType, 'auto_connect')
-            % Zero diagonal values
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Zero auto-connectivity values', [], [], @(h,ev)SetZeroAutoConnect(iDS, iFig, ~ZeroAutoConnect));
-            jItem.setSelected(ZeroAutoConnect);
+        if isequal(FigId.SubType, 'self_connect')
+            % Hide self-connectivity values
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Hide self-connectivity values', [], [], @(h,ev)SetHideSelfConnect(iDS, iFig, ~HideSelfConnect));
+            jItem.setSelected(HideSelfConnect);
             jMenuFigure.addSeparator();
         end
         % Show Matlab controls
@@ -705,7 +705,7 @@ end
 %  ===== DISPLAY FUNCTIONS ===================================================
 %  ===========================================================================
 %% ===== GET FIGURE DATA =====
-function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroAutoConnect] = GetFigureData(hFig, isResetMax)
+function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, HideSelfConnect] = GetFigureData(hFig, isResetMax)
     global GlobalData;
     % Parse inputs
     if (nargin < 2) || isempty(isResetMax)
@@ -728,7 +728,7 @@ function [Data, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels
     DimLabels      = GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels;
     ShowLabels     = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
     ShortLabels    = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
-    ZeroAutoConnect= GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect;
+    HideSelfConnect= GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect;
     PageName       = GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName;
     % Get indices for 1st dimension
     if ismember(1, iDims)
@@ -804,9 +804,9 @@ function UpdateFigurePlot(hFig, isResetMax)
     % ===== GET DATA AND COLORMAP =====
     % If forced refresh: reset previous min/max
     % Get figure data
-    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, ZeroAutoConnect] = GetFigureData(hFig, isResetMax);
-    % Zero auto connect values
-    if ZeroAutoConnect
+    [FigData, Labels, DimLabels, DataMinMax, ShowLabels, PageName, ShortLabels, HideSelfConnect] = GetFigureData(hFig, isResetMax);
+    % Hide self-connect values
+    if HideSelfConnect
         [c, ia, ib] = intersect(Labels{2}, Labels{1}); % intersect(A,B)
         for i = 1 : numel(c)
             FigData(ib(i), ia(i)) = 0;
@@ -1046,11 +1046,11 @@ function SetShowLabels(iDS, iFig, ShowLabels, ShortLabels)
 end
 
 
-%% ===== CONNECTIVITY MATRIX: SHOW/HIDE AUTO-CONNECTIVITY VALUES =====
-function SetZeroAutoConnect(iDS, iFig, ZeroAutoConnect)
+%% ===== CONNECTIVITY MATRIX: SHOW/HIDE SELF-CONNECTIVITY VALUES =====
+function SetHideSelfConnect(iDS, iFig, HideSelfConnect)
     global GlobalData;
     % Save new value
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect = ZeroAutoConnect;
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = HideSelfConnect;
     % Update figure
     UpdateFigurePlot(GlobalData.DataSet(iDS).Figure(iFig).hFigure, 1);
     % Resize to update the size of the margins

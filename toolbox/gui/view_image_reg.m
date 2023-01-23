@@ -172,14 +172,14 @@ iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, FileName);
 connectType = '';
 % Check common names for RefRowNames (A) and RowNames (B)
 if any(ismember (GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames))
-    connectType = 'auto_connect';
+    connectType = 'self_connect';
 end
 GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = connectType;
-% Connectivity matrix: display auto-connectivity values
-GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect = 0;
-% Connectivity matrix: hide auto-connectivity values
-if strcmpi(connectType, 'auto_connect')
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.ZeroAutoConnect = 1;
+% Connectivity matrix: show self-connectivity values
+GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 0;
+% Connectivity matrix: hide self-connectivity values
+if strcmpi(connectType, 'self_connect')
+    GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 1;
 end
 % By default: link the 4th dimension of the data to the frequency slider
 isFreq = isequal(PageName, '$freq');
