@@ -1871,8 +1871,6 @@ function sMontages = LoadMontageFiles(FileNames, FileFormat, isOverwrite)
                 sMon = in_montage_mne(FileNames{iFile});
             case 'MON'
                 sMon = in_montage_mon(FileNames{iFile});
-            case 'EEG-COMPUMEDICS-PFS'
-                sMon = in_montage_compumedics(FileNames{iFile});
             case 'BST'
                 DataMat = load(FileNames{iFile});
                 sMon = DataMat.Montages;

@@ -2864,12 +2864,12 @@ switch contextName
     case 'UseSigProcToolbox'
         % In a parfor loop: GlobalData is empty => Check only if the toolbox is installed (ignore user preferences) 
         if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'HasSigProcToolbox')
-            argout1 = exist('fir2', 'file');
+            argout1 = exist('kaiserord', 'file');
         else
             % Save the result of the check for the SigProc tb
             if isempty(GlobalData.Program.HasSigProcToolbox)
                 % Check if Signal Processing Toolbox is installed
-                GlobalData.Program.HasSigProcToolbox = (exist('fir2', 'file') == 2);
+                GlobalData.Program.HasSigProcToolbox = (exist('kaiserord', 'file') == 2);
             end
             % Return user preferences
             if ~GlobalData.Program.HasSigProcToolbox
@@ -3812,13 +3812,16 @@ switch contextName
                     {'.sel'},     'MNE selection files (*.sel)',              'MNE'; ...
                     {'.mon'},     'Text montage files (*.mon)',               'MON'; ...
                     {'_montage'}, 'Brainstorm montage files (montage_*.mat)', 'BST';
-                    {'.csv'},     'Comma-separated montage files (*.csv)',    'CSV'; ...
-                    {'.xml'},     'Compumedics ProFusion montages (*.xml)',   'EEG-COMPUMEDICS-PFS'};
+                    {'.csv'},     'Comma-separated montage files (*.csv)',    'CSV'};
             case 'montageout'
                 argout1 = {...
                     {'.sel'},     'MNE selection files (*.sel)',              'MNE'; ...
                     {'.mon'},     'Text montage files (*.mon)',               'MON'; ...
                     {'_montage'}, 'Brainstorm montage files (montage_*.mat)', 'BST'};
+            case 'clusterin'
+                argout1 = {...
+                    {'_cluster'}, 'Brainstorm clusters file (*cluster*.mat)', 'BST'; ...
+                    {'.sel'},     'MNE selection files (*.sel)',              'MNE'};
             case 'fibers'
                 argout1 = {...
                     {'.trk'},    'TrackVis (*.trk)',                       'TRK'; ...

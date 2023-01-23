@@ -58,7 +58,7 @@ function varargout = panel_scout(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2020
+% Authors: Francois Tadel, 2008-2023
 
 eval(macro_method);
 end
@@ -4049,20 +4049,18 @@ function ProjectScoutsContralateral(srcSurfFile)
     % Progress bar
     bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
-    sScoutsNew = bst_project_scouts_contra(srcSurfFile, sAtlas);
-    if isempty(sScoutsNew)
+    sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas);
+    if isempty(sAtlas.Scouts)
         return;
     end
     
     % Set default seeds
-    sScoutsNew = SetScoutsSeed(sScoutsNew, sSurf.Vertices);
+    sAtlas.Scouts = SetScoutsSeed(sAtlas.Scouts, sSurf.Vertices);
     % Set handles structure
     sTemplate = db_template('scout');
-    for i = 1:length(sScoutsNew)
-        sScoutsNew(i).Handles = sTemplate.Handles;
-    end
+    [sAtlas.Scouts.Handles] = deal(sTemplate.Handles);
     % Save new scout
-    iNewScouts = SetScouts([], 'Add', sScoutsNew);
+    iNewScouts = SetScouts([], 'Add', sAtlas.Scouts);
     % Display new scout
     PlotScouts(iNewScouts);
     % Update "Scouts Manager" panel

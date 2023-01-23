@@ -280,8 +280,8 @@ bst_report('Snapshot', hFig, sFilesAvg(1).FileName, 'EEG average (2D Layout)', [
 close(hFig);
 % Display EEG056 signals in all conditions
 hFigMeg = view_timeseries(sFilesAvg(1).FileName);
-[Clust, iClust] = panel_cluster('CreateNewCluster', {'EEG065'});
-hFig = view_clusters({sFilesAvg.FileName}, iClust, [], struct('function', 'Mean', 'overlayClusters', 0, 'overlayConditions', 1));
+Clust = panel_cluster('CreateNewCluster', {'EEG065'});
+hFig = view_clusters({sFilesAvg.FileName}, Clust.Label, [], struct('function', 'Mean', 'overlayClusters', 0, 'overlayConditions', 1));
 bst_report('Snapshot', hFig, sFilesAvg(1).FileName, 'EEG065');
 close([hFig, hFigMeg]);
 

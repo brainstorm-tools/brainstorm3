@@ -50,7 +50,7 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
         % First buttons
         gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_NEW_SEL, '<HTML><B>Create new cluster: mouse selection.</B><BR>Use sensors selected in any time series or topography figure.', @(h,ev)CreateNewCluster('Selection'));
         gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_NEW_IND, '<HTML><B>Create new cluster: list of indices/names.</B><BR>Type the list of sensors indices, names or types you want in the new cluster.', @(h,ev)CreateNewCluster('Indices'));
-        gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_TS_DISPLAY, '<HTML><B>Display cluster time series</B>&nbsp;&nbsp;&nbsp;&nbsp;[ENTER]</HTML>', @DisplayClusters);
+        gui_component('ToolbarButton', jToolbar,[],[], IconLoader.ICON_TS_DISPLAY, '<HTML><B>Display cluster time series</B>&nbsp;&nbsp;&nbsp;&nbsp;[ENTER]</HTML>', @(h,ev)view_clusters());
 
         % === MENU EDIT ===
         jMenu = gui_component('Menu', jMenuBar, [], 'Edit', IconLoader.ICON_MENU, [], [], 11);
@@ -161,7 +161,7 @@ function ListKeyTyped_Callback(h, ev)
         case {ev.VK_DELETE, ev.VK_BACK_SPACE}
             RemoveClusters();
         case ev.VK_ENTER
-            view_clusters();
+            tree_view_clusters();
         case ev.VK_ESCAPE
             SetSelectedClusters([]);
     end
@@ -182,7 +182,10 @@ end
 %  =================================================================================
 %% ===== CURRENT FIGURE CHANGED =====
 function CurrentFigureChanged_Callback(hFig)
+    % Update list of clusters in the panel
     UpdatePanel();
+    % Update sensor selection
+    UpdateChannelSelection();
 end
 
 %% ===== UPDATE CALLBACK =====
@@ -212,12 +215,16 @@ function UpdateClustersList()
     callbackBak = java_getcb(ctrl.jListClusters, 'ValueChangedCallback');
     java_setcb(ctrl.jListClusters, 'ValueChangedCallback', []);
     % Get selected clusters
-    iSelClusters = ctrl.jListClusters.getSelectedIndex() + 1;
-    SelName = char(ctrl.jListClusters.getSelectedValue());
-    if (iSelClusters == 0) || (iSelClusters > length(sClusters)) || ~strcmpi(sClusters(iSelClusters).Label, SelName)
-        SelName = [];
+    SelNames = {};
+    selValues = ctrl.jListClusters.getSelectedValues();
+    for i = 1:length(selValues)
+        SelNames{end+1} = char(selValues(i));
     end
-
+    if ~isempty(SelNames) && ~isempty(sClusters)
+        iSelected = find(ismember({sClusters.Label}, SelNames));
+    else
+        iSelected = [];
+    end
     % Create a new empty list
     listModel = java_create('javax.swing.DefaultListModel');
     % Get font with which the list is rendered
@@ -226,7 +233,6 @@ function UpdateClustersList()
     tk = java.awt.Toolkit.getDefaultToolkit();
     % Add an item in list for each cluster
     Wmax = 0;
-    iSelClustersNew = [];
     for i = 1:length(sClusters)
         itemType  = sClusters(i).Function;
         itemText  = sClusters(i).Label;
@@ -237,18 +243,14 @@ function UpdateClustersList()
         if (W > Wmax)
             Wmax = W;
         end
-        % Check if selected
-        if ~isempty(SelName) && strcmpi(sClusters(i).Label, SelName)
-            iSelClustersNew = i;
-        end
     end
     % Update list model
     ctrl.jListClusters.setModel(listModel);
     % Update cell rederer based on longest channel name
     ctrl.jListClusters.setCellRenderer(java_create('org.brainstorm.list.BstClusterListRenderer', 'II', fontSize, Wmax + 28));
     % Select previously selected clusters
-    if ~isempty(iSelClustersNew)
-        ctrl.jListClusters.setSelectedIndex(iSelClustersNew - 1);
+    if ~isempty(iSelected)
+        ctrl.jListClusters.setSelectedIndices(iSelected - 1);
     end
     % Reset cluster comments
     ctrl.jLabelClusterSize.setText('');
@@ -616,12 +618,6 @@ function [sCluster, iCluster] = CreateNewCluster(Sensors)
 end
 
 
-%% ===== VIEW CLUSTERS =====
-function DisplayClusters(varargin)
-    % Display clusters
-    view_clusters();
-end
-
 %% ===============================================================================
 %  ====== CLUSTERS OPERATIONS ====================================================
 %  ===============================================================================
@@ -653,9 +649,12 @@ function RemoveClusters()
     % Remove clusters definitions from global data structure
     for iDS = unique(iDSall)
         GlobalData.DataSet(iDS).Clusters(iClusters) = [];
+        GlobalData.DataSet(iDS).isChannelModified = 1;
     end
     % Update Clusters list
     UpdateClustersList();
+    % Reset list of selected sensors
+    bst_figures('SetSelectedRows', [], 0);
 end
 
 
@@ -781,46 +780,29 @@ function LoadClusters(varargin)
     % Get default cluster folder
     ClusterDir = GetDefaultClusterDir();
     % Ask user which are the files to be loaded
-    ClusterFiles = java_getfile('open', 'Import clusters', ClusterDir, ... 
-                                'multiple', 'files', ...
-                                {{'_cluster'}, 'Sensor clusters (*cluster*.mat)', 'BST'}, 1);
+    [ClusterFiles, FileFormat] = java_getfile(...
+        'open', 'Import clusters', ClusterDir, ... 
+        'multiple', 'files', ...
+        bst_get('FileFilters', 'clusterin'), 1);
     if isempty(ClusterFiles)
         return
     end
     
     % ==== CREATE AND DISPLAY ====
-    iNewClustersList = [];
+    iNewClusters = [];
     bst_progress('start', 'Load clusters', 'Load cluster file');
     % Load all files selected by user
     for iFile = 1:length(ClusterFiles)
-        % Try to load cluster file
-        ClusterMat = load(ClusterFiles{iFile});
-        if ~isfield(ClusterMat, 'Clusters') || isempty(ClusterMat.Clusters)
-            continue;
-        end
-        % Create standardized structure
-        sClustersNew = repmat(db_template('cluster'), 1, length(ClusterMat.Clusters));
-        % Loop on all the new clusters
-        for i = 1:length(ClusterMat.Clusters)
-            sClustersNew(i).Sensors = ClusterMat.Clusters(i).Sensors;
-            if isfield(ClusterMat.Clusters(i), 'Label') && ~isempty(ClusterMat.Clusters(i).Label)
-                sClustersNew(i).Label = ClusterMat.Clusters(i).Label;
-            end
-            if isfield(ClusterMat.Clusters(i), 'Color') && ~isempty(ClusterMat.Clusters(i).Color)
-                sClustersNew(i).Color = ClusterMat.Clusters(i).Color;
-            end
-            if isfield(ClusterMat.Clusters(i), 'Function') && ~isempty(ClusterMat.Clusters(i).Function)
-                sClustersNew(i).Function = ClusterMat.Clusters(i).Function;
-            end
-        end
+        % Load clusters
+        sClusters = in_clusters(ClusterFiles{iFile}, FileFormat);
         % Add to current clusters
-        iNewClustersList = [iNewClustersList, SetClusters('Add', sClustersNew)];
+        iNewClusters = [iNewClusters, SetClusters('Add', sClusters)];
     end
     % Update cluster list
     UpdateClustersList();
     % Select first cluster
-    if isempty(iNewClustersList)
-        SetSelectedClusters(iNewClustersList(1));
+    if isempty(iNewClusters)
+        SetSelectedClusters(iNewClusters(1));
     end
     bst_progress('stop');
 end
