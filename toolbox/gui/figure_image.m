@@ -809,7 +809,7 @@ function UpdateFigurePlot(hFig, isResetMax)
     if HideSelfConnect
         [c, ia, ib] = intersect(Labels{2}, Labels{1}); % intersect(A,B)
         for i = 1 : numel(c)
-            FigData(ib(i), ia(i)) = 0;
+            FigData(ib(i), ia(i)) = NaN;
         end
     end
     % Get figure colormap
