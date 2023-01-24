@@ -154,7 +154,7 @@ for iAtlas = 1:length(sAtlas)
         
         % Project scouts one by one and keep for each vertex only the maximum probability
         % Vertex map on the original surface
-        vMap                    = zeros(length(iVertHemi),1);
+        vMap                    = zeros(size(Wmat, 2),1);
         vMap(sScout_Vertices)   = 1;
 
         % Project to destination surface
