@@ -1,5 +1,5 @@
 function sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas)
-% BST_PROJECT_SCOUTS_CONTRA: Project scouts from left to right hemisphere
+% BST_PROJECT_SCOUTS_CONTRA: Project scouts from left to right hemisphere and viceversa
 %
 % USAGE:  sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas)
 %
@@ -141,7 +141,7 @@ for iAtlas = 1:length(sAtlas)
         isRight = ~isempty(intersect(rH, sAtlas(iAtlas).Scouts(iScout).Vertices));
         if isRight && ~isLeft
             Wmat =  Wmat_RL;
-            iVertHemi = rH;
+            iVertHemi = lH;
             [~, sScout_Vertices] = intersect(rH, sAtlas(iAtlas).Scouts(iScout).Vertices);
         elseif isLeft && ~isRight
             Wmat =  Wmat_LR;
