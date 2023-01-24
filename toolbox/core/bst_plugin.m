@@ -299,7 +299,6 @@ function PlugDesc = GetSupported(SelPlug)
     PlugDesc(end).ReadmeFile     = 'README.md';
     PlugDesc(end).MinMatlabVer   = 803;   % 2014a
     PlugDesc(end).CompiledStatus = 0;
-    PlugDesc(end).GetVersionFcn  = @eegplugin_mffmatlabio;
     PlugDesc(end).LoadedFcn      = @Configure;
     % Stable version: http://neuroimage.usc.edu/bst/getupdate.php?d='mffmatlabio-3.5.zip'
     
