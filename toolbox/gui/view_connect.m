@@ -100,11 +100,9 @@ end
 
 % Detect modality
 Modality = GlobalData.DataSet(iDS).Timefreq(iTimefreq).Modality;
-% Check that the matrix is square: cannot display [NxM] connectivity matrix where N~=M
-if (length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames) ~= length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)) && ~strcmpi(DisplayMode, 'Image')
-    bst_error(sprintf('The connectivity matrix size is [%dx%d].\nThis graph display can be used only for square matrices (NxN).', ...
-              length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames), length(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames)), ...
-              'View connectivity matrix', 0);
+% Check that the matrix is square, and have same RowNames cannot display [NxM] connectivity matrix where N~=M
+if ~isequal(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames) && ~strcmpi(DisplayMode, 'Image')
+    bst_error('The connectivity matrix cannot be displayed as the row and column names are not equal', 'View connectivity matrix', 0);
     return;
 end
 
@@ -140,8 +138,6 @@ if strcmpi(DisplayMode, 'Image')
               TimeVector, ...
               GlobalData.DataSet(iDS).Timefreq(iTimefreq).Freqs};
     [hFig, iDS, iFig] = view_image_reg(C, Labels, [1,2], DimLabels, TimefreqFile, hFig, [], 1, '$freq');
-    % Update image figure description
-    GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = 'connect';
     % Reload call
     ReloadCall = {'view_connect', TimefreqFile, DisplayMode, hFig};
     setappdata(hFig, 'ReloadCall', ReloadCall);
