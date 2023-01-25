@@ -83,6 +83,7 @@ end
 
 %% ===== GET ALL ACCESSIBLE DATA =====
 iDS = [];
+iTimefreq = [];
 % Re-use existing figure
 if ~isempty(hFig)
     [hFig, iFig, iDS] = bst_figures('GetFigure', hFig);
@@ -102,7 +103,7 @@ elseif ~isempty(FileName)
         case {'results', 'link', 'presults'}
             iDS = bst_memory('GetDataSetResult', FileName);
         case {'timefreq', 'ptimefreq'}
-            iDS = bst_memory('GetDataSetTimefreq', FileName);
+            [iDS, iTimefreq] = bst_memory('GetDataSetTimefreq', FileName);
         case {'matrix', 'pmatrix'}
             iDS = bst_memory('GetDataSetMatrix', FileName);
     end
@@ -167,19 +168,16 @@ GlobalData.DataSet(iDS).Figure(iFig).Handles.DimLabels    = DimLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ColormapType = ColormapType;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels   = ShowLabels;
 GlobalData.DataSet(iDS).Figure(iFig).Handles.PageName     = PageName;
-iTimefreq = bst_memory('GetTimefreqInDataSet', iDS, FileName);
-% Update image figure description
-connectType = '';
-% Check common names for RefRowNames (A) and RowNames (B)
-if any(ismember (GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames))
-    connectType = 'self_connect';
-end
-GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = connectType;
-% Connectivity matrix: show self-connectivity values
-GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 0;
-% Connectivity matrix: hide self-connectivity values
-if strcmpi(connectType, 'self_connect')
-    GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 1;
+% Only for connectivity files
+if ~isempty(iTimefreq) && ~isempty(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames)
+    % If there are some self-connectivity values in the displayed matrix
+    if any(ismember(GlobalData.DataSet(iDS).Timefreq(iTimefreq).RefRowNames, GlobalData.DataSet(iDS).Timefreq(iTimefreq).RowNames))
+        GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = 'self_connect';
+        GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 1;
+    else
+        GlobalData.DataSet(iDS).Figure(iFig).Id.SubType = '';
+        GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect = 0;
+    end
 end
 % By default: link the 4th dimension of the data to the frequency slider
 isFreq = isequal(PageName, '$freq');

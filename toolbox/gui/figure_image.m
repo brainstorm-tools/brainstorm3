@@ -669,19 +669,19 @@ function DisplayFigurePopup(hFig)
         % Show labels
         ShowLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShowLabels;
         ShortLabels = GlobalData.DataSet(iDS).Figure(iFig).Handles.ShortLabels;
-        HideSelfConnect = GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect;
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Show labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ~ShowLabels, ShortLabels));
         jItem.setSelected(ShowLabels);
         % Use short labels
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Use short labels', IconLoader.ICON_LABELS, [], @(h,ev)SetShowLabels(iDS, iFig, ShowLabels, ~ShortLabels));
         jItem.setEnabled(ShowLabels);
         jItem.setSelected(ShortLabels);
+        % Hide self-connectivity values
         if isequal(FigId.SubType, 'self_connect')
-            % Hide self-connectivity values
-            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Hide self-connectivity values', [], [], @(h,ev)SetHideSelfConnect(iDS, iFig, ~HideSelfConnect));
+            HideSelfConnect = GlobalData.DataSet(iDS).Figure(iFig).Handles.HideSelfConnect;
+            jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Hide self-connectivity', [], [], @(h,ev)SetHideSelfConnect(iDS, iFig, ~HideSelfConnect));
             jItem.setSelected(HideSelfConnect);
-            jMenuFigure.addSeparator();
         end
+        jMenuFigure.addSeparator();
         % Show Matlab controls
         isMatlabCtrl = ~strcmpi(get(hFig, 'MenuBar'), 'none') && ~strcmpi(get(hFig, 'ToolBar'), 'none');
         jItem = gui_component('CheckBoxMenuItem', jMenuFigure, [], 'Matlab controls', IconLoader.ICON_MATLAB_CONTROLS, [], @(h,ev)bst_figures('ShowMatlabControls', hFig, ~isMatlabCtrl));
