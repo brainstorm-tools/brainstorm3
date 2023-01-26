@@ -102,6 +102,38 @@ if ~exist('org.brainstorm.tree.BstNode', 'class')
     javaaddpath(BstJar);
 end
 
+% Download ICBM152 template if missing (e.g. when cloning from GitHub)
+TemplateDir = fullfile(BrainstormHomeDir, 'defaults', 'anatomy', 'ICBM152');
+if ~isCompiled && ~exist(TemplateDir, 'file')
+    TemplateName = 'ICBM152_2023';
+    isSkipTemplate = 0;
+    % Template file
+    ZipFile = bst_fullfile(bst_get('UserDefaultsDir'), 'anatomy', [TemplateName '.zip']);
+    % If template is not downloaded yet: download it
+    if ~exist(ZipFile, 'file')
+        disp('BST> Downloading ICBM152 template...');
+        % Download file
+        errMsg = gui_brainstorm('DownloadFile', ['http://neuroimage.usc.edu/bst/getupdate.php?t=' TemplateName], ZipFile, 'Download template');
+        % Error message
+        if ~isempty(errMsg)
+            disp(['BST> Error: Could not download template: ' errMsg]);
+            isSkipTemplate = 1;
+        end
+    end
+    % If the template is available as a zip file
+    if ~isSkipTemplate
+        disp('BST> Installing ICBM152 template...');
+        % Create folder
+        mkdir(TemplateDir);
+        % URL: Download zip file
+        try
+            unzip(ZipFile, TemplateDir);
+        catch
+            disp(['BST> Error: Could not unzip anatomy template: ' lasterr]);
+        end
+    end
+end
+
 % Default action : start
 if (nargin == 0)
     action = 'start';
