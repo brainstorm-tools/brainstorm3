@@ -137,10 +137,11 @@ function [DefacedFiles, errMsg] = Compute(MriFiles, OPTIONS)
         iSubject = MriFiles;
         % Get volumes to deface
         sSubject = bst_get('Subject', iSubject);
-        MriFiles = {sSubject.Anatomy.FileName};
+        iNoAtlas = find(cellfun(@(c)isempty(strfind(c, '_volatlas')), {sSubject.Anatomy.FileName}));
+        MriFiles = {sSubject.Anatomy(iNoAtlas).FileName};
         % Put the default volume first
-        if ~isempty(sSubject.iAnatomy)
-            iOrder = [sSubject.iAnatomy, setdiff(1:length(sSubject.Anatomy), sSubject.iAnatomy)];
+        if ~isempty(sSubject.iAnatomy) && ismember(sSubject.iAnatomy, iNoAtlas)
+            iOrder = [sSubject.iAnatomy, setdiff(1:length(iNoAtlas), sSubject.iAnatomy)];
             MriFiles = MriFiles(iOrder);
         end
     end
