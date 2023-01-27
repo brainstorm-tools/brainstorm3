@@ -7,6 +7,7 @@ January 2023
 - Inverse: Display scouts on source-level PSD as PSD figures
 - Clusters: Save clusters in channel file, load automatically
 - Clusters: Import from process
+- Distrib: Brainstorm compiled with Matlab 2022b
 --------------------------------------------------------------
 November 2022
 - Forward: Display leadfield sensitivity (surface, MRI, isosurface)

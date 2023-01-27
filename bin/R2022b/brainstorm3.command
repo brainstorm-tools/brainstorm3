@@ -7,12 +7,12 @@
 # in the file ~/.brainstorm/MATLABROOTXX.txt.
 # Else, MATLABROOT is read from this file
 #
-# AUTHOR: Francois Tadel, 2011-2020
+# AUTHOR: Francois Tadel, 2011-2022
 
 # Configuration
-VER_NAME="2020a"
-VER_NUMBER="9.8"
-VER_DIR="98"
+VER_NAME="2022b"
+VER_NUMBER="9.13"
+VER_DIR="913"
 MDIR="$HOME/.brainstorm"
 MFILE="$MDIR/MATLABROOT$VER_DIR.txt"
 
@@ -55,7 +55,7 @@ elif [ -f $MFILE ]; then
 # MacOS: Try the default installation folders for Matlab or the MCR
 elif [ $SYST == "maci64" ] && [ -d "/Applications/MATLAB/MATLAB_Runtime/v$VER_DIR" ]; then
     MATLABROOT="/Applications/MATLAB/MATLAB_Runtime/v$VER_DIR"
-    echo "MATLAB MCR library was found in folder:"
+    echo "MATLAB Runtime library was found in folder:"
     echo "$MATLABROOT"
 # Run the java file selector
 else
@@ -73,13 +73,13 @@ if [ -z "$MATLABROOT" ]; then
     echo "USAGE: brainstorm3.command <MATLABROOT>"
 	echo "       brainstorm3.command <MATLABROOT> <script.m> <arguments>"
     echo " "
-    echo "MATLABROOT is the installation folder of the MCR $VER_NUMBER (R$VER_NAME)"
+    echo "MATLABROOT is the installation folder of the Runtime $VER_NUMBER (R$VER_NAME)"
     echo "The Matlab Runtime $VER_NUMBER is the library needed to"
     echo "run executables compiled with Matlab $VER_NAME."
     echo " "
     echo "Examples:"
-    echo "    Linux:  /usr/local/Matlab_Runtime/v$VER_DIR"
-    echo "    Linux:  $HOME/MCR_$VER_NAME"
+    echo "    Linux:  /usr/local/MATLAB_Runtime/v$VER_DIR"
+    echo "    Linux:  $HOME/MATLAB_Runtime_$VER_NAME"
     echo "    MacOSX: /Applications/MATLAB/MATLAB_Runtime/v$VER_DIR"
     echo " "
     echo "MATLABROOT has to be specified only at the first call,"
