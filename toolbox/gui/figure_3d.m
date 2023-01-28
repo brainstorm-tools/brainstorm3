@@ -1773,6 +1773,11 @@ function DisplayFigurePopup(hFig)
                 jItem = gui_component('MenuItem', jMenuChannels, [], 'SEEG contacts', IconLoader.ICON_CHANNEL, [], @(h,ev)view_channels(ChannelFile, 'SEEG', 1, 0, hFig, 1));
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
             end
+            % Edit interpolation distance
+            if ~isempty(Modality) && ismember(Modality, {'ECOG','SEEG','ECOG+SEEG'}) && isequal(TessInfo(1).DataSource.Type, 'Data')
+                jMenuChannels.addSeparator();
+                gui_component('MenuItem', jMenuChannels, [], 'Edit interpolation distance', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)EditInterpDist(Modality));
+            end
         end
     end
 
@@ -4603,6 +4608,34 @@ function [hNet, hOrient] = PlotSensorsNet( hAxes, vertices, isFaces, isMesh, ori
 %     else
 %         hOrient = [];
 %     end
+end
+
+
+%% ===== EDIT INTERPOLATION ELECTRODE-SURFACE DISTANCE =====
+function EditInterpDist(Modality)
+    % Get current value
+    val = bst_get('ElecInterpDist', Modality);
+    % Ask new value to user
+    newVal = java_dialog('input', ['Maximum distance when interpolating ' Modality ' on surface (millimeters):'], 'Interpolation distance', [], num2str(val * 1000));
+    if isempty(newVal) || isnan(str2double(newVal)) || (str2double(newVal) <= 0) 
+        return;
+    end
+    val = str2double(newVal) / 1000;
+    % Set value
+    bst_set('ElecInterpDist', Modality, val);
+    % Update figures
+    hFigures = bst_figures('GetFiguresByType', '3DViz');
+    for iFig = 1:length(hFigures)
+        TessInfo = getappdata(hFigures(iFig), 'Surface');
+        for iTess = 1:length(TessInfo)
+            if isequal(TessInfo(iTess).DataSource.Type, 'Data') && ~isempty(TessInfo(iTess).DataWmat)
+                % Remove interpolation and recompute it
+                TessInfo(iTess).DataWmat = [];
+                setappdata(hFigures(iFig), 'Surface', TessInfo);
+                panel_surface('UpdateSurfaceData', hFigures(iFig), iTess);
+            end
+        end
+    end
 end
 
 

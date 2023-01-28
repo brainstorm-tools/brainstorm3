@@ -145,8 +145,9 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('SystemMemory')          : Amount of memory available, in Mb
 %    - bst_get('ByteOrder')             : {'l','b'} - Byte order used to read and save binary files 
 %    - bst_get('TSDisplayMode')         : {'butterfly','column'}
-%    - bst_get('ElectrodeConfig', Modality)  : Structure describing the current display values for SEEG/ECOG/EEG contacts
-%    - bst_get('AutoUpdates')                : {0,1} - If 1, check automatically for updates at startup
+%    - bst_get('ElectrodeConfig', Modality) : Structure describing the display values for SEEG/ECOG/EEG contacts
+%    - bst_get('ElecInterpDist', Modality)  : Structure describing the maximum distance for interpolating SEEG/ECOG/EEG values onto a surface
+%    - bst_get('AutoUpdates')           : {0,1} - If 1, check automatically for updates at startup
 %    - bst_get('ForceMatCompression')   : {0,1} - If 1, always save mat-files using the v7 format instead of v6
 %    - bst_get('IgnoreMemoryWarnings')  : {0,1} - If 1, do not display memory warnings at the Brainstorm startup
 %    - bst_get('ExpertMode')            : {0,1} - If 1, show advanced options that regular user do not see
@@ -2832,9 +2833,10 @@ switch contextName
     case 'ElectrodeConfig'
         % Get modality
         Modality = varargin{2};
-        if isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG','ECOG+SEEG'})
-            disp(['GET> Invalid modality: ' Modality]);
-            Modality = 'EEG';
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG'})
+            error(['Invalid modality: ' Modality]);
         end
         % Value was saved previously
         if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElectrodeConfig') && isfield(GlobalData.Preferences.ElectrodeConfig, Modality) && isfield(GlobalData.Preferences.ElectrodeConfig.(Modality), 'ContactDiameter')
@@ -2854,7 +2856,7 @@ switch contextName
                     ElectrodeConfig.ContactLength   = 0.001;
                     ElectrodeConfig.ElecDiameter    = 0.0005;
                     ElectrodeConfig.ElecLength      = [];
-                case {'SEEG','ECOG+SEEG'}
+                case {'SEEG','ECOG_SEEG'}
                     ElectrodeConfig.Type            = 'seeg';
                     ElectrodeConfig.ContactDiameter = 0.0008;
                     ElectrodeConfig.ContactLength   = 0.002;
@@ -2864,6 +2866,28 @@ switch contextName
             argout1 = ElectrodeConfig;
         end
         
+    case 'ElecInterpDist'
+        % Get modality
+        Modality = varargin{2};
+        if isequal(Modality, 'ECOG+SEEG')
+            Modality = 'ECOG_SEEG';
+        elseif isempty(Modality) || ~ismember(Modality, {'EEG','ECOG','SEEG','MEG'})
+            error(['Invalid modality: ' Modality]);
+        end
+        % Value was saved previously
+        if isfield(GlobalData, 'Preferences') && isfield(GlobalData.Preferences, 'ElecInterpDist') && isfield(GlobalData.Preferences.ElecInterpDist, Modality)
+            argout1 = GlobalData.Preferences.ElecInterpDist.(Modality);
+        % Get default value
+        else
+            switch (Modality)
+                case 'EEG',       argout1 = .3;
+                case 'ECOG',      argout1 = .015;
+                case 'SEEG',      argout1 = .015;
+                case 'ECOG_SEEG', argout1 = .015;
+                case 'MEG',       argout1 = .5;
+            end
+        end
+
     case 'UseSigProcToolbox'
         % In a parfor loop: GlobalData is empty => Check only if the toolbox is installed (ignore user preferences) 
         if isempty(GlobalData) || ~isfield(GlobalData, 'Program') || ~isfield(GlobalData.Program, 'HasSigProcToolbox')

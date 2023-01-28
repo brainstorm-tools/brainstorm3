@@ -1911,19 +1911,19 @@ function TessInfo = ComputeScalpInterpolation(iDS, iFig, TessInfo)
             (size(TessInfo.DataWmat,2) ~= length(selChan)) || ...
             (size(TessInfo.DataWmat,1) ~= length(Vertices))
         % EEG: Use smoothed display, as in 2D/3D topography
-        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'eeg')
+        if strcmpi(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality, 'EEG')
             TopoInfo.UseSmoothing = 1;
             TopoInfo.Modality = GlobalData.DataSet(iDS).Figure(iFig).Id.Modality;
             Faces = get(TessInfo.hPatch, 'Faces');
             [bfs_center, bfs_radius] = bst_bfs(Vertices);
             TessInfo.DataWmat = figure_topo('GetInterpolation', iDS, iFig, TopoInfo, Vertices, Faces, bfs_center, bfs_radius, chan_loc);
         else
-            switch lower(GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
-                case 'eeg',       excludeParam = .3;
-                case 'ecog',      excludeParam = -.015;
-                case 'seeg',      excludeParam = -.015;
-                case 'ecog+seeg', excludeParam = -.015;
-                case 'meg',       excludeParam = .5;
+            switch (GlobalData.DataSet(iDS).Figure(iFig).Id.Modality)
+                case 'EEG',       excludeParam = bst_get('ElecInterpDist', 'EEG');   % Should never reach this statement, already taken care of above
+                case 'ECOG',      excludeParam = -bst_get('ElecInterpDist', 'ECOG');
+                case 'SEEG',      excludeParam = -bst_get('ElecInterpDist', 'SEEG');
+                case 'ECOG+SEEG', excludeParam = -bst_get('ElecInterpDist', 'ECOG+SEEG');
+                case 'MEG',       excludeParam = bst_get('ElecInterpDist', 'MEG');
                 otherwise,        excludeParam = 0;
             end
             nbNeigh = 4;
