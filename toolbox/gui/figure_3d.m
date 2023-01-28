@@ -1774,7 +1774,7 @@ function DisplayFigurePopup(hFig)
                 jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_L, KeyEvent.CTRL_MASK));
             end
             % Edit interpolation distance
-            if ~isempty(Modality) && ismember(Modality, {'ECOG','SEEG','ECOG+SEEG'}) && isequal(TessInfo(1).DataSource.Type, 'Data')
+            if ~isempty(Modality) && ismember(Modality, {'ECOG','SEEG','ECOG+SEEG'}) && ~isempty(TessInfo(1).DataSource.Type) && ismember(TessInfo(1).DataSource.Type, {'Data', 'Timefreq'})
                 jMenuChannels.addSeparator();
                 gui_component('MenuItem', jMenuChannels, [], 'Edit interpolation distance', IconLoader.ICON_SURFACE_CORTEX, [], @(h,ev)EditInterpDist(Modality));
             end
@@ -4628,7 +4628,7 @@ function EditInterpDist(Modality)
     for iFig = 1:length(hFigures)
         TessInfo = getappdata(hFigures(iFig), 'Surface');
         for iTess = 1:length(TessInfo)
-            if isequal(TessInfo(iTess).DataSource.Type, 'Data') && ~isempty(TessInfo(iTess).DataWmat)
+            if ~isempty(TessInfo(iTess).DataSource.Type) && ismember(TessInfo(iTess).DataSource.Type, {'Data', 'Timefreq'}) && ~isempty(TessInfo(iTess).DataWmat)
                 % Remove interpolation and recompute it
                 TessInfo(iTess).DataWmat = [];
                 setappdata(hFigures(iFig), 'Surface', TessInfo);
