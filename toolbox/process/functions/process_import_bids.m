@@ -498,9 +498,14 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     errorMsg = ['Invalid file format: ' SubjectAnatFormat{iSubj}];
             end
             % Compute non-linear MNI normalization if requested (the linear was already computed during the import)
-            if isempty(errorMsg) && isequal(OPTIONS.MniMethod, 'segment')
+            if isequal(OPTIONS.MniMethod, 'segment')
                 sSubject = bst_get('Subject', iSubject);
-                [sMri, errorMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
+                if ~isempty(sSubject.Anatomy)
+                    [sMri, errMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
+                    if ~isempty(errMsg)
+                        errorMsg = [errorMsg, 10, errMsg];
+                    end
+                end
             end
         end
 
@@ -511,10 +516,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             % Import first MRI
             [BstMriFile, sMri] = import_mri(iSubject, SubjectMriFiles{iSubj}{1}, 'ALL', isInteractiveAnat, 0);
             if isempty(BstMriFile)
-                if ~isempty(errorMsg)
-                    errorMsg = [errorMsg, 10];
-                end
-                errorMsg = [errorMsg, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
+                errorMsg = [errorMsg, 10, 'Could not load MRI file: ', SubjectMriFiles{iSubj}];
             % Compute additional files
             else
                 % If there was no segmentation imported before: normalize and create head surface
@@ -522,11 +524,15 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                     % Compute MNI normalization
                     switch (OPTIONS.MniMethod)
                         case 'maff8'
-                            [sMri, errorMsg] = bst_normalize_mni(BstMriFile, 'maff8');
+                            [sMri, errMsg] = bst_normalize_mni(BstMriFile, 'maff8');
                         case 'segment'
-                            [sMri, errorMsg] = bst_normalize_mni(BstMriFile, 'segment');
+                            [sMri, errMsg] = bst_normalize_mni(BstMriFile, 'segment');
                         case 'no'
                             % Nothing to do
+                            errMsg = '';
+                    end
+                    if ~isempty(errMsg)
+                        errorMsg = [errorMsg, 10, errMsg];
                     end
                     % Generate head surface
                     tess_isohead(iSubject, 10000, 0, 2);
@@ -613,13 +619,18 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
         end
         % Error handling
         if ~isempty(errorMsg)
-            Messages = [Messages, 10, errorMsg];
-            if OPTIONS.isInteractive
-                bst_error(Messages, 'Import BIDS dataset', 0);
-                return;
-            else
-                continue;
+            % If first character is newline: remove it
+            if (errorMsg(1) == newline)
+                errorMsg = errorMsg(2:end);
             end
+            Messages = [Messages, 10, 'Error importing anatomy for: ', SubjectName{iSubj}, 10, errorMsg, 10];
+            % DO NOT STOP PROCESSING IF THERE IS AN IMPORT ISSUE IN THE ANATOMY OF ONE SUBJECT
+            % if OPTIONS.isInteractive
+            %     bst_error(Messages, 'Import BIDS dataset', 0);
+            %     return;
+            % else
+            %     continue;
+            % end
         end
             
         % === IMPORT MEG/EEG FILES ===
@@ -1051,6 +1062,11 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                 db_set_noisecov(sFilesEmpty.iStudy, iStudyDest, 0, 1);
             end
         end
+    end
+
+    % If first character is newline: remove it
+    if ~isempty(Messages) && (Messages(1) == newline)
+        Messages = Messages(2:end);
     end
 end
 
