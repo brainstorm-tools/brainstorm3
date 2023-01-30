@@ -499,7 +499,7 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
             end
             % Compute non-linear MNI normalization if requested (the linear was already computed during the import)
             if isempty(errorMsg) && isequal(OPTIONS.MniMethod, 'segment')
-                sSubject = bst_get('Subject', sSubject);
+                sSubject = bst_get('Subject', iSubject);
                 [sMri, errorMsg] = bst_normalize_mni(sSubject.Anatomy(1).FileName, 'segment');
             end
         end
@@ -563,6 +563,8 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                             sSubject.Anatomy(iMri) = [];
                             % Update database
                             bst_set('Subject', iSubject, sSubject);
+                            % Refresh tree
+                            panel_protocols('UpdateNode', 'Subject', iSubject);
                         end
                     end
                     % Replace the MRI file path in the matching matrix
