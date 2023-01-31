@@ -2365,6 +2365,7 @@ switch (lower(action))
                     gui_component('MenuItem', jPopup, [], 'Display as time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_matrix(filenameFull, 'TimeSeries'));
                     gui_component('MenuItem', jPopup, [], 'Display as image',       IconLoader.ICON_NOISECOV,   [], @(h,ev)view_matrix(filenameFull, 'Image'));
                     gui_component('MenuItem', jPopup, [], 'Display as table',       IconLoader.ICON_MATRIX,     [], @(h,ev)view_matrix(filenameFull, 'Table'));
+                    gui_component('MenuItem', jPopup, [], 'Review as raw',          IconLoader.ICON_RAW_DATA,   [], @(h,ev)import_raw(filenameFull,  'BST-MATRIX', iSubject));
                     % === STAT CLUSTERS ===
                     if ~isempty(strfind(filenameRelative, '_cluster'))
                         AddSeparator(jPopup);
