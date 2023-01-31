@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 51;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name
@@ -122,28 +122,31 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
+            sFreq = DataMat.F.prop.sfreq;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events', 'Time');
+            sEvents = DataMat.Events;
+            sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
         % Convert the distance in time to distance in samples
-        ds = round(dt .* sFile.prop.sfreq);
+        ds = round(dt .* sFreq);
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, combineCell, ds, isDelete, sFile.prop.sfreq, Order);
+        [sEvents, isModified] = Compute(sInputs(iFile), sEvents, combineCell, ds, isDelete, sFreq, Order);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);

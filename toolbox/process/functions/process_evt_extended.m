@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 62;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw'};
-    sProcess.OutputTypes = {'data', 'raw'};
+    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
+    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name

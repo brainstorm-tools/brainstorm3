@@ -93,9 +93,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events');
+            sEvents = DataMat.Events;
         end
         % If no markers are present in this file
         if isempty(sFile.events)
@@ -103,16 +104,16 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             continue;
         end
         % Call the detection function
-        [sFile.events, isModified] = Compute(sInputs(iFile), sFile.events, evtA, evtB, dt, isDelete);
+        [sEvents, isModified] = Compute(sInputs(iFile), sEvents, evtA, evtB, dt, isDelete);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);
