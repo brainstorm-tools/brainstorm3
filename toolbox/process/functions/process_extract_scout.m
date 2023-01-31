@@ -435,7 +435,13 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 
                 % === ATLAS-BASED FILES ===
                 if ~isempty(iFileScouts)
-                    scoutValues = cat(1, scoutValues, matValues(iFileScouts(iScout),:,:));
+                    % Load values (works with full or kernel result files, and applies dynamic z-score if present)
+                    [scoutValuesTmp, isError] = GetSourceValues(iFileScouts(iScout));
+                    if isError
+                        % Already added to report.
+                        return;
+                    end
+                    scoutValues = cat(1, scoutValues, scoutValuesTmp);
                     Description = cat(1, Description, ScoutName);
                     nComponents = 1;
                     continue;
@@ -578,51 +584,10 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 end
 
                 % === GET SOURCES ===
-                % Get all the sources values
-                if ~isempty(matValues)
-                    sourceValues = matValues(iRows,:,:);
-                    if ~isempty(matStd)
-                        sourceStd = matStd(iRows,:,:,:);
-                    else
-                        sourceStd = [];
-                    end
-                elseif (size(sMat.F,3) == 1)
-                    sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
-                    sourceStd = [];
-                else
-                    % sourceValues = zeros(length(iRows), size(sMat.F,2), size(sMat.F,3));
-                    % for iFreq = 1:size(sMat.F,3)
-                    %     sourceValues(:,:,iFreq) = sResults.ImagingKernel(iRows,:) * sMat.F(:,:, iFreq);
-                    % end
-                    bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported here.');
+                [sourceValues, sourceStd, isError] = GetSourceValues(iRows);
+                if isError
+                    % Already added to report.
                     return;
-                end
-
-                % === APPLY DYNAMIC ZSCORE ===
-                if ~isempty(ZScore)
-                    ZScoreScout = ZScore;
-                    % Keep only the selected vertices
-                    if ~isempty(iRows) && ~isempty(ZScoreScout.mean)
-                        ZScoreScout.mean = ZScoreScout.mean(iRows,:);
-                        ZScoreScout.std  = ZScoreScout.std(iRows,:);
-                    end
-                    % Calculate mean/std
-                    if isempty(ZScoreScout.mean)
-                        sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
-                        if ~isempty(sourceStd)
-                            for iBound = 1:size(sourceStd,4)
-                                sourceStd(:,:,:,iBound) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound), ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
-                            end
-                        end
-                    % Apply existing mean/std
-                    else
-                        sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout);
-                        if ~isempty(sourceStd)
-                            for iBound = 1:size(sourceStd,4)
-                                sourceStd(:,:,:,iBound) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound), ZScoreScout);
-                            end
-                        end
-                    end
                 end
 
                 % === COMPUTE CLUSTER VALUES ===
@@ -843,8 +808,60 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             OutputFiles = newMat;
         end
     end
-end
 
+%% ===== SUBFUNCTIONS =====
+    function [sourceValues, sourceStd, isError] = GetSourceValues(iRows)
+        isError = false;
+        % Get all the sources values
+        if ~isempty(matValues)
+            sourceValues = matValues(iRows,:,:);
+            if ~isempty(matStd)
+                sourceStd = matStd(iRows,:,:,:);
+            else
+                sourceStd = [];
+            end
+        elseif (size(sMat.F,3) == 1)
+            sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
+            sourceStd = [];
+        else
+            % sourceValues = zeros(length(iRows), size(sMat.F,2), size(sMat.F,3));
+            % for iFreq = 1:size(sMat.F,3)
+            %     sourceValues(:,:,iFreq) = sResults.ImagingKernel(iRows,:) * sMat.F(:,:, iFreq);
+            % end
+            bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported here.');
+            isError = true;
+            return;
+        end
+
+        % === APPLY DYNAMIC ZSCORE ===
+        if ~isempty(ZScore)
+            ZScoreScout = ZScore;
+            % Keep only the selected vertices
+            if ~isempty(iRows) && ~isempty(ZScoreScout.mean)
+                ZScoreScout.mean = ZScoreScout.mean(iRows,:);
+                ZScoreScout.std  = ZScoreScout.std(iRows,:);
+            end
+            % Calculate mean/std
+            if isempty(ZScoreScout.mean)
+                sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
+                if ~isempty(sourceStd)
+                    for iBound1 = 1:size(sourceStd,4)
+                        sourceStd(:,:,:,iBound1) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound1), ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
+                    end
+                end
+                % Apply existing mean/std
+            else
+                sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout);
+                if ~isempty(sourceStd)
+                    for iBound1 = 1:size(sourceStd,4)
+                        sourceStd(:,:,:,iBound1) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound1), ZScoreScout);
+                    end
+                end
+            end
+        end
+    end % GetSourceValues subfunction
+
+end
 
 
 
