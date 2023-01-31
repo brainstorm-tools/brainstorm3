@@ -86,7 +86,7 @@ function OutputFiles = Run(sProcess, sInputs)
         % Sort to be able to efficiently re-use reference components.
         [~, iSorted] = sort({sInputs.FileName});
         sInputs = sInputs(iSorted);
-        iGroups = process_average('SortFiles', sInputs, PcaOptions.AvgType);
+        iGroups = process_average('SortFiles', sInputs, PcaOptions.AvgType); % = 2; by subject
         % Run separately for each group.
         for iG = 1:numel(iGroups)
             [GroupOutputFiles, Message] = RunPcaGroup(sInputs(iGroups{iG}), PcaOptions);
@@ -141,6 +141,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             DataCov = [];
             if PcaOptions.UseDataCov
                 % Use pre-computed data covariance if all files from this condition are kernel links.
+                % Loop to check if all files are links.
                 isAllLink = true;
                 nF = 0;
                 for iF = 0:(nInputs - iInput)
@@ -154,6 +155,7 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                         break;
                     end
                 end
+                % If all links, get data covariance; otherwise computed below
                 if isAllLink
                     sStudy = bst_get('Study', sInputs(iInput).iStudy);
                     if numel(sStudy.NoiseCov) < 2
@@ -165,12 +167,13 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 end
             end
         elseif isAllLink
-            % This condition was fully taken into account with a data covariance matrix, nothing to do.
+            % This condition was fully taken into account from its first file, with a data
+            % covariance matrix. Nothing more to do.
             bst_progress('inc', 1);
             continue;
         end
 
-        % Sum covariance
+        % Get covariance in source space (3x3 xyz covariance matrices) across files
         % Load file
         isLink = strcmpi(file_gettype(sInputs(iInput).FileName), 'link');
         if isLink
@@ -182,18 +185,20 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             ResultsMat = in_bst_results(sInputs(iInput).FileName, 1);
             Field = 'ImageGridAmp';
         end
+        % Initialize covariance
         if iInput == 1
             PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
-            % Initialize covariance
             nComp = ResultsMat.nComponents;
             nVert = size(ResultsMat.(Field), 1) / nComp;
             OrientCov = zeros(nComp, nComp, nVert);
         elseif nComp ~= ResultsMat.nComponents || nVert ~= (size(ResultsMat.(Field), 1) / nComp)
             Message = 'Incompatible result dimensions (number of sources or orientations).';
+            return;
         end
+        % Accumulate covariance
         if isLink
             if ~isAllLink
-                % Get data covariance for this file only.
+                % Compute data covariance for this file only.
                 DataCov = GetCovariance(ResultsMat.DataFile, PcaOptions, sInputs(iInput).iStudy);
                 nF = 1;
                 %else
@@ -264,14 +269,11 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
         elseif isAllLink
             % Already saved a flattened version of this kernel.
             % Find new link for this data file.
-            LinkFiles = db_links('Study', sInputs(iInput).iStudy);
-            iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInputs(iInput).DataFile]));
-            if sum(iLink) ~= 1
+            OutputFiles{iInput} = FindLinkFile(sInput.DataFile, SharedFile, LinkFiles); %#ok<*AGROW>
+            if isempty(OutputFiles{iInput})
                 Message = 'Problem finding the correct linked file.';
-                OutputFiles = {};
                 return;
             end
-            OutputFiles{iInput} = LinkFiles{iLink}; %#ok<*AGROW>
             bst_progress('inc', 1);
             continue;
         end
@@ -290,17 +292,16 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
         if iInput == 1 && ~isfield(PcaOptions, 'ChannelTypes') % for pca method, first file loop was skipped.
             PcaOptions.ChannelTypes = ResultsMat.Options.DataTypes;
         end
-        % Compute
+        % Compute and save
         switch PcaOptions.Method
             case 'pcaa'
                 % Apply reference components to data directly.
                 ResultsMat = Compute(ResultsMat, PcaOptions.Method, Field, [], PcaRefOrient);
                 if isAllLink
                     % Save shared kernel and find link.
-                    [OutputFiles{iInput}, SharedFile] = SaveKernelFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
+                    [OutputFiles{iInput}, SharedFile, LinkFiles] = SaveKernelFile(sInputs(iInput), ResultsMat, PcaOptions.Method);
                     if isempty(OutputFiles{iInput})
-                        bst_report('Error', sProcess, sInputs(iInput), 'Problem finding the correct linked file.');
-                        OutputFiles = {};
+                        Message = 'Problem finding the correct linked file.';
                         return;
                     end
                 else
@@ -337,7 +338,6 @@ end
 
 %% ===== COMPUTE =====
 function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov, PcaOrient)
-    % Field to process
     % TODO check: only linear Methods work for ImagingKernel. mean,sum,pca.
     if (nargin < 5) || isempty(PcaOrient)
         PcaOrient = [];
@@ -345,6 +345,7 @@ function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov,
     if (nargin < 4) || isempty(OrientCov)
         OrientCov = [];
     end
+    % Field to process
     if (nargin < 3) || isempty(Field)
         Field = 'ImageGridAmp';
     end
@@ -357,12 +358,12 @@ function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov,
         case 0
             % Apply orientations for each region independently
             [ResultsMat.(Field), ResultsMat.GridAtlas] = bst_source_orient([], ResultsMat.nComponents, ResultsMat.GridAtlas, ResultsMat.(Field), Method);
-            % Constrained source models
+        % Constrained source models
         case 1
             % The input file is not an unconstrained source model, nothing to do
         case 2
             error('Not supported.');
-            % Unconstrained source models
+        % Unconstrained source models
         case 3
             % Apply source orientations
             % Shortcut when pcaa was already computed and we just want to apply it to the data.
@@ -398,7 +399,7 @@ function [ResultsMat, PcaOrient] = Compute(ResultsMat, Method, Field, OrientCov,
 end
 
 
-%% ===== Get data covariance from one file =====
+%% ===== Compute data covariance from one file =====
 function DataCov = GetCovariance(DataFile, Options, iStudy)
     % Find data file index.
     [~, ~, iData] = bst_get('DataFile', DataFile, iStudy);
@@ -430,7 +431,7 @@ function OutputFile = SaveResultFile(sInput, ResultsMat, Method)
     db_add_data(sInput.iStudy, OutputFile, ResultsMat);
 end
 
-function [OutputFile, SharedFile] = SaveKernelFile(sInput, ResultsMat, Method)
+function [OutputFile, SharedFile, LinkFiles] = SaveKernelFile(sInput, ResultsMat, Method)
     ResultsMat.DataFile = '';
     % Keep original kernel file name, but ensure unique.
     [KernelPath, KernelName] = bst_fileparts(file_resolve_link(sInput.FileName));
@@ -441,14 +442,17 @@ function [OutputFile, SharedFile] = SaveKernelFile(sInput, ResultsMat, Method)
     panel_protocols('UpdateNode', 'Study', sInput.iStudy);
     % Find link to the result kernel that was just created for this data file.
     LinkFiles = db_links('Study', sInput.iStudy);
-    iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' sInput.DataFile]));
+    OutputFile = FindLinkFile(sInput.DataFile, SharedFile, LinkFiles);
+end
+
+function OutputFile = FindLinkFile(DataFile, SharedFile, LinkFiles)
+    iLink = ~cellfun(@isempty, strfind(LinkFiles, [file_short(SharedFile) '|' DataFile]));
     if sum(iLink) ~= 1
         OutputFile = '';
     else
         OutputFile = LinkFiles{iLink};
     end
 end
-
 
 
 
