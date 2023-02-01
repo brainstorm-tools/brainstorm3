@@ -127,6 +127,23 @@ switch (FileFormat)
     case 'FT-TIMELOCK'
         ftData = out_fieldtrip_matrix(MatrixMat);
         bst_save(OutputFile, ftData, 'v6');
+    case 'EEG-EDF'
+        nSignals = size(MatrixMat.Value, 1);
+        % Complete DataMat
+        DataMat = db_template('datamat');
+        DataMat.F = MatrixMat.Value;
+        DataMat.Comment = MatrixMat.Comment;
+        DataMat.Time = MatrixMat.Time;
+        DataMat.Events = MatrixMat.Events;
+        DataMat.ChannelFlag = ones(1, nSignals);
+        % Complete ChannelMat
+        ChannelMat = db_template('channelmat');
+        ChannelMat.Channel = repmat(db_template('channeldesc'), 1, nSignals);
+        for iSignal = 1 : nSignals
+            ChannelMat.Channel(iSignal).Type = 'EEG';
+            ChannelMat.Channel(iSignal).Name = MatrixMat.Description{iSignal};
+        end
+        export_data(DataMat, ChannelMat, OutputFile, 'EEG-EDF');
     case 'BST-BIN'
         [sFile, ChannelMat, DataMat] = in_fopen_bstmatrix(MatrixMat);
         export_data(DataMat, ChannelMat, OutputFile, FileFormat);
