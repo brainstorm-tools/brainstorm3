@@ -37,8 +37,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 52;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'raw', 'data'};
-    sProcess.OutputTypes = {'raw', 'data'};
+    sProcess.InputTypes  = {'raw', 'data', 'matrix'};
+    sProcess.OutputTypes = {'raw', 'data', 'matrix'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Event name
@@ -66,26 +66,29 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         isRaw = strcmpi(sInputs(iFile).FileType, 'raw');
         if isRaw
             DataMat = in_bst_data(sInputs(iFile).FileName, 'F');
-            sFile = DataMat.F;
+            sEvents = DataMat.F.events;
+            sFreq = DataMat.F.prop.sfreq;
         else
-            sFile = in_fopen(sInputs(iFile).FileName, 'BST-DATA');
+            DataMat = in_bst_data(sInputs(iFile).FileName, 'Events', 'Time');
+            sEvents = DataMat.Events;
+            sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
         % Call the grouping function
-        [sFile.events, isModified] = Compute(sFile.events, sFile.prop.sfreq);
+        [sEvents, isModified] = Compute(sEvents, sFreq);
 
         % ===== SAVE RESULT =====
         % Only save changes if something was change
         if isModified
             % Report changes in .mat structure
             if isRaw
-                DataMat.F = sFile;
+                DataMat.F.events = sEvents;
             else
-                DataMat.Events = sFile.events;
+                DataMat.Events = sEvents;
             end
             % Save file definition
             bst_save(file_fullpath(sInputs(iFile).FileName), DataMat, 'v6', 1);

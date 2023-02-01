@@ -102,7 +102,7 @@ if isempty(OutputFile)
     
 % Guess file format based on its extension
 elseif isempty(FileFormat)
-    [BstPath, BstBase, BstExt] = bst_fileparts(ExportFile);
+    [BstPath, BstBase, BstExt] = bst_fileparts(OutputFile);
     switch lower(BstExt)
         case '.txt',   FileFormat = 'ASCII-SPC';
         case '.csv',   FileFormat = 'ASCII-CSV-HDR';
@@ -110,6 +110,7 @@ elseif isempty(FileFormat)
         case '.xlsx',  FileFormat = 'EXCEL';
         case '.mat',   FileFormat = 'BST';
         case '.edf',   FileFormat = 'EEG-EDF';
+        case '.bst',   FileFormat = 'BST-BIN';
         otherwise,     error('Unsupported file extension.');
     end
 end
@@ -126,23 +127,9 @@ switch (FileFormat)
     case 'FT-TIMELOCK'
         ftData = out_fieldtrip_matrix(MatrixMat);
         bst_save(OutputFile, ftData, 'v6');
-    case 'EEG-EDF'
-        nSignals = size(MatrixMat.Value, 1);
-        % Complete DataMat
-        DataMat = db_template('datamat');
-        DataMat.F = MatrixMat.Value;
-        DataMat.Comment = MatrixMat.Comment;
-        DataMat.Time = MatrixMat.Time;
-        DataMat.Events = MatrixMat.Events;
-        DataMat.ChannelFlag = ones(1, nSignals);
-        % Complete ChannelMat
-        ChannelMat = db_template('channelmat');
-        ChannelMat.Channel = repmat(db_template('channeldesc'), 1, nSignals);
-        for iSignal = 1 : nSignals
-            ChannelMat.Channel(iSignal).Type = 'EEG';
-            ChannelMat.Channel(iSignal).Name = MatrixMat.Description{iSignal};
-        end
-        export_data(DataMat, ChannelMat, OutputFile, 'EEG-EDF');
+    case {'BST-BIN', 'EEG-EDF'}
+        [sFile, ChannelMat, DataMat] = in_fopen_bstmatrix(MatrixMat);
+        export_data(DataMat, ChannelMat, OutputFile, FileFormat);
     case {'ASCII-SPC', 'ASCII-CSV', 'ASCII-TSV', 'ASCII-SPC-HDR', 'ASCII-CSV-HDR', 'ASCII-TSV-HDR', 'ASCII-CSV-HDR-TR', 'ASCII-TSV-HDR-TR', 'EXCEL', 'EXCEL-TR'}
         out_matrix_ascii(OutputFile, MatrixMat.Value, FileFormat, MatrixMat.Description, MatrixMat.Time, []);
     otherwise
