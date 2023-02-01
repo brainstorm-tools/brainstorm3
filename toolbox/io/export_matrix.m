@@ -109,6 +109,7 @@ elseif isempty(FileFormat)
         case '.tsv',   FileFormat = 'ASCII-TSV-HDR';
         case '.xlsx',  FileFormat = 'EXCEL';
         case '.mat',   FileFormat = 'BST';
+        case '.edf',   FileFormat = 'EEG-EDF';
         case '.bst',   FileFormat = 'BST-BIN';
         otherwise,     error('Unsupported file extension.');
     end
