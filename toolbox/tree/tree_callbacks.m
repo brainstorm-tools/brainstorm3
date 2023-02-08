@@ -1410,7 +1410,7 @@ switch (lower(action))
                             % Create the menu
                             jMenuModality = gui_component('Menu', jPopup, [], channelTypeDisplay, IconLoader.ICON_DATA, [], []);
                             % === DISPLAY TIME SERIES ===
-                            gui_component('MenuItem', jMenuModality, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(filenameRelative, AllMod{iMod}, [], 'NewFigure'));
+                            gui_component('MenuItem', jMenuModality, [], 'Display time series', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_call(@view_timeseries, filenameRelative, AllMod{iMod}, [], 'NewFigure'));
                             gui_component('MenuItem', jMenuModality, [], 'Display as image', IconLoader.ICON_NOISECOV, [], @(h,ev)view_erpimage(filenameRelative, 'trialimage', AllMod{iMod}));
                             % == DISPLAY TOPOGRAPHY ==
                             if ismember(AllMod{iMod}, {'EEG', 'MEG', 'MEG MAG', 'MEG GRAD', 'ECOG', 'SEEG', 'ECOG+SEEG', 'NIRS'}) && ~isempty(DisplayMod) && ismember(AllMod{iMod}, DisplayMod)

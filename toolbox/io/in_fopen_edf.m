@@ -342,6 +342,7 @@ iChanWrongRate = find([sFile.header.signal.sfreq] ~= sFile.header.signal(iChanFr
 iChanWrongRate = intersect(iChanWrongRate, iOtherChan);
 if ~isempty(iChanWrongRate)
     sFile.channelflag(iChanWrongRate) = -1;
+    disp([sprintf('EDF> WARNING: Excluding channels with sampling rates other than %.3f Hz : ', hdr.signal(iChanFreqRef).sfreq), sprintf('%s ', ChannelMat.Channel(iChanWrongRate).Name)]);
 end
 
 % Consider that the sampling rate of the file is the sampling rate of the first signal
