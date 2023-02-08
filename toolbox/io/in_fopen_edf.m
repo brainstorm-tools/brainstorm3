@@ -232,12 +232,12 @@ for i = 1:hdr.nsignal
         signalLabel = strrep(hdr.signal(i).label, ' - ', '-');
         % Find space chars (label format "Type Name")
         iSpace = find(signalLabel == ' ');
-        % Only if there is one space only
-        if (length(iSpace) == 1) && (iSpace >= 3)
+        % Only if there is one space only, and what is after the space is not only made of numbers
+        if (length(iSpace) == 1) && (iSpace >= 3) && ~all(ismember(signalLabel(iSpace+1:end), '0123456789'))
             SplitName{i} = signalLabel(iSpace+1:end);
             SplitType{i} = signalLabel(1:iSpace-1);
         % Accept also 2 spaces
-        elseif (length(iSpace) == 2) && (iSpace(1) >= 3)
+        elseif (length(iSpace) == 2) && (iSpace(1) >= 3) && ~all(ismember(signalLabel(iSpace(1)+1:end), ' 0123456789'))
             SplitName{i} = strrep(signalLabel(iSpace(1)+1:end), ' ', '_');
             SplitType{i} = signalLabel(1:iSpace(1)-1);
         end
@@ -386,7 +386,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                 for iAnnot = 1:length(iSeparator)-1
                     % Get annotation
                     strAnnot = char(F(iSeparator(iAnnot)+2:iSeparator(iAnnot+1)-1));
-                    if isempty(strAnnot)
+                    if isempty(strAnnot) || (strAnnot(1) == 20)
                         continue;
                     end
                     % Split in blocks with [20]
