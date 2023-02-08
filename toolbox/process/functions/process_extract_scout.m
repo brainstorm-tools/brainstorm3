@@ -28,7 +28,7 @@ end
 
 
 %% ===== GET DESCRIPTION =====
-function sProcess = GetDescription() %#ok<DEFNU>
+function sProcess = GetDescription() 
     % Description the process
     sProcess.Comment     = 'Scouts time series';
     sProcess.Category    = 'Custom';
@@ -112,7 +112,7 @@ end
 
 
 %% ===== RUN =====
-function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
+function OutputFiles = Run(sProcess, sInputs) 
     % Initialize returned variable
     OutputFiles = {};
     % Get scouts
@@ -167,434 +167,344 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
     end
     
     % ===== LOOP ON THE FILES =====
-    DisplayUnits = [];
     for iInput = 1:length(sInputs)
-        ScoutOrient = [];
-        SurfOrient  = [];
-        SurfaceFile = [];
-        sResults = [];
-        ZScore = [];
-        GridAtlas  = [];
-        GridLoc    = [];
-        GridOrient = [];
-        iFileScouts = [];
+%         ScoutOrient = [];
+%         sResults = [];
+%         ZScore = [];
+%         GridAtlas  = [];
+%         GridLoc    = [];
+%         GridOrient = [];
+%         iFileScouts = [];
         nComponents = [];
-        fileUnits = [];
+%         fileUnits = [];
         % Progress bar
         if (length(sInputs) > 1)
             bst_progress('text', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)));
         end
-        % Get data filename
-        [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
+%         % Get data filename
+%         [TestResFile, DataFile] = file_resolve_link(sInputs(iInput).FileName);
+%         % Get meaningful tags in the results file name (without folders)
+%         [tmp, TestTags] = bst_fileparts(TestResFile);
+%         isAbs = ~isempty(strfind(TestTags, '_abs'));
+        % Only used in regards to sign flipping.
+        isAbs = ~isempty(strfind(sInputs(iInput).FileName, '_abs'));
+
         
         % === READ FILES ===
-        switch (sInputs(iInput).FileType)
-            case 'results'
-                % Load results
-                sMat = in_bst_results(sInputs(iInput).FileName, 0);
-                % Atlas-based files
-                if isfield(sMat, 'Atlas') && ~isempty(sMat.Atlas)
-                    snames = AtlasList{1,2};
-                    % Try to look the requested scouts in the file
-                    for i = 1:length(snames)
-                        iTmp = find(strcmpi(snames{i}, {sMat.Atlas(1).Scouts.Label}));
-                        if ~isempty(iTmp)
-                            iFileScouts(end+1) = iTmp;
-                        end
-                    end
-                    % If the scout names cannot be found: error
-                    if (length(iFileScouts) ~= length(snames))
-                        bst_report('Error', sProcess, sInputs(iInput), 'File is already based on an atlas, but the selected scouts don''t match this atlas.');
-                        continue;
-                    end
-                end
-                % Get surface vertex normals
-                if ~isempty(sMat.SurfaceFile)
-                    SurfaceFile = sMat.SurfaceFile;
-                end
-                % FULL RESULTS
-                if isfield(sMat, 'ImageGridAmp') && ~isempty(sMat.ImageGridAmp)
-                    sResults = sMat;
-                    matValues = sMat.ImageGridAmp;
-                    % Standard deviation
-                    if isfield(sMat, 'Std') && ~isempty(sMat.Std)
-                        matStd = sMat.Std;
-                    else
-                        matStd = [];
-                    end
-                % KERNEL ONLY
-                elseif isfield(sMat, 'ImagingKernel') && ~isempty(sMat.ImagingKernel)
-                    sResults = sMat;
-                    sMat = in_bst(sResults.DataFile, TimeWindow);
-                    matValues = [];
-                    matStd = [];
-                end
-                % Get ZScore parameter
-                if isfield(sResults, 'ZScore') && ~isempty(sResults.ZScore)
-                    ZScore = sResults.ZScore;
-                end
-                % Get GridAtlas/GridLoc/GridOrient parameter
-                if isfield(sResults, 'GridAtlas') && ~isempty(sResults.GridAtlas)
-                    GridAtlas = sResults.GridAtlas;
-                end
-                if isfield(sResults, 'GridLoc') && ~isempty(sResults.GridLoc)
-                    GridLoc = sResults.GridLoc;
-                end
-                if isfield(sResults, 'GridOrient') && ~isempty(sResults.GridOrient)
-                    GridOrient = sResults.GridOrient;
-                end
-                % Get units
-                if isfield(sResults, 'DisplayUnits') && ~isempty(sResults.DisplayUnits)
-                    fileUnits = sResults.DisplayUnits;
-                end
-                % Input filename
-                if ~isempty(DataFile)
-                    condComment = [file_short(DataFile) '/' sInputs(iInput).Comment];
-                else
-                    condComment = sInputs(iInput).FileName;
-                end
-                
-            case 'timefreq'
-                % Load file
-                sMat = in_bst_timefreq(sInputs(iInput).FileName, 0);
-                if ~strcmpi(sMat.DataType, 'results')
-                    bst_report('Error', sProcess, sInputs(iInput), 'This file does not contain any valid cortical maps.');
-                    continue;
-                end
-                % Do not accept complex values
-                if strcmpi(sMat.Measure, 'none')
-                    bst_report('Error', sProcess, sInputs(iInput), 'Please apply a measure on these complex values first.');
-                    continue;
-                end
-                % If this is a kernel-based result: need to load the kernel as well
-                if ~isempty(strfind(sInputs(iInput).FileName, '_KERNEL_'))
-                    % sResults = in_bst_results(sMat.DataFile, 0);
-                    % matValues = [];
-                    % sMat.F = sMat.TF;
-                    bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported in this process. Please apply a measure on them first.');
-                    continue;
-                else
-                    matValues = sMat.TF;
-                end
-                % Standard deviation
-                if isfield(sMat, 'Std') && ~isempty(sMat.Std)
-                    matStd = sMat.Std;
-                else
-                    matStd = [];
-                end
-                % Error: cannot process atlas-based files
-                if isfield(sMat, 'Atlas') && ~isempty(sMat.Atlas)
-                    bst_report('Error', sProcess, sInputs(iInput), 'File is already based on an atlas.');
-                    continue;
-                end
-                % Get ZScore parameter
-                if isfield(sMat, 'ZScore') && ~isempty(sMat.ZScore)
-                    ZScore = sMat.ZScore;
-                end
-                % Get GridAtlas/GridLoc/GridOrient parameter
-                if isfield(sMat, 'GridAtlas') && ~isempty(sMat.GridAtlas)
-                    GridAtlas = sMat.GridAtlas;
-                end
-                if isfield(sMat, 'GridLoc') && ~isempty(sMat.GridLoc)
-                    GridLoc = sMat.GridLoc;
-                end
-                % Copy surface filename
-                if isfield(sMat, 'SurfaceFile') && ~isempty(sMat.SurfaceFile)
-                    SurfaceFile = sMat.SurfaceFile;
-                end
-                % Get units
-                if isfield(sResults, 'DisplayUnits') && ~isempty(sResults.DisplayUnits)
-                    fileUnits = sResults.DisplayUnits;
-                end
-                % Input filename
-                condComment = sInputs(iInput).FileName;
-               
-            otherwise
-                bst_report('Error', sProcess, sInputs(iInput), 'Unsupported file type.');
+        [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs, TimeWindow);
+        if isempty(sResults)
+            % Error already reported.
+            if isConcatenate
+                return;
+            else
                 continue;
-        end
-        % Nothing loaded
-        if isempty(sMat) || (isempty(matValues) && (isempty(sResults) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
-            bst_report('Error', sProcess, sInputs(iInput), 'Could not load anything from the input file. Check the requested time window.');
-            return;
-        end
-        % Do not accept time bands (unless there is only one)
-        if isfield(sMat, 'TimeBands') && ~isempty(sMat.TimeBands) && ~((size(matValues,2)==1) && (size(sMat.TimeBands,1)==1))
-            bst_report('Error', sProcess, sInputs(iInput), 'Time bands are not supported yet by this process.');
-            continue;
-        end
-        % Add possibly missing fields
-        if ~isfield(sMat, 'ChannelFlag')
-            sMat.ChannelFlag = [];
-        end
-        if ~isfield(sMat, 'History')
-            sMat.History = {};
-        end
-        % Make sure that units are the same for all the files
-        if ~isempty(fileUnits)
-            if isempty(DisplayUnits)
-                DisplayUnits = fileUnits;
-            elseif ~strcmpi(fileUnits, DisplayUnits)
-                DisplayUnits = 'Mixed units';
             end
         end
-        % Replicate if no time
-        if (length(sMat.Time) == 1)
-            sMat.Time = [0,1];
-        elseif isempty(sMat.Time)
-            bst_report('Error', sProcess, sInputs(iInput), 'Invalid time selection.');
-            continue;
-        end
-        if ~isempty(matValues) && (size(matValues,2) == 1)
-            matValues = [matValues, matValues];
-            if ~isempty(matStd)
-                matStd = [matStd, matStd];
-            end
-        elseif isfield(sMat, 'F') && (size(sMat.F,2) == 1)
-            sMat.F = cat(2, sMat.F, sMat.F);
-        end
-        
-        % === LOAD SURFACE ===
-        % Surface file not defined in the file
-        if isempty(SurfaceFile)
-            % Warning message
-            bst_report('Warning', sProcess, sInputs(iInput), 'Surface file is not defined for the input file, using the default cortex.');
-            % Get input subject
-            sSubject = bst_get('Subject', sInputs(iInput).SubjectFile);
-            % Get default cortex surface 
-            SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
-        end
-        % Load surface
-        sSurf = in_tess_bst(SurfaceFile);
-        if isempty(sSurf) || ~isfield(sSurf, 'Atlas')
-            bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
-            continue;
-        end
-        % Get orientations
-        if strcmpi(sInputs(iInput).FileType, 'results')
-            SurfOrient = sSurf.VertNormals;
-        end
-                    
-        % === TIME ===
+        % Check for consistency if concatenating.
+        if isConcatenate
+            if iInput == 1
+                DisplayUnits = sResults.DisplayUnits;
+                SurfaceFile = sResults.SurfaceFile;
+                initTimeVector = sResults.Time;
+        % Check units and surface file
+            elseif ~isequal(DisplayUnits, sResults.DisplayUnits) || ~isequal(SurfaceFile, sResults.SurfaceFile)
+                bst_report('Error', sProcess, sInputs(iInput), 'When concatenating, units and surface files should be the same for all files.');
+                return;
         % Check time vectors
-        if (iInput == 1)
-            initTimeVector = sMat.Time;
-        elseif (length(initTimeVector) ~= length(sMat.Time)) && isConcatenate
-            bst_report('Error', sProcess, sInputs(iInput), 'Time definition should be the same for all the files.');
-            continue;
-        end
-        % Option: Time window
-        if ~isempty(TimeWindow)
-            % Get time indices
-            if (length(sMat.Time) <= 2)
-                iTime = 1:length(sMat.Time);
-            else
-                iTime = panel_time('GetTimeIndices', sMat.Time, TimeWindow);
-                if isempty(iTime)
-                    bst_report('Error', sProcess, sInputs(iInput), 'Invalid time window option.');
-                    continue;
-                end
-            end
-            % If only one time point selected: double it
-            if (length(iTime) == 1)
-                iTime = [iTime, iTime];
-            end
-            % Keep only the requested time window
-            if ~isempty(matValues)
-                matValues = matValues(:,iTime,:);
-                if ~isempty(matStd)
-                    matStd = matStd(:,iTime,:,:);
-                end
-            else
-                sMat.F = sMat.F(:,iTime,:);
-            end
-            sMat.Time = sMat.Time(iTime);
-            % If there are only two time points, make sure they are not identical
-            if (length(sMat.Time) == 2)
-                sMat.Time(2) = sMat.Time(1) + 0.001;
+            elseif (length(initTimeVector) ~= length(sResults.Time))
+                bst_report('Error', sProcess, sInputs(iInput), 'When concatenating, time should be the same for all files.');
+                return;
             end
         end
-        
+
+%         % === LOAD SURFACE ===
+%         % Surface file not defined in the file
+%         if isempty(SurfaceFile)
+%             % Warning message
+%             bst_report('Warning', sProcess, sInputs(iInput), 'Surface file is not defined for the input file, using the default cortex.');
+%             % Get input subject
+%             sSubject = bst_get('Subject', sInputs(iInput).SubjectFile);
+%             % Get default cortex surface 
+%             SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
+%         end
+%         % Load surface
+%         sSurf = in_tess_bst(SurfaceFile);
+%         if isempty(sSurf) || ~isfield(sSurf, 'Atlas')
+%             bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
+%             continue;
+%         end
+%         
+%         % Get orientations
+%         if strcmpi(sInputs(iInput).FileType, 'results')
+%             SurfOrient = sSurf.VertNormals;
+%         end
+%                     
+%         % === TIME ===
+%         
+% already done on sMat after loading.        
+%         % For atlas-based result files.
+%         if ~isfield(sResults, 'Atlas')
+%             sResults.Atlas = [];
+%         end
+        % Prepare all scouts
+
+        [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sProcess, sInputs(iInput), ...
+            sResults.SurfaceFile, AtlasList, sResults.Atlas);
+        if isempty(sScoutsFinal)
+            % Error already reported.
+            if isConcatenate
+                return;
+            else
+                continue;
+            end
+        end
+
         % === LOOP ON SCOUTS ===
         scoutValues  = [];
         scoutStd     = [];
         Description  = {};
         scoutComment = [];
-        sScoutsFinal = [];
-        % Loop on all the atlases in the list
-        for iAtlas = 1:size(AtlasList,1)
-            % Get the index of the atlas in the scout
-            AtlasName = AtlasList{iAtlas,1};
-            iAtlasSurf = find(strcmpi(AtlasList{iAtlas,1}, {sSurf.Atlas.Name}));
-            % Is this a volume atlas?
-            isVolumeAtlas = panel_scout('ParseVolumeAtlas', AtlasName);
+%         % Loop on all the atlases in the list
+%         for iAtlas = 1:size(AtlasList,1)
+%             % Get the index of the atlas in the surface
+%             AtlasName = AtlasList{iAtlas,1};
+%             iAtlasSurf = find(strcmpi(AtlasList{iAtlas,1}, {sSurf.Atlas.Name}));
+%             % Is this a volume atlas?
+%             isVolumeAtlas = panel_scout('ParseVolumeAtlas', AtlasName);
             % Loop on the scouts selected for this atlas
-            for iScout = 1:length(AtlasList{iAtlas,2})
+            for iScout = 1:length(sScoutsFinal)
                 % Get scout name
                 ScoutName = AtlasList{iAtlas,2}{iScout};
                 
-                % === ATLAS-BASED FILES ===
-                if ~isempty(iFileScouts)
-                    % Load values (works with full or kernel result files, and applies dynamic z-score if present)
-                    [scoutValuesTmp, isError] = GetSourceValues(iFileScouts(iScout));
-                    if isError
-                        % Already added to report.
-                        return;
-                    end
-                    scoutValues = cat(1, scoutValues, scoutValuesTmp);
-                    Description = cat(1, Description, ScoutName);
-                    nComponents = 1;
-                    continue;
-                end
-                
-                % === FIND SCOUT NAMES IN SURFACE ATLASES ===
-                sScout = [];
-                % Search in selected atlas
-                if ~isempty(iAtlasSurf)
-                    % Search for scout name
-                    if ~isempty(sSurf.Atlas(iAtlasSurf).Scouts)
-                        iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(iAtlasSurf).Scouts.Label}));
-                    else
-                        iScoutSurf = [];
-                    end
-                    % Multiple scouts with the same name in an atlas: Error
-                    if (length(iScoutSurf) > 1)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' AtlasName '", please fix this error.']);
-                        return;
-                    % Scout was found
-                    elseif ~isempty(iScoutSurf)
-                        sScout = sSurf.Atlas(iAtlasSurf).Scouts(iScoutSurf);
-                    end
-                end
-                % If either the selected atlas or the selected scout was not found: search in all the atlases
-                if isempty(sScout)
-                    iAllAtlas = [];
-                    iAllScout = [];
-                    % Search all the other atlases
-                    for ia = 1:length(sSurf.Atlas)
-                        % Search for scout name
-                        if ~isempty(sSurf.Atlas(ia).Scouts)
-                            iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(ia).Scouts.Label}));
-                        else
-                            iScoutSurf = [];
-                        end
-                        % Multiple scouts with the same name in an atlas: Error
-                        if (length(iScoutSurf) > 1)
-                            bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' sSurf.Atlas(iAtlasSurf).Name '", please fix this error.']);
-                            return;
-                        % Scout was found
-                        elseif ~isempty(iScoutSurf)
-                            iAllAtlas(end+1) = ia;
-                            iAllScout(end+1) = iScoutSurf;
-                        end
-                    end
-                    % If the scout name was found in multiple atlases: Error
-                    if (length(iAllAtlas) > 1)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '", but exists in multiple other atlases. Please select the atlas you want to use.']);
-                        return;
-                    % Scout name was found in only one atlas: Use it with a warning
-                    elseif ~isempty(iAllAtlas)
-                        bst_report('Warning', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '". Using the one that was found in atlas "' sSurf.Atlas(iAllAtlas).Name '".']);
-                        sScout = sSurf.Atlas(iAllAtlas).Scouts(iAllScout);
-                    end
-                end
-                % Scout was not found: Error
-                if isempty(sScout)
-                    bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
-                    continue;
-                end
-                % Get scout function
+%                 % === ATLAS-BASED FILES ===
+%                 if ~isempty(sResults.Atlas)
+%                     % Load values (works with full or kernel result files, and applies dynamic z-score if present)
+%                     [scoutValuesTmp, ~, isError] = GetSourceValues(iFileScouts(iScout));
+%                     if isError
+%                         % Already added to report.
+%                         return;
+%                     end
+%                     scoutValues = cat(1, scoutValues, scoutValuesTmp);
+%                     Description = cat(1, Description, ScoutName);
+%                     nComponents = 1;
+%                     continue;
+%                 end
+%                 
+%                 % === FIND SCOUT NAMES IN SURFACE ATLASES ===
+%                 sScout = [];
+%                 % Search in selected atlas
+%                 if ~isempty(iAtlasSurf)
+%                     % Search for scout name
+%                     if ~isempty(sSurf.Atlas(iAtlasSurf).Scouts)
+%                         iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(iAtlasSurf).Scouts.Label}));
+%                     else
+%                         iScoutSurf = [];
+%                     end
+%                     % Multiple scouts with the same name in an atlas: Error
+%                     if (length(iScoutSurf) > 1)
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' AtlasName '", please fix this error.']);
+%                         return;
+%                     % Scout was found
+%                     elseif ~isempty(iScoutSurf)
+%                         sScout = sSurf.Atlas(iAtlasSurf).Scouts(iScoutSurf);
+%                     end
+%                 end
+%                 % If either the selected atlas or the selected scout was not found: search in all the atlases
+%                 if isempty(sScout)
+%                     iAllAtlas = [];
+%                     iAllScout = [];
+%                     % Search all the other atlases
+%                     for ia = 1:length(sSurf.Atlas)
+%                         % Search for scout name
+%                         if ~isempty(sSurf.Atlas(ia).Scouts)
+%                             iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(ia).Scouts.Label}));
+%                         else
+%                             iScoutSurf = [];
+%                         end
+%                         % Multiple scouts with the same name in an atlas: Error
+%                         if (length(iScoutSurf) > 1)
+%                             bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' sSurf.Atlas(iAtlasSurf).Name '", please fix this error.']);
+%                             return;
+%                         % Scout was found
+%                         elseif ~isempty(iScoutSurf)
+%                             iAllAtlas(end+1) = ia;
+%                             iAllScout(end+1) = iScoutSurf;
+%                         end
+%                     end
+%                     % If the scout name was found in multiple atlases: Error
+%                     if (length(iAllAtlas) > 1)
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '", but exists in multiple other atlases. Please select the atlas you want to use.']);
+%                         return;
+%                     % Scout name was found in only one atlas: Use it with a warning
+%                     elseif ~isempty(iAllAtlas)
+%                         bst_report('Warning', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '". Using the one that was found in atlas "' sSurf.Atlas(iAllAtlas).Name '".']);
+%                         sScout = sSurf.Atlas(iAllAtlas).Scouts(iAllScout);
+%                     end
+%                 end
+%                 % Scout was not found: Error
+%                 if isempty(sScout)
+%                     bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
+%                     continue;
+%                 end
+%                 % Get scout function
+%                 if ~isempty(ScoutFunc)
+%                     SelScoutFunc = ScoutFunc;
+%                     sScout.Function = SelScoutFunc;
+%                 else
+%                     SelScoutFunc = sScout.Function;
+%                 end
+%                 % Add to the list of selected scouts
+%                 if isempty(sScoutsFinal)
+%                     sScoutsFinal = sScout;
+%                 else
+%                     sScoutsFinal(end+1) = sScout;
+%                 end
+
+                % Apply selected scout function
                 if ~isempty(ScoutFunc)
-                    SelScoutFunc = ScoutFunc;
-                    sScout.Function = SelScoutFunc;
-                else
-                    SelScoutFunc = sScout.Function;
+                    sScoutsFinal(iScout).Function = ScoutFunc;
                 end
-                % Add to the list of selected scouts
-                if isempty(sScoutsFinal)
-                    sScoutsFinal = sScout;
-                else
-                    sScoutsFinal(end+1) = sScout;
-                end
-
-
-                % === GET ROWS INDICES ===
-                % Sort vertices indices
-                iVertices = sort(unique(sScout.Vertices));
-                % Make sure this is a row vector
-                iVertices = iVertices(:)';
-                % Get the number of components per vertex
-                if strcmpi(sInputs(iInput).FileType, 'results')
-                    nComponents = sResults.nComponents;
-                elseif ~isempty(GridAtlas)
-                    nComponents = 0;
-                else
-                    nComponents = 1;
-                end
-                % Get row names
-                if strcmpi(SelScoutFunc, 'All')
-                    RowNames = cellfun(@num2str, num2cell(iVertices), 'UniformOutput', 0);
-                else
-                    RowNames = [];
-                end
-                % Get the vertex indices of the scout in ImageGridAmp/ImagingKernel
-                [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
-                % Mixed headmodel results
-                if (nComponents == 0)
-                    % Do not accept scouts that span over multiple regions
-                    if isempty(iRegionScouts)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
-                        return;
-                    elseif (length(iRegionScouts) > 1)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" spans over multiple regions of the "Source model" atlas.']);
-                        return;
-                    end
-                    % Do not accept volume atlases with non-volume head models
-                    if ~isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
-                        return;
-                    elseif isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
-                        return;
-                    end
-                    % Set the scout computation properties based on the information in the "Source model" atlas
-                    if strcmpi(GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
-                        nComponents = 1;
-                        if ~isempty(GridOrient)
-                            ScoutOrient = GridOrient(iVertices,:);
-                        end
-                    else
-                        nComponents = 3;
-                        ScoutOrient = [];
-                    end
-                % Simple head models
-                else
-                    % Do not accept volume atlases with non-volume head models
-                    if ~isVolumeAtlas && ~isempty(GridLoc)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but the sources are calculated on a volume grid.']);
-                        return;
-                    elseif isVolumeAtlas && isempty(GridLoc)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but the sources are calculated on a surface.']);
-                        return;
-                    end
-                    % Get the scout orientation
-                    if ~isVolumeAtlas && ~isempty(SurfOrient)
-                        ScoutOrient = SurfOrient(iVertices,:);
-                    end
-                end
-
-                % === GET SOURCES ===
-                [sourceValues, sourceStd, isError] = GetSourceValues(iRows);
-                if isError
-                    % Already added to report.
+                 % === GET ROWS INDICES ===
+                 % ScoutOrient is only used for "sign flipping" when combining constrained sources, based on anatomy.
+                [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInputs(iInput), ...
+                    sScoutsFinal(iScout), sResults, sSurf, isVolumeAtlas);
+                if isempty(iRows)
+                    % Error already reported.  
                     return;
                 end
+%                 % === GET ROWS INDICES ===
+%                 % Sort vertices indices
+%                 iVertices = sort(unique(sScout.Vertices));
+%                 % Make sure this is a row vector
+%                 iVertices = iVertices(:)';
+%                 % Get the number of components per vertex
+%                 if strcmpi(sInputs(iInput).FileType, 'results')
+%                     nComponents = sResults.nComponents;
+%                 elseif ~isempty(GridAtlas)
+%                     nComponents = 0;
+%                 else
+%                     nComponents = 1;
+%                 end
+%                 % Get row names
+%                 if strcmpi(SelScoutFunc, 'All')
+%                     RowNames = cellfun(@num2str, num2cell(iVertices), 'UniformOutput', 0);
+%                 else
+%                     RowNames = [];
+%                 end
+%                 % Get the vertex indices of the scout in ImageGridAmp/ImagingKernel
+%                 [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, GridAtlas, ~isVolumeAtlas);
+%                 % Mixed headmodel results
+%                 if (nComponents == 0)
+%                     % Do not accept scouts that span over multiple regions
+%                     if isempty(iRegionScouts)
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
+%                         return;
+%                     elseif (length(iRegionScouts) > 1)
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" spans over multiple regions of the "Source model" atlas.']);
+%                         return;
+%                     end
+%                     % Do not accept volume atlases with non-volume head models
+%                     if ~isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
+%                         return;
+%                     elseif isVolumeAtlas && strcmpi(GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but region "' GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
+%                         return;
+%                     end
+%                     % Set the scout computation properties based on the information in the "Source model" atlas
+%                     if strcmpi(GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
+%                         nComponents = 1;
+%                         if ~isempty(GridOrient)
+%                             ScoutOrient = GridOrient(iVertices,:);
+%                         end
+%                     else
+%                         nComponents = 3;
+%                         ScoutOrient = [];
+%                     end
+%                 % Simple head models
+%                 else
+%                     % Do not accept volume atlases with non-volume head models
+%                     if ~isVolumeAtlas && ~isempty(GridLoc)
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a surface scout but the sources are calculated on a volume grid.']);
+%                         return;
+%                     elseif isVolumeAtlas && isempty(GridLoc)
+%                         bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" is a volume scout but the sources are calculated on a surface.']);
+%                         return;
+%                     end
+%                     % Get the scout orientation
+%                     if ~isVolumeAtlas && isfield(sSurf, 'VertNormals') && ~isempty(sSurf.VertNormals)
+%                         ScoutOrient = sSurf.VertNormals(iVertices,:);
+%                     end
+%                 end
 
-                % === COMPUTE CLUSTER VALUES ===
+                % === GET SOURCES ===
+    % Get source values for this scout. Works with full or kernel result files, including atlas-based.
+%     function [sourceValues, sourceStd, isError] = GetSourceValues(iRows)
+        % Get all the sources values
+        if ~isempty(matSourceValues)
+            ScoutSourceValues = matSourceValues(iRows,:,:);
+            if ~isempty(sResults.Std)
+                sourceStd = sResults.Std(iRows,:,:,:);
+            else
+                sourceStd = [];
+            end
+        elseif (size(matDataValues,3) == 1)
+            ScoutSourceValues = sResults.ImagingKernel(iRows,:) * matDataValues(sResults.GoodChannel,:);
+            sourceStd = [];
+        else
+            % sourceValues = zeros(length(iRows), size(matDataValues,2), size(matDataValues,3));
+            % for iFreq = 1:size(matDataValues,3)
+            %     sourceValues(:,:,iFreq) = sResults.ImagingKernel(iRows,:) * matDataValues(:,:, iFreq);
+            % end
+            bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported here.');
+            return;
+        end
+
+        % === APPLY DYNAMIC ZSCORE ===
+        if isfield(sResults, 'ZScore') && ~isempty(sResults.ZScore)
+            ZScore = sResults.ZScore;
+            % Keep only the selected vertices
+            if ~isempty(iRows) && ~isempty(ZScore.mean)
+                ZScore.mean = ZScore.mean(iRows,:);
+                ZScore.std  = ZScore.std(iRows,:);
+            end
+            % Calculate mean/std
+            if isempty(ZScore.mean)
+                ScoutSourceValues = process_zscore_dynamic('Compute', ScoutSourceValues, ZScore, sResults.Time, sResults.ImagingKernel(iRows,:), matDataValues(sResults.GoodChannel,:,:));
+                if ~isempty(sourceStd)
+                    for iBound1 = 1:size(sourceStd,4)
+                        sourceStd(:,:,:,iBound1) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound1), ZScore, sResults.Time, sResults.ImagingKernel(iRows,:), matDataValues(sResults.GoodChannel,:,:));
+                    end
+                end
+            % Apply existing mean/std
+            else
+                ScoutSourceValues = process_zscore_dynamic('Compute', ScoutSourceValues, ZScore);
+                if ~isempty(sourceStd)
+                    for iBound1 = 1:size(sourceStd,4)
+                        sourceStd(:,:,:,iBound1) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound1), ZScore);
+                    end
+                end
+            end
+        end
+%     end % GetSourceValues subfunction
+%                 if isempty(sourceValues)
+% % Can remove isError output.                    
+% %                 if isError
+%                     % Error message already added to report.
+%                     return;
+%                 end
+
+                % === COMPUTE SCOUT VALUES ===
+                % For atlas-based files, we already have the scout values.
+                % Can we check if the same function was used?  Need to parse history?
+                if ~isempty(sResults.Atlas)
+                    scoutValues = cat(1, scoutValues, ScoutSourceValues);
+                    Description = cat(1, Description, ScoutName);
+                    continue;
+                end
+
                 % Process differently the unconstrained sources
                 isUnconstrained = (nComponents ~= 1) && ~strcmpi(XyzFunction, 'norm');
-                % Get meaningful tags in the results file name (without folders)
-                [tmp, TestTags] = bst_fileparts(TestResFile);
                 % If the flip was requested but not a good thing to do on this file
                 wrnMsg = [];
                 if isFlip && isUnconstrained
@@ -603,7 +513,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 elseif isFlip && strcmpi(sInputs(iInput).FileType, 'timefreq') 
                     wrnMsg = 'Sign flip was not performed: not applicable for time-frequency files.';
                     isFlipScout = 0;
-                elseif isFlip && ~isempty(strfind(TestTags, '_abs'))
+                elseif isFlip && isAbs 
                     wrnMsg = 'Sign flip was not performed: an absolute value was already applied to the source maps.';
                     isFlipScout = 0;
                 else
@@ -617,15 +527,15 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 % Save the name of the scout
                 scoutComment = [scoutComment, ' ', ScoutName];
                 % Loop on frequencies
-                nFreq = size(sourceValues,3);
+                nFreq = size(ScoutSourceValues,3);
                 for iFreq = 1:nFreq
                     % Apply scout function
-                    tmpScout = bst_scout_value(sourceValues(:,:,iFreq), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
+                    tmpScout = bst_scout_value(ScoutSourceValues(:,:,iFreq), sScoutsFinal(iScout).Function, ScoutOrient, nComponents, XyzFunction, isFlipScout, ScoutName);
                     scoutValues = cat(1, scoutValues, tmpScout);
                     if ~isempty(sourceStd)
                         tmpScoutStd = [];
                         for iBound = 1:size(sourceStd,4)
-                            tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), SelScoutFunc, ScoutOrient, nComponents, XyzFunction, 0);
+                            tmp = bst_scout_value(sourceStd(:,:,iFreq,iBound), sScoutsFinal(iScout).Function, ScoutOrient, nComponents, XyzFunction, 0);
                             if isempty(tmpScoutStd)
                                 tmpScoutStd = tmp;
                             else
@@ -656,23 +566,23 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                         if AddFileComment
                             % Frequency comment
                             if (nFreq > 1)
-                                if iscell(sMat.Freqs)
-                                    freqComment = [' ' sMat.Freqs{iFreq,1}];
+                                if iscell(sResults.Freqs)
+                                    freqComment = [' ' sResults.Freqs{iFreq,1}];
                                 else
-                                    freqComment = [' ' num2str(sMat.Freqs(iFreq)), 'Hz'];
+                                    freqComment = [' ' num2str(sResults.Freqs(iFreq)), 'Hz'];
                                 end
                             else
                                 freqComment = '';
                             end
                             % Add it to the scout comment
-                            scoutDesc = [scoutDesc ' @ ' condComment freqComment];
+                            scoutDesc = [scoutDesc ' @ ' fileComment freqComment];
                         end
                         % Add the scout description
                         Description = cat(1, Description, scoutDesc);
                     end
                 end
             end
-        end
+%         end
         % If nothing was found
         if isempty(scoutValues)
             return;
@@ -683,17 +593,17 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             % Create structure
             newMat = db_template('matrixmat');
             newMat.Value       = [];
-            newMat.ChannelFlag = ones(size(sMat.ChannelFlag));
+            newMat.ChannelFlag = ones(size(sResults.ChannelFlag));
         end
-        newMat.Time = sMat.Time;
+        newMat.Time = sResults.Time;
         % If the number of averaged files is defined: use it
-        if isfield(sMat, 'nAvg') && ~isempty(sMat.nAvg)
-            newMat.nAvg = sMat.nAvg;
+        if isfield(sResults, 'nAvg') && ~isempty(sResults.nAvg)
+            newMat.nAvg = sResults.nAvg;
         else
             newMat.nAvg = 1;
         end
-        if isfield(sMat, 'Leff') && ~isempty(sMat.Leff)
-            newMat.Leff = sMat.Leff;
+        if isfield(sResults, 'Leff') && ~isempty(sResults.Leff)
+            newMat.Leff = sResults.Leff;
         else
             newMat.Leff = 1;
         end
@@ -701,25 +611,22 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         if isConcatenate
             newMat.Value       = cat(1, newMat.Value,       scoutValues);
             newMat.Description = cat(1, newMat.Description, Description);
-            newMat.ChannelFlag(sMat.ChannelFlag == -1) = -1;
+            newMat.ChannelFlag(sResults.ChannelFlag == -1) = -1;
             if ~isempty(scoutStd)
                 newMat.Std = cat(1, newMat.Std, scoutStd);
             end
         else
             newMat.Value       = scoutValues;
             newMat.Description = Description;
-            newMat.ChannelFlag = sMat.ChannelFlag;
+            newMat.ChannelFlag = sResults.ChannelFlag;
             if ~isempty(scoutStd)
                 newMat.Std = scoutStd;
             end
         end
-
-        % Save the original surface file
-        if ~isempty(SurfaceFile)
-            newMat.SurfaceFile = SurfaceFile;
-        end
-        % Units
-        newMat.DisplayUnits = DisplayUnits;
+        % Save original surface file, verified consistent if concatenating
+        newMat.SurfaceFile = sResults.SurfaceFile;
+        % Save units, verified consistent if concatenating
+        newMat.DisplayUnits = sResults.DisplayUnits;
         % Save the atlas in the file
         newMat.Atlas = db_template('atlas');
         if (size(AtlasList,1) == 1)
@@ -732,7 +639,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         % === HISTORY ===
         if ~isConcatenate || (iInput == 1)
             % Re-use the history of the initial file
-            newMat.History = sMat.History;
+            newMat.History = sResults.History;
             % History: process name
             newMat = bst_history('add', newMat, 'process', FormatComment(sProcess));
         end
@@ -747,11 +654,11 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
                 newMat.Comment = sProcess.options.Comment.Value;
             % Comment: Process default (limit size of scout comment)
             elseif (length(sScoutsFinal) > 1) && (length(scoutComment) > 20)
-                newMat.Comment = [sMat.Comment, ' | ' num2str(length(sScoutsFinal)) ' scouts'];
+                newMat.Comment = [sResults.Comment, ' | ' num2str(length(sScoutsFinal)) ' scouts'];
             elseif ~isempty(scoutComment)
-                newMat.Comment = [sMat.Comment, ' | scouts (' scoutComment(2:end) ')'];
+                newMat.Comment = [sResults.Comment, ' | scouts (' scoutComment(2:end) ')'];
             else
-                newMat.Comment = [sMat.Comment, ' | scouts'];
+                newMat.Comment = [sResults.Comment, ' | scouts'];
             end
             % Save new file in database
             if isSave
@@ -809,68 +716,204 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
         end
     end
 
-%% ===== SUBFUNCTIONS =====
-    function [sourceValues, sourceStd, isError] = GetSourceValues(iRows)
-        isError = false;
-        % Get all the sources values
-        if ~isempty(matValues)
-            sourceValues = matValues(iRows,:,:);
-            if ~isempty(matStd)
-                sourceStd = matStd(iRows,:,:,:);
-            else
-                sourceStd = [];
+end % Run function
+
+
+function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs, TimeWindow)
+    % Function meant for 1 input file.
+    iInput = 1;
+    sResults = [];
+    matDataValues = [];
+    matSourceValues = [];
+    fileComment = [];
+
+    switch (sInputs(iInput).FileType)
+        case 'results'
+            % Load results
+            sResults = in_bst_results(sInputs(iInput).FileName, 0);
+            % FULL RESULTS
+            if isfield(sResults, 'ImageGridAmp') && ~isempty(sResults.ImageGridAmp)
+                matSourceValues = sResults.ImageGridAmp;
+                % Drop large data field.
+                sResults = rmfield(sResults, 'ImageGridAmp');
+            % KERNEL ONLY
+            elseif isfield(sResults, 'ImagingKernel') && ~isempty(sResults.ImagingKernel)
+                sMat = in_bst(sResults.DataFile, TimeWindow);
+                matDataValues = sMat.F;
+                % Keep time.
+                sResults.Time = sMat.Time;
+                %% ? Are there other fields needed from data file, different in result file, to save in output: ChannelFlag, nLeff, Comment?
+                matSourceValues = [];
             end
-        elseif (size(sMat.F,3) == 1)
-            sourceValues = sResults.ImagingKernel(iRows,:) * sMat.F(sResults.GoodChannel,:);
-            sourceStd = [];
-        else
-            % sourceValues = zeros(length(iRows), size(sMat.F,2), size(sMat.F,3));
-            % for iFreq = 1:size(sMat.F,3)
-            %     sourceValues(:,:,iFreq) = sResults.ImagingKernel(iRows,:) * sMat.F(:,:, iFreq);
-            % end
-            bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported here.');
-            isError = true;
+            % Input filename
+            if isfield(sResults, 'DataFile') && ~isempty(sResults.DataFile)
+                fileComment = [file_short(sResults.DataFile) '/' sInputs(iInput).Comment];
+            else
+                fileComment = sInputs(iInput).FileName;
+            end
+
+        case 'timefreq'
+            % Load file
+            sResults = in_bst_timefreq(sInputs(iInput).FileName, 0);
+            if ~strcmpi(sResults.DataType, 'results')
+                bst_report('Error', sProcess, sInputs(iInput), 'This file does not contain any valid cortical maps.');
+                sResults = [];
+                return;
+            end
+            % Do not accept complex values
+            if strcmpi(sResults.Measure, 'none')
+                bst_report('Error', sProcess, sInputs(iInput), 'Please apply a measure on these complex values first.');
+                sResults = [];
+                return;
+            end
+            % This could work if we ensure it finds all the rows correctly.
+            % Error: cannot process atlas-based files
+            if isfield(sResults, 'Atlas') && ~isempty(sResults.Atlas)
+                bst_report('Error', sProcess, sInputs(iInput), 'Time-frequency file is already based on an atlas.');
+                sResults = [];
+                return;
+            end
+            % If this is a kernel-based result: need to load the kernel as well
+            if ~isempty(strfind(sInputs(iInput).FileName, '_KERNEL_'))
+                % sResults = in_bst_results(sResults.DataFile, 0);
+                % matSourceValues = [];
+                % matDataValues = sMat.TF;
+                bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported in this process. Please apply a measure on them first.');
+                sResults = [];
+                return;
+            else
+                matSourceValues = sResults.TF;
+            end
+            % Drop large data field.
+            sResults = rmfield(sResults, 'TF');
+            % Input filename
+            fileComment = sInputs(iInput).FileName;
+
+        otherwise
+            bst_report('Error', sProcess, sInputs(iInput), 'Unsupported file type.');
+            return;
+    end
+    %                 % Get ZScore parameter
+    %                 if isfield(sResults, 'ZScore') && ~isempty(sResults.ZScore)
+    %                     ZScore = sResults.ZScore;
+    %                 end
+    %                 % Get GridAtlas/GridLoc/GridOrient parameter
+    %                 if isfield(sResults, 'GridAtlas') && ~isempty(sResults.GridAtlas)
+    %                     GridAtlas = sResults.GridAtlas;
+    %                 end
+    %                 if isfield(sResults, 'GridLoc') && ~isempty(sResults.GridLoc)
+    %                     GridLoc = sResults.GridLoc;
+    %                 end
+    %                 if isfield(sResults, 'GridOrient') && ~isempty(sResults.GridOrient)
+    %                     GridOrient = sResults.GridOrient;
+    %                 end
+        % Nothing loaded
+        if isempty(sResults) || (isempty(matSourceValues) && (isempty(matDataValues) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
+            bst_report('Error', sProcess, sInputs(iInput), 'Could not load anything from the input file. Check the requested time window.');
+            sResults = [];
             return;
         end
-
-        % === APPLY DYNAMIC ZSCORE ===
-        if ~isempty(ZScore)
-            ZScoreScout = ZScore;
-            % Keep only the selected vertices
-            if ~isempty(iRows) && ~isempty(ZScoreScout.mean)
-                ZScoreScout.mean = ZScoreScout.mean(iRows,:);
-                ZScoreScout.std  = ZScoreScout.std(iRows,:);
+        % Do not accept time bands (unless there is only one)
+        if isfield(sResults, 'TimeBands') && ~isempty(sResults.TimeBands) && ~((size(matSourceValues,2)==1) && (size(sResults.TimeBands,1)==1))
+            bst_report('Error', sProcess, sInputs(iInput), 'Time bands are not supported yet by this process.');
+            sResults = [];
+            return;
+        end
+        % Add possibly missing fields
+        if ~isfield(sResults, 'SurfaceFile')
+            sResults.SurfaceFile = [];
+        end
+        if ~isfield(sResults, 'DisplayUnits')
+            sResults.DisplayUnits = [];
+        end
+        if ~isfield(sResults, 'ChannelFlag')
+            sResults.ChannelFlag = [];
+        end
+        if ~isfield(sResults, 'History')
+            sResults.History = {};
+        end
+        % Atlas-based files, add field if missing for later check.
+        if ~isfield(sResults, 'Atlas')
+            sResults.Atlas = [];
+            %                     snames = AtlasList{1,2};
+            %                     % Try to look the requested scouts in the file
+            %                     for i = 1:length(snames)
+            %                         iTmp = find(strcmpi(snames{i}, {sMat.Atlas(1).Scouts.Label}));
+            %                         if ~isempty(iTmp)
+            %                             iFileScouts(end+1) = iTmp;
+            %                         end
+            %                     end
+            %                     % If the scout names cannot be found: error
+            %                     if (length(iFileScouts) ~= length(snames))
+            %                         bst_report('Error', sProcess, sInputs(iInput), 'File is already based on an atlas, but the selected scouts don''t match this atlas.');
+            %                         continue;
+            %                     end
+        end
+        % Replicate if no time
+        if (length(sResults.Time) == 1)
+            sResults.Time = [0,1];
+        elseif isempty(sResults.Time)
+            bst_report('Error', sProcess, sInputs(iInput), 'Invalid time selection.');
+            sResults = [];
+            return;
+        end
+        if ~isempty(matSourceValues) && (size(matSourceValues,2) == 1)
+            matSourceValues = [matSourceValues, matSourceValues];
+            if ~isempty(sResults.Std)
+                sResults.Std = [sResults.Std, sResults.Std];
             end
-            % Calculate mean/std
-            if isempty(ZScoreScout.mean)
-                sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
-                if ~isempty(sourceStd)
-                    for iBound1 = 1:size(sourceStd,4)
-                        sourceStd(:,:,:,iBound1) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound1), ZScoreScout, sMat.Time, sResults.ImagingKernel(iRows,:), sMat.F(sResults.GoodChannel,:,:));
-                    end
-                end
-                % Apply existing mean/std
+        elseif ~isempty(matDataValues) && (size(matDataValues,2) == 1)
+            matDataValues = [matDataValues, matDataValues];
+        end
+        % Option: Time window
+        if ~isempty(TimeWindow)
+            % Get time indices
+            if (length(sResults.Time) <= 2) % can only be ==2 at this point
+                iTime = 1:length(sResults.Time);
             else
-                sourceValues = process_zscore_dynamic('Compute', sourceValues, ZScoreScout);
-                if ~isempty(sourceStd)
-                    for iBound1 = 1:size(sourceStd,4)
-                        sourceStd(:,:,:,iBound1) = process_zscore_dynamic('Compute', sourceStd(:,:,:,iBound1), ZScoreScout);
-                    end
+                iTime = panel_time('GetTimeIndices', sResults.Time, TimeWindow);
+                if isempty(iTime)
+                    bst_report('Error', sProcess, sInputs(iInput), 'Invalid time window option.');
+                    sResults = [];
+                    return;
                 end
+            end
+            % If only one time point selected: double it
+            if (length(iTime) == 1)
+                iTime = [iTime, iTime];
+            end
+            % Keep only the requested time window
+            if ~isempty(matSourceValues)
+                matSourceValues = matSourceValues(:,iTime,:);
+                if ~isempty(sResults.Std)
+                    sResults.Std = sResults.Std(:,iTime,:,:);
+                end
+            else
+                matDataValues = matDataValues(:,iTime,:);
+            end
+            sResults.Time = sResults.Time(iTime);
+            % If there are only two time points, make sure they are not identical
+            if (length(sResults.Time) == 2) && sResults.Time(2) == sResults.Time(1)
+                sResults.Time(2) = sResults.Time(1) + 0.001;
             end
         end
-    end % GetSourceValues subfunction
-
 end
 
 
-
 %% ===== GET SCOUTS INFO =====
-% USAGE:  [sScoutsFinal, AllAtlasNames, sSurf] = process_extract_scout('GetScoutsInfo', sProcess, sInputs, SurfaceFile, AtlasList)
-function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs, SurfaceFile, AtlasList)
+% USAGE:  [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', sProcess, sInputs, SurfaceFile, AtlasList)
+function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sProcess, sInputs, SurfaceFile, AtlasList, ResultsAtlas)
+    % We assume all input files are compatible and only use the first one. 
+    iInput = 1;
+
     sScoutsFinal  = [];
     AllAtlasNames = {};
-    
+    isVolumeAtlas = [];
+    sSurf = [];
+
+    if nargin < 5 || isempty(ResultsAtlas)
+        ResultsAtlas = [];
+    end
     % Convert from older structure (keep for backward compatibility)
     if isstruct(AtlasList) && ~isempty(AtlasList)
         AtlasList = {'User scouts', {AtlasList.Label}};
@@ -880,50 +923,69 @@ function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs,
         bst_report('Error', sProcess, [], 'No scout selected.');
         return;
     end
-    
+
     % === LOAD SURFACE ===
     % Surface file not defined in the file
     if isempty(SurfaceFile)
         % Get input subject
-        sSubject = bst_get('Subject', sInputs(1).SubjectFile);
+        sSubject = bst_get('Subject', sInputs(iInput).SubjectFile);
         % Error: no default cortex
         if isempty(sSubject.iCortex) || (sSubject.iCortex > length(sSubject.Surface))
-            bst_report('Error', sProcess, sInputs(1), ['Invalid surface file: ' SurfaceFile]);
-        else        
-            bst_report('Warning', sProcess, sInputs(1), 'Surface file is not defined for the input file, using the default cortex.');
+            bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
+        else
+            bst_report('Warning', sProcess, sInputs(iInput), 'Surface file is not defined for the input file, using the default cortex.');
         end
-        % Get default cortex surface 
+        % Get default cortex surface
         SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
     end
     % Load surface
     sSurf = in_tess_bst(SurfaceFile);
     if isempty(sSurf) || ~isfield(sSurf, 'Atlas')
-        bst_report('Error', sProcess, sInputs(1), ['Invalid surface file: ' SurfaceFile]);
+        bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
         return;
     end
 
     % === LOOP ON SCOUTS ===
     sScoutsFinal = [];
     % Loop on all the atlases in the list
-    for iAtlas = 1:size(AtlasList,1)
-        % Get the index of the atlas in the scout
+    for iAtlas = 1:size(AtlasList, 1)
+        % Get the index of the atlas in the surface
         AtlasName = AtlasList{iAtlas,1};
+        % Is this a volume atlas?
+        isVolume = panel_scout('ParseVolumeAtlas', AtlasName);
         iAtlasSurf = find(strcmpi(AtlasList{iAtlas,1}, {sSurf.Atlas.Name}));
         % Loop on the scouts selected for this atlas
         for iScout = 1:length(AtlasList{iAtlas,2})
-            % === FIND SCOUT NAMES IN SURFACE ATLASES ===
-            ScoutName = AtlasList{iAtlas,2}{iScout};
             sScout = [];
+            % Get scout name
+            ScoutName = AtlasList{iAtlas,2}{iScout};
+
+            % === ATLAS-BASED FILES ===
+            % Optionally check for these types of files.  From deprecated process or temporary files from scout PCA
+            if ~isempty(ResultsAtlas)
+                % Try to find the requested scouts in the file
+                iRow = find(strcmpi(ScoutName, {ResultsAtlas(1).Scouts.Label}));
+                if ~isempty(iRow)
+                    sScout = ResultsAtlas(1).Scouts(iRow);
+                    % If the scout names cannot be found: error
+                else
+                    bst_report('Error', sProcess, sInputs(iInput), ['File is already based on an atlas, but scout "' sScout.Label '" not found.']);
+                    return;
+                end
+%                     nComponents = 1;
+            end
+
+            % === FIND SCOUT NAMES IN SURFACE ATLASES ===
             % Search in selected atlas
-            if ~isempty(iAtlasSurf)
+            if isempty(sScout) && ~isempty(iAtlasSurf)
                 % Search for scout name
                 iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(iAtlasSurf).Scouts.Label}));
                 % Multiple scouts with the same name in an atlas: Error
                 if (length(iScoutSurf) > 1)
-                    bst_report('Error', sProcess, sInputs(1), ['Multiple scouts have the same name in atlas "' AtlasName '", please fix this error.']);
+                    bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' AtlasName '", please fix this error.']);
                     sScoutsFinal = [];
                     return;
-                % Scout was found
+                    % Scout was found
                 elseif ~isempty(iScoutSurf)
                     sScout = sSurf.Atlas(iAtlasSurf).Scouts(iScoutSurf);
                 end
@@ -941,10 +1003,10 @@ function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs,
                     iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(ia).Scouts.Label}));
                     % Multiple scouts with the same name in an atlas: Error
                     if (length(iScoutSurf) > 1)
-                        bst_report('Error', sProcess, sInputs(1), ['Multiple scouts have the same name in atlas "' sSurf.Atlas(iAtlasSurf).Name '", please fix this error.']);
+                        bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' sSurf.Atlas(iAtlasSurf).Name '", please fix this error.']);
                         sScoutsFinal = [];
                         return;
-                    % Scout was found
+                        % Scout was found
                     elseif ~isempty(iScoutSurf)
                         iAllAtlas(end+1) = ia;
                         iAllScout(end+1) = iScoutSurf;
@@ -952,18 +1014,18 @@ function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs,
                 end
                 % If the scout name was found in multiple atlases: Error
                 if (length(iAllAtlas) > 1)
-                    bst_report('Error', sProcess, sInputs(1), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '", but exists in multiple other atlases. Please select the atlas you want to use.']);
+                    bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '", but exists in multiple other atlases. Please select the atlas you want to use.']);
                     sScoutsFinal = [];
                     return;
-                % Scout name was found in only one atlas: Use it with a warning
+                    % Scout name was found in only one atlas: Use it with a warning
                 elseif ~isempty(iAllAtlas)
-                    bst_report('Warning', sProcess, sInputs(1), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '". Using the one that was found in atlas "' sSurf.Atlas(iAllAtlas).Name '".']);
+                    bst_report('Warning', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '". Using the one that was found in atlas "' sSurf.Atlas(iAllAtlas).Name '".']);
                     sScout = sSurf.Atlas(iAllAtlas).Scouts(iAllScout);
                 end
             end
             % Scout was not found: Error
             if isempty(sScout)
-                bst_report('Error', sProcess, sInputs(1), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
+                bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
                 sScoutsFinal = [];
                 return;
             end
@@ -974,9 +1036,107 @@ function [sScoutsFinal, AllAtlasNames, sSurf] = GetScoutsInfo(sProcess, sInputs,
                 sScoutsFinal(end+1) = sScout;
             end
             AllAtlasNames{end+1} = AtlasName;
+            isVolumeAtlas(end+1) = isVolume;
         end
     end
 end
 
-
+%% ===== MATCH SCOUT TO RESULT ROWS =====
+% USAGE:  [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutRows', sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas)
+function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas)
+    % Add potentially missing fields.
+    if ~isfield(sResults, 'GridAtlas')
+        sResults.GridAtlas = [];
+    end
+    if ~isfield(sResults, 'GridLoc') 
+        sResults.GridLoc = [];
+    end
+    if ~isfield(sResults, 'GridOrient') 
+        sResults.GridOrient = [];
+    end
+    RowNames = {};
+    ScoutOrient = [];
+    % Atlas-based result files: find matching scout
+    if ~isempty(sResults.Atlas)
+        % Try to find the requested scout in the file
+        % Probably would need changing for finding multiple timefreq rows? But atlas-based timefreq not supported for now (error when loading).
+        iRows = find(strcmpi(sScout.Label, {sResults.Atlas(1).Scouts.Label}));
+        if isempty(iRows)
+            bst_report('Error', sProcess, sInput, ['File is already based on an atlas, but scout "' sScout.Label '" not found.']);
+        end
+        nComponents = 1;
+        return;
+    end
+    
+    % === GET ROWS INDICES ===
+    % Sort vertices indices
+    iVertices = sort(unique(sScout.Vertices));
+    % Make sure this is a row vector
+    iVertices = iVertices(:)';
+    % Get the number of components per vertex
+    if strcmpi(sInput.FileType, 'results')
+        nComponents = sResults.nComponents;
+    elseif ~isempty(sResults.GridAtlas)
+        nComponents = 0;
+    else
+        nComponents = 1;
+    end
+    % Get row names
+    if strcmpi(sScout.Function, 'All')
+        RowNames = cellfun(@num2str, num2cell(iVertices), 'UniformOutput', 0);
+    else
+        RowNames = [];
+    end
+    % Get the vertex indices of the scout in ImageGridAmp/ImagingKernel
+    [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, sResults.GridAtlas, ~isVolumeAtlas);
+    % Mixed headmodel results
+    if (nComponents == 0)
+        % Do not accept scouts that span over multiple regions
+        if isempty(iRegionScouts)
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is not included in the source model.'  10 'If you use this region as a volume, create a volume scout instead (menu Atlas > New atlas > Volume scouts).']);
+            iRows = [];
+            return;
+        elseif (length(iRegionScouts) > 1)
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" spans over multiple regions of the "Source model" atlas.']);
+            iRows = [];
+            return;
+        end
+        % Do not accept volume atlases with non-volume head models
+        if ~isVolumeAtlas && strcmpi(sResults.GridAtlas.Scouts(iRegionScouts).Region(2), 'V')
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is a surface scout but region "' sResults.GridAtlas.Scouts(iRegionScouts).Label '" is a volume region.']);
+            iRows = [];
+            return;
+        elseif isVolumeAtlas && strcmpi(sResults.GridAtlas.Scouts(iRegionScouts).Region(2), 'S')
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is a volume scout but region "' sResults.GridAtlas.Scouts(iRegionScouts).Label '" is a surface region.']);
+            iRows = [];
+            return;
+        end
+        % Set the scout computation properties based on the information in the "Source model" atlas
+        if strcmpi(sResults.GridAtlas.Scouts(iRegionScouts).Region(3), 'C')
+            nComponents = 1;
+            if ~isempty(sResults.GridOrient)
+                ScoutOrient = sResults.GridOrient(iVertices,:);
+            end
+        else
+            nComponents = 3;
+            ScoutOrient = [];
+        end
+    % Simple head models
+    else
+        % Do not accept volume atlases with non-volume head models
+        if ~isVolumeAtlas && ~isempty(sResults.GridLoc)
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is a surface scout but the sources are calculated on a volume grid.']);
+            iRows = [];
+            return;
+        elseif isVolumeAtlas && isempty(sResults.GridLoc)
+            bst_report('Error', sProcess, sInput, ['Scout "' sScout.Label '" is a volume scout but the sources are calculated on a surface.']);
+            iRows = [];
+            return;
+        end
+        % Get the scout orientation
+        if ~isVolumeAtlas && isfield(sSurf, 'VertNormals') && ~isempty(sSurf.VertNormals)
+            ScoutOrient = sSurf.VertNormals(iVertices,:);
+        end
+    end
+end
 
