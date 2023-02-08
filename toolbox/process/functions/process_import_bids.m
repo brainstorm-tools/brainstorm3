@@ -20,9 +20,7 @@ function varargout = process_import_bids( varargin )
 %    - EEG  : https://openneuro.org/datasets/ds004024 : OK
 %    - iEEG : https://openneuro.org/datasets/ds003688 : ERROR: Wrong interpretation of ACPC coordinates (easier to see in ECOG for sub-02)
 %    - iEEG : https://openneuro.org/datasets/ds003848 : WARNING: Impossible to interepret correctly the coordinates in electrodes.tsv
-%    - iEEG : https://openneuro.org/datasets/ds004085 : ERROR: FreeSurfer not imported (not in a "freesurfer" pipeline subfolder)
-%                                                       ERROR: Some subjects (1,2,10,11) have incorrect channel names in the electrodes.tsv => Not imported
-%                                                       ERROR: Inaccurate electrode positioning because AC/PC landmarks are not defined in the MRI
+%    - iEEG : https://openneuro.org/datasets/ds004473 : OK
 %    - iEEG : https://openneuro.org/datasets/ds004126 : OK (ACPC OK)
 %    - STIM : https://openneuro.org/datasets/ds002799 : WARNING: No channel file imported because there are no SEEG recordings
 %    - MEG  : https://openneuro.org/datasets/ds000117 : 
@@ -226,9 +224,9 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
     subjDir = [...
         dir(bst_fullfile(BidsDir, 'sub-*')); ...
         dir(bst_fullfile(BidsDir, 'derivatives', 'meg_derivatives', 'sub-*')); ...
-        dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer', 'sub-*')); ...
-        dir(bst_fullfile(BidsDir, 'derivatives', 'cat12', 'sub-*')); ...
-        dir(bst_fullfile(BidsDir, 'derivatives', 'brainsuite', 'sub-*'))];
+        dir(bst_fullfile(BidsDir, 'derivatives', 'freesurfer*', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'cat12*', 'sub-*')); ...
+        dir(bst_fullfile(BidsDir, 'derivatives', 'brainsuite*', 'sub-*'))];
     % If the folders include the session: remove it
     for i = 1:length(subjDir)
         iUnder = find(subjDir(i).name == '_', 1);
@@ -935,7 +933,10 @@ function [RawFiles, Messages, OrigFiles] = ImportBidsDataset(BidsDir, OPTIONS)
                                 % Look for corresponding channel in Brainstorm channel file
                                 iChanBst = find(strcmpi(ChanInfo{iChanBids,1}, {ChannelMat.Channel.Name}));
                                 if isempty(iChanBst)
-                                    continue;
+                                    iChanBst = find(strcmpi(strrep(ChanInfo{iChanBids,1}, ' ', ''), {ChannelMat.Channel.Name}));
+                                    if isempty(iChanBst)
+                                        continue;
+                                    end
                                 end
                                 % Copy type
                                 if ~isempty(ChanInfo{iChanBids,2}) && ~strcmpi(ChanInfo{iChanBids,2},'n/a')
@@ -1078,39 +1079,52 @@ function [AnatDir, AnatFormat] = GetSubjectSeg(BidsDir, subjName)
     AnatFormat = [];
     DerivDir = bst_fullfile(BidsDir, 'derivatives');
     % FreeSurfer
-    if file_exist(bst_fullfile(DerivDir, 'freesurfer', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'freesurfer', subjName), 'T1.mgz'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'freesurfer', subjName), 'T1.mgz');
+    subDir = dir(bst_fullfile(DerivDir, 'freesurfer*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, 'T1.mgz');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'FreeSurfer';
+            return;
         end
+    end
     % CAT12
-    elseif file_exist(bst_fullfile(DerivDir, 'cat12', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'cat12', subjName), 'lh.central.*.gii');
+    subDir = dir(bst_fullfile(DerivDir, 'cat12*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, 'lh.central.*.gii');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'CAT12';
         end
+    end
     % BrainSuite
-    elseif file_exist(bst_fullfile(DerivDir, 'brainsuite', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'brainsuite', subjName), '*.left.pial.cortex.svreg.dfs');
+    subDir = dir(bst_fullfile(DerivDir, 'cat12*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, '*.left.pial.cortex.svreg.dfs');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(TestFile);
             AnatFormat = 'BrainSuite';
+            return;
         end
+    end
     % BrainVISA
-    elseif file_exist(bst_fullfile(DerivDir, 'brainvisa', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'brainvisa', subjName), 'nobias_*.*'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'brainvisa', subjName), 'nobias_*.*');
+    subDir = dir(bst_fullfile(DerivDir, 'brainvisa*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, 'nobias_*.*');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(bst_fileparts(bst_fileparts(TestFile))));
             AnatFormat = 'BrainVISA';
+            return;
         end
+    end
     % CIVET
-    elseif file_exist(bst_fullfile(DerivDir, 'civet', subjName)) && ~isempty(file_find(bst_fullfile(DerivDir, 'civet', subjName), '*_t1.mnc'))
-        TestFile = file_find(bst_fullfile(DerivDir, 'civet', subjName), '*_t1.mnc');
+    subDir = dir(bst_fullfile(DerivDir, 'civet*', subjName));
+    if ~isempty(subDir)
+        TestFile = file_find(subDir(1).folder, '*_t1.mnc');
         if ~isempty(TestFile)
             AnatDir = bst_fileparts(bst_fileparts(TestFile));
             AnatFormat = 'CIVET';
+            return;
         end
     end
 end
