@@ -2,6 +2,7 @@ function OutputFile = bst_project_channel(ChannelFile, iSubjectDest, isInteracti
 % BST_PROJECT_CHANNEL: Project a channel file between subjects, using the MNI normalization.
 %
 % USAGE:  OutputFile = bst_project_channel(ChannelFile, iSubjectDest=[ask], isInteractive=1)
+%        OutputFiles = bst_project_channel(ChannelFiles, ...)
 % 
 % INPUT:
 %    - ChannelFile   : Relative path to channel file to project
@@ -26,14 +27,22 @@ function OutputFile = bst_project_channel(ChannelFile, iSubjectDest, isInteracti
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2022
+% Authors: Francois Tadel, 2022-2023
 
 % ===== PARSE INPUTS ======
 if (nargin < 3) || isempty(isInteractive)
-    isInteractive = [];
+    isInteractive = 1;
 end
 if (nargin < 2) || isempty(iSubjectDest)
     iSubjectDest = [];
+end
+% Calling recursively on multiple channel files
+if iscell(ChannelFile)
+    OutputFile = cell(size(ChannelFile));
+    for i = 1:length(ChannelFile)
+        OutputFile{i} = bst_project_channel(ChannelFile{i}, iSubjectDest, isInteractive);
+    end
+    return;
 end
 OutputFile = [];
 
@@ -138,7 +147,12 @@ if (iSubjectDest == 0)
     if isempty(sSubjectDest)
         [sSubjectDest, iSubjectDest] = db_add_subject(SubjectName, [], 1, 0);
     end
-    folderDest = [sSubjectSrc.Name, '_', sStudySrc.Name];
+    % SEEG/ECOG: typically one implementation per patient only
+    if any(ismember({'SEEG', 'ECOG'}, {ChannelMatSrc.Channel.Type}))
+        folderDest = strrep(sSubjectSrc.Name, 'sub-', '');
+    else
+        folderDest = [strrep(sSubjectSrc.Name, 'sub-', ''), '_', strrep(sStudySrc.Name, '@raw', '')];
+    end
 else
     folderDest = sStudySrc.Name;
 end
