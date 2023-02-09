@@ -405,8 +405,8 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                         end
                         if (irec == 1)
                             t0_file = t0_rec;
-                        % Find discontinuities larger than 1 sample
-                        elseif abs(t0_rec - prev_rec - (irec - prev_irec) * hdr.reclen) > (1 / sFile.prop.sfreq)
+                        % Find discontinuities equal or larger than 2 samples (1 is expected)
+                        elseif abs(t0_rec - prev_rec - (irec - prev_irec) * hdr.reclen) >= (2 / sFile.prop.sfreq)
                             % Brainstorm fills partial/interrupted records with zeros
                             bstTime = prev_rec + hdr.reclen;
                             timeDiff = bstTime - t0_rec;
@@ -422,7 +422,7 @@ if ~isempty(iEvtChans) % && ~isequal(ImportOptions.EventsMode, 'ignore')
                             end
                             startTime = min(t0_rec - t0_file - [0, timeDiff]); % before and after t0_file adjustment
                             endTime  = max(t0_rec - t0_file - [0, timeDiff]);
-                            fprintf('WARNING: Found discontinuity between %.3fs and %.3fs, expect %s in between.\n', startTime, endTime, expectMsg);
+                            fprintf('WARNING: Found discontinuity between %.3fs and %.3fs (%d samples), expect %s in between.\n', startTime, endTime, round(abs(timeDiff).*sFile.prop.sfreq), expectMsg);
                             % Create event for users information
                             if timeDiff < 0
                                 endTime = startTime; % no extent in this case, there is skipped time.
