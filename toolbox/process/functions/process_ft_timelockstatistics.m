@@ -136,7 +136,7 @@ function sProcess = DefineStatOptions(sProcess)
     % === TYPE OF CORRECTION
     sProcess.options.correctiontype.Comment = 'Type of correction: ';   % More options: See below 'statcfg.correctm'
     sProcess.options.correctiontype.Type    = 'combobox';
-    sProcess.options.correctiontype.Value   = {2, {'no', 'cluster', 'bonferroni', 'fdr', 'max', 'holm', 'hochberg'}};
+    sProcess.options.correctiontype.Value   = {2, {'no', 'cluster', 'bonferroni', 'fdr', 'max', 'holm', 'hochberg', 'tfce'}};
 %     % === WAY TO COMBINE SAMPLES OF A CLUSTER
 %     % How to combine the single samples that belong to a cluster
 %     % 'wcm' refers to 'weighted cluster mass', a statistic that combines cluster size and intensity; see Hayasaka & Nichols (2004) NeuroImage for details.
@@ -212,6 +212,7 @@ function OPT = GetStatOptions(sProcess)
         case 5,  OPT.Correction = 'max';         strCorrection = ' [max]';
         case 6,  OPT.Correction = 'holm';        strCorrection = ' [holm]';
         case 7,  OPT.Correction = 'hochberg';    strCorrection = ' [hochberg]';
+        case 8,  OPT.Correction = 'tfce';        strCorrection = ' [tfce]';
     end
     if isfield(sProcess.options, 'clusterstatistic') && isfield(sProcess.options.clusterstatistic, 'Value') && ~isempty(sProcess.options.clusterstatistic.Value)
         switch (sProcess.options.clusterstatistic.Value)
@@ -450,7 +451,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
     % Additional parameters for the method
     switch (OPT.Correction)
         case 'no'
-        case 'cluster'
+        case {'cluster', 'tfce'}
             % Define parameters for cluster statistics
             statcfg.clusteralpha     = OPT.ClusterAlphaValue;
             statcfg.clustertail      = statcfg.tail;
@@ -480,7 +481,7 @@ function sOutput = Run(sProcess, sInputsA, sInputsB) %#ok<DEFNU>
         return;
     end
     % Apply thresholded mask on the p-values (the prob map is already thresholded for clusters)
-    if ~ismember(OPT.Correction, {'no', 'cluster'})
+    if ~ismember(OPT.Correction, {'no', 'cluster', 'tfce'})
         ftStat.prob(~ftStat.mask) = .999;
     end
     % Replace NaN values with zeros

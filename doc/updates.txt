@@ -1,3 +1,6 @@
+February 2023
+- Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)
+--------------------------------------------------------------
 January 2023
 - Anatomy: New template ICBM152 2022
 - Anatomy: Remove selection of fiducials when setting anatomy template
