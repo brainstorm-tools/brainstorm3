@@ -327,7 +327,7 @@ if isRaw
         [F, TimeVector,DisplayUnits] = in_fread(sFile, ChannelMat, BlocksToRead(iFile).iEpoch, BlocksToRead(iFile).iTimes, [], ImportOptions);
         
         % If block too small: ignore it
-        if (size(F,2) < 3)
+        if (size(F,2) < 2)
             disp(sprintf('BST> Block is too small #%03d: ignoring...', iFile));
             continue
         end
