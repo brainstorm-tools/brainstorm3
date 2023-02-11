@@ -1,5 +1,6 @@
 February 2023
 - Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)
+- Anatomy: Compute FEM mesh statistics
 --------------------------------------------------------------
 January 2023
 - Anatomy: New template ICBM152 2022

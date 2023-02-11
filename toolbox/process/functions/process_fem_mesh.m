@@ -3,7 +3,6 @@ function varargout = process_fem_mesh( varargin )
 %
 % USAGE:     OutputFiles = process_fem_mesh('Run',     sProcess, sInputs)
 %         [isOk, errMsg] = process_fem_mesh('Compute', iSubject, iMris=[default], isInteractive, OPTIONS)
-%                          process_fem_mesh('ComputeInteractive', iSubject, iMris=[default])
 %                OPTIONS = process_fem_mesh('GetDefaultOptions')
 %                  label = process_fem_mesh('GetFemLabel', label)
 %             NewFemFile = process_fem_mesh('SwitchHexaTetra', FemFile)
@@ -1265,48 +1264,4 @@ function NewFemFile = SwitchHexaTetra(FemFile) %#ok<DEFNU>
     elseif (elemSize.size(2) == 4)
         NewFemFile = fem_tetra2hexa(FemFullFile);
     end
-end
-
-
-%% ===== COMPUTE FEM MESH VOLUME =====
-function volume = ComputeFemVolume(FemFile)
-    % Install/load iso2mesh plugin
-    isInteractive = 1;
-    [isInstalled, errInstall] = bst_plugin('Install', 'iso2mesh', isInteractive);
-    if ~isInstalled
-        error('Plugin "iso2mesh" not available.');
-    end
-
-    % Get data in database
-    bst_progress('start', 'Mesh volume', 'Loading file...');
-    FemFullFile = file_fullpath(FemFile);
-    femmat = load(FemFullFile);
-    % Check type of mesh: accept only tetrahedral
-    if (size(femmat.Elements,2) ~= 4)
-        error('This menu is available for tetrahedral meshes only.');
-    end
-
-    % Compute the volume
-    bst_progress('progress', 'Mesh volume', 'Compute Mesh Volume...');
-    allVol = elemvolume(1000*femmat.Vertices,femmat.Elements);
-    uniqueTissues = unique(femmat.Tissue);
-    factor = 1.e-6;    % The 1e-6 factor is for display purposes only
-    for iTissue = 1:length(uniqueTissues)
-        volume.(femmat.TissueLabels{iTissue}) =  factor * sum(allVol(femmat.Tissue == uniqueTissues(iTissue)));
-    end
-    volume.allTissue = factor * sum(allVol);
-    % Display the volume info:
-    ProtocolInfo = bst_get('ProtocolInfo');
-    filePath = ProtocolInfo.SUBJECTS;
-    fileBase = file_win2unix(strrep(FemFullFile, filePath, ''));    
-    nbSeparators = 6 + max(length(filePath), length(fileBase));
-    MatString = sprintf('\nPath: %s\nName: %s\n%s\n  | %s', filePath, fileBase, repmat('-', [1,nbSeparators]), 'Volume of the FEM mesh tisssues');
-    MatString = [MatString '(x10^6 mm^3)'];
-    % Window title
-    wndTitle = fileBase;
-    MatString = [MatString str_format(volume)];
-
-   % Open text viewer
-   view_text( MatString, wndTitle );
-   bst_progress('stop');
 end
