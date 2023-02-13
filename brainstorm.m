@@ -273,10 +273,10 @@ switch action
         
     otherwise
         % Check if trying to execute a script
-        if file_exist(action)
-            ScriptFile = action;
-        elseif file_exist(fullfile(pwd, action))
-            ScriptFile = fullfile(pwd, action);
+        if file_exist(varargin{1})
+            ScriptFile = varargin{1};
+        elseif file_exist(fullfile(pwd, varargin{1}))
+            ScriptFile = fullfile(pwd, varargin{1});
         else
             ScriptFile = [];
         end
