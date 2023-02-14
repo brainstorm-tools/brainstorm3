@@ -524,22 +524,22 @@ function sInputs = Run(sProcess, sInputs) %#ok<DEFNU>
             elseif isEeg && ~isEegBids
                 % For EEG-BIDS, only a handful of formats are supported.
                 % Convert unsupported formats to EDF.
-                disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainAmp EEG/VHDR.']);
+                disp(['Warning: Format of file "', sFile.comment, '" is not supported by EEG-BIDS. Converting to BrainVision EEG/VHDR.']);
                 export_data(sInput.FileName, [], newPath, 'EEG-BRAINAMP');
             else
                 % Copy raw data file
                 file_copy(sFile.filename, newPath);
-                % Copy BrainAmp meta-data files (.vhdr, .vmrk)
+                % Copy BrainVision meta-data files (.vhdr, .vmrk)
                 if strcmp(sFile.format, 'EEG-BRAINAMP')
                     % Copy header file
                     VhdrFile = bst_fullfile(rawFolder, [rawName, '.vhdr']);
                     if file_exist(VhdrFile)
-                        file_copy(VhdrFile, bst_fileparts(newPath));
+                        file_copy(VhdrFile, bst_fullfile(megFolder, [newName, '.vhdr']));
                     end
                     % Copy marker file
                     VmrkFile = bst_fullfile(rawFolder, [rawName, '.vmrk']);
                     if file_exist(VmrkFile)
-                        file_copy(VmrkFile, bst_fileparts(newPath));
+                        file_copy(VmrkFile, bst_fullfile(megFolder, [newName, '.vmrk']));
                     end
                 end
             end
