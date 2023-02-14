@@ -36,8 +36,8 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.Index       = 61;
     sProcess.Description = 'https://neuroimage.usc.edu/brainstorm/Tutorials/EventMarkers#Other_menus';
     % Definition of the input accepted by this process
-    sProcess.InputTypes  = {'data', 'raw', 'matrix'};
-    sProcess.OutputTypes = {'data', 'raw', 'matrix'};
+    sProcess.InputTypes  = {'data', 'raw'};
+    sProcess.OutputTypes = {'data', 'raw'};
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Description
@@ -52,11 +52,35 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.options.eventname.Comment = 'Event names: ';
     sProcess.options.eventname.Type    = 'text';
     sProcess.options.eventname.Value   = '';
-    % Time offset
-    sProcess.options.offset.Comment = 'Time offset:';
+    % Fixed time offset
+    sProcess.options.offset.Comment = 'Fixed time offset:';
     sProcess.options.offset.Type    = 'value';
     sProcess.options.offset.Value   = {0, 'ms', []};
+     % File selection options
+    SelectOptions = {...
+        '', ...                               % Filename
+        '', ...                               % FileFormat
+        'open', ...                           % Dialog type: {open,save}
+        'Import events...', ...               % Window title
+        'ImportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
+        'single', ...                         % Selection mode: {single,multiple}
+        'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
+        bst_get('FileFilters', 'events'), ... % Get all the available file formats
+        'EventsIn'};                          % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
+    % Option: Event file
+    sProcess.options.evtfile.Comment = 'Relative time offset (Event file):';
+    sProcess.options.evtfile.Type    = 'filename';
+    sProcess.options.evtfile.Value   = SelectOptions;
+    % Suffix to append to new events name
+    sProcess.options.suffix.Comment = 'Suffix: ';
+    sProcess.options.suffix.Type    = 'text';
+    sProcess.options.suffix.Value   = '';
+     % Explanations
+    sProcess.options.comment1.Comment = ['<FONT color="#707070"><I>Without suffix the events will be overwritten</I></FONT>'];
+    sProcess.options.comment1.Type    = 'label';
+       
 end
+
 
 
 %% ===== FORMAT COMMENT =====
@@ -73,6 +97,13 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Time offset
     OffsetTime = sProcess.options.offset.Value{1};
+    Suffix = sProcess.options.suffix.Value;
+    
+    % Get event file used for variable time offset 
+    EventFile  = sProcess.options.evtfile.Value{1};
+    FileFormat = sProcess.options.evtfile.Value{2};
+%     EventName  = sProcess.options.evtname.Value;
+    
     % Event names
     EvtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
     if isempty(EvtNames)
@@ -104,6 +135,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         iEvt = find(strcmpi(EvtNames{i}, {sEvents.label}));
         if ~isempty(iEvt)
             iEvtList(end+1) = iEvt;
+            evLength(i) = length(sEvents(iEvt).times) ; 
         else
             bst_report('Warning', sProcess, sInput, ['This file does not contain any event "' EvtNames{i} '".']);
         end
@@ -113,17 +145,67 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
         bst_report('Error', sProcess, sInput, 'No events to process.');
         return;
     end
+   
     % Snap time offset to the closest sample
-    if (OffsetTime == 0)
+    if (OffsetTime == 0) && isempty(EventFile)
         bst_report('Error', sProcess, sInput, 'The selected time offset must be longer than one time sample.');
         return;
     end
-    
-    % ===== PROCESS EVENTS =====
-    for i = 1:length(iEvtList)
-        sEvents(iEvtList(i)).times = round((sEvents(iEvtList(i)).times + OffsetTime) .* sFreq) ./ sFreq;
-    end
+
+    % Reads the event file (variable time offset)
+    if ~isempty(EventFile)
+   
+        % Get sFile structure
+        sFile = DataMat.F;
         
+        % Imports event file (variable time offset) 
+        [sFile, newEvents] = import_events(sFile, [], EventFile, FileFormat, [], 0,0); 
+   
+        % There is at least one of the input events which length differs
+        % from event file
+        if sum(evLength - length(newEvents.times)) ~= 0
+            bst_report('Error', sProcess, sInput, 'When using variable time offset : All input events must have the same length as input file.');
+            return;
+        end
+        % Get the variable offset time (first column because txt file comes
+        % as extended events..) 
+        VariableOffsetTime = newEvents.times(1,:); 
+    end
+    
+    % No suffix -> overwrite existing events 
+    if isempty(Suffix) 
+        % ===== PROCESS EVENTS =====
+        for i = 1:length(iEvtList)
+            sEvents(iEvtList(i)).times = round((sEvents(iEvtList(i)).times + OffsetTime) .* sFreq) ./ sFreq;
+            if ~isempty(VariableOffsetTime)
+                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times + VariableOffsetTime; 
+            end
+            
+        end
+    % Suffix -> Create new events
+    else 
+        % ===== PROCESS EVENTS =====
+        for i = 1:length(iEvtList)
+            % Inialize new event group
+            newEvent = sEvents(iEvtList(i));
+            newEvent.label      = strcat(sEvents(iEvtList(i)).label,Suffix);
+            newEvent.times      = round((sEvents(iEvtList(i)).times + OffsetTime) .* sFreq) ./ sFreq;
+            if ~isempty(VariableOffsetTime)
+                newEvent.times = sEvents(iEvtList(i)).times + VariableOffsetTime; 
+            end
+            newEvent.epochs     = [sEvents(iEvtList(i)).epochs];
+            newEvent.channels   = [sEvents(iEvtList(i)).channels];
+            newEvent.notes      = [sEvents(iEvtList(i)).notes];
+            % Reaction time: only if all the events have reaction time set
+            if all(~cellfun(@isempty, {sEvents(iEvtList(i)).reactTimes}))
+                newEvent.reactTimes = [sEvents(iEvtList(i)).reactTimes];
+            else
+                newEvent.reactTimes = [];
+            end
+            % Add new event
+            sEvents(end + 1) = newEvent;
+        end
+    end
     % ===== SAVE RESULT =====
     % Report results
     if isRaw
