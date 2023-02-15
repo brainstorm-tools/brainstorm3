@@ -41,11 +41,12 @@ function sProcess = GetDescription() %#ok<DEFNU>
     sProcess.nInputs     = 1;
     sProcess.nMinFiles   = 1;
     % Description
-    sProcess.options.info.Comment = ['Adds a given time offset (in milliseconds) to the selected event markers.<BR>' ... 
-                                     'The offset can be positive or negative: add a minus sign to remove this offset.<BR><BR>' ...
+    sProcess.options.info.Comment = ['Add a time offset to the selected event markers.<BR><BR>' ... 
                                      'Example: Event "A" occurs at 1.000s<BR>' ...
                                      ' - Time offset =&nbsp;&nbsp;100.0ms => New timing of event A will be 1.100s<BR>' ...
-                                     ' - Time offset = -100.0ms => New timing of event A will be 0.900s<BR><BR>'];
+                                     ' - Time offset = -100.0ms => New timing of event A will be 0.900s<BR><BR>' ...
+                                     'This time offset can be fixed for all the occurrences (option "Fixed time offset"),<BR>' ...
+                                     'OR different for each one (specify a file with one value for each occurrence).<BR><BR>'];
     sProcess.options.info.Type    = 'label';
     sProcess.options.info.Value   = [];
     % Event name
@@ -65,20 +66,21 @@ function sProcess = GetDescription() %#ok<DEFNU>
         'ImportData', ...                     % LastUsedDir: {ImportData,ImportChannel,ImportAnat,ExportChannel,ExportData,ExportAnat,ExportProtocol,ExportImage,ExportScript}
         'single', ...                         % Selection mode: {single,multiple}
         'files', ...                          % Selection mode: {files,dirs,files_and_dirs}
-        bst_get('FileFilters', 'events'), ... % Get all the available file formats
+        {{'.*'}, 'Array of times (*.mat;*.*)', 'ARRAY-TIMES'}, ...
         'EventsIn'};                          % DefaultFormats: {ChannelIn,DataIn,DipolesIn,EventsIn,MriIn,NoiseCovIn,ResultsIn,SspIn,SurfaceIn,TimefreqIn
     % Option: Event file
-    sProcess.options.evtfile.Comment = 'Relative time offset (Event file):';
+    sProcess.options.evtfile.Comment = 'Relative time offset (file):';
     sProcess.options.evtfile.Type    = 'filename';
     sProcess.options.evtfile.Value   = SelectOptions;
     % Suffix to append to new events name
-    sProcess.options.suffix.Comment = 'Suffix: ';
+    sProcess.options.suffix.Comment = 'Backup suffix: ';
     sProcess.options.suffix.Type    = 'text';
     sProcess.options.suffix.Value   = '';
+    sProcess.options.suffix.Group   = 'output';
      % Explanations
-    sProcess.options.comment1.Comment = ['<FONT color="#707070"><I>Without suffix the events will be overwritten</I></FONT>'];
+    sProcess.options.comment1.Comment = '<FONT color="#707070"><I>If a suffix is set, event "A" is copied to "A-suffix" before being modified.</I></FONT>';
     sProcess.options.comment1.Type    = 'label';
-       
+    sProcess.options.comment1.Group   = 'output';
 end
 
 
@@ -97,20 +99,17 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % ===== GET OPTIONS =====
     % Time offset
     OffsetTime = sProcess.options.offset.Value{1};
-    Suffix = sProcess.options.suffix.Value;
-    
     % Get event file used for variable time offset 
     EventFile  = sProcess.options.evtfile.Value{1};
     FileFormat = sProcess.options.evtfile.Value{2};
-%     EventName  = sProcess.options.evtname.Value;
-    
     % Event names
     EvtNames = strtrim(str_split(sProcess.options.eventname.Value, ',;'));
     if isempty(EvtNames)
         bst_report('Error', sProcess, [], 'No events selected.');
         return;
     end
-    
+    Suffix = sProcess.options.suffix.Value;
+
     % ===== LOAD FILE =====
     % Get file descriptor
     isRaw = strcmpi(sInput.FileType, 'raw');
@@ -154,58 +153,46 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
 
     % Reads the event file (variable time offset)
     if ~isempty(EventFile)
-   
-        % Get sFile structure
-        sFile = DataMat.F;
-        
-        % Imports event file (variable time offset) 
-        [sFile, newEvents] = import_events(sFile, [], EventFile, FileFormat, [], 0,0); 
-   
-        % There is at least one of the input events which length differs
-        % from event file
-        if sum(evLength - length(newEvents.times)) ~= 0
+        % Read ASCII or .mat
+        EventsMat = load(EventFile);
+        if isstruct(EventsMat)
+            fields = fieldnames(EventsMat);
+            EventsMat = EventsMat.(fields{1});
+            if isstruct(EventsMat)
+                fields = fieldnames(EventsMat);
+                EventsMat = EventsMat.(fields{1});
+            end
+        end
+        % Force to be double
+        VariableOffsetTime = double(EventsMat);
+        % There is at least one of the input events which length differs from event file
+        if sum(evLength - length(VariableOffsetTime)) ~= 0
             bst_report('Error', sProcess, sInput, 'When using variable time offset : All input events must have the same length as input file.');
             return;
         end
-        % Get the variable offset time (first column because txt file comes
-        % as extended events..) 
-        VariableOffsetTime = newEvents.times(1,:); 
+    else
+        VariableOffsetTime = [];
     end
     
-    % No suffix -> overwrite existing events 
-    if isempty(Suffix) 
-        % ===== PROCESS EVENTS =====
-        for i = 1:length(iEvtList)
-            sEvents(iEvtList(i)).times = round((sEvents(iEvtList(i)).times + OffsetTime) .* sFreq) ./ sFreq;
-            if ~isempty(VariableOffsetTime)
-                sEvents(iEvtList(i)).times = sEvents(iEvtList(i)).times + VariableOffsetTime; 
-            end
-            
+    % ===== PROCESS EVENTS =====
+    for i = 1:length(iEvtList)
+        % No suffix: Overwrite existing events 
+        if isempty(Suffix)
+            iNewEvt = iEvtList(i);
+        % Suffix: Create new events
+        else
+            iNewEvt = length(sEvents) + 1;
+            sEvents(iNewEvt) = sEvents(iEvtList(i));
+            sEvents(iEvtList(i)).label = file_unique([sEvents(iEvtList(i)).label, '-', Suffix], {sEvents.label});
         end
-    % Suffix -> Create new events
-    else 
-        % ===== PROCESS EVENTS =====
-        for i = 1:length(iEvtList)
-            % Inialize new event group
-            newEvent = sEvents(iEvtList(i));
-            newEvent.label      = strcat(sEvents(iEvtList(i)).label,Suffix);
-            newEvent.times      = round((sEvents(iEvtList(i)).times + OffsetTime) .* sFreq) ./ sFreq;
-            if ~isempty(VariableOffsetTime)
-                newEvent.times = sEvents(iEvtList(i)).times + VariableOffsetTime; 
-            end
-            newEvent.epochs     = [sEvents(iEvtList(i)).epochs];
-            newEvent.channels   = [sEvents(iEvtList(i)).channels];
-            newEvent.notes      = [sEvents(iEvtList(i)).notes];
-            % Reaction time: only if all the events have reaction time set
-            if all(~cellfun(@isempty, {sEvents(iEvtList(i)).reactTimes}))
-                newEvent.reactTimes = [sEvents(iEvtList(i)).reactTimes];
-            else
-                newEvent.reactTimes = [];
-            end
-            % Add new event
-            sEvents(end + 1) = newEvent;
+        % Add offset: fixed OR variable
+        if ~isempty(VariableOffsetTime)
+            sEvents(iNewEvt).times = sEvents(iNewEvt).times + VariableOffsetTime;
+        else
+            sEvents(iNewEvt).times = round((sEvents(iNewEvt).times + OffsetTime) .* sFreq) ./ sFreq;
         end
     end
+
     % ===== SAVE RESULT =====
     % Report results
     if isRaw
@@ -218,7 +205,3 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
     % Only save changes if something was change
     bst_save(file_fullpath(sInput.FileName), DataMat, 'v6', 1);
 end
-
-
-
-
