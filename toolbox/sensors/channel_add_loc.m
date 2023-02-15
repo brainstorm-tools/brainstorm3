@@ -127,7 +127,11 @@ for is = 1:length(iStudies)
             % Replace "'" with "p"
             chName = strrep(chName, '''', 'p');
             % Look for the exact channel name
-            idef = find(strcmpi(chName, locChanNames));
+            idef = find(strcmp(chName, locChanNames));
+            % If channel name not found, search with different case
+            if isempty(idef)
+                idef = find(strcmpi(chName, locChanNames));
+            end
         
             % If not found, look for an alternate version (with or without trailing zeros...)
             if isempty(idef) && ismember(lower(chName(1)), 'abcdefghijklmnopqrstuvwxyz') && ismember(lower(chName(end)), '0123456789')
