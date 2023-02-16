@@ -21,7 +21,7 @@ function varargout = process_evt_timeoffset( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2013-2015
+% Authors: Francois Tadel, 2013-2023
 
 eval(macro_method);
 end
@@ -164,7 +164,7 @@ function OutputFile = Run(sProcess, sInput) %#ok<DEFNU>
             end
         end
         % Force to be double
-        VariableOffsetTime = double(EventsMat);
+        VariableOffsetTime = double(EventsMat(:)');
         % There is at least one of the input events which length differs from event file
         if sum(evLength - length(VariableOffsetTime)) ~= 0
             bst_report('Error', sProcess, sInput, 'When using variable time offset : All input events must have the same length as input file.');
