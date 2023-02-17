@@ -71,6 +71,9 @@ function bstPanelNew = CreatePanel() %#ok<DEFNU>
             gui_component('MenuItem', jMenu, [], 'Rename   [Double-click]', IconLoader.ICON_EDIT,    [], @(h,ev)EditClusterLabel);
             gui_component('MenuItem', jMenu, [], 'Remove   [DEL]',          IconLoader.ICON_DELETE,  [], @(h,ev)RemoveClusters);
             gui_component('MenuItem', jMenu, [], 'Deselect all  [ESC]',     IconLoader.ICON_RELOAD,  [], @(h,ev)SetSelectedClusters(0));
+            jMenu.addSeparator();
+            gui_component('MenuItem', jMenu, [], 'Copy to other folders', IconLoader.ICON_COPY,  [], @(h,ev)CopyClusters('AllConditions'));
+            gui_component('MenuItem', jMenu, [], 'Copy to other subjects', IconLoader.ICON_COPY,  [], @(h,ev)CopyClusters('AllSubjects'));
 
     % ===== PANEL MAIN =====
     jPanelMain = java_create('javax.swing.JPanel');
@@ -808,8 +811,15 @@ function LoadClusters(varargin)
 end
 
 
-
-
-
-
-
+%% ===== COPY CLUSTERS =====
+function CopyClusters(Target)
+    global GlobalData;
+    % Get loaded clusters
+    [sClusters, iDSall] = GetSelectedClusters();
+    if isempty(sClusters)
+        bst_error('No clusters selected.', 'Copy clusters', 0);
+        return
+    end
+    % Copy clusters
+    db_set_clusters(GlobalData.DataSet(iDSall(1)).ChannelFile, Target, sClusters);
+end
