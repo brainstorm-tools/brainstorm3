@@ -302,7 +302,7 @@ for iFile = 1:nBlocks
     
     % === Compute covariance ===
     % Remove average
-    DataMat.F(iGoodChan,iTimeBaseline) = bst_bsxfun(@minus, DataMat.F(iGoodChan,iTimeBaseline), Favg(iGoodChan,1));
+    DataMat.F(iGoodChan,:) = bst_bsxfun(@minus, DataMat.F(iGoodChan,:), Favg(iGoodChan,1));
     % Compute covariance for this file
     % fileCov  = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov)    * DataMat.F(iGoodChan,iTimeCov)'   );
     % fileCov2 = DataMat.nAvg .* (DataMat.F(iGoodChan,iTimeCov).^2 * DataMat.F(iGoodChan,iTimeCov)'.^2);
