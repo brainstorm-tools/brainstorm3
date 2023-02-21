@@ -106,7 +106,7 @@ function OutputFiles = Run(sProcess, sInputs) %#ok<DEFNU>
             sFreq = 1 ./ (DataMat.Time(2) - DataMat.Time(1));
         end
         % If no markers are present in this file
-        if isempty(sFile.events)
+        if isempty(sEvents)
             bst_report('Error', sProcess, sInputs(iFile), 'This file does not contain any event. Skipping File...');
             continue;
         end
