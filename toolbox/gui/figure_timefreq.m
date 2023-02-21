@@ -753,13 +753,13 @@ function DisplayFigurePopup(hFig)
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_T, KeyEvent.CTRL_MASK));
     end
     % === View RECORDINGS ===
-    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data')
+    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && isempty(strfind(TfInfo.FileName, '_mtmconvol'))
         jPopup.addSeparator();
-        jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)view_timeseries(sTimefreq.DataFile));
+        jItem = gui_component('MenuItem', jPopup, [], 'Recordings', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)bst_call(@view_timeseries, sTimefreq.DataFile));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, KeyEvent.CTRL_MASK));
     end
     % === View RECORDINGS (one sensor) ===
-    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && ~ismember(FigId.SubType, {'2DLayout', '2DLayoutOpt', 'AllSensors'})
+    if ~isempty(sTimefreq.DataFile) && strcmpi(DataType, 'data') && ~ismember(FigId.SubType, {'2DLayout', '2DLayoutOpt', 'AllSensors'}) && isempty(strfind(TfInfo.FileName, '_mtmconvol'))
         jItem = gui_component('MenuItem', jPopup, [], 'Recordings (one sensor)', IconLoader.ICON_TS_DISPLAY, [], @(h,ev)ShowTimeSeries(hFig));
         jItem.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0));
     end
