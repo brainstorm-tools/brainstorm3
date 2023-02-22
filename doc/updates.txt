@@ -1,11 +1,13 @@
 February 2023
 - Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)
 - Anatomy: Compute FEM mesh statistics
+- Anatomy: FEM mesh generation with SimNIBS4/CHARM
+- Anatomy: Fixes in template ICBM152 2023 (T1 contrast & tissue labels)
 - Bugfix: Error in data covariance computation: Baseline not removed
 | when baseline time window was not included in data time window
 --------------------------------------------------------------
 January 2023
-- Anatomy: New template ICBM152 2022
+- Anatomy: New template ICBM152 2023
 - Anatomy: Remove selection of fiducials when setting anatomy template
 - Anatomy: Project scouts between hemispheres using the anatomy template
 - Distrib: Enable compilation on Linux and MacOS

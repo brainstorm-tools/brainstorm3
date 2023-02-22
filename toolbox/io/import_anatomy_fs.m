@@ -481,7 +481,7 @@ if ~isempty(TessLhFile) && ~isempty(TessRhFile)
     oldCortexLowFile = file_fullpath(CortexLowFile);
     CortexLowFile    = bst_fullfile(bst_fileparts(oldCortexLowFile), 'tess_cortex_pial_low.mat');
     file_move(oldCortexLowFile, CortexLowFile);
-    CortexHiFile = file_short(CortexHiFile);
+    CortexLowFile = file_short(CortexLowFile);
 else
     CortexHiFile = [];
     CortexLowFile = [];
