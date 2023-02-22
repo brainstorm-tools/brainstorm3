@@ -192,6 +192,28 @@ if isPlugs
             if ~isInstalled
                 error(['Could not install plugin "' PlugDesc(iPlug).Name '": ' 10 errMsg]);
             end
+
+            % Delete unwanted files (block of code copied from bst_plugins>Install)
+            if ~isempty(PlugDesc(iPlug).DeleteFilesBin) && iscell(PlugDesc(iPlug).DeleteFilesBin)
+                warning('off', 'MATLAB:RMDIR:RemovedFromPath');
+                for iDel = 1:length(PlugDesc(iPlug).DeleteFilesBin)
+                    if ~isempty(PlugInst.SubFolder)
+                        fileDel = bst_fullfile(PlugInst.Path, PlugInst.SubFolder, PlugDesc(iPlug).DeleteFilesBin{iDel});
+                    else
+                        fileDel = bst_fullfile(PlugInst.Path, PlugDesc(iPlug).DeleteFilesBin{iDel});
+                    end
+                    if file_exist(fileDel)
+                        try
+                            file_delete(fileDel, 1, 3);
+                            disp(['BST> Plugin ' PlugDesc(iPlug).Name ': Deleted file: ' PlugDesc(iPlug).DeleteFilesBin{iDel}]);
+                        catch
+                            disp(['BST> Plugin ' PlugDesc(iPlug).Name ': Could not delete file: ' PlugDesc(iPlug).DeleteFilesBin{iDel}]);
+                        end
+                    end
+                end
+                warning('on', 'MATLAB:RMDIR:RemovedFromPath');
+            end
+
             % Add to list of compiled folders
             strCall = [strCall '-a "' fullfile(PlugInst.Path, PlugInst.SubFolder) '" '];
             strCall = [strCall '-a "' fullfile(PlugInst.Path, 'plugin.mat') '" '];

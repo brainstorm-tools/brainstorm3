@@ -105,7 +105,7 @@ function [varargout] = bst_plugin(varargin)
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel 2021-2022
+% Authors: Francois Tadel 2021-2023
 
 eval(macro_method);
 end
@@ -174,8 +174,10 @@ function PlugDesc = GetSupported(SelPlug)
                                     'bin/gtsrefine.mexglx', 'bin/gtsrefine.mexmaci', 'bin/gtsrefine.mexarmhf', 'bin/gtsrefine.exe', 'bin/gtsrefine.mexmaci64', ...  % Removing gtsrefine completely (not used)
                                     'bin/jmeshlib.exe', 'bin/jmeshlib.mexglx', 'bin/jmeshlib.mexmaci', 'bin/jmeshlib.mexmac', 'bin/jmeshlib.mexarmhf', ...
                                     'bin/meshfix.exe', 'bin/meshfix.mexglx', 'bin/meshfix.mexmaci', 'bin/meshfix.mexarmhf', ...
-                                    'bin/tetgen.exe', 'bin/tetgen.mexglx', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ... % Removing older tetgen completely (not used)
-                                    'bin/tetgen1.5.exe', 'bin/tetgen1.5.mexglx'};
+                                    'bin/tetgen.mexglx', 'bin/tetgen.mexmac', 'bin/tetgen.mexarmhf', ...
+                                    'bin/tetgen1.5.mexglx'};
+    PlugDesc(end).DeleteFilesBin = {'bin/tetgen.exe', 'bin/tetgen.mexa64', 'bin/tetgen.mexmaci', 'bin/tetgen.mexmaci64', 'bin/tetgen_x86-64.exe', ...    % Removing older tetgen completely (very sparsely used)
+                                    'bin/tetgen1.5.exe'};
     
     % === ANATOMY: ROAST ===
     PlugDesc(end+1)              = GetStruct('roast');
