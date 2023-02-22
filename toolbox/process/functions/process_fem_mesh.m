@@ -260,6 +260,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             errMsg = 'Invalid neck MNI Z coordinate (must be negative or zero).';
             return;
         end
+        % A vox2ras matrix must be present in the MRI
+        sMriT1 = mri_add_world(T1File, sMriT1);
     end
 
     % ===== LOAD/CUT T2 =====
@@ -279,6 +281,8 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
                 sMriT2 = sMriT2tmp;
             end
         end
+        % A vox2ras matrix must be present in the MRI
+        sMriT2 = mri_add_world(T2File, sMriT2);
     end
     FemFile = [];
     
@@ -750,12 +754,17 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Create temporary folder for segmentation files
             simnibsDir = bst_fullfile(bst_get('BrainstormTmpDir'), simCmd);
             mkdir(simnibsDir);
+            % Remove previous nifti header, as it can cause issues with SimNIBS (if sform is defined and not qform)
+            sMriT1.Header = [];
             % Save T1 MRI in .nii format
             subjid = strrep(sSubject.Name, '@', '');
             T1Nii = bst_fullfile(simnibsDir, [subjid 'T1.nii']);
             out_mri_nii(sMriT1, T1Nii);
             % Save T2 MRI in .nii format
             if ~isempty(T2File)
+                % Remove previous nifti header, as it can cause issues with SimNIBS (if sform is defined and not qform)
+                sMriT2.Header = [];
+                % Save file
                 T2Nii = bst_fullfile(simnibsDir, [subjid 'T2.nii']);
                 out_mri_nii(sMriT2, T2Nii);
             else

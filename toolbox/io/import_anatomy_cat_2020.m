@@ -262,6 +262,8 @@ if ~isempty(errCall)
         return;
     end
 end
+% Load file again, to get the new fiducials
+sMri = in_mri_bst(BstT1File);
 
 
 %% ===== MNI NORMALIZATION =====

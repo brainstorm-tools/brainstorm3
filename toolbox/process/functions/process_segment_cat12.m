@@ -23,7 +23,7 @@ function varargout = process_segment_cat12( varargin )
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2019-2021
+% Authors: Francois Tadel, 2019-2023
 
 eval(macro_method);
 end
@@ -242,6 +242,8 @@ function [isOk, errMsg] = Compute(iSubject, iAnatomy, nVertices, isInteractive, 
                 'Missing fiducials: the surfaces cannot be aligned with the MRI.'];
         end
     end
+    % A vox2ras matrix must be present in the MRI for running CAT12
+    sMri = mri_add_world(T1FileBst, sMri);
 
     % ===== SAVE MRI AS NII =====
     bst_progress('text', 'Saving temporary files...');
