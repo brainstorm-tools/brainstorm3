@@ -122,10 +122,20 @@ nVertHemi = round(nVertices / 2);
 %% ===== PARSE SIMNIBS FOLDER =====
 isProgress = bst_progress('isVisible');
 bst_progress('start', 'Import SimNIBS folder', 'Parsing folder...');
+% Find final mesh
+MshFile = file_find(SimDir, '*.msh', 2, 0);
+if isempty(MshFile) || isempty(MshFile{1})
+    errorMsg = [errorMsg 'Mesh file *.msh not found in top folder.' 10];
+elseif (length(MshFile) > 1)
+    errorMsg = [errorMsg 'Multiple *.msh found in top folder.' 10];
+else
+    MshFile = MshFile{1};
+    SimDir = bst_fileparts(MshFile);
+end
 % Find T1 MRI
-T1Nii = file_find(SimDir, '*T1.nii*', 1, 0);
+T1Nii = file_find(SimDir, '*T1.nii*', 0, 0);
 if isempty(T1Nii)
-    T1Nii = file_find(SimDir, '*T1fs_conform.nii.gz', 1, 0);    % SimNIBS3/headreco
+    T1Nii = file_find(SimDir, '*T1fs_conform.nii.gz', 0, 0);    % SimNIBS3/headreco
     if isempty(T1Nii)
         errorMsg = [errorMsg 'Original MRI file was not found: *T1.nii or *T1fs_conform.nii.gz in top folder.' 10];
     elseif (length(T1Nii) > 1)
@@ -138,39 +148,30 @@ if ~isempty(T1Nii)
     T1Nii = T1Nii{1};
 end
 % Find T2 MRI
-T2Nii = file_find(SimDir, '*T2.nii*', 1, 1);
+T2Nii = file_find(SimDir, '*T2.nii*', 0, 1);
 if isempty(T2Nii)
-    T2Nii = file_find(SimDir, '*T2_conform.nii.gz', 1, 1);    % SimNIBS3/headreco
+    T2Nii = file_find(SimDir, '*T2_conform.nii.gz', 0, 1);    % SimNIBS3/headreco
     if isempty(T2Nii)
-        T2Nii = file_find(SimDir, '*T2_reg.nii.gz', 1, 1);    % SimNIBS4/charm
+        T2Nii = file_find(SimDir, '*T2_reg.nii.gz', 0, 1);    % SimNIBS4/charm
     end
 end
 % Find labelled tissues volume
-TissuesNii = file_find(SimDir, '*final_contr.nii.gz', 2, 1);    % SimNIBS3/headreco
+TissuesNii = file_find(SimDir, '*final_contr.nii.gz', 1, 1);    % SimNIBS3/headreco
 if isempty(TissuesNii)
-    TissuesNii = file_find(SimDir, '*final_tissues.nii.gz', 2, 1);    % SimNIBS4/charm
+    TissuesNii = file_find(SimDir, '*final_tissues.nii.gz', 1, 1);    % SimNIBS4/charm
     Version = 'simnibs4';
 else
     Version = 'simnibs3';
 end
 % Find cortical segmentation
 SegNii = file_find(SimDir, 'labeling.nii.gz', 2, 1);    % SimNIBS4/charm
-% Find final mesh
-MshFile = file_find(SimDir, '*.msh', 1, 0);
-if isempty(MshFile) || isempty(MshFile{1})
-    errorMsg = [errorMsg 'Mesh file *.msh not found in top folder.' 10];
-elseif (length(MshFile) > 1)
-    errorMsg = [errorMsg 'Multiple *.msh found in top folder.' 10];
-else
-    MshFile = MshFile{1};
-end
 % Find cortex surfaces  (SimNIBS4/charm)
-TessLhFile = file_find(SimDir, 'lh.pial.gii', 2);
-TessRhFile = file_find(SimDir, 'rh.pial.gii', 2);
-TessLcFile = file_find(SimDir, 'lh.central.gii', 2);
-TessRcFile = file_find(SimDir, 'rh.central.gii', 2);
-TessLsphFile = file_find(SimDir, 'lh.sphere.reg.gii', 2);
-TessRsphFile = file_find(SimDir, 'rh.sphere.reg.gii', 2);
+TessLhFile = file_find(SimDir, 'lh.pial.gii', 2, 1);
+TessRhFile = file_find(SimDir, 'rh.pial.gii', 2, 1);
+TessLcFile = file_find(SimDir, 'lh.central.gii', 2, 1);
+TessRcFile = file_find(SimDir, 'rh.central.gii', 2, 1);
+TessLsphFile = file_find(SimDir, 'lh.sphere.reg.gii', 2, 1);
+TessRsphFile = file_find(SimDir, 'rh.sphere.reg.gii', 2, 1);
 % Report errors
 if ~isempty(errorMsg)
     if isInteractive
