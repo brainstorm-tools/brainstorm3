@@ -686,6 +686,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             else
                 W = jadeR(F);
             end
+            Y = W * F;
             % Error handling
             if isempty(W)
                 bst_report('Error', sProcess, sInputsA, 'Function "jadeR" did not return any results.');
@@ -710,6 +711,7 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
             end
             % Reconstruct mixing matrix
             W = icaweights * icasphere;
+            Y = W * F;
             
         % === ICA: PICARD ===
         case 'ICA_picard'
@@ -765,11 +767,16 @@ function OutputFiles = Run(sProcess, sInputsA, sInputsB)
         end
         % Sort ICA components
         if ~isempty(icaSort)
-            y = W * F;
-            C = bst_corrn(Fref, y);
+            % By correlation with reference channel
+            C = bst_corrn(Fref, Y);
             [corrs, iSort] = sort(max(abs(C),[],1), 'descend');
-            proj.Components = proj.Components(:,iSort);
+        else
+            % By explained variance
+            M = inv(W);
+            var = sum(M.^2, 1) .* sum(Y.^2, 2)';
+            [var, iSort] = sort(var, 'descend');
         end
+        proj.Components = proj.Components(:,iSort);
     end
     
     % Modality used in the end
