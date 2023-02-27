@@ -2,6 +2,7 @@ February 2023
 - Stat: Added FieldTrip threshold-free cluster enhancement (TFCE)
 - Anatomy: Compute FEM mesh statistics
 - Anatomy: FEM mesh generation with SimNIBS4/CHARM
+- Anatomy: Menu to merge/rename/delete FEM layers
 - Anatomy: Fixes in template ICBM152 2023 (T1 contrast & tissue labels)
 - Bugfix: Error in data covariance computation: Baseline not removed
 | when baseline time window was not included in data time window
