@@ -133,7 +133,8 @@ end
 
 
 %% ===== EDIT FEM MESH =====
-function Edit(FemFile, NewLabels)
+function NewFile = Edit(FemFile, NewLabels)
+    NewFile = [];
     % Parse inputs
     if (nargin < 2)
         NewLabels = [];
@@ -150,6 +151,7 @@ function Edit(FemFile, NewLabels)
     
     % Load FEM mesh
     bst_progress('start', 'Convert FEM mesh', ['Loading file: "' FemFile '"...']);
+    FemFile = file_fullpath(FemFile);
     FemMat = load(FemFile);
 
     % If labels did not change
@@ -186,7 +188,7 @@ function Edit(FemFile, NewLabels)
     % Edit file comment: number of nodes
     oldNvert = regexp(FemMat.Comment, '\d+V', 'match');
     if ~isempty(oldNvert)
-        FemMat.Comment = strrep(FemMat.Comment, oldNvert{1}, sprintf('%dV', size(FemMat.Elements, 1)));
+        FemMat.Comment = strrep(FemMat.Comment, oldNvert{1}, sprintf('%dV', size(FemMat.Vertices, 1)));
     end
 
     % Output filename

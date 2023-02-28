@@ -1100,11 +1100,11 @@ function ComputeInteractive(iSubject, iMris, BemFiles) %#ok<DEFNU>
     % If multiple MRIs are selected, iso2mesh/FieldTrip not possible
     elseif (length(iMris) == 2)
         FemMethods = {'Brain2mesh','SimNIBS3','SimNIBS4','ROAST'};
-        DefMethod = 'SimNIBS3';
+        DefMethod = 'SimNIBS4';
     % One MRI selected, iso2mesh not possible
     elseif (length(iMris) == 1)
         FemMethods = {'Brain2mesh','SimNIBS3','SimNIBS4','ROAST','FieldTrip'};
-        DefMethod = 'SimNIBS3';
+        DefMethod = 'SimNIBS4';
     % Otherwise: Use the defaults from the folder: Ask for method to use
     else
         FemMethods = {'Iso2mesh-2021','Iso2mesh','Brain2mesh','SimNIBS3','SimNIBS4','ROAST','FieldTrip'};
