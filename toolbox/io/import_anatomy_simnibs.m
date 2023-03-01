@@ -11,7 +11,7 @@ function [errorMsg, FemFile] = import_anatomy_simnibs(iSubject, SimDir, nVertice
 %    - isInteractive: If 0, no input or user interaction
 %    - sFid         : Structure with the fiducials coordinates
 %                     Or full MRI structure with fiducials defined in the SCS structure, to be registered with the MRI
-%    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps
+%    - isExtraMaps  : If 1, create an extra folder "CAT12" to save the thickness maps (SimNIBS3 only) and import default EEG caps (SimNIBS3 and 4)
 %    - isKeepMri    : 0=Delete all existing anatomy files
 %                     1=Keep existing MRI volumes (when running segmentation from Brainstorm)
 %                     2=Keep existing MRI and surfaces
@@ -432,7 +432,7 @@ end
 % List EEG position files
 dirPos = dir(bst_fullfile(SimDir, 'eeg_positions', '*.csv'));
 % If any and if not using a default channel file or default anatomy
-if ~isempty(dirPos) && (iSubject > 0) && ~sSubject.UseDefaultChannel
+if isExtraMaps && ~isempty(dirPos) && (iSubject > 0) && ~sSubject.UseDefaultChannel
     % Create one folder for each channel file
     for iFile = 1:length(dirPos)
         % Skip fiducials
