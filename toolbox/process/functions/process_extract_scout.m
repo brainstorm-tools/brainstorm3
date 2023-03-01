@@ -50,23 +50,33 @@ function sProcess = GetDescription()
     sProcess.options.scouts.Type    = 'scout';
     sProcess.options.scouts.Value   = {};
     % === SCOUT FUNCTION ===
-    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'};
-    sProcess.options.scoutfunc.Type       = 'radio_line';
-    sProcess.options.scoutfunc.Value      = 1;
+    sProcess.options.scoutfunc.Comment    = {'Mean', 'Max', 'PCA', 'Std', 'All', 'Scout function:'; ...
+                                             'mean', 'max', 'pca', 'std', 'all', ''};
+    sProcess.options.scoutfunc.Type       = 'radio_linelabel';
+    sProcess.options.scoutfunc.Value      = 'mean';
+    sProcess.options.scoutfunc.Controller = struct('pca', 'pca', 'mean', 'notpca', 'max', 'notpca', 'std', 'notpca', 'all', 'notpca');
+    % Options: PCA
+    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
+    sProcess.options.pcaedit.Type    = 'editpref';
+    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.Class   = 'pca';
     % === FLIP SIGN
     sProcess.options.isflip.Comment    = 'Flip the sign of sources with opposite directions';
     sProcess.options.isflip.Type       = 'checkbox';
     sProcess.options.isflip.Value      = 1;
     sProcess.options.isflip.InputTypes = {'results'};
+    sProcess.options.isflip.Class   = 'notpca';
     % === NORM XYZ
     sProcess.options.isnorm.Comment = 'Unconstrained sources: Norm of the three orientations (x,y,z)';
     sProcess.options.isnorm.Type    = 'checkbox';
     sProcess.options.isnorm.Value   = 0;
     sProcess.options.isnorm.InputTypes = {'results'};
+    sProcess.options.isnorm.Class   = 'notpca';
     % === CONCATENATE
     sProcess.options.concatenate.Comment = 'Concatenate output in one unique matrix';
     sProcess.options.concatenate.Type    = 'checkbox';
     sProcess.options.concatenate.Value   = 1;
+    sProcess.options.concatenate.Class   = 'notpca';
     % === SAVE OUTPUT
     sProcess.options.save.Comment = '';
     sProcess.options.save.Type    = 'ignore';
@@ -150,8 +160,55 @@ function OutputFiles = Run(sProcess, sInputs)
     isSave = sProcess.options.save.Value;
     isNorm = isfield(sProcess.options, 'isnorm') && isfield(sProcess.options.isnorm, 'Value') && isequal(sProcess.options.isnorm.Value, 1);
     isFlip = isfield(sProcess.options, 'isflip') && isfield(sProcess.options.isflip, 'Value') && isequal(sProcess.options.isflip.Value, 1);
-    AddRowComment  = sProcess.options.addrowcomment.Value;
-    AddFileComment = sProcess.options.addfilecomment.Value;
+    AddRowComment  = sProcess.options.addrowcomment.Value; % only applicable to 'All' scout function
+    AddFileComment = sProcess.options.addfilecomment.Value; 
+
+    % PCA now treated in separate function.
+    if strncmpi(ScoutFunc, 'pca', 3)
+        % Require saving files.  We shouldn't get here from non-saving calls for PCA: like from
+        % bst_process('LoadInputFile') or process_timefreq.
+        if ~isSave
+            bst_report('Error', sProcess, sInputs, 'PCA for scouts requires saving files. Please report this error on the forum.');
+            return;
+        end
+        % Don't allow concatenating, for now. Option disabled in panel.
+        %if isConcatenate
+        %    bst_report('Error', sProcess, sInputs, 'Concatenating output not available for PCA scout function.');
+        %    return;
+        %end
+        % The other output options above are not used for PCA: isNorm=false (uses pca for
+        % flattening), isFlip=true, AddRowComment n/a, AddFileComment=true.
+        
+        PcaOptions = sProcess.options.pcaedit.Value;
+
+        % Check if we have to first flatten unconstrained sources. We only check first file. Other
+        % files will be checked for inconsistent dimensions in bst_pca, and if so there will be an error.
+        isUnconstrained = any(CheckUnconstrained(sProcess, sInputs(1))); 
+        if isempty(isUnconstrained)
+            return; % Error already reported;
+        elseif isUnconstrained
+            % Run PCA flattening of unconstrained sources (no scouts yet). Outputs temporary result files.
+            FlatOutputFiles = bst_pca(sProcess, sInputs, PcaOptions, [], false);
+            if isempty(FlatOutputFiles)
+                return; % Error already reported.
+            end
+            % Convert flattened files list back to input structure for second call.
+            sInputs = bst_process('GetInputStruct', FlatOutputFiles);
+            % isUnconstrained = false;
+        end
+        % Run PCA scout extraction on all files.
+        % This process always saves matrix outputs: isOutMatrix=true
+        OutputFiles = bst_pca(sProcess, sInputs, PcaOptions, AtlasList, true); 
+        % Delete temporary flattened files.
+        if isUnconstrained
+            isDeleted = file_delete(FlatOutputFiles, 1);
+            if isDeleted < 0
+                bst_report('Error', sProcess, sInputs, 'Error deleting temporary files: flattened PCA results, for PCA scouts.');
+            end
+        end
+        return;
+    end
+
     % If flip is not set: auto-detect and do not trigger errors
     if isempty(isFlip)
         isFlip = 1;
@@ -168,7 +225,6 @@ function OutputFiles = Run(sProcess, sInputs)
 
     % ===== LOOP ON THE FILES =====
     for iInput = 1:length(sInputs)
-        nComponents = [];
         % Progress bar
         if (length(sInputs) > 1)
             bst_progress('text', sprintf('Extracting scouts for file: %d/%d...', iInput, length(sInputs)));
@@ -177,11 +233,10 @@ function OutputFiles = Run(sProcess, sInputs)
 
 
         % === READ FILES ===
-        [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs, TimeWindow);
+        [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs(iInput), TimeWindow);
         if isempty(sResults)
-            % Error already reported.
             if isConcatenate
-                return;
+                return; % Error already reported.
             else
                 continue;
             end
@@ -206,9 +261,8 @@ function OutputFiles = Run(sProcess, sInputs)
         [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sProcess, sInputs(iInput), ...
             sResults.SurfaceFile, AtlasList, sResults.Atlas);
         if isempty(sScoutsFinal)
-            % Error already reported.
             if isConcatenate
-                return;
+                return; % Error already reported.
             else
                 continue;
             end
@@ -221,8 +275,7 @@ function OutputFiles = Run(sProcess, sInputs)
         scoutComment = [];
         for iScout = 1:length(sScoutsFinal)
             % Get scout name
-            ScoutName = AtlasList{iAtlas,2}{iScout};
-
+            ScoutName = sScoutsFinal(iScout).Label;
 
             % Apply selected scout function
             if ~isempty(ScoutFunc)
@@ -230,10 +283,9 @@ function OutputFiles = Run(sProcess, sInputs)
             end
             % === GET ROWS INDICES ===
             [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInputs(iInput), ...
-                sScoutsFinal(iScout), sResults, sSurf, isVolumeAtlas);
+                sScoutsFinal(iScout), sResults, sSurf, isVolumeAtlas(iScout));
             if isempty(iRows)
-                % Error already reported.
-                return;
+                return; % Error already reported.
             end
 
             % === GET SOURCES ===
@@ -335,6 +387,7 @@ function OutputFiles = Run(sProcess, sInputs)
                     end
                     scoutStd = cat(1, scoutStd, tmpScoutStd);
                 end
+
                 % Loop on the rows to comment them
                 for iRow = 1:size(tmpScout,1)
                     % Start with the scout name
@@ -442,13 +495,13 @@ function OutputFiles = Run(sProcess, sInputs)
             % Comment: forced in the options
             if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
                 newMat.Comment = sProcess.options.Comment.Value;
-                % Comment: Process default (limit size of scout comment)
+            % Comment: Process default (limit size of scout comment)
             elseif (length(sScoutsFinal) > 1) && (length(scoutComment) > 20)
-                newMat.Comment = [sResults.Comment, ' | ' num2str(length(sScoutsFinal)) ' scouts'];
+                newMat.Comment = [fileComment, ' | ' num2str(length(sScoutsFinal)) ' scouts'];
             elseif ~isempty(scoutComment)
-                newMat.Comment = [sResults.Comment, ' | scouts (' scoutComment(2:end) ')'];
+                newMat.Comment = [fileComment, ' | scouts (' scoutComment(2:end) ')'];
             else
-                newMat.Comment = [sResults.Comment, ' | scouts'];
+                newMat.Comment = [fileComment, ' | scouts'];
             end
             % Save new file in database
             if isSave
@@ -462,7 +515,7 @@ function OutputFiles = Run(sProcess, sInputs)
                 db_add_data(iStudy, OutFile, newMat);
                 % Out to list of output files
                 OutputFiles{end+1} = OutFile;
-                % Just return scout values
+            % Just return scout values
             else
                 % Add nComponents to indicate how many components per vertex
                 if (nComponents == 1) || strcmpi(XyzFunction, 'norm')
@@ -488,7 +541,7 @@ function OutputFiles = Run(sProcess, sInputs)
         % Comment: forced in the options
         if isfield(sProcess.options, 'Comment') && isfield(sProcess.options.Comment, 'Value') && ~isempty(sProcess.options.Comment.Value)
             newMat.Comment = sProcess.options.Comment.Value;
-            % Comment: Process default
+        % Comment: Process default
         else
             newMat.Comment = [strrep(FormatComment(sProcess), ' time series', ''), ' (' Comment ')'];
         end
@@ -509,10 +562,45 @@ function OutputFiles = Run(sProcess, sInputs)
 end % Run function
 
 
+%% ===== Check if any unconstrained sources =====
+% isUnconstrained is true/false, or a list for mixed models.
+function [isUnconstrained, nComponents] = CheckUnconstrained(sProcess, sInputs, sResults)
+    % Function meant for 1 input file, but runs ok if list.
+    isUnconstrained = [];
+    if nargin < 3 || isempty(sResults)
+        % Load first file, without data.
+        sResults = LoadFile(sProcess, sInputs);
+        if isempty(sResults)
+            return; % Error already reported.
+        end
+    end
+    % Get the number of source orientations (components) per vertex
+    if strcmpi(sInputs(1).FileType, 'results')
+        nComponents = sResults.nComponents;
+    elseif ~isempty(sResults.GridAtlas)
+        nComponents = 0;
+    else % treat as constrained, though maybe components still possible, "hidden" in timefreq.RowNames?
+        nComponents = 1;
+    end
+    % Check each region if mixed model.
+    if nComponents == 0
+        if isempty(sResults.GridAtlas) || ~isfield(sResults.GridAtlas, 'Scouts') || isempty(sResults.GridAtlas.Scouts)
+            Message = 'Missing mixed source model region description (GridAtlas).';
+            bst_report('Error', sProcess, sInputs, Message);
+            return;
+        end
+        isUnconstrained = ~arrayfun(@(Scout) ~strcmpi('C', Scout.Region(3)), sResults.GridAtlas.Scouts); % 'U' or 'L'
+    else
+        isUnconstrained = nComponents > 1;
+    end
+end
+
+
 %% ===== LOAD INPUT FILE =====
 % Accepts results (full or kernel, atlas-based ok) or timefreq of type result (not kernel, not atlas-based)
-% For kernels, matSourceValues stays empty, but matDataValue is loaded and Time is added to sResults.
+% For kernels, matSourceValues stays empty, but matDataValue is loaded.
 % TimeWindow is optional and is applied to both Values matrices, and sResults.Time. 
+% sResults is empty if an error occurs, after logging the error in the report.
 function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sProcess, sInputs, TimeWindow)
     % Function meant for 1 input file.
     iInput = 1;
@@ -531,16 +619,18 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
             sResults = in_bst_results(sInputs(iInput).FileName, 0);
             % FULL RESULTS
             if isfield(sResults, 'ImageGridAmp') && ~isempty(sResults.ImageGridAmp)
-                matSourceValues = sResults.ImageGridAmp;
+                if nargout > 1
+                    matSourceValues = sResults.ImageGridAmp;
+                end
                 % Drop large data field.
                 sResults = rmfield(sResults, 'ImageGridAmp');
                 % KERNEL ONLY
-            elseif isfield(sResults, 'ImagingKernel') && ~isempty(sResults.ImagingKernel)
+            elseif isfield(sResults, 'ImagingKernel') && ~isempty(sResults.ImagingKernel) && nargout > 1
                 sMat = in_bst(sResults.DataFile, TimeWindow);
                 matDataValues = sMat.F;
-                % Keep time.
-                sResults.Time = sMat.Time;
-                %% ? Are there other fields needed from data file, different in result file, to save in output: ChannelFlag, nLeff, Comment?
+                % Verified that sResults already has a copy of the sMat (data file) fields: Time, nAvg, Leff, ChannelFlag. 
+                % .Comment is different: we used to reuse the one from the DataFile, but this was inconsistent from non-kernel files.
+                % We now reuse fileComment which was already used in .Description.
                 matSourceValues = [];
             end
             % Input filename
@@ -579,7 +669,7 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
                 bst_report('Error', sProcess, sInputs(iInput), 'Kernel-based time-frequency files are not supported in this process. Please apply a measure on them first.');
                 sResults = [];
                 return;
-            else
+            elseif nargout > 1
                 matSourceValues = sResults.TF;
             end
             % Drop large data field.
@@ -592,7 +682,7 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
             return;
     end
     % Nothing loaded
-    if isempty(sResults) || (isempty(matSourceValues) && (isempty(matDataValues) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
+    if isempty(sResults) || (nargout > 1 && isempty(matSourceValues) && (isempty(matDataValues) || ~isfield(sResults, 'ImagingKernel') || isempty(sResults.ImagingKernel)))
         bst_report('Error', sProcess, sInputs(iInput), 'Could not load anything from the input file. Check the requested time window.');
         sResults = [];
         return;
@@ -659,8 +749,7 @@ function [sResults, matSourceValues, matDataValues, fileComment] = LoadFile(sPro
             if ~isempty(sResults.Std)
                 sResults.Std = sResults.Std(:,iTime,:,:);
             end
-        else
-            matDataValues = matDataValues(:,iTime,:);
+        % else % matDataValues already had TimeWindow applied when loading.
         end
         sResults.Time = sResults.Time(iTime);
         % If there are only two time points, make sure they are not identical
@@ -672,11 +761,12 @@ end
 
 
 %% ===== GET SCOUTS INFO =====
-% USAGE:  [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', sProcess, sInput, SurfaceFile, AtlasList)
+% USAGE:  [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = process_extract_scout('GetScoutsInfo', sProcess, sInput, SurfaceFile, AtlasList, ResultsAtlas)
+% sInput is only needed if SurfaceFile is missing. We assume all inputs use the same surface.
+% ResultsAtlas is only used for (deprecated or temporary) atlas-based result files.
 % AllAtlasNames and isVolumeAtlas have the same length as the scout list sScoutFinal.
+% sScoutsFinal is empty if an error occurs, after logging the error in the report.
 function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sProcess, sInputs, SurfaceFile, AtlasList, ResultsAtlas)
-    % We assume all input files are compatible and only use the first one.
-    iInput = 1;
 
     sScoutsFinal  = [];
     AllAtlasNames = {};
@@ -700,12 +790,17 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
     % Surface file not defined in the file
     if isempty(SurfaceFile)
         % Get input subject
-        sSubject = bst_get('Subject', sInputs(iInput).SubjectFile);
+        if isempty(sInputs)
+            bst_report('Error', sProcess, sInputs, 'sInputs or SurfaceFile are required.');
+            return;
+        end
+        sSubject = bst_get('Subject', sInputs(1).SubjectFile);
         % Error: no default cortex
         if isempty(sSubject.iCortex) || (sSubject.iCortex > length(sSubject.Surface))
-            bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
+            bst_report('Error', sProcess, sInputs, ['Invalid surface file: ' SurfaceFile]);
+            return;
         else
-            bst_report('Warning', sProcess, sInputs(iInput), 'Surface file is not defined for the input file, using the default cortex.');
+            bst_report('Warning', sProcess, sInputs, 'Surface file not specified, using the default cortex for this subject.');
         end
         % Get default cortex surface
         SurfaceFile = sSubject.Surface(sSubject.iCortex).FileName;
@@ -713,7 +808,7 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
     % Load surface
     sSurf = in_tess_bst(SurfaceFile);
     if isempty(sSurf) || ~isfield(sSurf, 'Atlas')
-        bst_report('Error', sProcess, sInputs(iInput), ['Invalid surface file: ' SurfaceFile]);
+        bst_report('Error', sProcess, sInputs, ['Invalid surface file: ' SurfaceFile]);
         return;
     end
 
@@ -741,7 +836,8 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
                     sScout = ResultsAtlas(1).Scouts(iRow);
                     % If the scout names cannot be found: error
                 else
-                    bst_report('Error', sProcess, sInputs(iInput), ['File is already based on an atlas, but scout "' sScout.Label '" not found.']);
+                    bst_report('Error', sProcess, sInputs, ['File is already based on an atlas, but scout "' sScout.Label '" not found.']);
+                    sScoutsFinal = [];
                     return;
                 end
             end
@@ -753,7 +849,7 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
                 iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(iAtlasSurf).Scouts.Label}));
                 % Multiple scouts with the same name in an atlas: Error
                 if (length(iScoutSurf) > 1)
-                    bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' AtlasName '", please fix this error.']);
+                    bst_report('Error', sProcess, sInputs, ['Multiple scouts have the same name in atlas "' AtlasName '", please fix this error.']);
                     sScoutsFinal = [];
                     return;
                     % Scout was found
@@ -774,7 +870,7 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
                     iScoutSurf = find(strcmpi(ScoutName, {sSurf.Atlas(ia).Scouts.Label}));
                     % Multiple scouts with the same name in an atlas: Error
                     if (length(iScoutSurf) > 1)
-                        bst_report('Error', sProcess, sInputs(iInput), ['Multiple scouts have the same name in atlas "' sSurf.Atlas(iAtlasSurf).Name '", please fix this error.']);
+                        bst_report('Error', sProcess, sInputs, ['Multiple scouts have the same name in atlas "' sSurf.Atlas(iAtlasSurf).Name '", please fix this error.']);
                         sScoutsFinal = [];
                         return;
                         % Scout was found
@@ -785,18 +881,18 @@ function [sScoutsFinal, AllAtlasNames, sSurf, isVolumeAtlas] = GetScoutsInfo(sPr
                 end
                 % If the scout name was found in multiple atlases: Error
                 if (length(iAllAtlas) > 1)
-                    bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '", but exists in multiple other atlases. Please select the atlas you want to use.']);
+                    bst_report('Error', sProcess, sInputs, ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '", but exists in multiple other atlases. Please select the atlas you want to use.']);
                     sScoutsFinal = [];
                     return;
                     % Scout name was found in only one atlas: Use it with a warning
                 elseif ~isempty(iAllAtlas)
-                    bst_report('Warning', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '". Using the one that was found in atlas "' sSurf.Atlas(iAllAtlas).Name '".']);
+                    bst_report('Warning', sProcess, sInputs, ['Scout "' ScoutName '" was not found in selected atlas "' AtlasName '". Using the one that was found in atlas "' sSurf.Atlas(iAllAtlas).Name '".']);
                     sScout = sSurf.Atlas(iAllAtlas).Scouts(iAllScout);
                 end
             end
             % Scout was not found: Error
             if isempty(sScout)
-                bst_report('Error', sProcess, sInputs(iInput), ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
+                bst_report('Error', sProcess, sInputs, ['Scout "' ScoutName '" was not found in any atlas saved in the surface.']);
                 sScoutsFinal = [];
                 return;
             end
@@ -816,6 +912,9 @@ end
 %% ===== FIND MATCHING RESULT ROWS FOR GIVEN SCOUT =====
 % USAGE:  [iRows, RowNames, ScoutOrient, nComponents] = process_extract_scout('GetScoutRows', sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas)
 % ScoutOrient is only used for "sign flipping" (based on anatomy) when combining sources with constrained orientations.
+% iRows is empty if an error occurs, after logging the error in the report.
+% nComponents is always 1 or 3. If a scout spans multiple regions, an error is returned.
+% RowNames is empty or vertex numbers (cell array of str) if 'All' scout function.
 function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sInput, sScout, sResults, sSurf, isVolumeAtlas)
     % Add potentially missing fields.
     if ~isfield(sResults, 'GridAtlas')
@@ -860,7 +959,7 @@ function [iRows, RowNames, ScoutOrient, nComponents] = GetScoutRows(sProcess, sI
     else
         RowNames = [];
     end
-    % Get the vertex indices of the scout in ImageGridAmp/ImagingKernel
+    % Get the row and vertex or grid indices of the scout in ImageGridAmp/ImagingKernel
     [iRows, iRegionScouts, iVertices] = bst_convert_indices(iVertices, nComponents, sResults.GridAtlas, ~isVolumeAtlas);
     % Mixed headmodel results
     if (nComponents == 0)

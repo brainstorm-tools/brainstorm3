@@ -1,7 +1,7 @@
-function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, ScoutName, DataCov, PcaReference)
+function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nComponents, XyzFunction, isSignFlip, ScoutName, Covar, PcaReference)
 % BST_SCOUT_VALUE: Combine Ns time series using the given function. Used to get scouts/clusters values.
 %
-% USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0, ScoutName=[], OrientCov=[], PcaReference=[])
+% USAGE:  Fs = bst_scout_value(F, ScoutFunction, Orient=[], nComponents=1, XyzFunction='none', isSignFlip=0, ScoutName=[], Covar=[], PcaReference=[])
 %
 % INPUTS:
 %     - F             : [Nsources * Ncomponents, Ntime] double matrix, source time series
@@ -12,7 +12,7 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 %     - XyzFunction   : String, function used to group the the 2 or 3 components per vertex: return only one value per vertex {'norm', 'pca', 'pcaa', 'none'}
 %     - isSignFlip    : In the case of signed minimum norm values, this will flip the signs of sources with opposite orientations
 %     - ScoutName     : Name of the scout or cluster you're extracting
-%     - DataCov       : Covariance matrix between rows of F, pre-computed for one or more epochs. Used for PCA.
+%     - Covar         : Covariance matrix between rows of F, pre-computed for one or more epochs. Used for PCA.
 %                       For PCA ScoutFunction: [Nrows x Nrows], for PCA XyzFunction only (no ScoutFunction): [3 x 3 x Nsources] 3 source orientations at each location
 %     - PcaReference  : Reference PCA components (see PcaFirstComp below for possible sizes) pre-computed across epochs, used to pick consistent sign for each epoch
 %
@@ -46,11 +46,11 @@ function [Fs, PcaFirstComp] = bst_scout_value(F, ScoutFunction, Orient, nCompone
 % Authors: Sylvain Baillet, Francois Tadel, John Mosher, Marc Lalancette, 2010-2022
 
 % ===== PARSE INPUTS =====
-if (nargin < 8) || isempty(PcaReference)
+if (nargin < 9) || isempty(PcaReference)
     PcaReference = [];
 end
-if (nargin < 8) || isempty(DataCov)
-    DataCov = [];
+if (nargin < 8) || isempty(Covar)
+    Covar = [];
 end
 if (nargin < 7) || isempty(ScoutName)
     ScoutName = [];
@@ -93,7 +93,7 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
     else
         % Take the SVD to get the dominant orientation in this patch
         % U(:,1) is the dominant orientation
-        [U,S] = svd(Orient', 'econ', 'vector');
+        [U,S] = svd(Orient, 'econ', 'vector');
         % Get the flip mask for the data values
         FlipMask = sign(U(:,1)); % careful: sign(0) == 0
         % Remove ambiguity of arbitrary component sign for consistency across files/epochs and reproducibility. 
@@ -125,9 +125,9 @@ if isSignFlip && (nComponents == 1) && ~isempty(Orient) && ~ismember(lower(Scout
             % Multiply the values by FlipMask
             F = bsxfun(@times, F, FlipMask);
             disp(['BST> Flipped the sign of ' num2str(nnz(FlipMask == -1)) ' sources.']);
-            if ~isempty(DataCov)
-                % Also apply to DataCov in both dimensions
-                DataCov = bsxfun(@times, bsxfun(@times, DataCov, FlipMask'), FlipMask);
+            if ~isempty(Covar)
+                % Also apply to Covar in both dimensions
+                Covar = bsxfun(@times, bsxfun(@times, Covar, FlipMask'), FlipMask);
             end
         end
     end
@@ -220,8 +220,8 @@ switch (lower(ScoutFunction))
         explained = 0;
         for i = 1:nComponents % nComponents should now always be 1 here, but keep code compatible with more for now
             % Use trial data covariance if provided
-            if ~isempty(DataCov)
-                [U, S] = eig((DataCov + DataCov')/2, 'vector'); % ensure exact symmetry for real results.
+            if ~isempty(Covar)
+                [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
                 [S, iSort] = sort(S, 'descend');
             else % use data
                 % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
@@ -239,7 +239,7 @@ switch (lower(ScoutFunction))
             CompSign = nzsign(sum(PcaFirstComp .* PcaReference));
         else
             % Keep sum of component elements (coefficients for the weighted sum of timeseries) positive.
-            % Orientation-based sign flipping was previously applied, if orientations available.
+            % Orientation-based sign flipping was applied above, if orientations available.
             CompSign = nzsign(sum(PcaFirstComp));
         end
         PcaFirstComp = bsxfun(@times, CompSign, PcaFirstComp);
@@ -251,14 +251,14 @@ switch (lower(ScoutFunction))
        
     % PCA computed on all data (all epochs/files) 
     case 'pcaa'
-        % DataCov is size (nRow,nRow), where nRow can be nVertex or nVertex*nComponents
-        [U, S] = eig((DataCov + DataCov')/2, 'vector'); % ensure exact symmetry for real results.
+        % Covar is size (nRow,nRow), where nRow can be nVertex or nVertex*nComponents
+        [U, S] = eig((Covar + Covar')/2, 'vector'); % ensure exact symmetry for real results.
         [S, iSort] = sort(S, 'descend');
         explained = S(1) / sum(S);
         PcaFirstComp = U(:, iSort(1));
         % Remove ambiguity of arbitrary component sign for consistency across files/epochs and reproducibility. 
         % Keep sum of component elements (coefficients for the weighted sum of timeseries) positive.
-        % Orientation-based sign flipping was previously applied, if orientations available.
+        % Orientation-based sign flipping was applied above, if orientations available.
         CompSign = nzsign(sum(PcaFirstComp));
         PcaFirstComp = CompSign * PcaFirstComp;
         % F could be empty here if 
@@ -269,7 +269,7 @@ switch (lower(ScoutFunction))
                 PcaFirstComp = PcaFirstComp .* FlipMask;
             end
         else
-            % DataCov was not sign-flipped if F is empty.
+            % Covar was not sign-flipped if F is empty.
             Fs = [];
         end
         
@@ -331,8 +331,8 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
             for i = 1:nRow
                 Fi = permute(F(i,:,:), [3,2,1]); % permute faster than squeeze
                 % Use trial data covariance if provided
-                if ~isempty(DataCov)
-                    [U, S] = eig((DataCov(:,:,i) + DataCov(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
+                if ~isempty(Covar)
+                    [U, S] = eig((Covar(:,:,i) + Covar(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
                     [S, iSort] = sort(S, 'descend');
                 else % use data
                     % This is a legacy case. It's not taking into account baseline and data time windows like when we use a covariance.
@@ -358,12 +358,12 @@ if (nComponents > 1) && (size(Fs,3) > 1 || isempty(Fs))
         case 'pcaa'
             % Here, F may be empty, if we save the result as a shared kernel.
             % Get number of sources from covariance.
-            nRow = size(DataCov, 3);
+            nRow = size(Covar, 3);
             PcaFirstComp = zeros(nComponents, nRow);
             % For each vertex: Signal decomposition
             explained = 0;
             for i = 1:nRow
-                [U, S] = eig((DataCov(:,:,i) + DataCov(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
+                [U, S] = eig((Covar(:,:,i) + Covar(:,:,i)')/2, 'vector'); % ensure exact symmetry for real results.
                 [S, iSort] = sort(S, 'descend');
                 explained = explained + S(1) / sum(S);
                 PcaFirstComp(:,i) = U(:, iSort(1));
@@ -398,9 +398,9 @@ end
 %% Display percentage of signal explained by 1st component of PCA
 % This is somewhat incomplete: doesn't combine scout and xyz, or components of scout (loop).
 if explained
-    msg = ['BST> First PCA component explains ' num2str(explained * 100) '% of the signal'];
+    msg = sprintf('BST> First PCA component captures %1.1f%% of the signal', explained * 100);
     if ScoutName
-        msg = [msg ' of cluster ' ScoutName];
+        msg = [msg ' in ' ScoutName];
     end
     disp([msg '.']);
 end

@@ -33,32 +33,32 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     panelName = 'PcaOptions';
     bstPanelNew = [];
 
-    PcaOptions = sProcess.options.edit.Value;
+    PcaOptions = sProcess.options.pcaedit.Value;
     %% TODO: Load user preferences.
     nInputs = numel(sInputs);
     % Progress bar
     bst_progress('start', 'Read recordings information', 'Analysing input files...', 0, nInputs);
-    isAllLink = true;
-    isAllCov = true;
+%     isAllLink = true;
+%     isAllCov = true;
     TimeWindow = [NaN, NaN];
     SamplingPeriod = [];
-    CovOptions = [];
-    CovLabelText = '';
+%     CovOptions = [];
+%     CovLabelText = '';
     for iInput = 1:nInputs
-        % Check if inputs are all kernel links and a data covariance is available.
-        if isAllLink
-            if ~strcmpi(file_gettype(sInputs(iInput).FileName), 'link')
-                isAllLink = false;
-                isAllCov = false;
-            elseif isAllCov
-                sStudy = bst_get('Study', sInputs(iInput).iStudy);
-                if numel(sStudy.NoiseCov) < 2
-                    isAllCov = false;
-                    CovOptions = [];
-                    CovLabelText = 'Data covariance not found.';
-                end
-            end
-        end
+%         % Check if inputs are all kernel links and a data covariance is available.
+%         if isAllLink
+%             if ~strcmpi(file_gettype(sInputs(iInput).FileName), 'link')
+%                 isAllLink = false;
+%                 isAllCov = false;
+%             elseif isAllCov
+%                 sStudy = bst_get('Study', sInputs(iInput).iStudy);
+%                 if numel(sStudy.NoiseCov) < 2
+%                     isAllCov = false;
+%                     CovOptions = [];
+%                     CovLabelText = 'Data covariance not found.';
+%                 end
+%             end
+%         end
         % Get min and max times over all inputs.
         ResultsMat = in_bst_results(sInputs(iInput).FileName, 0, 'Time');
         TimeWindow = [min(TimeWindow(1), ResultsMat.Time(1)), max(TimeWindow(2), ResultsMat.Time(end))];
@@ -68,27 +68,27 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         elseif SamplingPeriod ~= (ResultsMat.Time(2) - ResultsMat.Time(1))
             bst_report('Warning', sProcess, sInputs, 'Selected files have different sampling rates.');
         end
-        % Check consistency of covariance options. 
-        if isAllCov
-            if isempty(CovOptions)
-                CovOptions = GetCovOptions(sStudy);
-            else
-                CovOptionsCompare = GetCovOptions(sStudy);
-                % We allow different time windows if it's the whole file.
-                if ~strcmp(CovOptions.RemoveDcOffset, CovOptionsCompare.RemoveDcOffset) || ...
-                        (~isequal(CovOptions.Baseline, CovOptionsCompare.Baseline) && ~isequal(CovOptions.Baseline, ResultsMat.Time([1,end]))) || ...
-                        (~isequal(CovOptions.DataTimeWindow, CovOptionsCompare.DataTimeWindow) && ~isequal(CovOptions.DataTimeWindow, ResultsMat.Time([1,end])))
-                    isAllCov = false;
-                    CovOptions = [];
-                    CovLabelText = 'Selected studies have different covariance settings.';
-                    bst_report('Warning', sProcess, sInputs, CovLabelText);
-                else
-                    % Extend if it's whole files, so it's consistent with displayed TimeWindow.
-                    CovOptions.Baseline = [min(CovOptions.Baseline(1), CovOptionsCompare.Baseline(1)), max(CovOptions.Baseline(2), CovOptionsCompare.Baseline(2))];
-                    CovOptions.DataTimeWindow = [min(CovOptions.DataTimeWindow(1), CovOptionsCompare.DataTimeWindow(1)), max(CovOptions.DataTimeWindow(2), CovOptionsCompare.DataTimeWindow(2))];
-                end
-            end
-        end
+%         % Check consistency of covariance options. 
+%         if isAllCov
+%             if isempty(CovOptions)
+%                 CovOptions = GetCovOptions(sStudy);
+%             else
+%                 CovOptionsCompare = GetCovOptions(sStudy);
+%                 % We allow different time windows if it's the whole file.
+%                 if ~strcmp(CovOptions.RemoveDcOffset, CovOptionsCompare.RemoveDcOffset) || ...
+%                         (~isequal(CovOptions.Baseline, CovOptionsCompare.Baseline) && ~isequal(CovOptions.Baseline, ResultsMat.Time([1,end]))) || ...
+%                         (~isequal(CovOptions.DataTimeWindow, CovOptionsCompare.DataTimeWindow) && ~isequal(CovOptions.DataTimeWindow, ResultsMat.Time([1,end])))
+%                     isAllCov = false;
+%                     CovOptions = [];
+%                     CovLabelText = 'Selected studies have different covariance settings.';
+%                     bst_report('Warning', sProcess, sInputs, CovLabelText);
+%                 else
+%                     % Extend if it's whole files, so it's consistent with displayed TimeWindow.
+%                     CovOptions.Baseline = [min(CovOptions.Baseline(1), CovOptionsCompare.Baseline(1)), max(CovOptions.Baseline(2), CovOptionsCompare.Baseline(2))];
+%                     CovOptions.DataTimeWindow = [min(CovOptions.DataTimeWindow(1), CovOptionsCompare.DataTimeWindow(1)), max(CovOptions.DataTimeWindow(2), CovOptionsCompare.DataTimeWindow(2))];
+%                 end
+%             end
+%         end
         bst_progress('inc', 1);
     end
     % Get data covariance settings from history. (Would be simpler to save NoiseCovMat.Options.)
@@ -136,7 +136,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         % Across epochs
         jRadioPcaa = gui_component('radio', jPanelOptions, 'br', ...
             ['<HTML><B>across all epochs/files</B>: Generally recommended, especially for within subject comparisons.<BR>' ...
-            'Much faster with kernel link source files and using pre-computed data covariance.<BR>' ...
+            'Much faster with kernel link source files.<BR>' ... %  and using pre-computed data covariance
             'Can save shared kernels.'], [], [], @RadioPca_Callback);
         jRadioPcaa.setSelected(1);
         jButtonGroupMethod.add(jRadioPcaa);
@@ -144,7 +144,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         jRadioPcai = gui_component('radio', jPanelOptions, 'br', ...
             ['<HTML><B>per individual epoch/file, with consistent sign</B>: Useful for single-trial analysis,<BR>' ...
             'while still allowing combining epochs. Sign selected using PCA across epochs as reference.<BR>' ...
-            'Slow. Saves individual files.'], [], [], @RadioPca_Callback);
+            'Slower. Saves individual files.'], [], [], @RadioPca_Callback);
         jButtonGroupMethod.add(jRadioPcai);
         % Per epoch, without sign consistency
         jRadioPca = gui_component('radio', jPanelOptions, 'br', ...
@@ -162,14 +162,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         % window would be relevant here.
         gui_component('label', jPanelCov, 'p', ['<HTML>These options affect the PCA component computation only,<BR>' ...
             'which is then applied to the unmodified data (without offset removal).']);
-        % Use pre-computed data covariance?
-        if isAllCov
-            jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (requires kernel link source files)<BR>' ...
-                '<FONT color="#777777"><I>When selected, the settings used to compute the covariance are shown below.</I></FONT>'], [], [], @CheckUseDataCov_Callback);
-            jCheckUseDataCov.setSelected(1);
-        else
-            jCheckUseDataCov = gui_component('label', jPanelCov, 'p', ['<HTML><I>' CovLabelText ' Specify settings below.</I>']);
-        end
+%         % Use pre-computed data covariance?
+%         if isAllCov
+%             jCheckUseDataCov = gui_component('checkbox', jPanelCov, 'p', ['<HTML>Use pre-computed data covariance (requires kernel link source files)<BR>' ...
+%                 '<FONT color="#777777"><I>When selected, the settings used to compute the covariance are shown below.</I></FONT>'], [], [], @CheckUseDataCov_Callback);
+%             jCheckUseDataCov.setSelected(1);
+%         else
+%             jCheckUseDataCov = gui_component('label', jPanelCov, 'p', ['<HTML><I>' CovLabelText ' Specify settings below.</I>']);
+%         end
         % Time window
         gui_component('label', jPanelCov, 'p', 'Input files time window: ');
         gui_component('label', jPanelCov, 'tab', strTime);
@@ -220,7 +220,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     ctrl = struct('jRadioPcaa',         jRadioPcaa, ...
                   'jRadioPcai',         jRadioPcai, ...
                   'jRadioPca',          jRadioPca, ...
-                  'jCheckUseDataCov',   jCheckUseDataCov, ...
                   'jBaselineTimeStart', jBaselineTimeStart, ...
                   'jBaselineTimeStop',  jBaselineTimeStop, ...
                   'BaselineTimeUnit',   BaselineTimeUnit, ...
@@ -228,6 +227,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
                   'jDataTimeStop',      jDataTimeStop, ...
                   'DataTimeUnit',       DataTimeUnit, ...
                   'jRemoveDcFile',      jRemoveDcFile);
+%                   'jCheckUseDataCov',   jCheckUseDataCov, ...
     % Create the BstPanel object that is returned by the function
     % => constructor BstPanel(jHandle, panelName, sControls)
     bstPanelNew = BstPanel(panelName, jPanelNew, ctrl);
@@ -251,18 +251,61 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
     end
 
 %% ===== Use pre-computed covariance checkbox =====
-    function CheckUseDataCov_Callback(varargin)
-        % If use, load covariance settings and disable changing them
-        if isAllCov && jCheckUseDataCov.isSelected()
-            SetValue(jBaselineTimeStart, CovOptions.Baseline(1), BaselineTimeUnit);
-            SetValue(jBaselineTimeStop, CovOptions.Baseline(2), BaselineTimeUnit);
-            SetValue(jDataTimeStart, CovOptions.DataTimeWindow(1), DataTimeUnit);
-            SetValue(jDataTimeStop, CovOptions.DataTimeWindow(2), DataTimeUnit);
-            if ismember(CovOptions.RemoveDcOffset, {'file', 'all'})
-                jRemoveDcFile.setSelected(1);
-            else
-                jRemoveDcFile.setSelected(0);
-            end
+%     function CheckUseDataCov_Callback(varargin)
+%         % If use, load covariance settings and disable changing them
+%         if isAllCov && jCheckUseDataCov.isSelected()
+%             SetValue(jBaselineTimeStart, CovOptions.Baseline(1), BaselineTimeUnit);
+%             SetValue(jBaselineTimeStop, CovOptions.Baseline(2), BaselineTimeUnit);
+%             SetValue(jDataTimeStart, CovOptions.DataTimeWindow(1), DataTimeUnit);
+%             SetValue(jDataTimeStop, CovOptions.DataTimeWindow(2), DataTimeUnit);
+%             if ismember(CovOptions.RemoveDcOffset, {'file', 'all'})
+%                 jRemoveDcFile.setSelected(1);
+%             else
+%                 jRemoveDcFile.setSelected(0);
+%             end
+%             jBaselineTimeStart.setEnabled(0);
+%             jBaselineTimeStop.setEnabled(0);
+%             jDataTimeStart.setEnabled(0);
+%             jDataTimeStop.setEnabled(0);
+%             jRemoveDcFile.setEnabled(0);
+%             for i = 1:numel(jCovLabels)
+%                 jCovLabels{i}.setEnabled(0);
+%             end
+%         else
+%             % Otherwise, load default settings and enable controls
+%             SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
+%             SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
+%             SetValue(jDataTimeStart, PcaOptions.DataTimeWindow(1), DataTimeUnit);
+%             SetValue(jDataTimeStop, PcaOptions.DataTimeWindow(2), DataTimeUnit);
+%             if ismember(PcaOptions.RemoveDcOffset, {'file', 'all'})
+%                 jRemoveDcFile.setSelected(1);
+%             else
+%                 jRemoveDcFile.setSelected(0);
+%             end
+%             jBaselineTimeStart.setEnabled(1);
+%             jBaselineTimeStop.setEnabled(1);
+%             jDataTimeStart.setEnabled(1);
+%             jDataTimeStop.setEnabled(1);
+%             jRemoveDcFile.setEnabled(1);
+%             for i = 1:numel(jCovLabels)
+%                 jCovLabels{i}.setEnabled(1);
+%             end
+%         end
+%     end
+
+%% ===== PCA method choice =====
+    function RadioPca_Callback(varargin)
+        % For legacy pca, enforce full time windows and offset removal as it used to be done.
+        if jRadioPca.isSelected()
+%             if isAllCov 
+%                 jCheckUseDataCov.setSelected(0);
+%             end
+%             jCheckUseDataCov.setEnabled(0);
+            SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
+            SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
+            SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
+            SetValue(jDataTimeStop, TimeWindow(2), DataTimeUnit);
+            jRemoveDcFile.setSelected(1);
             jBaselineTimeStart.setEnabled(0);
             jBaselineTimeStop.setEnabled(0);
             jDataTimeStart.setEnabled(0);
@@ -272,6 +315,14 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
                 jCovLabels{i}.setEnabled(0);
             end
         else
+%             % Use of pre-computed data covariance is available for pcaa/pcai.
+%             jCheckUseDataCov.setEnabled(1);
+%             if isAllCov
+%                 % Automatically select after changing method.
+%                 jCheckUseDataCov.setSelected(1);
+%             end
+%             % Update covariance options
+%             CheckUseDataCov_Callback();
             % Otherwise, load default settings and enable controls
             SetValue(jBaselineTimeStart, PcaOptions.Baseline(1), BaselineTimeUnit);
             SetValue(jBaselineTimeStop, PcaOptions.Baseline(2), BaselineTimeUnit);
@@ -293,39 +344,6 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
         end
     end
 
-%% ===== PCA method choice =====
-    function RadioPca_Callback(varargin)
-        % For legacy pca, enforce full time windows and offset removal as it used to be done.
-        if jRadioPca.isSelected()
-            if isAllCov 
-                jCheckUseDataCov.setSelected(0);
-            end
-            jCheckUseDataCov.setEnabled(0);
-            SetValue(jBaselineTimeStart, TimeWindow(1), BaselineTimeUnit);
-            SetValue(jBaselineTimeStop, TimeWindow(2), BaselineTimeUnit);
-            SetValue(jDataTimeStart, TimeWindow(1), DataTimeUnit);
-            SetValue(jDataTimeStop, TimeWindow(2), DataTimeUnit);
-            jRemoveDcFile.setSelected(1);
-            jBaselineTimeStart.setEnabled(0);
-            jBaselineTimeStop.setEnabled(0);
-            jDataTimeStart.setEnabled(0);
-            jDataTimeStop.setEnabled(0);
-            jRemoveDcFile.setEnabled(0);
-            for i = 1:numel(jCovLabels)
-                jCovLabels{i}.setEnabled(0);
-            end
-        else
-            % Use of pre-computed data covariance is available for pcaa/pcai.
-            jCheckUseDataCov.setEnabled(1);
-            if isAllCov
-                % Automatically select after changing method.
-                jCheckUseDataCov.setSelected(1);
-            end
-            % Update covariance options
-            CheckUseDataCov_Callback();
-        end
-    end
-
 %% ===== Change value of a time text box =====
     function SetValue(jText, Value, TimeUnit)
         if strcmpi(TimeUnit, 'ms')
@@ -340,27 +358,27 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sInputs)
 end
 
 %% ===== Read settings used to compute covariance, from history =====
-function CovOptions = GetCovOptions(sStudy)
-    DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName));
-    % Data=[%1.3f, %1.3f]s, Baseline=[%1.3f, %1.3f]s
-    iHistCov = find(strcmpi(DataCov.History(:,2), 'compute'), 1);
-    if isempty(iHistCov)
-        error('Missing history information in data covariance file.');
-    end
-    TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
-    CovOptions.Baseline = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=)[\[0-9-,. ]*]', 'match', 'once'));
-    if strcmp(TimeUnit, 'ms')
-        % convert to s
-        CovOptions.Baseline = CovOptions.Baseline / 1000;
-    end
-    TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Data=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
-    CovOptions.DataTimeWindow = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Data=)[\[0-9-,. ]*]', 'match', 'once')); %#ok<*ST2NM>
-    if strcmp(TimeUnit, 'ms')
-        % convert to s
-        CovOptions.DataTimeWindow = CovOptions.DataTimeWindow / 1000;
-    end
-    CovOptions.RemoveDcOffset = lower(strtrim(DataCov.History{iHistCov,3}(end-3:end)));
-end
+% function CovOptions = GetCovOptions(sStudy)
+%     DataCov = load(file_fullpath(sStudy.NoiseCov(2).FileName));
+%     % Data=[%1.3f, %1.3f]s, Baseline=[%1.3f, %1.3f]s
+%     iHistCov = find(strcmpi(DataCov.History(:,2), 'compute'), 1);
+%     if isempty(iHistCov)
+%         error('Missing history information in data covariance file.');
+%     end
+%     TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
+%     CovOptions.Baseline = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Baseline=)[\[0-9-,. ]*]', 'match', 'once'));
+%     if strcmp(TimeUnit, 'ms')
+%         % convert to s
+%         CovOptions.Baseline = CovOptions.Baseline / 1000;
+%     end
+%     TimeUnit = regexp(DataCov.History{iHistCov,3}, '(?<=Data=[\[\]0-9-,. ]*)[ms]*', 'match', 'once');
+%     CovOptions.DataTimeWindow = str2num(regexp(DataCov.History{iHistCov,3}, '(?<=Data=)[\[0-9-,. ]*]', 'match', 'once')); %#ok<*ST2NM>
+%     if strcmp(TimeUnit, 'ms')
+%         % convert to s
+%         CovOptions.DataTimeWindow = CovOptions.DataTimeWindow / 1000;
+%     end
+%     CovOptions.RemoveDcOffset = lower(strtrim(DataCov.History{iHistCov,3}(end-3:end)));
+% end
 
 %% =================================================================================
 %  === EXTERNAL CALLBACKS ==========================================================
@@ -379,12 +397,12 @@ function s = GetPanelContents()
     elseif ctrl.jRadioPca.isSelected()
         s.Method = 'pca';
     end
-    % Get pre-computed covariance option
-    if isa(ctrl.jCheckUseDataCov, 'javax.swing.JCheckBox')
-        s.UseDataCov = ctrl.jCheckUseDataCov.isSelected();
-    else % it's a label "Data cov not found"
-        s.UseDataCov = false;
-    end
+%     % Get pre-computed covariance option
+%     if isa(ctrl.jCheckUseDataCov, 'javax.swing.JCheckBox')
+%         s.UseDataCov = ctrl.jCheckUseDataCov.isSelected();
+%     else % it's a label "Data cov not found"
+%         s.UseDataCov = false;
+%     end
     % Get baseline time window
     s.Baseline = [str2double(char(ctrl.jBaselineTimeStart.getText())), ...
                   str2double(char(ctrl.jBaselineTimeStop.getText()))];

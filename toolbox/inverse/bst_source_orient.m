@@ -16,13 +16,16 @@ function [SourceValues, GridAtlas, RowNames, PcaOrient] = bst_source_orient(iVer
 %    - DataType     : Type of data being processed {'data', 'results', 'scouts', 'matrix'}
 %    - RowNames     : Description of signals being processed: {empty, array of doubles, array of cells}
 %    - OrientCov    : [3 x 3 x Nvertices] Covariance between 3 rows of SourceValues (3 source orientations) at each vertex, pre-computed from one or more epochs.
+%                     For mixed models: cell array of such covariance, for each region.
 %    - PcaOrient    : [3 x Nvertices] Reference PCA components computed across epochs, used to pick consistent sign for each epoch.
+%                     For mixed models: cell array of such components, for each region.
 %
 % OUTPUT: 
 %    - SourceValues : Constrained source values
 %    - GridAtlas    : Modified atlas (unconstrained regions transformed into constrained regions)
 %    - RowNames     : Description of the new list of signals
 %    - PcaOrient    : [3 x Nvertices] Direction vector of the first mode of the PCA, for each source
+%                     For mixed models: cell array of such components, for each region.
 
 % @=============================================================================
 % This function is part of the Brainstorm software:
@@ -58,9 +61,6 @@ end
 if (nargin < 6) || isempty(DataType)
 	DataType = [];
 end
-if (nargin < 5) || isempty(Function)
-	Function = 'none';
-end
 if (nargin < 4) || isempty(SourceValues)
 	SourceValues = [];
 end
@@ -77,30 +77,53 @@ if (nComponents == 0)
     if isempty(GridAtlas) || ~isfield(GridAtlas, 'Scouts') || ~isfield(GridAtlas.Scouts, 'Vertices')
         error('GridAtlas variable is empty');
     end
+    nScouts = length(GridAtlas.Scouts);
+    % Resize empty PCA-specific variables for convenience.
+    if isempty(OrientCov) || ~strncmpi(Function, 'pca', 3)
+        OrientCov = cell(nScouts, 0);
+    elseif ~iscell(OrientCov) || length(OrientCov) ~= nScouts
+        error('OrientCov size incompatible with GridAtlas.');
+    end
+    if isempty(PcaOrient) || ~strncmpi(Function, 'pca', 3)
+        PcaOrient = cell(nScouts, 0);
+    elseif ~iscell(PcaOrient) || length(PcaOrient) ~= nScouts
+        error('PcaOrient size incompatible with GridAtlas.');
+    end
     % Initialize blocks of indices
     SourceBlocks = {};
     RowNamesBlocks = {};
     % Loop on all the regions
-    for iScout = 1:length(GridAtlas.Scouts)
+    for iScout = 1:nScouts
         % Get the vertices for this scouts
         if ~isempty(iVertices)
             iVertGrid = intersect(iVertices, GridAtlas.Scouts(iScout).GridRows);
-        else
+        elseif ~isempty(SourceValues)
             iVertGrid = GridAtlas.Scouts(iScout).GridRows;
+        elseif ~isempty(OrientCov)
+            % For PCA, we don't always need to project values, e.g. for reference component.
+            iVertGrid = [];
+        else
+            error('SourceValues and OrientCov should not both be empty.');
         end
-        % Convert to indices in the source matrix
-        iVertSource = bst_convert_indices(iVertGrid, nComponents, GridAtlas, 0);
+        if ~isempty(iVertGrid)
+            % Convert to indices in the source matrix
+            iVertSource = bst_convert_indices(iVertGrid, nComponents, GridAtlas, 0);
+        else
+            iVertSource = [];
+        end
         % If no vertices to read from this region: skip
-        if isempty(iVertSource)
+        if isempty(iVertSource) && isempty(OrientCov)
             continue;
         end
+        
         % Get correpsonding row indices based on the type of region (constrained or unconstrained)
         switch (GridAtlas.Scouts(iScout).Region(3))
             case 'C'
                 SourceBlocks{end+1} = SourceValues(iVertSource,:,:,:);
             case {'U','L'}
                 % Apply grouping function
-                SourceBlocks{end+1} = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function);
+                [SourceBlocks{end+1}, PcaOrient{iScout}] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
+                    Function, OrientCov{iScout}, PcaOrient{iScout});
                 % If the row names are defined
                 if ~isempty(RowNames) && iscell(RowNames)
                     RowNamesBlocks{end+1} = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceBlocks{end},1), iVertSource);
@@ -124,6 +147,19 @@ if (nComponents == 0)
     
 % === SIMPLE SOURCE MODELS ===
 else
+    % Remove enclosing cells from PCA-specific variables.
+    if iscell(OrientCov) && strncmpi(Function, 'pca', 3)
+        if length(OrientCov) > 1
+            error('Unexpected multi-cell OrientCov for simple source model.');
+        end
+        OrientCov = OrientCov{1};
+    end
+    if iscell(PcaOrient) && strncmpi(Function, 'pca', 3)
+        if length(PcaOrient) > 1
+            error('Unexpected multi-cell OrientCov for simple source model.');
+        end
+        PcaOrient = PcaOrient{1};
+    end
     % Select only a few vertices
     if ~isempty(iVertices)
         % Convert to indices in the source matrix
@@ -138,14 +174,16 @@ else
             SourceValues = SourceValues(iVertSource,:,:,:);
         case 2
             % Apply grouping function
-            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], Function, OrientCov, PcaOrient);
+            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:2:length(iVertSource), 2:2:length(iVertSource), [], ...
+                Function, OrientCov, PcaOrient);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
                 RowNames = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceValues,1), iVertSource);
             end
         case 3
             % Apply grouping function
-            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), Function, OrientCov, PcaOrient);
+            [SourceValues, PcaOrient] = ApplyFunction(SourceValues(iVertSource,:,:,:), 1:3:length(iVertSource), 2:3:length(iVertSource), 3:3:length(iVertSource), ...
+                Function, OrientCov, PcaOrient);
             % If the row names are defined
             if ~isempty(RowNames) && iscell(RowNames)
                 RowNames = RemoveComponentTag(DataType, reshape(RowNames,1,[]), size(SourceValues,1), iVertSource);                
@@ -221,7 +259,18 @@ function [Values, PcaOrient] = ApplyFunction(Values, i1, i2, i3, Function, Orien
             else
                 nComp = 2;
             end
-            [Values, PcaOrient] = bst_scout_value(Values, 'none', [], nComp, Function, 0, [], OrientCov, PcaOrient);
+            % Shortcut if reference component already computed: just project the values.
+            if strcmp(Function, 'pcaa') && ~isempty(PcaOrient)
+                % This works for kernel or timeseries.
+                % We reshape Values to [nSource, (nTime or nChan), nComp]  and
+                % PcaOrient to [nSource, 1, nComp]  and then multiply them.
+                Values = sum(bsxfun( @times, ...
+                    permute(reshape(Values, nComp, size(PcaOrient, 2), []), [2, 3, 1]), ...
+                    permute(PcaOrient, [2, 3, 1]) ), 3); % [nSource, (nTime or nChan)]
+            % Compute and project on first PCA orientation at each location.
+            else
+                [Values, PcaOrient] = bst_scout_value(Values, 'none', [], nComp, Function, 0, [], OrientCov, PcaOrient);
+            end
         case 'none'
             % Nothing to do
         otherwise

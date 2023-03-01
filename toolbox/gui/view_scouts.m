@@ -343,6 +343,8 @@ for iResFile = 1:length(ResultsFiles)
         % Keep track of how many components are available
         allComponents(end+1) = nComponents;
         
+        %% TODO Possible bug: iTrace should depend on previous regions' nComponents in mixed models
+        %% TODO Change scout PCA absolute to nComp=1 to do PCA on scout & components at the same time.
         % Only one component
         if (nComponents == 1)
             % Get meaningful tags in the results file name (without folders)

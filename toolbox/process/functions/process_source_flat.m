@@ -45,18 +45,20 @@ function sProcess = GetDescription()
     sProcess.nMinFiles   = 1;
     % === SELECT METHOD
     sProcess.options.label1.Comment = ['Converts unconstrained source files (3 values per vertex: x,y,z)<BR>' 10 ...
-        'to simpler files with only one value per vertex.<BR><BR>' 10 ...
-        'Method used to perform this conversion:'];
+                                       'to simpler files with only one value per vertex.<BR><BR>' 10 ...
+                                       'Method used to perform this conversion:'];
     sProcess.options.label1.Type    = 'label';
     sProcess.options.method.Comment = {'<B>Norm</B>: sqrt(x^2+y^2+z^2)', ...
-        '<B>PCA</B>: First mode of svd(x,y,z), maximizes retained power'; ...
-        'norm', 'pca'};
+                                       '<B>PCA</B>: First mode of svd(x,y,z), maximizes retained power'; ...
+                                       'norm', 'pca'};
     sProcess.options.method.Type    = 'radio_label';
     sProcess.options.method.Value   = 'norm';
+    sProcess.options.method.Controller.pca = 'pca';
     % Options: PCA
-    sProcess.options.edit.Comment = {'panel_pca', ' PCA options: '}; 
-    sProcess.options.edit.Type    = 'editpref';
-    sProcess.options.edit.Value   = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.Comment = {'panel_pca', ' PCA options: '}; 
+    sProcess.options.pcaedit.Type    = 'editpref';
+    sProcess.options.pcaedit.Value   = bst_get('PcaOptions'); % function that returns defaults.
+    sProcess.options.pcaedit.Class   = 'pca';
 end
 
 
@@ -144,13 +146,14 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
                 % Loop to check if all files are links.
                 isAllLink = true;
                 nF = 0;
-                for iF = 0:(nInputs - iInput)
-                    if ~strcmp(sInputs(iInput + iF).Condition, PrevCond)
+                %% this loop was bugged
+                for iF = iInput:nInputs
+                    if ~strcmp(sInputs(iF).Condition, PrevCond)
                         % Reached end of this condition.
                         break;
                     end
                     nF = nF + 1;
-                    if ~strcmpi(file_gettype(sInputs(iInput).FileName), 'link')
+                    if ~strcmpi(file_gettype(sInputs(iF).FileName), 'link')
                         isAllLink = false;
                         break;
                     end
@@ -253,12 +256,13 @@ function [OutputFiles, Message] = RunPcaGroup(sInputs, PcaOptions)
             if strcmpi(PcaOptions.Method, 'pcaa')
                 % Check if all files from this condition are kernel links.
                 isAllLink = true;
-                for iF = 0:(nInputs - iInput)
-                    if ~strcmp(sInputs(iInput).Condition, PrevCond)
+                %% this loop was bugged
+                for iF = iInput:nInputs
+                    if ~strcmp(sInputs(iF).Condition, PrevCond)
                         % Reached end of this condition.
                         break;
                     end
-                    if ~strcmpi(file_gettype(sInputs(iInput).FileName), 'link')
+                    if ~strcmpi(file_gettype(sInputs(iF).FileName), 'link')
                         isAllLink = false;
                         break;
                     end
