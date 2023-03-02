@@ -727,7 +727,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             elseif strcmpi(OPTIONS.Method, 'simnibs4')
                 simCmd = 'charm';
                 simVer = '4.x';
-                simOpt = '--forceqform';
+                simOpt = '--forceqform --forcerun';
             end
             [status,output] = system([simCmd ' --version']);
             if (status ~= 0)
