@@ -105,6 +105,7 @@ if isempty(MriFile)
 end
 
 %% ===== DICOM CONVERTER =====
+TmpDir = [];
 if strcmpi(FileFormat, 'DICOM-SPM')
     % Convert DICOM to NII
     DicomFiles = MriFile;
@@ -114,8 +115,6 @@ if strcmpi(FileFormat, 'DICOM-SPM')
         return;
     end
     FileFormat = 'Nifti1';
-    % Delete the temporary files
-    file_delete(TmpDir, 1, 1);
 end
 
 %% ===== LOOP ON MULTIPLE MRI =====
@@ -158,6 +157,12 @@ if iscell(MriFile)
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile{1}]);
 else
     sMri = bst_history('add', sMri, 'import', ['Import from: ' MriFile]);
+end
+
+
+%% ===== DELETE TEMPORARY FILES =====
+if ~isempty(TmpDir)
+    file_delete(TmpDir, 1, 1);
 end
 
 
