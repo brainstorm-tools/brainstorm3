@@ -165,11 +165,6 @@ if (GuiLevel == 1)
 end
 
 
-%% ===== EMPTY TEMPORARY DIRECTORY =====
-% gui_brainstorm('EmptyTempFolder');
-% Execute when closing instead, to avoid conflicts
-
-
 %% ===== EMPTY REPORTS DIRECTORY =====
 % Get reports directory
 reportsDir = bst_get('UserReportsDir');
@@ -737,6 +732,9 @@ if ~isempty(strfind(TmpDir, '/home/bic/'))
     % Edit preferences
     gui_show('panel_options', 'JavaWindow', 'Brainstorm preferences', [], 1, 0, 0);
 end
+
+% Empty temporary folder with confirmation (if nogui/server: display warning)
+gui_brainstorm('EmptyTempFolder', 1);
 
 
 %% ===== PREPARE BUG REPORTING =====

@@ -23,7 +23,7 @@ function [sFile, ChannelMat] = in_fopen_nwb(DataFile)
 % =============================================================================@
 %
 % Author: Konstantinos Nasiotis 2019-2021
-%         Francois Tadel, 2020-2021
+%         Francois Tadel, 2020-2023
 
 
 %% ===== INSTALL NWB LIBRARY =====
@@ -43,7 +43,8 @@ previous_directory = pwd;
 % Do everything in the NWB directory - With every call of nwbRead a +types
 % folder is created in the pwd for some reason
 % Go in the tmp folder so the +types can be dumped
-cd(bst_get('BrainstormTmpDir'))
+TmpDir = bst_get('BrainstormTmpDir', 0, 'nwb');
+cd(TmpDir)
 
 % Load the metadata
 nwb2 = nwbRead(DataFile);

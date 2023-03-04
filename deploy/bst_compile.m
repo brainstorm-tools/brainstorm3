@@ -65,14 +65,14 @@ rmpath(bst_get('UserProcessDir'));
 % Root brainstorm directory
 bstDir = bst_get('BrainstormHomeDir');
 % Deploy folder: .brainstorm/tmp/deploy
-deployDir = fullfile(bst_get('BrainstormTmpDir'), 'deploy');
+TmpDir = bst_get('BrainstormTmpDir', 0, 'deploy');
 % Get Matlab version
 ReleaseName = bst_get('MatlabReleaseName');
 % Javabuilder output
-compilerDir = fullfile(deployDir, ReleaseName, 'bst_javabuilder');
+compilerDir = fullfile(TmpDir, ReleaseName, 'bst_javabuilder');
 outputDir = fullfile(compilerDir, 'for_testing');
 % Packaging folders
-packageDir = fullfile(deployDir, ReleaseName, 'package');
+packageDir = fullfile(TmpDir, ReleaseName, 'package');
 binDir = fullfile(bstDir, 'bin', ReleaseName);
 jarDir = fullfile(packageDir, 'jar');
 % Delete existing folders
@@ -91,7 +91,7 @@ if exist(packageDir, 'dir')
     end
 end
 % Create new folders
-dirToCreate = {deployDir, fullfile(deployDir, ReleaseName), jarDir, binDir, outputDir};
+dirToCreate = {fullfile(TmpDir, ReleaseName), jarDir, binDir, outputDir};
 for i = 1:length(dirToCreate)    
     if ~exist(dirToCreate{i}, 'file')
         isCreated = mkdir(dirToCreate{i});
@@ -270,8 +270,8 @@ system(['cd "' jarDir '" ' cmdSeparator ' "' JdkDir, jarExePath '" cmf manifest.
 
 %% ===== PACKAGE ZIP =====
 % Deploy folder
-baseDir = fullfile(deployDir, 'brainstorm3');
-destDir = fullfile(deployDir, 'brainstorm3', 'bin', ReleaseName);
+baseDir = fullfile(TmpDir, 'brainstorm3');
+destDir = fullfile(TmpDir, 'brainstorm3', 'bin', ReleaseName);
 % Delete existing folder brainstorm3_deploy/brainstorm3
 if isdir(baseDir)
     try
@@ -289,7 +289,7 @@ copyfile(fullfile(binDir, '*.*'), destDir);
 % Create output filename
 c = clock;
 strDate = sprintf('%02d%02d%02d', c(1)-2000, c(2), c(3));
-zipFile = fullfile(deployDir, ['bst_bin_' ReleaseName '_' strDate '.zip']);
+zipFile = fullfile(TmpDir, ['bst_bin_' ReleaseName '_' strDate '.zip']);
 % Zip folder
 zip(zipFile, baseDir, fileparts(baseDir));
 % Display output file
@@ -300,6 +300,8 @@ try
 catch
     disp(['ERROR: Could not delete folder: "' baseDir '"']);
 end
+% Delete the temporary files
+% file_delete(TmpDir, 1, 1);
 
 
 %% ===== TERMINATION =====

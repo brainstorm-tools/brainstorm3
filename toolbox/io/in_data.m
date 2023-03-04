@@ -38,7 +38,7 @@ function [ImportedData, ChannelMat, nChannels, nTime, ImportOptions, DateOfStudy
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2018
+% Authors: Francois Tadel, 2008-2023
 
 %% ===== PARSE INPUTS ===== 
 if (nargin < 5) || isempty(nbCall)
@@ -79,7 +79,7 @@ ImportedData = [];
 nTime = [];
 DateOfStudy = [];
 % Get temporary directory
-tmpDir = bst_get('BrainstormTmpDir');
+TmpDir = bst_get('BrainstormTmpDir', 0, 'import');
 [filePath, fileBase, fileExt] = bst_fileparts(DataFile);
 % Reading as raw continuous?
 isRaw = ismember(FileFormat, {'FIF', 'CTF', 'CTF-CONTINUOUS', '4D', 'KIT', 'RICOH', 'KDF', 'ITAB', ...
@@ -487,7 +487,7 @@ if isRaw
         % Add extension, full path, and make valid and unique
         newFileName = ['data_', BlocksToRead(iFile).FileTag, '.mat'];
         newFileName = file_standardize(newFileName);
-        newFileName = bst_fullfile(tmpDir, newFileName);
+        newFileName = bst_fullfile(TmpDir, newFileName);
         newFileName = file_unique(newFileName);
         % Save new file
         bst_save(newFileName, DataMat, 'v6');
@@ -561,7 +561,7 @@ else
             newFileName = importedBaseName;
         end
         % Produce a default data filename          
-        BstDataFile = bst_fullfile(tmpDir, ['data_' newFileName '_' sprintf('%04d', iData) '.mat']);
+        BstDataFile = bst_fullfile(TmpDir, ['data_' newFileName '_' sprintf('%04d', iData) '.mat']);
         
         % Add History: File name
         FileMat = DataMat(iData); 
@@ -586,13 +586,8 @@ else
     end
 end
 
-
 %% ===== CHANNEL FILE =====
 % Add history field to channel structure
 if ~isempty(ChannelMat)
     ChannelMat = bst_history('add', ChannelMat, 'import', ['Import from: ' DataFile ' (Format: ' FileFormat ')']);
 end
-
-
-
-

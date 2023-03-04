@@ -8,7 +8,7 @@ function [argout1, argout2, argout3, argout4, argout5] = bst_get( varargin )
 %    - bst_get('BrainstormHomeDir')     : Application directory of brainstorm
 %    - bst_get('BrainstormUserDir')     : User home directory for brainstorm (<home>/.brainstorm/)
 %    - bst_get('BrainstormTmpDir')      : User brainstorm temporary directory (Default: <home>/.brainstorm/tmp/)
-%    - bst_get('BrainstormTmpDir', isForcedDefault)   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/)
+%    - bst_get('BrainstormTmpDir', isForcedDefault=0, SubDir=[])   : User DEFAULT brainstorm temporary directory (<home>/.brainstorm/tmp/SubDir)
 %    - bst_get('BrainstormDocDir')      : Doc folder folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('BrainstormDefaultsDir') : Defaults folder of the Brainstorm distribution (may vary in compiled versions)
 %    - bst_get('UserReportsDir')        : User reports directory (<home>/.brainstorm/reports/)
@@ -339,7 +339,27 @@ switch contextName
         
     case 'BrainstormTmpDir'
         tmpDir = '';
-        isForcedDefault = ((nargin >= 2) && varargin{2});
+        isForcedDefault = ((nargin >= 2) && ~isempty(varargin{2}) && varargin{2});
+        % Subdirectory
+        if (nargin >= 3) && ~isempty(varargin{3})
+            SubDir = varargin{3};
+
+            % % Add PID of MATLAB process to the temporary folder
+            % try
+            %     pid = feature('getpid');
+            % catch
+            %     pid = [];
+            % end
+            % if ~isempty(pid)
+            %     SubDir = sprintf('%s_%d', SubDir, feature('getpid'));
+            % end
+
+            % Add date+time of MATLAB process to the temporary folder
+            c = clock;
+            SubDir = sprintf('%s_%02.0f%02.0f%02.0f_%02.0f%02.0f%02.0f', SubDir, c(1)-2000, c(2:6));
+        else
+            SubDir = [];
+        end
         % Default folder: userdir/tmp
         defDir = bst_fullfile(bst_get('BrainstormUserDir'), 'tmp');
         % If temporary directory is set in the preferences
@@ -367,6 +387,17 @@ switch contextName
             % Error: cannot create any temporary folder
             if ~res
                 error(['Cannot create Brainstorm temporary directory: "' tmpDir '".']); 
+            end
+        end
+        % Add sub-directory
+        if ~isempty(SubDir)
+            tmpDir = bst_fullfile(tmpDir, SubDir);
+            % Create directory if it does not exist yet
+            if ~isdir(tmpDir)
+                res = mkdir(tmpDir);
+                if ~res
+                    error(['Cannot create Brainstorm temporary directory: "' tmpDir '".']); 
+                end
             end
         end
         argout1 = tmpDir;

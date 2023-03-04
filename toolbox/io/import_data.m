@@ -42,7 +42,7 @@ function [NewFiles, iStudyImport] = import_data(DataFiles, ChannelMat, FileForma
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2008-2022
+% Authors: Francois Tadel, 2008-2023
 
 
 %% ===== PARSE INPUTS =====
@@ -133,11 +133,6 @@ if isempty(DataFiles)
         end
     end
 end
-
-
-%% ===== EMPTY TEMPORARY DIRECTORY =====
-bst_progress('start', 'Import MEG/EEG recordings', 'Emptying temporary directory...');
-gui_brainstorm('EmptyTempFolder');
 
 
 %% ===== IMPORT SELECTED DATA =====
@@ -280,6 +275,7 @@ for iFile = 1:length(DataFiles)
     % ===== STORE IMPORTED FILES IN DB =====
     bst_progress('start', 'Import MEG/EEG recordings', 'Saving imported files in database...', 0, length(ImportedDataMat));
     strTag = '';
+    importedPath = [];
     % Store imported data files in Brainstorm database
     for iImported = 1:length(ImportedDataMat)
         bst_progress('inc', 1);
@@ -410,6 +406,11 @@ for iFile = 1:length(DataFiles)
         end
     end
     clear sStudy studySubDir
+
+    % Delete temporary import folder
+    if ~isempty(importedPath)
+        file_delete(importedPath, 1, 1);
+    end
 
     % Remove NaN and duplicated values in studies list
     iStudies = unique(iStudies(~isnan(iStudies)));

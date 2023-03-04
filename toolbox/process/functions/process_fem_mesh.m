@@ -226,6 +226,7 @@ end
 function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     isOk = 0;
     errMsg = '';
+    TmpDir = [];
 
     % ===== DEFAULT OPTIONS =====
     Def_OPTIONS = GetDefaultOptions();
@@ -238,8 +239,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     if strcmpi(OPTIONS.Method, 'simnibs')
         OPTIONS.Method = 'simnibs3';
     end
-    % Empty temporary folder, otherwise it reuses previous files in the folder
-    gui_brainstorm('EmptyTempFolder');
 
     % ===== GET T1/T2 MRI =====
     [sSubject, T1File, T2File, errMsg, iT1] = GetT1T2(iSubject, iMris);
@@ -601,23 +600,24 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             
             % === SAVE MRI AS NII ===
             bst_progress('text', 'Exporting MRI...');
-            % Empty temporary folder, otherwise it may reuse previous files in the folder
-            gui_brainstorm('EmptyTempFolder');
             % Create temporary folder for segmentation files
-            tempDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'brain2mesh');
-            mkdir(tempDir);
+            TmpDir = bst_get('BrainstormTmpDir', 0, 'brain2mesh');
             % Save T1 MRI in .nii format
             subjid = strrep(sSubject.Name, '@', '');
-            T1Nii = bst_fullfile(tempDir, [subjid 'T1.nii']);
+            T1Nii = bst_fullfile(TmpDir, [subjid 'T1.nii']);
             out_mri_nii(sMriT1, T1Nii);
             % Save T2 MRI in .nii format
             if ~isempty(T2File)
-                T2Nii = bst_fullfile(tempDir, [subjid 'T2.nii']);
+                T2Nii = bst_fullfile(TmpDir, [subjid 'T2.nii']);
                 out_mri_nii(sMriT2, T2Nii);
                 % Check the size of the volumes
                 if ~isequal(size(sMriT1.Cube), size(sMriT2.Cube)) || ~isequal(size(sMriT1.Voxsize), size(sMriT2.Voxsize))
                     errMsg = [errMsg, 'Input images have different dimension, you must register and reslice them first.' 10 ...
                               sprintf('T1:(%d x %d x %d),   T2:(%d x %d x %d)', size(sMriT1.Cube), size(sMriT2.Cube))];
+                    % Delete the temporary files
+                    if ~isempty(TmpDir)
+                        file_delete(TmpDir, 1, 1);
+                    end
                     return;
                 end
             else
@@ -671,21 +671,21 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % Call SPM batch
             spm_jobman('run', matlabbatch);
             % Check for success
-            testFile = bst_fullfile(tempDir, ['c5' subjid 'T1.nii']);
+            testFile = bst_fullfile(TmpDir, ['c5' subjid 'T1.nii']);
             if ~file_exist(testFile)
                 errMsg = [errMsg, 'SPM12 segmentation failed: missing output file "' testFile '".'];
                 return;
             end
             % Read outputs
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c1' subjid 'T1.nii']), 0, 0, 0);
+            sTpm = in_mri_nii(bst_fullfile(TmpDir, ['c1' subjid 'T1.nii']), 0, 0, 0);
             seg.gm = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c2' subjid 'T1.nii']), 0, 0, 0);
+            sTpm = in_mri_nii(bst_fullfile(TmpDir, ['c2' subjid 'T1.nii']), 0, 0, 0);
             seg.wm = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c3' subjid 'T1.nii']), 0, 0, 0);
+            sTpm = in_mri_nii(bst_fullfile(TmpDir, ['c3' subjid 'T1.nii']), 0, 0, 0);
             seg.csf = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c4' subjid 'T1.nii']), 0, 0, 0);
+            sTpm = in_mri_nii(bst_fullfile(TmpDir, ['c4' subjid 'T1.nii']), 0, 0, 0);
             seg.skull = sTpm.Cube;
-            sTpm = in_mri_nii(bst_fullfile(tempDir, ['c5' subjid 'T1.nii']), 0, 0, 0);
+            sTpm = in_mri_nii(bst_fullfile(TmpDir, ['c5' subjid 'T1.nii']), 0, 0, 0);
             seg.scalp = sTpm.Cube;
 
             % ===== CALL BRAIN2MESH =====
@@ -758,23 +758,20 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
 
             % === SAVE T1 MRI AS NII ===
             bst_progress('text', 'Exporting MRI...');
-            % Empty temporary folder, otherwise it may reuse previous files in the folder
-            gui_brainstorm('EmptyTempFolder');
             % Create temporary folder for segmentation files
-            simnibsDir = bst_fullfile(bst_get('BrainstormTmpDir'), simCmd);
-            mkdir(simnibsDir);
+            TmpDir = bst_get('BrainstormTmpDir', 0, simCmd);
             % Remove previous nifti header, as it can cause issues with SimNIBS (if sform is defined and not qform)
             sMriT1.Header = [];
             % Save T1 MRI in .nii format
             subjid = strrep(sSubject.Name, '@', '');
-            T1Nii = bst_fullfile(simnibsDir, [subjid 'T1.nii']);
+            T1Nii = bst_fullfile(TmpDir, [subjid 'T1.nii']);
             out_mri_nii(sMriT1, T1Nii);
             % Save T2 MRI in .nii format
             if ~isempty(T2File)
                 % Remove previous nifti header, as it can cause issues with SimNIBS (if sform is defined and not qform)
                 sMriT2.Header = [];
                 % Save file
-                T2Nii = bst_fullfile(simnibsDir, [subjid 'T2.nii']);
+                T2Nii = bst_fullfile(TmpDir, [subjid 'T2.nii']);
                 out_mri_nii(sMriT2, T2Nii);
             else
                 T2Nii = [];
@@ -784,7 +781,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             bst_progress('text', ['Calling SimNIBS/' simCmd '...']);
             % Go to simnibs working directory
             curDir = pwd;
-            cd(simnibsDir);
+            cd(TmpDir);
             % Call SimNIBS
             strCall = [simCmd ' ' simOpt ' ' subjid ' ' T1Nii ' ' T2Nii];
             status = system(strCall)
@@ -798,7 +795,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             end
                   
             % === IMPORT OUTPUT FOLDER ===
-            [errorImport, FemFile] = import_anatomy_simnibs(iSubject, simnibsDir, OPTIONS.NbVertices, isInteractive, [], OPTIONS.isEegCaps, 2);
+            [errorImport, FemFile] = import_anatomy_simnibs(iSubject, TmpDir, OPTIONS.NbVertices, isInteractive, [], OPTIONS.isEegCaps, 2);
             % Handle errors
             if ~isempty(errorImport)
                 errMsg = [errMsg, 'Error trying to import the SimNIBS output: ' 10 errorImport];
@@ -853,18 +850,15 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % === SAVE T1 MRI AS NII ===
             bst_progress('setimage', 'plugins/roast_logo.gif');
             bst_progress('text', 'Exporting MRI...');
-            % Empty temporary folder, otherwise it may reuse previous files in the folder
-            gui_brainstorm('EmptyTempFolder');
             % Create temporary folder for fieldtrip segmentation files
-            roastDir = bst_fullfile(bst_get('BrainstormTmpDir'), 'roast');
-            mkdir(roastDir);
+            TmpDir = bst_get('BrainstormTmpDir', 0, 'roast');
             % Save MRI in .nii format
             subjid = strrep(sSubject.Name, '@', '');
-            T1Nii = bst_fullfile(roastDir, [subjid 'T1.nii']);
+            T1Nii = bst_fullfile(TmpDir, [subjid 'T1.nii']);
             out_mri_nii(sMriT1, T1Nii);
             % Save T2 MRI in .nii format
             if ~isempty(T2File)
-                T2Nii = bst_fullfile(roastDir, [subjid 'T2.nii']);
+                T2Nii = bst_fullfile(TmpDir, [subjid 'T2.nii']);
                 out_mri_nii(sMriT2, T2Nii);
                 segTag = '_T1andT2';
             else
@@ -874,7 +868,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % === ROAST: SEGMENTATION (SPM) ===
             bst_progress('text', 'ROAST: MRI segmentation (SPM)...');
             % Check for segmented images
-            segNii = bst_fullfile(roastDir, ['c1' subjid 'T1' segTag '.nii']);
+            segNii = bst_fullfile(TmpDir, ['c1' subjid 'T1' segTag '.nii']);
             if file_exist(segNii)
                 disp(['ROAST> SPM segmented MRI found: ' segNii]);
             % ROAST: Start MRI segmentation
@@ -890,7 +884,7 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
             % === ROAST: SEGMENTATION TOUCHUP ===
             bst_progress('text', 'ROAST: MRI segmentation touchup...');
             % Check for segmented images
-            touchNii = bst_fullfile(roastDir, [subjid 'T1' segTag '_masks.nii']);
+            touchNii = bst_fullfile(TmpDir, [subjid 'T1' segTag '_masks.nii']);
             if file_exist(touchNii)
                 disp(['ROAST> Final masks found: ' touchNii]);
             % ROAST: Start MRI segmentation
@@ -951,7 +945,6 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     % Remove logos
     bst_plugin('SetProgressLogo', []);
 
-
     % ===== SAVE FEM MESH =====
     bst_progress('text', 'Saving FEM mesh...');
     % Save FemFile if not already done above
@@ -984,6 +977,11 @@ function [isOk, errMsg] = Compute(iSubject, iMris, isInteractive, OPTIONS)
     % Otherwise: just add the options string to the history
     else
         bst_history('add', FemFile, 'process_fem_mesh', OPTIONS);
+    end
+
+    % Delete the temporary files
+    if ~isempty(TmpDir)
+        file_delete(TmpDir, 1, 1);
     end
     % Return success
     isOk = 1;

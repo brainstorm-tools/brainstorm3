@@ -37,7 +37,7 @@ function [MriFileReg, errMsg, fileTag, sMriReg] = mri_coregister(MriFileSrc, Mri
 % For more information type "brainstorm license" at command prompt.
 % =============================================================================@
 %
-% Authors: Francois Tadel, 2016-2022
+% Authors: Francois Tadel, 2016-2023
 
 % ===== LOAD INPUTS =====
 % Parse inputs
@@ -98,13 +98,13 @@ switch lower(Method)
         
         % === SAVE FILES IN TMP FOLDER ===
         bst_progress('text', 'Saving temporary files...');
-        % Empty temporary folder
-        gui_brainstorm('EmptyTempFolder');
+        % Get temporary folder
+        TmpDir = bst_get('BrainstormTmpDir', 0, 'spmcoreg');
         % Save source MRI in .nii format
-        NiiSrcFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_src.nii');
+        NiiSrcFile = bst_fullfile(TmpDir, 'spm_src.nii');
         out_mri_nii(sMriSrc, NiiSrcFile);
         % Save reference MRI in .nii format
-        NiiRefFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'spm_ref.nii');
+        NiiRefFile = bst_fullfile(TmpDir, 'spm_ref.nii');
         out_mri_nii(sMriRef, NiiRefFile);
 
         % === CALL SPM COREGISTRATION ===
@@ -139,9 +139,9 @@ switch lower(Method)
             matlabbatch{1}.spm.spatial.coreg.estwrite.other    = {''};
             matlabbatch{1}.spm.spatial.coreg.estwrite.eoptions = spm_get_defaults('coreg.estimate');
             matlabbatch{1}.spm.spatial.coreg.estwrite.woptions = spm_get_defaults('coreg.write');
-            matlabbatch{1}.spm.spatial.coreg.estwrite.woptions.outdir = bst_get('BrainstormTmpDir');
+            matlabbatch{1}.spm.spatial.coreg.estwrite.woptions.outdir = TmpDir;
             % Output file
-            NiiRegFile = bst_fullfile(bst_get('BrainstormTmpDir'), 'rspm_src.nii');
+            NiiRegFile = bst_fullfile(TmpDir, 'rspm_src.nii');
         else
             % Coreg: Estimate
             matlabbatch{1}.spm.spatial.coreg.estimate.ref      = {[NiiRefFile, ',1']};
@@ -165,6 +165,8 @@ switch lower(Method)
             end
             return;
         end
+        % Delete the temporary files
+        file_delete(TmpDir, 1, 1);
         % Output file tag
         fileTag = '_spm';
         % Remove logo

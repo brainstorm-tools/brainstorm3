@@ -2560,23 +2560,20 @@ function Archive(OutputFile)
 
     % ===== TEMP FOLDER =====
     bst_progress('start', 'Export environment', 'Creating temporary folder...');
-    % Empty temporary folder
-    gui_brainstorm('EmptyTempFolder');
-    % Create temporary folder for storing all the files to package
-    EnvDir = bst_fullfile(bst_get('BrainstormTmpDir'), ['bst_env_' strDate]);
-    mkdir(EnvDir);
 
     % ===== COPY BRAINSTORM =====
     bst_progress('text', 'Copying: brainstorm...');
     % Get Brainstorm path and version
     bstVer = bst_get('Version');
     bstDir = bst_get('BrainstormHomeDir');
+    % Create temporary folder for storing all the files to package
+    TmpDir = bst_get('BrainstormTmpDir', 0, 'bstenv');
     % Get brainstorm3 destination folder: add version number
     if ~isempty(bstVer.Version) && ~any(bstVer.Version == '?')
-        envBst = bst_fullfile(EnvDir, ['brainstorm', bstVer.Version]);
+        envBst = bst_fullfile(TmpDir, ['brainstorm', bstVer.Version]);
     else
         [tmp, bstName] = bst_fileparts(bstDir);
-        envBst = bst_fullfile(EnvDir, bstName);
+        envBst = bst_fullfile(TmpDir, bstName);
     end
     % Add git commit hash
     if (length(bstVer.Commit) >= 30)
@@ -2626,7 +2623,7 @@ function Archive(OutputFile)
     % ===== SAVE LIST OF VERSIONS =====
     strList = bst_plugin('List', 'installed', 0);
     % Open file versions.txt
-    VersionFile = bst_fullfile(EnvDir, 'versions.txt');
+    VersionFile = bst_fullfile(TmpDir, 'versions.txt');
     fid = fopen(VersionFile, 'wt');
     if (fid < 0)
         error(['Cannot save file: ' VersionFile]);
@@ -2642,9 +2639,9 @@ function Archive(OutputFile)
     % ===== ZIP FILES =====
     bst_progress('text', 'Zipping environment...');
     % Zip files with bst_env_* being the first level
-    zip(OutputFile, EnvDir, bst_fileparts(EnvDir));
-    % Cleaning up
-    gui_brainstorm('EmptyTempFolder');
+    zip(OutputFile, TmpDir, bst_fileparts(TmpDir));
+    % Delete the temporary files
+    file_delete(TmpDir, 1, 1);
     % Close progress bar
     bst_progress('stop');
 end
