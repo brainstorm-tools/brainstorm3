@@ -69,8 +69,6 @@ if ~isVolume
         Wmat_LR = sSurf.tess2tess_interp.Wmat_LR;
         defSurfFile = [];
 
-    % Identify left and right hemispheres
-    [rH, lH]  = tess_hemisplit(sSurf);
     % Check for contralateral surfaces in subject
     elseif isfield(sSurf, 'Reg') && isfield(sSurf.Reg, 'SphereLR') && isfield(sSurf.Reg.SphereLR, 'Vertices') && (size(sSurf.Reg.SphereLR.Vertices, 1) == size(sSurf.Vertices, 1))
         % Identify left and right hemispheres
