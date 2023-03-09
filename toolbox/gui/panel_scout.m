@@ -4038,6 +4038,22 @@ function ProjectScoutsContralateral(srcSurfFile)
 
     % Get current atlas
     [sAtlas, iAtlas, sSurf] = GetAtlas();
+    isVolumeAtlas = ParseVolumeAtlas(sAtlas.Name);
+    % Volume atlas: Get anatomy surface and grid of points
+    if isVolumeAtlas
+        % Get current figure
+        hFig = bst_figures('GetCurrentFigure', '3D');
+        if isempty(hFig) || ~ishandle(hFig)
+            return
+        end
+        % Get figure Anatomy surface
+        sMri = panel_surface('GetSurfaceMri', hFig);
+        % Get figure GridLoc
+        GridLoc = GetFigureGrid(hFig);
+    else
+        sMri = [];
+        GridLoc = [];
+    end
     % Get selected scouts
     sScouts = GetSelectedScouts();
     if isempty(sAtlas) || isempty(sScouts)
@@ -4049,13 +4065,11 @@ function ProjectScoutsContralateral(srcSurfFile)
     % Progress bar
     bst_progress('start', 'Project scouts', 'Computing interpolation...');
     % Call function to project scouts
-    sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas);
+    sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas, sMri, GridLoc);
     if isempty(sAtlas.Scouts)
         return;
     end
     
-    % Set default seeds
-    sAtlas.Scouts = SetScoutsSeed(sAtlas.Scouts, sSurf.Vertices);
     % Set handles structure
     sTemplate = db_template('scout');
     [sAtlas.Scouts.Handles] = deal(sTemplate.Handles);
