@@ -1155,8 +1155,9 @@ function iScouts = SetScouts(SurfaceFile, iScouts, sScouts)
     end
     % Save the previous scouts configuration
     sScoutsOld = GlobalData.Surface(iSurf).Atlas(sSurf.iAtlas).Scouts;
-    % Detect region if not defined yet (only for new scouts)
-    if isAdd
+    isVolumeAtlas = ParseVolumeAtlas(GlobalData.Surface(iSurf).Atlas(sSurf.iAtlas).Name);
+    % Detect region if not defined yet (only for new surface scouts)
+    if isAdd && ~isVolumeAtlas
         for i = 1:length(sScouts)
             if ~isempty(sScouts(i).Seed) && (isempty(sScouts(i).Region) || strcmpi(sScouts(i).Region, 'UU'))
                 sScouts(i) = SetRegionAuto(sSurf, sScouts(i));
@@ -4050,6 +4051,19 @@ function ProjectScoutsContralateral(srcSurfFile)
         sMri = panel_surface('GetSurfaceMri', hFig);
         % Get figure GridLoc
         GridLoc = GetFigureGrid(hFig);
+        % Warning when using linear MNI registration
+        if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'y') || isempty(sMri.NCS.y)
+            % Error when no MNI registration at all
+            if ~isfield(sMri, 'NCS') || ~isfield(sMri.NCS, 'R') || isempty(sMri.NCS.R)
+                bst_error('Compute MNI registration first.', 'Project volume scouts', 0);
+                return;
+            else
+                isConfirm = java_dialog('confirm', ['To project volume scouts, it is advised to compute a nonlinear MNI normalization first.' 10 10 'Proceed with linear MNI registration anyway?' 10 10], 'Project volume scouts');
+                if ~isConfirm
+                    return;
+                end
+            end
+        end
     else
         sMri = [];
         GridLoc = [];
