@@ -4,7 +4,8 @@ function sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas, sMri, GridLoc)
 % USAGE:  sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas)                 % Surface scouts
 %         sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas, sMri, GridLoc)  % Volume scouts
 %
-% PROJECT SURFACE SCOUTS REFERENCE:
+% REFERENCE:
+%    Surface scouts:
 %    - Requires the FreeSurfer registered contralateral spheres: Option -contrasurfreg in FreeSurfer 6.X
 %      See tutorial: https://neuroimage.usc.edu/brainstorm/Tutorials/LabelFreeSurfer#Contralateral_registration
 %    - Use the contralateral spheres if available at the subject level: sSurf.Reg.SphereLR.Vertices
@@ -13,7 +14,7 @@ function sAtlas = bst_project_scouts_contra(srcSurfFile, sAtlas, sMri, GridLoc)
 %      2) project left-right in the template anatomy
 %      3) project back to the subject surface
 %
-% PROJECT VOLUME SCOUTS REFERENCE:
+%    Volume scouts:
 %    - Contralateral projection is based on MNI-coordinates
 %    - If the original scout has less than 4 vertices, the projected scout consists in the set of projected vertices
 %    - Else, the boundary of the original scout vertices is projected and used find the projected scout
@@ -207,7 +208,6 @@ else
     % ===== PROCESS ATLAS/SCOUTS =====
     for iAtlas = 1:length(sAtlas)
         for iScout = 1:length(sAtlas(iAtlas).Scouts)
-            disp(sAtlas(iAtlas).Scouts(iScout).Label)
             nOrgVertices = length(sAtlas(iAtlas).Scouts(iScout).Vertices);
             % SCS coordinates
             scs_coords = GridLoc(sAtlas(iAtlas).Scouts(iScout).Vertices, :);
@@ -243,7 +243,7 @@ else
             sAtlas(iAtlas).Scouts(iScout).Vertices = vi;
             % Set seed for new Scout
             sAtlas(iAtlas).Scouts(iScout) = panel_scout('SetScoutsSeed', sAtlas(iAtlas).Scouts(iScout), GridLoc);
-            % Grow new scout around it seed to march the number of vertices in origin scout
+            % Grow new scout around it seed to match the number of vertices in origin scout
             nToGrow = nOrgVertices - length(vi);
             if nToGrow ~= 0
                 seedXYZ = GridLoc(sAtlas(iAtlas).Scouts(iScout).Seed, :);
@@ -276,4 +276,3 @@ else
         end
     end
 end
-        
