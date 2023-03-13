@@ -238,30 +238,51 @@ else
                 vi = union(vi, vi_in);
             end
             vi = vi(:)'; % Force to be column vector
-            % Save in input structure
-            sAtlas(iAtlas).Scouts(iScout).Vertices = vi;
-            % Set seed for new Scout
-            sAtlas(iAtlas).Scouts(iScout) = panel_scout('SetScoutsSeed', sAtlas(iAtlas).Scouts(iScout), GridLoc);
-            % Grow new scout around it seed to match the number of vertices in origin scout
-            nToGrow = nOrgVertices - length(vi);
-            if nToGrow ~= 0
-                seedXYZ = GridLoc(sAtlas(iAtlas).Scouts(iScout).Seed, :);
+            % Adjust size of new scout around it seed to march the number of vertices in origin scout
+            nPointDiff = nOrgVertices - length(vi);
+
+            % If scout needs to grow, grow in all directions
+            while nPointDiff > 0
+                % Get points at boundary
+                faces = boundary(GridLoc(vi,:), 0);
+                boundaryPoints = unique(faces(:));
+                % Potential new points
                 viPossible = 1:size(GridLoc,1);
                 % Remove the points that are already in the new scout
                 viPossible = setdiff(viPossible, vi);
-                % If there are some candidates, find the closest ones
-                if ~isempty(viPossible) && (length(viPossible) <= nToGrow)
-                    vi = union(vi, viPossible);
-                elseif ~isempty(viPossible)
-                    % Compute the distance from each point to the seed
-                    distFromSeed = sqrt(sum(bst_bsxfun(@minus, GridLoc(viPossible,:), seedXYZ) .^ 2, 2))';
-                    % Add the the closest points
-                    [tmp, I] = sort(distFromSeed);
-                    vi = union(vi, viPossible(I(1:nToGrow)));
-                end
-                % Update vertices
-                sAtlas(iAtlas).Scouts(iScout).Vertices = vi;
+                % Find closest outwards (not in scout) point for each boundary point
+                I = bst_nearest(GridLoc(viPossible, :), GridLoc(vi(boundaryPoints),:), 1);
+                vi = union(vi, viPossible(I));
+                nPointDiff = nOrgVertices - length(vi);
             end
+
+            % Update scout vertices
+            sAtlas(iAtlas).Scouts(iScout).Vertices = vi;
+            % Set seed to center of scout
+            sAtlas(iAtlas).Scouts(iScout) = panel_scout('SetScoutsSeed', sAtlas(iAtlas).Scouts(iScout), GridLoc);
+
+            % If scout needs to shrink
+            while nPointDiff < 0
+                % Get points at boundary
+                faces = boundary(GridLoc(vi,:), 0);
+                boundaryPoints = unique(faces(:));
+                if length(boundaryPoints) > -nPointDiff
+                    % Compute the distance from each boundary point to the seed
+                    seedXYZ = GridLoc(sAtlas(iAtlas).Scouts(iScout).Seed, :);
+                    distFromSeed = sqrt(sum(bst_bsxfun(@minus, GridLoc(vi(boundaryPoints),:), seedXYZ) .^ 2, 2))';
+                    % Remove nToGrow the farther closest points
+                    [tmp, I] = sort(distFromSeed);
+                    vi = setdiff(vi, vi(I( 1 : -nPointDiff )));
+                    nPointDiff = nOrgVertices - length(vi);
+                else
+                    % Remove all, update nToGrow
+                    vi = setdiff(vi, vi(boundaryPoints));
+                    nPointDiff = nOrgVertices - length(vi);
+                end
+            end
+            % Update scout vertices
+            sAtlas(iAtlas).Scouts(iScout).Vertices = vi;
+
             % Update label and region
             % Remove hemisphere suffix if present
             sAtlas(iAtlas).Scouts(iScout).Label = regexprep(sAtlas(iAtlas).Scouts(iScout).Label, ' (L|R)$', '');
