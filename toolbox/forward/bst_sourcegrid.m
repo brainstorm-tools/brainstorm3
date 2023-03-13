@@ -62,7 +62,7 @@ switch lower(Options.Method)
         % Sample volume
         GridLoc = SampleVolume(sEnvelope.Vertices, sEnvelope.Faces, scaleLayers, reduceLayers);
 
-    case {'isotropic', 'isohead'}
+    case {'isotropic', 'isoskull', 'isohead'}
         % Create a regular grid
         [X,Y,Z] = meshgrid(...
             min(sEnvelope.Vertices(:,1)) : Options.Resolution : (max(sEnvelope.Vertices(:,1))+Options.Resolution), ...

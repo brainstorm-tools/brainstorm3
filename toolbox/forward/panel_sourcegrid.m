@@ -75,8 +75,10 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         end
         % Load inner skull if available
         if ~isempty(sSubject.iInnerSkull)
-            sInner = bst_memory('LoadSurface', sSubject.Surface(sSubject.iInnerSkull).FileName);
+            InnerSkullFile = sSubject.Surface(sSubject.iInnerSkull).FileName;
+            sInner = bst_memory('LoadSurface', InnerSkullFile);
         else
+            InnerSkullFile = [];
             sInner = [];
         end
         % If this is the default subject: do not show the option "use group grid"
@@ -114,6 +116,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         sHead = [];
         sInner = [];
         HeadFile = [];
+        InnerSkullFile = [];
     end
 
     % ===== GRID OPTIONS =====
@@ -147,7 +150,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         
         % RADIO: Isotropic
         jRadioIsotropic = gui_component('radio', jPanelOpt, 'br', 'Regular grid (isotropic):', jButtonGroup, [], @(h,ev)UpdatePanel, []);
-        jRadioBrain = gui_component('radio', jPanelOpt, [], 'Brain', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
+        jRadioCortex = gui_component('radio', jPanelOpt, [], 'Cortex', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
+        jRadioSkull = gui_component('radio', jPanelOpt, [], 'Inner skull', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
         jRadioHead  = gui_component('radio', jPanelOpt, [], 'Head', jButtonGroupSurf, [], @(h,ev)UpdatePanel, []);
         % Grid resolution
         gui_component('label', jPanelOpt, 'br', '     ');
@@ -196,28 +200,31 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     switch (GridOptions.Method) 
         case 'adaptive'
             jRadioGenerate.setSelected(1);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         case 'isotropic'
             jRadioIsotropic.setSelected(1);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
+        case 'isoskull'
+            jRadioIsotropic.setSelected(1);
+            jRadioSkull.setSelected(1);            
         case 'isohead'
             jRadioIsotropic.setSelected(1);
             jRadioHead.setSelected(1);
         case 'file'
             jRadioFile.setSelected(1);
             jTextFile.setText(GridOptions.FileName);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         case 'var'
             jRadioVar.setSelected(1);
             jTextVar.setText(GridOptions.FileName);
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         case 'group'
             if ~isempty(jRadioGroup) && jRadioGroup.isEnabled()
                 jRadioGroup.setSelected(1);
             else
                 jRadioGenerate.setSelected(1);
             end
-            jRadioBrain.setSelected(1);
+            jRadioCortex.setSelected(1);
         otherwise
             jRadioGenerate.setSelected(1);
     end
@@ -238,6 +245,7 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
     % Controls list
     ctrl = struct('CortexFile',       CortexFile, ...
                   'HeadFile',         HeadFile, ...
+                  'InnerSkullFile',   InnerSkullFile, ...
                   'isPreview',        isPreview, ...
                   'GridOptions_name', GridOptions_name, ...
                   'sEnvelope',        sEnvelope, ...
@@ -246,7 +254,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
                   'sInner',           sInner, ...
                   'jRadioGenerate',   jRadioGenerate, ...
                   'jRadioIsotropic',  jRadioIsotropic, ...
-                  'jRadioBrain',      jRadioBrain, ...
+                  'jRadioCortex',     jRadioCortex, ...
+                  'jRadioSkull',      jRadioSkull, ...
                   'jRadioHead',       jRadioHead, ...
                   'jRadioFile',       jRadioFile, ...
                   'jRadioVar',        jRadioVar, ...
@@ -320,7 +329,8 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
         isIsotropic = jRadioIsotropic.isSelected();
         jLabelResolution.setEnabled(isIsotropic);
         jTextResolution.setEnabled(isIsotropic);
-        jRadioBrain.setEnabled(isIsotropic);
+        jRadioCortex.setEnabled(isIsotropic);
+        jRadioSkull.setEnabled(isIsotropic);
         jRadioHead.setEnabled(isIsotropic);
         jLabelResUnits.setEnabled(isIsotropic);
         % RADIO: File
@@ -337,6 +347,13 @@ function [bstPanelNew, panelName] = CreatePanel(sProcess, sFiles)  %#ok<DEFNU>
             % Get grid of source points
             if strcmpi(GridOptions.Method, 'isohead')
                 [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.HeadFile, ctrl.sHead, ctrl.sHead, ctrl.sHead);
+            elseif strcmpi(GridOptions.Method, 'isoskull')
+                if ~isempty(ctrl.InnerSkullFile)
+                    [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.InnerSkullFile, ctrl.sInner, ctrl.sInner, ctrl.sInner);
+                else
+                    bst_error('No inner skull surface available.', 'Source grid', 0);
+                    gGridLoc = [];
+                end
             else
                 [gGridLoc, ctrl.sEnvelope] = GetGrid(GridOptions, ctrl.CortexFile, ctrl.sCortex, ctrl.sEnvelope, ctrl.sInner);
             end
@@ -416,8 +433,10 @@ function GridOptions = GetOptions(ctrl)
     if ctrl.jRadioGenerate.isSelected()
         GridOptions.Method = 'adaptive';
     elseif ctrl.jRadioIsotropic.isSelected()
-        if ctrl.jRadioBrain.isSelected()
+        if ctrl.jRadioCortex.isSelected()
             GridOptions.Method = 'isotropic';
+        elseif ctrl.jRadioSkull.isSelected()
+            GridOptions.Method = 'isoskull';
         elseif ctrl.jRadioHead.isSelected()
             GridOptions.Method = 'isohead';
         end
@@ -489,7 +508,7 @@ function [grid, sEnvelope] = GetGrid(GridOptions, CortexFile, sCortex, sEnvelope
             end
             % Compute grid
             grid = bst_sourcegrid(GridOptions, CortexFile, sInner, sEnvelope);
-        case {'isotropic', 'isohead'}
+        case {'isotropic', 'isoskull', 'isohead'}
             % Compute grid
             grid = bst_sourcegrid(GridOptions, CortexFile, sInner, sEnvelope);
         case {'file', 'var'}
