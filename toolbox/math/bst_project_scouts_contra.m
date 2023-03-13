@@ -226,8 +226,8 @@ else
             end
             % If points form a closed surface
             if  nOrgVertices >= 4
-                % Find boundary for set of projected points
-                faces = boundary(GridLoc(vi,:), 0);
+                % Find the compact boundary that envelops all the projected points
+                faces = boundary(GridLoc(vi,:), 1);
                 % Find grid points inside polyhedron
                 vi = find(inpolyhedron(struct('faces', faces, 'vertices', GridLoc(vi,:)), GridLoc));
                 if isempty(vi)
