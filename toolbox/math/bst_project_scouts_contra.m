@@ -229,11 +229,13 @@ else
                 % Find the compact boundary that envelops all the projected points
                 faces = boundary(GridLoc(vi,:), 1);
                 % Find grid points inside polyhedron
-                vi = find(inpolyhedron(struct('faces', faces, 'vertices', GridLoc(vi,:)), GridLoc));
-                if isempty(vi)
+                vi_in = find(inpolyhd(GridLoc, GridLoc(vi,:), faces));
+                if isempty(vi_in)
                     % Find the vertex that is closer to the center of the projected points
-                    [tmp, vi] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, mean(GridLoc(vi,:), 1)) .^ 2, 2)));
+                    [tmp, vi_in] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, mean(GridLoc(vi,:), 1)) .^ 2, 2)));
                 end
+                % Include surface points
+                vi = union(vi, vi_in);
             end
             vi = vi(:)'; % Force to be column vector
             % Save in input structure
