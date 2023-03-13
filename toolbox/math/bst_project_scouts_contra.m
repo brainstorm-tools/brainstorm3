@@ -224,10 +224,9 @@ else
             for iVertex = 1 : nOrgVertices
                 [tmp, vi(iVertex)] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, scs_coords(iVertex, :)) .^ 2, 2)));
             end
-            % If points form a closed surface
-            if  nOrgVertices >= 4
-                % Find the compact boundary that envelops all the projected points
-                faces = boundary(GridLoc(vi,:), 1);
+            % Find the compact boundary that envelops all the projected points
+            faces = boundary(GridLoc(vi,:), 1);
+            if ~isempty(faces)
                 % Find grid points inside polyhedron
                 vi_in = find(inpolyhd(GridLoc, GridLoc(vi,:), faces));
                 if isempty(vi_in)
