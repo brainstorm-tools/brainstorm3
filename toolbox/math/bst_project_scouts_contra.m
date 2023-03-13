@@ -219,23 +219,20 @@ else
             mni_coords(:, 1) = -mni_coords(:, 1);
             % Convert back to SCS
             scs_coords = cs_convert(sMri, 'mni', 'scs', mni_coords);
-            if  nOrgVertices < 4
-                % Find closets grid point to projected points
-                vi = zeros(1, nOrgVertices);
-                for iVertex = 1 : nOrgVertices
-                    % Compute the distance from each point to the seed
-                    [tmp, I] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, scs_coords(iVertex, :)) .^ 2, 2)));
-                    vi(iVertex) = I;
-                end
-            else
+            % Find points to project in GridLoc
+            vi = zeros(1, nOrgVertices);
+            for iVertex = 1 : nOrgVertices
+                [tmp, vi(iVertex)] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, scs_coords(iVertex, :)) .^ 2, 2)));
+            end
+            % If points form a closed surface
+            if  nOrgVertices >= 4
                 % Find boundary for set of projected points
-                faces = boundary(scs_coords, 0);
+                faces = boundary(GridLoc(vi,:), 0);
                 % Find grid points inside polyhedron
-                vi = find(inpolyhedron(struct('faces', faces, 'vertices', scs_coords), GridLoc));
+                vi = find(inpolyhedron(struct('faces', faces, 'vertices', GridLoc(vi,:)), GridLoc));
                 if isempty(vi)
                     % Find the vertex that is closer to the center of the projected points
-                    [tmp, I] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, mean(scs_coords, 1)) .^ 2, 2)));
-                    vi = I;
+                    [tmp, vi] = min(sqrt(sum(bst_bsxfun(@minus, GridLoc, mean(GridLoc(vi,:), 1)) .^ 2, 2)));
                 end
             end
             vi = vi(:)'; % Force to be column vector
