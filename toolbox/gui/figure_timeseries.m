@@ -2738,9 +2738,16 @@ function DisplayConfigMenu(hFig, jParent)
                             matlabMouse(2) - matlabFig(2) - matlabButton(2) - matlabButton(4) + 1];
             % Move popup accordingly
             ScreenDef = bst_get('ScreenDef');
+            if (length(ScreenDef) == 1)
+                ZoomFactor = ScreenDef(1).zoomFactor;
+            elseif (matlabFig(1) < ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3))
+                ZoomFactor = ScreenDef(1).zoomFactor;
+            else
+                ZoomFactor = ScreenDef(2).zoomFactor;
+            end
             jPopup.setLocation(java.awt.Point(...
-                javaMouse.getX() - matlabOffset(1).*ScreenDef.zoomFactor - jPopup.getWidth(), ...
-                javaMouse.getY() + matlabOffset(2).*ScreenDef.zoomFactor));
+                javaMouse.getX() - matlabOffset(1).*ZoomFactor - jPopup.getWidth(), ...
+                javaMouse.getY() + matlabOffset(2).*ZoomFactor));
         end
     end
 end
