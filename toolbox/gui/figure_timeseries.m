@@ -4382,8 +4382,14 @@ function ScaleToFitY(hFig, ev)
                 TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
         end
     else
-        TF = GetFigureData(iDS, iFig);
-        TF = TF{1};
+        switch file_gettype(TsInfo.FileName)
+            case 'data'
+                TF = GetFigureData(iDS, iFig);
+                TF = TF{1};
+            case 'matrix'
+                sMatrix = in_bst_matrix(TsInfo.FileName, 'Value');
+                TF = sMatrix.Value;
+        end
         [XVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
         XVector = XVector(iTime);
     end
