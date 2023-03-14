@@ -258,34 +258,20 @@ switch (OPTIONS.HeadModelType)
                 end
                 OPTIONS.GridLoc = sGrid.GridLoc;
                 GridOptions = sGrid.GridOptions;
-                % If using the full head volume: change the surface file that is used as a reference
-                if strcmpi(GridOptions.Method, 'isohead')
-                    OutSurfaceFile = OPTIONS.HeadFile;
-                elseif strcmpi(GridOptions.Method, 'isoskull')
-                    OutSurfaceFile = OPTIONS.InnerSkullFile;
-                end
             else
-                if strcmpi(OPTIONS.GridOptions.Method, 'isohead')
-                    OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.HeadFile);
-                    OutSurfaceFile = OPTIONS.HeadFile;
-                elseif strcmpi(OPTIONS.GridOptions.Method, 'isoskull')
-                    if ~isempty(OPTIONS.InnerSkullFile)
-                        OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.InnerSkullFile);
-                        OutSurfaceFile = OPTIONS.InnerSkullFile;
-                    else
-                        errMessage = 'No inner skull surface available.';
-                        OPTIONS = [];
-                        return;
-                    end
-                else
-                    OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.CortexFile);
-                end
+                OPTIONS.GridLoc = panel_sourcegrid('GetGrid', OPTIONS.GridOptions, OPTIONS.CortexFile);
                 GridOptions = OPTIONS.GridOptions;
             end
             if isempty(OPTIONS.GridLoc)
                 OPTIONS = [];
                 bst_progress('stop');
                 return;
+            end
+            % If using the full head volume: change the surface file that is used as a reference
+            if strcmpi(GridOptions.Method, 'isohead')
+                OutSurfaceFile = OPTIONS.HeadFile;
+            elseif strcmpi(GridOptions.Method, 'isoskull')
+                OutSurfaceFile = OPTIONS.InnerSkullFile;
             end
             % For group grids: Check if the reference was a head surface
             if strcmpi(GridOptions.Method, 'group') && ~isempty(GridOptions.FileName)
