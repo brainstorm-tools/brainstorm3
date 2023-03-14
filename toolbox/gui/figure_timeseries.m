@@ -4411,7 +4411,7 @@ function ScaleToFitY(hFig, ev)
     iStart = max(iStartMin, iStart);
     [val, iEnd] = min(abs(XVector - XLim(2)));
     curTF = TF(:, iStart:iEnd);
-    isYLog = strcmpi(TsInfo.YScale, 'log');
+    isYLog = isfield(TsInfo, 'YScale') && strcmpi(TsInfo.YScale, 'log');
     if isYLog
         YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
         if YLim(1) <= 0
