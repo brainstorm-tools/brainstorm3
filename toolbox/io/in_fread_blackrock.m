@@ -38,7 +38,7 @@ elseif ~ismember(precision, {'single', 'double'})
     error('Unsupported precision.');
 end
 if (nargin < 3) || isempty(iChannels)
-    iChannels = 1:sFile.header.ChannelCount;
+    iChannels = 1:length(sFile.channelflag);
 end
 if (nargin < 2) || isempty(SamplesBounds)
     SamplesBounds = round(sFile.prop.times .* sFile.prop.sfreq);
