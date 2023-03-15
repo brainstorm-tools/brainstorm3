@@ -2738,9 +2738,16 @@ function DisplayConfigMenu(hFig, jParent)
                             matlabMouse(2) - matlabFig(2) - matlabButton(2) - matlabButton(4) + 1];
             % Move popup accordingly
             ScreenDef = bst_get('ScreenDef');
+            if (length(ScreenDef) == 1)
+                ZoomFactor = ScreenDef(1).zoomFactor;
+            elseif (matlabFig(1) < ScreenDef(1).matlabPos(1) + ScreenDef(1).matlabPos(3))
+                ZoomFactor = ScreenDef(1).zoomFactor;
+            else
+                ZoomFactor = ScreenDef(2).zoomFactor;
+            end
             jPopup.setLocation(java.awt.Point(...
-                javaMouse.getX() - matlabOffset(1).*ScreenDef.zoomFactor - jPopup.getWidth(), ...
-                javaMouse.getY() + matlabOffset(2).*ScreenDef.zoomFactor));
+                javaMouse.getX() - matlabOffset(1).*ZoomFactor - jPopup.getWidth(), ...
+                javaMouse.getY() + matlabOffset(2).*ZoomFactor));
         end
     end
 end
@@ -4339,7 +4346,7 @@ function ScaleToFitY(hFig, ev)
     FigureId = getappdata(hFig, 'FigureId');
     isSpectrum = strcmpi(FigureId.Type, 'spectrum');
     [PlotHandles, iFig, iDS] = bst_figures('GetFigureHandles', hFig);
-    hAxes = PlotHandles.hAxes;
+    hAxes = [PlotHandles(:).hAxes];
     % Get initial YLim
     YLimInit = getappdata(hAxes(1), 'YLimInit');
 
@@ -4375,14 +4382,30 @@ function ScaleToFitY(hFig, ev)
                 TF = reshape(TF(:,1,:), [size(TF,1), size(TF,3)]);
         end
     else
-        TF = GetFigureData(iDS, iFig);
-        TF = TF{1};
+        TF = [];
+        switch file_gettype(TsInfo.FileName)
+            case 'data'
+                TF = GetFigureData(iDS, iFig);
+                TF = TF{1};
+            case 'matrix'
+                sMatrix = in_bst_matrix(TsInfo.FileName, 'Value');
+                TF = sMatrix.Value;
+        end
+        if isempty(TF)
+           % Get the Y data from all Axes
+            for ix = 1 : length(hAxes)
+                dataLineObjs = findobj(hAxes(ix), 'Tag', 'DataLine');
+                TF = vertcat(TF, vertcat(get(dataLineObjs, 'YData')));
+            end
+            % Correct for display factor
+            TF = TF ./ PlotHandles(1).DisplayFactor;
+        end
         [XVector, iTime] = bst_memory('GetTimeVector', iDS, [], 'UserTimeWindow');
         XVector = XVector(iTime);
     end
     
     % Get limits of currently plotted data
-    XLim = get(hAxes, 'XLim');    
+    XLim = get(hAxes(1), 'XLim');
     % For linear y axis spectrum, ignore very low frequencies with high amplitudes. Use the first local maximum
     if isSpectrum && ~isequal(lower(FigureId.SubType), 'timeseries') && ~isBands && ...
             any(strcmpi(TfInfo.Function, {'power', 'magnitude'})) && strcmpi(TsInfo.YScale, 'linear') && all(TF(:)>=0)
@@ -4398,15 +4421,15 @@ function ScaleToFitY(hFig, ev)
     iStart = max(iStartMin, iStart);
     [val, iEnd] = min(abs(XVector - XLim(2)));
     curTF = TF(:, iStart:iEnd);
-    isYLog = strcmpi(TsInfo.YScale, 'log');
+    isYLog = isfield(TsInfo, 'YScale') && strcmpi(TsInfo.YScale, 'log');
     if isYLog
-        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles(1).DisplayFactor;
         if YLim(1) <= 0
-            YLim(1) = min(curTF(curTF(:)>0)) * PlotHandles.DisplayFactor;
+            YLim(1) = min(curTF(curTF(:)>0)) * PlotHandles(1).DisplayFactor;
         end
         YLim = log10(YLim);
     else
-        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles.DisplayFactor;
+        YLim = [min(curTF(:)), max(curTF(:))] * PlotHandles(1).DisplayFactor;
     end
     % Add 5% margin above and below
     YSpan = YLim(2) - YLim(1);
@@ -4415,22 +4438,32 @@ function ScaleToFitY(hFig, ev)
     if isYLog
         YLim = 10.^YLim;
     end
+    % Keep YLim(1) as 0 if it was initially 0
+    if YLimInit(1) == 0
+        YLim(1) = 0;
+    end
+    % Keep YLim symmetric if it was initially symmetric
+    if YLimInit(1) == -YLimInit(2)
+        [tmp, imax] = max(abs(YLim));
+        [tmp, imin] = min(abs(YLim));
+        YLim(imin) = -YLim(imax);
+    end
     % Respect data limits
     if isSpectrum 
         if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
             YLim(1) = max(YLim(1), YLimInit(1));
             YLim(2) = min(YLim(2), YLimInit(2));
-        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
-            YLim(1) = max(YLim(1), PlotHandles.DataMinMax(1) * PlotHandles.DisplayFactor);
-            YLim(2) = min(YLim(2), PlotHandles.DataMinMax(2) * PlotHandles.DisplayFactor);
+        elseif PlotHandles(1).DataMinMax(1) ~= PlotHandles(1).DataMinMax(2)
+            YLim(1) = max(YLim(1), PlotHandles(1).DataMinMax(1) * PlotHandles(1).DisplayFactor);
+            YLim(2) = min(YLim(2), PlotHandles(1).DataMinMax(2) * PlotHandles(1).DisplayFactor);
         end
     end
     % Catch exceptions
     if YLim(1) == YLim (2)
         if ~isempty(YLimInit) && YLimInit(1) ~= YLimInit (2)
             YLim = YLimInit;
-        elseif PlotHandles.DataMinMax(1) ~= PlotHandles.DataMinMax(2)
-            YLim = PlotHandles.DataMinMax;
+        elseif PlotHandles(1).DataMinMax(1) ~= PlotHandles(1).DataMinMax(2)
+            YLim = PlotHandles(1).DataMinMax;
         else
             YLim = [-1, 1];
         end
